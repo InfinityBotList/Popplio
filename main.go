@@ -38,7 +38,7 @@ var (
 type Bot struct {
 	BotID            string   `bson:"botID" json:"bot_id"`
 	Name             string   `bson:"botName" json:"name"`
-	TagsRaw          string   `bson:"tags" json:"tags_raw"`
+	TagsRaw          string   `bson:"tags" json:"-"`
 	Tags             []string `bson:"-" json:"tags"` // This is created by API
 	Prefix           *string  `bson:"prefix" json:"prefix"`
 	Owner            string   `bson:"main_owner" json:"owner"`
@@ -64,10 +64,14 @@ type Bot struct {
 }
 
 func parseBot(bot *Bot) *Bot {
-	bot.Tags = strings.Split(bot.TagsRaw, ",")
+	bot.Tags = strings.Split(strings.ReplaceAll(bot.TagsRaw, " ", ""), ",")
 
 	if *bot.Donate == "None" {
 		bot.Donate = nil
+	}
+
+	if *bot.Github == "None" {
+		bot.Github = nil
 	}
 
 	return bot
@@ -232,7 +236,55 @@ func main() {
 	})
 
 	r.HandleFunc("/bots/{id}", rateLimitWrap(4, 1*time.Minute, func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
 
+		if r.Method != "GET" {
+			w.WriteHeader(http.StatusMethodNotAllowed)
+			w.Write([]byte(badRequest))
+			return
+		}
+
+		vars := mux.Vars(r)
+
+		botId := vars["id"]
+
+		if botId == "" {
+			w.WriteHeader(http.StatusBadRequest)
+			w.Write([]byte(badRequest))
+			return
+		}
+
+		botCol := mongoDb.Collection("bots")
+
+		var bot Bot
+
+		err := botCol.FindOne(ctx, bson.M{"botID": botId}).Decode(&bot)
+
+		if err != nil {
+			log.Error(err)
+			w.WriteHeader(http.StatusNotFound)
+			w.Write([]byte(notFound))
+			return
+		}
+
+		bot = *parseBot(&bot)
+
+		/* Removing or modifying fields directly in API is very dangerous as scrapers will
+		 * just ignore owner checks anyways or cross-reference via another list. Also we
+		 * want to respect the permissions of the owner if they're the one giving permission,
+		 * blocking IPs is a better idea to this
+		 */
+
+		bytes, err := json.Marshal(bot)
+
+		if err != nil {
+			log.Error(err)
+			w.WriteHeader(http.StatusInternalServerError)
+			w.Write([]byte([]byte("{\"error\":\"Something broke!\"}")))
+			return
+		}
+
+		w.Write(bytes)
 	}))
 
 	r.HandleFunc("/fates/bots/{id}", func(w http.ResponseWriter, r *http.Request) {
@@ -279,8 +331,8 @@ func main() {
 
 		if err != nil {
 			log.Error(err)
-			w.WriteHeader(http.StatusNotFound)
-			w.Write([]byte("Not found"))
+			w.WriteHeader(http.StatusInternalServerError)
+			w.Write([]byte([]byte("{\"error\":\"Something broke!\"}")))
 			return
 		}
 
