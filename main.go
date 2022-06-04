@@ -42,7 +42,7 @@ type Bot struct {
 	Tags             []string `bson:"-" json:"tags"` // This is created by API
 	Prefix           *string  `bson:"prefix" json:"prefix"`
 	Owner            string   `bson:"main_owner" json:"owner"`
-	AdditionalOwners []string `bson:"additional_owners" json:"additional_owners"` // This field should be removed outside of Fates imports
+	AdditionalOwners []string `bson:"additional_owners" json:"additional_owners"`
 	StaffBot         bool     `bson:"staff" json:"staff_bot"`
 	Short            string   `bson:"short" json:"short"`
 	Long             string   `bson:"long" json:"long"`
