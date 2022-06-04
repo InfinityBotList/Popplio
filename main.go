@@ -272,10 +272,29 @@ func main() {
 		err = json.Unmarshal(bodyBytes, &payload)
 
 		if err != nil {
-			log.Error(err)
-			w.WriteHeader(http.StatusBadRequest)
-			w.Write([]byte(badRequest))
-			return
+			if r.URL.Query().Get("count") != "" {
+				payload = types.BotStats{}
+			} else {
+				log.Error(err)
+				w.WriteHeader(http.StatusBadRequest)
+				w.Write([]byte(badRequest))
+				return
+			}
+		}
+
+		if r.URL.Query().Get("count") != "" {
+			count, err := strconv.ParseUint(r.URL.Query().Get("count"), 10, 32)
+
+			if err != nil {
+				log.Error(err)
+				w.WriteHeader(http.StatusBadRequest)
+				w.Write([]byte(badRequest))
+				return
+			}
+
+			countPtr := uint32(count)
+
+			payload.Count = &countPtr
 		}
 
 		servers, shards, users := payload.GetStats()
