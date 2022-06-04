@@ -11,6 +11,9 @@ import (
 	"strings"
 	"time"
 
+	"popplio/types"
+	"popplio/utils"
+
 	integrase "github.com/MetroReviews/metro-integrase/lib"
 	"github.com/go-redis/redis/v8"
 	"github.com/gorilla/mux"
@@ -34,49 +37,6 @@ var (
 	mongoDb    *mongo.Database
 	ctx        context.Context
 )
-
-type Bot struct {
-	BotID            string   `bson:"botID" json:"bot_id"`
-	Name             string   `bson:"botName" json:"name"`
-	TagsRaw          string   `bson:"tags" json:"-"`
-	Tags             []string `bson:"-" json:"tags"` // This is created by API
-	Prefix           *string  `bson:"prefix" json:"prefix"`
-	Owner            string   `bson:"main_owner" json:"owner"`
-	AdditionalOwners []string `bson:"additional_owners" json:"additional_owners"`
-	StaffBot         bool     `bson:"staff" json:"staff_bot"`
-	Short            string   `bson:"short" json:"short"`
-	Long             string   `bson:"long" json:"long"`
-	Library          *string  `bson:"library" json:"library"`
-	Website          *string  `bson:"website" json:"website"`
-	Donate           *string  `bson:"donate" json:"donate"`
-	Support          *string  `bson:"support" json:"support"`
-	NSFW             bool     `bson:"nsfw" json:"nsfw"`
-	Premium          bool     `bson:"premium" json:"premium"`
-	Certified        bool     `bson:"certified" json:"certified"`
-	Servers          int      `bson:"servers" json:"servers"`
-	Shards           int      `bson:"shards" json:"shards"`
-	Votes            int      `bson:"votes" json:"votes"`
-	Views            int      `bson:"clicks" json:"views"`
-	InviteClicks     int      `bson:"invite_clicks" json:"invites"`
-	Github           *string  `bson:"github" json:"github"`
-	Banner           *string  `bson:"background" json:"banner"`
-	Invite           *string  `bson:"invite" json:"invite"`
-	Type             string   `bson:"type" json:"type"` // For auditing reasons, we do not filter out denied/banned bots in API
-}
-
-func parseBot(bot *Bot) *Bot {
-	bot.Tags = strings.Split(strings.ReplaceAll(bot.TagsRaw, " ", ""), ",")
-
-	if *bot.Donate == "None" {
-		bot.Donate = nil
-	}
-
-	if *bot.Github == "None" {
-		bot.Github = nil
-	}
-
-	return bot
-}
 
 func rateLimitWrap(reqs int, t time.Duration, fn http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -162,9 +122,9 @@ func rateLimitWrap(reqs int, t time.Duration, fn http.HandlerFunc) http.HandlerF
 			return
 		}
 
-		fn(w, r)
-
 		w.Header().Set("Ratelimit-Req-Made", strconv.Itoa(vInt))
+
+		fn(w, r)
 	}
 }
 
@@ -247,9 +207,9 @@ func main() {
 
 		vars := mux.Vars(r)
 
-		botId := vars["id"]
+		name := vars["id"]
 
-		if botId == "" {
+		if name == "" {
 			w.WriteHeader(http.StatusBadRequest)
 			w.Write([]byte(badRequest))
 			return
@@ -257,9 +217,27 @@ func main() {
 
 		botCol := mongoDb.Collection("bots")
 
-		var bot Bot
+		var bot types.Bot
 
-		err := botCol.FindOne(ctx, bson.M{"botID": botId}).Decode(&bot)
+		var err error
+
+		if r.URL.Query().Get("resolve") == "1" || r.URL.Query().Get("resolve") == "true" {
+			err = botCol.FindOne(ctx, bson.M{
+				"$or": []bson.M{
+					{
+						"botName": name,
+					},
+					{
+						"vanity": name,
+					},
+					{
+						"botID": name,
+					},
+				},
+			}).Decode(&bot)
+		} else {
+			err = botCol.FindOne(ctx, bson.M{"botID": name}).Decode(&bot)
+		}
 
 		if err != nil {
 			log.Error(err)
@@ -268,7 +246,7 @@ func main() {
 			return
 		}
 
-		bot = *parseBot(&bot)
+		bot = *utils.ParseBot(&bot)
 
 		/* Removing or modifying fields directly in API is very dangerous as scrapers will
 		 * just ignore owner checks anyways or cross-reference via another list. Also we
@@ -315,7 +293,7 @@ func main() {
 
 		botCol := mongoDb.Collection("bots")
 
-		var bot Bot
+		var bot types.Bot
 
 		err := botCol.FindOne(ctx, bson.M{"botID": botId}).Decode(&bot)
 
@@ -326,7 +304,7 @@ func main() {
 			return
 		}
 
-		bot = *parseBot(&bot)
+		bot = *utils.ParseBot(&bot)
 
 		bytes, err := json.Marshal(bot)
 
