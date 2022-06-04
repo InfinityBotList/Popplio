@@ -211,7 +211,7 @@ func main() {
 	statsFn := func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 
-		if r.Method != "GET" {
+		if r.Method == "GET" || r.Method == "DELETE" {
 			w.WriteHeader(http.StatusMethodNotAllowed)
 			w.Write([]byte(badRequest))
 			return
@@ -271,17 +271,10 @@ func main() {
 
 		servers, shards, users := payload.GetStats()
 
-		res, err := col.UpdateOne(ctx, bson.M{"token": r.Header.Get("Authorization")}, bson.M{"$set": bson.M{"servers": servers, "shards": shards, "users": users}})
+		_, err = col.UpdateOne(ctx, bson.M{"token": r.Header.Get("Authorization")}, bson.M{"$set": bson.M{"servers": servers, "shards": shards, "users": users}})
 
 		if err != nil {
 			log.Error(err)
-			w.WriteHeader(http.StatusInternalServerError)
-			w.Write([]byte([]byte("{\"error\":\"Something broke!\"}")))
-			return
-		}
-
-		if res.ModifiedCount == 0 {
-			log.Error("We couldn't update for some reason")
 			w.WriteHeader(http.StatusInternalServerError)
 			w.Write([]byte([]byte("{\"error\":\"Something broke!\"}")))
 			return

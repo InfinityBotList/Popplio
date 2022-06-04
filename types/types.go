@@ -62,7 +62,7 @@ func (s BotStats) GetStats() (servers uint32, shards uint32, users uint32) {
 	var userCount uint32
 
 	if s.Servers != nil {
-		serverCount = *s.Count
+		serverCount = *s.Servers
 	} else if s.GuildCount != nil {
 		serverCount = *s.GuildCount
 	} else if s.ServerCount != nil {
