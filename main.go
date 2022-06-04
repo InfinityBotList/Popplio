@@ -61,6 +61,7 @@ type Bot struct {
 	Github           *string  `bson:"github" json:"github"`
 	Banner           *string  `bson:"background" json:"banner"`
 	Invite           *string  `bson:"invite" json:"invite"`
+	Type             string   `bson:"type" json:"type"` // For auditing reasons, we do not filter out denied/banned bots in API
 }
 
 func parseBot(bot *Bot) *Bot {
