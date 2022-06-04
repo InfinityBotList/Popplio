@@ -2,13 +2,17 @@ package main
 
 import (
 	"context"
+	"crypto/sha512"
 	"encoding/json"
 	"fmt"
 	"net/http"
 	"os"
+	"strconv"
 	"strings"
+	"time"
 
 	integrase "github.com/MetroReviews/metro-integrase/lib"
+	"github.com/go-redis/redis/v8"
 	"github.com/gorilla/mux"
 	"github.com/joho/godotenv"
 	log "github.com/sirupsen/logrus"
@@ -23,6 +27,12 @@ const (
 	mainSite   = "https://infinitybotlist.com"
 	statusPage = "https://status.botlist.site"
 	apiBot     = "https://discord.com/api/oauth2/authorize?client_id=818419115068751892&permissions=140898593856&scope=bot%20applications.commands"
+)
+
+var (
+	redisCache *redis.Client
+	mongoDb    *mongo.Database
+	ctx        context.Context
 )
 
 type Bot struct {
@@ -63,11 +73,103 @@ func parseBot(bot *Bot) *Bot {
 	return bot
 }
 
+func rateLimitWrap(reqs int, t time.Duration, fn http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		// Get ratelimit from redis
+		var id string
+
+		auth := r.Header.Get("Authorization")
+
+		if auth != "" {
+			// Check if the user is a bot
+			botCol := mongoDb.Collection("bots")
+
+			var bot struct {
+				BotID string `bson:"botID"`
+			}
+
+			options := options.FindOne().SetProjection(bson.M{"botID": 1})
+
+			err := botCol.FindOne(ctx, bson.M{"token": auth}, options).Decode(&bot)
+
+			if err != nil {
+				// Bot does not exist, return
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(http.StatusForbidden)
+				w.Write([]byte("{\"error\":\"Invalid API token\"}"))
+				return
+			}
+
+			id = bot.BotID
+		} else {
+			remoteIp := strings.Split(strings.ReplaceAll(r.Header.Get("X-Forwarded-For"), " ", ""), ",")
+
+			// For user privacy, hash the remote ip
+			hasher := sha512.New()
+			hasher.Write([]byte(remoteIp[0]))
+			id = fmt.Sprintf("%x", hasher.Sum(nil))
+		}
+
+		v := redisCache.Get(r.Context(), "rl:"+id).Val()
+
+		if v == "" {
+			v = "0"
+
+			err := redisCache.Set(ctx, "rl:"+id, "0", t).Err()
+
+			if err != nil {
+				log.Error(err)
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(http.StatusInternalServerError)
+				w.Write([]byte("{\"error\":\"Something broke!\"}"))
+				return
+			}
+		}
+
+		err := redisCache.Incr(ctx, "rl:"+id).Err()
+
+		if err != nil {
+			log.Error(err)
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusInternalServerError)
+			w.Write([]byte("{\"error\":\"Something broke!\"}"))
+			return
+		}
+
+		vInt, err := strconv.Atoi(v)
+
+		if err != nil {
+			log.Error(err)
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusInternalServerError)
+			w.Write([]byte("{\"error\":\"Something broke!\"}"))
+			return
+		}
+
+		if vInt > reqs {
+			w.Header().Set("Content-Type", "application/json")
+			retryAfter := redisCache.TTL(ctx, "rl:"+id).Val()
+			w.Header().Set("Retry-After", strconv.FormatFloat(retryAfter.Seconds(), 'g', -1, 64))
+
+			w.WriteHeader(http.StatusTooManyRequests)
+			w.Write([]byte("{\"error\":\"You're being rate limited!\"}"))
+
+			return
+		}
+
+		fn(w, r)
+
+		w.Header().Set("Ratelimit-Req-Made", strconv.Itoa(vInt))
+	}
+}
+
 func main() {
 	r := mux.NewRouter()
 
-	// Create base payloads before startup
+	// Init redisCache
+	redisCache = redis.NewClient(&redis.Options{})
 
+	// Create base payloads before startup
 	// Index
 	helloWorldB := map[string]string{
 		"message": "Hello world from IBL API v5!",
@@ -104,7 +206,7 @@ func main() {
 		panic(err)
 	}
 
-	ctx := context.Background()
+	ctx = context.Background()
 
 	client, err := mongo.Connect(ctx, options.Client().ApplyURI(mongoUrl))
 
@@ -114,9 +216,9 @@ func main() {
 
 	fmt.Println("Connected to mongoDB?")
 
-	db := client.Database("infinity")
+	mongoDb = client.Database("infinity")
 
-	colNames, err := db.ListCollectionNames(ctx, bson.D{})
+	colNames, err := mongoDb.ListCollectionNames(ctx, bson.D{})
 
 	fmt.Println("Collections:", colNames)
 
@@ -128,6 +230,10 @@ func main() {
 	r.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(helloWorld))
 	})
+
+	r.HandleFunc("/bots/{id}", rateLimitWrap(4, 1*time.Minute, func(w http.ResponseWriter, r *http.Request) {
+
+	}))
 
 	r.HandleFunc("/fates/bots/{id}", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
@@ -154,7 +260,7 @@ func main() {
 			return
 		}
 
-		botCol := db.Collection("bots")
+		botCol := mongoDb.Collection("bots")
 
 		var bot Bot
 
