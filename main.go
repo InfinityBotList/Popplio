@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"crypto/sha512"
-	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
@@ -19,11 +18,14 @@ import (
 	"github.com/go-redis/redis/v8"
 	"github.com/gorilla/mux"
 	"github.com/joho/godotenv"
+	jsoniter "github.com/json-iterator/go"
 	log "github.com/sirupsen/logrus"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
+
+var json = jsoniter.ConfigCompatibleWithStandardLibrary
 
 const (
 	mongoUrl   = "mongodb://127.0.0.1:27017/infinity" // Is already public in 10 other places so
@@ -226,16 +228,22 @@ func main() {
 		// Check token
 		col := mongoDb.Collection("bots")
 
-		var bot types.Bot
+		var bot struct {
+			BotID string `bson:"botID"`
+			Type  string `bson:"type"`
+		}
 
 		if r.Header.Get("Authorization") == "" {
 			w.WriteHeader(http.StatusUnauthorized)
 			w.Write([]byte(badRequest))
 			return
 		} else {
-			err := col.FindOne(ctx, bson.M{"token": r.Header.Get("Authorization")}).Decode(&bot)
+			options := options.FindOne().SetProjection(bson.M{"botID": 1, "type": 1})
+
+			err := col.FindOne(ctx, bson.M{"token": r.Header.Get("Authorization")}, options).Decode(&bot)
 
 			if err != nil {
+				log.Error(err)
 				w.WriteHeader(http.StatusUnauthorized)
 				w.Write([]byte(badRequest))
 				return
@@ -264,6 +272,7 @@ func main() {
 		err = json.Unmarshal(bodyBytes, &payload)
 
 		if err != nil {
+			log.Error(err)
 			w.WriteHeader(http.StatusBadRequest)
 			w.Write([]byte(badRequest))
 			return
@@ -288,6 +297,90 @@ func main() {
 	// Note that only token matters for this endpoint at this time
 	// TODO: Handle bot id as well
 	r.HandleFunc("/bots/{id}/stats", rateLimitWrap(4, 1*time.Minute, statsFn))
+
+	r.HandleFunc("/users/{uid}/bots/{bid}/votes", rateLimitWrap(3, 5*time.Minute, func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+
+		if r.Method != "GET" {
+			w.WriteHeader(http.StatusMethodNotAllowed)
+			w.Write([]byte(badRequest))
+			return
+		}
+
+		vars := mux.Vars(r)
+
+		var bot struct {
+			Type string `bson:"type"`
+		}
+
+		col := mongoDb.Collection("bots")
+
+		if r.Header.Get("Authorization") == "" {
+			w.WriteHeader(http.StatusUnauthorized)
+			w.Write([]byte(badRequest))
+			return
+		} else {
+			options := options.FindOne().SetProjection(bson.M{"botID": 1, "type": 1})
+
+			err := col.FindOne(ctx, bson.M{"token": r.Header.Get("Authorization"), "botID": vars["bid"]}, options).Decode(&bot)
+
+			if err != nil {
+				log.Error(err)
+				w.WriteHeader(http.StatusUnauthorized)
+				w.Write([]byte(badRequest))
+				return
+			}
+		}
+
+		if bot.Type != "approved" {
+			w.WriteHeader(http.StatusUnauthorized)
+			w.Write([]byte(notApproved))
+			return
+		}
+
+		var votes []uint64
+
+		col = mongoDb.Collection("votes")
+
+		cur, err := col.Find(ctx, bson.M{"botID": vars["bid"], "userID": vars["uid"]})
+
+		if err != nil {
+			log.Error(err)
+			w.WriteHeader(http.StatusNotFound)
+			w.Write([]byte(notFound))
+			return
+		}
+
+		defer cur.Close(ctx)
+
+		for cur.Next(ctx) {
+			var vote struct {
+				Date uint64 `bson:"date"`
+			}
+
+			err := cur.Decode(&vote)
+
+			if err != nil {
+				log.Error(err)
+				w.WriteHeader(http.StatusInternalServerError)
+				w.Write([]byte([]byte("{\"error\":\"Something broke!\"}")))
+				return
+			}
+
+			votes = append(votes, vote.Date)
+		}
+
+		bytes, err := json.Marshal(votes)
+
+		if err != nil {
+			log.Error(err)
+			w.WriteHeader(http.StatusInternalServerError)
+			w.Write([]byte(badRequest))
+			return
+		}
+
+		w.Write(bytes)
+	}))
 
 	r.HandleFunc("/bots/{id}", rateLimitWrap(4, 1*time.Minute, func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
