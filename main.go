@@ -5,6 +5,7 @@ import (
 	"crypto/sha512"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"os"
 	"strconv"
@@ -171,6 +172,17 @@ func main() {
 		panic(err)
 	}
 
+	// Not approved
+	notApprovedB := map[string]string{
+		"message": "Woah there, your bot needs to be approved. Calling the police right now!",
+	}
+
+	notApproved, err := json.Marshal(notApprovedB)
+
+	if err != nil {
+		panic(err)
+	}
+
 	ctx = context.Background()
 
 	client, err := mongo.Connect(ctx, options.Client().ApplyURI(mongoUrl))
@@ -195,6 +207,94 @@ func main() {
 	r.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(helloWorld))
 	})
+
+	statsFn := func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+
+		if r.Method != "GET" {
+			w.WriteHeader(http.StatusMethodNotAllowed)
+			w.Write([]byte(badRequest))
+			return
+		}
+
+		if r.Body == nil {
+			w.WriteHeader(http.StatusBadRequest)
+			w.Write([]byte(badRequest))
+			return
+		}
+
+		// Check token
+		col := mongoDb.Collection("bots")
+
+		var bot types.Bot
+
+		if r.Header.Get("Authorization") == "" {
+			w.WriteHeader(http.StatusUnauthorized)
+			w.Write([]byte(badRequest))
+			return
+		} else {
+			err := col.FindOne(ctx, bson.M{"token": r.Header.Get("Authorization")}).Decode(&bot)
+
+			if err != nil {
+				w.WriteHeader(http.StatusUnauthorized)
+				w.Write([]byte(badRequest))
+				return
+			}
+		}
+
+		if bot.Type != "approved" {
+			w.WriteHeader(http.StatusUnauthorized)
+			w.Write([]byte(notApproved))
+			return
+		}
+
+		defer r.Body.Close()
+
+		var payload types.BotStats
+
+		bodyBytes, err := io.ReadAll(r.Body)
+
+		if err != nil {
+			log.Error(err)
+			w.WriteHeader(http.StatusInternalServerError)
+			w.Write([]byte([]byte("{\"error\":\"Something broke!\"}")))
+			return
+		}
+
+		err = json.Unmarshal(bodyBytes, &payload)
+
+		if err != nil {
+			w.WriteHeader(http.StatusBadRequest)
+			w.Write([]byte(badRequest))
+			return
+		}
+
+		servers, shards, users := payload.GetStats()
+
+		res, err := col.UpdateOne(ctx, bson.M{"token": r.Header.Get("Authorization")}, bson.M{"$set": bson.M{"servers": servers, "shards": shards, "users": users}})
+
+		if err != nil {
+			log.Error(err)
+			w.WriteHeader(http.StatusInternalServerError)
+			w.Write([]byte([]byte("{\"error\":\"Something broke!\"}")))
+			return
+		}
+
+		if res.ModifiedCount == 0 {
+			log.Error("We couldn't update for some reason")
+			w.WriteHeader(http.StatusInternalServerError)
+			w.Write([]byte([]byte("{\"error\":\"Something broke!\"}")))
+			return
+		}
+
+		w.Write([]byte("{\"error\":null}"))
+	}
+
+	r.HandleFunc("/bots/stats", rateLimitWrap(4, 1*time.Minute, statsFn))
+
+	// Note that only token matters for this endpoint at this time
+	// TODO: Handle bot id as well
+	r.HandleFunc("/bots/{id}/stats", rateLimitWrap(4, 1*time.Minute, statsFn))
 
 	r.HandleFunc("/bots/{id}", rateLimitWrap(4, 1*time.Minute, func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")

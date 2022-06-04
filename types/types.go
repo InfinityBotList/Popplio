@@ -30,3 +30,60 @@ type Bot struct {
 	Type             string   `bson:"type" json:"type"` // For auditing reasons, we do not filter out denied/banned bots in API
 	Vanity           string   `bson:"vanity" json:"vanity"`
 }
+
+type BotStats struct {
+	// Fields are ordered in the way they are searched
+	// The simple servers, shards way
+	Servers *uint32 `json:"servers"`
+	Shards  *uint32 `json:"shards"`
+
+	// Fates List uses this (server count)
+	GuildCount *uint32 `json:"guild_count"`
+
+	// Top.gg uses this (server count)
+	ServerCount *uint32 `json:"server_count"`
+
+	// Top.gg and Fates List uses this (shard count)
+	ShardCount *uint32 `json:"shard_count"`
+
+	// Rovel Discord List and dlist.gg (kinda) uses this (server count)
+	Count *uint32 `json:"count"`
+
+	// Discordbotlist.com uses this (server count)
+	Guilds *uint32 `json:"guilds"`
+
+	Users     *uint32 `json:"users"`
+	UserCount *uint32 `json:"user_count"`
+}
+
+func (s BotStats) GetStats() (servers uint32, shards uint32, users uint32) {
+	var serverCount uint32
+	var shardCount uint32
+	var userCount uint32
+
+	if s.Servers != nil {
+		serverCount = *s.Count
+	} else if s.GuildCount != nil {
+		serverCount = *s.GuildCount
+	} else if s.ServerCount != nil {
+		serverCount = *s.ServerCount
+	} else if s.Count != nil {
+		serverCount = *s.Count
+	} else if s.Guilds != nil {
+		serverCount = *s.Guilds
+	}
+
+	if s.Shards != nil {
+		shardCount = *s.Shards
+	} else if s.ShardCount != nil {
+		shardCount = *s.ShardCount
+	}
+
+	if s.Users != nil {
+		userCount = *s.Users
+	} else if s.UserCount != nil {
+		userCount = *s.UserCount
+	}
+
+	return serverCount, shardCount, userCount
+}
