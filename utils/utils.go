@@ -9,25 +9,25 @@ import (
 	"popplio/types"
 )
 
-func isValid(s *string) bool {
+func isNone(s *string) bool {
 	if *s == "None" || *s == "none" || *s == "" || *s == "null" {
-		return false
+		return true
 	}
-	return true
+	return false
 }
 
 func ParseBot(bot *types.Bot) *types.Bot {
 	bot.Tags = strings.Split(strings.ReplaceAll(bot.TagsRaw, " ", ""), ",")
 
-	if isValid(bot.Website) {
+	if isNone(bot.Website) {
 		bot.Website = nil
 	}
 
-	if isValid(bot.Donate) {
+	if isNone(bot.Donate) {
 		bot.Donate = nil
 	}
 
-	if isValid(bot.Github) {
+	if isNone(bot.Github) {
 		bot.Github = nil
 	}
 
