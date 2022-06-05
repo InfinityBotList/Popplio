@@ -16,7 +16,7 @@ It is open source for transparency but we do not support self-hosting of this wh
 ``/users/{uid}/bots/{bid}/votes`` => Get User Votes
 
 - Requires authentication
-- Returns a ``[]uint64`` where each ``uint64`` represents a timestamp of the vote
+- Returns a ``[]uint64`` where each ``uint64`` represents a timestamp of the vote *or* a 404 if no votes were made
 
 ``/bots/stats`` | ``/bots/{id}/stats`` => Post Stats
 
