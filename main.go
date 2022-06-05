@@ -401,6 +401,43 @@ func main() {
 		w.Write(bytes)
 	}))
 
+	r.HandleFunc("/voteinfo", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+
+		if r.Method != "GET" {
+			w.WriteHeader(http.StatusMethodNotAllowed)
+			w.Write([]byte(badRequest))
+			return
+		}
+
+		// is it weekend yet?
+		curTime := time.Now()
+
+		var isWeekend bool
+
+		switch curTime.Weekday() {
+		case time.Saturday:
+			isWeekend = true
+		case time.Sunday:
+			isWeekend = true
+		}
+
+		var payload = types.VoteInfo{
+			Weekend: isWeekend,
+		}
+
+		b, err := json.Marshal(payload)
+
+		if err != nil {
+			log.Error(err)
+			w.WriteHeader(http.StatusInternalServerError)
+			w.Write([]byte(badRequest))
+			return
+		}
+
+		w.Write(b)
+	})
+
 	r.HandleFunc("/bots/{id}", rateLimitWrap(4, 1*time.Minute, func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 

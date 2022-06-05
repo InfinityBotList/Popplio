@@ -31,6 +31,10 @@ type Bot struct {
 	Vanity           string   `bson:"vanity" json:"vanity"`
 }
 
+type VoteInfo struct {
+	Weekend bool `json:"is_weekend"`
+}
+
 type BotStats struct {
 	// Fields are ordered in the way they are searched
 	// The simple servers, shards way
