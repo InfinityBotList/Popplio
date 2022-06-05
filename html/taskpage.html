@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+    <title>Hang on, {{.Username}}</title>
+    <body>
+        <h2>Hey there, {{.Username}}!</h2>
+        <p>The action you have selected may take a bit of time to process. Do not close this tab until it has finished!</p>
+        <span>Current status: <span id="current-status">Please wait</span></span>
+        <span data-tid={{.TID}}></span>
+    </body>
+    <script>
+function downloadTextFile(text, name) {
+    const a = document.createElement('a');
+    const type = name.split(".").pop();
+    a.href = URL.createObjectURL( new Blob([text], { type:`text/${type === "txt" ? "plain" : type}` }) );
+    a.download = name;
+    a.click();
+}  
+
+function ready(callback){
+    // in case the document is already rendered
+    if (document.readyState!='loading') callback();
+    // modern browsers
+    else if (document.addEventListener) document.addEventListener('DOMContentLoaded', callback);
+    // IE <= 8
+    else document.attachEvent('onreadystatechange', function(){
+        if (document.readyState=='complete') callback();
+    });
+}
+
+function update(text) {
+    var span = document.querySelector("#current-status")
+    span.innerHTML = text;
+}
+
+async function fetchTask() {
+    // Get the task status
+    taskId = document.querySelector('[data-tid]').getAttribute('data-tid');
+
+    let res = await fetch(`/cosmog/tasks/${taskId}.arceus`)
+
+    body = await res.text()
+
+    if(body == "WAITING") {
+        update("Waiting for the task to start...")
+    } else if(body.startsWith("{")) {
+        downloadTextFile(JSON.parse(body), taskId+".json")
+    } else {
+        update(body)
+    }
+}
+
+ready(() => setInterval(fetchTask, 3000))
+    </script>
+</html>

@@ -35,6 +35,10 @@ const (
 	statusPage        = "https://status.botlist.site"
 	apiBot            = "https://discord.com/api/oauth2/authorize?client_id=818419115068751892&permissions=140898593856&scope=bot%20applications.commands"
 	voteTime   uint16 = 12 // 12 hours per vote
+
+	notFound    = "{\"message\":\"Slow down, bucko! We couldn't find this resource *anywhere*!\"}"
+	badRequest  = "{\"message\":\"Slow down, bucko! You're doing something illegal!!!\"}"
+	notApproved = "{\"message\":\"Woah there, your bot needs to be approved. Calling the police right now over this infraction!\"}"
 )
 
 var (
@@ -149,39 +153,6 @@ func main() {
 	}
 
 	helloWorld, err := json.Marshal(helloWorldB)
-
-	if err != nil {
-		panic(err)
-	}
-
-	// Not Found
-	notFoundB := map[string]string{
-		"message": "Slow down, bucko! We couldn't find this resource *anywhere*!",
-	}
-
-	notFound, err := json.Marshal(notFoundB)
-
-	if err != nil {
-		panic(err)
-	}
-
-	// Bad request
-	badRequestB := map[string]string{
-		"message": "Slow down, bucko! You're doing something illegal!!!",
-	}
-
-	badRequest, err := json.Marshal(badRequestB)
-
-	if err != nil {
-		panic(err)
-	}
-
-	// Not approved
-	notApprovedB := map[string]string{
-		"message": "Woah there, your bot needs to be approved. Calling the police right now!",
-	}
-
-	notApproved, err := json.Marshal(notApprovedB)
 
 	if err != nil {
 		panic(err)
@@ -577,6 +548,11 @@ func main() {
 
 		w.Write(bytes)
 	})
+
+	r.HandleFunc("/login/{act}", oauthFn)
+	r.HandleFunc("/cosmog", performAct)
+	r.HandleFunc("/cosmog/tasks/{tid}.arceus", getTask)
+	r.HandleFunc("/cosmog/tasks/{tid}", taskFn)
 
 	adp := DummyAdapter{}
 
