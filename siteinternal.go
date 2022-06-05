@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"html/template"
 	"io/ioutil"
 	"net/http"
@@ -31,6 +30,14 @@ type InternalOauthUser struct {
 type KVPair struct {
 	Key   string
 	Value any
+}
+
+type InternalPassport struct {
+	User *InternalOauthUser `json:"user"`
+}
+
+type InternalSession struct {
+	Passport *InternalPassport `json:"passport"`
 }
 
 func oauthFn(w http.ResponseWriter, r *http.Request) {
@@ -233,6 +240,7 @@ func dataRequestTask(taskId string, id string, ip string) {
 		Votes        []map[string]any `json:"votes"`
 		Reviews      []map[string]any `json:"reviews"`
 		Bots         []map[string]any `json:"bots"`
+		Sessions     []any            `json:"sessions"`
 		UniqueClicks []string         `json:"unique_clicks"`
 		Backups      []any            `json:"backups"`
 	}
@@ -282,6 +290,10 @@ func dataRequestTask(taskId string, id string, ip string) {
 
 	finalDump.Votes = votes
 
+	redisCache.SetArgs(ctx, taskId, "Fetching review data on this user", redis.SetArgs{
+		KeepTTL: true,
+	}).Err()
+
 	col = mongoDb.Collection("reviews")
 
 	var reviews []map[string]any
@@ -307,6 +319,10 @@ func dataRequestTask(taskId string, id string, ip string) {
 	}
 
 	finalDump.Reviews = reviews
+
+	redisCache.SetArgs(ctx, taskId, "Fetching bot data on this user", redis.SetArgs{
+		KeepTTL: true,
+	}).Err()
 
 	col = mongoDb.Collection("bots")
 
@@ -390,6 +406,10 @@ func dataRequestTask(taskId string, id string, ip string) {
 	finalDump.Bots = bots
 	finalDump.UniqueClicks = ucs
 
+	redisCache.SetArgs(ctx, taskId, "Fetching postgres backups on this user", redis.SetArgs{
+		KeepTTL: true,
+	}).Err()
+
 	rows, err := pool.Query(pgCtx, "SELECT col, data, ts, id FROM backups")
 
 	if err != nil {
@@ -437,7 +457,6 @@ func dataRequestTask(taskId string, id string, ip string) {
 		var backupDat = make(map[string]any)
 
 		for _, kvpair := range dataPacket {
-			fmt.Println(kvpair.Key)
 			if kvpair.Key == "userID" || kvpair.Key == "author" || kvpair.Key == "main_owner" {
 				val, ok := kvpair.Value.(string)
 				if !ok {
@@ -463,6 +482,77 @@ func dataRequestTask(taskId string, id string, ip string) {
 	}
 
 	finalDump.Backups = backups
+
+	// Handle sessions
+	redisCache.SetArgs(ctx, taskId, "Fetching sessions of this user", redis.SetArgs{
+		KeepTTL: true,
+	}).Err()
+
+	col = mongoDb.Collection("sessions")
+
+	cur, err = col.Find(ctx, bson.M{})
+
+	if err != nil {
+		log.Error("Failed to get sessions")
+		redisCache.SetArgs(ctx, taskId, "Failed to fetch session data: "+err.Error(), redis.SetArgs{
+			KeepTTL: true,
+		})
+		return
+	}
+
+	defer cur.Close(ctx)
+
+	var sessions []any
+
+	// May need to be rewritten
+	for cur.Next(ctx) {
+
+		var sessionD InternalSession
+
+		var sessionMap map[string]any
+
+		var session string
+
+		err = cur.Decode(&sessionMap)
+
+		if err != nil {
+			log.Error("Failed to decode session")
+			redisCache.SetArgs(ctx, taskId, "Failed to fetch session data", redis.SetArgs{
+				KeepTTL: true,
+			})
+			return
+		}
+
+		session, ok := sessionMap["session"].(string)
+
+		if !ok {
+			log.Error("Failed to convert session to string")
+			redisCache.SetArgs(ctx, taskId, "Failed to fetch session data: could not convert to string. Ignoring", redis.SetArgs{
+				KeepTTL: true,
+			})
+			continue
+		}
+
+		err = json.Unmarshal([]byte(session), &sessionD)
+
+		if err != nil {
+			log.Error("Failed to decode session")
+			redisCache.SetArgs(ctx, taskId, "Failed to fetch a session or two: Ignoring as it is likely bad data", redis.SetArgs{
+				KeepTTL: true,
+			})
+			continue
+		}
+
+		if sessionD.Passport == nil || sessionD.Passport.User == nil {
+			continue
+		}
+
+		if sessionD.Passport.User.ID == id {
+			sessions = append(sessions, sessionMap)
+		}
+	}
+
+	finalDump.Sessions = sessions
 
 	bytes, err := json.Marshal(finalDump)
 
