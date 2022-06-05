@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"html/template"
 	"io/ioutil"
 	"net/http"
@@ -14,6 +15,7 @@ import (
 
 	"github.com/go-redis/redis/v8"
 	"github.com/gorilla/mux"
+	"github.com/jackc/pgtype"
 	log "github.com/sirupsen/logrus"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
@@ -24,6 +26,11 @@ type InternalOauthUser struct {
 	Username string `json:"username"`
 	Disc     string `json:"discriminator"`
 	TID      string `json:"-"` // Only set in taskFn
+}
+
+type KVPair struct {
+	Key   string
+	Value any
 }
 
 func oauthFn(w http.ResponseWriter, r *http.Request) {
@@ -227,6 +234,7 @@ func dataRequestTask(taskId string, id string, ip string) {
 		Reviews      []map[string]any `json:"reviews"`
 		Bots         []map[string]any `json:"bots"`
 		UniqueClicks []string         `json:"unique_clicks"`
+		Backups      []any            `json:"backups"`
 	}
 
 	var userInfo map[string]any
@@ -357,11 +365,13 @@ func dataRequestTask(taskId string, id string, ip string) {
 		}
 
 		if addOwners, ok := bot["additional_owners"]; ok {
-			if addOwnersSlice, ok := addOwners.([]string); ok {
+			if addOwnersSlice, ok := addOwners.(primitive.A); ok {
 				for _, owner := range addOwnersSlice {
-					if owner == id {
-						delete(bot, "unique_clicks")
-						bots = append(bots, bot)
+					if ownerStr, ok := owner.(string); ok {
+						if ownerStr == id {
+							delete(bot, "unique_clicks")
+							bots = append(bots, bot)
+						}
 					}
 				}
 			}
@@ -379,6 +389,80 @@ func dataRequestTask(taskId string, id string, ip string) {
 
 	finalDump.Bots = bots
 	finalDump.UniqueClicks = ucs
+
+	rows, err := pool.Query(pgCtx, "SELECT col, data, ts, id FROM backups")
+
+	if err != nil {
+		log.Error("Failed to get backups")
+		redisCache.SetArgs(ctx, taskId, "Failed to fetch backup data: "+err.Error(), redis.SetArgs{
+			KeepTTL: true,
+		})
+		return
+	}
+
+	defer rows.Close()
+
+	var backups []any
+
+	var foundBackup bool
+
+	for rows.Next() {
+		var col pgtype.Text
+		var data pgtype.JSONB
+		var ts pgtype.Timestamptz
+		var uid pgtype.UUID
+
+		err = rows.Scan(&col, &data, &ts, &uid)
+
+		if err != nil {
+			log.Error("Failed to scan backup")
+			redisCache.SetArgs(ctx, taskId, "Failed to fetch backup data: "+err.Error()+". Ignoring", redis.SetArgs{
+				KeepTTL: true,
+			})
+			continue
+		}
+
+		var dataPacket []KVPair
+
+		err = json.Unmarshal([]byte(data.Bytes), &dataPacket)
+
+		if err != nil {
+			log.Error("Failed to decode backup")
+			redisCache.SetArgs(ctx, taskId, "Failed to fetch backup data: "+err.Error()+". Ignoring", redis.SetArgs{
+				KeepTTL: true,
+			})
+			continue
+		}
+
+		var backupDat = make(map[string]any)
+
+		for _, kvpair := range dataPacket {
+			fmt.Println(kvpair.Key)
+			if kvpair.Key == "userID" || kvpair.Key == "author" || kvpair.Key == "main_owner" {
+				val, ok := kvpair.Value.(string)
+				if !ok {
+					continue
+				}
+
+				if val == id {
+					foundBackup = true
+					break
+				}
+			}
+		}
+
+		if foundBackup {
+			backupDat["col"] = col.String
+			backupDat["data"] = dataPacket
+			backupDat["ts"] = ts.Time
+			backupDat["id"] = id
+			backups = append(backups, backupDat)
+		}
+
+		foundBackup = false
+	}
+
+	finalDump.Backups = backups
 
 	bytes, err := json.Marshal(finalDump)
 

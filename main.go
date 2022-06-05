@@ -18,6 +18,7 @@ import (
 	integrase "github.com/MetroReviews/metro-integrase/lib"
 	"github.com/go-redis/redis/v8"
 	"github.com/gorilla/mux"
+	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/joho/godotenv"
 	jsoniter "github.com/json-iterator/go"
 	log "github.com/sirupsen/logrus"
@@ -34,6 +35,7 @@ const (
 	mainSite          = "https://infinitybotlist.com"
 	statusPage        = "https://status.botlist.site"
 	apiBot            = "https://discord.com/api/oauth2/authorize?client_id=818419115068751892&permissions=140898593856&scope=bot%20applications.commands"
+	pgConn            = "postgresql://127.0.0.1:5432/backups?user=root&password=iblpublic"
 	voteTime   uint16 = 12 // 12 hours per vote
 
 	notFound    = "{\"message\":\"Slow down, bucko! We couldn't find this resource *anywhere*!\"}"
@@ -44,7 +46,9 @@ const (
 var (
 	redisCache *redis.Client
 	mongoDb    *mongo.Database
+	pool       *pgxpool.Pool
 	ctx        context.Context
+	pgCtx      context.Context
 )
 
 func rateLimitWrap(reqs int, t time.Duration, fn http.HandlerFunc) http.HandlerFunc {
@@ -142,6 +146,16 @@ func main() {
 
 	// Init redisCache
 	redisCache = redis.NewClient(&redis.Options{})
+
+	pgCtx = context.Background()
+
+	var err error
+
+	pool, err = pgxpool.Connect(pgCtx, pgConn)
+
+	if err != nil {
+		panic(err)
+	}
 
 	// Create base payloads before startup
 	// Index
