@@ -3,6 +3,19 @@
     <body>
         <h2>Hey there, {{.Username}}!</h2>
         <p>The action you have selected may take a bit of time to process. Do not close this tab until it has finished!</p>
+        <span>Data requests may be different based on which device you use. 
+            
+        This service is our best effort into fetching all of your data
+    
+        We use the information we collect in various ways, including to:
+
+        Provide, operate, and maintain our website.
+        Improve, personalize, and expand our website.
+        Understand and analyze how you use our website.
+        Develop new products, services, features, and functionality.
+        Communicate with you, either directly or through one of our partners, including for customer service, to provide you with updates and other information relating to the website.
+        Find and prevents any sort of frauds or malicious requests.        
+        </span><br/>
         <span>Current status: <span id="current-status">Please wait</span></span>
         <span data-tid={{.TID}}></span>
     </body>
@@ -31,8 +44,12 @@ function update(text) {
     span.innerHTML = text;
 }
 
+let stop = false
+
 async function fetchTask() {
     // Get the task status
+    if(stop) return
+
     taskId = document.querySelector('[data-tid]').getAttribute('data-tid');
 
     let res = await fetch(`/cosmog/tasks/${taskId}.arceus`)
@@ -42,7 +59,9 @@ async function fetchTask() {
     if(body == "WAITING") {
         update("Waiting for the task to start...")
     } else if(body.startsWith("{")) {
-        downloadTextFile(JSON.parse(body), taskId+".json")
+        stop = true
+        downloadTextFile(body, taskId+".json")
+        return
     } else {
         update(body)
     }

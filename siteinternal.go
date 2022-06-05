@@ -7,6 +7,7 @@ import (
 	"net/url"
 	"os"
 	"popplio/utils"
+	"strings"
 	"time"
 
 	b64 "encoding/base64"
@@ -14,6 +15,8 @@ import (
 	"github.com/go-redis/redis/v8"
 	"github.com/gorilla/mux"
 	log "github.com/sirupsen/logrus"
+	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 type InternalOauthUser struct {
@@ -124,7 +127,9 @@ func performAct(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if act == "dr" {
-		go dataRequestTask(taskId, user.ID)
+		remoteIp := strings.Split(strings.ReplaceAll(r.Header.Get("X-Forwarded-For"), " ", ""), ",")
+
+		go dataRequestTask(taskId, user.ID, remoteIp[0])
 	} else if act == "ddr" {
 		//go dataDeleteTask(taskId, user.ID)
 		w.WriteHeader(http.StatusNotFound)
@@ -208,17 +213,190 @@ func getTask(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte(task))
 }
 
-func dataRequestTask(taskId string, id string) {
-	err := redisCache.SetArgs(ctx, taskId, "Preparing to fetch user data", redis.SetArgs{
+func dataRequestTask(taskId string, id string, ip string) {
+	redisCache.SetArgs(ctx, taskId, "Fetching basic user data", redis.SetArgs{
 		KeepTTL: true,
 	}).Err()
 
+	// Get user info from mongo
+	col := mongoDb.Collection("users")
+
+	var finalDump struct {
+		UserInfo     map[string]any   `json:"user_info"`
+		Votes        []map[string]any `json:"votes"`
+		Reviews      []map[string]any `json:"reviews"`
+		Bots         []map[string]any `json:"bots"`
+		UniqueClicks []string         `json:"unique_clicks"`
+	}
+
+	var userInfo map[string]any
+
+	err := col.FindOne(ctx, bson.M{"userID": id}).Decode(&userInfo)
+
 	if err != nil {
-		log.Error("Failed to set task status")
+		log.Error("Failed to get user info")
+		redisCache.SetArgs(ctx, taskId, "Failed to fetch user data: "+err.Error(), redis.SetArgs{
+			KeepTTL: true,
+		})
 		return
 	}
+
+	finalDump.UserInfo = userInfo
+
+	// Get all votes with this user
+	redisCache.SetArgs(ctx, taskId, "Fetching vote data on this user", redis.SetArgs{
+		KeepTTL: true,
+	}).Err()
+
+	col = mongoDb.Collection("votes")
+
+	var votes []map[string]any
+
+	cur, err := col.Find(ctx, bson.M{"userID": id})
+
+	if err != nil {
+		log.Error("Failed to get votes")
+		redisCache.SetArgs(ctx, taskId, "Failed to fetch vote data: "+err.Error(), redis.SetArgs{
+			KeepTTL: true,
+		})
+		return
+	}
+
+	err = cur.All(ctx, &votes)
+
+	if err != nil {
+		log.Error("Failed to decode vote")
+		redisCache.SetArgs(ctx, taskId, "Failed to fetch vote data: "+err.Error(), redis.SetArgs{
+			KeepTTL: true,
+		})
+		return
+	}
+
+	finalDump.Votes = votes
+
+	col = mongoDb.Collection("reviews")
+
+	var reviews []map[string]any
+
+	cur, err = col.Find(ctx, bson.M{"author": id})
+
+	if err != nil {
+		log.Error("Failed to get review")
+		redisCache.SetArgs(ctx, taskId, "Failed to fetch review data: "+err.Error(), redis.SetArgs{
+			KeepTTL: true,
+		})
+		return
+	}
+
+	err = cur.All(ctx, &reviews)
+
+	if err != nil {
+		log.Error("Failed to decode review")
+		redisCache.SetArgs(ctx, taskId, "Failed to fetch review data: "+err.Error(), redis.SetArgs{
+			KeepTTL: true,
+		})
+		return
+	}
+
+	finalDump.Reviews = reviews
+
+	col = mongoDb.Collection("bots")
+
+	var bots []map[string]any
+
+	cur, err = col.Find(ctx, bson.M{})
+
+	if err != nil {
+		log.Error("Failed to get bots")
+		redisCache.SetArgs(ctx, taskId, "Failed to fetch bot data: "+err.Error(), redis.SetArgs{
+			KeepTTL: true,
+		})
+		return
+	}
+
+	defer cur.Close(ctx)
+
+	ucs := []string{}
+
+	for cur.Next(ctx) {
+		var bot map[string]any
+
+		err = cur.Decode(&bot)
+
+		if err != nil {
+			log.Error("Failed to decode bot")
+			redisCache.SetArgs(ctx, taskId, "Failed to fetch bot data: "+err.Error(), redis.SetArgs{
+				KeepTTL: true,
+			})
+			return
+		}
+
+		if unique_clicks, ok := bot["unique_clicks"]; ok {
+			if uc, ok := unique_clicks.(primitive.A); ok {
+				for _, click := range uc {
+					ucStr, ok := click.(string)
+
+					if !ok {
+						log.Error("Failed to convert click to string")
+						continue
+					}
+
+					ipList := strings.Split(strings.ReplaceAll(ucStr, " ", ""), ",")
+
+					if ipList[0] == ip {
+						botID, ok := bot["botID"].(string)
+
+						if !ok {
+							continue
+						}
+
+						ucs = append(ucs, botID)
+					}
+				}
+			}
+		}
+
+		if addOwners, ok := bot["additional_owners"]; ok {
+			if addOwnersSlice, ok := addOwners.([]string); ok {
+				for _, owner := range addOwnersSlice {
+					if owner == id {
+						delete(bot, "unique_clicks")
+						bots = append(bots, bot)
+					}
+				}
+			}
+		}
+
+		if owner, ok := bot["main_owner"]; ok {
+			if ownerStr, ok := owner.(string); ok {
+				if ownerStr == id {
+					delete(bot, "unique_clicks")
+					bots = append(bots, bot)
+				}
+			}
+		}
+	}
+
+	finalDump.Bots = bots
+	finalDump.UniqueClicks = ucs
+
+	bytes, err := json.Marshal(finalDump)
+
+	if err != nil {
+		log.Error("Failed to encode data")
+		redisCache.SetArgs(ctx, taskId, "Failed to encode data: "+err.Error(), redis.SetArgs{
+			KeepTTL: true,
+		})
+		return
+	}
+
+	redisCache.SetArgs(ctx, taskId, string(bytes), redis.SetArgs{
+		KeepTTL: false,
+	})
 }
 
+/*
 func dataDeleteTask(taskId string, id string) {
 	//
 }
+*/
