@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -28,11 +29,12 @@ import (
 var json = jsoniter.ConfigCompatibleWithStandardLibrary
 
 const (
-	mongoUrl   = "mongodb://127.0.0.1:27017/infinity" // Is already public in 10 other places so
-	docsSite   = "https://docs.botlist.site"
-	mainSite   = "https://infinitybotlist.com"
-	statusPage = "https://status.botlist.site"
-	apiBot     = "https://discord.com/api/oauth2/authorize?client_id=818419115068751892&permissions=140898593856&scope=bot%20applications.commands"
+	mongoUrl          = "mongodb://127.0.0.1:27017/infinity" // Is already public in 10 other places so
+	docsSite          = "https://docs.botlist.site"
+	mainSite          = "https://infinitybotlist.com"
+	statusPage        = "https://status.botlist.site"
+	apiBot            = "https://discord.com/api/oauth2/authorize?client_id=818419115068751892&permissions=140898593856&scope=bot%20applications.commands"
+	voteTime   uint16 = 12 // 12 hours per vote
 )
 
 var (
@@ -389,7 +391,23 @@ func main() {
 			votes = append(votes, vote.Date)
 		}
 
-		bytes, err := json.Marshal(votes)
+		voteParsed := types.UserVote{
+			VoteTime: voteTime,
+		}
+
+		sort.Slice(votes, func(i, j int) bool { return votes[i] < votes[j] })
+
+		voteParsed.Timestamps = votes
+
+		if len(votes) > 0 {
+			unixTs := time.Now().Unix()
+			if uint64(unixTs)-votes[len(votes)-1] < uint64(voteTime*60*60) {
+				voteParsed.HasVoted = true
+				voteParsed.HasVotedLegacy = true
+			}
+		}
+
+		bytes, err := json.Marshal(voteParsed)
 
 		if err != nil {
 			log.Error(err)

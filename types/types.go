@@ -35,6 +35,13 @@ type VoteInfo struct {
 	Weekend bool `json:"is_weekend"`
 }
 
+type UserVote struct {
+	Timestamps     []uint64 `json:"ts"`
+	VoteTime       uint16   `json:"vote_time"`
+	HasVoted       bool     `json:"has_voted"`
+	HasVotedLegacy bool     `json:"hasVoted"`
+}
+
 type BotStats struct {
 	// Fields are ordered in the way they are searched
 	// The simple servers, shards way

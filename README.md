@@ -16,7 +16,13 @@ It is open source for transparency but we do not support self-hosting of this wh
 ``/users/{uid}/bots/{bid}/votes`` => Get User Votes
 
 - Requires authentication
-- Returns a ``[]uint64`` where each ``uint64`` represents a timestamp of the vote *or* a 404 if no votes were made
+- Returns: 
+	{
+		ts: ``[]uint64`` where each ``uint64`` represents a timestamp of the vote *or* a 404 if no votes were made
+		vote_time: ``uint16`` which is the time a user has to wait between two votes (currently 12 hours). This value is in hours
+		has_voted: ``bool`` stating whether or not this user has voted for your bot in the past 12 hours
+		hasVoted [deprecated]: same as has_voted but there just in case bots relied on the older name
+	}
 
 ``/bots/stats`` | ``/bots/{id}/stats`` => Post Stats
 
