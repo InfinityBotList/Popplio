@@ -388,7 +388,6 @@ func main() {
 			unixTs := time.Now().Unix()
 			if uint64(unixTs)-votes[len(votes)-1] < uint64(voteTime*60*60) {
 				voteParsed.HasVoted = true
-				voteParsed.HasVotedLegacy = true
 			}
 		}
 
