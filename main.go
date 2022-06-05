@@ -38,9 +38,10 @@ const (
 	pgConn            = "postgresql://127.0.0.1:5432/backups?user=root&password=iblpublic"
 	voteTime   uint16 = 12 // 12 hours per vote
 
-	notFound    = "{\"message\":\"Slow down, bucko! We couldn't find this resource *anywhere*!\"}"
-	badRequest  = "{\"message\":\"Slow down, bucko! You're doing something illegal!!!\"}"
-	notApproved = "{\"message\":\"Woah there, your bot needs to be approved. Calling the police right now over this infraction!\"}"
+	notFound     = "{\"message\":\"Slow down, bucko! We couldn't find this resource *anywhere*!\"}"
+	notFoundPage = "{\"message\":\"Slow down, bucko! You got the path wrong or something but this endpoint doesn't exist!\"}"
+	badRequest   = "{\"message\":\"Slow down, bucko! You're doing something illegal!!!\"}"
+	notApproved  = "{\"message\":\"Woah there, your bot needs to be approved. Calling the police right now over this infraction!\"}"
 )
 
 var (
@@ -144,6 +145,11 @@ func rateLimitWrap(reqs int, t time.Duration, fn http.HandlerFunc) http.HandlerF
 func main() {
 	r := mux.NewRouter()
 
+	r.NotFoundHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.Write([]byte(notFoundPage))
+	})
+
 	// Init redisCache
 	redisCache = redis.NewClient(&redis.Options{})
 
@@ -194,6 +200,7 @@ func main() {
 	godotenv.Load()
 
 	r.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
 		w.Write([]byte(helloWorld))
 	})
 

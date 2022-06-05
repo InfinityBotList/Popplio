@@ -21,6 +21,7 @@ type Bot struct {
 	Certified        bool     `bson:"certified" json:"certified"`
 	Servers          int      `bson:"servers" json:"servers"`
 	Shards           int      `bson:"shards" json:"shards"`
+	Users            int      `bson:"users" json:"users"`
 	Votes            int      `bson:"votes" json:"votes"`
 	Views            int      `bson:"clicks" json:"views"`
 	InviteClicks     int      `bson:"invite_clicks" json:"invites"`
