@@ -29,3 +29,6 @@ It is open source for transparency but we do not support self-hosting of this wh
 - Requires authentication
 - Accepts methods ``PUT/POST/PATCH`` (they all do the same thing)
 - Send either ``count`` in query parameters or send a JSON body. Most combinations of keys used for server/shard count will work including the d (``servers``, ``shard_count`` way
+
+
+**Endpoints under ``siteinternal.go`` are internal and are not meant to be used. They *can* change at any time randomly**

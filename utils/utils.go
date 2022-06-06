@@ -16,7 +16,7 @@ func isNone(s *string) bool {
 	return false
 }
 
-func ParseBot(bot *types.Bot) *types.Bot {
+func ParseBot(bot *types.Bot) {
 	bot.Tags = strings.Split(strings.ReplaceAll(bot.TagsRaw, " ", ""), ",")
 
 	if isNone(bot.Website) {
@@ -30,8 +30,6 @@ func ParseBot(bot *types.Bot) *types.Bot {
 	if isNone(bot.Github) {
 		bot.Github = nil
 	}
-
-	return bot
 }
 
 const letterBytes = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"

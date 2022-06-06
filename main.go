@@ -16,6 +16,7 @@ import (
 	"popplio/utils"
 
 	integrase "github.com/MetroReviews/metro-integrase/lib"
+	"github.com/bwmarrin/discordgo"
 	"github.com/go-redis/redis/v8"
 	"github.com/gorilla/mux"
 	"github.com/jackc/pgx/v4/pgxpool"
@@ -52,7 +53,11 @@ var (
 	pgCtx      context.Context
 )
 
-func rateLimitWrap(reqs int, t time.Duration, fn http.HandlerFunc) http.HandlerFunc {
+func init() {
+	godotenv.Load()
+}
+
+func rateLimitWrap(reqs int, t time.Duration, bucket string, fn http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		// Get ratelimit from redis
 		var id string
@@ -89,12 +94,14 @@ func rateLimitWrap(reqs int, t time.Duration, fn http.HandlerFunc) http.HandlerF
 			id = fmt.Sprintf("%x", hasher.Sum(nil))
 		}
 
-		v := redisCache.Get(r.Context(), "rl:"+id).Val()
+		rlKey := "rl:" + id + "-" + bucket
+
+		v := redisCache.Get(r.Context(), rlKey).Val()
 
 		if v == "" {
 			v = "0"
 
-			err := redisCache.Set(ctx, "rl:"+id, "0", t).Err()
+			err := redisCache.Set(ctx, rlKey, "0", t).Err()
 
 			if err != nil {
 				log.Error(err)
@@ -105,7 +112,7 @@ func rateLimitWrap(reqs int, t time.Duration, fn http.HandlerFunc) http.HandlerF
 			}
 		}
 
-		err := redisCache.Incr(ctx, "rl:"+id).Err()
+		err := redisCache.Incr(ctx, rlKey).Err()
 
 		if err != nil {
 			log.Error(err)
@@ -127,7 +134,7 @@ func rateLimitWrap(reqs int, t time.Duration, fn http.HandlerFunc) http.HandlerF
 
 		if vInt > reqs {
 			w.Header().Set("Content-Type", "application/json")
-			retryAfter := redisCache.TTL(ctx, "rl:"+id).Val()
+			retryAfter := redisCache.TTL(ctx, rlKey).Val()
 			w.Header().Set("Retry-After", strconv.FormatFloat(retryAfter.Seconds(), 'g', -1, 64))
 
 			w.WriteHeader(http.StatusTooManyRequests)
@@ -197,7 +204,12 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	godotenv.Load()
+
+	metro, err = discordgo.New("Bot " + os.Getenv("DISCORD_TOKEN"))
+
+	if err != nil {
+		panic(err)
+	}
 
 	r.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
@@ -305,13 +317,13 @@ func main() {
 		w.Write([]byte("{\"error\":null}"))
 	}
 
-	r.HandleFunc("/bots/stats", rateLimitWrap(4, 1*time.Minute, statsFn))
+	r.HandleFunc("/bots/stats", rateLimitWrap(4, 1*time.Minute, "stats", statsFn))
 
 	// Note that only token matters for this endpoint at this time
 	// TODO: Handle bot id as well
-	r.HandleFunc("/bots/{id}/stats", rateLimitWrap(4, 1*time.Minute, statsFn))
+	r.HandleFunc("/bots/{id}/stats", rateLimitWrap(4, 1*time.Minute, "stats", statsFn))
 
-	r.HandleFunc("/users/{uid}/bots/{bid}/votes", rateLimitWrap(3, 5*time.Minute, func(w http.ResponseWriter, r *http.Request) {
+	r.HandleFunc("/users/{uid}/bots/{bid}/votes", rateLimitWrap(3, 5*time.Minute, "gvotes", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 
 		if r.Method != "GET" {
@@ -425,6 +437,9 @@ func main() {
 		var isWeekend bool
 
 		switch curTime.Weekday() {
+		// Friday is also a double vote
+		case time.Friday:
+			isWeekend = true
 		case time.Saturday:
 			isWeekend = true
 		case time.Sunday:
@@ -447,7 +462,11 @@ func main() {
 		w.Write(b)
 	})
 
-	r.HandleFunc("/bots/{id}", rateLimitWrap(4, 1*time.Minute, func(w http.ResponseWriter, r *http.Request) {
+	r.HandleFunc("/reviews/{id}", rateLimitWrap(4, 2*time.Minute, "greviews", func(w http.ResponseWriter, r *http.Request) {
+
+	}))
+
+	getBotsFn := func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 
 		if r.Method != "GET" {
@@ -463,6 +482,14 @@ func main() {
 		if name == "" {
 			w.WriteHeader(http.StatusBadRequest)
 			w.Write([]byte(badRequest))
+			return
+		}
+
+		// Check cache, this is how we can avoid hefty ratelimits
+		cache := redisCache.Get(ctx, "bc-"+name).Val()
+		if cache != "" {
+			w.Header().Add("X-Popplio-Cached", "true")
+			w.Write([]byte(cache))
 			return
 		}
 
@@ -497,7 +524,7 @@ func main() {
 			return
 		}
 
-		bot = *utils.ParseBot(&bot)
+		utils.ParseBot(&bot)
 
 		/* Removing or modifying fields directly in API is very dangerous as scrapers will
 		 * just ignore owner checks anyways or cross-reference via another list. Also we
@@ -514,60 +541,12 @@ func main() {
 			return
 		}
 
-		w.Write(bytes)
-	}))
-
-	r.HandleFunc("/fates/bots/{id}", func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-
-		if r.Method != "GET" {
-			w.WriteHeader(http.StatusMethodNotAllowed)
-			w.Write([]byte(badRequest))
-			return
-		}
-
-		vars := mux.Vars(r)
-
-		botId := vars["id"]
-
-		if botId == "" {
-			w.WriteHeader(http.StatusBadRequest)
-			w.Write([]byte(badRequest))
-			return
-		}
-
-		if r.Header.Get("Authorization") == "" || r.Header.Get("Authorization") != os.Getenv("FATES_TOKEN") {
-			w.WriteHeader(http.StatusUnauthorized)
-			w.Write([]byte(badRequest))
-			return
-		}
-
-		botCol := mongoDb.Collection("bots")
-
-		var bot types.Bot
-
-		err := botCol.FindOne(ctx, bson.M{"botID": botId}).Decode(&bot)
-
-		if err != nil {
-			log.Error(err)
-			w.WriteHeader(http.StatusNotFound)
-			w.Write([]byte(notFound))
-			return
-		}
-
-		bot = *utils.ParseBot(&bot)
-
-		bytes, err := json.Marshal(bot)
-
-		if err != nil {
-			log.Error(err)
-			w.WriteHeader(http.StatusInternalServerError)
-			w.Write([]byte([]byte("{\"error\":\"Something broke!\"}")))
-			return
-		}
+		redisCache.Set(ctx, "bc-"+name, string(bytes), time.Minute*3)
 
 		w.Write(bytes)
-	})
+	}
+
+	r.HandleFunc("/bots/{id}", getBotsFn)
 
 	r.HandleFunc("/login/{act}", oauthFn)
 	r.HandleFunc("/cosmog", performAct)

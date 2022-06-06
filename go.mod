@@ -3,7 +3,7 @@ module popplio
 go 1.18
 
 require (
-	github.com/MetroReviews/metro-integrase v0.0.0-20220604191337-f6238568a28e
+	github.com/MetroReviews/metro-integrase v0.0.0-20220606060403-b76c3e02d98c
 	github.com/go-redis/redis/v8 v8.11.5
 	github.com/gorilla/mux v1.8.0
 	github.com/jackc/pgtype v1.11.0
@@ -11,11 +11,13 @@ require (
 )
 
 require (
+	github.com/bwmarrin/discordgo v0.25.1-0.20220603125853-c8c153872c36 // indirect
 	github.com/cespare/xxhash/v2 v2.1.2 // indirect
 	github.com/dgryski/go-rendezvous v0.0.0-20200823014737-9f7001d12a5f // indirect
 	github.com/felixge/httpsnoop v1.0.1 // indirect
 	github.com/go-stack/stack v1.8.0 // indirect
 	github.com/golang/snappy v0.0.1 // indirect
+	github.com/gorilla/websocket v1.4.2 // indirect
 	github.com/jackc/chunkreader/v2 v2.0.1 // indirect
 	github.com/jackc/pgconn v1.12.1 // indirect
 	github.com/jackc/pgio v1.0.0 // indirect
