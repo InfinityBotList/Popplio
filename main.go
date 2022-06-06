@@ -59,6 +59,8 @@ func init() {
 
 func rateLimitWrap(reqs int, t time.Duration, bucket string, fn http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Ratelimit-Bucket", bucket)
+
 		// Get ratelimit from redis
 		var id string
 
@@ -151,11 +153,6 @@ func rateLimitWrap(reqs int, t time.Duration, bucket string, fn http.HandlerFunc
 
 func main() {
 	r := mux.NewRouter()
-
-	r.NotFoundHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		w.Write([]byte(notFoundPage))
-	})
 
 	// Init redisCache
 	redisCache = redis.NewClient(&redis.Options{})
@@ -462,10 +459,6 @@ func main() {
 		w.Write(b)
 	})
 
-	r.HandleFunc("/reviews/{id}", rateLimitWrap(4, 2*time.Minute, "greviews", func(w http.ResponseWriter, r *http.Request) {
-
-	}))
-
 	getBotsFn := func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 
@@ -548,12 +541,69 @@ func main() {
 
 	r.HandleFunc("/bots/{id}", getBotsFn)
 
+	r.HandleFunc("/bots/{id}/reviews", rateLimitWrap(10, 1*time.Minute, "greview", func(w http.ResponseWriter, r *http.Request) {
+		col := mongoDb.Collection("reviews")
+
+		vars := mux.Vars(r)
+
+		name := vars["id"]
+
+		if name == "" {
+			w.WriteHeader(http.StatusBadRequest)
+			w.Write([]byte(badRequest))
+			return
+		}
+
+		var reviews []types.Review = []types.Review{}
+
+		cur, err := col.Find(ctx, bson.M{"botID": name})
+
+		if err != nil {
+			log.Error(err)
+			w.WriteHeader(http.StatusInternalServerError)
+			w.Write([]byte(badRequest))
+			return
+		}
+
+		for cur.Next(ctx) {
+			var review types.Review
+
+			err := cur.Decode(&review)
+
+			if err != nil {
+				log.Error(err)
+				w.WriteHeader(http.StatusInternalServerError)
+				w.Write([]byte(badRequest))
+				return
+			}
+
+			reviews = append(reviews, review)
+		}
+
+		bytes, err := json.Marshal(reviews)
+
+		if err != nil {
+			log.Error(err)
+			w.WriteHeader(http.StatusInternalServerError)
+			w.Write([]byte(badRequest))
+			return
+		}
+
+		w.Write(bytes)
+	}))
+
 	r.HandleFunc("/login/{act}", oauthFn)
 	r.HandleFunc("/cosmog", performAct)
 	r.HandleFunc("/cosmog/tasks/{tid}.arceus", getTask)
 	r.HandleFunc("/cosmog/tasks/{tid}", taskFn)
 
 	adp := DummyAdapter{}
+
+	r.NotFoundHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusNotFound)
+		w.Write([]byte(notFoundPage))
+	})
 
 	integrase.StartServer(adp, r)
 }

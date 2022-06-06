@@ -12,6 +12,11 @@ It is open source for transparency but we do not support self-hosting of this wh
 
 - Set ``resolve`` to ``true`` (or ``1``) to also resolve bot name/vanity in this endpoint
 - Returns a ``types.Bot`` object
+- Responses are cached for 3 minutes, the ``x-popplio-cached`` header will be set to ``true`` in this case
+
+``/bots/{id}/reviews`` => Get bot reviews
+
+- Returns a ``types.Review`` object
 
 ``/users/{uid}/bots/{bid}/votes`` => Get User Votes
 
