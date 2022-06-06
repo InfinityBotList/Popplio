@@ -58,8 +58,12 @@ func init() {
 }
 
 func rateLimitWrap(reqs int, t time.Duration, bucket string, fn http.HandlerFunc) http.HandlerFunc {
+	reqStr := strconv.Itoa(reqs)
+	timeStr := strconv.FormatFloat(t.Seconds(), 'g', -1, 64)
 	return func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Ratelimit-Bucket", bucket)
+		w.Header().Set("Ratelimit-Bucket-Reqs-Allowed-Count", reqStr)
+		w.Header().Set("Ratelimit-Bucket-Reqs-Allowed-Second", timeStr)
 
 		// Get ratelimit from redis
 		var id string
