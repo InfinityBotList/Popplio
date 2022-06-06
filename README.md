@@ -12,10 +12,16 @@ Some APIs on Popplio require a user token. To get one, go to https://spider.infi
 
 ``/`` => Index page
 
-``/bots/{id}`` => Get bot
+``/bots/{id}`` => Get Bot
 
 - Set ``resolve`` to ``true`` (or ``1``) to also resolve bot name/vanity in this endpoint
 - Returns a ``types.Bot`` object
+- Responses are cached for 3 minutes, the ``x-popplio-cached`` header will be set to ``true`` in this case
+
+``/users/{id}`` => Get User
+
+- Set ``resolve`` to ``true`` (or ``1``) to also resolve user nickname in this endpoint
+- Returns a ``types.User`` object
 - Responses are cached for 3 minutes, the ``x-popplio-cached`` header will be set to ``true`` in this case
 
 ``/bots/{id}/reviews`` => Get bot reviews
