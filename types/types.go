@@ -53,6 +53,26 @@ type Review struct {
 	Flagged     bool               `bson:"flagged,omitempty" json:"flagged"`
 }
 
+type User struct {
+	ObjID     primitive.ObjectID `bson:"_id" json:"_id"`
+	ID        string             `bson:"userID" json:"user_id"`
+	Votes     map[string]any     `bson:"votes,omitempty" json:"-"` // Not sent due to privacy reasons
+	PackVotes map[string]any     `bson:"pack_votes,omitempty" json:"pack_votes"`
+	Staff     bool               `bson:"staff,omitempty" json:"staff"`
+	Certified bool               `bson:"certified,omitempty" json:"certified"`
+	Developer bool               `bson:"developer,omitempty" json:"developer"`
+	About     *string            `bson:"about,omitempty" json:"bio"`
+	Github    *string            `bson:"github,omitempty" json:"github"`
+	Nickname  *string            `bson:"nickname,omitempty" json:"nickname"`
+	Website   *string            `bson:"website,omitempty" json:"website"`
+
+	StaffStats    map[string]int `bson:"staff_stats,omitempty" json:"staff_stats"`
+	NewStaffStats map[string]int `bson:"new_staff_stats,omitempty" json:"new_staff_stats"`
+
+	VoteBanned bool `bson:"vote_banned,omitempty" json:"vote_banned"`
+	Admin      bool `bson:"admin,omitempty" json:"admin"`
+}
+
 type VoteInfo struct {
 	Weekend bool `json:"is_weekend"`
 }

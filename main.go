@@ -543,6 +543,83 @@ func main() {
 		w.Write(bytes)
 	}
 
+	r.HandleFunc("/users/{id}", rateLimitWrap(10, 3*time.Minute, "guser", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+
+		if r.Method != "GET" {
+			w.WriteHeader(http.StatusMethodNotAllowed)
+			w.Write([]byte(badRequest))
+			return
+		}
+
+		vars := mux.Vars(r)
+
+		name := vars["id"]
+
+		if name == "" {
+			w.WriteHeader(http.StatusBadRequest)
+			w.Write([]byte(badRequest))
+			return
+		}
+
+		// Check cache, this is how we can avoid hefty ratelimits
+		cache := redisCache.Get(ctx, "uc-"+name).Val()
+		if cache != "" {
+			w.Header().Add("X-Popplio-Cached", "true")
+			w.Write([]byte(cache))
+			return
+		}
+
+		userCol := mongoDb.Collection("users")
+
+		var user types.User
+
+		var err error
+
+		if r.URL.Query().Get("resolve") == "1" || r.URL.Query().Get("resolve") == "true" {
+			err = userCol.FindOne(ctx, bson.M{
+				"$or": []bson.M{
+					{
+						"nickname": name,
+					},
+					{
+						"userID": name,
+					},
+				},
+			}).Decode(&user)
+		} else {
+			err = userCol.FindOne(ctx, bson.M{"userID": name}).Decode(&user)
+		}
+
+		if err != nil {
+			log.Error(err)
+			w.WriteHeader(http.StatusNotFound)
+			w.Write([]byte(notFound))
+			return
+		}
+
+		utils.ParseUser(&user)
+
+		/* Removing or modifying fields directly in API is very dangerous as scrapers will
+		 * just ignore owner checks anyways or cross-reference via another list. Also we
+		 * want to respect the permissions of the owner if they're the one giving permission,
+		 * blocking IPs is a better idea to this
+		 */
+
+		bytes, err := json.Marshal(user)
+
+		if err != nil {
+			log.Error(err)
+			w.WriteHeader(http.StatusInternalServerError)
+			w.Write([]byte([]byte("{\"error\":\"Something broke!\"}")))
+			return
+		}
+
+		redisCache.Set(ctx, "uc-"+name, string(bytes), time.Minute*3)
+
+		w.Write(bytes)
+	}))
+
 	r.HandleFunc("/bots/{id}", getBotsFn)
 
 	r.HandleFunc("/bots/{id}/reviews", rateLimitWrap(10, 1*time.Minute, "greview", func(w http.ResponseWriter, r *http.Request) {

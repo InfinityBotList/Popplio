@@ -32,6 +32,24 @@ func ParseBot(bot *types.Bot) {
 	}
 }
 
+func ParseUser(user *types.User) {
+	if isNone(user.Website) {
+		user.Website = nil
+	}
+
+	if isNone(user.Github) {
+		user.Github = nil
+	}
+
+	if isNone(user.About) {
+		user.About = nil
+	}
+
+	if isNone(user.Nickname) {
+		user.Nickname = nil
+	}
+}
+
 const letterBytes = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
 const (
 	letterIdxBits = 6                    // 6 bits to represent a letter index
