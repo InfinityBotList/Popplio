@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"html/template"
 	"io/ioutil"
 	"net/http"
@@ -140,15 +141,12 @@ func performAct(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if act == "dr" {
-		remoteIp := strings.Split(strings.ReplaceAll(r.Header.Get("X-Forwarded-For"), " ", ""), ",")
+	remoteIp := strings.Split(strings.ReplaceAll(r.Header.Get("X-Forwarded-For"), " ", ""), ",")
 
-		go dataRequestTask(taskId, user.ID, remoteIp[0])
+	if act == "dr" {
+		go dataRequestTask(taskId, user.ID, remoteIp[0], false)
 	} else if act == "ddr" {
-		//go dataDeleteTask(taskId, user.ID)
-		w.WriteHeader(http.StatusNotFound)
-		w.Write([]byte(notFound))
-		return
+		go dataRequestTask(taskId, user.ID, remoteIp[0], true)
 	} else {
 		w.WriteHeader(http.StatusNotFound)
 		w.Write([]byte(notFound))
@@ -227,7 +225,11 @@ func getTask(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte(task))
 }
 
-func dataRequestTask(taskId string, id string, ip string) {
+func toString(myUUID pgtype.UUID) string {
+	return fmt.Sprintf("%x-%x-%x-%x-%x", myUUID.Bytes[0:4], myUUID.Bytes[4:6], myUUID.Bytes[6:8], myUUID.Bytes[8:10], myUUID.Bytes[10:16])
+}
+
+func dataRequestTask(taskId string, id string, ip string, del bool) {
 	redisCache.SetArgs(ctx, taskId, "Fetching basic user data", redis.SetArgs{
 		KeepTTL: true,
 	}).Err()
@@ -255,6 +257,17 @@ func dataRequestTask(taskId string, id string, ip string) {
 			KeepTTL: true,
 		})
 		return
+	}
+
+	if del {
+		_, err := col.DeleteOne(ctx, bson.M{"userID": id})
+		if err != nil {
+			log.Error("Failed to delete user")
+			redisCache.SetArgs(ctx, taskId, "Failed to delete user: "+err.Error(), redis.SetArgs{
+				KeepTTL: true,
+			})
+			return
+		}
 	}
 
 	finalDump.UserInfo = userInfo
@@ -288,6 +301,17 @@ func dataRequestTask(taskId string, id string, ip string) {
 		return
 	}
 
+	if del {
+		_, err := col.DeleteMany(ctx, bson.M{"userID": id})
+		if err != nil {
+			log.Error("Failed to delete vote")
+			redisCache.SetArgs(ctx, taskId, "Failed to delete vote: "+err.Error(), redis.SetArgs{
+				KeepTTL: true,
+			})
+			return
+		}
+	}
+
 	finalDump.Votes = votes
 
 	redisCache.SetArgs(ctx, taskId, "Fetching review data on this user", redis.SetArgs{
@@ -316,6 +340,17 @@ func dataRequestTask(taskId string, id string, ip string) {
 			KeepTTL: true,
 		})
 		return
+	}
+
+	if del {
+		_, err := col.DeleteMany(ctx, bson.M{"author": id})
+		if err != nil {
+			log.Error("Failed to delete review")
+			redisCache.SetArgs(ctx, taskId, "Failed to delete review: "+err.Error(), redis.SetArgs{
+				KeepTTL: true,
+			})
+			return
+		}
 	}
 
 	finalDump.Reviews = reviews
@@ -356,6 +391,7 @@ func dataRequestTask(taskId string, id string, ip string) {
 		}
 
 		if unique_clicks, ok := bot["unique_clicks"]; ok {
+			ucsWithoutIp := []string{}
 			if uc, ok := unique_clicks.(primitive.A); ok {
 				for _, click := range uc {
 					ucStr, ok := click.(string)
@@ -375,9 +411,23 @@ func dataRequestTask(taskId string, id string, ip string) {
 						}
 
 						ucs = append(ucs, botID)
+					} else {
+						ucsWithoutIp = append(ucsWithoutIp, ucStr)
 					}
 				}
 			}
+
+			if del && len(ucsWithoutIp) > 0 {
+				_, err = col.UpdateOne(ctx, bson.M{"botID": bot["botID"]}, bson.M{"$set": bson.M{"unique_clicks": ucsWithoutIp}})
+				if err != nil {
+					log.Error("Failed to update bot clicks")
+					redisCache.SetArgs(ctx, taskId, "Failed to delete bot unique clicks: "+err.Error(), redis.SetArgs{
+						KeepTTL: true,
+					})
+					return
+				}
+			}
+
 		}
 
 		if addOwners, ok := bot["additional_owners"]; ok {
@@ -398,6 +448,19 @@ func dataRequestTask(taskId string, id string, ip string) {
 				if ownerStr == id {
 					delete(bot, "unique_clicks")
 					bots = append(bots, bot)
+
+					if del {
+						if del {
+							_, err := col.DeleteOne(ctx, bson.M{"botID": bot["botID"]})
+							if err != nil {
+								log.Error("Failed to delete bot")
+								redisCache.SetArgs(ctx, taskId, "Failed to delete bot: "+err.Error(), redis.SetArgs{
+									KeepTTL: true,
+								})
+								return
+							}
+						}
+					}
 				}
 			}
 		}
@@ -474,8 +537,19 @@ func dataRequestTask(taskId string, id string, ip string) {
 			backupDat["col"] = col.String
 			backupDat["data"] = dataPacket
 			backupDat["ts"] = ts.Time
-			backupDat["id"] = id
+			backupDat["id"] = toString(uid)
 			backups = append(backups, backupDat)
+
+			if del {
+				_, err := pool.Exec(pgCtx, "DELETE FROM backups WHERE id=$1", toString(uid))
+				if err != nil {
+					log.Error("Failed to delete backup")
+					redisCache.SetArgs(ctx, taskId, "Failed to delete backup: "+err.Error(), redis.SetArgs{
+						KeepTTL: true,
+					})
+					return
+				}
+			}
 		}
 
 		foundBackup = false
@@ -549,6 +623,17 @@ func dataRequestTask(taskId string, id string, ip string) {
 
 		if sessionD.Passport.User.ID == id {
 			sessions = append(sessions, sessionMap)
+
+			if del {
+				_, err := col.DeleteOne(ctx, bson.M{"_id": sessionMap["_id"]})
+				if err != nil {
+					log.Error("Failed to delete session")
+					redisCache.SetArgs(ctx, taskId, "Failed to delete session: "+err.Error(), redis.SetArgs{
+						KeepTTL: true,
+					})
+					return
+				}
+			}
 		}
 	}
 
@@ -568,9 +653,3 @@ func dataRequestTask(taskId string, id string, ip string) {
 		KeepTTL: false,
 	})
 }
-
-/*
-func dataDeleteTask(taskId string, id string) {
-	//
-}
-*/
