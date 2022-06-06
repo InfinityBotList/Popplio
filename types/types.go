@@ -33,6 +33,8 @@ type Bot struct {
 	Invite           *string            `bson:"invite" json:"invite"`
 	Type             string             `bson:"type" json:"type"` // For auditing reasons, we do not filter out denied/banned bots in API
 	Vanity           string             `bson:"vanity" json:"vanity"`
+	ExternalSource   string             `bson:"external_source,omitempty" json:"external_source"`
+	ListSource       string             `bson:"listSource,omitempty" json:"list_source"`
 }
 
 // A review is a review on ibl

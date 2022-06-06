@@ -57,6 +57,7 @@ func addBot(bot *types.Bot) (*mongo.InsertOneResult, error) {
 		"library":           bot.Library,
 		"crossAdd":          bot.CrossAdd,
 		"listSource":        bot.ListSource,
+		"external_source":   "metro_reviews",
 		"short":             bot.Description,
 		"long":              bot.LongDescription,
 		"tags":              strings.Join(bot.Tags, ","),
