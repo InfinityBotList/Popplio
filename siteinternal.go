@@ -147,6 +147,19 @@ func performAct(w http.ResponseWriter, r *http.Request) {
 		go dataRequestTask(taskId, user.ID, remoteIp[0], false)
 	} else if act == "ddr" {
 		go dataRequestTask(taskId, user.ID, remoteIp[0], true)
+	} else if act == "gettoken" {
+		token := utils.RandString(128)
+
+		_, err := mongoDb.Collection("users").UpdateOne(ctx, bson.M{"userID": user.ID}, bson.M{"$set": bson.M{"token": token}})
+
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		w.Write([]byte(token))
+		return
+
 	} else {
 		w.WriteHeader(http.StatusNotFound)
 		w.Write([]byte(notFound))
