@@ -148,7 +148,7 @@ func rateLimitWrap(reqs int, t time.Duration, bucket string, fn http.HandlerFunc
 			w.Header().Set("Retry-After", strconv.FormatFloat(retryAfter.Seconds(), 'g', -1, 64))
 
 			w.WriteHeader(http.StatusTooManyRequests)
-			w.Write([]byte("{\"error\":\"You're being rate limited!\"}"))
+			w.Write([]byte("{\"message\":\"You're being rate limited!\"}"))
 
 			return
 		}
