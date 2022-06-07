@@ -94,6 +94,24 @@ func (adp DummyAdapter) ClaimBot(bot *types.Bot) error {
 	if bot == nil {
 		return errors.New("bot is nil")
 	}
+
+	_, err := addBot(bot)
+
+	if err != nil {
+		return err
+	}
+
+	col := mongoDb.Collection("bots")
+
+	_, err = col.UpdateOne(ctx, bson.M{"botID": bot.BotID}, bson.M{"$set": bson.M{
+		"claimed":   true,
+		"claimedBY": bot.Reviewer,
+	}})
+
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -102,6 +120,24 @@ func (adp DummyAdapter) UnclaimBot(bot *types.Bot) error {
 	if bot == nil {
 		return errors.New("bot is nil")
 	}
+
+	_, err := addBot(bot)
+
+	if err != nil {
+		return err
+	}
+
+	col := mongoDb.Collection("bots")
+
+	_, err = col.UpdateOne(ctx, bson.M{"botID": bot.BotID}, bson.M{"$set": bson.M{
+		"claimed":   false,
+		"claimedBY": "",
+	}})
+
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -162,16 +198,19 @@ func (adp DummyAdapter) ApproveBot(bot *types.Bot) error {
 				Color: 0x00FF00,
 				Fields: []*discordgo.MessageEmbedField{
 					{
-						Name:  "Bot:",
-						Value: "<@" + bot.BotID + ">",
+						Name:   "Bot:",
+						Value:  "<@" + bot.BotID + ">",
+						Inline: true,
 					},
 					{
-						Name:  "Owner:",
-						Value: "<@" + bot.Owner + ">",
+						Name:   "Owner:",
+						Value:  "<@" + bot.Owner + ">",
+						Inline: true,
 					},
 					{
-						Name:  "Moderator:",
-						Value: "<@" + bot.Reviewer + ">",
+						Name:   "Moderator:",
+						Value:  "<@" + bot.Reviewer + ">",
+						Inline: true,
 					},
 					{
 						Name:  "Feedback:",
@@ -250,19 +289,22 @@ func (adp DummyAdapter) DenyBot(bot *types.Bot) error {
 				Color: 0xFF0000,
 				Fields: []*discordgo.MessageEmbedField{
 					{
-						Name:  "Bot:",
-						Value: "<@" + bot.BotID + ">",
+						Name:   "Bot:",
+						Value:  "<@" + bot.BotID + ">",
+						Inline: true,
 					},
 					{
-						Name:  "Owner:",
-						Value: "<@" + bot.Owner + ">",
+						Name:   "Owner:",
+						Value:  "<@" + bot.Owner + ">",
+						Inline: true,
 					},
 					{
-						Name:  "Moderator:",
-						Value: "<@" + bot.Reviewer + ">",
+						Name:   "Moderator:",
+						Value:  "<@" + bot.Reviewer + ">",
+						Inline: true,
 					},
 					{
-						Name:  "Feedback:",
+						Name:  "Reason:",
 						Value: bot.Reason,
 					},
 				},
