@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/sha512"
 	"fmt"
+	"html/template"
 	"io"
 	"net/http"
 	"os"
@@ -12,6 +13,7 @@ import (
 	"strings"
 	"time"
 
+	"popplio/docs"
 	"popplio/types"
 	"popplio/utils"
 
@@ -43,6 +45,7 @@ const (
 	notFoundPage = "{\"message\":\"Slow down, bucko! You got the path wrong or something but this endpoint doesn't exist!\"}"
 	badRequest   = "{\"message\":\"Slow down, bucko! You're doing something illegal!!!\"}"
 	notApproved  = "{\"message\":\"Woah there, your bot needs to be approved. Calling the police right now over this infraction!\"}"
+	backTick     = "`"
 )
 
 var (
@@ -51,6 +54,7 @@ var (
 	pool       *pgxpool.Pool
 	ctx        context.Context
 	pgCtx      context.Context
+	r          *mux.Router
 )
 
 func init() {
@@ -155,8 +159,22 @@ func rateLimitWrap(reqs int, t time.Duration, bucket string, fn http.HandlerFunc
 	}
 }
 
+type Hello struct {
+	Message string `json:"message"`
+	Docs    string `json:"docs"`
+	OurSite string `json:"our_site"`
+	Status  string `json:"status"`
+}
+
 func main() {
-	r := mux.NewRouter()
+	// Add the base tags
+	docs.AddTag("System", "These API endpoints are core basic system APIs")
+	docs.AddTag("Variants", "These API endpoints are variants of other APIs or that do similar/same things as other API")
+	docs.AddTag("Bots", "These API endpoints are related to bots on IBL")
+
+	ctx = context.Background()
+
+	r = mux.NewRouter()
 
 	// Init redisCache
 	redisCache = redis.NewClient(&redis.Options{})
@@ -173,20 +191,18 @@ func main() {
 
 	// Create base payloads before startup
 	// Index
-	helloWorldB := map[string]string{
-		"message": "Hello world from IBL API v5!",
-		"docs":    docsSite,
-		"ourSite": mainSite,
-		"status":  statusPage,
-	}
+	var helloWorldB Hello
+
+	helloWorldB.Message = "Hello world from IBL API v5!"
+	helloWorldB.Docs = docsSite
+	helloWorldB.OurSite = mainSite
+	helloWorldB.Status = statusPage
 
 	helloWorld, err := json.Marshal(helloWorldB)
 
 	if err != nil {
 		panic(err)
 	}
-
-	ctx = context.Background()
 
 	client, err := mongo.Connect(ctx, options.Client().ApplyURI(mongoUrl))
 
@@ -212,9 +228,38 @@ func main() {
 		panic(err)
 	}
 
+	docs.AddDocs("GET", "/", "ping", "Ping Server", "Pings the server", []docs.Paramater{}, []string{"System"}, nil, helloWorldB)
 	r.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.Write([]byte(helloWorld))
+	})
+
+	docs.AddDocs("GET", "/openapi", "openapi", "Get OpenAPI", "Gets the OpenAPI spec", []docs.Paramater{}, []string{"System"}, nil, map[string]any{})
+	r.HandleFunc("/openapi", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+
+		openapi, err := json.Marshal(docs.GetSchema())
+
+		if err != nil {
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusInternalServerError)
+			w.Write([]byte(err.Error()))
+			return
+		}
+
+		w.Write([]byte(openapi))
+	})
+
+	r.HandleFunc("/docs", func(w http.ResponseWriter, r *http.Request) {
+		t, err := template.ParseFiles("html/docs.html")
+
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		t.Execute(w, nil)
 	})
 
 	statsFn := func(w http.ResponseWriter, r *http.Request) {
@@ -317,6 +362,47 @@ func main() {
 
 		w.Write([]byte("{\"error\":null}"))
 	}
+
+	docs.AddDocs("POST", "/bots/stats", "post_stats", "Post New Stats", `
+This endpoint can be used to post the stats of a bot.
+
+The variation`+backTick+`/bots/{bot_id}/stats`+backTick+` can be used to post the stats of a bot. **Note that only the token is checked, not the bot ID at this time**
+
+**Example:**
+
+`+backTick+backTick+backTick+`py
+import requests
+
+req = requests.post(f"{API_URL}/bots/stats", json={"servers": 4000, "shards": 2}, headers={"Authorization": "{TOKEN}"})
+
+print(req.json())
+`+backTick+backTick+backTick+`
+
+`, []docs.Paramater{}, []string{"Bots"}, types.BotStats{}, docs.ApiError{})
+
+	docs.AddDocs("POST", "/bots/{id}/stats", "post_stats_variant2", "Post New Stats", `
+This endpoint can be used to post the stats of a bot.
+
+The variation`+backTick+`/bots/{bot_id}/stats`+backTick+` can be used to post the stats of a bot. **Note that only the token is checked, not the bot ID at this time**
+
+**Example:**
+
+`+backTick+backTick+backTick+`py
+import requests
+
+req = requests.post(f"{API_URL}/bots/stats", json={"servers": 4000, "shards": 2}, headers={"Authorization": "{TOKEN}"})
+
+print(req.json())
+`+backTick+backTick+backTick+`
+
+`, []docs.Paramater{
+		{
+			Name:     "id",
+			In:       "path",
+			Required: true,
+			Schema:   docs.IdSchema,
+		},
+	}, []string{"Variants"}, types.BotStats{}, docs.ApiError{})
 
 	r.HandleFunc("/bots/stats", rateLimitWrap(4, 1*time.Minute, "stats", statsFn))
 
