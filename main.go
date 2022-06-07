@@ -169,8 +169,9 @@ type Hello struct {
 func main() {
 	// Add the base tags
 	docs.AddTag("System", "These API endpoints are core basic system APIs")
-	docs.AddTag("Variants", "These API endpoints are variants of other APIs or that do similar/same things as other API")
 	docs.AddTag("Bots", "These API endpoints are related to bots on IBL")
+	docs.AddTag("Votes", "These API endpoints are related to user votes on IBL")
+	docs.AddTag("Variants", "These API endpoints are variants of other APIs or that do similar/same things as other API")
 
 	ctx = context.Background()
 
@@ -410,6 +411,24 @@ print(req.json())
 	// TODO: Handle bot id as well
 	r.HandleFunc("/bots/{id}/stats", rateLimitWrap(4, 1*time.Minute, "stats", statsFn))
 
+	docs.AddDocs("GET", "/users/{uid}/bots/{bid}/votes", "get_user_votes", "Get User Votes", "Gets the users votes. **Requires authentication**", []docs.Paramater{
+		{
+			Name:     "uid",
+			In:       "path",
+			Required: true,
+			Schema:   docs.IdSchema,
+		},
+		{
+			Name:     "bid",
+			In:       "path",
+			Required: true,
+			Schema:   docs.IdSchema,
+		},
+	}, []string{"Votes"}, nil, types.UserVote{
+		Timestamps: []uint64{},
+		VoteTime:   12,
+		HasVoted:   true,
+	})
 	r.HandleFunc("/users/{uid}/bots/{bid}/votes", rateLimitWrap(3, 5*time.Minute, "gvotes", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 
@@ -548,6 +567,24 @@ print(req.json())
 
 		w.Write(b)
 	})
+
+	docs.AddDocs("GET", "/bots/{id}", "get_bot", "Get Bot", "Gets a bot by id or name, set ``resolve`` to true to also handle bot names."+`
+
+- `+backTick+backTick+`external_source`+backTick+backTick+` shows the source of where a bot came from (Metro Reviews etc etc.). If this is set to `+backTick+backTick+`metro`+backTick+backTick+`, then `+backTick+backTick+`list_source`+backTick+backTick+` will be set to the metro list ID where it came from`+`
+	`, []docs.Paramater{
+		{
+			Name:     "id",
+			In:       "path",
+			Required: true,
+			Schema:   docs.IdSchema,
+		},
+		{
+			Name:     "resolve",
+			In:       "query",
+			Required: true,
+			Schema:   docs.BoolSchema,
+		},
+	}, []string{"Bots"}, nil, types.Bot{})
 
 	getBotsFn := func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")

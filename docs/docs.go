@@ -145,6 +145,7 @@ type ApiError struct {
 var badRequestSchema *openapi3.SchemaRef
 
 var IdSchema *openapi3.SchemaRef
+var BoolSchema *openapi3.SchemaRef
 
 func init() {
 	var err error
@@ -160,6 +161,8 @@ func init() {
 	if err != nil {
 		panic(err)
 	}
+
+	BoolSchema, err = openapi3gen.NewSchemaRefForValue(true, nil)
 
 	api.Components.Schemas["ApiError"] = badRequestSchema
 }
