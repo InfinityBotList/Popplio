@@ -79,10 +79,10 @@ type VoteInfo struct {
 }
 
 type UserVote struct {
-	Timestamps   []uint64 `json:"ts"`
-	VoteTime     uint16   `json:"vote_time"`
-	HasVoted     bool     `json:"has_voted"`
-	LastVoteTime uint64   `json:"last_vote_time"`
+	Timestamps   []int64 `json:"ts"`
+	VoteTime     uint16  `json:"vote_time"`
+	HasVoted     bool    `json:"has_voted"`
+	LastVoteTime int64   `json:"last_vote_time"`
 }
 
 type BotStats struct {

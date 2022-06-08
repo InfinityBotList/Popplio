@@ -68,6 +68,13 @@ func rateLimitWrap(reqs int, t time.Duration, bucket string, fn http.HandlerFunc
 	reqStr := strconv.Itoa(reqs)
 	timeStr := strconv.FormatFloat(t.Seconds(), 'g', -1, 64)
 	return func(w http.ResponseWriter, r *http.Request) {
+		if strings.HasSuffix(r.Header.Get("Origin"), "infinitybots.gg") || strings.HasPrefix(r.Header.Get("Origin"), "localhost:") {
+			w.Header().Set("Access-Control-Allow-Origin", r.Header.Get("Origin"))
+			w.Header().Set("Access-Control-Allow-Credentials", "true")
+		} else {
+			w.Header().Set("Access-Control-Allow-Origin", "*")
+		}
+		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
 		w.Header().Set("X-Ratelimit-Bucket", bucket)
 		w.Header().Set("X-Ratelimit-Bucket-Reqs-Allowed-Count", reqStr)
 		w.Header().Set("X-Ratelimit-Bucket-Reqs-Allowed-Second", timeStr)
@@ -78,26 +85,59 @@ func rateLimitWrap(reqs int, t time.Duration, bucket string, fn http.HandlerFunc
 		auth := r.Header.Get("Authorization")
 
 		if auth != "" {
-			// Check if the user is a bot
-			botCol := mongoDb.Collection("bots")
+			if strings.HasPrefix(auth, "User ") {
+				rlId := strings.TrimPrefix(auth, "User ")
 
-			var bot struct {
-				BotID string `bson:"botID"`
+				if rlId == "" {
+					// Bot does not exist, return
+					w.Header().Set("Content-Type", "application/json")
+					w.WriteHeader(http.StatusForbidden)
+					w.Write([]byte("{\"error\":\"Invalid API token\"}"))
+					return
+				}
+
+				userCol := mongoDb.Collection("users")
+
+				var user struct {
+					UserID string `bson:"userID"`
+				}
+
+				options := options.FindOne().SetProjection(bson.M{"userID": 1})
+
+				err := userCol.FindOne(ctx, bson.M{"apiToken": rlId}, options).Decode(&user)
+
+				if err != nil {
+					// Bot does not exist, return
+					log.Error(err)
+					w.Header().Set("Content-Type", "application/json")
+					w.WriteHeader(http.StatusForbidden)
+					w.Write([]byte("{\"error\":\"Invalid API token\"}"))
+					return
+				}
+
+				id = user.UserID
+			} else {
+
+				botCol := mongoDb.Collection("bots")
+
+				var bot struct {
+					BotID string `bson:"botID"`
+				}
+
+				options := options.FindOne().SetProjection(bson.M{"botID": 1})
+
+				err := botCol.FindOne(ctx, bson.M{"token": auth}, options).Decode(&bot)
+
+				if err != nil {
+					// Bot does not exist, return
+					w.Header().Set("Content-Type", "application/json")
+					w.WriteHeader(http.StatusForbidden)
+					w.Write([]byte("{\"error\":\"Invalid API token\"}"))
+					return
+				}
+
+				id = bot.BotID
 			}
-
-			options := options.FindOne().SetProjection(bson.M{"botID": 1})
-
-			err := botCol.FindOne(ctx, bson.M{"token": auth}, options).Decode(&bot)
-
-			if err != nil {
-				// Bot does not exist, return
-				w.Header().Set("Content-Type", "application/json")
-				w.WriteHeader(http.StatusForbidden)
-				w.Write([]byte("{\"error\":\"Invalid API token\"}"))
-				return
-			}
-
-			id = bot.BotID
 		} else {
 			remoteIp := strings.Split(strings.ReplaceAll(r.Header.Get("X-Forwarded-For"), " ", ""), ",")
 
@@ -438,7 +478,7 @@ print(req.json())
 			Schema:   docs.IdSchema,
 		},
 	}, []string{"Votes"}, nil, types.UserVote{
-		Timestamps: []uint64{},
+		Timestamps: []int64{},
 		VoteTime:   12,
 		HasVoted:   true,
 	})
@@ -492,6 +532,17 @@ print(req.json())
 					return
 				}
 
+				options := options.FindOne().SetProjection(bson.M{"botID": 1, "type": 1})
+
+				err = col.FindOne(ctx, bson.M{"botID": vars["bid"]}, options).Decode(&bot)
+
+				if err != nil {
+					log.Error(err)
+					w.WriteHeader(http.StatusUnauthorized)
+					w.Write([]byte(badRequest))
+					return
+				}
+
 			} else {
 				options := options.FindOne().SetProjection(bson.M{"botID": 1, "type": 1})
 
@@ -518,18 +569,13 @@ print(req.json())
 			return
 		}
 
-		var votes []uint64
+		var votes []int64
 
 		col = mongoDb.Collection("votes")
 
 		cur, err := col.Find(ctx, bson.M{"botID": vars["bid"], "userID": vars["uid"]})
 
-		if err != mongo.ErrNoDocuments {
-			log.Error(err)
-			w.WriteHeader(http.StatusNotFound)
-			w.Write([]byte(notFound))
-			return
-		} else if err != nil {
+		if err == nil || err == mongo.ErrNoDocuments {
 
 			defer cur.Close(ctx)
 
@@ -547,8 +593,13 @@ print(req.json())
 					return
 				}
 
-				votes = append(votes, vote.Date)
+				votes = append(votes, int64(vote.Date))
 			}
+		} else {
+			log.Error(err)
+			w.WriteHeader(http.StatusInternalServerError)
+			w.Write([]byte(internalError))
+			return
 		}
 
 		voteParsed := types.UserVote{
@@ -562,7 +613,7 @@ print(req.json())
 		// In most cases, will be one but not always
 		if len(votes) > 0 {
 			unixTs := time.Now().Unix()
-			if uint64(unixTs)-votes[len(votes)-1] < uint64(utils.GetVoteTime()*60*60) {
+			if unixTs-votes[len(votes)-1] < int64(utils.GetVoteTime()*60*60) {
 				voteParsed.HasVoted = true
 				voteParsed.LastVoteTime = votes[len(votes)-1]
 			}
@@ -581,19 +632,11 @@ print(req.json())
 			w.Write(bytes)
 		} else if r.Method == "PUT" {
 			if voteParsed.HasVoted {
-				timeElapsed := uint64(time.Now().Unix()) - voteParsed.LastVoteTime
+				timeElapsed := time.Now().Unix() - voteParsed.LastVoteTime
 
-				timeToWait := uint64(utils.GetVoteTime()) - timeElapsed
+				timeToWait := int64(utils.GetVoteTime()*60*60) - timeElapsed
 
-				// Convert timeToWait to hours, minutes, seconds
-				hours := timeToWait / (60 * 60)
-				timeToWait -= hours * (60 * 60)
-				minutes := timeToWait / 60
-				timeToWait -= minutes * 60
-				seconds := timeToWait
-
-				// Format it
-				timeToWaitStr := fmt.Sprintf("%d hrs, %d mins and %d secs", hours, minutes, seconds)
+				timeToWaitStr := (time.Duration(timeToWait) * time.Second).String()
 
 				var alreadyVotedMsg = types.ApiError{
 					Message: "You have already voted for this bot. Please wait " + timeToWaitStr + " hours before voting again.",
@@ -614,7 +657,7 @@ print(req.json())
 			}
 
 			// Record new vote
-			r, err := col.InsertOne(ctx, bson.M{"botID": vars["bid"], "userID": vars["uid"], "date": time.Now().Unix()})
+			r, err := col.InsertOne(ctx, bson.M{"botID": vars["bid"], "userID": vars["uid"], "date": (time.Now().Unix() / 1000)})
 
 			if err != nil {
 				// Revert vote

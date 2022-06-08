@@ -216,7 +216,7 @@ func performAct(w http.ResponseWriter, r *http.Request) {
 	} else if act == "gettoken" {
 		token := utils.RandString(128)
 
-		_, err := mongoDb.Collection("users").UpdateOne(ctx, bson.M{"userID": user.ID}, bson.M{"$set": bson.M{"token": token}})
+		_, err := mongoDb.Collection("users").UpdateOne(ctx, bson.M{"userID": user.ID}, bson.M{"$set": bson.M{"apiToken": token}})
 
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
