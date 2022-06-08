@@ -664,7 +664,7 @@ print(req.json())
 				timeToWaitStr := (time.Duration(timeToWait) * time.Second).String()
 
 				var alreadyVotedMsg = types.ApiError{
-					Message: "You have already voted for this bot. Please wait " + timeToWaitStr + " hours before voting again.",
+					Message: "You have already voted for this bot. Please wait " + timeToWaitStr + " before voting again.",
 				}
 
 				bytes, err := json.Marshal(alreadyVotedMsg)
