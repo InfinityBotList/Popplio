@@ -46,7 +46,8 @@ const (
 	internalError    = "{\"message\":\"Slow down, bucko! Something went wrong on our end!\"}"
 	methodNotAllowed = "{\"message\":\"Slow down, bucko! That method is not allowed for this endpoint!!!\"}"
 	notApproved      = "{\"message\":\"Woah there, your bot needs to be approved. Calling the police right now over this infraction!\"}"
-	voteBanned       = "{\"message\":\"Slow down, bucko! You're banned from voting right now!\"}"
+	voteBanned       = "{\"message\":\"Slow down, bucko! Either you or this bot is banned from voting right now!\"}"
+	success          = "{\"message\":\"Success!\"}"
 	backTick         = "`"
 )
 
@@ -453,7 +454,8 @@ print(req.json())
 		vars := mux.Vars(r)
 
 		var bot struct {
-			Type string `bson:"type"`
+			Type       string `bson:"type"`
+			VoteBanned bool   `bson:"vote_banned,omitempty"`
 		}
 
 		col := mongoDb.Collection("bots")
@@ -510,6 +512,12 @@ print(req.json())
 			return
 		}
 
+		if bot.VoteBanned {
+			w.WriteHeader(http.StatusForbidden)
+			w.Write([]byte(voteBanned))
+			return
+		}
+
 		var votes []uint64
 
 		col = mongoDb.Collection("votes")
@@ -551,6 +559,7 @@ print(req.json())
 
 		voteParsed.Timestamps = votes
 
+		// In most cases, will be one but not always
 		if len(votes) > 0 {
 			unixTs := time.Now().Unix()
 			if uint64(unixTs)-votes[len(votes)-1] < uint64(utils.GetVoteTime()*60*60) {
@@ -560,7 +569,6 @@ print(req.json())
 		}
 
 		if r.Method == "GET" {
-
 			bytes, err := json.Marshal(voteParsed)
 
 			if err != nil {
@@ -572,7 +580,6 @@ print(req.json())
 
 			w.Write(bytes)
 		} else if r.Method == "PUT" {
-
 			if voteParsed.HasVoted {
 				timeElapsed := uint64(time.Now().Unix()) - voteParsed.LastVoteTime
 
@@ -605,6 +612,78 @@ print(req.json())
 				w.Write(bytes)
 				return
 			}
+
+			// Record new vote
+			_, err = col.InsertOne(ctx, bson.M{"botID": vars["bid"], "userID": vars["uid"], "date": time.Now().Unix()})
+
+			if err != nil {
+				log.Error(err)
+				w.WriteHeader(http.StatusInternalServerError)
+				w.Write([]byte(internalError))
+				return
+			}
+
+			var oldVotes struct {
+				Votes int `bson:"votes"`
+			}
+
+			err = col.FindOne(ctx, bson.M{"botID": vars["bid"]}, options.FindOne().SetProjection(bson.M{"votes": 1})).Decode(&oldVotes)
+
+			if err != nil {
+				log.Error(err)
+				w.WriteHeader(http.StatusInternalServerError)
+				w.Write([]byte(internalError))
+				return
+			}
+
+			var incr int = 1
+
+			if utils.GetDoubleVote() {
+				oldVotes.Votes += 2
+				incr = 2
+			} else {
+				oldVotes.Votes++
+			}
+
+			_, err = col.UpdateOne(ctx, bson.M{"botID": vars["bid"]}, bson.M{"$inc": bson.M{"votes": incr}})
+
+			if err != nil {
+				log.Error(err)
+				w.WriteHeader(http.StatusInternalServerError)
+				w.Write([]byte(internalError))
+				return
+			}
+
+			// Send webhook
+			err = sendWebhook(types.WebhookPost{
+				BotID:  vars["bid"],
+				UserID: vars["uid"],
+				Votes:  oldVotes.Votes,
+			})
+
+			if err != nil {
+				log.Error(err)
+
+				errPayload := types.ApiError{
+					Message: "The vote went successful but there was a issue notifying this bot over webhooks:" + err.Error(),
+				}
+
+				bytes, err := json.Marshal(errPayload)
+
+				if err != nil {
+					log.Error(err)
+					w.WriteHeader(http.StatusInternalServerError)
+					w.Write([]byte(internalError))
+					return
+				}
+
+				w.WriteHeader(http.StatusInternalServerError)
+				w.Write(bytes)
+				return
+			}
+
+			w.WriteHeader(http.StatusOK)
+			w.Write([]byte(success))
 		}
 	}))
 

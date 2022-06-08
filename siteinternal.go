@@ -891,6 +891,7 @@ func sendWebhook(webhook types.WebhookPost) error {
 		}
 	} else {
 		tries := 0
+
 		for tries < 3 {
 			// Create response body
 			body := types.WebhookData{
@@ -898,6 +899,7 @@ func sendWebhook(webhook types.WebhookPost) error {
 				UserID: webhook.UserID,
 				BotID:  webhook.BotID,
 				Test:   webhook.Test,
+				Time:   time.Now().Unix(),
 			}
 
 			data, err := json.Marshal(body)

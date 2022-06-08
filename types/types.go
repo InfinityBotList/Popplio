@@ -35,6 +35,7 @@ type Bot struct {
 	Vanity           string             `bson:"vanity" json:"vanity"`
 	ExternalSource   string             `bson:"external_source,omitempty" json:"external_source"`
 	ListSource       string             `bson:"listSource,omitempty" json:"list_source"`
+	VoteBanned       bool               `bson:"vote_banned,omitempty" json:"vote_banned"`
 }
 
 // A review is a review on ibl
@@ -145,6 +146,7 @@ type WebhookPost struct {
 	BotID  string `json:"bot_id"`
 	UserID string `json:"user_id"`
 	Test   bool   `json:"test"`
+	Votes  int    `json:"votes,omitempty"`
 
 	// Only present on test webhook API
 	URL string `json:"url,omitempty"`
@@ -152,8 +154,7 @@ type WebhookPost struct {
 	// Only present on test webhook API
 	Token string `json:"token,omitempty"`
 
-	Votes int `json:"votes,omitempty"`
-
+	// Only present on test webhook API
 	HMACAuth bool `json:"hmac_auth,omitempty"`
 }
 
@@ -162,6 +163,7 @@ type WebhookData struct {
 	UserID string `json:"user"`
 	BotID  string `json:"bot"`
 	Test   bool   `json:"test"`
+	Time   int64  `json:"time"`
 }
 
 // This represents a IBL Popplio API Error
