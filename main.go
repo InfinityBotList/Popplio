@@ -41,11 +41,12 @@ const (
 	pgConn            = "postgresql://127.0.0.1:5432/backups?user=root&password=iblpublic"
 	voteTime   uint16 = 12 // 12 hours per vote
 
-	notFound     = "{\"message\":\"Slow down, bucko! We couldn't find this resource *anywhere*!\"}"
-	notFoundPage = "{\"message\":\"Slow down, bucko! You got the path wrong or something but this endpoint doesn't exist!\"}"
-	badRequest   = "{\"message\":\"Slow down, bucko! You're doing something illegal!!!\"}"
-	notApproved  = "{\"message\":\"Woah there, your bot needs to be approved. Calling the police right now over this infraction!\"}"
-	backTick     = "`"
+	notFound      = "{\"message\":\"Slow down, bucko! We couldn't find this resource *anywhere*!\"}"
+	notFoundPage  = "{\"message\":\"Slow down, bucko! You got the path wrong or something but this endpoint doesn't exist!\"}"
+	badRequest    = "{\"message\":\"Slow down, bucko! You're doing something illegal!!!\"}"
+	internalError = "{\"message\":\"Slow down, bucko! Something went wrong on our end!\"}"
+	notApproved   = "{\"message\":\"Woah there, your bot needs to be approved. Calling the police right now over this infraction!\"}"
+	backTick      = "`"
 )
 
 var (
@@ -117,7 +118,7 @@ func rateLimitWrap(reqs int, t time.Duration, bucket string, fn http.HandlerFunc
 				log.Error(err)
 				w.Header().Set("Content-Type", "application/json")
 				w.WriteHeader(http.StatusInternalServerError)
-				w.Write([]byte("{\"error\":\"Something broke!\"}"))
+				w.Write([]byte(internalError))
 				return
 			}
 		}
@@ -128,7 +129,7 @@ func rateLimitWrap(reqs int, t time.Duration, bucket string, fn http.HandlerFunc
 			log.Error(err)
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusInternalServerError)
-			w.Write([]byte("{\"error\":\"Something broke!\"}"))
+			w.Write([]byte(internalError))
 			return
 		}
 
@@ -138,7 +139,7 @@ func rateLimitWrap(reqs int, t time.Duration, bucket string, fn http.HandlerFunc
 			log.Error(err)
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusInternalServerError)
-			w.Write([]byte("{\"error\":\"Something broke!\"}"))
+			w.Write([]byte(internalError))
 			return
 		}
 
@@ -155,6 +156,8 @@ func rateLimitWrap(reqs int, t time.Duration, bucket string, fn http.HandlerFunc
 
 		w.Header().Set("X-Ratelimit-Req-Made", strconv.Itoa(vInt))
 
+		w.Header().Set("Content-Type", "application/json")
+
 		fn(w, r)
 	}
 }
@@ -170,6 +173,7 @@ func main() {
 	// Add the base tags
 	docs.AddTag("System", "These API endpoints are core basic system APIs")
 	docs.AddTag("Bots", "These API endpoints are related to bots on IBL")
+	docs.AddTag("Users", "These API endpoints are related to users on IBL")
 	docs.AddTag("Votes", "These API endpoints are related to user votes on IBL")
 	docs.AddTag("Variants", "These API endpoints are variants of other APIs or that do similar/same things as other API")
 
@@ -318,7 +322,7 @@ func main() {
 		if err != nil {
 			log.Error(err)
 			w.WriteHeader(http.StatusInternalServerError)
-			w.Write([]byte([]byte("{\"error\":\"Something broke!\"}")))
+			w.Write([]byte(internalError))
 			return
 		}
 
@@ -357,7 +361,7 @@ func main() {
 		if err != nil {
 			log.Error(err)
 			w.WriteHeader(http.StatusInternalServerError)
-			w.Write([]byte([]byte("{\"error\":\"Something broke!\"}")))
+			w.Write([]byte(internalError))
 			return
 		}
 
@@ -379,7 +383,7 @@ req = requests.post(f"{API_URL}/bots/stats", json={"servers": 4000, "shards": 2}
 print(req.json())
 `+backTick+backTick+backTick+`
 
-`, []docs.Paramater{}, []string{"Bots"}, types.BotStats{}, docs.ApiError{})
+`, []docs.Paramater{}, []string{"Bots"}, types.BotStats{}, types.ApiError{})
 
 	docs.AddDocs("POST", "/bots/{id}/stats", "post_stats_variant2", "Post New Stats", `
 This endpoint can be used to post the stats of a bot.
@@ -403,7 +407,7 @@ print(req.json())
 			Required: true,
 			Schema:   docs.IdSchema,
 		},
-	}, []string{"Variants"}, types.BotStats{}, docs.ApiError{})
+	}, []string{"Variants"}, types.BotStats{}, types.ApiError{})
 
 	r.HandleFunc("/bots/stats", rateLimitWrap(4, 1*time.Minute, "stats", statsFn))
 
@@ -494,7 +498,7 @@ print(req.json())
 			if err != nil {
 				log.Error(err)
 				w.WriteHeader(http.StatusInternalServerError)
-				w.Write([]byte([]byte("{\"error\":\"Something broke!\"}")))
+				w.Write([]byte(internalError))
 				return
 			}
 
@@ -528,6 +532,7 @@ print(req.json())
 		w.Write(bytes)
 	}))
 
+	docs.AddDocs("GET", "/voteinfo", "voteinfo", "Get Vote Info", "Returns basic voting info such as if its a weekend double vote", []docs.Paramater{}, []string{"Votes"}, nil, types.VoteInfo{Weekend: true})
 	r.HandleFunc("/voteinfo", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 
@@ -657,7 +662,7 @@ print(req.json())
 		if err != nil {
 			log.Error(err)
 			w.WriteHeader(http.StatusInternalServerError)
-			w.Write([]byte([]byte("{\"error\":\"Something broke!\"}")))
+			w.Write([]byte(internalError))
 			return
 		}
 
@@ -665,6 +670,16 @@ print(req.json())
 
 		w.Write(bytes)
 	}
+
+	docs.AddDocs("GET", "/bots/{id}", "get_bot", "Get Bot", "Gets a bot by id or name, set ``resolve`` to true to also handle bot names.",
+		[]docs.Paramater{
+			{
+				Name:     "id",
+				In:       "path",
+				Required: true,
+				Schema:   docs.IdSchema,
+			},
+		}, []string{"Users"}, nil, types.User{})
 
 	r.HandleFunc("/users/{id}", rateLimitWrap(10, 3*time.Minute, "guser", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
@@ -734,7 +749,7 @@ print(req.json())
 		if err != nil {
 			log.Error(err)
 			w.WriteHeader(http.StatusInternalServerError)
-			w.Write([]byte([]byte("{\"error\":\"Something broke!\"}")))
+			w.Write([]byte(internalError))
 			return
 		}
 
@@ -800,6 +815,61 @@ print(req.json())
 	r.HandleFunc("/cosmog", performAct)
 	r.HandleFunc("/cosmog/tasks/{tid}.arceus", getTask)
 	r.HandleFunc("/cosmog/tasks/{tid}", taskFn)
+
+	r.HandleFunc("/webhook-test", rateLimitWrap(3, 3*time.Minute, "webtest", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != "POST" {
+			w.WriteHeader(http.StatusMethodNotAllowed)
+			w.Write([]byte(badRequest))
+			return
+		}
+
+		defer r.Body.Close()
+
+		var payload types.WebhookPost
+
+		bodyBytes, err := io.ReadAll(r.Body)
+
+		if err != nil {
+			log.Error(err)
+			w.WriteHeader(http.StatusInternalServerError)
+			w.Write([]byte(internalError))
+			return
+		}
+
+		err = json.Unmarshal(bodyBytes, &payload)
+
+		if err != nil {
+			log.Error(err)
+			w.WriteHeader(http.StatusInternalServerError)
+			w.Write([]byte(internalError))
+			return
+		}
+
+		payload.Test = true // Always true
+
+		err = sendWebhook(payload)
+
+		if err != nil {
+			log.Error(err)
+
+			var errD = types.ApiError{
+				Message: err.Error(),
+			}
+
+			bytes, err := json.Marshal(errD)
+
+			if err != nil {
+				log.Error(err)
+				w.WriteHeader(http.StatusInternalServerError)
+				w.Write([]byte(internalError))
+				return
+			}
+
+			w.WriteHeader(http.StatusBadRequest)
+			w.Write(bytes)
+			return
+		}
+	}))
 
 	adp := DummyAdapter{}
 

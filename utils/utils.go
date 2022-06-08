@@ -9,7 +9,7 @@ import (
 	"popplio/types"
 )
 
-func isNone(s *string) bool {
+func IsNone(s *string) bool {
 	if *s == "None" || *s == "none" || *s == "" || *s == "null" {
 		return true
 	}
@@ -19,33 +19,33 @@ func isNone(s *string) bool {
 func ParseBot(bot *types.Bot) {
 	bot.Tags = strings.Split(strings.ReplaceAll(bot.TagsRaw, " ", ""), ",")
 
-	if isNone(bot.Website) {
+	if IsNone(bot.Website) {
 		bot.Website = nil
 	}
 
-	if isNone(bot.Donate) {
+	if IsNone(bot.Donate) {
 		bot.Donate = nil
 	}
 
-	if isNone(bot.Github) {
+	if IsNone(bot.Github) {
 		bot.Github = nil
 	}
 }
 
 func ParseUser(user *types.User) {
-	if isNone(user.Website) {
+	if IsNone(user.Website) {
 		user.Website = nil
 	}
 
-	if isNone(user.Github) {
+	if IsNone(user.Github) {
 		user.Github = nil
 	}
 
-	if isNone(user.About) {
+	if IsNone(user.About) {
 		user.About = nil
 	}
 
-	if isNone(user.Nickname) {
+	if IsNone(user.Nickname) {
 		user.Nickname = nil
 	}
 }

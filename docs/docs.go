@@ -1,6 +1,7 @@
 package docs
 
 import (
+	"popplio/types"
 	"reflect"
 	"strings"
 
@@ -137,11 +138,6 @@ var api = Openapi{
 	Paths: make(map[string]path),
 }
 
-// This represents a IBL Popplio API Error
-type ApiError struct {
-	Message string `json:"message"`
-}
-
 var badRequestSchema *openapi3.SchemaRef
 
 var IdSchema *openapi3.SchemaRef
@@ -150,7 +146,7 @@ var BoolSchema *openapi3.SchemaRef
 func init() {
 	var err error
 
-	badRequestSchema, err = openapi3gen.NewSchemaRefForValue(ApiError{}, nil)
+	badRequestSchema, err = openapi3gen.NewSchemaRefForValue(types.ApiError{}, nil)
 
 	if err != nil {
 		panic(err)

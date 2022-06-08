@@ -139,3 +139,31 @@ func (s BotStats) GetStats() (servers uint32, shards uint32, users uint32) {
 
 	return serverCount, shardCount, userCount
 }
+
+type WebhookPost struct {
+	BotID  string `json:"bot_id"`
+	UserID string `json:"user_id"`
+	Test   bool   `json:"test"`
+
+	// Only present on test webhook API
+	URL string `json:"url,omitempty"`
+
+	// Only present on test webhook API
+	Token string `json:"token,omitempty"`
+
+	Votes int `json:"votes,omitempty"`
+
+	HMACAuth bool `json:"hmac_auth,omitempty"`
+}
+
+type WebhookData struct {
+	Votes  int    `json:"votes"`
+	UserID string `json:"user"`
+	BotID  string `json:"bot"`
+	Test   bool   `json:"test"`
+}
+
+// This represents a IBL Popplio API Error
+type ApiError struct {
+	Message string `json:"message"`
+}

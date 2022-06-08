@@ -1,24 +1,33 @@
 package main
 
 import (
+	"bytes"
+	"crypto/hmac"
+	"crypto/sha512"
+	"errors"
 	"fmt"
 	"html/template"
 	"io/ioutil"
 	"net/http"
 	"net/url"
 	"os"
+	"popplio/types"
 	"popplio/utils"
+	"strconv"
 	"strings"
 	"time"
 
 	b64 "encoding/base64"
+	"encoding/hex"
 
+	"github.com/bwmarrin/discordgo"
 	"github.com/go-redis/redis/v8"
 	"github.com/gorilla/mux"
 	"github.com/jackc/pgtype"
 	log "github.com/sirupsen/logrus"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
+	"go.mongodb.org/mongo-driver/mongo"
 )
 
 type InternalOauthUser struct {
@@ -665,4 +674,170 @@ func dataRequestTask(taskId string, id string, ip string, del bool) {
 	redisCache.SetArgs(ctx, taskId, string(bytes), redis.SetArgs{
 		KeepTTL: false,
 	})
+}
+
+func isDiscord(url string) bool {
+	return strings.HasPrefix(url, "https://discordapp.com/api/webhooks/") || strings.HasPrefix(url, "https://discord.com/api/webhooks/")
+}
+
+// Sends a webhook
+func sendWebhook(webhook types.WebhookPost) error {
+	url, token := webhook.URL, webhook.Token
+
+	isDiscordIntegration := isDiscord(url)
+
+	if utils.IsNone(&url) || utils.IsNone(&token) {
+		// Fetch URL from mongoDB
+		col := mongoDb.Collection("bots")
+
+		var bot struct {
+			Discord    string `bson:"webhook"`
+			CustomURL  string `bson:"webURL"`
+			CustomAuth string `bson:"webAuth"`
+			HMACAuth   bool   `bson:"webHmacAuth,omitempty"`
+		}
+
+		err := col.FindOne(ctx, bson.M{"botID": webhook.BotID}).Decode(&bot)
+
+		if err != nil {
+			log.Error("Failed to fetch webhook")
+			return err
+		}
+
+		// Check custom auth viability
+		if utils.IsNone(&bot.CustomAuth) {
+			// We set the token to the a random string in DB in this case
+			token = utils.RandString(256)
+
+			_, err := col.UpdateOne(ctx, bson.M{"botID": webhook.BotID}, bson.M{"$set": bson.M{"webAuth": token}})
+
+			if err != mongo.ErrNoDocuments && err != nil {
+				log.Error("Failed to update webhook: ", err.Error())
+				return err
+			}
+
+			bot.CustomAuth = token
+		}
+
+		// Check if custom url and auth exists, if so use that
+		if utils.IsNone(&bot.CustomURL) {
+			url, token = bot.Discord, ""
+			isDiscordIntegration = true
+		} else {
+			url, token = bot.CustomURL, bot.CustomAuth
+			isDiscordIntegration = false
+		}
+
+		webhook.HMACAuth = bot.HMACAuth
+	}
+
+	if isDiscordIntegration && !isDiscord(url) {
+		return errors.New("webhook is not a discord webhook")
+	}
+
+	if isDiscordIntegration {
+		parts := strings.Split(url, "/")
+		if len(parts) < 7 {
+			log.WithFields(log.Fields{
+				"url": url,
+			}).Warning("Invalid webhook URL")
+			return errors.New("invalid discord webhook URL. Could not parse")
+		}
+		webhookId := parts[5]
+		webhookToken := parts[6]
+		userObj, err := metro.User(webhook.UserID)
+		if err != nil {
+			log.WithFields(log.Fields{
+				"user": webhook.UserID,
+			}).Warning(err)
+			return err
+		}
+
+		botObj, err := metro.User(webhook.BotID)
+		if err != nil {
+			log.WithFields(log.Fields{
+				"user": webhook.BotID,
+			}).Warning(err)
+			return err
+		}
+		userWithDisc := userObj.Username + "#" + userObj.Discriminator // Create the user object
+
+		var embeds []*discordgo.MessageEmbed = []*discordgo.MessageEmbed{
+			{
+				Title: "Congrats! " + botObj.Username + " got a new vote!!!",
+				Description: "**" + userWithDisc + "** just voted for **" + botObj.Username + "**!\n" +
+					"**" + botObj.Username + "** now has **" + strconv.Itoa(webhook.Votes) + "** votes!",
+				Color: 0x00ff00,
+				URL:   "https://botlist.site/bots/" + webhook.BotID,
+			},
+		}
+
+		_, err = metro.WebhookExecute(webhookId, webhookToken, false, &discordgo.WebhookParams{
+			Embeds: embeds,
+		})
+
+		if err != nil {
+			log.WithFields(log.Fields{
+				"webhook": webhookId,
+			}).Warning("Failed to execute webhook")
+			return err
+		}
+	} else {
+		tries := 0
+		for tries < 3 {
+			// Create response body
+			body := types.WebhookData{
+				Votes:  webhook.Votes,
+				UserID: webhook.UserID,
+				BotID:  webhook.BotID,
+				Test:   webhook.Test,
+			}
+
+			data, err := json.Marshal(body)
+
+			if err != nil {
+				log.Error("Failed to encode data")
+				return err
+			}
+
+			if webhook.HMACAuth {
+				// Generate HMAC token using token and request body
+				h := hmac.New(sha512.New, []byte(token))
+				h.Write(data)
+				token = hex.EncodeToString(h.Sum(nil))
+			}
+
+			// Create request
+			responseBody := bytes.NewBuffer(data)
+			req, err := http.NewRequest("POST", url, responseBody)
+
+			if err != nil {
+				log.Error("Failed to create request")
+				return err
+			}
+
+			req.Header.Set("Content-Type", "application/json")
+			req.Header.Set("User-Agent", "Popplio/v5.0")
+			req.Header.Set("Authorization", token)
+
+			// Send request
+			client := &http.Client{Timeout: time.Second * 5}
+			resp, err := client.Do(req)
+
+			if err != nil {
+				log.Error("Failed to send request")
+				return err
+			}
+
+			if resp.StatusCode >= 400 && resp.StatusCode < 500 {
+				log.Info("Retrying webhook again")
+				tries++
+				continue
+			}
+
+			break
+		}
+	}
+
+	return nil
 }
