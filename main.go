@@ -80,6 +80,11 @@ func rateLimitWrap(reqs int, t time.Duration, bucket string, fn http.HandlerFunc
 		w.Header().Set("X-Ratelimit-Bucket-Reqs-Allowed-Count", reqStr)
 		w.Header().Set("X-Ratelimit-Bucket-Reqs-Allowed-Second", timeStr)
 
+		if r.Method == "OPTIONS" {
+			w.Write([]byte(""))
+			return
+		}
+
 		// Get ratelimit from redis
 		var id string
 
@@ -483,13 +488,8 @@ print(req.json())
 		VoteTime:   12,
 		HasVoted:   true,
 	})
-	r.HandleFunc("/users/{uid}/bots/{bid}/votes", rateLimitWrap(3, 5*time.Minute, "gvotes", func(w http.ResponseWriter, r *http.Request) {
+	r.HandleFunc("/users/{uid}/bots/{bid}/votes", rateLimitWrap(5, 2*time.Minute, "gvotes", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-
-		if r.Method == "OPTIONS" {
-			w.Write([]byte(""))
-			return
-		}
 
 		if r.Method != "GET" && r.Method != "PUT" {
 			w.WriteHeader(http.StatusMethodNotAllowed)
@@ -606,7 +606,7 @@ print(req.json())
 
 			for cur.Next(ctx) {
 				var vote struct {
-					Date uint64 `bson:"date"`
+					Date int64 `bson:"date"`
 				}
 
 				err := cur.Decode(&vote)
@@ -618,7 +618,7 @@ print(req.json())
 					return
 				}
 
-				votes = append(votes, int64(vote.Date))
+				votes = append(votes, vote.Date)
 			}
 		} else {
 			log.Error(err)
@@ -637,8 +637,14 @@ print(req.json())
 
 		// In most cases, will be one but not always
 		if len(votes) > 0 {
-			unixTs := time.Now().Unix()
-			if unixTs-votes[len(votes)-1] < int64(utils.GetVoteTime()*60*60) {
+			if time.Now().UnixMilli() < votes[len(votes)-1] {
+				log.Error("detected illegal vote time", votes[len(votes)-1])
+				votes[len(votes)-1] = time.Now().UnixMilli()
+			}
+
+			log.Info("...", time.Now().UnixMilli()-votes[len(votes)-1], int64(utils.GetVoteTime())*60*60*1000)
+
+			if time.Now().UnixMilli()-votes[len(votes)-1] < int64(utils.GetVoteTime())*60*60*1000 {
 				voteParsed.HasVoted = true
 				voteParsed.LastVoteTime = votes[len(votes)-1]
 			}
@@ -657,14 +663,15 @@ print(req.json())
 			w.Write(bytes)
 		} else if r.Method == "PUT" {
 			if voteParsed.HasVoted {
-				timeElapsed := time.Now().Unix() - voteParsed.LastVoteTime
+				timeElapsed := time.Now().UnixMilli() - voteParsed.LastVoteTime
+				log.Info(timeElapsed)
 
-				timeToWait := int64(utils.GetVoteTime()*60*60) - timeElapsed
+				timeToWait := int64(utils.GetVoteTime())*60*60*1000 - timeElapsed
 
-				timeToWaitStr := (time.Duration(timeToWait) * time.Second).String()
+				timeToWaitStr := (time.Duration(timeToWait) * time.Millisecond).String()
 
 				var alreadyVotedMsg = types.ApiError{
-					Message: "You have already voted for this bot. Please wait " + timeToWaitStr + " before voting again.",
+					Message: "You have already voted for this bot. Please wait " + timeToWaitStr + " before voting again. Last vote time was" + strconv.Itoa(int(voteParsed.LastVoteTime)),
 				}
 
 				bytes, err := json.Marshal(alreadyVotedMsg)
@@ -682,7 +689,7 @@ print(req.json())
 			}
 
 			// Record new vote
-			r, err := col.InsertOne(ctx, bson.M{"botID": vars["bid"], "userID": vars["uid"], "date": time.Now().Unix()})
+			r, err := col.InsertOne(ctx, bson.M{"botID": vars["bid"], "userID": vars["uid"], "date": time.Now().UnixMilli()})
 
 			if err != nil {
 				// Revert vote
