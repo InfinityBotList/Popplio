@@ -614,9 +614,11 @@ print(req.json())
 			}
 
 			// Record new vote
-			_, err = col.InsertOne(ctx, bson.M{"botID": vars["bid"], "userID": vars["uid"], "date": time.Now().Unix()})
+			r, err := col.InsertOne(ctx, bson.M{"botID": vars["bid"], "userID": vars["uid"], "date": time.Now().Unix()})
 
 			if err != nil {
+				// Revert vote
+				_, err := col.DeleteOne(ctx, bson.M{"_id": r.InsertedID})
 				log.Error(err)
 				w.WriteHeader(http.StatusInternalServerError)
 				w.Write([]byte(internalError))
@@ -630,6 +632,9 @@ print(req.json())
 			err = col.FindOne(ctx, bson.M{"botID": vars["bid"]}, options.FindOne().SetProjection(bson.M{"votes": 1})).Decode(&oldVotes)
 
 			if err != nil {
+				// Revert vote
+				_, err := col.DeleteOne(ctx, bson.M{"_id": r.InsertedID})
+
 				log.Error(err)
 				w.WriteHeader(http.StatusInternalServerError)
 				w.Write([]byte(internalError))
@@ -648,6 +653,9 @@ print(req.json())
 			_, err = col.UpdateOne(ctx, bson.M{"botID": vars["bid"]}, bson.M{"$inc": bson.M{"votes": incr}})
 
 			if err != nil {
+				// Revert vote
+				_, err := col.DeleteOne(ctx, bson.M{"_id": r.InsertedID})
+
 				log.Error(err)
 				w.WriteHeader(http.StatusInternalServerError)
 				w.Write([]byte(internalError))
