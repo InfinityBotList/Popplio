@@ -50,17 +50,74 @@ type InternalSession struct {
 	Passport *InternalPassport `json:"passport"`
 }
 
+type InternalBot struct {
+	ObjID   string `bson:"_id"`
+	BotID   string `bson:"botID"`
+	BotName string `bson:"botName"`
+	Votes   int    `bson:"votes"`
+	Avatar  string `bson:"-"`
+}
+
+type VoteTemplate struct {
+	User InternalOauthUser
+	Bot  InternalBot
+}
+
 func oauthFn(w http.ResponseWriter, r *http.Request) {
 	cliId := os.Getenv("CLIENT_ID")
 	redirectUrl := os.Getenv("REDIRECT_URL")
-
 	vars := mux.Vars(r)
 
-	http.Redirect(w, r, "https://discord.com/api/oauth2/authorize?client_id="+cliId+"&scope=identify&response_type=code&redirect_uri="+redirectUrl+"&state="+vars["act"], http.StatusFound)
+	// Create HMAC of current time in seconds to protect against fucked up redirects
+	h := hmac.New(sha512.New, []byte(os.Getenv("CLIENT_SECRET")))
+
+	ctime := strconv.FormatInt(time.Now().Unix(), 10)
+
+	h.Write([]byte(ctime + "@" + vars["act"]))
+
+	hmacData := hex.EncodeToString(h.Sum(nil))
+
+	http.Redirect(w, r, "https://discord.com/api/oauth2/authorize?client_id="+cliId+"&scope=identify&response_type=code&redirect_uri="+redirectUrl+"&state="+ctime+"."+hmacData+"."+vars["act"], http.StatusFound)
 }
 
 func performAct(w http.ResponseWriter, r *http.Request) {
 	act := r.URL.Query().Get("state")
+
+	// Split act and hmac
+	actSplit := strings.Split(act, ".")
+
+	if len(actSplit) != 3 {
+		http.Error(w, "Invalid state", http.StatusBadRequest)
+		return
+	}
+
+	// Check hmac
+	h := hmac.New(sha512.New, []byte(os.Getenv("CLIENT_SECRET")))
+
+	h.Write([]byte(actSplit[0] + "@" + actSplit[2]))
+
+	hmacData := hex.EncodeToString(h.Sum(nil))
+
+	if hmacData != actSplit[1] {
+		http.Error(w, "Invalid state", http.StatusBadRequest)
+		return
+	}
+
+	// Check time
+	ctime, err := strconv.ParseInt(actSplit[0], 10, 64)
+
+	if err != nil {
+		http.Error(w, "Invalid state", http.StatusBadRequest)
+		return
+	}
+
+	if time.Now().Unix()-ctime > 300 {
+		http.Error(w, "Invalid state. HMAC too old", http.StatusBadRequest)
+		return
+	}
+
+	// Remove out the actual action
+	act = actSplit[2]
 
 	// Check code with discords api
 	data := url.Values{}
@@ -169,6 +226,56 @@ func performAct(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(token))
 		return
 
+	} else if strings.HasPrefix(act, "vote-") {
+		voteBot := strings.Replace(act, "vote-", "", 1)
+
+		// Find bot id from vote bot using either bot id or vanity
+
+		var bot InternalBot
+
+		err = mongoDb.Collection("bots").FindOne(ctx, bson.M{
+			"$or": []bson.M{
+				{
+					"botName": voteBot,
+				},
+				{
+					"vanity": voteBot,
+				},
+				{
+					"botID": voteBot,
+				},
+			},
+		}).Decode(&bot)
+
+		if err != nil {
+			log.Error(err)
+			http.Error(w, "This bot could not be found", http.StatusNotFound)
+			return
+		}
+
+		// Get bot avatar
+		m, err := utils.GetDiscordUser(metro, redisCache, ctx, bot.BotID)
+
+		if err != nil {
+			log.Error(err)
+			http.Error(w, "We couldn't fetch this bot from discord for some reason", http.StatusNotFound)
+			return
+		}
+
+		bot.Avatar = m.AvatarURL("")
+
+		t, err := template.ParseFiles("html/vote.html")
+
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		t.Execute(w, VoteTemplate{
+			Bot:  bot,
+			User: user,
+		})
+		return
 	} else {
 		w.WriteHeader(http.StatusNotFound)
 		w.Write([]byte(notFound))

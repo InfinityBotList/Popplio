@@ -1,12 +1,17 @@
 package utils
 
 import (
+	"context"
+	"encoding/json"
 	"math/rand"
 	"strings"
 	"time"
 	"unsafe"
 
 	"popplio/types"
+
+	"github.com/bwmarrin/discordgo"
+	"github.com/go-redis/redis/v8"
 )
 
 func IsNone(s *string) bool {
@@ -76,4 +81,50 @@ func RandString(n int) string {
 	}
 
 	return *(*string)(unsafe.Pointer(&b))
+}
+
+func GetDiscordUser(s *discordgo.Session, redisCache *redis.Client, ctx context.Context, id string) (*discordgo.User, error) {
+	// Check if in discordgo session first
+
+	var userExpiryTime = 4 * time.Hour
+
+	if s.State != nil {
+		guilds := s.State.Guilds
+
+		for _, guild := range guilds {
+			member, err := s.State.Member(guild.ID, id)
+
+			if err == nil {
+				redisCache.Set(ctx, "uobj:"+id, member, userExpiryTime)
+				return member.User, err
+			}
+		}
+	}
+
+	// Check if in redis cache
+	userBytes, err := redisCache.Get(ctx, "uobj:"+id).Result()
+
+	if err == nil {
+		// Try to unmarshal
+
+		var user discordgo.User
+
+		err = json.Unmarshal([]byte(userBytes), &user)
+
+		if err == nil {
+			return &user, err
+		}
+	}
+
+	// Get from discord
+	user, err := s.User(id)
+
+	if err != nil {
+		return nil, err
+	}
+
+	// Store in redis
+	redisCache.Set(ctx, "uobj:"+id, user, userExpiryTime)
+
+	return user, nil
 }

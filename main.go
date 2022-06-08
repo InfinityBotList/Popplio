@@ -41,12 +41,13 @@ const (
 	pgConn            = "postgresql://127.0.0.1:5432/backups?user=root&password=iblpublic"
 	voteTime   uint16 = 12 // 12 hours per vote
 
-	notFound      = "{\"message\":\"Slow down, bucko! We couldn't find this resource *anywhere*!\"}"
-	notFoundPage  = "{\"message\":\"Slow down, bucko! You got the path wrong or something but this endpoint doesn't exist!\"}"
-	badRequest    = "{\"message\":\"Slow down, bucko! You're doing something illegal!!!\"}"
-	internalError = "{\"message\":\"Slow down, bucko! Something went wrong on our end!\"}"
-	notApproved   = "{\"message\":\"Woah there, your bot needs to be approved. Calling the police right now over this infraction!\"}"
-	backTick      = "`"
+	notFound         = "{\"message\":\"Slow down, bucko! We couldn't find this resource *anywhere*!\"}"
+	notFoundPage     = "{\"message\":\"Slow down, bucko! You got the path wrong or something but this endpoint doesn't exist!\"}"
+	badRequest       = "{\"message\":\"Slow down, bucko! You're doing something illegal!!!\"}"
+	internalError    = "{\"message\":\"Slow down, bucko! Something went wrong on our end!\"}"
+	methodNotAllowed = "{\"message\":\"Slow down, bucko! That method is not allowed for this endpoint!!!\"}"
+	notApproved      = "{\"message\":\"Woah there, your bot needs to be approved. Calling the police right now over this infraction!\"}"
+	backTick         = "`"
 )
 
 var (
@@ -233,6 +234,13 @@ func main() {
 		panic(err)
 	}
 
+	metro.Identify.Intents = discordgo.IntentsGuilds | discordgo.IntentGuildPresences | discordgo.IntentsGuildMembers
+
+	err = metro.Open()
+	if err != nil {
+		panic(err)
+	}
+
 	docs.AddDocs("GET", "/", "ping", "Ping Server", "Pings the server", []docs.Paramater{}, []string{"System"}, nil, helloWorldB)
 	r.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
@@ -272,7 +280,7 @@ func main() {
 
 		if r.Method == "GET" || r.Method == "DELETE" {
 			w.WriteHeader(http.StatusMethodNotAllowed)
-			w.Write([]byte(badRequest))
+			w.Write([]byte(methodNotAllowed))
 			return
 		}
 
@@ -438,7 +446,7 @@ print(req.json())
 
 		if r.Method != "GET" {
 			w.WriteHeader(http.StatusMethodNotAllowed)
-			w.Write([]byte(badRequest))
+			w.Write([]byte(methodNotAllowed))
 			return
 		}
 
@@ -538,7 +546,7 @@ print(req.json())
 
 		if r.Method != "GET" {
 			w.WriteHeader(http.StatusMethodNotAllowed)
-			w.Write([]byte(badRequest))
+			w.Write([]byte(methodNotAllowed))
 			return
 		}
 
@@ -596,7 +604,7 @@ print(req.json())
 
 		if r.Method != "GET" {
 			w.WriteHeader(http.StatusMethodNotAllowed)
-			w.Write([]byte(badRequest))
+			w.Write([]byte(methodNotAllowed))
 			return
 		}
 
@@ -671,7 +679,7 @@ print(req.json())
 		w.Write(bytes)
 	}
 
-	docs.AddDocs("GET", "/bots/{id}", "get_bot", "Get Bot", "Gets a bot by id or name, set ``resolve`` to true to also handle bot names.",
+	docs.AddDocs("GET", "/users/{id}", "get_user", "Get User", "Gets a user by id or name, set ``resolve`` to true to also handle user names.",
 		[]docs.Paramater{
 			{
 				Name:     "id",
@@ -686,7 +694,7 @@ print(req.json())
 
 		if r.Method != "GET" {
 			w.WriteHeader(http.StatusMethodNotAllowed)
-			w.Write([]byte(badRequest))
+			w.Write([]byte(methodNotAllowed))
 			return
 		}
 
@@ -760,6 +768,16 @@ print(req.json())
 
 	r.HandleFunc("/bots/{id}", getBotsFn)
 
+	docs.AddDocs("GET", "/bots/{id}/reviews", "get_bot_reviews", "Get Bot Reviews", "Gets the reviews of a bot by its ID (names are not resolved by this endpoint)",
+		[]docs.Paramater{
+			{
+				Name:     "id",
+				In:       "path",
+				Required: true,
+				Schema:   docs.IdSchema,
+			},
+		}, []string{"Bots"}, nil, []types.Review{})
+
 	r.HandleFunc("/bots/{id}/reviews", rateLimitWrap(10, 1*time.Minute, "greview", func(w http.ResponseWriter, r *http.Request) {
 		col := mongoDb.Collection("reviews")
 
@@ -816,10 +834,13 @@ print(req.json())
 	r.HandleFunc("/cosmog/tasks/{tid}.arceus", getTask)
 	r.HandleFunc("/cosmog/tasks/{tid}", taskFn)
 
+	docs.AddDocs("POST", "/webhook-test", "webhook_test", "Test Webhook", "Sends a test webhook to allow testing your vote system",
+		[]docs.Paramater{}, []string{"System"}, nil, types.ApiError{})
+
 	r.HandleFunc("/webhook-test", rateLimitWrap(3, 3*time.Minute, "webtest", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != "POST" {
 			w.WriteHeader(http.StatusMethodNotAllowed)
-			w.Write([]byte(badRequest))
+			w.Write([]byte(methodNotAllowed))
 			return
 		}
 
@@ -842,6 +863,12 @@ print(req.json())
 			log.Error(err)
 			w.WriteHeader(http.StatusInternalServerError)
 			w.Write([]byte(internalError))
+			return
+		}
+
+		if utils.IsNone(&payload.URL) {
+			w.WriteHeader(http.StatusBadRequest)
+			w.Write([]byte(badRequest))
 			return
 		}
 
