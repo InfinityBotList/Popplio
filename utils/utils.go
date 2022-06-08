@@ -128,3 +128,19 @@ func GetDiscordUser(s *discordgo.Session, redisCache *redis.Client, ctx context.
 
 	return user, nil
 }
+
+func GetDoubleVote() bool {
+	if time.Now().Weekday() == time.Friday || time.Now().Weekday() == time.Saturday || time.Now().Weekday() == time.Sunday {
+		return true
+	} else {
+		return false
+	}
+}
+
+func GetVoteTime() uint16 {
+	if GetDoubleVote() {
+		return 6
+	} else {
+		return 12
+	}
+}

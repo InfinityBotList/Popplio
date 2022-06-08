@@ -33,13 +33,12 @@ import (
 var json = jsoniter.ConfigCompatibleWithStandardLibrary
 
 const (
-	mongoUrl          = "mongodb://127.0.0.1:27017/infinity" // Is already public in 10 other places so
-	docsSite          = "https://docs.botlist.site"
-	mainSite          = "https://infinitybotlist.com"
-	statusPage        = "https://status.botlist.site"
-	apiBot            = "https://discord.com/api/oauth2/authorize?client_id=818419115068751892&permissions=140898593856&scope=bot%20applications.commands"
-	pgConn            = "postgresql://127.0.0.1:5432/backups?user=root&password=iblpublic"
-	voteTime   uint16 = 12 // 12 hours per vote
+	mongoUrl   = "mongodb://127.0.0.1:27017/infinity" // Is already public in 10 other places so
+	docsSite   = "https://docs.botlist.site"
+	mainSite   = "https://infinitybotlist.com"
+	statusPage = "https://status.botlist.site"
+	apiBot     = "https://discord.com/api/oauth2/authorize?client_id=818419115068751892&permissions=140898593856&scope=bot%20applications.commands"
+	pgConn     = "postgresql://127.0.0.1:5432/backups?user=root&password=iblpublic"
 
 	notFound         = "{\"message\":\"Slow down, bucko! We couldn't find this resource *anywhere*!\"}"
 	notFoundPage     = "{\"message\":\"Slow down, bucko! You got the path wrong or something but this endpoint doesn't exist!\"}"
@@ -47,6 +46,7 @@ const (
 	internalError    = "{\"message\":\"Slow down, bucko! Something went wrong on our end!\"}"
 	methodNotAllowed = "{\"message\":\"Slow down, bucko! That method is not allowed for this endpoint!!!\"}"
 	notApproved      = "{\"message\":\"Woah there, your bot needs to be approved. Calling the police right now over this infraction!\"}"
+	voteBanned       = "{\"message\":\"Slow down, bucko! You're banned from voting right now!\"}"
 	backTick         = "`"
 )
 
@@ -444,7 +444,7 @@ print(req.json())
 	r.HandleFunc("/users/{uid}/bots/{bid}/votes", rateLimitWrap(3, 5*time.Minute, "gvotes", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 
-		if r.Method != "GET" {
+		if r.Method != "GET" && r.Method != "PUT" {
 			w.WriteHeader(http.StatusMethodNotAllowed)
 			w.Write([]byte(methodNotAllowed))
 			return
@@ -463,15 +463,44 @@ print(req.json())
 			w.Write([]byte(badRequest))
 			return
 		} else {
-			options := options.FindOne().SetProjection(bson.M{"botID": 1, "type": 1})
+			if strings.HasPrefix(r.Header.Get("Authorization"), "User ") {
+				userCol := mongoDb.Collection("users")
 
-			err := col.FindOne(ctx, bson.M{"token": r.Header.Get("Authorization"), "botID": vars["bid"]}, options).Decode(&bot)
+				var user struct {
+					VoteBanned bool `bson:"vote_banned,omitempty"`
+				}
 
-			if err != nil {
-				log.Error(err)
-				w.WriteHeader(http.StatusUnauthorized)
-				w.Write([]byte(badRequest))
-				return
+				err := userCol.FindOne(ctx, bson.M{"userID": vars["uid"], "apiToken": strings.Replace(r.Header.Get("Authorization"), "User ", "", 1)}).Decode(&user)
+
+				if err == mongo.ErrNoDocuments {
+					log.Error(err)
+					w.WriteHeader(http.StatusUnauthorized)
+					w.Write([]byte(badRequest))
+					return
+				} else if err != nil {
+					log.Error(err)
+					w.WriteHeader(http.StatusInternalServerError)
+					w.Write([]byte(internalError))
+					return
+				}
+
+				if user.VoteBanned && r.Method == "PUT" {
+					w.WriteHeader(http.StatusForbidden)
+					w.Write([]byte(voteBanned))
+					return
+				}
+
+			} else {
+				options := options.FindOne().SetProjection(bson.M{"botID": 1, "type": 1})
+
+				err := col.FindOne(ctx, bson.M{"token": r.Header.Get("Authorization"), "botID": vars["bid"]}, options).Decode(&bot)
+
+				if err != nil {
+					log.Error(err)
+					w.WriteHeader(http.StatusUnauthorized)
+					w.Write([]byte(badRequest))
+					return
+				}
 			}
 		}
 
@@ -487,34 +516,35 @@ print(req.json())
 
 		cur, err := col.Find(ctx, bson.M{"botID": vars["bid"], "userID": vars["uid"]})
 
-		if err != nil {
+		if err != mongo.ErrNoDocuments {
 			log.Error(err)
 			w.WriteHeader(http.StatusNotFound)
 			w.Write([]byte(notFound))
 			return
-		}
+		} else if err != nil {
 
-		defer cur.Close(ctx)
+			defer cur.Close(ctx)
 
-		for cur.Next(ctx) {
-			var vote struct {
-				Date uint64 `bson:"date"`
+			for cur.Next(ctx) {
+				var vote struct {
+					Date uint64 `bson:"date"`
+				}
+
+				err := cur.Decode(&vote)
+
+				if err != nil {
+					log.Error(err)
+					w.WriteHeader(http.StatusInternalServerError)
+					w.Write([]byte(internalError))
+					return
+				}
+
+				votes = append(votes, vote.Date)
 			}
-
-			err := cur.Decode(&vote)
-
-			if err != nil {
-				log.Error(err)
-				w.WriteHeader(http.StatusInternalServerError)
-				w.Write([]byte(internalError))
-				return
-			}
-
-			votes = append(votes, vote.Date)
 		}
 
 		voteParsed := types.UserVote{
-			VoteTime: voteTime,
+			VoteTime: utils.GetVoteTime(),
 		}
 
 		sort.Slice(votes, func(i, j int) bool { return votes[i] < votes[j] })
@@ -523,21 +553,59 @@ print(req.json())
 
 		if len(votes) > 0 {
 			unixTs := time.Now().Unix()
-			if uint64(unixTs)-votes[len(votes)-1] < uint64(voteTime*60*60) {
+			if uint64(unixTs)-votes[len(votes)-1] < uint64(utils.GetVoteTime()*60*60) {
 				voteParsed.HasVoted = true
+				voteParsed.LastVoteTime = votes[len(votes)-1]
 			}
 		}
 
-		bytes, err := json.Marshal(voteParsed)
+		if r.Method == "GET" {
 
-		if err != nil {
-			log.Error(err)
-			w.WriteHeader(http.StatusInternalServerError)
-			w.Write([]byte(badRequest))
-			return
+			bytes, err := json.Marshal(voteParsed)
+
+			if err != nil {
+				log.Error(err)
+				w.WriteHeader(http.StatusInternalServerError)
+				w.Write([]byte(badRequest))
+				return
+			}
+
+			w.Write(bytes)
+		} else if r.Method == "PUT" {
+
+			if voteParsed.HasVoted {
+				timeElapsed := uint64(time.Now().Unix()) - voteParsed.LastVoteTime
+
+				timeToWait := uint64(utils.GetVoteTime()) - timeElapsed
+
+				// Convert timeToWait to hours, minutes, seconds
+				hours := timeToWait / (60 * 60)
+				timeToWait -= hours * (60 * 60)
+				minutes := timeToWait / 60
+				timeToWait -= minutes * 60
+				seconds := timeToWait
+
+				// Format it
+				timeToWaitStr := fmt.Sprintf("%d hrs, %d mins and %d secs", hours, minutes, seconds)
+
+				var alreadyVotedMsg = types.ApiError{
+					Message: "You have already voted for this bot. Please wait " + timeToWaitStr + " hours before voting again.",
+				}
+
+				bytes, err := json.Marshal(alreadyVotedMsg)
+
+				if err != nil {
+					log.Error(err)
+					w.WriteHeader(http.StatusInternalServerError)
+					w.Write([]byte(internalError))
+					return
+				}
+
+				w.WriteHeader(http.StatusForbidden)
+				w.Write(bytes)
+				return
+			}
 		}
-
-		w.Write(bytes)
 	}))
 
 	docs.AddDocs("GET", "/voteinfo", "voteinfo", "Get Vote Info", "Returns basic voting info such as if its a weekend double vote", []docs.Paramater{}, []string{"Votes"}, nil, types.VoteInfo{Weekend: true})
@@ -550,23 +618,8 @@ print(req.json())
 			return
 		}
 
-		// is it weekend yet?
-		curTime := time.Now()
-
-		var isWeekend bool
-
-		switch curTime.Weekday() {
-		// Friday is also a double vote
-		case time.Friday:
-			isWeekend = true
-		case time.Saturday:
-			isWeekend = true
-		case time.Sunday:
-			isWeekend = true
-		}
-
 		var payload = types.VoteInfo{
-			Weekend: isWeekend,
+			Weekend: utils.GetDoubleVote(),
 		}
 
 		b, err := json.Marshal(payload)
