@@ -75,6 +75,7 @@ func rateLimitWrap(reqs int, t time.Duration, bucket string, fn http.HandlerFunc
 			w.Header().Set("Access-Control-Allow-Origin", "*")
 		}
 		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
+		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE")
 		w.Header().Set("X-Ratelimit-Bucket", bucket)
 		w.Header().Set("X-Ratelimit-Bucket-Reqs-Allowed-Count", reqStr)
 		w.Header().Set("X-Ratelimit-Bucket-Reqs-Allowed-Second", timeStr)
@@ -485,6 +486,11 @@ print(req.json())
 	r.HandleFunc("/users/{uid}/bots/{bid}/votes", rateLimitWrap(3, 5*time.Minute, "gvotes", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 
+		if r.Method == "OPTIONS" {
+			w.Write([]byte(""))
+			return
+		}
+
 		if r.Method != "GET" && r.Method != "PUT" {
 			w.WriteHeader(http.StatusMethodNotAllowed)
 			w.Write([]byte(methodNotAllowed))
@@ -494,6 +500,7 @@ print(req.json())
 		vars := mux.Vars(r)
 
 		var bot struct {
+			BotID      string `bson:"botID"`
 			Type       string `bson:"type"`
 			VoteBanned bool   `bson:"vote_banned,omitempty"`
 		}
@@ -534,12 +541,30 @@ print(req.json())
 
 				options := options.FindOne().SetProjection(bson.M{"botID": 1, "type": 1})
 
-				err = col.FindOne(ctx, bson.M{"botID": vars["bid"]}, options).Decode(&bot)
+				err = col.FindOne(
+					ctx,
+					bson.M{
+						"$or": []bson.M{
+							{
+								"botName": vars["bid"],
+							},
+							{
+								"vanity": vars["bid"],
+							},
+							{
+								"botID": vars["bid"],
+							},
+						},
+					},
+					options,
+				).Decode(&bot)
+
+				vars["bid"] = bot.BotID
 
 				if err != nil {
 					log.Error(err)
-					w.WriteHeader(http.StatusUnauthorized)
-					w.Write([]byte(badRequest))
+					w.WriteHeader(http.StatusNotFound)
+					w.Write([]byte(notApproved))
 					return
 				}
 
@@ -657,7 +682,7 @@ print(req.json())
 			}
 
 			// Record new vote
-			r, err := col.InsertOne(ctx, bson.M{"botID": vars["bid"], "userID": vars["uid"], "date": (time.Now().Unix() / 1000)})
+			r, err := col.InsertOne(ctx, bson.M{"botID": vars["bid"], "userID": vars["uid"], "date": time.Now().Unix()})
 
 			if err != nil {
 				// Revert vote

@@ -836,6 +836,8 @@ func sendWebhook(webhook types.WebhookPost) error {
 		}
 
 		webhook.HMACAuth = bot.HMACAuth
+
+		log.Info("Using hmac: ", webhook.HMACAuth)
 	}
 
 	if isDiscordIntegration && !isDiscord(url) {
@@ -895,11 +897,13 @@ func sendWebhook(webhook types.WebhookPost) error {
 		for tries < 3 {
 			// Create response body
 			body := types.WebhookData{
-				Votes:  webhook.Votes,
-				UserID: webhook.UserID,
-				BotID:  webhook.BotID,
-				Test:   webhook.Test,
-				Time:   time.Now().Unix(),
+				Votes:        webhook.Votes,
+				UserID:       webhook.UserID,
+				BotID:        webhook.BotID,
+				UserIDLegacy: webhook.UserID,
+				BotIDLegacy:  webhook.BotID,
+				Test:         webhook.Test,
+				Time:         time.Now().Unix(),
 			}
 
 			data, err := json.Marshal(body)
