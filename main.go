@@ -51,6 +51,7 @@ const (
 )
 
 // Represents a moderated bucket typically used in 'combined' endpoints like Get/Create Votes which are just branches off a common function
+// This is also the concept used in so-called global ratelimits
 type moderatedBucket struct {
 	BucketName string
 
@@ -71,36 +72,92 @@ var (
 
 	// This is used when we need to moderate whether or not to ratelimit a request (such as on a combined endpoint like gvotes)
 	bucketModerators map[string]func(r *http.Request) moderatedBucket = make(map[string]func(r *http.Request) moderatedBucket)
+
+	// Default global ratelimit handler
+	globalBucket = moderatedBucket{BucketName: "global", Requests: 2000, Time: 1 * time.Hour}
 )
 
 func init() {
 	godotenv.Load()
 }
 
-func rateLimitWrap(reqsVal int, tVal time.Duration, bucketName string, fn http.HandlerFunc) http.HandlerFunc {
-	// Backup variables
-	bucket := bucketName
-	reqs := reqsVal
-	t := tVal
+func bucketHandle(bucket moderatedBucket, id string, w http.ResponseWriter, r *http.Request) bool {
+
+	rlKey := "rl:" + id + "-" + bucket.BucketName
+
+	v := redisCache.Get(r.Context(), rlKey).Val()
+
+	if v == "" {
+		v = "0"
+
+		err := redisCache.Set(ctx, rlKey, "0", bucket.Time).Err()
+
+		if err != nil {
+			log.Error(err)
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusInternalServerError)
+			w.Write([]byte(internalError))
+			return false
+		}
+	}
+
+	err := redisCache.Incr(ctx, rlKey).Err()
+
+	if err != nil {
+		log.Error(err)
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte(internalError))
+		return false
+	}
+
+	vInt, err := strconv.Atoi(v)
+
+	if err != nil {
+		log.Error(err)
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte(internalError))
+		return false
+	}
+
+	if vInt > bucket.Requests {
+		w.Header().Set("Content-Type", "application/json")
+		retryAfter := redisCache.TTL(ctx, rlKey).Val()
+		w.Header().Set("Retry-After", strconv.FormatFloat(retryAfter.Seconds(), 'g', -1, 64))
+
+		w.WriteHeader(http.StatusTooManyRequests)
+		w.Write([]byte("{\"message\":\"You're being rate limited!\"}"))
+
+		return false
+	}
+
+	w.Header().Set("X-Ratelimit-Req-Made", strconv.Itoa(vInt))
+	return true
+}
+
+func rateLimitWrap(reqs int, t time.Duration, bucket string, fn http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		// Check if moderated buckets are needed, if so use them
-		if modBucket, ok := bucketModerators[bucketName]; ok {
+		var reqBucket moderatedBucket = moderatedBucket{}
+		if modBucket, ok := bucketModerators[bucket]; ok {
+			log.Info("Found modBucket")
 			modBucketData := modBucket(r)
-			if !modBucketData.ChangeRL {
-				reqs = reqsVal
-				t = tVal
+			if modBucketData.ChangeRL {
+				reqBucket = modBucketData
 			} else {
-				reqs = modBucketData.Requests
-				t = modBucketData.Time
+				reqBucket.Requests = reqs
+				reqBucket.Time = t
+				reqBucket.BucketName = modBucketData.BucketName
 			}
-
-			bucket = modBucketData.BucketName
 		} else {
-			bucket = bucketName
+			reqBucket.Requests = reqs
+			reqBucket.Time = t
+			reqBucket.BucketName = bucket
 		}
 
-		reqStr := strconv.Itoa(reqs)
-		timeStr := strconv.FormatFloat(t.Seconds(), 'g', -1, 64)
+		reqStr := strconv.Itoa(reqBucket.Requests)
+		timeStr := strconv.FormatFloat(reqBucket.Time.Seconds(), 'g', -1, 64)
 
 		if strings.HasSuffix(r.Header.Get("Origin"), "infinitybots.gg") || strings.HasPrefix(r.Header.Get("Origin"), "localhost:") {
 			w.Header().Set("Access-Control-Allow-Origin", r.Header.Get("Origin"))
@@ -110,7 +167,7 @@ func rateLimitWrap(reqsVal int, tVal time.Duration, bucketName string, fn http.H
 		}
 		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
 		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE")
-		w.Header().Set("X-Ratelimit-Bucket", bucket)
+		w.Header().Set("X-Ratelimit-Bucket", reqBucket.BucketName)
 		w.Header().Set("X-Ratelimit-Bucket-Reqs-Allowed-Count", reqStr)
 		w.Header().Set("X-Ratelimit-Bucket-Reqs-Allowed-Second", timeStr)
 
@@ -187,56 +244,13 @@ func rateLimitWrap(reqsVal int, tVal time.Duration, bucketName string, fn http.H
 			id = fmt.Sprintf("%x", hasher.Sum(nil))
 		}
 
-		rlKey := "rl:" + id + "-" + bucket
-
-		v := redisCache.Get(r.Context(), rlKey).Val()
-
-		if v == "" {
-			v = "0"
-
-			err := redisCache.Set(ctx, rlKey, "0", t).Err()
-
-			if err != nil {
-				log.Error(err)
-				w.Header().Set("Content-Type", "application/json")
-				w.WriteHeader(http.StatusInternalServerError)
-				w.Write([]byte(internalError))
-				return
-			}
-		}
-
-		err := redisCache.Incr(ctx, rlKey).Err()
-
-		if err != nil {
-			log.Error(err)
-			w.Header().Set("Content-Type", "application/json")
-			w.WriteHeader(http.StatusInternalServerError)
-			w.Write([]byte(internalError))
+		if ok := bucketHandle(globalBucket, id, w, r); !ok {
 			return
 		}
 
-		vInt, err := strconv.Atoi(v)
-
-		if err != nil {
-			log.Error(err)
-			w.Header().Set("Content-Type", "application/json")
-			w.WriteHeader(http.StatusInternalServerError)
-			w.Write([]byte(internalError))
+		if ok := bucketHandle(reqBucket, id, w, r); !ok {
 			return
 		}
-
-		if vInt > reqs {
-			w.Header().Set("Content-Type", "application/json")
-			retryAfter := redisCache.TTL(ctx, rlKey).Val()
-			w.Header().Set("Retry-After", strconv.FormatFloat(retryAfter.Seconds(), 'g', -1, 64))
-
-			w.WriteHeader(http.StatusTooManyRequests)
-			w.Write([]byte("{\"message\":\"You're being rate limited!\"}"))
-
-			return
-		}
-
-		w.Header().Set("X-Ratelimit-Req-Made", strconv.Itoa(vInt))
 
 		w.Header().Set("Content-Type", "application/json")
 
@@ -523,22 +537,6 @@ print(req.json())
 		HasVoted:   true,
 	})
 
-	// This endpoint needs a bucket moderator to handle PUT and GET at the same time
-	bucketModerators["gvotes"] = func(r *http.Request) moderatedBucket {
-		newBucket := moderatedBucket{}
-
-		if r.Method == "PUT" {
-			newBucket.BucketName = "cvotes"
-			newBucket.ChangeRL = true
-			newBucket.Requests = 3
-			newBucket.Time = 2 * time.Minute
-		} else {
-			newBucket.BucketName = "gvotes"
-		}
-
-		return newBucket
-	}
-
 	r.HandleFunc("/users/{uid}/bots/{bid}/votes", rateLimitWrap(5, 1*time.Minute, "gvotes", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 
@@ -678,7 +676,7 @@ print(req.json())
 
 		findOptions := options.Find()
 
-		findOptions.SetSort(bson.D{{"date", -1}})
+		findOptions.SetSort(bson.M{"date": -1})
 
 		cur, err := col.Find(ctx, bson.M{"botID": vars["bid"], "userID": vars["uid"]}, findOptions)
 
@@ -1212,6 +1210,8 @@ print(req.json())
 		w.WriteHeader(http.StatusNotFound)
 		w.Write([]byte(notFoundPage))
 	})
+
+	createBucketMods()
 
 	integrase.StartServer(adp, r)
 }
