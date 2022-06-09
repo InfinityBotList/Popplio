@@ -50,6 +50,17 @@ const (
 	backTick         = "`"
 )
 
+// Represents a moderated bucket typically used in 'combined' endpoints like Get/Create Votes which are just branches off a common function
+type moderatedBucket struct {
+	BucketName string
+
+	// Whether or not to keep original rl
+	ChangeRL bool
+
+	Requests int
+	Time     time.Duration
+}
+
 var (
 	redisCache *redis.Client
 	mongoDb    *mongo.Database
@@ -57,16 +68,40 @@ var (
 	ctx        context.Context
 	pgCtx      context.Context
 	r          *mux.Router
+
+	// This is used when we need to moderate whether or not to ratelimit a request (such as on a combined endpoint like gvotes)
+	bucketModerators map[string]func(r *http.Request) moderatedBucket = make(map[string]func(r *http.Request) moderatedBucket)
 )
 
 func init() {
 	godotenv.Load()
 }
 
-func rateLimitWrap(reqs int, t time.Duration, bucket string, fn http.HandlerFunc) http.HandlerFunc {
-	reqStr := strconv.Itoa(reqs)
-	timeStr := strconv.FormatFloat(t.Seconds(), 'g', -1, 64)
+func rateLimitWrap(reqsVal int, tVal time.Duration, bucketName string, fn http.HandlerFunc) http.HandlerFunc {
+	// Backup variables
+	bucket := bucketName
+	reqs := reqsVal
+	t := tVal
 	return func(w http.ResponseWriter, r *http.Request) {
+		// Check if moderated buckets are needed, if so use them
+		if modBucket, ok := bucketModerators[bucketName]; ok {
+			modBucketData := modBucket(r)
+			if !modBucketData.ChangeRL {
+				reqs = reqsVal
+				t = tVal
+			} else {
+				reqs = modBucketData.Requests
+				t = modBucketData.Time
+			}
+
+			bucket = modBucketData.BucketName
+		} else {
+			bucket = bucketName
+		}
+
+		reqStr := strconv.Itoa(reqs)
+		timeStr := strconv.FormatFloat(t.Seconds(), 'g', -1, 64)
+
 		if strings.HasSuffix(r.Header.Get("Origin"), "infinitybots.gg") || strings.HasPrefix(r.Header.Get("Origin"), "localhost:") {
 			w.Header().Set("Access-Control-Allow-Origin", r.Header.Get("Origin"))
 			w.Header().Set("Access-Control-Allow-Credentials", "true")
@@ -487,7 +522,24 @@ print(req.json())
 		VoteTime:   12,
 		HasVoted:   true,
 	})
-	r.HandleFunc("/users/{uid}/bots/{bid}/votes", rateLimitWrap(5, 2*time.Minute, "gvotes", func(w http.ResponseWriter, r *http.Request) {
+
+	// This endpoint needs a bucket moderator to handle PUT and GET at the same time
+	bucketModerators["gvotes"] = func(r *http.Request) moderatedBucket {
+		newBucket := moderatedBucket{}
+
+		if r.Method == "PUT" {
+			newBucket.BucketName = "cvotes"
+			newBucket.ChangeRL = true
+			newBucket.Requests = 3
+			newBucket.Time = 2 * time.Minute
+		} else {
+			newBucket.BucketName = "gvotes"
+		}
+
+		return newBucket
+	}
+
+	r.HandleFunc("/users/{uid}/bots/{bid}/votes", rateLimitWrap(5, 1*time.Minute, "gvotes", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 
 		if r.Method != "GET" && r.Method != "PUT" {
@@ -674,6 +726,10 @@ print(req.json())
 				voteParsed.HasVoted = true
 				voteParsed.LastVoteTime = votes[0]
 			}
+		}
+
+		if voteParsed.LastVoteTime == 0 && len(votes) > 0 {
+			voteParsed.LastVoteTime = votes[0]
 		}
 
 		if r.Method == "GET" {
