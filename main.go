@@ -127,9 +127,20 @@ func bucketHandle(bucket moderatedBucket, id string, w http.ResponseWriter, r *h
 	if vInt > bucket.Requests {
 		w.Header().Set("Content-Type", "application/json")
 		retryAfter := redisCache.TTL(ctx, rlKey).Val()
+
+		if bucket.Global {
+			w.Header().Set("X-Global-Ratelimit", "true")
+		}
+
 		w.Header().Set("Retry-After", strconv.FormatFloat(retryAfter.Seconds(), 'g', -1, 64))
 
 		w.WriteHeader(http.StatusTooManyRequests)
+
+		// Set ratelimit to expire in more time if not global
+		if !bucket.Global {
+			redisCache.Expire(ctx, rlKey, retryAfter+2*time.Second)
+		}
+
 		w.Write([]byte("{\"message\":\"You're being rate limited!\"}"))
 
 		return false
