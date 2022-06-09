@@ -55,6 +55,9 @@ const (
 type moderatedBucket struct {
 	BucketName string
 
+	// Internally set, dont change
+	Global bool
+
 	// Whether or not to keep original rl
 	ChangeRL bool
 
@@ -74,7 +77,7 @@ var (
 	bucketModerators map[string]func(r *http.Request) moderatedBucket = make(map[string]func(r *http.Request) moderatedBucket)
 
 	// Default global ratelimit handler
-	globalBucket = moderatedBucket{BucketName: "global", Requests: 2000, Time: 1 * time.Hour}
+	defaultGlobalBucket = moderatedBucket{BucketName: "global", Requests: 2000, Time: 1 * time.Hour}
 )
 
 func init() {
@@ -132,14 +135,20 @@ func bucketHandle(bucket moderatedBucket, id string, w http.ResponseWriter, r *h
 		return false
 	}
 
-	w.Header().Set("X-Ratelimit-Req-Made", strconv.Itoa(vInt))
+	if bucket.Global {
+		w.Header().Set("X-Ratelimit-Global-Req-Made", strconv.Itoa(vInt))
+	} else {
+		w.Header().Set("X-Ratelimit-Req-Made", strconv.Itoa(vInt))
+	}
 	return true
 }
 
 func rateLimitWrap(reqs int, t time.Duration, bucket string, fn http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		// Check if moderated buckets are needed, if so use them
-		var reqBucket moderatedBucket = moderatedBucket{}
+		var reqBucket = moderatedBucket{}
+		var globalBucket = defaultGlobalBucket
+
 		if modBucket, ok := bucketModerators[bucket]; ok {
 			log.Info("Found modBucket")
 			modBucketData := modBucket(r)
@@ -156,8 +165,19 @@ func rateLimitWrap(reqs int, t time.Duration, bucket string, fn http.HandlerFunc
 			reqBucket.BucketName = bucket
 		}
 
-		reqStr := strconv.Itoa(reqBucket.Requests)
-		timeStr := strconv.FormatFloat(reqBucket.Time.Seconds(), 'g', -1, 64)
+		if modBucket, ok := bucketModerators["global"]; ok {
+			log.Info("Found globalBucket")
+			modBucketData := modBucket(r)
+			if modBucketData.ChangeRL {
+				globalBucket = modBucketData
+			} else {
+				globalBucket.Requests = reqs
+				globalBucket.Time = t
+				globalBucket.BucketName = modBucketData.BucketName
+			}
+		}
+
+		globalBucket.Global = true // Just in case
 
 		if strings.HasSuffix(r.Header.Get("Origin"), "infinitybots.gg") || strings.HasPrefix(r.Header.Get("Origin"), "localhost:") {
 			w.Header().Set("Access-Control-Allow-Origin", r.Header.Get("Origin"))
@@ -167,9 +187,15 @@ func rateLimitWrap(reqs int, t time.Duration, bucket string, fn http.HandlerFunc
 		}
 		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
 		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE")
+
 		w.Header().Set("X-Ratelimit-Bucket", reqBucket.BucketName)
-		w.Header().Set("X-Ratelimit-Bucket-Reqs-Allowed-Count", reqStr)
-		w.Header().Set("X-Ratelimit-Bucket-Reqs-Allowed-Second", timeStr)
+		w.Header().Set("X-Ratelimit-Bucket-Global", globalBucket.BucketName)
+
+		w.Header().Set("X-Ratelimit-Bucket-Global-Reqs-Allowed-Count", strconv.Itoa(globalBucket.Requests))
+		w.Header().Set("X-Ratelimit-Bucket-Reqs-Allowed-Count", strconv.Itoa(reqBucket.Requests))
+
+		w.Header().Set("X-Ratelimit-Bucket-Global-Reqs-Allowed-Second", strconv.FormatFloat(globalBucket.Time.Seconds(), 'g', -1, 64))
+		w.Header().Set("X-Ratelimit-Bucket-Reqs-Allowed-Second", strconv.FormatFloat(reqBucket.Time.Seconds(), 'g', -1, 64))
 
 		if r.Method == "OPTIONS" {
 			w.Write([]byte(""))
@@ -904,7 +930,7 @@ print(req.json())
 		},
 	}, []string{"Bots"}, nil, types.Bot{})
 
-	getBotsFn := func(w http.ResponseWriter, r *http.Request) {
+	getBotsFn := rateLimitWrap(10, 1*time.Minute, "gbot", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 
 		if r.Method != "GET" {
@@ -982,7 +1008,7 @@ print(req.json())
 		redisCache.Set(ctx, "bc-"+name, string(bytes), time.Minute*3)
 
 		w.Write(bytes)
-	}
+	})
 
 	docs.AddDocs("GET", "/users/{id}", "get_user", "Get User", "Gets a user by id or name, set ``resolve`` to true to also handle user names.",
 		[]docs.Paramater{
