@@ -8,7 +8,6 @@ import (
 	"io"
 	"net/http"
 	"os"
-	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -571,6 +570,33 @@ print(req.json())
 			} else {
 				options := options.FindOne().SetProjection(bson.M{"botID": 1, "type": 1})
 
+				err = col.FindOne(
+					ctx,
+					bson.M{
+						"$or": []bson.M{
+							{
+								"botName": vars["bid"],
+							},
+							{
+								"vanity": vars["bid"],
+							},
+							{
+								"botID": vars["bid"],
+							},
+						},
+					},
+					options,
+				).Decode(&bot)
+
+				vars["bid"] = bot.BotID
+
+				if err != nil {
+					log.Error(err)
+					w.WriteHeader(http.StatusNotFound)
+					w.Write([]byte(notApproved))
+					return
+				}
+
 				err := col.FindOne(ctx, bson.M{"token": r.Header.Get("Authorization"), "botID": vars["bid"]}, options).Decode(&bot)
 
 				if err != nil {
@@ -598,7 +624,11 @@ print(req.json())
 
 		col = mongoDb.Collection("votes")
 
-		cur, err := col.Find(ctx, bson.M{"botID": vars["bid"], "userID": vars["uid"]})
+		findOptions := options.Find()
+
+		findOptions.SetSort(bson.D{{"date", -1}})
+
+		cur, err := col.Find(ctx, bson.M{"botID": vars["bid"], "userID": vars["uid"]}, findOptions)
 
 		if err == nil || err == mongo.ErrNoDocuments {
 
@@ -631,22 +661,18 @@ print(req.json())
 			VoteTime: utils.GetVoteTime(),
 		}
 
-		sort.Slice(votes, func(i, j int) bool { return votes[i] < votes[j] })
-
 		voteParsed.Timestamps = votes
 
 		// In most cases, will be one but not always
 		if len(votes) > 0 {
-			if time.Now().UnixMilli() < votes[len(votes)-1] {
-				log.Error("detected illegal vote time", votes[len(votes)-1])
-				votes[len(votes)-1] = time.Now().UnixMilli()
+			if time.Now().UnixMilli() < votes[0] {
+				log.Error("detected illegal vote time", votes[0])
+				votes[0] = time.Now().UnixMilli()
 			}
 
-			log.Info("...", time.Now().UnixMilli()-votes[len(votes)-1], int64(utils.GetVoteTime())*60*60*1000)
-
-			if time.Now().UnixMilli()-votes[len(votes)-1] < int64(utils.GetVoteTime())*60*60*1000 {
+			if time.Now().UnixMilli()-votes[0] < int64(utils.GetVoteTime())*60*60*1000 {
 				voteParsed.HasVoted = true
-				voteParsed.LastVoteTime = votes[len(votes)-1]
+				voteParsed.LastVoteTime = votes[0]
 			}
 		}
 
@@ -671,7 +697,7 @@ print(req.json())
 				timeToWaitStr := (time.Duration(timeToWait) * time.Millisecond).String()
 
 				var alreadyVotedMsg = types.ApiError{
-					Message: "You have already voted for this bot. Please wait " + timeToWaitStr + " before voting again. Last vote time was" + strconv.Itoa(int(voteParsed.LastVoteTime)),
+					Message: "You have already voted for this bot. Please wait " + timeToWaitStr + " before voting again",
 				}
 
 				bytes, err := json.Marshal(alreadyVotedMsg)
