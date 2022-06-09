@@ -725,7 +725,7 @@ print(req.json())
 				oldVotes.Votes++
 			}
 
-			_, err = col.UpdateOne(ctx, bson.M{"botID": vars["bid"]}, bson.M{"$inc": bson.M{"votes": incr}})
+			_, err = mongoDb.Collection("bots").UpdateOne(ctx, bson.M{"botID": vars["bid"]}, bson.M{"$inc": bson.M{"votes": incr}})
 
 			if err != nil {
 				// Revert vote
@@ -737,33 +737,43 @@ print(req.json())
 				return
 			}
 
-			// Send webhook
-			err = sendWebhook(types.WebhookPost{
-				BotID:  vars["bid"],
-				UserID: vars["uid"],
-				Votes:  oldVotes.Votes,
-			})
-
-			if err != nil {
-				log.Error(err)
-
-				errPayload := types.ApiError{
-					Message: "The vote went successful but there was a issue notifying this bot over webhooks:" + err.Error(),
-				}
-
-				bytes, err := json.Marshal(errPayload)
+			// Send webhook in a goroutine refunding the vote if it failed
+			go func() {
+				err = sendWebhook(types.WebhookPost{
+					BotID:  vars["bid"],
+					UserID: vars["uid"],
+					Votes:  oldVotes.Votes,
+				})
 
 				if err != nil {
-					log.Error(err)
-					w.WriteHeader(http.StatusInternalServerError)
-					w.Write([]byte(internalError))
-					return
-				}
+					log.Error("Webhook error: ", err, ". Refunding vote...")
+					_, refErr := col.DeleteOne(ctx, bson.M{"_id": r.InsertedID})
 
-				w.WriteHeader(http.StatusInternalServerError)
-				w.Write(bytes)
-				return
-			}
+					if refErr != nil {
+						log.Error("Error when refunding vote: ", refErr)
+					}
+
+					_, refErr = mongoDb.Collection("bots").UpdateOne(ctx, bson.M{"botID": vars["bid"]}, bson.M{"$inc": bson.M{"votes": -1 * incr}})
+
+					if refErr != nil {
+						log.Error("Error when refunding vote: ", refErr)
+					}
+
+					mongoDb.Collection("notifications").InsertOne(ctx, bson.M{
+						"userID":  vars["uid"],
+						"url":     "https://infinitybots.gg/bots/" + vars["bid"],
+						"message": "Whoa there! We've failed to notify this bot about this vote. The error was: " + err.Error() + ". We have refunded this vote so you can retry voting for this bot",
+						"type":    "error",
+					})
+				} else {
+					mongoDb.Collection("notifications").InsertOne(ctx, bson.M{
+						"userID":  vars["uid"],
+						"url":     "https://infinitybots.gg/bots/" + vars["bid"],
+						"message": "Successfully voted for bot with ID of " + vars["bid"],
+						"type":    "info",
+					})
+				}
+			}()
 
 			w.WriteHeader(http.StatusOK)
 			w.Write([]byte(success))
