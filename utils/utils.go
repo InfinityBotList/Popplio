@@ -83,7 +83,7 @@ func RandString(n int) string {
 	return *(*string)(unsafe.Pointer(&b))
 }
 
-func GetDiscordUser(s *discordgo.Session, redisCache *redis.Client, ctx context.Context, id string) (*discordgo.User, error) {
+func GetDiscordUser(s *discordgo.Session, redisCache *redis.Client, ctx context.Context, id string) (*types.DiscordUser, error) {
 	// Check if in discordgo session first
 
 	var userExpiryTime = 4 * time.Hour
@@ -95,8 +95,37 @@ func GetDiscordUser(s *discordgo.Session, redisCache *redis.Client, ctx context.
 			member, err := s.State.Member(guild.ID, id)
 
 			if err == nil {
-				redisCache.Set(ctx, "uobj:"+id, member, userExpiryTime)
-				return member.User, err
+				p, pErr := s.State.Presence(guild.ID, id)
+
+				if pErr != nil {
+					p = &discordgo.Presence{
+						User:   member.User,
+						Status: discordgo.StatusOffline,
+					}
+				}
+
+				obj := &types.DiscordUser{
+					ID:            id,
+					Username:      member.User.Username,
+					Avatar:        member.User.AvatarURL(""),
+					Discriminator: member.User.Discriminator,
+					Bot:           member.User.Bot,
+					Nickname:      member.Nick,
+					Guild:         guild.ID,
+					Mention:       member.User.Mention(),
+					Status:        p.Status,
+					System:        member.User.System,
+					Flags:         member.User.Flags,
+					Tag:           member.User.Username + "#" + member.User.Discriminator,
+				}
+
+				bytes, err := json.Marshal(obj)
+
+				if err == nil {
+					redisCache.Set(ctx, "uobj:"+id, bytes, userExpiryTime)
+				}
+
+				return obj, nil
 			}
 		}
 	}
@@ -107,7 +136,7 @@ func GetDiscordUser(s *discordgo.Session, redisCache *redis.Client, ctx context.
 	if err == nil {
 		// Try to unmarshal
 
-		var user discordgo.User
+		var user types.DiscordUser
 
 		err = json.Unmarshal([]byte(userBytes), &user)
 
@@ -123,10 +152,25 @@ func GetDiscordUser(s *discordgo.Session, redisCache *redis.Client, ctx context.
 		return nil, err
 	}
 
-	// Store in redis
-	redisCache.Set(ctx, "uobj:"+id, user, userExpiryTime)
+	obj := &types.DiscordUser{
+		ID:            id,
+		Username:      user.Username,
+		Avatar:        user.AvatarURL(""),
+		Discriminator: user.Discriminator,
+		Bot:           user.Bot,
+		Nickname:      "Member not found",
+		Guild:         "",
+		Mention:       user.Mention(),
+		Status:        discordgo.StatusOffline,
+		System:        user.System,
+		Flags:         user.Flags,
+		Tag:           user.Username + "#" + user.Discriminator,
+	}
 
-	return user, nil
+	// Store in redis
+	redisCache.Set(ctx, "uobj:"+id, obj, userExpiryTime)
+
+	return obj, nil
 }
 
 func GetDoubleVote() bool {

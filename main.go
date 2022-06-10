@@ -315,11 +315,15 @@ func main() {
 	r = mux.NewRouter()
 
 	// Init redisCache
-	redisCache = redis.NewClient(&redis.Options{})
+	rOptions, err := redis.ParseURL("redis://localhost:6379")
+
+	if err != nil {
+		panic(err)
+	}
+
+	redisCache = redis.NewClient(rOptions)
 
 	pgCtx = context.Background()
-
-	var err error
 
 	pool, err = pgxpool.Connect(pgCtx, pgConn)
 
@@ -377,6 +381,37 @@ func main() {
 	r.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.Write([]byte(helloWorld))
+	})
+
+	r.HandleFunc("/_duser/{id}", func(w http.ResponseWriter, r *http.Request) {
+		if r.Header.Get("X-Forwarded-For") != "" {
+			// Request proxied, cancel
+			w.Header().Set("Content-Type", "application/json")
+			w.Write([]byte(notFound))
+			return
+		}
+
+		var id = mux.Vars(r)["id"]
+
+		user, err := utils.GetDiscordUser(metro, redisCache, ctx, id)
+
+		if err != nil {
+			log.Error(err)
+			w.WriteHeader(http.StatusInternalServerError)
+			w.Write([]byte(err.Error()))
+			return
+		}
+
+		bytes, err := json.Marshal(user)
+
+		if err != nil {
+			log.Error(err)
+			w.WriteHeader(http.StatusInternalServerError)
+			w.Write([]byte(err.Error()))
+			return
+		}
+
+		w.Write(bytes)
 	})
 
 	docs.AddDocs("GET", "/openapi", "openapi", "Get OpenAPI", "Gets the OpenAPI spec", []docs.Paramater{}, []string{"System"}, nil, map[string]any{})

@@ -262,7 +262,7 @@ func performAct(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		bot.Avatar = m.AvatarURL("")
+		bot.Avatar = m.Avatar
 
 		t, err := template.ParseFiles("html/vote.html")
 
@@ -838,6 +838,11 @@ func sendWebhook(webhook types.WebhookPost) error {
 		webhook.HMACAuth = bot.HMACAuth
 
 		log.Info("Using hmac: ", webhook.HMACAuth)
+	}
+
+	if utils.IsNone(&url) {
+		log.Warning("Refusing to continue as no webhook")
+		return nil
 	}
 
 	if isDiscordIntegration && !isDiscord(url) {
