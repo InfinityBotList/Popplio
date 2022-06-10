@@ -1303,6 +1303,12 @@ print(req.json())
 	}))
 
 	r.HandleFunc("/_protozoa/notifications/{id}/sub", rateLimitWrap(10, 1*time.Minute, "notif_info", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != "POST" {
+			w.WriteHeader(http.StatusMethodNotAllowed)
+			w.Write([]byte(methodNotAllowed))
+			return
+		}
+
 		var subscription struct {
 			Auth     string `json:"auth"`
 			P256dh   string `json:"p256dh"`
@@ -1388,6 +1394,81 @@ print(req.json())
 		notifChannel <- types.Notification{
 			NotifID: notifId,
 			Message: []byte(testNotif),
+		}
+
+		w.Write([]byte(success))
+	}))
+
+	r.HandleFunc("/_protozoa/reminders/{id}", rateLimitWrap(10, 1*time.Minute, "reminder_info", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != "PUT" {
+			w.WriteHeader(http.StatusMethodNotAllowed)
+			w.Write([]byte(methodNotAllowed))
+			return
+		}
+
+		vars := mux.Vars(r)
+
+		id := vars["id"]
+
+		if id == "" {
+			w.WriteHeader(http.StatusBadRequest)
+			w.Write([]byte(badRequest))
+			return
+		}
+
+		bid := r.URL.Query().Get("bot_id")
+
+		if bid == "" {
+			w.WriteHeader(http.StatusBadRequest)
+			w.Write([]byte(badRequest))
+			return
+		}
+
+		// Fetch auth from mongodb
+		col := mongoDb.Collection("users")
+
+		var user struct {
+			ID string `bson:"userID"`
+		}
+
+		if r.Header.Get("Authorization") == "" {
+			w.WriteHeader(http.StatusUnauthorized)
+			w.Write([]byte(badRequest))
+			return
+		} else {
+			options := options.FindOne().SetProjection(bson.M{"botID": 1, "type": 1})
+
+			err := col.FindOne(ctx, bson.M{"apiToken": strings.Replace(r.Header.Get("Authorization"), "User ", "", 1), "userID": id}, options).Decode(&user)
+
+			if err != nil {
+				log.Error(err)
+				w.WriteHeader(http.StatusUnauthorized)
+				w.Write([]byte(badRequest))
+				return
+			}
+		}
+
+		// Add subscription to collection
+		col = mongoDb.Collection("reminders")
+
+		// Temp struct for decode
+		err := col.FindOne(ctx, bson.M{"userID": id, "botID": bid}).Err()
+
+		if err != nil {
+			if err == mongo.ErrNoDocuments {
+				col.InsertOne(ctx, bson.M{
+					"userID":    id,
+					"botID":     bid,
+					"createdAt": time.Now(),
+				})
+			} else {
+				log.Error(err)
+				w.WriteHeader(http.StatusInternalServerError)
+				w.Write([]byte(internalError))
+				return
+			}
+		} else {
+			col.UpdateOne(ctx, bson.M{"userID": id, "botID": bid}, bson.M{"$set": bson.M{"updatedAt": time.Now()}})
 		}
 
 		w.Write([]byte(success))
