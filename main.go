@@ -842,7 +842,7 @@ print(req.json())
 					return
 				}
 
-				w.WriteHeader(http.StatusForbidden)
+				w.WriteHeader(http.StatusBadRequest)
 				w.Write(bytes)
 				return
 			}
