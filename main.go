@@ -820,10 +820,16 @@ print(req.json())
 
 				timeToWait := int64(utils.GetVoteTime())*60*60*1000 - timeElapsed
 
-				timeToWaitStr := (time.Duration(timeToWait) * time.Millisecond).String()
+				timeToWaitTime := (time.Duration(timeToWait) * time.Millisecond)
+
+				hours := timeToWaitTime / time.Hour
+				mins := (timeToWaitTime - (hours * time.Hour)) / time.Minute
+				secs := (timeToWaitTime - (hours*time.Hour + mins*time.Minute)) / time.Second
+
+				timeStr := fmt.Sprintf("%02d hours, %02d minutes. %02d seconds", hours, mins, secs)
 
 				var alreadyVotedMsg = types.ApiError{
-					Message: "You have already voted for this bot. Please wait " + timeToWaitStr + " before voting again",
+					Message: "Please wait " + timeStr + " before voting again",
 				}
 
 				bytes, err := json.Marshal(alreadyVotedMsg)
