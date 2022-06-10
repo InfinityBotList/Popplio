@@ -47,6 +47,7 @@ const (
 	notApproved      = "{\"message\":\"Woah there, your bot needs to be approved. Calling the police right now over this infraction!\"}"
 	voteBanned       = "{\"message\":\"Slow down, bucko! Either you or this bot is banned from voting right now!\"}"
 	success          = "{\"message\":\"Success!\"}"
+	testNotif        = "{\"message\":\"Test notification!\", \"title\":\"Test notification!\"}"
 	backTick         = "`"
 )
 
@@ -1160,7 +1161,6 @@ print(req.json())
 				Schema:   docs.IdSchema,
 			},
 		}, []string{"Bots"}, nil, []types.Review{})
-
 	r.HandleFunc("/bots/{id}/reviews", rateLimitWrap(10, 1*time.Minute, "greview", func(w http.ResponseWriter, r *http.Request) {
 		col := mongoDb.Collection("reviews")
 
@@ -1279,6 +1279,118 @@ print(req.json())
 			w.Write(bytes)
 			return
 		}
+	}))
+
+	// Internal notification api
+
+	r.HandleFunc("/_protozoa/notifications/info", rateLimitWrap(10, 1*time.Minute, "notif_info", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+
+		data := map[string]any{
+			"public_key": os.Getenv("VAPID_PUBLIC_KEY"),
+		}
+
+		bytes, err := json.Marshal(data)
+
+		if err != nil {
+			log.Error(err)
+			w.WriteHeader(http.StatusInternalServerError)
+			w.Write([]byte(internalError))
+			return
+		}
+
+		w.Write(bytes)
+	}))
+
+	r.HandleFunc("/_protozoa/notifications/{id}/sub", rateLimitWrap(10, 1*time.Minute, "notif_info", func(w http.ResponseWriter, r *http.Request) {
+		var subscription struct {
+			Auth     string `json:"auth"`
+			P256dh   string `json:"p256dh"`
+			Endpoint string `json:"endpoint"`
+		}
+
+		vars := mux.Vars(r)
+
+		id := vars["id"]
+
+		if id == "" {
+			w.WriteHeader(http.StatusBadRequest)
+			w.Write([]byte(badRequest))
+			return
+		}
+
+		defer r.Body.Close()
+
+		bodyBytes, err := io.ReadAll(r.Body)
+
+		if err != nil {
+			log.Error(err)
+			w.WriteHeader(http.StatusInternalServerError)
+			w.Write([]byte(internalError))
+			return
+		}
+
+		err = json.Unmarshal(bodyBytes, &subscription)
+
+		if err != nil {
+			log.Error(err)
+			w.WriteHeader(http.StatusInternalServerError)
+			w.Write([]byte(internalError))
+			return
+		}
+
+		if subscription.Auth == "" || subscription.P256dh == "" {
+			w.WriteHeader(http.StatusBadRequest)
+			w.Write([]byte(badRequest))
+			return
+		}
+
+		// Fetch auth from mongodb
+		col := mongoDb.Collection("users")
+
+		var user struct {
+			ID string `bson:"userID"`
+		}
+
+		if r.Header.Get("Authorization") == "" {
+			w.WriteHeader(http.StatusUnauthorized)
+			w.Write([]byte(badRequest))
+			return
+		} else {
+			options := options.FindOne().SetProjection(bson.M{"botID": 1, "type": 1})
+
+			err := col.FindOne(ctx, bson.M{"apiToken": strings.Replace(r.Header.Get("Authorization"), "User ", "", 1), "userID": id}, options).Decode(&user)
+
+			if err != nil {
+				log.Error(err)
+				w.WriteHeader(http.StatusUnauthorized)
+				w.Write([]byte(badRequest))
+				return
+			}
+		}
+
+		// Store new subscription
+
+		notifId := utils.RandString(512)
+
+		col = mongoDb.Collection("poppypaw")
+
+		col.InsertOne(ctx, bson.M{
+			"id":        id,
+			"notifId":   notifId,
+			"auth":      subscription.Auth,
+			"p256dh":    subscription.P256dh,
+			"endpoint":  subscription.Endpoint,
+			"createdAt": time.Now(),
+		})
+
+		// Fan out test notification
+		notifChannel <- types.Notification{
+			NotifID: notifId,
+			Message: []byte(testNotif),
+		}
+
+		w.Write([]byte(success))
 	}))
 
 	adp := DummyAdapter{}

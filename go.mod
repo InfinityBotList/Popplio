@@ -21,6 +21,7 @@ require (
 	github.com/go-openapi/jsonpointer v0.19.5 // indirect
 	github.com/go-openapi/swag v0.19.15 // indirect
 	github.com/go-stack/stack v1.8.0 // indirect
+	github.com/golang-jwt/jwt v3.2.2+incompatible // indirect
 	github.com/golang/snappy v0.0.1 // indirect
 	github.com/gorilla/websocket v1.4.2 // indirect
 	github.com/iancoleman/orderedmap v0.2.0 // indirect
@@ -50,6 +51,7 @@ require (
 )
 
 require (
+	github.com/SherClockHolmes/webpush-go v1.2.0
 	github.com/davidebianchi/gswagger v0.3.0
 	github.com/gorilla/handlers v1.5.1
 	github.com/invopop/jsonschema v0.4.0

@@ -190,3 +190,8 @@ type DiscordUser struct {
 	Flags         int              `json:"flags"`
 	Tag           string           `json:"tag"`
 }
+
+type Notification struct {
+	NotifID string
+	Message []byte
+}
