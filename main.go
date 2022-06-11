@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"html/template"
 	"io"
+	"math"
 	"net/http"
 	"os"
 	"strconv"
@@ -622,7 +623,7 @@ func main() {
 
 		next := os.Getenv("SITE_URL") + "/bots/all?page=" + strconv.FormatUint(pageNum+1, 10)
 
-		if int64(pageNum+1) > count/perPage {
+		if float64(pageNum+1) > math.Ceil(float64(count)/perPage) {
 			next = ""
 		}
 
@@ -1580,6 +1581,39 @@ print(req.json())
 		} else if r.Method == "PUT" {
 			// Add subscription to collection
 			bid := r.URL.Query().Get("bot_id")
+
+			var bot struct {
+				ID string `json:"botID"`
+			}
+
+			options := options.FindOne().SetProjection(bson.M{"botID": 1})
+
+			err = col.FindOne(
+				ctx,
+				bson.M{
+					"$or": []bson.M{
+						{
+							"botName": bid,
+						},
+						{
+							"vanity": bid,
+						},
+						{
+							"botID": bid,
+						},
+					},
+				},
+				options,
+			).Decode(&bot)
+
+			if err != nil {
+				log.Error(err)
+				w.WriteHeader(http.StatusNotFound)
+				w.Write([]byte(notFound))
+				return
+			}
+
+			bid = bot.ID
 
 			if bid == "" {
 				w.WriteHeader(http.StatusBadRequest)
