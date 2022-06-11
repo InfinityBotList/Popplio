@@ -41,6 +41,14 @@ type Bot struct {
 	VoteBanned       bool               `bson:"vote_banned,omitempty" json:"vote_banned"`
 }
 
+type AllBots struct {
+	Count    int64  `json:"count"`
+	PerPage  uint64 `json:"per_page"`
+	Next     string `json:"next"`
+	Previous string `json:"previous"`
+	Results  []Bot  `json:"bots"`
+}
+
 // A review is a review on ibl
 type Review struct {
 	ObjID       primitive.ObjectID `bson:"_id" json:"_id"`
@@ -194,4 +202,17 @@ type DiscordUser struct {
 type Notification struct {
 	NotifID string
 	Message []byte
+}
+
+type Reminder struct {
+	UserID    string `bson:"userID" json:"user_id"`
+	BotID     string `bson:"botID" json:"bot_id"`
+	CreatedAt int64  `bson:"createdAt" json:"created_at"`
+	LastAcked int64  `bson:"lastAcked" json:"last_acked"`
+}
+
+type Message struct {
+	Message string `json:"message"`
+	Title   string `json:"title"`
+	Icon    string `json:"icon"`
 }

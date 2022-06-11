@@ -374,6 +374,7 @@ func dataRequestTask(taskId string, id string, ip string, del bool) {
 		Sessions     []any            `json:"sessions"`
 		UniqueClicks []string         `json:"unique_clicks"`
 		Backups      []any            `json:"backups"`
+		Poppypaw     []map[string]any `json:"poppypaw"`
 	}
 
 	var userInfo map[string]any
@@ -443,6 +444,49 @@ func dataRequestTask(taskId string, id string, ip string, del bool) {
 
 	finalDump.Votes = votes
 
+	// Poppypaw (Vote reminders)
+	redisCache.SetArgs(ctx, taskId, "Fetching poppypaw data on this user", redis.SetArgs{
+		KeepTTL: true,
+	}).Err()
+
+	col = mongoDb.Collection("poppypaw")
+
+	var poppypaw []map[string]any
+
+	cur, err = col.Find(ctx, bson.M{"userID": id})
+
+	if err != nil {
+		log.Error("Failed to get votes")
+		redisCache.SetArgs(ctx, taskId, "Failed to fetch poppypaw data: "+err.Error(), redis.SetArgs{
+			KeepTTL: true,
+		})
+		return
+	}
+
+	err = cur.All(ctx, &poppypaw)
+
+	if err != nil {
+		log.Error("Failed to decode vote")
+		redisCache.SetArgs(ctx, taskId, "Failed to fetch poppypaw data: "+err.Error(), redis.SetArgs{
+			KeepTTL: true,
+		})
+		return
+	}
+
+	if del {
+		_, err := col.DeleteMany(ctx, bson.M{"userID": id})
+		if err != nil {
+			log.Error("Failed to delete poppypaw")
+			redisCache.SetArgs(ctx, taskId, "Failed to delete poppypaw: "+err.Error(), redis.SetArgs{
+				KeepTTL: true,
+			})
+			return
+		}
+	}
+
+	finalDump.Poppypaw = poppypaw
+
+	// Reviews
 	redisCache.SetArgs(ctx, taskId, "Fetching review data on this user", redis.SetArgs{
 		KeepTTL: true,
 	}).Err()

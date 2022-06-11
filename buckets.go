@@ -23,4 +23,19 @@ func createBucketMods() {
 
 		return newBucket
 	}
+
+	bucketModerators["greminder"] = func(r *http.Request) moderatedBucket {
+		newBucket := moderatedBucket{}
+
+		if r.Method == "PUT" {
+			newBucket.BucketName = "creminder"
+			newBucket.ChangeRL = true
+			newBucket.Requests = 5
+			newBucket.Time = 1 * time.Minute
+		} else {
+			newBucket.BucketName = "greminder"
+		}
+
+		return newBucket
+	}
 }

@@ -47,7 +47,7 @@ const (
 	notApproved      = "{\"message\":\"Woah there, your bot needs to be approved. Calling the police right now over this infraction!\"}"
 	voteBanned       = "{\"message\":\"Slow down, bucko! Either you or this bot is banned from voting right now!\"}"
 	success          = "{\"message\":\"Success!\"}"
-	testNotif        = "{\"message\":\"Test notification!\", \"title\":\"Test notification!\"}"
+	testNotif        = "{\"message\":\"Test notification!\", \"title\":\"Test notification!\",\"icon\":\"https://i.imgur.com/GRo0Zug.png\"}"
 	backTick         = "`"
 )
 
@@ -543,6 +543,109 @@ func main() {
 
 		w.Write([]byte("{\"error\":null}"))
 	}
+
+	docs.AddDocs("GET", "/bots/all", "get_all_bots", "Get All Bots", "Gets all bots on the list", []docs.Paramater{}, []string{"System"}, nil, types.AllBots{})
+	r.Handle("/bots/all", rateLimitWrap(5, 1*time.Minute, "allbots", func(w http.ResponseWriter, r *http.Request) {
+		const perPage = 10
+
+		if r.Method != "GET" {
+			w.WriteHeader(http.StatusMethodNotAllowed)
+			w.Write([]byte(methodNotAllowed))
+			return
+		}
+
+		page := r.URL.Query().Get("page")
+
+		if page == "" {
+			page = "1"
+		}
+
+		pageNum, err := strconv.ParseUint(page, 10, 32)
+
+		if err != nil {
+			w.WriteHeader(http.StatusBadRequest)
+			w.Write([]byte(badRequest))
+			return
+		}
+
+		limit := perPage
+		offset := (pageNum - 1) * perPage
+
+		options := options.Find().SetSort(bson.M{"created": -1}).SetLimit(int64(limit)).SetSkip(int64(offset))
+
+		col := mongoDb.Collection("bots")
+
+		var bots []types.Bot
+
+		cur, err := col.Find(ctx, bson.M{}, options)
+
+		if err != nil {
+			log.Error(err)
+			w.WriteHeader(http.StatusInternalServerError)
+			w.Write([]byte(internalError))
+			return
+		}
+
+		defer cur.Close(ctx)
+
+		for cur.Next(ctx) {
+			var bot types.Bot
+
+			err := cur.Decode(&bot)
+
+			if err != nil {
+				log.Error(err)
+				continue
+			}
+
+			bots = append(bots, bot)
+		}
+
+		if err := cur.Err(); err != nil {
+			log.Error(err)
+		}
+
+		previous := os.Getenv("SITE_URL") + "/bots/all?page=" + strconv.FormatUint(pageNum-1, 10)
+
+		if pageNum-1 < 1 || pageNum == 0 {
+			previous = ""
+		}
+
+		count, err := col.CountDocuments(ctx, bson.M{})
+
+		if err != nil {
+			log.Error(err)
+			w.WriteHeader(http.StatusInternalServerError)
+			w.Write([]byte(internalError))
+			return
+		}
+
+		next := os.Getenv("SITE_URL") + "/bots/all?page=" + strconv.FormatUint(pageNum+1, 10)
+
+		if int64(pageNum+1) > count/perPage {
+			next = ""
+		}
+
+		data := types.AllBots{
+			Count:    count,
+			Results:  bots,
+			PerPage:  perPage,
+			Previous: previous,
+			Next:     next,
+		}
+
+		bytes, err := json.Marshal(data)
+
+		if err != nil {
+			log.Error(err)
+			w.WriteHeader(http.StatusInternalServerError)
+			w.Write([]byte(internalError))
+			return
+		}
+
+		w.Write(bytes)
+
+	}))
 
 	docs.AddDocs("POST", "/bots/stats", "post_stats", "Post New Stats", `
 This endpoint can be used to post the stats of a bot.
@@ -1354,18 +1457,14 @@ print(req.json())
 		// Fetch auth from mongodb
 		col := mongoDb.Collection("users")
 
-		var user struct {
-			ID string `bson:"userID"`
-		}
-
 		if r.Header.Get("Authorization") == "" {
 			w.WriteHeader(http.StatusUnauthorized)
 			w.Write([]byte(badRequest))
 			return
 		} else {
-			options := options.FindOne().SetProjection(bson.M{"botID": 1, "type": 1})
+			options := options.FindOne().SetProjection(bson.M{"userID": 1})
 
-			err := col.FindOne(ctx, bson.M{"apiToken": strings.Replace(r.Header.Get("Authorization"), "User ", "", 1), "userID": id}, options).Decode(&user)
+			err := col.FindOne(ctx, bson.M{"apiToken": strings.Replace(r.Header.Get("Authorization"), "User ", "", 1), "userID": id}, options).Err()
 
 			if err != nil {
 				log.Error(err)
@@ -1399,8 +1498,8 @@ print(req.json())
 		w.Write([]byte(success))
 	}))
 
-	r.HandleFunc("/_protozoa/reminders/{id}", rateLimitWrap(10, 1*time.Minute, "reminder_info", func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != "PUT" {
+	r.HandleFunc("/_protozoa/reminders/{id}", rateLimitWrap(10, 1*time.Minute, "greminder", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != "PUT" && r.Method != "GET" {
 			w.WriteHeader(http.StatusMethodNotAllowed)
 			w.Write([]byte(methodNotAllowed))
 			return
@@ -1416,29 +1515,17 @@ print(req.json())
 			return
 		}
 
-		bid := r.URL.Query().Get("bot_id")
-
-		if bid == "" {
-			w.WriteHeader(http.StatusBadRequest)
-			w.Write([]byte(badRequest))
-			return
-		}
-
 		// Fetch auth from mongodb
 		col := mongoDb.Collection("users")
-
-		var user struct {
-			ID string `bson:"userID"`
-		}
 
 		if r.Header.Get("Authorization") == "" {
 			w.WriteHeader(http.StatusUnauthorized)
 			w.Write([]byte(badRequest))
 			return
 		} else {
-			options := options.FindOne().SetProjection(bson.M{"botID": 1, "type": 1})
+			options := options.FindOne().SetProjection(bson.M{"userID": 1})
 
-			err := col.FindOne(ctx, bson.M{"apiToken": strings.Replace(r.Header.Get("Authorization"), "User ", "", 1), "userID": id}, options).Decode(&user)
+			err := col.FindOne(ctx, bson.M{"apiToken": strings.Replace(r.Header.Get("Authorization"), "User ", "", 1), "userID": id}, options).Err()
 
 			if err != nil {
 				log.Error(err)
@@ -1448,30 +1535,83 @@ print(req.json())
 			}
 		}
 
-		// Add subscription to collection
-		col = mongoDb.Collection("reminders")
+		if r.Method == "GET" {
+			// Fetch reminder from mongodb
+			col = mongoDb.Collection("silverpelt")
 
-		// Temp struct for decode
-		err := col.FindOne(ctx, bson.M{"userID": id, "botID": bid}).Err()
+			var reminder []types.Reminder
 
-		if err != nil {
-			if err == mongo.ErrNoDocuments {
-				col.InsertOne(ctx, bson.M{
-					"userID":    id,
-					"botID":     bid,
-					"createdAt": time.Now(),
-				})
-			} else {
+			cur, err := col.Find(ctx, bson.M{"userID": id})
+
+			if err != nil {
 				log.Error(err)
 				w.WriteHeader(http.StatusInternalServerError)
 				w.Write([]byte(internalError))
 				return
 			}
-		} else {
-			col.UpdateOne(ctx, bson.M{"userID": id, "botID": bid}, bson.M{"$set": bson.M{"updatedAt": time.Now()}})
-		}
 
-		w.Write([]byte(success))
+			defer cur.Close(ctx)
+
+			for cur.Next(ctx) {
+				var r types.Reminder
+
+				err := cur.Decode(&r)
+
+				if err != nil {
+					log.Error(err)
+					w.WriteHeader(http.StatusInternalServerError)
+					w.Write([]byte(internalError))
+					return
+				}
+
+				reminder = append(reminder, r)
+			}
+
+			bytes, err := json.Marshal(reminder)
+
+			if err != nil {
+				log.Error(err)
+				w.WriteHeader(http.StatusInternalServerError)
+				w.Write([]byte(internalError))
+				return
+			}
+
+			w.Write(bytes)
+		} else if r.Method == "PUT" {
+			// Add subscription to collection
+			bid := r.URL.Query().Get("bot_id")
+
+			if bid == "" {
+				w.WriteHeader(http.StatusBadRequest)
+				w.Write([]byte(badRequest))
+				return
+			}
+
+			col = mongoDb.Collection("silverpelt")
+
+			// Temp struct for decode
+			err := col.FindOne(ctx, bson.M{"userID": id, "botID": bid}).Err()
+
+			if err != nil {
+				if err == mongo.ErrNoDocuments {
+					col.InsertOne(ctx, bson.M{
+						"userID":    id,
+						"botID":     bid,
+						"createdAt": time.Now().Unix(),
+						"lastAcked": 0,
+					})
+				} else {
+					log.Error(err)
+					w.WriteHeader(http.StatusInternalServerError)
+					w.Write([]byte(internalError))
+					return
+				}
+			} else {
+				col.UpdateOne(ctx, bson.M{"userID": id, "botID": bid}, bson.M{"$set": bson.M{"updatedAt": time.Now().Unix()}})
+			}
+
+			w.Write([]byte(success))
+		}
 	}))
 
 	adp := DummyAdapter{}

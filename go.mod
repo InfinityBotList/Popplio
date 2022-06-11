@@ -59,5 +59,6 @@ require (
 	github.com/joho/godotenv v1.4.0 // direct
 	github.com/json-iterator/go v1.1.12
 	github.com/sirupsen/logrus v1.8.1
+	golang.org/x/exp v0.0.0-20220609121020-a51bd0440498
 	golang.org/x/sys v0.0.0-20220520151302-bc2c85ada10a // indirect
 )
