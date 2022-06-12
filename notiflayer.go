@@ -94,9 +94,13 @@ func init() {
 					continue
 				}
 
-				// Check if reminder is past
+				// Check if reminder is acked
 				if time.Now().Unix()-reminder.LastAcked < 4*60*60 {
-					log.Warning("Reminder is not past, skipping")
+					log.WithFields(log.Fields{
+						"userId":    reminder.UserID,
+						"botId":     reminder.BotID,
+						"lastAcked": reminder.LastAcked,
+					}).Warning("Reminder has been acked, skipping")
 					continue
 				}
 
@@ -157,6 +161,15 @@ func init() {
 				}
 
 				if !voteParsed.HasVoted {
+					res, err := mongoDb.Collection("silverpelt").UpdateMany(ctx, bson.M{"userID": reminder.UserID, "botID": reminder.BotID}, bson.M{"$set": bson.M{"lastAcked": time.Now().Unix()}})
+
+					if err != nil {
+						log.Error("Error updating reminder: %s", err)
+						return
+					}
+
+					log.Info("Updated reminder: ", res.ModifiedCount)
+
 					// Loop over all user poppypaw subscriptions and push to goro
 					go func(id string, bId string) {
 						col := mongoDb.Collection("poppypaw")
@@ -191,6 +204,7 @@ func init() {
 						defer cur.Close(ctx)
 
 						doneIds := []string{}
+						doneNotifs := []string{}
 
 						for cur.Next(ctx) {
 							var sub struct {
@@ -211,19 +225,18 @@ func init() {
 								continue
 							}
 
-							if slices.Contains(doneIds, sub.Endpoint) {
+							if slices.Contains(doneIds, sub.Endpoint) || slices.Contains(doneNotifs, sub.NotifID) {
 								continue
 							}
 
 							doneIds = append(doneIds, sub.Endpoint)
+							doneNotifs = append(doneNotifs, sub.NotifID)
 
 							notifChannel <- types.Notification{
 								NotifID: sub.NotifID,
 								Message: bytes,
 							}
 						}
-
-						mongoDb.Collection("silverpelt").UpdateOne(ctx, bson.M{"userID": id, "botID": bId}, bson.M{"$set": bson.M{"lastAcked": time.Now().Unix()}})
 					}(reminder.UserID, reminder.BotID)
 				}
 			}
