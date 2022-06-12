@@ -43,6 +43,7 @@ const (
 	notFound         = "{\"message\":\"Slow down, bucko! We couldn't find this resource *anywhere*!\"}"
 	notFoundPage     = "{\"message\":\"Slow down, bucko! You got the path wrong or something but this endpoint doesn't exist!\"}"
 	badRequest       = "{\"message\":\"Slow down, bucko! You're doing something illegal!!!\"}"
+	unauthorized     = "{\"message\":\"Slow down, bucko! You're not authorized to do this or did you forget a API token somewhere?\"}"
 	internalError    = "{\"message\":\"Slow down, bucko! Something went wrong on our end!\"}"
 	methodNotAllowed = "{\"message\":\"Slow down, bucko! That method is not allowed for this endpoint!!!\"}"
 	notApproved      = "{\"message\":\"Woah there, your bot needs to be approved. Calling the police right now over this infraction!\"}"
@@ -469,7 +470,7 @@ func main() {
 
 		if r.Header.Get("Authorization") == "" {
 			w.WriteHeader(http.StatusUnauthorized)
-			w.Write([]byte(badRequest))
+			w.Write([]byte(unauthorized))
 			return
 		} else {
 			options := options.FindOne().SetProjection(bson.M{"botID": 1, "type": 1})
@@ -479,13 +480,13 @@ func main() {
 			if err != nil {
 				log.Error(err)
 				w.WriteHeader(http.StatusUnauthorized)
-				w.Write([]byte(badRequest))
+				w.Write([]byte(unauthorized))
 				return
 			}
 		}
 
 		if bot.Type != "approved" {
-			w.WriteHeader(http.StatusUnauthorized)
+			w.WriteHeader(http.StatusBadRequest)
 			w.Write([]byte(notApproved))
 			return
 		}
@@ -735,7 +736,7 @@ print(req.json())
 
 		if r.Header.Get("Authorization") == "" {
 			w.WriteHeader(http.StatusUnauthorized)
-			w.Write([]byte(badRequest))
+			w.Write([]byte(unauthorized))
 			return
 		} else {
 			if strings.HasPrefix(r.Header.Get("Authorization"), "User ") {
@@ -750,7 +751,7 @@ print(req.json())
 				if err == mongo.ErrNoDocuments {
 					log.Error(err)
 					w.WriteHeader(http.StatusUnauthorized)
-					w.Write([]byte(badRequest))
+					w.Write([]byte(unauthorized))
 					return
 				} else if err != nil {
 					log.Error(err)
@@ -790,7 +791,7 @@ print(req.json())
 				if err != nil {
 					log.Error(err)
 					w.WriteHeader(http.StatusNotFound)
-					w.Write([]byte(notApproved))
+					w.Write([]byte(notFound))
 					return
 				}
 
@@ -820,7 +821,7 @@ print(req.json())
 				if err != nil {
 					log.Error(err)
 					w.WriteHeader(http.StatusNotFound)
-					w.Write([]byte(notApproved))
+					w.Write([]byte(notFound))
 					return
 				}
 
@@ -829,14 +830,14 @@ print(req.json())
 				if err != nil {
 					log.Error(err)
 					w.WriteHeader(http.StatusUnauthorized)
-					w.Write([]byte(badRequest))
+					w.Write([]byte(unauthorized))
 					return
 				}
 			}
 		}
 
 		if bot.Type != "approved" {
-			w.WriteHeader(http.StatusUnauthorized)
+			w.WriteHeader(http.StatusBadRequest)
 			w.Write([]byte(notApproved))
 			return
 		}
@@ -1460,7 +1461,7 @@ print(req.json())
 
 		if r.Header.Get("Authorization") == "" {
 			w.WriteHeader(http.StatusUnauthorized)
-			w.Write([]byte(badRequest))
+			w.Write([]byte(unauthorized))
 			return
 		} else {
 			options := options.FindOne().SetProjection(bson.M{"userID": 1})
@@ -1470,7 +1471,7 @@ print(req.json())
 			if err != nil {
 				log.Error(err)
 				w.WriteHeader(http.StatusUnauthorized)
-				w.Write([]byte(badRequest))
+				w.Write([]byte(unauthorized))
 				return
 			}
 		}
@@ -1521,7 +1522,7 @@ print(req.json())
 
 		if r.Header.Get("Authorization") == "" {
 			w.WriteHeader(http.StatusUnauthorized)
-			w.Write([]byte(badRequest))
+			w.Write([]byte(unauthorized))
 			return
 		} else {
 			options := options.FindOne().SetProjection(bson.M{"userID": 1})
@@ -1531,7 +1532,7 @@ print(req.json())
 			if err != nil {
 				log.Error(err)
 				w.WriteHeader(http.StatusUnauthorized)
-				w.Write([]byte(badRequest))
+				w.Write([]byte(unauthorized))
 				return
 			}
 		}
