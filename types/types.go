@@ -12,6 +12,7 @@ type Bot struct {
 	ObjID            primitive.ObjectID `bson:"_id" json:"_id"`
 	BotID            string             `bson:"botID" json:"bot_id"`
 	Name             string             `bson:"botName" json:"name"`
+	Avatar           string             `bson:"avatar,omitempty" json:"avatar"`
 	TagsRaw          string             `bson:"tags" json:"-"`
 	Tags             []string           `bson:"-" json:"tags"` // This is created by API
 	Prefix           *string            `bson:"prefix" json:"prefix"`
@@ -27,6 +28,7 @@ type Bot struct {
 	NSFW             bool               `bson:"nsfw" json:"nsfw"`
 	Premium          bool               `bson:"premium" json:"premium"`
 	Certified        bool               `bson:"certified" json:"certified"`
+	PendingCert      bool               `bson:"pending_cert" json:"pending_cert"`
 	Servers          int                `bson:"servers" json:"servers"`
 	Shards           int                `bson:"shards" json:"shards"`
 	Users            int                `bson:"users" json:"users"`
@@ -41,6 +43,17 @@ type Bot struct {
 	ExternalSource   string             `bson:"external_source,omitempty" json:"external_source"`
 	ListSource       string             `bson:"listSource,omitempty" json:"list_source"`
 	VoteBanned       bool               `bson:"vote_banned,omitempty" json:"vote_banned"`
+	CrossAdd         bool               `bson:"cross_add,omitempty" json:"cross_add"`
+	StartPeriod      int                `bson:"start_period,omitempty" json:"start_premium_period"`
+	SubPeriod        int                `bson:"sub_period,omitempty" json:"premium_period_length"`
+	CertReason       string             `bson:"cert_reason,omitempty" json:"cert_reason"`
+	Announce         bool               `bson:"announce,omitempty" json:"announce"`
+	AnnounceMessage  string             `bson:"announce_msg,omitempty" json:"announce_message"`
+	Uptime           int                `bson:"uptime,omitempty" json:"uptime"`
+	TotalUptime      int                `bson:"total_uptime,omitempty" json:"total_uptime"`
+	Claimed          bool               `bson:"claimed,omitempty" json:"claimed"`
+	ClaimedBy        string             `bson:"claimedBy,omitempty" json:"claimed_by"`
+	Note             string             `bson:"note,omitempty" json:"approval_note"`
 }
 
 type AllBots struct {
@@ -190,6 +203,7 @@ type UserID struct {
 	UserID string `bson:"userID" json:"user_id"`
 }
 
+// An announcement
 type Announcement struct {
 	ObjID        primitive.ObjectID `bson:"_id" json:"_id"`
 	Author       string             `bson:"userID" json:"author"`
