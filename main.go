@@ -527,13 +527,35 @@ func main() {
 
 		servers, shards, users := payload.GetStats()
 
-		_, err = col.UpdateOne(ctx, bson.M{"token": r.Header.Get("Authorization")}, bson.M{"$set": bson.M{"servers": servers, "shards": shards, "users": users}})
+		_, err = col.UpdateOne(ctx, bson.M{"token": r.Header.Get("Authorization")}, bson.M{"$set": bson.M{"servers": servers}})
 
 		if err != nil {
 			log.Error(err)
 			w.WriteHeader(http.StatusInternalServerError)
 			w.Write([]byte(internalError))
 			return
+		}
+
+		if shards > 0 {
+			_, err = col.UpdateOne(ctx, bson.M{"token": r.Header.Get("Authorization")}, bson.M{"$set": bson.M{"shards": shards}})
+
+			if err != nil {
+				log.Error(err)
+				w.WriteHeader(http.StatusInternalServerError)
+				w.Write([]byte(internalError))
+				return
+			}
+		}
+
+		if users > 0 {
+			_, err = col.UpdateOne(ctx, bson.M{"token": r.Header.Get("Authorization")}, bson.M{"$set": bson.M{"users": users}})
+
+			if err != nil {
+				log.Error(err)
+				w.WriteHeader(http.StatusInternalServerError)
+				w.Write([]byte(internalError))
+				return
+			}
 		}
 
 		w.Write([]byte("{\"error\":null}"))
