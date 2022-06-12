@@ -386,6 +386,48 @@ func main() {
 		w.Write([]byte(helloWorld))
 	})
 
+	docs.AddDocs("GET", "/announcements", "announcements", "Get Global Announcements", "Gets the global announcements", []docs.Paramater{}, []string{"System"}, nil, helloWorldB)
+	r.HandleFunc("/announcements", rateLimitWrap(30, 1*time.Minute, "gannounce", func(w http.ResponseWriter, r *http.Request) {
+		col := mongoDb.Collection("announcements")
+
+		var announcements []types.Announcement
+
+		cur, err := col.Find(ctx, bson.M{})
+
+		if err != nil {
+			log.Error(err)
+			w.WriteHeader(http.StatusInternalServerError)
+			w.Write([]byte(err.Error()))
+			return
+		}
+
+		for cur.Next(ctx) {
+			var announcement types.Announcement
+
+			err := cur.Decode(&announcement)
+
+			if err != nil {
+				log.Error(err)
+				w.WriteHeader(http.StatusInternalServerError)
+				w.Write([]byte(internalError))
+				continue
+			}
+
+			announcements = append(announcements, announcement)
+		}
+
+		bytes, err := json.Marshal(announcements)
+
+		if err != nil {
+			log.Error(err)
+			w.WriteHeader(http.StatusInternalServerError)
+			w.Write([]byte(internalError))
+			return
+		}
+
+		w.Write(bytes)
+	}))
+
 	r.HandleFunc("/_duser/{id}", func(w http.ResponseWriter, r *http.Request) {
 		if r.Header.Get("X-Forwarded-For") != "" {
 			// Request proxied, cancel

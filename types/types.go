@@ -184,6 +184,11 @@ type ApiError struct {
 	Message string `json:"message"`
 }
 
+type Announcement struct {
+	ObjID primitive.ObjectID `bson:"_id" json:"_id"`
+}
+
+// A discord user
 type DiscordUser struct {
 	ID            string           `json:"id"`
 	Username      string           `json:"username"`
