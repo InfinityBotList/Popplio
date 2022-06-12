@@ -652,7 +652,7 @@ func main() {
 	}
 
 	docs.AddDocs("GET", "/bots/all", "get_all_bots", "Get All Bots", "Gets all bots on the list", []docs.Paramater{}, []string{"System"}, nil, types.AllBots{}, []string{})
-	r.Handle("/bots/all", rateLimitWrap(5, 1*time.Minute, "allbots", func(w http.ResponseWriter, r *http.Request) {
+	r.Handle("/bots/all", rateLimitWrap(5, 2*time.Second, "allbots", func(w http.ResponseWriter, r *http.Request) {
 		const perPage = 10
 
 		if r.Method != "GET" {
