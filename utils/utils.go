@@ -86,7 +86,7 @@ func RandString(n int) string {
 func GetDiscordUser(s *discordgo.Session, redisCache *redis.Client, ctx context.Context, id string) (*types.DiscordUser, error) {
 	// Check if in discordgo session first
 
-	var userExpiryTime = 4 * time.Hour
+	const userExpiryTime = 4 * time.Hour
 
 	if s.State != nil {
 		guilds := s.State.Guilds
