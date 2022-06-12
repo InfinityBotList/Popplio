@@ -465,7 +465,6 @@ func main() {
 
 		var bot struct {
 			BotID string `bson:"botID"`
-			Type  string `bson:"type"`
 		}
 
 		if r.Header.Get("Authorization") == "" {
@@ -473,7 +472,7 @@ func main() {
 			w.Write([]byte(unauthorized))
 			return
 		} else {
-			options := options.FindOne().SetProjection(bson.M{"botID": 1, "type": 1})
+			options := options.FindOne().SetProjection(bson.M{"botID": 1})
 
 			err := col.FindOne(ctx, bson.M{"token": r.Header.Get("Authorization")}, options).Decode(&bot)
 
@@ -483,12 +482,6 @@ func main() {
 				w.Write([]byte(unauthorized))
 				return
 			}
-		}
-
-		if bot.Type != "approved" {
-			w.WriteHeader(http.StatusBadRequest)
-			w.Write([]byte(notApproved))
-			return
 		}
 
 		defer r.Body.Close()
