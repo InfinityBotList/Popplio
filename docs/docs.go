@@ -45,9 +45,17 @@ type reqBody struct {
 	Content     map[string]content `json:"content"`
 }
 
+type security struct {
+	Type        string `json:"type"`
+	Name        string `json:"name"`
+	Description string `json:"description"`
+	In          string `json:"in"` // must be apiKey for Popplio
+}
+
 type component struct {
-	Schemas       map[string]any     `json:"schemas"`
-	RequestBodies map[string]reqBody `json:"requestBodies"`
+	Schemas       map[string]any      `json:"schemas"`
+	Security      map[string]security `json:"securitySchemes"`
+	RequestBodies map[string]reqBody  `json:"requestBodies"`
 }
 
 type ref struct {
@@ -74,13 +82,14 @@ type Paramater struct {
 }
 
 type operation struct {
-	Summary     string              `json:"summary"`
-	Tags        []string            `json:"tags,omitempty"`
-	Description string              `json:"description"`
-	ID          string              `json:"operationId"`
-	RequestBody *ref                `json:"requestBody,omitempty"`
-	Parameters  []Paramater         `json:"parameters"`
-	Responses   map[string]response `json:"responses"`
+	Summary     string                `json:"summary"`
+	Tags        []string              `json:"tags,omitempty"`
+	Description string                `json:"description"`
+	ID          string                `json:"operationId"`
+	RequestBody *ref                  `json:"requestBody,omitempty"`
+	Parameters  []Paramater           `json:"parameters"`
+	Responses   map[string]response   `json:"responses"`
+	Security    []map[string][]string `json:"security,omitempty"`
 }
 
 type path struct {
@@ -133,6 +142,7 @@ var api = Openapi{
 	},
 	Components: component{
 		Schemas:       make(map[string]any),
+		Security:      make(map[string]security),
 		RequestBodies: make(map[string]reqBody),
 	},
 	Paths: make(map[string]path),
@@ -160,6 +170,10 @@ func init() {
 
 	BoolSchema, err = openapi3gen.NewSchemaRefForValue(true, nil)
 
+	if err != nil {
+		panic(err)
+	}
+
 	api.Components.Schemas["ApiError"] = badRequestSchema
 }
 
@@ -170,7 +184,16 @@ func AddTag(name, description string) {
 	})
 }
 
-func AddDocs(method string, pathStr string, opId string, summary string, description string, params []Paramater, tags []string, req any, resp any) {
+func AddSecuritySchema(id string, description string) {
+	api.Components.Security[id] = security{
+		Type:        "apiKey",
+		Name:        "Authorization",
+		In:          "header",
+		Description: description,
+	}
+}
+
+func AddDocs(method string, pathStr string, opId string, summary string, description string, params []Paramater, tags []string, req any, resp any, authType []string) {
 	// Generate schemaName, taking out bad things
 	schemaName := strings.ReplaceAll(reflect.TypeOf(resp).String(), "[", "-")
 
@@ -256,6 +279,19 @@ func AddDocs(method string, pathStr string, opId string, summary string, descrip
 				},
 			},
 		},
+	}
+
+	if len(authType) == 0 {
+		authType = []string{"None"}
+	}
+
+	operationData.Security = []map[string][]string{}
+
+	for _, auth := range authType {
+
+		operationData.Security = append(operationData.Security, map[string][]string{
+			auth: {},
+		})
 	}
 
 	op := api.Paths[pathStr]

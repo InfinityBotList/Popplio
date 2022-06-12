@@ -1,6 +1,8 @@
 package types
 
 import (
+	"time"
+
 	"github.com/bwmarrin/discordgo"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
@@ -184,8 +186,20 @@ type ApiError struct {
 	Message string `json:"message"`
 }
 
+type UserID struct {
+	UserID string `bson:"userID" json:"user_id"`
+}
+
 type Announcement struct {
-	ObjID primitive.ObjectID `bson:"_id" json:"_id"`
+	ObjID        primitive.ObjectID `bson:"_id" json:"_id"`
+	Author       string             `bson:"userID" json:"author"`
+	ID           string             `bson:"announcementID" json:"id"`
+	Title        string             `bson:"title" json:"title"`
+	Content      string             `bson:"content" json:"content"`
+	LastModified time.Time          `bson:"modifiedDate" json:"last_modified"`
+	Status       string             `bson:"status" json:"status"`
+	Targetted    bool               `bson:"targetted" json:"targetted"`
+	Target       string             `bson:"target" json:"target"`
 }
 
 // A discord user

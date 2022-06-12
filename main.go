@@ -241,7 +241,7 @@ func rateLimitWrap(reqs int, t time.Duration, bucket string, fn http.HandlerFunc
 
 				options := options.FindOne().SetProjection(bson.M{"userID": 1})
 
-				err := userCol.FindOne(ctx, bson.M{"apiToken": rlId}, options).Decode(&user)
+				err := userCol.FindOne(ctx, bson.M{"apiToken": strings.Replace(rlId, "User ", "", 1)}, options).Decode(&user)
 
 				if err != nil {
 					// Bot does not exist, return
@@ -313,6 +313,10 @@ func main() {
 	docs.AddTag("Votes", "These API endpoints are related to user votes on IBL")
 	docs.AddTag("Variants", "These API endpoints are variants of other APIs or that do similar/same things as other API")
 
+	docs.AddSecuritySchema("User", "Requires a user token. Usually must be prefixed with `User `")
+	docs.AddSecuritySchema("Bot", "Requires a bot token. Cannot be prefixed")
+	docs.AddSecuritySchema("None", "No authentication required however some APIs may not return all data")
+
 	ctx = context.Background()
 
 	r = mux.NewRouter()
@@ -380,14 +384,20 @@ func main() {
 		panic(err)
 	}
 
-	docs.AddDocs("GET", "/", "ping", "Ping Server", "Pings the server", []docs.Paramater{}, []string{"System"}, nil, helloWorldB)
+	docs.AddDocs("GET", "/", "ping", "Ping Server", "Pings the server", []docs.Paramater{}, []string{"System"}, nil, helloWorldB, []string{})
 	r.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.Write([]byte(helloWorld))
 	})
 
-	docs.AddDocs("GET", "/announcements", "announcements", "Get Global Announcements", "Gets the global announcements", []docs.Paramater{}, []string{"System"}, nil, helloWorldB)
+	docs.AddDocs("GET", "/announcements", "announcements", "Get Announcements", "Gets the announcements. User authentication is optional and using it will show user targetted announcements", []docs.Paramater{}, []string{"System"}, nil, types.Announcement{}, []string{"User"})
 	r.HandleFunc("/announcements", rateLimitWrap(30, 1*time.Minute, "gannounce", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == "GET" {
+			w.WriteHeader(http.StatusMethodNotAllowed)
+			w.Write([]byte(methodNotAllowed))
+			return
+		}
+
 		col := mongoDb.Collection("announcements")
 
 		var announcements []types.Announcement
@@ -401,6 +411,24 @@ func main() {
 			return
 		}
 
+		// Auth header check
+		auth := r.Header.Get("Authorization")
+
+		var target types.UserID
+
+		if auth != "" {
+			err := mongoDb.Collection("users").FindOne(ctx, bson.M{"apiToken": strings.Replace(auth, "User ", "", 1)}).Decode(&target)
+
+			if err != nil {
+				log.Error(err)
+				w.WriteHeader(http.StatusUnauthorized)
+				w.Write([]byte(unauthorized))
+				return
+			}
+		} else {
+			target = types.UserID{}
+		}
+
 		for cur.Next(ctx) {
 			var announcement types.Announcement
 
@@ -411,6 +439,18 @@ func main() {
 				w.WriteHeader(http.StatusInternalServerError)
 				w.Write([]byte(internalError))
 				continue
+			}
+
+			if announcement.Status == "private" {
+				// Staff only
+				continue
+			}
+
+			if announcement.Targetted {
+				// Check auth header
+				if target.UserID != announcement.Target {
+					continue
+				}
 			}
 
 			announcements = append(announcements, announcement)
@@ -459,8 +499,14 @@ func main() {
 		w.Write(bytes)
 	})
 
-	docs.AddDocs("GET", "/openapi", "openapi", "Get OpenAPI", "Gets the OpenAPI spec", []docs.Paramater{}, []string{"System"}, nil, map[string]any{})
+	docs.AddDocs("GET", "/openapi", "openapi", "Get OpenAPI", "Gets the OpenAPI spec", []docs.Paramater{}, []string{"System"}, nil, map[string]any{}, []string{})
 	r.HandleFunc("/openapi", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != "GET" {
+			w.WriteHeader(http.StatusMethodNotAllowed)
+			w.Write([]byte(methodNotAllowed))
+			return
+		}
+
 		w.Header().Set("Content-Type", "application/json")
 		w.Header().Set("Access-Control-Allow-Origin", "*")
 
@@ -605,7 +651,7 @@ func main() {
 		w.Write([]byte("{\"error\":null}"))
 	}
 
-	docs.AddDocs("GET", "/bots/all", "get_all_bots", "Get All Bots", "Gets all bots on the list", []docs.Paramater{}, []string{"System"}, nil, types.AllBots{})
+	docs.AddDocs("GET", "/bots/all", "get_all_bots", "Get All Bots", "Gets all bots on the list", []docs.Paramater{}, []string{"System"}, nil, types.AllBots{}, []string{})
 	r.Handle("/bots/all", rateLimitWrap(5, 1*time.Minute, "allbots", func(w http.ResponseWriter, r *http.Request) {
 		const perPage = 10
 
@@ -723,7 +769,7 @@ req = requests.post(f"{API_URL}/bots/stats", json={"servers": 4000, "shards": 2}
 print(req.json())
 `+backTick+backTick+backTick+`
 
-`, []docs.Paramater{}, []string{"Bots"}, types.BotStats{}, types.ApiError{})
+`, []docs.Paramater{}, []string{"Bots"}, types.BotStats{}, types.ApiError{}, []string{"Bot"})
 
 	docs.AddDocs("POST", "/bots/{id}/stats", "post_stats_variant2", "Post New Stats", `
 This endpoint can be used to post the stats of a bot.
@@ -747,7 +793,7 @@ print(req.json())
 			Required: true,
 			Schema:   docs.IdSchema,
 		},
-	}, []string{"Variants"}, types.BotStats{}, types.ApiError{})
+	}, []string{"Variants"}, types.BotStats{}, types.ApiError{}, []string{"Bot"})
 
 	r.HandleFunc("/bots/stats", rateLimitWrap(4, 1*time.Minute, "stats", statsFn))
 
@@ -772,7 +818,7 @@ print(req.json())
 		Timestamps: []int64{},
 		VoteTime:   12,
 		HasVoted:   true,
-	})
+	}, []string{"User", "Bot"})
 
 	r.HandleFunc("/users/{uid}/bots/{bid}/votes", rateLimitWrap(5, 1*time.Minute, "gvotes", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
@@ -1103,7 +1149,7 @@ print(req.json())
 		}
 	}))
 
-	docs.AddDocs("GET", "/voteinfo", "voteinfo", "Get Vote Info", "Returns basic voting info such as if its a weekend double vote", []docs.Paramater{}, []string{"Votes"}, nil, types.VoteInfo{Weekend: true})
+	docs.AddDocs("GET", "/voteinfo", "voteinfo", "Get Vote Info", "Returns basic voting info such as if its a weekend double vote", []docs.Paramater{}, []string{"Votes"}, nil, types.VoteInfo{Weekend: true}, []string{})
 	r.HandleFunc("/voteinfo", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 
@@ -1145,7 +1191,7 @@ print(req.json())
 			Required: true,
 			Schema:   docs.BoolSchema,
 		},
-	}, []string{"Bots"}, nil, types.Bot{})
+	}, []string{"Bots"}, nil, types.Bot{}, []string{})
 
 	getBotsFn := rateLimitWrap(10, 1*time.Minute, "gbot", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
@@ -1235,7 +1281,7 @@ print(req.json())
 				Required: true,
 				Schema:   docs.IdSchema,
 			},
-		}, []string{"Users"}, nil, types.User{})
+		}, []string{"Users"}, nil, types.User{}, []string{})
 
 	r.HandleFunc("/users/{id}", rateLimitWrap(10, 3*time.Minute, "guser", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
@@ -1324,7 +1370,7 @@ print(req.json())
 				Required: true,
 				Schema:   docs.IdSchema,
 			},
-		}, []string{"Bots"}, nil, []types.Review{})
+		}, []string{"Bots"}, nil, []types.Review{}, []string{})
 	r.HandleFunc("/bots/{id}/reviews", rateLimitWrap(10, 1*time.Minute, "greview", func(w http.ResponseWriter, r *http.Request) {
 		col := mongoDb.Collection("reviews")
 
@@ -1382,7 +1428,7 @@ print(req.json())
 	r.HandleFunc("/cosmog/tasks/{tid}", taskFn)
 
 	docs.AddDocs("POST", "/webhook-test", "webhook_test", "Test Webhook", "Sends a test webhook to allow testing your vote system",
-		[]docs.Paramater{}, []string{"System"}, nil, types.ApiError{})
+		[]docs.Paramater{}, []string{"System"}, nil, types.ApiError{}, []string{})
 
 	r.HandleFunc("/webhook-test", rateLimitWrap(3, 3*time.Minute, "webtest", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != "POST" {
