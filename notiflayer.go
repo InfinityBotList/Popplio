@@ -62,7 +62,7 @@ func init() {
 			}
 
 			metro.ChannelMessageSendComplex(os.Getenv("CHANNEL_ID"), &discordgo.MessageSend{
-				Content: botObj.Mention + " by " + userObj.Mention + " has been removed from the premium list as their subscription has expired.",
+				Content: botObj.Mention + "(" + botObj.Username + ") by " + userObj.Mention + " has been removed from the premium list as their subscription has expired.",
 			})
 
 			dmChannel, err := metro.UserChannelCreate(botInf.MainOwner)
@@ -75,7 +75,7 @@ func init() {
 			}
 
 			metro.ChannelMessageSendComplex(dmChannel.ID, &discordgo.MessageSend{
-				Content: "Your bot " + botObj.Mention + " has been removed from the premium list as their subscription has expired.",
+				Content: "Your bot " + botObj.Mention + "(" + botObj.Username + ") has been removed from the premium list as their subscription has expired.",
 			})
 		}
 	}()
