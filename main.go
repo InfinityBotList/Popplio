@@ -1623,26 +1623,19 @@ print(req.json())
 
 			col = mongoDb.Collection("silverpelt")
 
-			// Temp struct for decode
 			err := col.FindOne(ctx, bson.M{"userID": id, "botID": bid}).Err()
 
-			if err != nil {
-				if err == mongo.ErrNoDocuments {
-					col.InsertOne(ctx, bson.M{
-						"userID":    id,
-						"botID":     bid,
-						"createdAt": time.Now().Unix(),
-						"lastAcked": 0,
-					})
-				} else {
-					log.Error(err)
-					w.WriteHeader(http.StatusInternalServerError)
-					w.Write([]byte(internalError))
-					return
-				}
-			} else {
-				col.UpdateOne(ctx, bson.M{"userID": id, "botID": bid}, bson.M{"$set": bson.M{"updatedAt": time.Now().Unix()}})
+			// If reminder already exists, delete them all first to protect against db spam
+			if err == nil {
+				col.DeleteMany(ctx, bson.M{"userID": id, "botID": bid})
 			}
+
+			col.InsertOne(ctx, bson.M{
+				"userID":    id,
+				"botID":     bid,
+				"createdAt": time.Now().Unix(),
+				"lastAcked": 0,
+			})
 
 			w.Write([]byte(success))
 		}

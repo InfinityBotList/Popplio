@@ -94,6 +94,22 @@ func init() {
 					continue
 				}
 
+				// Check for duplicates
+				count, err := col.CountDocuments(ctx, bson.M{"userID": reminder.UserID, "botID": reminder.BotID})
+
+				if err != nil {
+					log.Error("Error counting reminders:", err)
+				} else {
+					if count > 1 {
+						log.Warning("Reminder has duplicates, deleting one of them")
+						_, err := col.DeleteOne(ctx, bson.M{"userID": reminder.UserID, "botID": reminder.BotID})
+
+						if err != nil {
+							log.Error("Error deleting reminder:", err)
+						}
+					}
+				}
+
 				// Check if reminder is acked
 				if time.Now().Unix()-reminder.LastAcked < 4*60*60 {
 					log.WithFields(log.Fields{
@@ -226,6 +242,7 @@ func init() {
 							}
 
 							if slices.Contains(doneIds, sub.Endpoint) || slices.Contains(doneNotifs, sub.NotifID) {
+								log.Info("Already sent notification to: ", sub.Endpoint)
 								continue
 							}
 
