@@ -4,7 +4,10 @@ import (
 	"strconv"
 	"time"
 
+	"reflect"
+
 	"github.com/bwmarrin/discordgo"
+	log "github.com/sirupsen/logrus"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
@@ -116,35 +119,62 @@ type UserVoteCompat struct {
 	HasVoted bool `json:"hasVoted"`
 }
 
+// For documentation purposes
+type BotStatsTyped struct {
+	// Fields are ordered in the way they are searched
+	// The simple servers, shards way
+	Servers *uint `json:"servers"`
+	Shards  *uint `json:"shards"`
+
+	// Fates List uses this (server count)
+	GuildCount *uint `json:"guild_count"`
+
+	// Top.gg uses this (server count)
+	ServerCount *uint `json:"server_count"`
+
+	// Top.gg and Fates List uses this (shard count)
+	ShardCount *uint `json:"shard_count"`
+
+	// Rovel Discord List and dlist.gg (kinda) uses this (server count)
+	Count *uint `json:"count"`
+
+	// Discordbotlist.com uses this (server count)
+	Guilds *uint `json:"guilds"`
+
+	Users     *uint `json:"users"`
+	UserCount *uint `json:"user_count"`
+}
+
+// This uses any to allow bad stats to still work
 type BotStats struct {
 	// Fields are ordered in the way they are searched
 	// The simple servers, shards way
-	Servers *uint32 `json:"servers"`
-	Shards  *uint32 `json:"shards"`
+	Servers *any `json:"servers"`
+	Shards  *any `json:"shards"`
 
 	// Fates List uses this (server count)
-	GuildCount *uint32 `json:"guild_count"`
+	GuildCount *any `json:"guild_count"`
 
 	// Top.gg uses this (server count)
-	ServerCount *uint32 `json:"server_count"`
+	ServerCount *any `json:"server_count"`
 
 	// Top.gg and Fates List uses this (shard count)
-	ShardCount *uint32 `json:"shard_count"`
+	ShardCount *any `json:"shard_count"`
 
 	// Rovel Discord List and dlist.gg (kinda) uses this (server count)
-	Count *uint32 `json:"count"`
+	Count *any `json:"count"`
 
 	// Discordbotlist.com uses this (server count)
-	Guilds *uint32 `json:"guilds"`
+	Guilds *any `json:"guilds"`
 
-	Users     *uint32 `json:"users"`
-	UserCount *uint32 `json:"user_count"`
+	Users     *any `json:"users"`
+	UserCount *any `json:"user_count"`
 }
 
-func (s BotStats) GetStats() (servers uint32, shards uint32, users uint32) {
-	var serverCount uint32
-	var shardCount uint32
-	var userCount uint32
+func (s BotStats) GetStats() (servers uint64, shards uint64, users uint64) {
+	var serverCount any
+	var shardCount any
+	var userCount any
 
 	if s.Servers != nil {
 		serverCount = *s.Servers
@@ -170,90 +200,112 @@ func (s BotStats) GetStats() (servers uint32, shards uint32, users uint32) {
 		userCount = *s.UserCount
 	}
 
-	return serverCount, shardCount, userCount
-}
+	var serversParsed uint64
+	var shardsParsed uint64
+	var usersParsed uint64
 
-// Compat struct for people posting stats currently as a string
-type BotStatString struct {
-	// Fields are ordered in the way they are searched
-	// The simple servers, shards way
-	Servers *string `json:"servers"`
-	Shards  *string `json:"shards"`
-
-	// Fates List uses this (server count)
-	GuildCount *string `json:"guild_count"`
-
-	// Top.gg uses this (server count)
-	ServerCount *string `json:"server_count"`
-
-	// Top.gg and Fates List uses this (shard count)
-	ShardCount *string `json:"shard_count"`
-
-	// Rovel Discord List and dlist.gg (kinda) uses this (server count)
-	Count *string `json:"count"`
-
-	// Discordbotlist.com uses this (server count)
-	Guilds *string `json:"guilds"`
-
-	Users     *string `json:"users"`
-	UserCount *string `json:"user_count"`
-}
-
-func (s BotStatString) ToStats() BotStats {
-	var serverCount string
-	var shardCount string
-	var userCount string
-
-	if s.Servers != nil {
-		serverCount = *s.Servers
-	} else if s.GuildCount != nil {
-		serverCount = *s.GuildCount
-	} else if s.ServerCount != nil {
-		serverCount = *s.ServerCount
-	} else if s.Count != nil {
-		serverCount = *s.Count
-	} else if s.Guilds != nil {
-		serverCount = *s.Guilds
+	// Handle uint64 by converting to uint32
+	if serverInt, ok := serverCount.(uint64); ok {
+		serversParsed = serverInt
 	}
 
-	if s.Shards != nil {
-		shardCount = *s.Shards
-	} else if s.ShardCount != nil {
-		shardCount = *s.ShardCount
+	if shardInt, ok := shardCount.(uint64); ok {
+		shardsParsed = shardInt
+	}
+	if userInt, ok := userCount.(uint64); ok {
+		usersParsed = userInt
 	}
 
-	if s.Users != nil {
-		userCount = *s.Users
-	} else if s.UserCount != nil {
-		userCount = *s.UserCount
+	// Handle uint32
+	if serverInt, ok := serverCount.(uint32); ok {
+		serversParsed = uint64(serverInt)
+	}
+	if shardInt, ok := shardCount.(uint32); ok {
+		shardsParsed = uint64(shardInt)
+	}
+	if userInt, ok := userCount.(uint32); ok {
+		usersParsed = uint64(userInt)
 	}
 
-	// Try parsing each as a string
-	var servers uint32
+	// Handle float64
+	if serverFloat, ok := serverCount.(float64); ok {
+		serversParsed = uint64(serverFloat)
+	}
+	if shardFloat, ok := shardCount.(float64); ok {
+		shardsParsed = uint64(shardFloat)
+	}
+	if userFloat, ok := userCount.(float64); ok {
+		usersParsed = uint64(userFloat)
+	}
 
-	if serverCount != "" {
-		if v, err := strconv.ParseUint(serverCount, 10, 32); err == nil {
-			servers = uint32(v)
+	// Handle float32
+	if serverFloat, ok := serverCount.(float32); ok {
+		serversParsed = uint64(serverFloat)
+	}
+	if shardFloat, ok := shardCount.(float32); ok {
+		shardsParsed = uint64(shardFloat)
+	}
+	if userFloat, ok := userCount.(float32); ok {
+		usersParsed = uint64(userFloat)
+	}
+
+	// Handle int64
+	if serverInt, ok := serverCount.(int64); ok {
+		if serverInt < 0 {
+			serversParsed = 0
+		} else {
+			serversParsed = uint64(serverInt)
+		}
+	}
+	if shardInt, ok := shardCount.(int64); ok {
+		if shardInt < 0 {
+			shardsParsed = 0
+		} else {
+			shardsParsed = uint64(shardInt)
+		}
+	}
+	if userInt, ok := userCount.(int64); ok {
+		if userInt < 0 {
+			usersParsed = 0
+		} else {
+			usersParsed = uint64(userInt)
 		}
 	}
 
-	var shards uint32
-
-	if shardCount != "" {
-		if v, err := strconv.ParseUint(shardCount, 10, 32); err == nil {
-			shards = uint32(v)
+	// Handle string
+	if serverString, ok := serverCount.(string); ok {
+		if serverString == "" {
+			serversParsed = 0
+		} else {
+			serversParsed, _ = strconv.ParseUint(serverString, 10, 64)
 		}
 	}
 
-	var users uint32
-
-	if userCount != "" {
-		if v, err := strconv.ParseUint(userCount, 10, 32); err == nil {
-			users = uint32(v)
+	if shardString, ok := shardCount.(string); ok {
+		if shardString == "" {
+			shardsParsed = 0
+		} else {
+			shardsParsed, _ = strconv.ParseUint(shardString, 10, 64)
 		}
 	}
 
-	return BotStats{Servers: &servers, Shards: &shards, Users: &users}
+	if userString, ok := userCount.(string); ok {
+		if userString == "" {
+			usersParsed = 0
+		} else {
+			usersParsed, _ = strconv.ParseUint(userString, 10, 64)
+		}
+	}
+
+	log.Info(reflect.TypeOf(serverCount))
+
+	log.WithFields(log.Fields{
+		"servers": serversParsed,
+		"shards":  shardsParsed,
+		"users":   usersParsed,
+	}).Info("Setting stats")
+
+	return serversParsed, shardsParsed, usersParsed
 }
 
 type WebhookPost struct {

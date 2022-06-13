@@ -592,19 +592,10 @@ func main() {
 			if r.URL.Query().Get("count") != "" {
 				payload = types.BotStats{}
 			} else {
-				// Try workaround for invalid stringed json
-				var workaround types.BotStatString
-
-				err = json.Unmarshal(bodyBytes, &workaround)
-
-				if err != nil {
-					log.Error(err)
-					w.WriteHeader(http.StatusBadRequest)
-					w.Write([]byte(badRequestStats))
-					return
-				} else {
-					payload = workaround.ToStats()
-				}
+				log.Error(err)
+				w.WriteHeader(http.StatusBadRequest)
+				w.Write([]byte(badRequestStats))
+				return
 			}
 		}
 
@@ -618,9 +609,9 @@ func main() {
 				return
 			}
 
-			countPtr := uint32(count)
+			var countAny any = count
 
-			payload.Count = &countPtr
+			payload.Count = &countAny
 		}
 
 		servers, shards, users := payload.GetStats()
@@ -788,7 +779,7 @@ req = requests.post(f"{API_URL}/bots/stats", json={"servers": 4000, "shards": 2}
 print(req.json())
 `+backTick+backTick+backTick+`
 
-`, []docs.Paramater{}, []string{"Bots"}, types.BotStats{}, types.ApiError{}, []string{"Bot"})
+`, []docs.Paramater{}, []string{"Bots"}, types.BotStatsTyped{}, types.ApiError{}, []string{"Bot"})
 
 	docs.AddDocs("POST", "/bots/{id}/stats", "post_stats_variant2", "Post New Stats", `
 This endpoint can be used to post the stats of a bot.
@@ -812,7 +803,7 @@ print(req.json())
 			Required: true,
 			Schema:   docs.IdSchema,
 		},
-	}, []string{"Variants"}, types.BotStats{}, types.ApiError{}, []string{"Bot"})
+	}, []string{"Variants"}, types.BotStatsTyped{}, types.ApiError{}, []string{"Bot"})
 
 	r.HandleFunc("/bots/stats", rateLimitWrap(4, 1*time.Minute, "stats", statsFn))
 
