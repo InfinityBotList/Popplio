@@ -828,7 +828,6 @@ print(req.json())
 		VoteTime:   12,
 		HasVoted:   true,
 	}, []string{"User", "Bot"})
-
 	r.HandleFunc("/users/{uid}/bots/{bid}/votes", rateLimitWrap(5, 1*time.Minute, "gvotes", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 
@@ -962,64 +961,13 @@ print(req.json())
 			return
 		}
 
-		var votes []int64
+		voteParsed, err := utils.GetVoteData(ctx, mongoDb, vars["uid"], vars["bid"])
 
-		col = mongoDb.Collection("votes")
-
-		findOptions := options.Find()
-
-		findOptions.SetSort(bson.M{"date": -1})
-
-		cur, err := col.Find(ctx, bson.M{"botID": vars["bid"], "userID": vars["uid"]}, findOptions)
-
-		if err == nil || err == mongo.ErrNoDocuments {
-
-			defer cur.Close(ctx)
-
-			for cur.Next(ctx) {
-				var vote struct {
-					Date int64 `bson:"date"`
-				}
-
-				err := cur.Decode(&vote)
-
-				if err != nil {
-					log.Error(err)
-					w.WriteHeader(http.StatusInternalServerError)
-					w.Write([]byte(internalError))
-					return
-				}
-
-				votes = append(votes, vote.Date)
-			}
-		} else {
+		if err != nil {
 			log.Error(err)
 			w.WriteHeader(http.StatusInternalServerError)
 			w.Write([]byte(internalError))
 			return
-		}
-
-		voteParsed := types.UserVote{
-			VoteTime: utils.GetVoteTime(),
-		}
-
-		voteParsed.Timestamps = votes
-
-		// In most cases, will be one but not always
-		if len(votes) > 0 {
-			if time.Now().UnixMilli() < votes[0] {
-				log.Error("detected illegal vote time", votes[0])
-				votes[0] = time.Now().UnixMilli()
-			}
-
-			if time.Now().UnixMilli()-votes[0] < int64(utils.GetVoteTime())*60*60*1000 {
-				voteParsed.HasVoted = true
-				voteParsed.LastVoteTime = votes[0]
-			}
-		}
-
-		if voteParsed.LastVoteTime == 0 && len(votes) > 0 {
-			voteParsed.LastVoteTime = votes[0]
 		}
 
 		if r.Method == "GET" {
@@ -1156,6 +1104,95 @@ print(req.json())
 			w.WriteHeader(http.StatusOK)
 			w.Write([]byte(success))
 		}
+	}))
+
+	// For compatibility with old API
+	r.HandleFunc("/votes/{bot_id}/{user_id}", rateLimitWrap(10, 1*time.Minute, "deprecated-gvotes", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != "GET" {
+			w.WriteHeader(http.StatusMethodNotAllowed)
+			w.Write([]byte(methodNotAllowed))
+			return
+		}
+
+		vars := mux.Vars(r)
+
+		var bot struct {
+			BotID      string `bson:"botID"`
+			Type       string `bson:"type"`
+			VoteBanned bool   `bson:"vote_banned,omitempty"`
+		}
+
+		col := mongoDb.Collection("bots")
+
+		if r.Header.Get("Authorization") == "" {
+			w.WriteHeader(http.StatusUnauthorized)
+			w.Write([]byte(unauthorized))
+			return
+		} else {
+			options := options.FindOne().SetProjection(bson.M{"botID": 1, "type": 1})
+
+			err = col.FindOne(
+				ctx,
+				bson.M{
+					"botID": vars["bid"],
+				},
+				options,
+			).Decode(&bot)
+
+			vars["bid"] = bot.BotID
+
+			if err != nil {
+				log.Error(err)
+				w.WriteHeader(http.StatusNotFound)
+				w.Write([]byte(notFound))
+				return
+			}
+
+			err := col.FindOne(ctx, bson.M{"token": r.Header.Get("Authorization"), "botID": vars["bid"]}, options).Decode(&bot)
+
+			if err != nil {
+				log.Error(err)
+				w.WriteHeader(http.StatusUnauthorized)
+				w.Write([]byte(unauthorized))
+				return
+			}
+		}
+
+		if bot.Type != "approved" {
+			w.WriteHeader(http.StatusBadRequest)
+			w.Write([]byte(notApproved))
+			return
+		}
+
+		if bot.VoteBanned {
+			w.WriteHeader(http.StatusForbidden)
+			w.Write([]byte(voteBanned))
+			return
+		}
+
+		voteParsed, err := utils.GetVoteData(ctx, mongoDb, vars["uid"], vars["bid"])
+
+		if err != nil {
+			log.Error(err)
+			w.WriteHeader(http.StatusInternalServerError)
+			w.Write([]byte(internalError))
+			return
+		}
+
+		var compatData = types.UserVoteCompat{
+			HasVoted: voteParsed.HasVoted,
+		}
+
+		bytes, err := json.Marshal(compatData)
+
+		if err != nil {
+			log.Error(err)
+			w.WriteHeader(http.StatusInternalServerError)
+			w.Write([]byte(badRequest))
+			return
+		}
+
+		w.Write(bytes)
 	}))
 
 	docs.AddDocs("GET", "/voteinfo", "voteinfo", "Get Vote Info", "Returns basic voting info such as if its a weekend double vote", []docs.Paramater{}, []string{"Votes"}, nil, types.VoteInfo{Weekend: true}, []string{})
@@ -1698,12 +1735,12 @@ print(req.json())
 			bid := r.URL.Query().Get("bot_id")
 
 			var bot struct {
-				ID string `json:"botID"`
+				ID string `bson:"botID"`
 			}
 
 			options := options.FindOne().SetProjection(bson.M{"botID": 1})
 
-			err = col.FindOne(
+			err = mongoDb.Collection("bots").FindOne(
 				ctx,
 				bson.M{
 					"$or": []bson.M{
@@ -1722,32 +1759,29 @@ print(req.json())
 			).Decode(&bot)
 
 			if err != nil {
-				log.Error(err)
+				log.Error("Error adding reminder: ", err)
 				w.WriteHeader(http.StatusNotFound)
 				w.Write([]byte(notFound))
 				return
 			}
 
-			bid = bot.ID
-
-			if bid == "" {
+			if bot.ID == "" {
+				log.Error("No bot id found?")
 				w.WriteHeader(http.StatusBadRequest)
 				w.Write([]byte(badRequest))
 				return
 			}
 
-			col = mongoDb.Collection("silverpelt")
-
-			err := col.FindOne(ctx, bson.M{"userID": id, "botID": bid}).Err()
+			err := mongoDb.Collection("silverpelt").FindOne(ctx, bson.M{"userID": id, "botID": bot.ID}).Err()
 
 			// If reminder already exists, delete them all first to protect against db spam
 			if err == nil {
-				col.DeleteMany(ctx, bson.M{"userID": id, "botID": bid})
+				mongoDb.Collection("silverpelt").DeleteMany(ctx, bson.M{"userID": id, "botID": bot.ID})
 			}
 
-			col.InsertOne(ctx, bson.M{
+			mongoDb.Collection("silverpelt").InsertOne(ctx, bson.M{
 				"userID":    id,
-				"botID":     bid,
+				"botID":     bot.ID,
 				"createdAt": time.Now().Unix(),
 				"lastAcked": 0,
 			})

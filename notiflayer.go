@@ -11,8 +11,6 @@ import (
 	"github.com/bwmarrin/discordgo"
 	log "github.com/sirupsen/logrus"
 	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/mongo"
-	"go.mongodb.org/mongo-driver/mongo/options"
 	"golang.org/x/exp/slices"
 )
 
@@ -182,60 +180,11 @@ func init() {
 					continue
 				}
 
-				var votes []int64
+				voteParsed, err := utils.GetVoteData(ctx, mongoDb, reminder.UserID, reminder.BotID)
 
-				col = mongoDb.Collection("votes")
-
-				findOptions := options.Find()
-
-				findOptions.SetSort(bson.M{"date": -1})
-
-				cur, err := col.Find(ctx, bson.M{"botID": reminder.BotID, "userID": reminder.UserID}, findOptions)
-
-				if err == nil || err == mongo.ErrNoDocuments {
-					for cur.Next(ctx) {
-						var vote struct {
-							Date int64 `bson:"date"`
-						}
-
-						err := cur.Decode(&vote)
-
-						if err != nil {
-							log.Error(err)
-							continue
-						}
-
-						votes = append(votes, vote.Date)
-					}
-
-					cur.Close(ctx)
-
-				} else {
+				if err != nil {
 					log.Error(err)
 					continue
-				}
-
-				voteParsed := types.UserVote{
-					VoteTime: utils.GetVoteTime(),
-				}
-
-				voteParsed.Timestamps = votes
-
-				// In most cases, will be one but not always
-				if len(votes) > 0 {
-					if time.Now().UnixMilli() < votes[0] {
-						log.Error("detected illegal vote time", votes[0])
-						votes[0] = time.Now().UnixMilli()
-					}
-
-					if time.Now().UnixMilli()-votes[0] < int64(utils.GetVoteTime())*60*60*1000 {
-						voteParsed.HasVoted = true
-						voteParsed.LastVoteTime = votes[0]
-					}
-				}
-
-				if voteParsed.LastVoteTime == 0 && len(votes) > 0 {
-					voteParsed.LastVoteTime = votes[0]
 				}
 
 				if !voteParsed.HasVoted {
@@ -243,7 +192,7 @@ func init() {
 
 					if err != nil {
 						log.Error("Error updating reminder: %s", err)
-						return
+						continue
 					}
 
 					log.Info("Updated reminder: ", res.ModifiedCount)

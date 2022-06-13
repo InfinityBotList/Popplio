@@ -12,6 +12,10 @@ import (
 
 	"github.com/bwmarrin/discordgo"
 	"github.com/go-redis/redis/v8"
+	log "github.com/sirupsen/logrus"
+	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 func IsNone(s *string) bool {
@@ -187,4 +191,61 @@ func GetVoteTime() uint16 {
 	} else {
 		return 12
 	}
+}
+
+func GetVoteData(ctx context.Context, mongoDb *mongo.Database, userID, botID string) (*types.UserVote, error) {
+	var votes []int64
+
+	col := mongoDb.Collection("votes")
+
+	findOptions := options.Find()
+
+	findOptions.SetSort(bson.M{"date": -1})
+
+	cur, err := col.Find(ctx, bson.M{"botID": botID, "userID": userID}, findOptions)
+
+	if err == nil || err == mongo.ErrNoDocuments {
+
+		defer cur.Close(ctx)
+
+		for cur.Next(ctx) {
+			var vote struct {
+				Date int64 `bson:"date"`
+			}
+
+			err := cur.Decode(&vote)
+
+			if err != nil {
+				return nil, err
+			}
+
+			votes = append(votes, vote.Date)
+		}
+	} else {
+		return nil, err
+	}
+
+	voteParsed := types.UserVote{
+		VoteTime: GetVoteTime(),
+	}
+
+	voteParsed.Timestamps = votes
+
+	// In most cases, will be one but not always
+	if len(votes) > 0 {
+		if time.Now().UnixMilli() < votes[0] {
+			log.Error("detected illegal vote time", votes[0])
+			votes[0] = time.Now().UnixMilli()
+		}
+
+		if time.Now().UnixMilli()-votes[0] < int64(GetVoteTime())*60*60*1000 {
+			voteParsed.HasVoted = true
+			voteParsed.LastVoteTime = votes[0]
+		}
+	}
+
+	if voteParsed.LastVoteTime == 0 && len(votes) > 0 {
+		voteParsed.LastVoteTime = votes[0]
+	}
+	return &voteParsed, nil
 }

@@ -111,6 +111,10 @@ type UserVote struct {
 	LastVoteTime int64   `json:"last_vote_time"`
 }
 
+type UserVoteCompat struct {
+	HasVoted bool `json:"hasVoted"`
+}
+
 type BotStats struct {
 	// Fields are ordered in the way they are searched
 	// The simple servers, shards way
