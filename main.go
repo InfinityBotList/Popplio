@@ -40,16 +40,16 @@ const (
 	apiBot     = "https://discord.com/api/oauth2/authorize?client_id=818419115068751892&permissions=140898593856&scope=bot%20applications.commands"
 	pgConn     = "postgresql://127.0.0.1:5432/backups?user=root&password=iblpublic"
 
-	notFound         = "{\"message\":\"Slow down, bucko! We couldn't find this resource *anywhere*!\"}"
-	notFoundPage     = "{\"message\":\"Slow down, bucko! You got the path wrong or something but this endpoint doesn't exist!\"}"
-	badRequest       = "{\"message\":\"Slow down, bucko! You're doing something illegal!!!\"}"
-	unauthorized     = "{\"message\":\"Slow down, bucko! You're not authorized to do this or did you forget a API token somewhere?\"}"
-	internalError    = "{\"message\":\"Slow down, bucko! Something went wrong on our end!\"}"
-	methodNotAllowed = "{\"message\":\"Slow down, bucko! That method is not allowed for this endpoint!!!\"}"
-	notApproved      = "{\"message\":\"Woah there, your bot needs to be approved. Calling the police right now over this infraction!\"}"
-	voteBanned       = "{\"message\":\"Slow down, bucko! Either you or this bot is banned from voting right now!\"}"
-	success          = "{\"message\":\"Success!\"}"
-	testNotif        = "{\"message\":\"Test notification!\", \"title\":\"Test notification!\",\"icon\":\"https://i.imgur.com/GRo0Zug.png\"}"
+	notFound         = "{\"message\":\"Slow down, bucko! We couldn't find this resource *anywhere*!\",\"error\":true}"
+	notFoundPage     = "{\"message\":\"Slow down, bucko! You got the path wrong or something but this endpoint doesn't exist!\",\"error\":true}"
+	badRequest       = "{\"message\":\"Slow down, bucko! You're doing something illegal!!!\",\"error\":true}"
+	unauthorized     = "{\"message\":\"Slow down, bucko! You're not authorized to do this or did you forget a API token somewhere?\",\"error\":true}"
+	internalError    = "{\"message\":\"Slow down, bucko! Something went wrong on our end!\",\"error\":true}"
+	methodNotAllowed = "{\"message\":\"Slow down, bucko! That method is not allowed for this endpoint!!!\",\"error\":true}"
+	notApproved      = "{\"message\":\"Woah there, your bot needs to be approved. Calling the police right now over this infraction!\",\"error\":true}"
+	voteBanned       = "{\"message\":\"Slow down, bucko! Either you or this bot is banned from voting right now!\",\"error\":true}"
+	success          = "{\"message\":\"Success!\",\"error\":false}"
+	testNotif        = "{\"message\":\"Test notification!\", \"title\":\"Test notification!\",\"icon\":\"https://i.imgur.com/GRo0Zug.png\",\"error\":false}"
 	backTick         = "`"
 )
 
@@ -144,7 +144,7 @@ func bucketHandle(bucket moderatedBucket, id string, w http.ResponseWriter, r *h
 			redisCache.Expire(ctx, rlKey, retryAfter+2*time.Second)
 		}
 
-		w.Write([]byte("{\"message\":\"You're being rate limited!\"}"))
+		w.Write([]byte("{\"message\":\"You're being rate limited!\",\"error\":true}"))
 
 		return false
 	}
@@ -648,7 +648,7 @@ func main() {
 			}
 		}
 
-		w.Write([]byte("{\"error\":null}"))
+		w.Write([]byte(success))
 	}
 
 	docs.AddDocs("GET", "/bots/all", "get_all_bots", "Get All Bots", "Gets all bots on the list", []docs.Paramater{}, []string{"System"}, nil, types.AllBots{}, []string{})
@@ -998,6 +998,7 @@ print(req.json())
 
 				var alreadyVotedMsg = types.ApiError{
 					Message: "Please wait " + timeStr + " before voting again",
+					Error:   true,
 				}
 
 				bytes, err := json.Marshal(alreadyVotedMsg)
@@ -1505,6 +1506,7 @@ print(req.json())
 
 			var errD = types.ApiError{
 				Message: err.Error(),
+				Error:   true,
 			}
 
 			bytes, err := json.Marshal(errD)

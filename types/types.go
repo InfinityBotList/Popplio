@@ -201,6 +201,7 @@ type WebhookData struct {
 // This represents a IBL Popplio API Error
 type ApiError struct {
 	Message string `json:"message"`
+	Error   bool   `json:"error"`
 }
 
 type UserID struct {
