@@ -1229,6 +1229,11 @@ print(req.json())
 	getBotsFn := rateLimitWrap(10, 1*time.Minute, "gbot", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 
+		if r.Method == "POST" {
+			statsFn(w, r)
+			return
+		}
+
 		if r.Method != "GET" {
 			w.WriteHeader(http.StatusMethodNotAllowed)
 			w.Write([]byte(methodNotAllowed))
@@ -1394,6 +1399,7 @@ print(req.json())
 	}))
 
 	r.HandleFunc("/bots/{id}", getBotsFn)
+	r.HandleFunc("/bot/{id}", getBotsFn)
 
 	docs.AddDocs("GET", "/bots/{id}/reviews", "get_bot_reviews", "Get Bot Reviews", "Gets the reviews of a bot by its ID (names are not resolved by this endpoint)",
 		[]docs.Paramater{

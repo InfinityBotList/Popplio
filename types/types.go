@@ -229,13 +229,25 @@ func (s BotStats) GetStats() (servers uint64, shards uint64, users uint64) {
 
 	// Handle float64
 	if serverFloat, ok := serverCount.(float64); ok {
-		serversParsed = uint64(serverFloat)
+		if serverFloat < 0 {
+			serversParsed = 0
+		} else {
+			serversParsed = uint64(serverFloat)
+		}
 	}
 	if shardFloat, ok := shardCount.(float64); ok {
-		shardsParsed = uint64(shardFloat)
+		if shardFloat < 0 {
+			shardsParsed = 0
+		} else {
+			shardsParsed = uint64(shardFloat)
+		}
 	}
 	if userFloat, ok := userCount.(float64); ok {
-		usersParsed = uint64(userFloat)
+		if userFloat < 0 {
+			userFloat = 0
+		} else {
+			usersParsed = uint64(userFloat)
+		}
 	}
 
 	// Handle float32
