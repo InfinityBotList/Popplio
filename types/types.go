@@ -272,6 +272,29 @@ func (s BotStats) GetStats() (servers uint64, shards uint64, users uint64) {
 		}
 	}
 
+	// Handle int32
+	if serverInt, ok := serverCount.(int32); ok {
+		if serverInt < 0 {
+			serversParsed = 0
+		} else {
+			serversParsed = uint64(serverInt)
+		}
+	}
+	if shardInt, ok := shardCount.(int32); ok {
+		if shardInt < 0 {
+			shardsParsed = 0
+		} else {
+			shardsParsed = uint64(shardInt)
+		}
+	}
+	if userInt, ok := userCount.(int32); ok {
+		if userInt < 0 {
+			usersParsed = 0
+		} else {
+			usersParsed = uint64(userInt)
+		}
+	}
+
 	// Handle string
 	if serverString, ok := serverCount.(string); ok {
 		if serverString == "" {
@@ -300,9 +323,12 @@ func (s BotStats) GetStats() (servers uint64, shards uint64, users uint64) {
 	log.Info(reflect.TypeOf(serverCount))
 
 	log.WithFields(log.Fields{
-		"servers": serversParsed,
-		"shards":  shardsParsed,
-		"users":   usersParsed,
+		"servers":     serversParsed,
+		"shards":      shardsParsed,
+		"users":       usersParsed,
+		"serversType": reflect.TypeOf(serverCount),
+		"shardsType":  reflect.TypeOf(shardCount),
+		"usersType":   reflect.TypeOf(userCount),
 	}).Info("Setting stats")
 
 	return serversParsed, shardsParsed, usersParsed
