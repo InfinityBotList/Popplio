@@ -712,10 +712,15 @@ func main() {
 			log.Error(err)
 		}
 
-		previous := os.Getenv("SITE_URL") + "/bots/all?page=" + strconv.FormatUint(pageNum-1, 10)
+		var previous strings.Builder
+
+		// More optimized string concat
+		previous.WriteString(os.Getenv("SITE_URL"))
+		previous.WriteString("/bots/all?page=")
+		previous.WriteString(strconv.FormatUint(pageNum-1, 10))
 
 		if pageNum-1 < 1 || pageNum == 0 {
-			previous = ""
+			previous.Reset()
 		}
 
 		count, err := col.CountDocuments(ctx, bson.M{})
@@ -727,18 +732,22 @@ func main() {
 			return
 		}
 
-		next := os.Getenv("SITE_URL") + "/bots/all?page=" + strconv.FormatUint(pageNum+1, 10)
+		var next strings.Builder
+
+		next.WriteString(os.Getenv("SITE_URL"))
+		next.WriteString("/bots/all?page=")
+		next.WriteString(strconv.FormatUint(pageNum+1, 10))
 
 		if float64(pageNum+1) > math.Ceil(float64(count)/perPage) {
-			next = ""
+			next.Reset()
 		}
 
 		data := types.AllBots{
 			Count:    count,
 			Results:  bots,
 			PerPage:  perPage,
-			Previous: previous,
-			Next:     next,
+			Previous: previous.String(),
+			Next:     next.String(),
 		}
 
 		bytes, err := json.Marshal(data)
