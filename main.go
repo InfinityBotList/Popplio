@@ -1118,7 +1118,7 @@ print(req.json())
 
 		var bot struct {
 			BotID      string `bson:"botID"`
-			Type       string `bson:"type"`
+			Type       string `bson:"type,omitempty"`
 			VoteBanned bool   `bson:"vote_banned,omitempty"`
 		}
 
@@ -1129,26 +1129,9 @@ print(req.json())
 			w.Write([]byte(unauthorized))
 			return
 		} else {
-			options := options.FindOne().SetProjection(bson.M{"botID": 1, "type": 1})
+			options := options.FindOne().SetProjection(bson.M{"botID": 1, "type": 1, "vote_banned": 1})
 
-			err = col.FindOne(
-				ctx,
-				bson.M{
-					"botID": vars["bid"],
-				},
-				options,
-			).Decode(&bot)
-
-			vars["bid"] = bot.BotID
-
-			if err != nil {
-				log.Error(err)
-				w.WriteHeader(http.StatusNotFound)
-				w.Write([]byte(notFound))
-				return
-			}
-
-			err := col.FindOne(ctx, bson.M{"token": r.Header.Get("Authorization"), "botID": vars["bid"]}, options).Decode(&bot)
+			err := col.FindOne(ctx, bson.M{"token": r.Header.Get("Authorization"), "botID": vars["bot_id"]}, options).Decode(&bot)
 
 			if err != nil {
 				log.Error(err)
@@ -1156,6 +1139,8 @@ print(req.json())
 				w.Write([]byte(unauthorized))
 				return
 			}
+
+			vars["bot_id"] = bot.BotID
 		}
 
 		if bot.Type != "approved" {
@@ -1170,7 +1155,7 @@ print(req.json())
 			return
 		}
 
-		voteParsed, err := utils.GetVoteData(ctx, mongoDb, vars["uid"], vars["bid"])
+		voteParsed, err := utils.GetVoteData(ctx, mongoDb, vars["user_id"], vars["bot_id"])
 
 		if err != nil {
 			log.Error(err)
