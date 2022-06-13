@@ -43,6 +43,7 @@ const (
 	notFound         = "{\"message\":\"Slow down, bucko! We couldn't find this resource *anywhere*!\",\"error\":true}"
 	notFoundPage     = "{\"message\":\"Slow down, bucko! You got the path wrong or something but this endpoint doesn't exist!\",\"error\":true}"
 	badRequest       = "{\"message\":\"Slow down, bucko! You're doing something illegal!!!\",\"error\":true}"
+	badRequestStats  = "{\"message\":\"Slow down, bucko! You're not posting stats correctly. Hint: try posting stats as integers and not as strings?\",\"error\":true}"
 	unauthorized     = "{\"message\":\"Slow down, bucko! You're not authorized to do this or did you forget a API token somewhere?\",\"error\":true}"
 	internalError    = "{\"message\":\"Slow down, bucko! Something went wrong on our end!\",\"error\":true}"
 	methodNotAllowed = "{\"message\":\"Slow down, bucko! That method is not allowed for this endpoint!!!\",\"error\":true}"
@@ -392,7 +393,7 @@ func main() {
 
 	docs.AddDocs("GET", "/announcements", "announcements", "Get Announcements", "Gets the announcements. User authentication is optional and using it will show user targetted announcements", []docs.Paramater{}, []string{"System"}, nil, types.Announcement{}, []string{"User"})
 	r.HandleFunc("/announcements", rateLimitWrap(30, 1*time.Minute, "gannounce", func(w http.ResponseWriter, r *http.Request) {
-		if r.Method == "GET" {
+		if r.Method != "GET" {
 			w.WriteHeader(http.StatusMethodNotAllowed)
 			w.Write([]byte(methodNotAllowed))
 			return
@@ -591,10 +592,19 @@ func main() {
 			if r.URL.Query().Get("count") != "" {
 				payload = types.BotStats{}
 			} else {
-				log.Error(err)
-				w.WriteHeader(http.StatusBadRequest)
-				w.Write([]byte(badRequest))
-				return
+				// Try workaround for invalid stringed json
+				var workaround types.BotStatString
+
+				err = json.Unmarshal(bodyBytes, &workaround)
+
+				if err != nil {
+					log.Error(err)
+					w.WriteHeader(http.StatusBadRequest)
+					w.Write([]byte(badRequestStats))
+					return
+				} else {
+					payload = workaround.ToStats()
+				}
 			}
 		}
 
@@ -604,7 +614,7 @@ func main() {
 			if err != nil {
 				log.Error(err)
 				w.WriteHeader(http.StatusBadRequest)
-				w.Write([]byte(badRequest))
+				w.Write([]byte(badRequestStats))
 				return
 			}
 

@@ -1,6 +1,7 @@
 package types
 
 import (
+	"strconv"
 	"time"
 
 	"github.com/bwmarrin/discordgo"
@@ -170,6 +171,89 @@ func (s BotStats) GetStats() (servers uint32, shards uint32, users uint32) {
 	}
 
 	return serverCount, shardCount, userCount
+}
+
+// Compat struct for people posting stats currently as a string
+type BotStatString struct {
+	// Fields are ordered in the way they are searched
+	// The simple servers, shards way
+	Servers *string `json:"servers"`
+	Shards  *string `json:"shards"`
+
+	// Fates List uses this (server count)
+	GuildCount *string `json:"guild_count"`
+
+	// Top.gg uses this (server count)
+	ServerCount *string `json:"server_count"`
+
+	// Top.gg and Fates List uses this (shard count)
+	ShardCount *string `json:"shard_count"`
+
+	// Rovel Discord List and dlist.gg (kinda) uses this (server count)
+	Count *string `json:"count"`
+
+	// Discordbotlist.com uses this (server count)
+	Guilds *string `json:"guilds"`
+
+	Users     *string `json:"users"`
+	UserCount *string `json:"user_count"`
+}
+
+func (s BotStatString) ToStats() BotStats {
+	var serverCount string
+	var shardCount string
+	var userCount string
+
+	if s.Servers != nil {
+		serverCount = *s.Servers
+	} else if s.GuildCount != nil {
+		serverCount = *s.GuildCount
+	} else if s.ServerCount != nil {
+		serverCount = *s.ServerCount
+	} else if s.Count != nil {
+		serverCount = *s.Count
+	} else if s.Guilds != nil {
+		serverCount = *s.Guilds
+	}
+
+	if s.Shards != nil {
+		shardCount = *s.Shards
+	} else if s.ShardCount != nil {
+		shardCount = *s.ShardCount
+	}
+
+	if s.Users != nil {
+		userCount = *s.Users
+	} else if s.UserCount != nil {
+		userCount = *s.UserCount
+	}
+
+	// Try parsing each as a string
+	var servers uint32
+
+	if serverCount != "" {
+		if v, err := strconv.ParseUint(serverCount, 10, 32); err == nil {
+			servers = uint32(v)
+		}
+	}
+
+	var shards uint32
+
+	if shardCount != "" {
+		if v, err := strconv.ParseUint(shardCount, 10, 32); err == nil {
+			shards = uint32(v)
+		}
+	}
+
+	var users uint32
+
+	if userCount != "" {
+		if v, err := strconv.ParseUint(userCount, 10, 32); err == nil {
+			users = uint32(v)
+		}
+	}
+
+	return BotStats{Servers: &servers, Shards: &shards, Users: &users}
 }
 
 type WebhookPost struct {

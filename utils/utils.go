@@ -39,6 +39,18 @@ func ParseBot(bot *types.Bot) {
 	if IsNone(bot.Github) {
 		bot.Github = nil
 	}
+
+	if IsNone(bot.Support) {
+		bot.Support = nil
+	}
+
+	if IsNone(bot.Banner) {
+		bot.Banner = nil
+	}
+
+	if IsNone(bot.Invite) {
+		bot.Invite = nil
+	}
 }
 
 func ParseUser(user *types.User) {
