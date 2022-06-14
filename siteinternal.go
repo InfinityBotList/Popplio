@@ -837,7 +837,7 @@ func sendWebhook(webhook types.WebhookPost) error {
 
 	isDiscordIntegration := isDiscord(url)
 
-	if utils.IsNone(&url) || utils.IsNone(&token) {
+	if !webhook.Test && (utils.IsNone(&url) || utils.IsNone(&token)) {
 		// Fetch URL from mongoDB
 		col := mongoDb.Collection("bots")
 

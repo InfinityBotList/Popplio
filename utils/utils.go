@@ -241,6 +241,13 @@ func GetVoteData(ctx context.Context, mongoDb *mongo.Database, userID, botID str
 		VoteTime: GetVoteTime(),
 	}
 
+	log.WithFields(log.Fields{
+		"uid":   userID,
+		"bid":   botID,
+		"votes": votes,
+		"err":   err,
+	}).Info("Got vote info")
+
 	voteParsed.Timestamps = votes
 
 	// In most cases, will be one but not always

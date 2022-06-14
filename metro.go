@@ -48,7 +48,7 @@ func addBot(bot *types.Bot) (*mongo.InsertOneResult, error) {
 		"botName":           bot.Username,
 		"vanity":            strings.ToLower(regex.ReplaceAllString(bot.Username, "")),
 		"note":              "Metro-approved",
-		"date":              time.Now(),
+		"date":              time.Now().UnixMilli(),
 		"prefix":            prefix,
 		"website":           bot.Website,
 		"github":            bot.Github,

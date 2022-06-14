@@ -58,6 +58,7 @@ type Bot struct {
 	Claimed          bool               `bson:"claimed,omitempty" json:"claimed"`
 	ClaimedBy        string             `bson:"claimedBy,omitempty" json:"claimed_by"`
 	Note             string             `bson:"note,omitempty" json:"approval_note"`
+	Date             any                `bson:"date,omitempty" json:"date"`
 }
 
 type AllBots struct {

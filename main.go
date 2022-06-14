@@ -1017,11 +1017,13 @@ print(req.json())
 			}
 
 			// Record new vote
-			r, err := col.InsertOne(ctx, bson.M{"botID": vars["bid"], "userID": vars["uid"], "date": time.Now().UnixMilli()})
+			col = mongoDb.Collection("votes")
+
+			r, err := mongoDb.Collection("votes").InsertOne(ctx, bson.M{"botID": vars["bid"], "userID": vars["uid"], "date": time.Now().UnixMilli()})
 
 			if err != nil {
 				// Revert vote
-				_, err := col.DeleteOne(ctx, bson.M{"_id": r.InsertedID})
+				_, err := mongoDb.Collection("votes").DeleteOne(ctx, bson.M{"_id": r.InsertedID})
 				log.Error(err)
 				w.WriteHeader(http.StatusInternalServerError)
 				w.Write([]byte(internalError))
@@ -1032,11 +1034,11 @@ print(req.json())
 				Votes int `bson:"votes"`
 			}
 
-			err = col.FindOne(ctx, bson.M{"botID": vars["bid"]}, options.FindOne().SetProjection(bson.M{"votes": 1})).Decode(&oldVotes)
+			err = mongoDb.Collection("bots").FindOne(ctx, bson.M{"botID": vars["bid"]}, options.FindOne().SetProjection(bson.M{"votes": 1})).Decode(&oldVotes)
 
 			if err != nil {
 				// Revert vote
-				_, err := col.DeleteOne(ctx, bson.M{"_id": r.InsertedID})
+				_, err := mongoDb.Collection("votes").DeleteOne(ctx, bson.M{"_id": r.InsertedID})
 
 				log.Error(err)
 				w.WriteHeader(http.StatusInternalServerError)
@@ -1074,23 +1076,10 @@ print(req.json())
 				})
 
 				if err != nil {
-					log.Error("Webhook error: ", err, ". Refunding vote...")
-					_, refErr := col.DeleteOne(ctx, bson.M{"_id": r.InsertedID})
-
-					if refErr != nil {
-						log.Error("Error when refunding vote: ", refErr)
-					}
-
-					_, refErr = mongoDb.Collection("bots").UpdateOne(ctx, bson.M{"botID": vars["bid"]}, bson.M{"$inc": bson.M{"votes": -1 * incr}})
-
-					if refErr != nil {
-						log.Error("Error when refunding vote: ", refErr)
-					}
-
 					mongoDb.Collection("notifications").InsertOne(ctx, bson.M{
 						"userID":  vars["uid"],
 						"url":     "https://infinitybots.gg/bots/" + vars["bid"],
-						"message": "Whoa there! We've failed to notify this bot about this vote. The error was: " + err.Error() + ". We have refunded this vote so you can retry voting for this bot",
+						"message": "Whoa there! We've failed to notify this bot about this vote. The error was: " + err.Error() + ".",
 						"type":    "error",
 					})
 				} else {
@@ -1466,10 +1455,10 @@ print(req.json())
 	r.HandleFunc("/cosmog/tasks/{tid}.arceus", getTask)
 	r.HandleFunc("/cosmog/tasks/{tid}", taskFn)
 
-	docs.AddDocs("POST", "/webhook-test", "webhook_test", "Test Webhook", "Sends a test webhook to allow testing your vote system",
-		[]docs.Paramater{}, []string{"System"}, nil, types.ApiError{}, []string{})
+	docs.AddDocs("POST", "/webhook-test", "webhook_test", "Test Webhook", "Sends a test webhook to allow testing your vote system. **All fields are mandatory for test bot**",
+		[]docs.Paramater{}, []string{"System"}, types.WebhookPost{}, types.ApiError{}, []string{})
 
-	r.HandleFunc("/webhook-test", rateLimitWrap(3, 3*time.Minute, "webtest", func(w http.ResponseWriter, r *http.Request) {
+	r.HandleFunc("/webhook-test", rateLimitWrap(7, 3*time.Minute, "webtest", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != "POST" {
 			w.WriteHeader(http.StatusMethodNotAllowed)
 			w.Write([]byte(methodNotAllowed))
