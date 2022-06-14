@@ -901,15 +901,25 @@ func sendWebhook(webhook types.WebhookPost) error {
 			}).Warning("Invalid webhook URL")
 			return errors.New("invalid discord webhook URL. Could not parse")
 		}
+
 		webhookId := parts[5]
 		webhookToken := parts[6]
 		userObj, err := metro.User(webhook.UserID)
+
 		if err != nil {
-			log.WithFields(log.Fields{
-				"user": webhook.UserID,
-			}).Warning(err)
-			return err
+			userObj = &discordgo.User{
+				ID:            "510065483693817867",
+				Username:      "Toxic Dev (test webhook)",
+				Avatar:        "https://cdn.discordapp.com/avatars/510065483693817867/a_96c9cea3c656deac48f1d8fdfdae5007.gif?size=1024",
+				Discriminator: "0000",
+			}
 		}
+
+		log.WithFields(log.Fields{
+			"user":      webhook.UserID,
+			"webhookId": webhookId,
+			"token":     webhookToken,
+		}).Warning("Got here in parsing webhook for discord")
 
 		botObj, err := metro.User(webhook.BotID)
 		if err != nil {
@@ -923,15 +933,17 @@ func sendWebhook(webhook types.WebhookPost) error {
 		var embeds []*discordgo.MessageEmbed = []*discordgo.MessageEmbed{
 			{
 				Title: "Congrats! " + botObj.Username + " got a new vote!!!",
-				Description: "**" + userWithDisc + "** just voted for **" + botObj.Username + "**!\n" +
+				Description: "**" + userWithDisc + "** just voted for **" + botObj.Username + "**!\n\n" +
 					"**" + botObj.Username + "** now has **" + strconv.Itoa(webhook.Votes) + "** votes!",
 				Color: 0x00ff00,
 				URL:   "https://botlist.site/bots/" + webhook.BotID,
 			},
 		}
 
-		_, err = metro.WebhookExecute(webhookId, webhookToken, false, &discordgo.WebhookParams{
-			Embeds: embeds,
+		_, err = metro.WebhookExecute(webhookId, webhookToken, true, &discordgo.WebhookParams{
+			Embeds:    embeds,
+			Username:  userObj.Username,
+			AvatarURL: userObj.Avatar,
 		})
 
 		if err != nil {

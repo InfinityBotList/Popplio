@@ -1017,8 +1017,6 @@ print(req.json())
 			}
 
 			// Record new vote
-			col = mongoDb.Collection("votes")
-
 			r, err := mongoDb.Collection("votes").InsertOne(ctx, bson.M{"botID": vars["bid"], "userID": vars["uid"], "date": time.Now().UnixMilli()})
 
 			if err != nil {
@@ -1059,7 +1057,7 @@ print(req.json())
 
 			if err != nil {
 				// Revert vote
-				_, err := col.DeleteOne(ctx, bson.M{"_id": r.InsertedID})
+				_, err := mongoDb.Collection("votes").DeleteOne(ctx, bson.M{"_id": r.InsertedID})
 
 				log.Error(err)
 				w.WriteHeader(http.StatusInternalServerError)
