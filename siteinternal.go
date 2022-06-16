@@ -845,6 +845,7 @@ func sendWebhook(webhook types.WebhookPost) error {
 			Discord    string `bson:"webhook"`
 			CustomURL  string `bson:"webURL"`
 			CustomAuth string `bson:"webAuth"`
+			APIToken   string `bson:"token"`
 			HMACAuth   bool   `bson:"webHmacAuth,omitempty"`
 		}
 
@@ -870,18 +871,23 @@ func sendWebhook(webhook types.WebhookPost) error {
 			bot.CustomAuth = token
 		}
 
-		// Check if custom url and auth exists, if so use that
-		if utils.IsNone(&bot.CustomURL) {
-			url, token = bot.Discord, ""
-			isDiscordIntegration = true
-		} else {
-			url, token = bot.CustomURL, bot.CustomAuth
-			isDiscordIntegration = false
-		}
-
 		webhook.HMACAuth = bot.HMACAuth
+		webhook.Token = bot.CustomAuth
 
 		log.Info("Using hmac: ", webhook.HMACAuth)
+
+		// For each url, make a new sendWebhook
+		if !utils.IsNone(&bot.CustomURL) {
+			webhook.URL = bot.CustomURL
+			err := sendWebhook(webhook)
+			log.Error("Custom URL send error", err)
+		}
+
+		if !utils.IsNone(&bot.Discord) {
+			webhook.URL = bot.Discord
+			err := sendWebhook(webhook)
+			log.Error("Discord send error", err)
+		}
 	}
 
 	if utils.IsNone(&url) {

@@ -1502,27 +1502,40 @@ print(req.json())
 
 		err = sendWebhook(payload)
 
+		var err2 error
+
+		if !utils.IsNone(&payload.URL2) {
+			payload.URL = payload.URL2 // Test second enpdoint if it's not empty
+			err2 = sendWebhook(payload)
+		}
+
+		var errD = types.ApiError{}
+
 		if err != nil {
 			log.Error(err)
 
-			var errD = types.ApiError{
-				Message: err.Error(),
-				Error:   true,
-			}
+			errD.Message = err.Error()
+			errD.Error = true
+		}
 
-			bytes, err := json.Marshal(errD)
+		if err2 != nil {
+			log.Error(err2)
 
-			if err != nil {
-				log.Error(err)
-				w.WriteHeader(http.StatusInternalServerError)
-				w.Write([]byte(internalError))
-				return
-			}
+			errD.Message += err2.Error()
+			errD.Error = true
+		}
 
-			w.WriteHeader(http.StatusBadRequest)
-			w.Write(bytes)
+		bytes, err := json.Marshal(errD)
+
+		if err != nil {
+			log.Error(err)
+			w.WriteHeader(http.StatusInternalServerError)
+			w.Write([]byte(internalError))
 			return
 		}
+
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write(bytes)
 	}))
 
 	// Internal notification api

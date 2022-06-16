@@ -353,8 +353,11 @@ type WebhookPost struct {
 	Test   bool   `json:"test"`
 	Votes  int    `json:"votes,omitempty"`
 
-	// Only present on test webhook API
+	// Only present on test webhook API or during sends internally
 	URL string `json:"url,omitempty"`
+
+	// Only present on test webhook API
+	URL2 string `json:"url2,omitempty"`
 
 	// Only present on test webhook API
 	Token string `json:"token,omitempty"`
