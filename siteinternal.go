@@ -28,7 +28,6 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
-	"golang.org/x/exp/slices"
 )
 
 type InternalOauthUser struct {
@@ -836,7 +835,13 @@ func isDiscord(url string) bool {
 		"https://ptb.discord.com/api/webhooks/",
 	}
 
-	return slices.Contains(validPrefixes, url)
+	for _, prefix := range validPrefixes {
+		if strings.HasPrefix(url, prefix) {
+			return true
+		}
+	}
+
+	return false
 }
 
 // Sends a webhook
