@@ -904,10 +904,10 @@ func sendWebhook(webhook types.WebhookPost) error {
 
 		webhookId := parts[5]
 		webhookToken := parts[6]
-		userObj, err := metro.User(webhook.UserID)
+		userObj, err := utils.GetDiscordUser(metro, redisCache, ctx, webhook.UserID)
 
 		if err != nil {
-			userObj = &discordgo.User{
+			userObj = &types.DiscordUser{
 				ID:            "510065483693817867",
 				Username:      "Toxic Dev (test webhook)",
 				Avatar:        "https://cdn.discordapp.com/avatars/510065483693817867/a_96c9cea3c656deac48f1d8fdfdae5007.gif?size=1024",
@@ -921,7 +921,7 @@ func sendWebhook(webhook types.WebhookPost) error {
 			"token":     webhookToken,
 		}).Warning("Got here in parsing webhook for discord")
 
-		botObj, err := metro.User(webhook.BotID)
+		botObj, err := utils.GetDiscordUser(metro, redisCache, ctx, webhook.BotID)
 		if err != nil {
 			log.WithFields(log.Fields{
 				"user": webhook.BotID,
@@ -949,7 +949,7 @@ func sendWebhook(webhook types.WebhookPost) error {
 		if err != nil {
 			log.WithFields(log.Fields{
 				"webhook": webhookId,
-			}).Warning("Failed to execute webhook")
+			}).Warning("Failed to execute webhook", err)
 			return err
 		}
 	} else {

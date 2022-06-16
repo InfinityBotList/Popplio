@@ -16,6 +16,7 @@ import (
 
 var notifChannel = make(chan types.Notification)
 var premiumChannel = make(chan string)
+var messageNotifyChannel = make(chan types.DiscordLog)
 
 func init() {
 	/* This channel is used to fan out premium removals */
@@ -314,6 +315,24 @@ func init() {
 			}
 
 			cur.Close(ctx)
+		}
+	}()
+
+	// Message sending notification goroutine
+	go func() {
+		for msg := range messageNotifyChannel {
+			if msg.Message == nil {
+				continue
+			}
+			log.Info("Sending message to: ", msg.ChannelID)
+
+			// Send message to channel
+			_, err := metro.ChannelMessageSendComplex(msg.ChannelID, msg.Message)
+
+			if err != nil {
+				log.Error("Error sending message: ", err)
+				continue
+			}
 		}
 	}()
 }

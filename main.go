@@ -1065,6 +1065,13 @@ print(req.json())
 				return
 			}
 
+			messageNotifyChannel <- types.DiscordLog{
+				ChannelID: os.Getenv("VOTE_CHANNEL"),
+				Message: &discordgo.MessageSend{
+					Content: "<@" + vars["uid"] + "> voted for <@" + vars["bid"] + "> which now has " + strconv.Itoa(oldVotes.Votes) + " votes",
+				},
+			}
+
 			// Send webhook in a goroutine refunding the vote if it failed
 			go func() {
 				err = sendWebhook(types.WebhookPost{

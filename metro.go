@@ -8,6 +8,8 @@ import (
 	"strings"
 	"time"
 
+	popltypes "popplio/types"
+
 	"github.com/MetroReviews/metro-integrase/types"
 	log "github.com/sirupsen/logrus"
 	"go.mongodb.org/mongo-driver/bson"
@@ -188,45 +190,44 @@ func (adp DummyAdapter) ApproveBot(bot *types.Bot) error {
 
 	log.Info("Updated ", res.MatchedCount, " bots")
 
-	_, err = metro.ChannelMessageSendComplex(os.Getenv("CHANNEL_ID"), &discordgo.MessageSend{
-		Embeds: []*discordgo.MessageEmbed{
-			{
-				Title: "**__Bot Approved:__**",
-				Thumbnail: &discordgo.MessageEmbedThumbnail{
-					URL: "https://cdn.discordapp.com/attachments/815094858439065640/972734471369527356/FD34E31D-BFBC-4B96-AEDB-0ECB16F49314.png",
+	messageNotifyChannel <- popltypes.DiscordLog{
+		ChannelID: os.Getenv("CHANNEL_ID"),
+		Message: &discordgo.MessageSend{
+			Embeds: []*discordgo.MessageEmbed{
+				{
+					Title: "**__Bot Approved:__**",
+					Thumbnail: &discordgo.MessageEmbedThumbnail{
+						URL: "https://cdn.discordapp.com/attachments/815094858439065640/972734471369527356/FD34E31D-BFBC-4B96-AEDB-0ECB16F49314.png",
+					},
+					Color: 0x00FF00,
+					Fields: []*discordgo.MessageEmbedField{
+						{
+							Name:   "Bot:",
+							Value:  "<@" + bot.BotID + ">",
+							Inline: true,
+						},
+						{
+							Name:   "Owner:",
+							Value:  "<@" + bot.Owner + ">",
+							Inline: true,
+						},
+						{
+							Name:   "Moderator:",
+							Value:  "<@" + bot.Reviewer + ">",
+							Inline: true,
+						},
+						{
+							Name:  "Feedback:",
+							Value: bot.Reason,
+						},
+					},
+					Footer: &discordgo.MessageEmbedFooter{
+						Text: "© Copyright 2021 - 2022 - Metro Reviewer",
+					},
+					Timestamp: time.Now().Format(time.RFC3339),
 				},
-				Color: 0x00FF00,
-				Fields: []*discordgo.MessageEmbedField{
-					{
-						Name:   "Bot:",
-						Value:  "<@" + bot.BotID + ">",
-						Inline: true,
-					},
-					{
-						Name:   "Owner:",
-						Value:  "<@" + bot.Owner + ">",
-						Inline: true,
-					},
-					{
-						Name:   "Moderator:",
-						Value:  "<@" + bot.Reviewer + ">",
-						Inline: true,
-					},
-					{
-						Name:  "Feedback:",
-						Value: bot.Reason,
-					},
-				},
-				Footer: &discordgo.MessageEmbedFooter{
-					Text: "© Copyright 2021 - 2022 - Metro Reviewer",
-				},
-				Timestamp: time.Now().Format(time.RFC3339),
 			},
 		},
-	})
-
-	if err != nil {
-		log.Error(err)
 	}
 
 	return nil
@@ -279,45 +280,44 @@ func (adp DummyAdapter) DenyBot(bot *types.Bot) error {
 
 	log.Info("Updated ", res.MatchedCount, " bots")
 
-	_, err = metro.ChannelMessageSendComplex(os.Getenv("CHANNEL_ID"), &discordgo.MessageSend{
-		Embeds: []*discordgo.MessageEmbed{
-			{
-				Title: "**__Bot Denued:__**",
-				Thumbnail: &discordgo.MessageEmbedThumbnail{
-					URL: "https://cdn.discordapp.com/attachments/815094858439065640/972734471369527356/FD34E31D-BFBC-4B96-AEDB-0ECB16F49314.png",
+	messageNotifyChannel <- popltypes.DiscordLog{
+		ChannelID: os.Getenv("CHANNEL_ID"),
+		Message: &discordgo.MessageSend{
+			Embeds: []*discordgo.MessageEmbed{
+				{
+					Title: "**__Bot Denued:__**",
+					Thumbnail: &discordgo.MessageEmbedThumbnail{
+						URL: "https://cdn.discordapp.com/attachments/815094858439065640/972734471369527356/FD34E31D-BFBC-4B96-AEDB-0ECB16F49314.png",
+					},
+					Color: 0xFF0000,
+					Fields: []*discordgo.MessageEmbedField{
+						{
+							Name:   "Bot:",
+							Value:  "<@" + bot.BotID + ">",
+							Inline: true,
+						},
+						{
+							Name:   "Owner:",
+							Value:  "<@" + bot.Owner + ">",
+							Inline: true,
+						},
+						{
+							Name:   "Moderator:",
+							Value:  "<@" + bot.Reviewer + ">",
+							Inline: true,
+						},
+						{
+							Name:  "Reason:",
+							Value: bot.Reason,
+						},
+					},
+					Footer: &discordgo.MessageEmbedFooter{
+						Text: "© Copyright 2021 - 2022 - Metro Reviewer",
+					},
+					Timestamp: time.Now().Format(time.RFC3339),
 				},
-				Color: 0xFF0000,
-				Fields: []*discordgo.MessageEmbedField{
-					{
-						Name:   "Bot:",
-						Value:  "<@" + bot.BotID + ">",
-						Inline: true,
-					},
-					{
-						Name:   "Owner:",
-						Value:  "<@" + bot.Owner + ">",
-						Inline: true,
-					},
-					{
-						Name:   "Moderator:",
-						Value:  "<@" + bot.Reviewer + ">",
-						Inline: true,
-					},
-					{
-						Name:  "Reason:",
-						Value: bot.Reason,
-					},
-				},
-				Footer: &discordgo.MessageEmbedFooter{
-					Text: "© Copyright 2021 - 2022 - Metro Reviewer",
-				},
-				Timestamp: time.Now().Format(time.RFC3339),
 			},
 		},
-	})
-
-	if err != nil {
-		log.Error(err)
 	}
 
 	return nil

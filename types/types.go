@@ -429,3 +429,8 @@ type Message struct {
 	Title   string `json:"title"`
 	Icon    string `json:"icon"`
 }
+
+type DiscordLog struct {
+	Message   *discordgo.MessageSend
+	ChannelID string
+}
