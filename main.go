@@ -1492,7 +1492,7 @@ print(req.json())
 			return
 		}
 
-		if utils.IsNone(&payload.URL) {
+		if utils.IsNone(&payload.URL) && utils.IsNone(&payload.URL2) {
 			w.WriteHeader(http.StatusBadRequest)
 			w.Write([]byte(badRequest))
 			return
@@ -1500,7 +1500,11 @@ print(req.json())
 
 		payload.Test = true // Always true
 
-		err = sendWebhook(payload)
+		var err1 error
+
+		if !utils.IsNone(&payload.URL) {
+			err1 = sendWebhook(payload)
+		}
 
 		var err2 error
 
@@ -1511,7 +1515,7 @@ print(req.json())
 
 		var errD = types.ApiError{}
 
-		if err != nil {
+		if err1 != nil {
 			log.Error(err)
 
 			errD.Message = err.Error()

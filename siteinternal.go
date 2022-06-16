@@ -28,6 +28,7 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
+	"golang.org/x/exp/slices"
 )
 
 type InternalOauthUser struct {
@@ -828,7 +829,14 @@ func dataRequestTask(taskId string, id string, ip string, del bool) {
 }
 
 func isDiscord(url string) bool {
-	return strings.HasPrefix(url, "https://discordapp.com/api/webhooks/") || strings.HasPrefix(url, "https://discord.com/api/webhooks/")
+	validPrefixes := []string{
+		"https://discordapp.com/api/webhooks/",
+		"https://discord.com/api/webhooks/",
+		"https://canary.discord.com/api/webhooks/",
+		"https://ptb.discord.com/api/webhooks/",
+	}
+
+	return slices.Contains(validPrefixes, url)
 }
 
 // Sends a webhook
@@ -1010,7 +1018,7 @@ func sendWebhook(webhook types.WebhookPost) error {
 			}
 
 			if resp.StatusCode >= 400 && resp.StatusCode < 500 {
-				log.Info("Retrying webhook again")
+				log.Info("Retrying webhook again. Got status code of ", resp.StatusCode)
 				tries++
 				continue
 			}
