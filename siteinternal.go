@@ -871,14 +871,18 @@ func sendWebhook(webhook types.WebhookPost) error {
 
 		// Check custom auth viability
 		if utils.IsNone(&bot.CustomAuth) {
-			// We set the token to the a random string in DB in this case
-			token = utils.RandString(256)
+			if bot.APIToken != "" {
+				token = bot.APIToken
+			} else {
+				// We set the token to the a random string in DB in this case
+				token = utils.RandString(256)
 
-			_, err := col.UpdateOne(ctx, bson.M{"botID": webhook.BotID}, bson.M{"$set": bson.M{"webAuth": token}})
+				_, err := col.UpdateOne(ctx, bson.M{"botID": webhook.BotID}, bson.M{"$set": bson.M{"webAuth": token}})
 
-			if err != mongo.ErrNoDocuments && err != nil {
-				log.Error("Failed to update webhook: ", err.Error())
-				return err
+				if err != mongo.ErrNoDocuments && err != nil {
+					log.Error("Failed to update webhook: ", err.Error())
+					return err
+				}
 			}
 
 			bot.CustomAuth = token
