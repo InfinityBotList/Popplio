@@ -321,9 +321,20 @@ func init() {
 	// Message sending notification goroutine
 	go func() {
 		for msg := range messageNotifyChannel {
+			if msg.WebhookID != "" && msg.WebhookToken != "" && msg.WebhookData != nil {
+				log.Info("Sending message to webhook: ", msg.WebhookID)
+				_, err := metro.WebhookExecute(msg.WebhookID, msg.WebhookToken, false, msg.WebhookData)
+
+				if err != nil {
+					log.Error("Error sending message to webhook: ", err)
+					continue
+				}
+			}
+
 			if msg.Message == nil {
 				continue
 			}
+
 			log.Info("Sending message to: ", msg.ChannelID)
 
 			// Send message to channel

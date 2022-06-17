@@ -24,6 +24,7 @@ import (
 	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/joho/godotenv"
 	jsoniter "github.com/json-iterator/go"
+	ua "github.com/mileusna/useragent"
 	log "github.com/sirupsen/logrus"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -1066,9 +1067,24 @@ print(req.json())
 			}
 
 			messageNotifyChannel <- types.DiscordLog{
-				ChannelID: os.Getenv("VOTE_CHANNEL"),
-				Message: &discordgo.MessageSend{
-					Content: "<@" + vars["uid"] + "> voted for <@" + vars["bid"] + "> which now has " + strconv.Itoa(oldVotes.Votes) + " votes",
+				WebhookID:    os.Getenv("VOTE_LOG_WEBHOOK_ID"),
+				WebhookToken: os.Getenv("VOTE_LOG_WEBHOOK_TOKEN"),
+				WebhookData: &discordgo.WebhookParams{
+					Embeds: []*discordgo.MessageEmbed{
+						{
+							URL:         "https://botlist.site/" + vars["bid"],
+							Title:       ":tada: New Vote :heart:",
+							Description: ":heart: <@" + vars["uid"] + "> has voted for <@" + vars["bid"] + "> which now has " + strconv.Itoa(oldVotes.Votes) + " votes",
+							Color:       0x00ff00,
+							Fields: []*discordgo.MessageEmbedField{
+								{
+									Name:   "Vote Page",
+									Value:  "[Click here to vote](https://botlist.site/" + vars["bid"] + "/vote)",
+									Inline: true,
+								},
+							},
+						},
+					},
 				},
 			}
 
@@ -1563,6 +1579,94 @@ print(req.json())
 		w.Write(bytes)
 	}))
 
+	r.HandleFunc("/_protozoa/notifications/{id}", rateLimitWrap(4, 1*time.Minute, "get_notifs", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != "GET" && r.Method != "DELETE" {
+			w.WriteHeader(http.StatusMethodNotAllowed)
+			w.Write([]byte(methodNotAllowed))
+			return
+		}
+
+		id := mux.Vars(r)["id"]
+
+		if id == "" {
+			w.WriteHeader(http.StatusBadRequest)
+			w.Write([]byte(badRequest))
+			return
+		}
+
+		// Fetch auth from mongodb
+		col := mongoDb.Collection("users")
+
+		if r.Header.Get("Authorization") == "" {
+			w.WriteHeader(http.StatusUnauthorized)
+			w.Write([]byte(unauthorized))
+			return
+		} else {
+			options := options.FindOne().SetProjection(bson.M{"userID": 1})
+
+			err := col.FindOne(ctx, bson.M{"apiToken": strings.Replace(r.Header.Get("Authorization"), "User ", "", 1), "userID": id}, options).Err()
+
+			if err != nil {
+				log.Error(err)
+				w.WriteHeader(http.StatusUnauthorized)
+				w.Write([]byte(unauthorized))
+				return
+			}
+		}
+
+		if r.Method == "GET" {
+			var subscription []struct {
+				Endpoint    string                 `bson:"endpoint" json:"endpoint"`
+				NotifID     string                 `bson:"notifId" json:"notif_id"`
+				CreatedAt   time.Time              `bson:"createdAt" json:"created_at"`
+				UA          string                 `bson:"ua" json:"-"`
+				BrowserInfo types.NotifBrowserInfo `bson:"-" json:"browser_info"`
+			}
+
+			cur, err := mongoDb.Collection("poppypaw").Find(ctx, bson.M{"id": id})
+
+			if err != nil {
+				log.Error(err)
+				w.WriteHeader(http.StatusInternalServerError)
+				w.Write([]byte(internalError))
+				return
+			}
+
+			err = cur.All(ctx, &subscription)
+
+			if err != nil {
+				log.Error(err)
+				w.WriteHeader(http.StatusInternalServerError)
+				w.Write([]byte(internalError))
+				return
+			}
+
+			for i, val := range subscription {
+				// Parse UA
+				uaD := ua.Parse(val.UA)
+				fmt.Println("Parsing UA:", val.UA, uaD)
+
+				subscription[i].BrowserInfo = types.NotifBrowserInfo{
+					OS:         uaD.OS,
+					Browser:    uaD.Name,
+					BrowserVer: uaD.Version,
+					Mobile:     uaD.Mobile,
+				}
+			}
+
+			bytes, err := json.Marshal(subscription)
+
+			if err != nil {
+				log.Error(err)
+				w.WriteHeader(http.StatusInternalServerError)
+				w.Write([]byte(internalError))
+				return
+			}
+
+			w.Write(bytes)
+		}
+	}))
+
 	r.HandleFunc("/_protozoa/notifications/{id}/sub", rateLimitWrap(10, 1*time.Minute, "notif_info", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != "POST" {
 			w.WriteHeader(http.StatusMethodNotAllowed)
@@ -1638,6 +1742,14 @@ print(req.json())
 
 		col = mongoDb.Collection("poppypaw")
 
+		ua := r.UserAgent()
+
+		if ua == "" {
+			ua = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/80.0.3987.149 Safari/537.36"
+		}
+
+		col.DeleteMany(ctx, bson.M{"id": id, "endpoint": subscription.Endpoint})
+
 		col.InsertOne(ctx, bson.M{
 			"id":        id,
 			"notifId":   notifId,
@@ -1645,6 +1757,7 @@ print(req.json())
 			"p256dh":    subscription.P256dh,
 			"endpoint":  subscription.Endpoint,
 			"createdAt": time.Now(),
+			"ua":        r.UserAgent(),
 		})
 
 		// Fan out test notification

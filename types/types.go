@@ -420,6 +420,14 @@ type Notification struct {
 	Message []byte
 }
 
+type NotifBrowserInfo struct {
+	// The OS of the browser
+	OS         string
+	Browser    string
+	BrowserVer string
+	Mobile     bool
+}
+
 type Reminder struct {
 	UserID    string `bson:"userID" json:"user_id"`
 	BotID     string `bson:"botID" json:"bot_id"`
@@ -434,6 +442,11 @@ type Message struct {
 }
 
 type DiscordLog struct {
-	Message   *discordgo.MessageSend
-	ChannelID string
+	Message     *discordgo.MessageSend
+	WebhookData *discordgo.WebhookParams
+	ChannelID   string
+
+	// Only for webhooks
+	WebhookID    string
+	WebhookToken string
 }
