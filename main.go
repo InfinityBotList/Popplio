@@ -1958,7 +1958,7 @@ print(req.json())
 			// Delete reminder from mongodb
 			mongoDb.Collection("silverpelt").DeleteMany(ctx, bson.M{"userID": id, "botID": botId})
 
-			w.Write([]byte(success))
+			w.WriteHeader(http.StatusOK)
 		}
 	}))
 
