@@ -1579,7 +1579,7 @@ print(req.json())
 		w.Write(bytes)
 	}))
 
-	r.HandleFunc("/_protozoa/notifications/{id}", rateLimitWrap(4, 1*time.Minute, "get_notifs", func(w http.ResponseWriter, r *http.Request) {
+	r.HandleFunc("/_protozoa/notifications/{id}", rateLimitWrap(40, 1*time.Minute, "get_notifs", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != "GET" && r.Method != "DELETE" {
 			w.WriteHeader(http.StatusMethodNotAllowed)
 			w.Write([]byte(methodNotAllowed))
@@ -1641,6 +1641,12 @@ print(req.json())
 				return
 			}
 
+			if len(subscription) == 0 {
+				w.WriteHeader(http.StatusNotFound)
+				w.Write([]byte(notFound))
+				return
+			}
+
 			for i, val := range subscription {
 				// Parse UA
 				uaD := ua.Parse(val.UA)
@@ -1664,6 +1670,23 @@ print(req.json())
 			}
 
 			w.Write(bytes)
+		} else {
+			// Delete the notif
+			if r.URL.Query().Get("notif_id") == "" {
+				w.WriteHeader(http.StatusBadRequest)
+				w.Write([]byte(badRequest))
+				return
+			}
+			_, err := mongoDb.Collection("poppypaw").DeleteOne(ctx, bson.M{"notifId": r.URL.Query().Get("notif_id")})
+
+			if err != nil {
+				log.Error(err)
+				w.WriteHeader(http.StatusInternalServerError)
+				w.Write([]byte(internalError))
+				return
+			}
+
+			w.WriteHeader(http.StatusOK)
 		}
 	}))
 
@@ -1769,8 +1792,8 @@ print(req.json())
 		w.Write([]byte(success))
 	}))
 
-	r.HandleFunc("/_protozoa/reminders/{id}", rateLimitWrap(10, 1*time.Minute, "greminder", func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != "PUT" && r.Method != "GET" {
+	r.HandleFunc("/_protozoa/reminders/{id}", rateLimitWrap(40, 1*time.Minute, "greminder", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != "PUT" && r.Method != "GET" && r.Method != "DELETE" {
 			w.WriteHeader(http.StatusMethodNotAllowed)
 			w.Write([]byte(methodNotAllowed))
 			return
@@ -1834,6 +1857,24 @@ print(req.json())
 					w.Write([]byte(internalError))
 					return
 				}
+
+				// Try resolving the bot from discord API
+				var resolvedBot types.ResolvedReminderBot
+				bot, err := utils.GetDiscordUser(metro, redisCache, ctx, r.BotID)
+
+				if err != nil {
+					resolvedBot = types.ResolvedReminderBot{
+						Name:   "Unknown",
+						Avatar: "https://cdn.discordapp.com/embed/avatars/0.png",
+					}
+				} else {
+					resolvedBot = types.ResolvedReminderBot{
+						Name:   bot.Username,
+						Avatar: bot.Avatar,
+					}
+				}
+
+				r.ResolvedBot = resolvedBot
 
 				reminder = append(reminder, r)
 			}
@@ -1903,6 +1944,19 @@ print(req.json())
 				"createdAt": time.Now().Unix(),
 				"lastAcked": 0,
 			})
+
+			w.Write([]byte(success))
+		} else {
+			botId := r.URL.Query().Get("bot_id")
+
+			if botId == "" {
+				w.WriteHeader(http.StatusBadRequest)
+				w.Write([]byte(badRequest))
+				return
+			}
+
+			// Delete reminder from mongodb
+			mongoDb.Collection("silverpelt").DeleteMany(ctx, bson.M{"userID": id, "botID": botId})
 
 			w.Write([]byte(success))
 		}

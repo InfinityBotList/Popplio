@@ -428,11 +428,17 @@ type NotifBrowserInfo struct {
 	Mobile     bool
 }
 
+type ResolvedReminderBot struct {
+	Name   string `bson:"botName" json:"name"`
+	Avatar string `bson:"avatar,omitempty" json:"avatar"`
+}
+
 type Reminder struct {
-	UserID    string `bson:"userID" json:"user_id"`
-	BotID     string `bson:"botID" json:"bot_id"`
-	CreatedAt int64  `bson:"createdAt" json:"created_at"`
-	LastAcked int64  `bson:"lastAcked" json:"last_acked"`
+	UserID      string              `bson:"userID" json:"user_id"`
+	BotID       string              `bson:"botID" json:"bot_id"`
+	ResolvedBot ResolvedReminderBot `bson:"-" json:"resolved"`
+	CreatedAt   int64               `bson:"createdAt" json:"created_at"`
+	LastAcked   int64               `bson:"lastAcked" json:"last_acked"`
 }
 
 type Message struct {
