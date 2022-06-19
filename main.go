@@ -1558,7 +1558,62 @@ print(req.json())
 		w.Write(bytes)
 	}))
 
-	// Internal notification api
+	// Internal APIs
+	r.HandleFunc("/_protozoa/profile/{id}", rateLimitWrap(7, 1*time.Minute, "profile_update", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != "PATCH" {
+			w.WriteHeader(http.StatusMethodNotAllowed)
+			w.Write([]byte(methodNotAllowed))
+			return
+		}
+
+		id := mux.Vars(r)["id"]
+
+		// Fetch auth from mongodb
+		col := mongoDb.Collection("users")
+
+		if r.Header.Get("Authorization") == "" {
+			w.WriteHeader(http.StatusUnauthorized)
+			w.Write([]byte(unauthorized))
+			return
+		} else {
+			options := options.FindOne().SetProjection(bson.M{"userID": 1})
+
+			err := col.FindOne(ctx, bson.M{"apiToken": strings.Replace(r.Header.Get("Authorization"), "User ", "", 1), "userID": id}, options).Err()
+
+			if err != nil {
+				log.Error(err)
+				w.WriteHeader(http.StatusUnauthorized)
+				w.Write([]byte(unauthorized))
+				return
+			}
+		}
+
+		// Fetch profile update from body
+		var profile types.ProfileUpdate
+
+		bodyBytes, err := io.ReadAll(r.Body)
+
+		if err != nil {
+			log.Error(err)
+			w.WriteHeader(http.StatusInternalServerError)
+			w.Write([]byte(internalError))
+			return
+		}
+
+		err = json.Unmarshal(bodyBytes, &profile)
+
+		if err != nil {
+			log.Error(err)
+			w.WriteHeader(http.StatusInternalServerError)
+			w.Write([]byte(internalError))
+			return
+		}
+
+		if profile.About != "" {
+			// Update about
+			mongoDb.Collection("users").UpdateOne(ctx, bson.M{"userID": id}, bson.M{"$set": bson.M{"about": profile.About}})
+		}
+	}))
 
 	r.HandleFunc("/_protozoa/notifications/info", rateLimitWrap(10, 1*time.Minute, "notif_info", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")

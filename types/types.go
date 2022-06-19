@@ -456,3 +456,7 @@ type DiscordLog struct {
 	WebhookID    string
 	WebhookToken string
 }
+
+type ProfileUpdate struct {
+	About string `json:"bio,omitempty"`
+}
