@@ -26,10 +26,7 @@ import (
 	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/joho/godotenv"
 	jsoniter "github.com/json-iterator/go"
-	ua "github.com/mileusna/useragent"
 	log "github.com/sirupsen/logrus"
-	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 var json = jsoniter.ConfigCompatibleWithStandardLibrary
@@ -40,7 +37,7 @@ const (
 	mainSite   = "https://infinitybotlist.com"
 	statusPage = "https://status.botlist.site"
 	apiBot     = "https://discord.com/api/oauth2/authorize?client_id=818419115068751892&permissions=140898593856&scope=bot%20applications.commands"
-	pgConn     = "postgresql://127.0.0.1:5432/infinity"
+	pgConn     = "postgresql:///infinity"
 
 	notFound         = "{\"message\":\"Slow down, bucko! We couldn't find this resource *anywhere*!\",\"error\":true}"
 	notFoundPage     = "{\"message\":\"Slow down, bucko! You got the path wrong or something but this endpoint doesn't exist!\",\"error\":true}"
@@ -437,7 +434,7 @@ func main() {
 				return
 			}
 
-			target = types.UserID{*targetId}
+			target = types.UserID{UserID: *targetId}
 		} else {
 			target = types.UserID{}
 		}
@@ -863,6 +860,13 @@ print(req.json())
 				var voteBannedBotsState bool
 
 				err = pool.QueryRow(ctx, "SELECT vote_banned FROM bots WHERE bot_id = $1", vars["bid"]).Scan(&voteBannedBotsState)
+
+				if err != nil {
+					log.Error(err)
+					w.WriteHeader(http.StatusInternalServerError)
+					w.Write([]byte(internalError))
+					return
+				}
 
 				if voteBannedBotsState && r.Method == "PUT" {
 					w.WriteHeader(http.StatusForbidden)
@@ -1320,7 +1324,7 @@ print(req.json())
 
 		var err error
 
-		row, err := pool.Query(ctx, "SELECT "+usersColsStr+" FROM users WHERE (user_id = $1 OR vanity = $1 OR name = $1)", name)
+		row, err := pool.Query(ctx, "SELECT "+usersColsStr+" FROM users WHERE user_id = $1", name)
 
 		if err != nil {
 			log.Error(err)
@@ -1493,6 +1497,9 @@ print(req.json())
 	}))
 
 	// Internal APIs
+
+	/* TODO
+
 	r.HandleFunc("/_protozoa/profile/{id}", rateLimitWrap(7, 1*time.Minute, "profile_update", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != "PATCH" {
 			w.WriteHeader(http.StatusMethodNotAllowed)
@@ -1950,6 +1957,8 @@ print(req.json())
 			w.WriteHeader(http.StatusOK)
 		}
 	}))
+
+	*/
 
 	adp := DummyAdapter{}
 

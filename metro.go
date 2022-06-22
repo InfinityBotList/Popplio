@@ -45,7 +45,7 @@ func addBot(bot *types.Bot) (pgconn.CommandTag, error) {
 
 	return pool.Exec(
 		ctx,
-		`INSERT INTO bots (bot_id, name, vanity, note, date, prefix, website, github, donate, nsfw, library, 
+		`INSERT INTO bots (bot_id, name, vanity, approval_note, date, prefix, website, github, donate, nsfw, library, 
 			cross_add, list_source, external_source, short, long, tags, invite, owner, additional_owners,
 			web_auth, custom_webhook, webhook, token, type) VALUES (
 				$1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, 

@@ -1,17 +1,14 @@
 package main
 
 import (
-	"io/ioutil"
 	"os"
 	"popplio/types"
 	"popplio/utils"
 	"time"
 
-	webpush "github.com/SherClockHolmes/webpush-go"
 	"github.com/bwmarrin/discordgo"
+	"github.com/jackc/pgtype"
 	log "github.com/sirupsen/logrus"
-	"go.mongodb.org/mongo-driver/bson"
-	"golang.org/x/exp/slices"
 )
 
 var notifChannel = make(chan types.Notification)
@@ -26,7 +23,14 @@ func init() {
 				"id": id,
 			}).Warning("Removing premium bot: ", id)
 
-			mongoDb.Collection("bots").UpdateOne(ctx, bson.M{"botID": id}, bson.M{"$set": bson.M{"premium": false, "start_period": time.Now().UnixMilli(), "sub_period": 2592000000}})
+			_, err := pool.Exec(ctx, "UPDATE bots SET premium = false, start_period = $1, sub_period = $2, WHERE bot_id = $3", time.Now().UnixMilli(), 2592000000, id)
+
+			if err != nil {
+				log.WithFields(log.Fields{
+					"id": id,
+				}).Error("Error setting premium: ", err)
+				continue
+			}
 
 			// Send message
 			botObj, err := utils.GetDiscordUser(metro, redisCache, ctx, id)
@@ -38,20 +42,18 @@ func init() {
 				continue
 			}
 
-			var botInf struct {
-				MainOwner string `bson:"main_owner"`
-			}
+			var owner pgtype.Text
 
-			err = mongoDb.Collection("bots").FindOne(ctx, bson.M{"botID": id}).Decode(&botInf)
+			err = pool.QueryRow(ctx, "SELECT owner FROM bots WHERE bot_id = $1", id).Scan(&owner)
 
-			if err != nil {
+			if err != nil || owner.Status != pgtype.Present {
 				log.WithFields(log.Fields{
 					"id": id,
 				}).Error("Error getting bot ownership info: ", err)
 				continue
 			}
 
-			userObj, err := utils.GetDiscordUser(metro, redisCache, ctx, botInf.MainOwner)
+			userObj, err := utils.GetDiscordUser(metro, redisCache, ctx, owner.String)
 
 			if err != nil {
 				log.WithFields(log.Fields{
@@ -64,7 +66,7 @@ func init() {
 				Content: botObj.Mention + "(" + botObj.Username + ") by " + userObj.Mention + " has been removed from the premium list as their subscription has expired.",
 			})
 
-			dmChannel, err := metro.UserChannelCreate(botInf.MainOwner)
+			dmChannel, err := metro.UserChannelCreate(owner.String)
 
 			if err != nil {
 				log.WithFields(log.Fields{
@@ -85,6 +87,8 @@ func init() {
 
 	   Vote reminders is a seperate goroutine
 	*/
+
+	/* TODO
 	go func() {
 		for msg := range notifChannel {
 			col := mongoDb.Collection("poppypaw")
@@ -181,7 +185,7 @@ func init() {
 					continue
 				}
 
-				voteParsed, err := utils.GetVoteData(ctx, mongoDb, reminder.UserID, reminder.BotID)
+				voteParsed, err := utils.GetVoteData(ctx, pool, reminder.UserID, reminder.BotID)
 
 				if err != nil {
 					log.Error(err)
@@ -345,5 +349,5 @@ func init() {
 				continue
 			}
 		}
-	}()
+	}()*/
 }

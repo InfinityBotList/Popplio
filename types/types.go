@@ -13,51 +13,51 @@ import (
 
 // A bot is a Discord bot that is on the infinity botlist.
 type Bot struct {
-	ITag             pgtype.UUID      `db:"itag" json:"itag"`
-	BotID            string           `db:"bot_id" json:"bot_id"`
-	Name             string           `db:"name" json:"name"`
-	Avatar           pgtype.Text      `db:"-" json:"avatar"`
-	Tags             pgtype.TextArray `db:"tags" json:"tags"`
-	Prefix           pgtype.Text      `db:"prefix" json:"prefix"`
-	Owner            string           `db:"owner" json:"owner"`
-	AdditionalOwners []string         `db:"additional_owners" json:"additional_owners"`
-	StaffBot         bool             `db:"staff" json:"staff_bot"`
-	Short            string           `db:"short" json:"short"`
-	Long             string           `db:"long" json:"long"`
-	Library          pgtype.Text      `db:"library" json:"library"`
-	Website          pgtype.Text      `db:"website" json:"website"`
-	Donate           pgtype.Text      `db:"donate" json:"donate"`
-	Support          pgtype.Text      `db:"support" json:"support"`
-	NSFW             bool             `db:"nsfw" json:"nsfw"`
-	Premium          bool             `db:"premium" json:"premium"`
-	Certified        bool             `db:"certified" json:"certified"`
-	PendingCert      bool             `db:"pending_cert" json:"pending_cert"`
-	Servers          int              `db:"servers" json:"servers"`
-	Shards           int              `db:"shards" json:"shards"`
-	Users            int              `db:"users" json:"users"`
-	Votes            int              `db:"votes" json:"votes"`
-	Views            int              `db:"clicks" json:"views"`
-	InviteClicks     int              `db:"invite_clicks" json:"invites"`
-	Github           pgtype.Text      `db:"github" json:"github"`
-	Banner           pgtype.Text      `db:"background" json:"banner"`
-	Invite           pgtype.Text      `db:"invite" json:"invite"`
-	Type             string           `db:"type" json:"type"` // For auditing reasons, we do not filter out denied/banned bots in API
-	Vanity           pgtype.Text      `db:"vanity" json:"vanity"`
-	ExternalSource   pgtype.Text      `db:"external_source" json:"external_source"`
-	ListSource       pgtype.Text      `db:"listSource" json:"list_source"`
-	VoteBanned       bool             `db:"vote_banned" json:"vote_banned"`
-	CrossAdd         bool             `db:"cross_add" json:"cross_add"`
-	StartPeriod      int              `db:"start_period" json:"start_premium_period"`
-	SubPeriod        int              `db:"sub_period" json:"premium_period_length"`
-	CertReason       string           `db:"cert_reason" json:"cert_reason"`
-	Announce         pgtype.Text      `db:"announce" json:"announce"`
-	AnnounceMessage  string           `db:"announce_msg" json:"announce_message"`
-	Uptime           int              `db:"uptime" json:"uptime"`
-	TotalUptime      int              `db:"total_uptime" json:"total_uptime"`
-	Claimed          bool             `db:"claimed" json:"claimed"`
-	ClaimedBy        string           `db:"claimedBy" json:"claimed_by"`
-	Note             string           `db:"note" json:"approval_note"`
-	Date             pgtype.Date      `db:"date" json:"date"`
+	//Avatar           pgtype.Text        `db:"-" json:"avatar"` (TODO)
+	ITag             pgtype.UUID        `db:"itag" json:"itag"`
+	BotID            string             `db:"bot_id" json:"bot_id"`
+	Name             string             `db:"name" json:"name"`
+	Tags             pgtype.TextArray   `db:"tags" json:"tags"`
+	Prefix           pgtype.Text        `db:"prefix" json:"prefix"`
+	Owner            string             `db:"owner" json:"owner"`
+	AdditionalOwners []string           `db:"additional_owners" json:"additional_owners"`
+	StaffBot         bool               `db:"staff_bot" json:"staff_bot"`
+	Short            string             `db:"short" json:"short"`
+	Long             string             `db:"long" json:"long"`
+	Library          pgtype.Text        `db:"library" json:"library"`
+	Website          pgtype.Text        `db:"website" json:"website"`
+	Donate           pgtype.Text        `db:"donate" json:"donate"`
+	Support          pgtype.Text        `db:"support" json:"support"`
+	NSFW             bool               `db:"nsfw" json:"nsfw"`
+	Premium          bool               `db:"premium" json:"premium"`
+	Certified        bool               `db:"certified" json:"certified"`
+	PendingCert      bool               `db:"pending_cert" json:"pending_cert"`
+	Servers          int                `db:"servers" json:"servers"`
+	Shards           int                `db:"shards" json:"shards"`
+	Users            int                `db:"users" json:"users"`
+	Votes            int                `db:"votes" json:"votes"`
+	Views            int                `db:"clicks" json:"views"`
+	InviteClicks     int                `db:"invite_clicks" json:"invites"`
+	Github           pgtype.Text        `db:"github" json:"github"`
+	Banner           pgtype.Text        `db:"banner" json:"banner"`
+	Invite           pgtype.Text        `db:"invite" json:"invite"`
+	Type             string             `db:"type" json:"type"` // For auditing reasons, we do not filter out denied/banned bots in API
+	Vanity           pgtype.Text        `db:"vanity" json:"vanity"`
+	ExternalSource   pgtype.Text        `db:"external_source" json:"external_source"`
+	ListSource       pgtype.Text        `db:"list_source" json:"list_source"`
+	VoteBanned       bool               `db:"vote_banned" json:"vote_banned"`
+	CrossAdd         bool               `db:"cross_add" json:"cross_add"`
+	StartPeriod      int                `db:"start_premium_period" json:"start_premium_period"`
+	SubPeriod        int                `db:"premium_period_length" json:"premium_period_length"`
+	CertReason       string             `db:"cert_reason" json:"cert_reason"`
+	Announce         pgtype.Text        `db:"announce" json:"announce"`
+	AnnounceMessage  string             `db:"announce_message" json:"announce_message"`
+	Uptime           int                `db:"uptime" json:"uptime"`
+	TotalUptime      int                `db:"total_uptime" json:"total_uptime"`
+	Claimed          bool               `db:"claimed" json:"claimed"`
+	ClaimedBy        string             `db:"claimed_by" json:"claimed_by"`
+	Note             string             `db:"approval_note" json:"approval_note"`
+	Date             pgtype.Timestamptz `db:"date" json:"date"`
 }
 
 type AllBots struct {
@@ -71,11 +71,11 @@ type AllBots struct {
 // A review is a review on ibl
 type Review struct {
 	ITag        pgtype.UUID    `db:"itag" json:"itag"`
-	BotID       string         `db:"botID" json:"bot_id"`
+	BotID       string         `db:"bot_id" json:"bot_id"`
 	Author      string         `db:"author" json:"author"`
 	Content     string         `db:"content" json:"content"`
 	Rate        bool           `db:"rate" json:"rate"`
-	StarRate    int            `db:"star_rate" json:"stars"`
+	StarRate    int            `db:"stars" json:"stars"`
 	LikesRaw    map[string]any `db:"likes" json:"likes"`
 	DislikesRaw map[string]any `db:"dislikes" json:"dislikes"`
 	Date        int            `db:"date" json:"date"`
@@ -86,13 +86,13 @@ type Review struct {
 
 type User struct {
 	ITag      pgtype.UUID    `db:"itag" json:"itag"`
-	ID        string         `db:"userID" json:"user_id"`
+	ID        string         `db:"user_id" json:"user_id"`
 	Votes     map[string]any `db:"votes" json:"-"` // Not sent due to privacy reasons
 	PackVotes map[string]any `db:"pack_votes" json:"pack_votes"`
 	Staff     bool           `db:"staff" json:"staff"`
 	Certified bool           `db:"certified" json:"certified"`
 	Developer bool           `db:"developer" json:"developer"`
-	About     pgtype.Text    `db:"about" json:"bio"`
+	About     pgtype.Text    `db:"about" json:"about"`
 	Github    pgtype.Text    `db:"github" json:"github"`
 	Nickname  pgtype.Text    `db:"nickname" json:"nickname"`
 	Website   pgtype.Text    `db:"website" json:"website"`
