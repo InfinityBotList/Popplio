@@ -285,7 +285,7 @@ func (adp DummyAdapter) DenyBot(bot *types.Bot) error {
 		Message: &discordgo.MessageSend{
 			Embeds: []*discordgo.MessageEmbed{
 				{
-					Title: "**__Bot Denued:__**",
+					Title: "**__Bot Denied:__**",
 					Thumbnail: &discordgo.MessageEmbedThumbnail{
 						URL: "https://cdn.discordapp.com/attachments/815094858439065640/972734471369527356/FD34E31D-BFBC-4B96-AEDB-0ECB16F49314.png",
 					},
