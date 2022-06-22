@@ -21,13 +21,12 @@ import (
 	"encoding/hex"
 
 	"github.com/bwmarrin/discordgo"
+	"github.com/georgysavva/scany/pgxscan"
 	"github.com/go-redis/redis/v8"
 	"github.com/gorilla/mux"
 	"github.com/jackc/pgtype"
+	"github.com/jackc/pgx/v5"
 	log "github.com/sirupsen/logrus"
-	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/bson/primitive"
-	"go.mongodb.org/mongo-driver/mongo"
 )
 
 type InternalOauthUser struct {
@@ -50,18 +49,23 @@ type InternalSession struct {
 	Passport *InternalPassport `json:"passport"`
 }
 
-type InternalBot struct {
-	ObjID   string `bson:"_id"`
-	BotID   string `bson:"botID"`
-	BotName string `bson:"botName"`
-	Votes   int    `bson:"votes"`
-	Avatar  string `bson:"-"`
-}
-
-type VoteTemplate struct {
-	User InternalOauthUser
-	Bot  InternalBot
-}
+const ddrStr = `
+SELECT sh.nspname AS table_schema,
+  tbl.relname AS table_name,
+  col.attname AS column_name,
+  referenced_sh.nspname AS foreign_table_schema,
+  referenced_tbl.relname AS foreign_table_name,
+  referenced_field.attname AS foreign_column_name
+FROM pg_constraint c
+    INNER JOIN pg_namespace AS sh ON sh.oid = c.connamespace
+    INNER JOIN (SELECT oid, unnest(conkey) as conkey FROM pg_constraint) con ON c.oid = con.oid
+    INNER JOIN pg_class tbl ON tbl.oid = c.conrelid
+    INNER JOIN pg_attribute col ON (col.attrelid = tbl.oid AND col.attnum = con.conkey)
+    INNER JOIN pg_class referenced_tbl ON c.confrelid = referenced_tbl.oid
+    INNER JOIN pg_namespace AS referenced_sh ON referenced_sh.oid = referenced_tbl.relnamespace
+    INNER JOIN (SELECT oid, unnest(confkey) as confkey FROM pg_constraint) conf ON c.oid = conf.oid
+    INNER JOIN pg_attribute referenced_field ON (referenced_field.attrelid = c.confrelid AND referenced_field.attnum = conf.confkey)
+WHERE c.contype = 'f'`
 
 func oauthFn(w http.ResponseWriter, r *http.Request) {
 	cliId := os.Getenv("CLIENT_ID")
@@ -216,7 +220,7 @@ func performAct(w http.ResponseWriter, r *http.Request) {
 	} else if act == "gettoken" {
 		token := utils.RandString(128)
 
-		_, err := mongoDb.Collection("users").UpdateOne(ctx, bson.M{"userID": user.ID}, bson.M{"$set": bson.M{"apiToken": token}})
+		_, err := pool.Exec(ctx, "UPDATE users SET api_token = $1 WHERE user_id = $2", token, user.ID)
 
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -226,56 +230,6 @@ func performAct(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(token))
 		return
 
-	} else if strings.HasPrefix(act, "vote-") {
-		voteBot := strings.Replace(act, "vote-", "", 1)
-
-		// Find bot id from vote bot using either bot id or vanity
-
-		var bot InternalBot
-
-		err = mongoDb.Collection("bots").FindOne(ctx, bson.M{
-			"$or": []bson.M{
-				{
-					"botName": voteBot,
-				},
-				{
-					"vanity": voteBot,
-				},
-				{
-					"botID": voteBot,
-				},
-			},
-		}).Decode(&bot)
-
-		if err != nil {
-			log.Error(err)
-			http.Error(w, "This bot could not be found", http.StatusNotFound)
-			return
-		}
-
-		// Get bot avatar
-		m, err := utils.GetDiscordUser(metro, redisCache, ctx, bot.BotID)
-
-		if err != nil {
-			log.Error(err)
-			http.Error(w, "We couldn't fetch this bot from discord for some reason", http.StatusNotFound)
-			return
-		}
-
-		bot.Avatar = m.Avatar
-
-		t, err := template.ParseFiles("html/vote.html")
-
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-
-		t.Execute(w, VoteTemplate{
-			Bot:  bot,
-			User: user,
-		})
-		return
 	} else {
 		w.WriteHeader(http.StatusNotFound)
 		w.Write([]byte(notFound))
@@ -363,290 +317,81 @@ func dataRequestTask(taskId string, id string, ip string, del bool) {
 		KeepTTL: true,
 	}).Err()
 
-	// Get user info from mongo
-	col := mongoDb.Collection("users")
-
-	var finalDump struct {
-		UserInfo     map[string]any   `json:"user_info"`
-		Votes        []map[string]any `json:"votes"`
-		Reviews      []map[string]any `json:"reviews"`
-		Bots         []map[string]any `json:"bots"`
-		Sessions     []any            `json:"sessions"`
-		UniqueClicks []string         `json:"unique_clicks"`
-		Backups      []any            `json:"backups"`
-		Poppypaw     []map[string]any `json:"poppypaw"`
+	var keys []*struct {
+		ForeignTable string `db:"foreign_table_name"`
+		TableName    string `db:"table_name"`
+		ColumnName   string `db:"column_name"`
 	}
 
-	var userInfo map[string]any
-
-	err := col.FindOne(ctx, bson.M{"userID": id}).Decode(&userInfo)
+	data, err := pool.Query(ctx, ddrStr)
 
 	if err != nil {
-		log.Error("Failed to get user info")
-		redisCache.SetArgs(ctx, taskId, "Failed to fetch user data: "+err.Error(), redis.SetArgs{
+		log.Error(err)
+
+		redisCache.SetArgs(ctx, taskId, "Critical:"+err.Error(), redis.SetArgs{
 			KeepTTL: true,
 		})
+
 		return
 	}
 
-	if del {
-		_, err := col.DeleteOne(ctx, bson.M{"userID": id})
-		if err != nil {
-			log.Error("Failed to delete user")
-			redisCache.SetArgs(ctx, taskId, "Failed to delete user: "+err.Error(), redis.SetArgs{
-				KeepTTL: true,
-			})
-			return
-		}
-	}
+	if err := pgxscan.ScanAll(keys, data); err != nil {
+		log.Error(err)
 
-	finalDump.UserInfo = userInfo
-
-	// Get all votes with this user
-	redisCache.SetArgs(ctx, taskId, "Fetching vote data on this user", redis.SetArgs{
-		KeepTTL: true,
-	}).Err()
-
-	col = mongoDb.Collection("votes")
-
-	var votes []map[string]any
-
-	cur, err := col.Find(ctx, bson.M{"userID": id})
-
-	if err != nil {
-		log.Error("Failed to get votes")
-		redisCache.SetArgs(ctx, taskId, "Failed to fetch vote data: "+err.Error(), redis.SetArgs{
+		redisCache.SetArgs(ctx, taskId, "Critical:"+err.Error(), redis.SetArgs{
 			KeepTTL: true,
 		})
-		return
 	}
 
-	err = cur.All(ctx, &votes)
+	finalDump := make(map[string]any)
 
-	if err != nil {
-		log.Error("Failed to decode vote")
-		redisCache.SetArgs(ctx, taskId, "Failed to fetch vote data: "+err.Error(), redis.SetArgs{
-			KeepTTL: true,
-		})
-		return
-	}
+	for _, key := range keys {
+		if key.ForeignTable == "users" {
+			sqlStmt := "SELECT * FROM " + key.TableName + " WHERE " + key.ColumnName + "= $1"
 
-	if del {
-		_, err := col.DeleteMany(ctx, bson.M{"userID": id})
-		if err != nil {
-			log.Error("Failed to delete vote")
-			redisCache.SetArgs(ctx, taskId, "Failed to delete vote: "+err.Error(), redis.SetArgs{
-				KeepTTL: true,
-			})
-			return
-		}
-	}
+			data, err := pool.Query(ctx, sqlStmt, id)
 
-	finalDump.Votes = votes
-
-	// Poppypaw (Vote reminders)
-	redisCache.SetArgs(ctx, taskId, "Fetching poppypaw data on this user", redis.SetArgs{
-		KeepTTL: true,
-	}).Err()
-
-	col = mongoDb.Collection("poppypaw")
-
-	var poppypaw []map[string]any
-
-	cur, err = col.Find(ctx, bson.M{"userID": id})
-
-	if err != nil {
-		log.Error("Failed to get votes")
-		redisCache.SetArgs(ctx, taskId, "Failed to fetch poppypaw data: "+err.Error(), redis.SetArgs{
-			KeepTTL: true,
-		})
-		return
-	}
-
-	err = cur.All(ctx, &poppypaw)
-
-	if err != nil {
-		log.Error("Failed to decode vote")
-		redisCache.SetArgs(ctx, taskId, "Failed to fetch poppypaw data: "+err.Error(), redis.SetArgs{
-			KeepTTL: true,
-		})
-		return
-	}
-
-	if del {
-		_, err := col.DeleteMany(ctx, bson.M{"userID": id})
-		if err != nil {
-			log.Error("Failed to delete poppypaw")
-			redisCache.SetArgs(ctx, taskId, "Failed to delete poppypaw: "+err.Error(), redis.SetArgs{
-				KeepTTL: true,
-			})
-			return
-		}
-	}
-
-	finalDump.Poppypaw = poppypaw
-
-	// Reviews
-	redisCache.SetArgs(ctx, taskId, "Fetching review data on this user", redis.SetArgs{
-		KeepTTL: true,
-	}).Err()
-
-	col = mongoDb.Collection("reviews")
-
-	var reviews []map[string]any
-
-	cur, err = col.Find(ctx, bson.M{"author": id})
-
-	if err != nil {
-		log.Error("Failed to get review")
-		redisCache.SetArgs(ctx, taskId, "Failed to fetch review data: "+err.Error(), redis.SetArgs{
-			KeepTTL: true,
-		})
-		return
-	}
-
-	err = cur.All(ctx, &reviews)
-
-	if err != nil {
-		log.Error("Failed to decode review")
-		redisCache.SetArgs(ctx, taskId, "Failed to fetch review data: "+err.Error(), redis.SetArgs{
-			KeepTTL: true,
-		})
-		return
-	}
-
-	if del {
-		_, err := col.DeleteMany(ctx, bson.M{"author": id})
-		if err != nil {
-			log.Error("Failed to delete review")
-			redisCache.SetArgs(ctx, taskId, "Failed to delete review: "+err.Error(), redis.SetArgs{
-				KeepTTL: true,
-			})
-			return
-		}
-	}
-
-	finalDump.Reviews = reviews
-
-	redisCache.SetArgs(ctx, taskId, "Fetching bot data on this user", redis.SetArgs{
-		KeepTTL: true,
-	}).Err()
-
-	col = mongoDb.Collection("bots")
-
-	var bots []map[string]any
-
-	cur, err = col.Find(ctx, bson.M{})
-
-	if err != nil {
-		log.Error("Failed to get bots")
-		redisCache.SetArgs(ctx, taskId, "Failed to fetch bot data: "+err.Error(), redis.SetArgs{
-			KeepTTL: true,
-		})
-		return
-	}
-
-	defer cur.Close(ctx)
-
-	ucs := []string{}
-
-	for cur.Next(ctx) {
-		var bot map[string]any
-
-		err = cur.Decode(&bot)
-
-		if err != nil {
-			log.Error("Failed to decode bot")
-			redisCache.SetArgs(ctx, taskId, "Failed to fetch bot data: "+err.Error(), redis.SetArgs{
-				KeepTTL: true,
-			})
-			return
-		}
-
-		if unique_clicks, ok := bot["unique_clicks"]; ok {
-			ucsWithoutIp := []string{}
-			if uc, ok := unique_clicks.(primitive.A); ok {
-				for _, click := range uc {
-					ucStr, ok := click.(string)
-
-					if !ok {
-						log.Error("Failed to convert click to string")
-						continue
-					}
-
-					ipList := strings.Split(strings.ReplaceAll(ucStr, " ", ""), ",")
-
-					if ipList[0] == ip {
-						botID, ok := bot["botID"].(string)
-
-						if !ok {
-							continue
-						}
-
-						ucs = append(ucs, botID)
-					} else {
-						ucsWithoutIp = append(ucsWithoutIp, ucStr)
-					}
-				}
+			if err != nil {
+				log.Error(err)
 			}
 
-			if del && len(ucsWithoutIp) > 0 {
-				_, err = col.UpdateOne(ctx, bson.M{"botID": bot["botID"]}, bson.M{"$set": bson.M{"unique_clicks": ucsWithoutIp}})
+			var rows []map[string]any
+
+			if err := pgxscan.ScanAll(rows, data); err != nil {
+				log.Error(err)
+
+				redisCache.SetArgs(ctx, taskId, "Critical:"+err.Error(), redis.SetArgs{
+					KeepTTL: true,
+				})
+
+				return
+			}
+
+			if del {
+				sqlStmt = "DELETE FROM " + key.TableName + " WHERE " + key.ColumnName + "= $1"
+
+				_, err := pool.Exec(ctx, sqlStmt, id)
+
 				if err != nil {
-					log.Error("Failed to update bot clicks")
-					redisCache.SetArgs(ctx, taskId, "Failed to delete bot unique clicks: "+err.Error(), redis.SetArgs{
+					log.Error(err)
+
+					redisCache.SetArgs(ctx, taskId, "Critical:"+err.Error(), redis.SetArgs{
 						KeepTTL: true,
 					})
+
 					return
 				}
 			}
 
-		}
-
-		if addOwners, ok := bot["additional_owners"]; ok {
-			if addOwnersSlice, ok := addOwners.(primitive.A); ok {
-				for _, owner := range addOwnersSlice {
-					if ownerStr, ok := owner.(string); ok {
-						if ownerStr == id {
-							delete(bot, "unique_clicks")
-							bots = append(bots, bot)
-						}
-					}
-				}
-			}
-		}
-
-		if owner, ok := bot["main_owner"]; ok {
-			if ownerStr, ok := owner.(string); ok {
-				if ownerStr == id {
-					delete(bot, "unique_clicks")
-					bots = append(bots, bot)
-
-					if del {
-						if del {
-							_, err := col.DeleteOne(ctx, bson.M{"botID": bot["botID"]})
-							if err != nil {
-								log.Error("Failed to delete bot")
-								redisCache.SetArgs(ctx, taskId, "Failed to delete bot: "+err.Error(), redis.SetArgs{
-									KeepTTL: true,
-								})
-								return
-							}
-						}
-					}
-				}
-			}
+			finalDump[key.TableName] = rows
 		}
 	}
 
-	finalDump.Bots = bots
-	finalDump.UniqueClicks = ucs
-
 	redisCache.SetArgs(ctx, taskId, "Fetching postgres backups on this user", redis.SetArgs{
 		KeepTTL: true,
-	}).Err()
+	})
 
-	rows, err := pool.Query(pgCtx, "SELECT col, data, ts, id FROM backups")
+	rows, err := pool.Query(ctx, "SELECT col, data, ts, id FROM backups")
 
 	if err != nil {
 		log.Error("Failed to get backups")
@@ -714,7 +459,7 @@ func dataRequestTask(taskId string, id string, ip string, del bool) {
 			backups = append(backups, backupDat)
 
 			if del {
-				_, err := pool.Exec(pgCtx, "DELETE FROM backups WHERE id=$1", toString(uid))
+				_, err := pool.Exec(ctx, "DELETE FROM backups WHERE id=$1", toString(uid))
 				if err != nil {
 					log.Error("Failed to delete backup")
 					redisCache.SetArgs(ctx, taskId, "Failed to delete backup: "+err.Error(), redis.SetArgs{
@@ -728,89 +473,7 @@ func dataRequestTask(taskId string, id string, ip string, del bool) {
 		foundBackup = false
 	}
 
-	finalDump.Backups = backups
-
-	// Handle sessions
-	redisCache.SetArgs(ctx, taskId, "Fetching sessions of this user", redis.SetArgs{
-		KeepTTL: true,
-	}).Err()
-
-	col = mongoDb.Collection("sessions")
-
-	cur, err = col.Find(ctx, bson.M{})
-
-	if err != nil {
-		log.Error("Failed to get sessions")
-		redisCache.SetArgs(ctx, taskId, "Failed to fetch session data: "+err.Error(), redis.SetArgs{
-			KeepTTL: true,
-		})
-		return
-	}
-
-	defer cur.Close(ctx)
-
-	var sessions []any
-
-	// May need to be rewritten
-	for cur.Next(ctx) {
-
-		var sessionD InternalSession
-
-		var sessionMap map[string]any
-
-		var session string
-
-		err = cur.Decode(&sessionMap)
-
-		if err != nil {
-			log.Error("Failed to decode session")
-			redisCache.SetArgs(ctx, taskId, "Failed to fetch session data", redis.SetArgs{
-				KeepTTL: true,
-			})
-			return
-		}
-
-		session, ok := sessionMap["session"].(string)
-
-		if !ok {
-			log.Error("Failed to convert session to string")
-			redisCache.SetArgs(ctx, taskId, "Failed to fetch session data: could not convert to string. Ignoring", redis.SetArgs{
-				KeepTTL: true,
-			})
-			continue
-		}
-
-		err = json.Unmarshal([]byte(session), &sessionD)
-
-		if err != nil {
-			log.Error("Failed to decode session")
-			redisCache.SetArgs(ctx, taskId, "Failed to fetch a session or two: Ignoring as it is likely bad data", redis.SetArgs{
-				KeepTTL: true,
-			})
-			continue
-		}
-
-		if sessionD.Passport == nil || sessionD.Passport.User == nil {
-			continue
-		}
-
-		if sessionD.Passport.User.ID == id {
-			sessions = append(sessions, sessionMap)
-
-			if del {
-				_, err := col.DeleteOne(ctx, bson.M{"_id": sessionMap["_id"]})
-				if err != nil {
-					log.Error("Failed to delete session")
-					redisCache.SetArgs(ctx, taskId, "Failed to delete session: "+err.Error(), redis.SetArgs{
-						KeepTTL: true,
-					})
-					return
-				}
-			}
-		}
-	}
-
-	finalDump.Sessions = sessions
+	finalDump["backups"] = backups
 
 	bytes, err := json.Marshal(finalDump)
 
@@ -850,19 +513,18 @@ func sendWebhook(webhook types.WebhookPost) error {
 
 	isDiscordIntegration := isDiscord(url)
 
-	if !webhook.Test && (utils.IsNone(&url) || utils.IsNone(&token)) {
-		// Fetch URL from mongoDB
-		col := mongoDb.Collection("bots")
+	if !webhook.Test && (utils.IsNone(url) || utils.IsNone(token)) {
+		// Fetch URL from postgres
 
 		var bot struct {
-			Discord    string `bson:"webhook"`
-			CustomURL  string `bson:"webURL"`
-			CustomAuth string `bson:"webAuth"`
-			APIToken   string `bson:"token"`
-			HMACAuth   bool   `bson:"webHmacAuth,omitempty"`
+			Discord    pgtype.Text `db:"webhook"`
+			CustomURL  pgtype.Text `db:"custom_webhook"`
+			CustomAuth pgtype.Text `bson:"web_auth"`
+			APIToken   pgtype.Text `bson:"token"`
+			HMACAuth   pgtype.Bool `bson:"hmac"`
 		}
 
-		err := col.FindOne(ctx, bson.M{"botID": webhook.BotID}).Decode(&bot)
+		err := pgxscan.Get(ctx, pool, &bot, "SELECT webhook, custom_webhook, web_auth, token, hmac FROM bots WHERE bot_id = $1", webhook.BotID)
 
 		if err != nil {
 			log.Error("Failed to fetch webhook")
@@ -870,44 +532,44 @@ func sendWebhook(webhook types.WebhookPost) error {
 		}
 
 		// Check custom auth viability
-		if utils.IsNone(&bot.CustomAuth) {
-			if bot.APIToken != "" {
-				token = bot.APIToken
+		if bot.CustomAuth.Status != pgtype.Present || utils.IsNone(bot.CustomAuth.String) {
+			if bot.APIToken.String != "" {
+				token = bot.APIToken.String
 			} else {
 				// We set the token to the a random string in DB in this case
 				token = utils.RandString(256)
 
-				_, err := col.UpdateOne(ctx, bson.M{"botID": webhook.BotID}, bson.M{"$set": bson.M{"webAuth": token}})
+				_, err := pool.Exec(ctx, "UPDATE bots SET web_auth = $1 WHERE bot_id = $2", token, webhook.BotID)
 
-				if err != mongo.ErrNoDocuments && err != nil {
+				if err != pgx.ErrNoRows && err != nil {
 					log.Error("Failed to update webhook: ", err.Error())
 					return err
 				}
 			}
 
-			bot.CustomAuth = token
+			bot.CustomAuth = pgtype.Text{String: token, Status: pgtype.Present}
 		}
 
-		webhook.HMACAuth = bot.HMACAuth
-		webhook.Token = bot.CustomAuth
+		webhook.HMACAuth = bot.HMACAuth.Bool
+		webhook.Token = bot.CustomAuth.String
 
 		log.Info("Using hmac: ", webhook.HMACAuth)
 
 		// For each url, make a new sendWebhook
-		if !utils.IsNone(&bot.CustomURL) {
-			webhook.URL = bot.CustomURL
+		if !utils.IsNone(bot.CustomURL.String) {
+			webhook.URL = bot.CustomURL.String
 			err := sendWebhook(webhook)
 			log.Error("Custom URL send error", err)
 		}
 
-		if !utils.IsNone(&bot.Discord) {
-			webhook.URL = bot.Discord
+		if !utils.IsNone(bot.Discord.String) {
+			webhook.URL = bot.Discord.String
 			err := sendWebhook(webhook)
 			log.Error("Discord send error", err)
 		}
 	}
 
-	if utils.IsNone(&url) {
+	if utils.IsNone(url) {
 		log.Warning("Refusing to continue as no webhook")
 		return nil
 	}

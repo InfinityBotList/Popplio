@@ -4,70 +4,68 @@ import (
 	"context"
 	"encoding/json"
 	"math/rand"
-	"strings"
+	"reflect"
 	"time"
 	"unsafe"
 
 	"popplio/types"
 
 	"github.com/bwmarrin/discordgo"
+	"github.com/georgysavva/scany/pgxscan"
 	"github.com/go-redis/redis/v8"
+	"github.com/jackc/pgtype"
+	"github.com/jackc/pgx/v4/pgxpool"
 	log "github.com/sirupsen/logrus"
-	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/mongo"
-	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
-func IsNone(s *string) bool {
-	if *s == "None" || *s == "none" || *s == "" || *s == "null" {
+func IsNone(s string) bool {
+	if s == "None" || s == "none" || s == "" || s == "null" {
 		return true
 	}
 	return false
 }
 
 func ParseBot(bot *types.Bot) {
-	bot.Tags = strings.Split(strings.ReplaceAll(bot.TagsRaw, " ", ""), ",")
-
-	if IsNone(bot.Website) {
-		bot.Website = nil
+	if IsNone(bot.Website.String) {
+		bot.Website.Status = pgtype.Null
 	}
 
-	if IsNone(bot.Donate) {
-		bot.Donate = nil
+	if IsNone(bot.Donate.String) {
+		bot.Donate.Status = pgtype.Null
 	}
 
-	if IsNone(bot.Github) {
-		bot.Github = nil
+	if IsNone(bot.Github.String) {
+		bot.Github.Status = pgtype.Null
 	}
 
-	if IsNone(bot.Support) {
-		bot.Support = nil
+	if IsNone(bot.Support.String) {
+		bot.Support.Status = pgtype.Null
 	}
 
-	if IsNone(bot.Banner) {
-		bot.Banner = nil
+	if IsNone(bot.Banner.String) {
+		bot.Banner.Status = pgtype.Null
 	}
 
-	if IsNone(bot.Invite) {
-		bot.Invite = nil
+	if IsNone(bot.Invite.String) {
+		bot.Invite.Status = pgtype.Null
 	}
 }
 
 func ParseUser(user *types.User) {
-	if IsNone(user.Website) {
-		user.Website = nil
+	if IsNone(user.Website.String) {
+		user.Website.Status = pgtype.Null
 	}
 
-	if IsNone(user.Github) {
-		user.Github = nil
+	if IsNone(user.Github.String) {
+		user.Github.Status = pgtype.Null
 	}
 
-	if IsNone(user.About) {
-		user.About = nil
+	if IsNone(user.About.String) {
+		user.About.Status = pgtype.Null
 	}
 
-	if IsNone(user.Nickname) {
-		user.Nickname = nil
+	if IsNone(user.Nickname.String) {
+		user.Nickname.Status = pgtype.Null
 	}
 }
 
@@ -205,36 +203,25 @@ func GetVoteTime() uint16 {
 	}
 }
 
-func GetVoteData(ctx context.Context, mongoDb *mongo.Database, userID, botID string) (*types.UserVote, error) {
+func GetVoteData(ctx context.Context, pool *pgxpool.Pool, userID, botID string) (*types.UserVote, error) {
 	var votes []int64
 
-	col := mongoDb.Collection("votes")
+	var voteDates []*struct {
+		Date pgtype.Date `db:"date"`
+	}
 
-	findOptions := options.Find()
+	rows, err := pool.Query(ctx, "SELECT date FROM votes WHERE user_id = $1 AND bot_id = $2 ORDER BY date DESC", userID, botID)
 
-	findOptions.SetSort(bson.M{"date": -1})
-
-	cur, err := col.Find(ctx, bson.M{"botID": botID, "userID": userID}, findOptions)
-
-	if err == nil || err == mongo.ErrNoDocuments {
-
-		defer cur.Close(ctx)
-
-		for cur.Next(ctx) {
-			var vote struct {
-				Date int64 `bson:"date"`
-			}
-
-			err := cur.Decode(&vote)
-
-			if err != nil {
-				return nil, err
-			}
-
-			votes = append(votes, vote.Date)
-		}
-	} else {
+	if err != nil {
 		return nil, err
+	}
+
+	err = pgxscan.ScanAll(&voteDates, rows)
+
+	for _, vote := range voteDates {
+		if vote.Date.Status != pgtype.Null {
+			votes = append(votes, vote.Date.Time.UnixMicro())
+		}
 	}
 
 	voteParsed := types.UserVote{
@@ -267,4 +254,16 @@ func GetVoteData(ctx context.Context, mongoDb *mongo.Database, userID, botID str
 		voteParsed.LastVoteTime = votes[0]
 	}
 	return &voteParsed, nil
+}
+
+func GetCols(s any) []string {
+	refType := reflect.TypeOf(s)
+
+	var cols []string
+
+	for _, f := range reflect.VisibleFields(refType) {
+		cols = append(cols, f.Name)
+	}
+
+	return cols
 }

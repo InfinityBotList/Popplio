@@ -7,102 +7,101 @@ import (
 	"reflect"
 
 	"github.com/bwmarrin/discordgo"
+	"github.com/jackc/pgtype"
 	log "github.com/sirupsen/logrus"
-	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 // A bot is a Discord bot that is on the infinity botlist.
 type Bot struct {
-	ObjID            primitive.ObjectID `bson:"_id" json:"_id"`
-	BotID            string             `bson:"botID" json:"bot_id"`
-	Name             string             `bson:"botName" json:"name"`
-	Avatar           string             `bson:"avatar,omitempty" json:"avatar"`
-	TagsRaw          string             `bson:"tags" json:"-"`
-	Tags             []string           `bson:"-" json:"tags"` // This is created by API
-	Prefix           *string            `bson:"prefix" json:"prefix"`
-	Owner            string             `bson:"main_owner" json:"owner"`
-	AdditionalOwners []string           `bson:"additional_owners" json:"additional_owners"`
-	StaffBot         bool               `bson:"staff" json:"staff_bot"`
-	Short            string             `bson:"short" json:"short"`
-	Long             string             `bson:"long" json:"long"`
-	Library          *string            `bson:"library" json:"library"`
-	Website          *string            `bson:"website" json:"website"`
-	Donate           *string            `bson:"donate" json:"donate"`
-	Support          *string            `bson:"support" json:"support"`
-	NSFW             bool               `bson:"nsfw" json:"nsfw"`
-	Premium          bool               `bson:"premium" json:"premium"`
-	Certified        bool               `bson:"certified" json:"certified"`
-	PendingCert      bool               `bson:"pending_cert" json:"pending_cert"`
-	Servers          int                `bson:"servers" json:"servers"`
-	Shards           int                `bson:"shards" json:"shards"`
-	Users            int                `bson:"users" json:"users"`
-	Votes            int                `bson:"votes" json:"votes"`
-	Views            int                `bson:"clicks" json:"views"`
-	InviteClicks     int                `bson:"invite_clicks" json:"invites"`
-	Github           *string            `bson:"github" json:"github"`
-	Banner           *string            `bson:"background" json:"banner"`
-	Invite           *string            `bson:"invite" json:"invite"`
-	Type             string             `bson:"type" json:"type"` // For auditing reasons, we do not filter out denied/banned bots in API
-	Vanity           string             `bson:"vanity" json:"vanity"`
-	ExternalSource   string             `bson:"external_source,omitempty" json:"external_source"`
-	ListSource       string             `bson:"listSource,omitempty" json:"list_source"`
-	VoteBanned       bool               `bson:"vote_banned,omitempty" json:"vote_banned"`
-	CrossAdd         bool               `bson:"cross_add,omitempty" json:"cross_add"`
-	StartPeriod      int                `bson:"start_period,omitempty" json:"start_premium_period"`
-	SubPeriod        int                `bson:"sub_period,omitempty" json:"premium_period_length"`
-	CertReason       string             `bson:"cert_reason,omitempty" json:"cert_reason"`
-	Announce         bool               `bson:"announce,omitempty" json:"announce"`
-	AnnounceMessage  string             `bson:"announce_msg,omitempty" json:"announce_message"`
-	Uptime           int                `bson:"uptime,omitempty" json:"uptime"`
-	TotalUptime      int                `bson:"total_uptime,omitempty" json:"total_uptime"`
-	Claimed          bool               `bson:"claimed,omitempty" json:"claimed"`
-	ClaimedBy        string             `bson:"claimedBy,omitempty" json:"claimed_by"`
-	Note             string             `bson:"note,omitempty" json:"approval_note"`
-	Date             any                `bson:"date,omitempty" json:"date"`
+	ITag             pgtype.UUID      `db:"itag" json:"itag"`
+	BotID            string           `db:"bot_id" json:"bot_id"`
+	Name             string           `db:"name" json:"name"`
+	Avatar           pgtype.Text      `db:"-" json:"avatar"`
+	Tags             pgtype.TextArray `db:"tags" json:"tags"`
+	Prefix           pgtype.Text      `db:"prefix" json:"prefix"`
+	Owner            string           `db:"owner" json:"owner"`
+	AdditionalOwners []string         `db:"additional_owners" json:"additional_owners"`
+	StaffBot         bool             `db:"staff" json:"staff_bot"`
+	Short            string           `db:"short" json:"short"`
+	Long             string           `db:"long" json:"long"`
+	Library          pgtype.Text      `db:"library" json:"library"`
+	Website          pgtype.Text      `db:"website" json:"website"`
+	Donate           pgtype.Text      `db:"donate" json:"donate"`
+	Support          pgtype.Text      `db:"support" json:"support"`
+	NSFW             bool             `db:"nsfw" json:"nsfw"`
+	Premium          bool             `db:"premium" json:"premium"`
+	Certified        bool             `db:"certified" json:"certified"`
+	PendingCert      bool             `db:"pending_cert" json:"pending_cert"`
+	Servers          int              `db:"servers" json:"servers"`
+	Shards           int              `db:"shards" json:"shards"`
+	Users            int              `db:"users" json:"users"`
+	Votes            int              `db:"votes" json:"votes"`
+	Views            int              `db:"clicks" json:"views"`
+	InviteClicks     int              `db:"invite_clicks" json:"invites"`
+	Github           pgtype.Text      `db:"github" json:"github"`
+	Banner           pgtype.Text      `db:"background" json:"banner"`
+	Invite           pgtype.Text      `db:"invite" json:"invite"`
+	Type             string           `db:"type" json:"type"` // For auditing reasons, we do not filter out denied/banned bots in API
+	Vanity           pgtype.Text      `db:"vanity" json:"vanity"`
+	ExternalSource   pgtype.Text      `db:"external_source" json:"external_source"`
+	ListSource       pgtype.Text      `db:"listSource" json:"list_source"`
+	VoteBanned       bool             `db:"vote_banned" json:"vote_banned"`
+	CrossAdd         bool             `db:"cross_add" json:"cross_add"`
+	StartPeriod      int              `db:"start_period" json:"start_premium_period"`
+	SubPeriod        int              `db:"sub_period" json:"premium_period_length"`
+	CertReason       string           `db:"cert_reason" json:"cert_reason"`
+	Announce         pgtype.Text      `db:"announce" json:"announce"`
+	AnnounceMessage  string           `db:"announce_msg" json:"announce_message"`
+	Uptime           int              `db:"uptime" json:"uptime"`
+	TotalUptime      int              `db:"total_uptime" json:"total_uptime"`
+	Claimed          bool             `db:"claimed" json:"claimed"`
+	ClaimedBy        string           `db:"claimedBy" json:"claimed_by"`
+	Note             string           `db:"note" json:"approval_note"`
+	Date             pgtype.Date      `db:"date" json:"date"`
 }
 
 type AllBots struct {
-	Count    int64  `json:"count"`
+	Count    uint64 `json:"count"`
 	PerPage  uint64 `json:"per_page"`
 	Next     string `json:"next"`
 	Previous string `json:"previous"`
-	Results  []Bot  `json:"bots"`
+	Results  []*Bot `json:"bots"`
 }
 
 // A review is a review on ibl
 type Review struct {
-	ObjID       primitive.ObjectID `bson:"_id" json:"_id"`
-	BotID       string             `bson:"botID" json:"bot_id"`
-	Author      string             `bson:"author" json:"author"`
-	Content     string             `bson:"content" json:"content"`
-	Rate        bool               `bson:"rate,omitempty" json:"rate"`
-	StarRate    int                `bson:"star_rate,omitempty" json:"stars"`
-	LikesRaw    map[string]any     `bson:"likes,omitempty" json:"likes"`
-	DislikesRaw map[string]any     `bson:"dislikes,omitempty" json:"dislikes"`
-	Date        int                `bson:"date,omitempty" json:"date"`
-	Replies     map[string]any     `bson:"replies,omitempty" json:"replies"`
-	Editted     bool               `bson:"editted,omitempty" json:"editted"`
-	Flagged     bool               `bson:"flagged,omitempty" json:"flagged"`
+	ITag        pgtype.UUID    `db:"itag" json:"itag"`
+	BotID       string         `db:"botID" json:"bot_id"`
+	Author      string         `db:"author" json:"author"`
+	Content     string         `db:"content" json:"content"`
+	Rate        bool           `db:"rate" json:"rate"`
+	StarRate    int            `db:"star_rate" json:"stars"`
+	LikesRaw    map[string]any `db:"likes" json:"likes"`
+	DislikesRaw map[string]any `db:"dislikes" json:"dislikes"`
+	Date        int            `db:"date" json:"date"`
+	Replies     map[string]any `db:"replies" json:"replies"`
+	Editted     bool           `db:"editted" json:"editted"`
+	Flagged     bool           `db:"flagged" json:"flagged"`
 }
 
 type User struct {
-	ObjID     primitive.ObjectID `bson:"_id" json:"_id"`
-	ID        string             `bson:"userID" json:"user_id"`
-	Votes     map[string]any     `bson:"votes,omitempty" json:"-"` // Not sent due to privacy reasons
-	PackVotes map[string]any     `bson:"pack_votes,omitempty" json:"pack_votes"`
-	Staff     bool               `bson:"staff,omitempty" json:"staff"`
-	Certified bool               `bson:"certified,omitempty" json:"certified"`
-	Developer bool               `bson:"developer,omitempty" json:"developer"`
-	About     *string            `bson:"about,omitempty" json:"bio"`
-	Github    *string            `bson:"github,omitempty" json:"github"`
-	Nickname  *string            `bson:"nickname,omitempty" json:"nickname"`
-	Website   *string            `bson:"website,omitempty" json:"website"`
+	ITag      pgtype.UUID    `db:"itag" json:"itag"`
+	ID        string         `db:"userID" json:"user_id"`
+	Votes     map[string]any `db:"votes" json:"-"` // Not sent due to privacy reasons
+	PackVotes map[string]any `db:"pack_votes" json:"pack_votes"`
+	Staff     bool           `db:"staff" json:"staff"`
+	Certified bool           `db:"certified" json:"certified"`
+	Developer bool           `db:"developer" json:"developer"`
+	About     pgtype.Text    `db:"about" json:"bio"`
+	Github    pgtype.Text    `db:"github" json:"github"`
+	Nickname  pgtype.Text    `db:"nickname" json:"nickname"`
+	Website   pgtype.Text    `db:"website" json:"website"`
 
-	StaffStats    map[string]int `bson:"staff_stats,omitempty" json:"staff_stats"`
-	NewStaffStats map[string]int `bson:"new_staff_stats,omitempty" json:"new_staff_stats"`
+	StaffStats    map[string]int `db:"staff_stats" json:"staff_stats"`
+	NewStaffStats map[string]int `db:"new_staff_stats" json:"new_staff_stats"`
 
-	VoteBanned bool `bson:"vote_banned,omitempty" json:"vote_banned"`
-	Admin      bool `bson:"admin,omitempty" json:"admin"`
+	VoteBanned bool `db:"vote_banned" json:"vote_banned"`
+	Admin      bool `db:"admin" json:"admin"`
 }
 
 type VoteInfo struct {
@@ -351,19 +350,19 @@ type WebhookPost struct {
 	BotID  string `json:"bot_id"`
 	UserID string `json:"user_id"`
 	Test   bool   `json:"test"`
-	Votes  int    `json:"votes,omitempty"`
+	Votes  int    `json:"votes"`
 
 	// Only present on test webhook API or during sends internally
-	URL string `json:"url,omitempty"`
+	URL string `json:"url"`
 
 	// Only present on test webhook API
-	URL2 string `json:"url2,omitempty"`
+	URL2 string `json:"url2"`
 
 	// Only present on test webhook API
-	Token string `json:"token,omitempty"`
+	Token string `json:"token"`
 
 	// Only present on test webhook API
-	HMACAuth bool `json:"hmac_auth,omitempty"`
+	HMACAuth bool `json:"hmac_auth"`
 }
 
 type WebhookData struct {
@@ -383,20 +382,20 @@ type ApiError struct {
 }
 
 type UserID struct {
-	UserID string `bson:"userID" json:"user_id"`
+	UserID string `db:"userID" json:"user_id"`
 }
 
 // An announcement
 type Announcement struct {
-	ObjID        primitive.ObjectID `bson:"_id" json:"_id"`
-	Author       string             `bson:"userID" json:"author"`
-	ID           string             `bson:"announcementID" json:"id"`
-	Title        string             `bson:"title" json:"title"`
-	Content      string             `bson:"content" json:"content"`
-	LastModified time.Time          `bson:"modifiedDate" json:"last_modified"`
-	Status       string             `bson:"status" json:"status"`
-	Targetted    bool               `bson:"targetted" json:"targetted"`
-	Target       string             `bson:"target" json:"target"`
+	ITag         pgtype.UUID `db:"itag" json:"itag"`
+	Author       string      `db:"user_id" json:"author"`
+	ID           string      `db:"id" json:"id"`
+	Title        string      `db:"title" json:"title"`
+	Content      string      `db:"content" json:"content"`
+	LastModified time.Time   `db:"modified_date" json:"last_modified"`
+	Status       string      `db:"status" json:"status"`
+	Targetted    bool        `db:"targetted" json:"targetted"`
+	Target       string      `db:"target" json:"target"`
 }
 
 // A discord user
@@ -429,16 +428,16 @@ type NotifBrowserInfo struct {
 }
 
 type ResolvedReminderBot struct {
-	Name   string `bson:"botName" json:"name"`
-	Avatar string `bson:"avatar,omitempty" json:"avatar"`
+	Name   string `db:"botName" json:"name"`
+	Avatar string `db:"avatar" json:"avatar"`
 }
 
 type Reminder struct {
-	UserID      string              `bson:"userID" json:"user_id"`
-	BotID       string              `bson:"botID" json:"bot_id"`
-	ResolvedBot ResolvedReminderBot `bson:"-" json:"resolved"`
-	CreatedAt   int64               `bson:"createdAt" json:"created_at"`
-	LastAcked   int64               `bson:"lastAcked" json:"last_acked"`
+	UserID      string              `db:"userID" json:"user_id"`
+	BotID       string              `db:"botID" json:"bot_id"`
+	ResolvedBot ResolvedReminderBot `db:"-" json:"resolved"`
+	CreatedAt   int64               `db:"createdAt" json:"created_at"`
+	LastAcked   int64               `db:"lastAcked" json:"last_acked"`
 }
 
 type Message struct {
@@ -458,5 +457,5 @@ type DiscordLog struct {
 }
 
 type ProfileUpdate struct {
-	About string `json:"bio,omitempty"`
+	About string `json:"bio"`
 }

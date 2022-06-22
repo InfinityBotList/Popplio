@@ -19,15 +19,16 @@ import (
 
 	integrase "github.com/MetroReviews/metro-integrase/lib"
 	"github.com/bwmarrin/discordgo"
+	"github.com/georgysavva/scany/pgxscan"
 	"github.com/go-redis/redis/v8"
 	"github.com/gorilla/mux"
+	"github.com/jackc/pgtype"
 	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/joho/godotenv"
 	jsoniter "github.com/json-iterator/go"
 	ua "github.com/mileusna/useragent"
 	log "github.com/sirupsen/logrus"
 	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
@@ -39,7 +40,7 @@ const (
 	mainSite   = "https://infinitybotlist.com"
 	statusPage = "https://status.botlist.site"
 	apiBot     = "https://discord.com/api/oauth2/authorize?client_id=818419115068751892&permissions=140898593856&scope=bot%20applications.commands"
-	pgConn     = "postgresql://127.0.0.1:5432/backups?user=root&password=iblpublic"
+	pgConn     = "postgresql://127.0.0.1:5432/infinity"
 
 	notFound         = "{\"message\":\"Slow down, bucko! We couldn't find this resource *anywhere*!\",\"error\":true}"
 	notFoundPage     = "{\"message\":\"Slow down, bucko! You got the path wrong or something but this endpoint doesn't exist!\",\"error\":true}"
@@ -72,10 +73,8 @@ type moderatedBucket struct {
 
 var (
 	redisCache *redis.Client
-	mongoDb    *mongo.Database
 	pool       *pgxpool.Pool
 	ctx        context.Context
-	pgCtx      context.Context
 	r          *mux.Router
 
 	// This is used when we need to moderate whether or not to ratelimit a request (such as on a combined endpoint like gvotes)
@@ -83,10 +82,52 @@ var (
 
 	// Default global ratelimit handler
 	defaultGlobalBucket = moderatedBucket{BucketName: "global", Requests: 2000, Time: 1 * time.Hour}
+
+	announcementCols = utils.GetCols(types.Announcement{})
+
+	announcementColsStr = strings.Join(announcementCols, ",")
+
+	botsCols = utils.GetCols(types.Bot{})
+
+	botsColsStr = strings.Join(botsCols, ",")
 )
 
 func init() {
 	godotenv.Load()
+}
+
+func authCheck(token string, bot bool) *string {
+	if token == "" {
+		return nil
+	}
+
+	if bot {
+		var id pgtype.Text
+		err := pool.QueryRow(ctx, "SELECT bot_id FROM bots WHERE token = $1", strings.Replace(token, "Bot ", "", 1)).Scan(&id)
+
+		if err != nil {
+			fmt.Println(err)
+			return nil
+		} else {
+			if id.Status == pgtype.Null {
+				return nil
+			}
+			return &id.String
+		}
+	} else {
+		var id pgtype.Text
+		err := pool.QueryRow(ctx, "SELECT user_id FROM users WHERE api_token = $1", strings.Replace(token, "User ", "", 1)).Scan(&id)
+
+		if err != nil {
+			fmt.Println(err)
+			return nil
+		} else {
+			if id.Status == pgtype.Null {
+				return nil
+			}
+			return &id.String
+		}
+	}
 }
 
 func bucketHandle(bucket moderatedBucket, id string, w http.ResponseWriter, r *http.Request) bool {
@@ -225,9 +266,9 @@ func rateLimitWrap(reqs int, t time.Duration, bucket string, fn http.HandlerFunc
 
 		if auth != "" {
 			if strings.HasPrefix(auth, "User ") {
-				rlId := strings.TrimPrefix(auth, "User ")
+				idCheck := authCheck(auth, false)
 
-				if rlId == "" {
+				if idCheck == nil {
 					// Bot does not exist, return
 					w.Header().Set("Content-Type", "application/json")
 					w.WriteHeader(http.StatusForbidden)
@@ -235,39 +276,11 @@ func rateLimitWrap(reqs int, t time.Duration, bucket string, fn http.HandlerFunc
 					return
 				}
 
-				userCol := mongoDb.Collection("users")
-
-				var user struct {
-					UserID string `bson:"userID"`
-				}
-
-				options := options.FindOne().SetProjection(bson.M{"userID": 1})
-
-				err := userCol.FindOne(ctx, bson.M{"apiToken": strings.Replace(rlId, "User ", "", 1)}, options).Decode(&user)
-
-				if err != nil {
-					// Bot does not exist, return
-					log.Error(err)
-					w.Header().Set("Content-Type", "application/json")
-					w.WriteHeader(http.StatusForbidden)
-					w.Write([]byte("{\"error\":\"Invalid API token\"}"))
-					return
-				}
-
-				id = user.UserID
+				id = *idCheck
 			} else {
+				idCheck := authCheck(auth, true)
 
-				botCol := mongoDb.Collection("bots")
-
-				var bot struct {
-					BotID string `bson:"botID"`
-				}
-
-				options := options.FindOne().SetProjection(bson.M{"botID": 1})
-
-				err := botCol.FindOne(ctx, bson.M{"token": auth}, options).Decode(&bot)
-
-				if err != nil {
+				if idCheck == nil {
 					// Bot does not exist, return
 					w.Header().Set("Content-Type", "application/json")
 					w.WriteHeader(http.StatusForbidden)
@@ -275,7 +288,7 @@ func rateLimitWrap(reqs int, t time.Duration, bucket string, fn http.HandlerFunc
 					return
 				}
 
-				id = bot.BotID
+				id = *idCheck
 			}
 		} else {
 			remoteIp := strings.Split(strings.ReplaceAll(r.Header.Get("X-Forwarded-For"), " ", ""), ",")
@@ -332,9 +345,7 @@ func main() {
 
 	redisCache = redis.NewClient(rOptions)
 
-	pgCtx = context.Background()
-
-	pool, err = pgxpool.Connect(pgCtx, pgConn)
+	pool, err = pgxpool.Connect(ctx, pgConn)
 
 	if err != nil {
 		panic(err)
@@ -354,20 +365,6 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-
-	client, err := mongo.Connect(ctx, options.Client().ApplyURI(mongoUrl))
-
-	if err != nil {
-		panic(err)
-	}
-
-	fmt.Println("Connected to mongoDB?")
-
-	mongoDb = client.Database("infinity")
-
-	colNames, err := mongoDb.ListCollectionNames(ctx, bson.D{})
-
-	fmt.Println("Collections:", colNames)
 
 	if err != nil {
 		panic(err)
@@ -400,16 +397,23 @@ func main() {
 			return
 		}
 
-		col := mongoDb.Collection("announcements")
-
-		var announcements []types.Announcement
-
-		cur, err := col.Find(ctx, bson.M{})
+		rows, err := pool.Query(ctx, "SELECT "+announcementColsStr+" FROM announcements ORDER BY id DESC")
 
 		if err != nil {
 			log.Error(err)
 			w.WriteHeader(http.StatusInternalServerError)
-			w.Write([]byte(err.Error()))
+			w.Write([]byte(internalError))
+			return
+		}
+
+		var announcements []*types.Announcement
+
+		err = pgxscan.ScanAll(&announcements, rows)
+
+		if err != nil {
+			log.Error(err)
+			w.WriteHeader(http.StatusInternalServerError)
+			w.Write([]byte(internalError))
 			return
 		}
 
@@ -419,30 +423,23 @@ func main() {
 		var target types.UserID
 
 		if auth != "" {
-			err := mongoDb.Collection("users").FindOne(ctx, bson.M{"apiToken": strings.Replace(auth, "User ", "", 1)}).Decode(&target)
+			targetId := authCheck(auth, false)
 
-			if err != nil {
+			if targetId != nil {
 				log.Error(err)
 				w.WriteHeader(http.StatusUnauthorized)
 				w.Write([]byte(unauthorized))
 				return
 			}
+
+			target = types.UserID{*targetId}
 		} else {
 			target = types.UserID{}
 		}
 
-		for cur.Next(ctx) {
-			var announcement types.Announcement
+		annList := []*types.Announcement{}
 
-			err := cur.Decode(&announcement)
-
-			if err != nil {
-				log.Error(err)
-				w.WriteHeader(http.StatusInternalServerError)
-				w.Write([]byte(internalError))
-				continue
-			}
-
+		for _, announcement := range announcements {
 			if announcement.Status == "private" {
 				// Staff only
 				continue
@@ -455,10 +452,10 @@ func main() {
 				}
 			}
 
-			announcements = append(announcements, announcement)
+			annList = append(annList, announcement)
 		}
 
-		bytes, err := json.Marshal(announcements)
+		bytes, err := json.Marshal(annList)
 
 		if err != nil {
 			log.Error(err)
@@ -551,22 +548,14 @@ func main() {
 		}
 
 		// Check token
-		col := mongoDb.Collection("bots")
-
-		var bot struct {
-			BotID string `bson:"botID"`
-		}
-
 		if r.Header.Get("Authorization") == "" {
 			w.WriteHeader(http.StatusUnauthorized)
 			w.Write([]byte(unauthorized))
 			return
 		} else {
-			options := options.FindOne().SetProjection(bson.M{"botID": 1})
+			id := authCheck(r.Header.Get("Authorization"), true)
 
-			err := col.FindOne(ctx, bson.M{"token": r.Header.Get("Authorization")}, options).Decode(&bot)
-
-			if err != nil {
+			if id == nil {
 				log.Error(err)
 				w.WriteHeader(http.StatusUnauthorized)
 				w.Write([]byte(unauthorized))
@@ -618,7 +607,7 @@ func main() {
 		servers, shards, users := payload.GetStats()
 
 		if servers > 0 {
-			_, err = col.UpdateOne(ctx, bson.M{"token": r.Header.Get("Authorization")}, bson.M{"$set": bson.M{"servers": servers}})
+			_, err = pool.Exec(ctx, "UPDATE bots SET servers = $1 WHERE token = $2", servers, r.Header.Get("Authorization"))
 
 			if err != nil {
 				log.Error(err)
@@ -629,7 +618,7 @@ func main() {
 		}
 
 		if shards > 0 {
-			_, err = col.UpdateOne(ctx, bson.M{"token": r.Header.Get("Authorization")}, bson.M{"$set": bson.M{"shards": shards}})
+			_, err = pool.Exec(ctx, "UPDATE bots SET shards = $1 WHERE token = $2", shards, r.Header.Get("Authorization"))
 
 			if err != nil {
 				log.Error(err)
@@ -640,7 +629,7 @@ func main() {
 		}
 
 		if users > 0 {
-			_, err = col.UpdateOne(ctx, bson.M{"token": r.Header.Get("Authorization")}, bson.M{"$set": bson.M{"users": users}})
+			_, err = pool.Exec(ctx, "UPDATE bots SET users = $1 WHERE token = $2", users, r.Header.Get("Authorization"))
 
 			if err != nil {
 				log.Error(err)
@@ -680,13 +669,7 @@ func main() {
 		limit := perPage
 		offset := (pageNum - 1) * perPage
 
-		options := options.Find().SetSort(bson.M{"created": -1}).SetLimit(int64(limit)).SetSkip(int64(offset))
-
-		col := mongoDb.Collection("bots")
-
-		var bots []types.Bot
-
-		cur, err := col.Find(ctx, bson.M{}, options)
+		rows, err := pool.Query(ctx, "SELECT "+botsColsStr+" FROM bots ORDER BY created DESC LIMIT $1 OFFSET $2", limit, offset)
 
 		if err != nil {
 			log.Error(err)
@@ -695,23 +678,15 @@ func main() {
 			return
 		}
 
-		defer cur.Close(ctx)
+		var bots []*types.Bot
 
-		for cur.Next(ctx) {
-			var bot types.Bot
+		err = pgxscan.ScanAll(&bots, rows)
 
-			err := cur.Decode(&bot)
-
-			if err != nil {
-				log.Error(err)
-				continue
-			}
-
-			bots = append(bots, bot)
-		}
-
-		if err := cur.Err(); err != nil {
+		if err != nil {
 			log.Error(err)
+			w.WriteHeader(http.StatusInternalServerError)
+			w.Write([]byte(internalError))
+			return
 		}
 
 		var previous strings.Builder
@@ -725,7 +700,9 @@ func main() {
 			previous.Reset()
 		}
 
-		count, err := col.CountDocuments(ctx, bson.M{})
+		var count uint64
+
+		err = pool.QueryRow(ctx, "SELECT COUNT(*) FROM bots").Scan(&count)
 
 		if err != nil {
 			log.Error(err)
@@ -847,103 +824,68 @@ print(req.json())
 			VoteBanned bool   `bson:"vote_banned,omitempty"`
 		}
 
-		col := mongoDb.Collection("bots")
-
 		if r.Header.Get("Authorization") == "" {
 			w.WriteHeader(http.StatusUnauthorized)
 			w.Write([]byte(unauthorized))
 			return
 		} else {
 			if strings.HasPrefix(r.Header.Get("Authorization"), "User ") {
-				userCol := mongoDb.Collection("users")
+				uid := authCheck(r.Header.Get("Authorization"), false)
 
-				var user struct {
-					VoteBanned bool `bson:"vote_banned,omitempty"`
-				}
-
-				err := userCol.FindOne(ctx, bson.M{"userID": vars["uid"], "apiToken": strings.Replace(r.Header.Get("Authorization"), "User ", "", 1)}).Decode(&user)
-
-				if err == mongo.ErrNoDocuments {
-					log.Error(err)
+				if uid == nil || *uid != vars["uid"] {
 					w.WriteHeader(http.StatusUnauthorized)
 					w.Write([]byte(unauthorized))
 					return
-				} else if err != nil {
+				}
+
+				var voteBannedState bool
+
+				err := pool.QueryRow(ctx, "SELECT vote_banned FROM users WHERE user_id = $1", uid).Scan(&voteBannedState)
+
+				if err != nil {
 					log.Error(err)
 					w.WriteHeader(http.StatusInternalServerError)
 					w.Write([]byte(internalError))
 					return
 				}
 
-				if user.VoteBanned && r.Method == "PUT" {
+				if voteBannedState && r.Method == "PUT" {
 					w.WriteHeader(http.StatusForbidden)
 					w.Write([]byte(voteBanned))
 					return
 				}
 
-				options := options.FindOne().SetProjection(bson.M{"botID": 1, "type": 1})
+				var botId pgtype.Text
+				var botType pgtype.Text
 
-				err = col.FindOne(
-					ctx,
-					bson.M{
-						"$or": []bson.M{
-							{
-								"botName": vars["bid"],
-							},
-							{
-								"vanity": vars["bid"],
-							},
-							{
-								"botID": vars["bid"],
-							},
-						},
-					},
-					options,
-				).Decode(&bot)
+				err = pool.QueryRow(ctx, "SELECT bot_id, type FROM bots WHERE (vanity = $1 OR bot_id = $1 OR name = $1)", vars["bid"]).Scan(&botId, &botType)
 
-				vars["bid"] = bot.BotID
-
-				if err != nil {
+				if err != nil || botId.Status != pgtype.Present || botType.Status != pgtype.Present {
 					log.Error(err)
 					w.WriteHeader(http.StatusNotFound)
 					w.Write([]byte(notFound))
 					return
 				}
 
+				vars["bid"] = botId.String
 			} else {
-				options := options.FindOne().SetProjection(bson.M{"botID": 1, "type": 1})
+				var botId pgtype.Text
+				var botType pgtype.Text
 
-				err = col.FindOne(
-					ctx,
-					bson.M{
-						"$or": []bson.M{
-							{
-								"botName": vars["bid"],
-							},
-							{
-								"vanity": vars["bid"],
-							},
-							{
-								"botID": vars["bid"],
-							},
-						},
-					},
-					options,
-				).Decode(&bot)
+				err = pool.QueryRow(ctx, "SELECT bot_id, type FROM bots WHERE (vanity = $1 OR bot_id = $1 OR name = $1)", vars["bid"]).Scan(&botId, &botType)
 
-				vars["bid"] = bot.BotID
-
-				if err != nil {
+				if err != nil || botId.Status != pgtype.Present || botType.Status != pgtype.Present {
 					log.Error(err)
 					w.WriteHeader(http.StatusNotFound)
 					w.Write([]byte(notFound))
 					return
 				}
 
-				err := col.FindOne(ctx, bson.M{"token": r.Header.Get("Authorization"), "botID": vars["bid"]}, options).Decode(&bot)
+				vars["bid"] = botId.String
 
-				if err != nil {
-					log.Error(err)
+				id := authCheck(r.Header.Get("Authorization"), true)
+
+				if id == nil || *id != vars["bid"] {
 					w.WriteHeader(http.StatusUnauthorized)
 					w.Write([]byte(unauthorized))
 					return
@@ -1508,7 +1450,7 @@ print(req.json())
 			return
 		}
 
-		if utils.IsNone(&payload.URL) && utils.IsNone(&payload.URL2) {
+		if utils.IsNone(payload.URL) && utils.IsNone(payload.URL2) {
 			w.WriteHeader(http.StatusBadRequest)
 			w.Write([]byte(badRequest))
 			return
@@ -1518,13 +1460,13 @@ print(req.json())
 
 		var err1 error
 
-		if !utils.IsNone(&payload.URL) {
+		if !utils.IsNone(payload.URL) {
 			err1 = sendWebhook(payload)
 		}
 
 		var err2 error
 
-		if !utils.IsNone(&payload.URL2) {
+		if !utils.IsNone(payload.URL2) {
 			payload.URL = payload.URL2 // Test second enpdoint if it's not empty
 			err2 = sendWebhook(payload)
 		}
