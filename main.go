@@ -905,7 +905,7 @@ print(req.json())
 			return
 		}
 
-		voteParsed, err := utils.GetVoteData(ctx, mongoDb, vars["uid"], vars["bid"])
+		voteParsed, err := utils.GetVoteData(ctx, pool, vars["uid"], vars["bid"])
 
 		if err != nil {
 			log.Error(err)
@@ -960,26 +960,25 @@ print(req.json())
 			}
 
 			// Record new vote
-			r, err := mongoDb.Collection("votes").InsertOne(ctx, bson.M{"botID": vars["bid"], "userID": vars["uid"], "date": time.Now().UnixMilli()})
+			var itag pgtype.UUID
+			err := pool.QueryRow(ctx, "INSERT INTO votes (user_id, bot_id) VALUES ($1, $2) RETURNING itag", vars["uid"], vars["bid"]).Scan(&itag)
 
 			if err != nil {
 				// Revert vote
-				_, err := mongoDb.Collection("votes").DeleteOne(ctx, bson.M{"_id": r.InsertedID})
+				_, err := pool.Exec(ctx, "DELETE FROM votes WHERE itag = $1", itag)
 				log.Error(err)
 				w.WriteHeader(http.StatusInternalServerError)
 				w.Write([]byte(internalError))
 				return
 			}
 
-			var oldVotes struct {
-				Votes int `bson:"votes"`
-			}
+			var oldVotes pgtype.Int4
 
-			err = mongoDb.Collection("bots").FindOne(ctx, bson.M{"botID": vars["bid"]}, options.FindOne().SetProjection(bson.M{"votes": 1})).Decode(&oldVotes)
+			err = pool.QueryRow(ctx, "SELECT votes FROM bots WHERE bot_id = $1", vars["bid"]).Scan(&oldVotes)
 
 			if err != nil {
 				// Revert vote
-				_, err := mongoDb.Collection("votes").DeleteOne(ctx, bson.M{"_id": r.InsertedID})
+				_, err := pool.Exec(ctx, "DELETE FROM votes WHERE itag = $1", itag)
 
 				log.Error(err)
 				w.WriteHeader(http.StatusInternalServerError)
@@ -987,20 +986,21 @@ print(req.json())
 				return
 			}
 
-			var incr int = 1
+			var incr = 1
+			var votes = oldVotes.Int
 
 			if utils.GetDoubleVote() {
-				oldVotes.Votes += 2
 				incr = 2
+				votes += 2
 			} else {
-				oldVotes.Votes++
+				votes++
 			}
 
-			_, err = mongoDb.Collection("bots").UpdateOne(ctx, bson.M{"botID": vars["bid"]}, bson.M{"$inc": bson.M{"votes": incr}})
+			_, err = pool.Exec(ctx, "UPDATE bots SET votes = votes + $1 WHERE bot_id = $2", incr, vars["bid"])
 
 			if err != nil {
 				// Revert vote
-				_, err := mongoDb.Collection("votes").DeleteOne(ctx, bson.M{"_id": r.InsertedID})
+				_, err := pool.Exec(ctx, "DELETE FROM votes WHERE itag = $1", itag)
 
 				log.Error(err)
 				w.WriteHeader(http.StatusInternalServerError)
@@ -1016,7 +1016,7 @@ print(req.json())
 						{
 							URL:         "https://botlist.site/" + vars["bid"],
 							Title:       ":tada: New Vote :heart:",
-							Description: ":heart: <@" + vars["uid"] + "> has voted for <@" + vars["bid"] + "> which now has " + strconv.Itoa(oldVotes.Votes) + " votes",
+							Description: ":heart: <@" + vars["uid"] + "> has voted for <@" + vars["bid"] + "> which now has " + strconv.Itoa(int(votes)) + " votes",
 							Color:       0x00ff00,
 							Fields: []*discordgo.MessageEmbedField{
 								{
@@ -1035,23 +1035,26 @@ print(req.json())
 				err = sendWebhook(types.WebhookPost{
 					BotID:  vars["bid"],
 					UserID: vars["uid"],
-					Votes:  oldVotes.Votes,
+					Votes:  int(votes),
 				})
 
 				if err != nil {
-					mongoDb.Collection("notifications").InsertOne(ctx, bson.M{
-						"userID":  vars["uid"],
-						"url":     "https://infinitybots.gg/bots/" + vars["bid"],
-						"message": "Whoa there! We've failed to notify this bot about this vote. The error was: " + err.Error() + ".",
-						"type":    "error",
-					})
+					pool.Exec(
+						ctx,
+						"INSERT INTO notifications (user_id, url, message, type) VALUES ($1, $2, $3, $4)",
+						vars["uid"],
+						"https://infinitybots.gg/bots/"+vars["bid"],
+						"Whoa there! We've failed to notify this bot about this vote. The error was: "+err.Error()+".",
+						"error")
 				} else {
-					mongoDb.Collection("notifications").InsertOne(ctx, bson.M{
-						"userID":  vars["uid"],
-						"url":     "https://infinitybots.gg/bots/" + vars["bid"],
-						"message": "Successfully voted for bot with ID of " + vars["bid"],
-						"type":    "info",
-					})
+					pool.Exec(
+						ctx,
+						"INSERT INTO notifications (user_id, url, message, type) VALUES ($1, $2, $3, $4)",
+						vars["uid"],
+						"https://infinitybots.gg/bots/"+vars["bid"],
+						"Successfully voted for bot with ID of "+vars["bid"],
+						"info",
+					)
 				}
 			}()
 
