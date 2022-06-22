@@ -262,7 +262,13 @@ func GetCols(s any) []string {
 	var cols []string
 
 	for _, f := range reflect.VisibleFields(refType) {
-		cols = append(cols, f.Name)
+		db := f.Tag.Get("db")
+
+		if db == "-" || db == "" {
+			continue
+		}
+
+		cols = append(cols, db)
 	}
 
 	return cols

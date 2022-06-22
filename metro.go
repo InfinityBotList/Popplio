@@ -11,9 +11,9 @@ import (
 	popltypes "popplio/types"
 
 	"github.com/MetroReviews/metro-integrase/types"
+	"github.com/jackc/pgconn"
+	"github.com/jackc/pgtype"
 	log "github.com/sirupsen/logrus"
-	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/mongo"
 
 	"github.com/bwmarrin/discordgo"
 )
@@ -30,9 +30,7 @@ func init() {
 	}
 }
 
-func addBot(bot *types.Bot) (*mongo.InsertOneResult, error) {
-	col := mongoDb.Collection("bots")
-
+func addBot(bot *types.Bot) (pgconn.CommandTag, error) {
 	prefix := bot.Prefix
 
 	if prefix == "" {
@@ -45,35 +43,53 @@ func addBot(bot *types.Bot) (*mongo.InsertOneResult, error) {
 		invite = "https://discord.com/oauth2/authorize?client_id=" + bot.BotID + "&permissions=0&scope=bot%20applications.commands"
 	}
 
-	res, err := col.InsertOne(ctx, bson.M{
-		"botID":             bot.BotID,
-		"botName":           bot.Username,
-		"vanity":            strings.ToLower(regex.ReplaceAllString(bot.Username, "")),
-		"note":              "Metro-approved",
-		"date":              time.Now().UnixMilli(),
-		"prefix":            prefix,
-		"website":           bot.Website,
-		"github":            bot.Github,
-		"donate":            bot.Donate,
-		"nsfw":              bot.NSFW,
-		"library":           bot.Library,
-		"crossAdd":          bot.CrossAdd,
-		"listSource":        bot.ListSource,
-		"external_source":   "metro_reviews",
-		"short":             bot.Description,
-		"long":              bot.LongDescription,
-		"tags":              strings.Join(bot.Tags, ","),
-		"invite":            invite,
-		"main_owner":        bot.Owner,
-		"additional_owners": bot.ExtraOwners,
-		"webAuth":           "",
-		"webURL":            "",
-		"webhook":           "",
-		"token":             utils.RandString(128),
-		"type":              "pending",
-	})
+	return pool.Exec(
+		ctx,
+		`INSERT INTO bots (bot_id, name, vanity, note, date, prefix, website, github, donate, nsfw, library, 
+			cross_add, list_source, external_source, short, long, tags, invite, owner, additional_owners,
+			web_auth, custom_webhook, webhook, token, type) VALUES (
+				$1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, 
+				$18, $19, $20, $21, $22, $23, $24, $25
+			)`,
+		bot.BotID,
+		bot.Username,
+		strings.ToLower(regex.ReplaceAllString(bot.Username, "")),
+		"Metro-approved",
+		time.Now(),
+		prefix,
+		bot.Website,
+		bot.Github,
+		bot.Donate,
+		bot.NSFW,
+		bot.Library,
+		bot.CrossAdd,
+		bot.ListSource,
+		"metro_reviews",
+		bot.Description,
+		bot.LongDescription,
+		bot.Tags,
+		invite,
+		bot.Owner,
+		bot.ExtraOwners,
+		"",
+		"",
+		"",
+		utils.RandString(128),
+		"pending",
+	)
+}
 
-	return res, err
+// Returns empty string if bot doesn't exist
+func getBotType(id string) string {
+	var botType pgtype.Text
+
+	err := pool.QueryRow(ctx, `SELECT type FROM bots WHERE bot_id = $1`, id).Scan(&botType)
+
+	if err != nil {
+		log.Error(err)
+	}
+
+	return botType.String
 }
 
 // Dummy adapter backend
@@ -103,12 +119,7 @@ func (adp DummyAdapter) ClaimBot(bot *types.Bot) error {
 		return err
 	}
 
-	col := mongoDb.Collection("bots")
-
-	_, err = col.UpdateOne(ctx, bson.M{"botID": bot.BotID}, bson.M{"$set": bson.M{
-		"claimed":   true,
-		"claimedBY": bot.Reviewer,
-	}})
+	_, err = pool.Exec(ctx, `UPDATE bots SET claimed = true, claimed_by = $1 WHERE bot_id = $2`, bot.Reviewer, bot.BotID)
 
 	if err != nil {
 		return err
@@ -129,12 +140,7 @@ func (adp DummyAdapter) UnclaimBot(bot *types.Bot) error {
 		return err
 	}
 
-	col := mongoDb.Collection("bots")
-
-	_, err = col.UpdateOne(ctx, bson.M{"botID": bot.BotID}, bson.M{"$set": bson.M{
-		"claimed":   false,
-		"claimedBY": "",
-	}})
+	_, err = pool.Exec(ctx, `UPDATE bots SET claimed = false, claimed_by = NULL WHERE bot_id = $1`, bot.BotID)
 
 	if err != nil {
 		return err
@@ -150,11 +156,9 @@ func (adp DummyAdapter) ApproveBot(bot *types.Bot) error {
 	}
 
 	// Check if bot already exists on DB
-	col := mongoDb.Collection("bots")
+	botType := getBotType(bot.BotID)
 
-	mongoBot := col.FindOne(ctx, bson.M{"botID": bot.BotID})
-
-	if mongoBot.Err() == mongo.ErrNoDocuments {
+	if botType == "" {
 		if !bot.CrossAdd && bot.ListSource != os.Getenv("LIST_ID") {
 			return errors.New("bot is not from the correct source")
 		}
@@ -165,30 +169,21 @@ func (adp DummyAdapter) ApproveBot(bot *types.Bot) error {
 			return err
 		}
 
-		log.Info("Added bot: ", res.InsertedID)
+		log.Info("Added bot: ", res.RowsAffected())
 
-	} else if mongoBot.Err() != nil {
-		log.Error(mongoBot.Err())
-		return mongoBot.Err()
 	} else {
-		var mongoType struct {
-			Type string `bson:"type"`
-		}
-
-		mongoBot.Decode(&mongoType)
-
-		if mongoType.Type != "pending" {
+		if botType != "pending" {
 			return errors.New("bot 'type' is not pending")
 		}
 	}
 
-	res, err := col.UpdateOne(ctx, bson.M{"botID": bot.BotID}, bson.M{"$set": bson.M{"type": "approved"}})
+	res, err := pool.Exec(ctx, `UPDATE bots SET type = 'approved' WHERE bot_id = $1`, bot.BotID)
 
 	if err != nil {
 		return err
 	}
 
-	log.Info("Updated ", res.MatchedCount, " bots")
+	log.Info("Updated ", res.RowsAffected(), " bots")
 
 	messageNotifyChannel <- popltypes.DiscordLog{
 		ChannelID: os.Getenv("CHANNEL_ID"),
@@ -240,11 +235,9 @@ func (adp DummyAdapter) DenyBot(bot *types.Bot) error {
 	}
 
 	// Check if bot already exists on DB
-	col := mongoDb.Collection("bots")
+	botType := getBotType(bot.BotID)
 
-	mongoBot := col.FindOne(ctx, bson.M{"botID": bot.BotID})
-
-	if mongoBot.Err() == mongo.ErrNoDocuments {
+	if botType == "" {
 		if !bot.CrossAdd && bot.ListSource != os.Getenv("LIST_ID") {
 			return errors.New("bot is not from the correct source")
 		}
@@ -255,30 +248,21 @@ func (adp DummyAdapter) DenyBot(bot *types.Bot) error {
 			return err
 		}
 
-		log.Info("Added bot: ", res.InsertedID)
+		log.Info("Added bot: ", res.RowsAffected())
 
-	} else if mongoBot.Err() != nil {
-		log.Error(mongoBot.Err())
-		return mongoBot.Err()
 	} else {
-		var mongoType struct {
-			Type string `bson:"type"`
-		}
-
-		mongoBot.Decode(&mongoType)
-
-		if mongoType.Type != "pending" {
+		if botType != "pending" {
 			return errors.New("bot 'type' is not pending")
 		}
 	}
 
-	res, err := col.UpdateOne(ctx, bson.M{"botID": bot.BotID}, bson.M{"$set": bson.M{"type": "denied"}})
+	res, err := pool.Exec(ctx, `UPDATE bots SET type = 'denied' WHERE bot_id = $1`, bot.BotID)
 
 	if err != nil {
 		return err
 	}
 
-	log.Info("Updated ", res.MatchedCount, " bots")
+	log.Info("Updated ", res.RowsAffected(), " bots")
 
 	messageNotifyChannel <- popltypes.DiscordLog{
 		ChannelID: os.Getenv("CHANNEL_ID"),

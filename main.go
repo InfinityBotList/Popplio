@@ -87,9 +87,14 @@ var (
 
 	announcementColsStr = strings.Join(announcementCols, ",")
 
-	botsCols = utils.GetCols(types.Bot{})
-
+	botsCols    = utils.GetCols(types.Bot{})
 	botsColsStr = strings.Join(botsCols, ",")
+
+	usersCols    = utils.GetCols(types.User{})
+	usersColsStr = strings.Join(usersCols, ",")
+
+	reviewCols    = utils.GetCols(types.Review{})
+	reviewColsStr = strings.Join(reviewCols, ",")
 )
 
 func init() {
@@ -855,6 +860,16 @@ print(req.json())
 					return
 				}
 
+				var voteBannedBotsState bool
+
+				err = pool.QueryRow(ctx, "SELECT vote_banned FROM bots WHERE bot_id = $1", vars["bid"]).Scan(&voteBannedBotsState)
+
+				if voteBannedBotsState && r.Method == "PUT" {
+					w.WriteHeader(http.StatusForbidden)
+					w.Write([]byte(voteBanned))
+					return
+				}
+
 				var botId pgtype.Text
 				var botType pgtype.Text
 
@@ -893,13 +908,13 @@ print(req.json())
 			}
 		}
 
-		if bot.Type != "approved" {
+		if bot.Type != "approved" && r.Method == "PUT" {
 			w.WriteHeader(http.StatusBadRequest)
 			w.Write([]byte(notApproved))
 			return
 		}
 
-		if bot.VoteBanned {
+		if bot.VoteBanned && r.Method == "PUT" {
 			w.WriteHeader(http.StatusForbidden)
 			w.Write([]byte(voteBanned))
 			return
@@ -1079,16 +1094,23 @@ print(req.json())
 			VoteBanned bool   `bson:"vote_banned,omitempty"`
 		}
 
-		col := mongoDb.Collection("bots")
-
 		if r.Header.Get("Authorization") == "" {
 			w.WriteHeader(http.StatusUnauthorized)
 			w.Write([]byte(unauthorized))
 			return
 		} else {
-			options := options.FindOne().SetProjection(bson.M{"botID": 1, "type": 1, "vote_banned": 1})
+			id := authCheck(r.Header.Get("Authorization"), true)
 
-			err := col.FindOne(ctx, bson.M{"token": r.Header.Get("Authorization"), "botID": vars["bot_id"]}, options).Decode(&bot)
+			if id == nil || *id != vars["bot_id"] {
+				w.WriteHeader(http.StatusUnauthorized)
+				w.Write([]byte(unauthorized))
+				return
+			}
+
+			// To try and push users into new API, vote ban and approved check on GET is enforced on the old API
+			var voteBannedState bool
+
+			err := pool.QueryRow(ctx, "SELECT vote_banned FROM bots WHERE bot_id = $1", id).Scan(&voteBannedState)
 
 			if err != nil {
 				log.Error(err)
@@ -1112,7 +1134,7 @@ print(req.json())
 			return
 		}
 
-		voteParsed, err := utils.GetVoteData(ctx, mongoDb, vars["user_id"], vars["bot_id"])
+		voteParsed, err := utils.GetVoteData(ctx, pool, vars["user_id"], vars["bot_id"])
 
 		if err != nil {
 			log.Error(err)
@@ -1213,29 +1235,20 @@ print(req.json())
 			return
 		}
 
-		botCol := mongoDb.Collection("bots")
-
 		var bot types.Bot
 
 		var err error
 
-		if r.URL.Query().Get("resolve") == "1" || r.URL.Query().Get("resolve") == "true" {
-			err = botCol.FindOne(ctx, bson.M{
-				"$or": []bson.M{
-					{
-						"botName": name,
-					},
-					{
-						"vanity": name,
-					},
-					{
-						"botID": name,
-					},
-				},
-			}).Decode(&bot)
-		} else {
-			err = botCol.FindOne(ctx, bson.M{"botID": name}).Decode(&bot)
+		row, err := pool.Query(ctx, "SELECT "+botsColsStr+" FROM bots WHERE (bot_id = $1 OR vanity = $1 OR name = $1)", name)
+
+		if err != nil {
+			log.Error(err)
+			w.WriteHeader(http.StatusNotFound)
+			w.Write([]byte(notFound))
+			return
 		}
+
+		err = pgxscan.ScanOne(&bot, row)
 
 		if err != nil {
 			log.Error(err)
@@ -1303,26 +1316,20 @@ print(req.json())
 			return
 		}
 
-		userCol := mongoDb.Collection("users")
-
 		var user types.User
 
 		var err error
 
-		if r.URL.Query().Get("resolve") == "1" || r.URL.Query().Get("resolve") == "true" {
-			err = userCol.FindOne(ctx, bson.M{
-				"$or": []bson.M{
-					{
-						"nickname": name,
-					},
-					{
-						"userID": name,
-					},
-				},
-			}).Decode(&user)
-		} else {
-			err = userCol.FindOne(ctx, bson.M{"userID": name}).Decode(&user)
+		row, err := pool.Query(ctx, "SELECT "+usersColsStr+" FROM users WHERE (user_id = $1 OR vanity = $1 OR name = $1)", name)
+
+		if err != nil {
+			log.Error(err)
+			w.WriteHeader(http.StatusNotFound)
+			w.Write([]byte(notFound))
+			return
 		}
+
+		err = pgxscan.ScanOne(&user, row)
 
 		if err != nil {
 			log.Error(err)
@@ -1366,42 +1373,24 @@ print(req.json())
 			},
 		}, []string{"Bots"}, nil, []types.Review{}, []string{})
 	r.HandleFunc("/bots/{id}/reviews", rateLimitWrap(10, 1*time.Minute, "greview", func(w http.ResponseWriter, r *http.Request) {
-		col := mongoDb.Collection("reviews")
+		rows, err := pool.Query(ctx, "SELECT "+reviewColsStr+" FROM reviews WHERE bot_id = $1", mux.Vars(r)["id"])
 
-		vars := mux.Vars(r)
-
-		name := vars["id"]
-
-		if name == "" {
+		if err != nil {
+			log.Error(err)
 			w.WriteHeader(http.StatusBadRequest)
-			w.Write([]byte(badRequest))
+			w.Write([]byte(notFound))
 			return
 		}
 
 		var reviews []types.Review = []types.Review{}
 
-		cur, err := col.Find(ctx, bson.M{"botID": name})
+		err = pgxscan.ScanAll(&reviews, rows)
 
 		if err != nil {
 			log.Error(err)
 			w.WriteHeader(http.StatusInternalServerError)
 			w.Write([]byte(badRequest))
 			return
-		}
-
-		for cur.Next(ctx) {
-			var review types.Review
-
-			err := cur.Decode(&review)
-
-			if err != nil {
-				log.Error(err)
-				w.WriteHeader(http.StatusInternalServerError)
-				w.Write([]byte(badRequest))
-				return
-			}
-
-			reviews = append(reviews, review)
 		}
 
 		bytes, err := json.Marshal(reviews)
