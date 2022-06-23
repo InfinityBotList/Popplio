@@ -1599,7 +1599,7 @@ print(req.json())
 				return
 			}
 
-			err = pgxscan.ScanAll(subscriptionDb, rows)
+			err = pgxscan.ScanAll(&subscriptionDb, rows)
 
 			if err != nil {
 				log.Error(err)
