@@ -21,11 +21,13 @@ import (
 	"github.com/bwmarrin/discordgo"
 	"github.com/georgysavva/scany/pgxscan"
 	"github.com/go-redis/redis/v8"
+	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
 	"github.com/jackc/pgtype"
 	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/joho/godotenv"
 	jsoniter "github.com/json-iterator/go"
+	ua "github.com/mileusna/useragent"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -92,6 +94,10 @@ var (
 
 	reviewCols    = utils.GetCols(types.Review{})
 	reviewColsStr = strings.Join(reviewCols, ",")
+
+	silverpeltCols = utils.GetCols(types.Reminder{})
+
+	silverpeltColsStr = strings.Join(silverpeltCols, ",")
 )
 
 func init() {
@@ -820,11 +826,10 @@ print(req.json())
 
 		vars := mux.Vars(r)
 
-		var bot struct {
-			BotID      string `bson:"botID"`
-			Type       string `bson:"type"`
-			VoteBanned bool   `bson:"vote_banned,omitempty"`
-		}
+		var botId pgtype.Text
+		var botType pgtype.Text
+
+		var userAuth bool = strings.HasPrefix(r.Header.Get("Authorization"), "User ")
 
 		if r.Header.Get("Authorization") == "" {
 			w.WriteHeader(http.StatusUnauthorized)
@@ -859,7 +864,7 @@ print(req.json())
 
 				var voteBannedBotsState bool
 
-				err = pool.QueryRow(ctx, "SELECT vote_banned FROM bots WHERE bot_id = $1", vars["bid"]).Scan(&voteBannedBotsState)
+				err = pool.QueryRow(ctx, "SELECT bot_id, type, vote_banned FROM bots WHERE (bot_id = $1 OR vanity = $1 OR name = $1)", vars["bid"]).Scan(&botId, &botType, &voteBannedBotsState)
 
 				if err != nil {
 					log.Error(err)
@@ -874,23 +879,8 @@ print(req.json())
 					return
 				}
 
-				var botId pgtype.Text
-				var botType pgtype.Text
-
-				err = pool.QueryRow(ctx, "SELECT bot_id, type FROM bots WHERE (vanity = $1 OR bot_id = $1 OR name = $1)", vars["bid"]).Scan(&botId, &botType)
-
-				if err != nil || botId.Status != pgtype.Present || botType.Status != pgtype.Present {
-					log.Error(err)
-					w.WriteHeader(http.StatusNotFound)
-					w.Write([]byte(notFound))
-					return
-				}
-
 				vars["bid"] = botId.String
 			} else {
-				var botId pgtype.Text
-				var botType pgtype.Text
-
 				err = pool.QueryRow(ctx, "SELECT bot_id, type FROM bots WHERE (vanity = $1 OR bot_id = $1 OR name = $1)", vars["bid"]).Scan(&botId, &botType)
 
 				if err != nil || botId.Status != pgtype.Present || botType.Status != pgtype.Present {
@@ -912,15 +902,15 @@ print(req.json())
 			}
 		}
 
-		if bot.Type != "approved" && r.Method == "PUT" {
+		if botType.String != "approved" && r.Method == "PUT" {
 			w.WriteHeader(http.StatusBadRequest)
 			w.Write([]byte(notApproved))
 			return
 		}
 
-		if bot.VoteBanned && r.Method == "PUT" {
-			w.WriteHeader(http.StatusForbidden)
-			w.Write([]byte(voteBanned))
+		if !userAuth && r.Method == "PUT" {
+			w.WriteHeader(http.StatusNotFound)
+			w.Write([]byte(notFound))
 			return
 		}
 
@@ -1092,12 +1082,6 @@ print(req.json())
 
 		vars := mux.Vars(r)
 
-		var bot struct {
-			BotID      string `bson:"botID"`
-			Type       string `bson:"type,omitempty"`
-			VoteBanned bool   `bson:"vote_banned,omitempty"`
-		}
-
 		if r.Header.Get("Authorization") == "" {
 			w.WriteHeader(http.StatusUnauthorized)
 			w.Write([]byte(unauthorized))
@@ -1122,19 +1106,15 @@ print(req.json())
 				w.Write([]byte(unauthorized))
 				return
 			}
-
-			vars["bot_id"] = bot.BotID
 		}
 
-		if bot.Type != "approved" {
+		var botType pgtype.Text
+
+		pool.QueryRow(ctx, "SELECT type FROM bots WHERE bot_id = $1", vars["bot_id"]).Scan(&botType)
+
+		if botType.String != "approved" {
 			w.WriteHeader(http.StatusBadRequest)
 			w.Write([]byte(notApproved))
-			return
-		}
-
-		if bot.VoteBanned {
-			w.WriteHeader(http.StatusForbidden)
-			w.Write([]byte(voteBanned))
 			return
 		}
 
@@ -1498,8 +1478,6 @@ print(req.json())
 
 	// Internal APIs
 
-	/* TODO
-
 	r.HandleFunc("/_protozoa/profile/{id}", rateLimitWrap(7, 1*time.Minute, "profile_update", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != "PATCH" {
 			w.WriteHeader(http.StatusMethodNotAllowed)
@@ -1510,18 +1488,14 @@ print(req.json())
 		id := mux.Vars(r)["id"]
 
 		// Fetch auth from mongodb
-		col := mongoDb.Collection("users")
-
 		if r.Header.Get("Authorization") == "" {
 			w.WriteHeader(http.StatusUnauthorized)
 			w.Write([]byte(unauthorized))
 			return
 		} else {
-			options := options.FindOne().SetProjection(bson.M{"userID": 1})
+			authId := authCheck(r.Header.Get("Authorization"), false)
 
-			err := col.FindOne(ctx, bson.M{"apiToken": strings.Replace(r.Header.Get("Authorization"), "User ", "", 1), "userID": id}, options).Err()
-
-			if err != nil {
+			if authId == nil || *authId != id {
 				log.Error(err)
 				w.WriteHeader(http.StatusUnauthorized)
 				w.Write([]byte(unauthorized))
@@ -1552,7 +1526,7 @@ print(req.json())
 
 		if profile.About != "" {
 			// Update about
-			mongoDb.Collection("users").UpdateOne(ctx, bson.M{"userID": id}, bson.M{"$set": bson.M{"about": profile.About}})
+			pool.Exec(ctx, "UPDATE users SET about = $1 WHERE id = $2", profile.About, id)
 		}
 	}))
 
@@ -1591,18 +1565,14 @@ print(req.json())
 		}
 
 		// Fetch auth from mongodb
-		col := mongoDb.Collection("users")
-
 		if r.Header.Get("Authorization") == "" {
 			w.WriteHeader(http.StatusUnauthorized)
 			w.Write([]byte(unauthorized))
 			return
 		} else {
-			options := options.FindOne().SetProjection(bson.M{"userID": 1})
+			authId := authCheck(r.Header.Get("Authorization"), false)
 
-			err := col.FindOne(ctx, bson.M{"apiToken": strings.Replace(r.Header.Get("Authorization"), "User ", "", 1), "userID": id}, options).Err()
-
-			if err != nil {
+			if authId == nil || *authId != id {
 				log.Error(err)
 				w.WriteHeader(http.StatusUnauthorized)
 				w.Write([]byte(unauthorized))
@@ -1611,15 +1581,16 @@ print(req.json())
 		}
 
 		if r.Method == "GET" {
-			var subscription []struct {
-				Endpoint    string                 `bson:"endpoint" json:"endpoint"`
-				NotifID     string                 `bson:"notifId" json:"notif_id"`
-				CreatedAt   time.Time              `bson:"createdAt" json:"created_at"`
-				UA          string                 `bson:"ua" json:"-"`
-				BrowserInfo types.NotifBrowserInfo `bson:"-" json:"browser_info"`
+			var subscription []types.NotifGet
+
+			var subscriptionDb []struct {
+				Endpoint  string    `db:"endpoint"`
+				NotifID   string    `db:"notif_id"`
+				CreatedAt time.Time `db:"created_at"`
+				UA        string    `db:"ua"`
 			}
 
-			cur, err := mongoDb.Collection("poppypaw").Find(ctx, bson.M{"id": id})
+			rows, err := pool.Query(ctx, "SELECT endpoint, notif_id, created_at, ua FROM poppypaw WHERE id = $1", id)
 
 			if err != nil {
 				log.Error(err)
@@ -1628,7 +1599,7 @@ print(req.json())
 				return
 			}
 
-			err = cur.All(ctx, &subscription)
+			err = pgxscan.ScanAll(subscriptionDb, rows)
 
 			if err != nil {
 				log.Error(err)
@@ -1637,23 +1608,29 @@ print(req.json())
 				return
 			}
 
-			if len(subscription) == 0 {
+			if len(subscriptionDb) == 0 {
 				w.WriteHeader(http.StatusNotFound)
 				w.Write([]byte(notFound))
 				return
 			}
 
-			for i, val := range subscription {
-				// Parse UA
-				uaD := ua.Parse(val.UA)
-				fmt.Println("Parsing UA:", val.UA, uaD)
+			for _, sub := range subscriptionDb {
+				uaD := ua.Parse(sub.UA)
+				fmt.Println("Parsing UA:", sub.UA, uaD)
 
-				subscription[i].BrowserInfo = types.NotifBrowserInfo{
+				binfo := types.NotifBrowserInfo{
 					OS:         uaD.OS,
 					Browser:    uaD.Name,
 					BrowserVer: uaD.Version,
 					Mobile:     uaD.Mobile,
 				}
+
+				subscription = append(subscription, types.NotifGet{
+					Endpoint:    sub.Endpoint,
+					NotifID:     sub.NotifID,
+					CreatedAt:   sub.CreatedAt,
+					BrowserInfo: binfo,
+				})
 			}
 
 			bytes, err := json.Marshal(subscription)
@@ -1673,7 +1650,8 @@ print(req.json())
 				w.Write([]byte(badRequest))
 				return
 			}
-			_, err := mongoDb.Collection("poppypaw").DeleteOne(ctx, bson.M{"notifId": r.URL.Query().Get("notif_id")})
+
+			_, err := pool.Exec(ctx, "DELETE FROM poppypaw WHERE id = $1 AND notif_id = $2", id, r.URL.Query().Get("notif_id"))
 
 			if err != nil {
 				log.Error(err)
@@ -1736,18 +1714,14 @@ print(req.json())
 		}
 
 		// Fetch auth from mongodb
-		col := mongoDb.Collection("users")
-
 		if r.Header.Get("Authorization") == "" {
 			w.WriteHeader(http.StatusUnauthorized)
 			w.Write([]byte(unauthorized))
 			return
 		} else {
-			options := options.FindOne().SetProjection(bson.M{"userID": 1})
+			authId := authCheck(r.Header.Get("Authorization"), false)
 
-			err := col.FindOne(ctx, bson.M{"apiToken": strings.Replace(r.Header.Get("Authorization"), "User ", "", 1), "userID": id}, options).Err()
-
-			if err != nil {
+			if authId == nil || *authId != id {
 				log.Error(err)
 				w.WriteHeader(http.StatusUnauthorized)
 				w.Write([]byte(unauthorized))
@@ -1759,25 +1733,24 @@ print(req.json())
 
 		notifId := utils.RandString(512)
 
-		col = mongoDb.Collection("poppypaw")
-
 		ua := r.UserAgent()
 
 		if ua == "" {
 			ua = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/80.0.3987.149 Safari/537.36"
 		}
 
-		col.DeleteMany(ctx, bson.M{"id": id, "endpoint": subscription.Endpoint})
+		pool.Exec(ctx, "DELETE FROM poppypaw WHERE id = $1 AND endpoint = $2", id, subscription.Endpoint)
 
-		col.InsertOne(ctx, bson.M{
-			"id":        id,
-			"notifId":   notifId,
-			"auth":      subscription.Auth,
-			"p256dh":    subscription.P256dh,
-			"endpoint":  subscription.Endpoint,
-			"createdAt": time.Now(),
-			"ua":        r.UserAgent(),
-		})
+		pool.Exec(
+			ctx,
+			"INSERT INTO poppypaw (id, notif_id, auth, p256dh,  endpoint, ua) VALUES ($1, $2, $3, $4, $5, $6)",
+			id,
+			notifId,
+			subscription.Auth,
+			subscription.P256dh,
+			subscription.Endpoint,
+			ua,
+		)
 
 		// Fan out test notification
 		notifChannel <- types.Notification{
@@ -1806,18 +1779,14 @@ print(req.json())
 		}
 
 		// Fetch auth from mongodb
-		col := mongoDb.Collection("users")
-
 		if r.Header.Get("Authorization") == "" {
 			w.WriteHeader(http.StatusUnauthorized)
 			w.Write([]byte(unauthorized))
 			return
 		} else {
-			options := options.FindOne().SetProjection(bson.M{"userID": 1})
+			authId := authCheck(r.Header.Get("Authorization"), false)
 
-			err := col.FindOne(ctx, bson.M{"apiToken": strings.Replace(r.Header.Get("Authorization"), "User ", "", 1), "userID": id}, options).Err()
-
-			if err != nil {
+			if authId == nil || *authId != id {
 				log.Error(err)
 				w.WriteHeader(http.StatusUnauthorized)
 				w.Write([]byte(unauthorized))
@@ -1827,11 +1796,7 @@ print(req.json())
 
 		if r.Method == "GET" {
 			// Fetch reminder from mongodb
-			col = mongoDb.Collection("silverpelt")
-
-			var reminder []types.Reminder
-
-			cur, err := col.Find(ctx, bson.M{"userID": id})
+			rows, err := pool.Query(ctx, "SELECT "+silverpeltColsStr+" FROM silverpelt WHERE user_id = $1", id)
 
 			if err != nil {
 				log.Error(err)
@@ -1840,23 +1805,21 @@ print(req.json())
 				return
 			}
 
-			defer cur.Close(ctx)
+			var reminders []types.Reminder
 
-			for cur.Next(ctx) {
-				var r types.Reminder
+			pgxscan.ScanAll(&reminders, rows)
 
-				err := cur.Decode(&r)
+			if err != nil {
+				log.Error(err)
+				w.WriteHeader(http.StatusInternalServerError)
+				w.Write([]byte(internalError))
+				return
+			}
 
-				if err != nil {
-					log.Error(err)
-					w.WriteHeader(http.StatusInternalServerError)
-					w.Write([]byte(internalError))
-					return
-				}
-
+			for i, reminder := range reminders {
 				// Try resolving the bot from discord API
 				var resolvedBot types.ResolvedReminderBot
-				bot, err := utils.GetDiscordUser(metro, redisCache, ctx, r.BotID)
+				bot, err := utils.GetDiscordUser(metro, redisCache, ctx, reminder.BotID)
 
 				if err != nil {
 					resolvedBot = types.ResolvedReminderBot{
@@ -1870,12 +1833,10 @@ print(req.json())
 					}
 				}
 
-				r.ResolvedBot = resolvedBot
-
-				reminder = append(reminder, r)
+				reminders[i].ResolvedBot = resolvedBot
 			}
 
-			bytes, err := json.Marshal(reminder)
+			bytes, err := json.Marshal(reminders)
 
 			if err != nil {
 				log.Error(err)
@@ -1885,80 +1846,37 @@ print(req.json())
 			}
 
 			w.Write(bytes)
-		} else if r.Method == "PUT" {
+		} else {
 			// Add subscription to collection
-			bid := r.URL.Query().Get("bot_id")
+			var botId pgtype.Text
 
-			var bot struct {
-				ID string `bson:"botID"`
-			}
+			err = pool.QueryRow(ctx, "SELECT bot_id FROM bots WHERE (vanity = $1 OR bot_id = $1 OR name = $1)", r.URL.Query().Get("bot_id")).Scan(&botId)
 
-			options := options.FindOne().SetProjection(bson.M{"botID": 1})
-
-			err = mongoDb.Collection("bots").FindOne(
-				ctx,
-				bson.M{
-					"$or": []bson.M{
-						{
-							"botName": bid,
-						},
-						{
-							"vanity": bid,
-						},
-						{
-							"botID": bid,
-						},
-					},
-				},
-				options,
-			).Decode(&bot)
-
-			if err != nil {
+			if err != nil || botId.Status != pgtype.Present || botId.String == "" {
 				log.Error("Error adding reminder: ", err)
 				w.WriteHeader(http.StatusNotFound)
 				w.Write([]byte(notFound))
 				return
 			}
 
-			if bot.ID == "" {
-				log.Error("No bot id found?")
-				w.WriteHeader(http.StatusBadRequest)
-				w.Write([]byte(badRequest))
-				return
+			// Delete old
+			pool.Exec(ctx, "DELETE FROM silverpelt WHERE user_id = $1 AND bot_id = $2", id, botId.String)
+
+			// Insert new
+			if r.Method == "PUT" {
+				_, err := pool.Exec(ctx, "INSERT INTO silverpelt (user_id, bot_id) VALUES ($1, $2)", id, botId.String)
+
+				if err != nil {
+					log.Error("Error adding reminder: ", err)
+					w.WriteHeader(http.StatusNotFound)
+					w.Write([]byte(notFound))
+					return
+				}
 			}
-
-			err := mongoDb.Collection("silverpelt").FindOne(ctx, bson.M{"userID": id, "botID": bot.ID}).Err()
-
-			// If reminder already exists, delete them all first to protect against db spam
-			if err == nil {
-				mongoDb.Collection("silverpelt").DeleteMany(ctx, bson.M{"userID": id, "botID": bot.ID})
-			}
-
-			mongoDb.Collection("silverpelt").InsertOne(ctx, bson.M{
-				"userID":    id,
-				"botID":     bot.ID,
-				"createdAt": time.Now().Unix(),
-				"lastAcked": 0,
-			})
 
 			w.Write([]byte(success))
-		} else {
-			botId := r.URL.Query().Get("bot_id")
-
-			if botId == "" {
-				w.WriteHeader(http.StatusBadRequest)
-				w.Write([]byte(badRequest))
-				return
-			}
-
-			// Delete reminder from mongodb
-			mongoDb.Collection("silverpelt").DeleteMany(ctx, bson.M{"userID": id, "botID": botId})
-
-			w.WriteHeader(http.StatusOK)
 		}
 	}))
-
-	*/
 
 	adp := DummyAdapter{}
 
@@ -1970,5 +1888,10 @@ print(req.json())
 
 	createBucketMods()
 
-	integrase.StartServer(adp, r)
+	integrase.StartServer(adp, integrase.MuxWrap{Router: r})
+
+	// Add logging middleware
+	log := handlers.LoggingHandler(os.Stdout, r)
+
+	http.ListenAndServe(adp.GetConfig().BindAddr, log)
 }

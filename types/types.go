@@ -17,7 +17,7 @@ type Bot struct {
 	ITag             pgtype.UUID        `db:"itag" json:"itag"`
 	BotID            string             `db:"bot_id" json:"bot_id"`
 	Name             string             `db:"name" json:"name"`
-	Tags             pgtype.TextArray   `db:"tags" json:"tags"`
+	Tags             []string           `db:"tags" json:"tags"`
 	Prefix           pgtype.Text        `db:"prefix" json:"prefix"`
 	Owner            string             `db:"owner" json:"owner"`
 	AdditionalOwners []string           `db:"additional_owners" json:"additional_owners"`
@@ -117,6 +117,13 @@ type UserVote struct {
 
 type UserVoteCompat struct {
 	HasVoted bool `json:"hasVoted"`
+}
+
+type NotifGet struct {
+	Endpoint    string           `json:"endpoint"`
+	NotifID     string           `json:"notif_id"`
+	CreatedAt   time.Time        `json:"created_at"`
+	BrowserInfo NotifBrowserInfo `json:"browser_info"`
 }
 
 // For documentation purposes
@@ -433,11 +440,11 @@ type ResolvedReminderBot struct {
 }
 
 type Reminder struct {
-	UserID      string              `db:"userID" json:"user_id"`
-	BotID       string              `db:"botID" json:"bot_id"`
+	UserID      string              `db:"user_id" json:"user_id"`
+	BotID       string              `db:"bot_id" json:"bot_id"`
 	ResolvedBot ResolvedReminderBot `db:"-" json:"resolved"`
-	CreatedAt   int64               `db:"createdAt" json:"created_at"`
-	LastAcked   int64               `db:"lastAcked" json:"last_acked"`
+	CreatedAt   pgtype.Timestamptz  `db:"created_at" json:"created_at"`
+	LastAcked   pgtype.Timestamptz  `db:"last_acked" json:"last_acked"`
 }
 
 type Message struct {

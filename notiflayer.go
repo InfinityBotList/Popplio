@@ -1,14 +1,18 @@
 package main
 
 import (
+	"io/ioutil"
 	"os"
 	"popplio/types"
 	"popplio/utils"
 	"time"
 
+	"github.com/SherClockHolmes/webpush-go"
 	"github.com/bwmarrin/discordgo"
+	"github.com/georgysavva/scany/pgxscan"
 	"github.com/jackc/pgtype"
 	log "github.com/sirupsen/logrus"
+	"golang.org/x/exp/slices"
 )
 
 var notifChannel = make(chan types.Notification)
@@ -88,19 +92,13 @@ func init() {
 	   Vote reminders is a seperate goroutine
 	*/
 
-	/* TODO
 	go func() {
 		for msg := range notifChannel {
-			col := mongoDb.Collection("poppypaw")
+			var auth string
+			var endpoint string
+			var p256dh string
 
-			// Push out notification
-			var notifInfo struct {
-				Auth     string `bson:"auth"`
-				Endpoint string `bson:"endpoint"`
-				P256dh   string `bson:"p256dh"`
-			}
-
-			err := col.FindOne(ctx, bson.M{"notifId": msg.NotifID}).Decode(&notifInfo)
+			err := pool.QueryRow(ctx, "SELECT auth, endpoint, p256dh FROM poppypaw WHERE notif_id = $1", msg.NotifID).Scan(&auth, &endpoint, &p256dh)
 
 			if err != nil {
 				log.Error("Error finding notification: %s", err)
@@ -108,10 +106,10 @@ func init() {
 			}
 
 			sub := webpush.Subscription{
-				Endpoint: notifInfo.Endpoint,
+				Endpoint: endpoint,
 				Keys: webpush.Keys{
-					Auth:   notifInfo.Auth,
-					P256dh: notifInfo.P256dh,
+					Auth:   auth,
+					P256dh: p256dh,
 				},
 			}
 
@@ -124,6 +122,10 @@ func init() {
 			})
 			if err != nil {
 				// TODO: Handle error
+				if resp.StatusCode == 410 {
+					// Delete the subscription
+					pool.Exec(ctx, "DELETE FROM poppypaw WHERE notif_id = $1", msg.NotifID)
+				}
 				log.Error(err)
 				continue
 			}
@@ -139,20 +141,16 @@ func init() {
 		for x := range time.Tick(d) {
 			log.Info("Tick at ", x, ", checking reminders")
 
-			col := mongoDb.Collection("silverpelt")
-
-			// Get all reminders
-
-			cur, err := col.Find(ctx, bson.M{})
+			rows, err := pool.Query(ctx, "SELECT "+silverpeltColsStr+" FROM silverpelt WHERE NOW() - last_acked > interval '4 hours'")
 
 			if err != nil {
-				log.Error("Error finding reminders:ß", err)
+				log.Error("Error finding reminders: ", err)
 				continue
 			}
 
-			for cur.Next(ctx) {
+			for rows.Next() {
 				var reminder types.Reminder
-				err := cur.Decode(&reminder)
+				err := pgxscan.ScanRow(&reminder, rows)
 
 				if err != nil {
 					log.Error("Error decoding reminder:", err)
@@ -160,29 +158,27 @@ func init() {
 				}
 
 				// Check for duplicates
-				count, err := col.CountDocuments(ctx, bson.M{"userID": reminder.UserID, "botID": reminder.BotID})
+				var count int64
+
+				err = pool.QueryRow(ctx, "SELECT COUNT(*) FROM silverpelt WHERE bot_id = $1 AND user_id = $2", reminder.BotID, reminder.UserID).Scan(&count)
 
 				if err != nil {
 					log.Error("Error counting reminders:", err)
 				} else {
 					if count > 1 {
 						log.Warning("Reminder has duplicates, deleting one of them")
-						_, err := col.DeleteOne(ctx, bson.M{"userID": reminder.UserID, "botID": reminder.BotID})
+						_, err = pool.Exec(ctx, "DELETE FROM silverpelt WHERE bot_id = $1 AND user_id = $2", reminder.BotID, reminder.UserID)
 
 						if err != nil {
 							log.Error("Error deleting reminder:", err)
 						}
-					}
-				}
 
-				// Check if reminder is acked
-				if time.Now().Unix()-reminder.LastAcked < 4*60*60 {
-					log.WithFields(log.Fields{
-						"userId":    reminder.UserID,
-						"botId":     reminder.BotID,
-						"lastAcked": reminder.LastAcked,
-					}).Warning("Reminder has been acked, skipping")
-					continue
+						_, err = pool.Exec(ctx, "INSERT INTO silverpelt (bot_id, user_id) VALUES ($1, $2)", reminder.BotID, reminder.UserID)
+
+						if err != nil {
+							log.Error("Error readding reminder:", err)
+						}
+					}
 				}
 
 				voteParsed, err := utils.GetVoteData(ctx, pool, reminder.UserID, reminder.BotID)
@@ -193,30 +189,39 @@ func init() {
 				}
 
 				if !voteParsed.HasVoted {
-					res, err := mongoDb.Collection("silverpelt").UpdateMany(ctx, bson.M{"userID": reminder.UserID, "botID": reminder.BotID}, bson.M{"$set": bson.M{"lastAcked": time.Now().Unix()}})
-
+					res, err := pool.Exec(ctx, "UPDATE silverpelt SET last_acked = NOW() WHERE bot_id = $1 AND user_id = $2", reminder.BotID, reminder.UserID)
 					if err != nil {
 						log.Error("Error updating reminder: %s", err)
 						continue
 					}
 
-					log.Info("Updated reminder: ", res.ModifiedCount)
+					log.Info("Updated reminders: ", res.RowsAffected())
 
 					// Loop over all user poppypaw subscriptions and push to goro
 					go func(id string, bId string) {
-						col := mongoDb.Collection("poppypaw")
-
-						cur, err := col.Find(ctx, bson.M{"id": id})
+						rows, err := pool.Query(ctx, "SELECT notif_id, endpoint FROM poppypaw WHERE id = $1", id)
 
 						if err != nil {
-							log.Error("Error finding subscriptions: %s", err)
+							log.Error("Error finding subscriptions:", err)
+							return
+						}
+
+						var notifs []struct {
+							NotifId  string `db:"notif_id"`
+							Endpoint string `db:"endpoint"`
+						}
+
+						err = pgxscan.ScanAll(&notifs, rows)
+
+						if err != nil {
+							log.Error("Error finding subscriptions:", err)
 							return
 						}
 
 						botInf, err := utils.GetDiscordUser(metro, redisCache, ctx, bId)
 
 						if err != nil {
-							log.Error("Error finding bot info: %s", err)
+							log.Error("Error finding bot info:", err)
 							return
 						}
 
@@ -233,40 +238,26 @@ func init() {
 							return
 						}
 
-						defer cur.Close(ctx)
-
 						doneIds := []string{}
 						doneNotifs := []string{}
 
-						for cur.Next(ctx) {
-							var sub struct {
-								NotifID  string `bson:"notifId"`
-								Endpoint string `bson:"endpoint"`
-							}
+						for _, notif := range notifs {
+							log.Info("NotifID: ", notif.NotifId)
 
-							err := cur.Decode(&sub)
-
-							if err != nil {
-								log.Error(err)
+							if notif.NotifId == "" {
 								continue
 							}
 
-							log.Info("NotifID: ", sub.NotifID)
-
-							if sub.NotifID == "" {
+							if slices.Contains(doneIds, notif.Endpoint) || slices.Contains(doneNotifs, notif.Endpoint) {
+								log.Info("Already sent notification to: ", notif.Endpoint)
 								continue
 							}
 
-							if slices.Contains(doneIds, sub.Endpoint) || slices.Contains(doneNotifs, sub.NotifID) {
-								log.Info("Already sent notification to: ", sub.Endpoint)
-								continue
-							}
-
-							doneIds = append(doneIds, sub.Endpoint)
-							doneNotifs = append(doneNotifs, sub.NotifID)
+							doneIds = append(doneIds, notif.Endpoint)
+							doneNotifs = append(doneNotifs, notif.NotifId)
 
 							notifChannel <- types.Notification{
-								NotifID: sub.NotifID,
+								NotifID: notif.NotifId,
 								Message: bytes,
 							}
 						}
@@ -281,44 +272,43 @@ func init() {
 		d := 10 * time.Second
 		for x := range time.Tick(d) {
 			log.Info("Tick at ", x, ", checking premiums")
-			cur, err := mongoDb.Collection("bots").Find(ctx, bson.M{"premium": true})
+
+			rows, err := pool.Query(ctx, "SELECT bot_id, start_premium_period, premium_period_length, type FROM bots WHERE premium = true")
 
 			if err != nil {
 				log.Error("Error finding bots: %s", err)
 				continue
 			}
 
-			for cur.Next(ctx) {
+			for rows.Next() {
 				// Check bot
-				var bot struct {
-					ID          string `bson:"botID"`
-					StartPeriod int    `bson:"start_period,omitempty"`
-					SubPeriod   int    `bson:"sub_period,omitempty"`
-					Type        string `bson:"type,omitempty"`
-				}
+				var botId string
+				var startPremiumPeriod int64
+				var premiumPeriodLength int64
+				var typeStr string
 
-				err := cur.Decode(&bot)
+				err := rows.Scan(&botId, &startPremiumPeriod, &premiumPeriodLength, &typeStr)
 
 				if err != nil {
 					log.Error("Error decoding bot: %s", err)
 					continue
 				}
 
-				if bot.Type != "approved" {
+				if typeStr != "approved" {
 					// This bot isnt approved, so we should remove premium
-					log.Info("Removing premium from bot: ", bot.ID)
-					premiumChannel <- bot.ID
+					log.Info("Removing premium from bot: ", botId)
+					premiumChannel <- botId
 				}
 
 				// Check start and sub period
-				if int64(bot.SubPeriod)-(time.Now().UnixMilli()-int64(bot.StartPeriod)) < 0 {
+				if int64(premiumPeriodLength)-(time.Now().UnixMilli()-int64(startPremiumPeriod)) < 0 {
 					// This bot isnt premium, so we should remove premium
-					log.Info("Removing premium from bot: ", bot.ID)
-					premiumChannel <- bot.ID
+					log.Info("Removing premium from bot: ", botId)
+					premiumChannel <- botId
 				}
 			}
 
-			cur.Close(ctx)
+			rows.Close()
 		}
 	}()
 
@@ -349,5 +339,5 @@ func init() {
 				continue
 			}
 		}
-	}()*/
+	}()
 }

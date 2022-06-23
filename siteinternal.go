@@ -519,15 +519,15 @@ func sendWebhook(webhook types.WebhookPost) error {
 		var bot struct {
 			Discord    pgtype.Text `db:"webhook"`
 			CustomURL  pgtype.Text `db:"custom_webhook"`
-			CustomAuth pgtype.Text `bson:"web_auth"`
-			APIToken   pgtype.Text `bson:"token"`
-			HMACAuth   pgtype.Bool `bson:"hmac"`
+			CustomAuth pgtype.Text `db:"web_auth"`
+			APIToken   pgtype.Text `db:"token"`
+			HMACAuth   pgtype.Bool `db:"hmac"`
 		}
 
 		err := pgxscan.Get(ctx, pool, &bot, "SELECT webhook, custom_webhook, web_auth, token, hmac FROM bots WHERE bot_id = $1", webhook.BotID)
 
 		if err != nil {
-			log.Error("Failed to fetch webhook")
+			log.Error("Failed to fetch webhook: ", err.Error())
 			return err
 		}
 

@@ -3,7 +3,7 @@ module popplio
 go 1.18
 
 require (
-	github.com/MetroReviews/metro-integrase v0.0.0-20220606060403-b76c3e02d98c
+	github.com/MetroReviews/metro-integrase v0.0.0-20220623103548-d13433a236c1
 	github.com/bwmarrin/discordgo v0.25.1-0.20220603125853-c8c153872c36
 	github.com/getkin/kin-openapi v0.96.0
 	github.com/go-redis/redis/v8 v8.11.5

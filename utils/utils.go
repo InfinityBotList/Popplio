@@ -207,7 +207,7 @@ func GetVoteData(ctx context.Context, pool *pgxpool.Pool, userID, botID string) 
 	var votes []int64
 
 	var voteDates []*struct {
-		Date pgtype.Date `db:"date"`
+		Date pgtype.Timestamptz `db:"date"`
 	}
 
 	rows, err := pool.Query(ctx, "SELECT date FROM votes WHERE user_id = $1 AND bot_id = $2 ORDER BY date DESC", userID, botID)
@@ -220,7 +220,7 @@ func GetVoteData(ctx context.Context, pool *pgxpool.Pool, userID, botID string) 
 
 	for _, vote := range voteDates {
 		if vote.Date.Status != pgtype.Null {
-			votes = append(votes, vote.Date.Time.UnixMicro())
+			votes = append(votes, vote.Date.Time.UnixMilli())
 		}
 	}
 
