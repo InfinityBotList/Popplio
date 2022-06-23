@@ -72,6 +72,7 @@ type moderatedBucket struct {
 
 var (
 	redisCache *redis.Client
+	iblCache   *redis.Client
 	pool       *pgxpool.Pool
 	ctx        context.Context
 	r          *mux.Router
@@ -353,6 +354,14 @@ func main() {
 
 	redisCache = redis.NewClient(rOptions)
 
+	rOptionsNext, err := redis.ParseURL("redis://localhost:6379/1")
+
+	if err != nil {
+		panic(err)
+	}
+
+	iblCache = redis.NewClient(rOptionsNext)
+
 	pool, err = pgxpool.Connect(ctx, pgConn)
 
 	if err != nil {
@@ -455,7 +464,7 @@ func main() {
 
 			if announcement.Targetted {
 				// Check auth header
-				if target.UserID != announcement.Target {
+				if target.UserID != announcement.Target.String {
 					continue
 				}
 			}
@@ -555,13 +564,15 @@ func main() {
 			return
 		}
 
+		var id *string
+
 		// Check token
 		if r.Header.Get("Authorization") == "" {
 			w.WriteHeader(http.StatusUnauthorized)
 			w.Write([]byte(unauthorized))
 			return
 		} else {
-			id := authCheck(r.Header.Get("Authorization"), true)
+			id = authCheck(r.Header.Get("Authorization"), true)
 
 			if id == nil {
 				log.Error(err)
@@ -615,7 +626,7 @@ func main() {
 		servers, shards, users := payload.GetStats()
 
 		if servers > 0 {
-			_, err = pool.Exec(ctx, "UPDATE bots SET servers = $1 WHERE token = $2", servers, r.Header.Get("Authorization"))
+			_, err = pool.Exec(ctx, "UPDATE bots SET servers = $1 WHERE bot_id = $2", servers, id)
 
 			if err != nil {
 				log.Error(err)
@@ -626,7 +637,7 @@ func main() {
 		}
 
 		if shards > 0 {
-			_, err = pool.Exec(ctx, "UPDATE bots SET shards = $1 WHERE token = $2", shards, r.Header.Get("Authorization"))
+			_, err = pool.Exec(ctx, "UPDATE bots SET shards = $1 WHERE bot_id = $2", shards, id)
 
 			if err != nil {
 				log.Error(err)
@@ -637,7 +648,7 @@ func main() {
 		}
 
 		if users > 0 {
-			_, err = pool.Exec(ctx, "UPDATE bots SET users = $1 WHERE token = $2", users, r.Header.Get("Authorization"))
+			_, err = pool.Exec(ctx, "UPDATE bots SET users = $1 WHERE bot_id = $2", users, id)
 
 			if err != nil {
 				log.Error(err)
@@ -646,6 +657,21 @@ func main() {
 				return
 			}
 		}
+
+		// Get name and vanity, delete from cache
+		var name, vanity string
+
+		pool.QueryRow(ctx, "SELECT name, vanity FROM bots WHERE bot_id = $1", id).Scan(&name, &vanity)
+
+		// Delete from cache
+		redisCache.Del(ctx, "bc-"+name)
+		redisCache.Del(ctx, "bc-"+vanity)
+		redisCache.Del(ctx, "bc-"+*id)
+
+		// Clear ibl next cache
+		iblCache.Del(ctx, *id+"_data")
+		iblCache.Del(ctx, name+"_data")
+		iblCache.Del(ctx, vanity+"_data")
 
 		w.Write([]byte(success))
 	}

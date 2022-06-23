@@ -402,7 +402,7 @@ type Announcement struct {
 	LastModified time.Time   `db:"modified_date" json:"last_modified"`
 	Status       string      `db:"status" json:"status"`
 	Targetted    bool        `db:"targetted" json:"targetted"`
-	Target       string      `db:"target" json:"target"`
+	Target       pgtype.Text `db:"target" json:"target"`
 }
 
 // A discord user
