@@ -1051,12 +1051,17 @@ print(req.json())
 						{
 							URL:         "https://botlist.site/" + vars["bid"],
 							Title:       ":tada: New Vote :heart:",
-							Description: ":heart: <@" + vars["uid"] + "> has voted for <@" + vars["bid"] + "> which now has " + strconv.Itoa(int(votes)) + " votes",
+							Description: ":heart: <@!" + vars["uid"] + "> has voted for <@" + vars["bid"] + "> which now has " + strconv.Itoa(int(votes)) + " votes",
 							Color:       0x00ff00,
 							Fields: []*discordgo.MessageEmbedField{
 								{
-									Name:   "Vote Page",
+									Name:   "View Bot",
 									Value:  "[Click here to vote](https://botlist.site/" + vars["bid"] + "/vote)",
+									Inline: true,
+								},
+								{
+									Name:   "Vote Page",
+									Value:  "[Click here to vote](https://botlist.site/" + vars["bid"],
 									Inline: true,
 								},
 							},
