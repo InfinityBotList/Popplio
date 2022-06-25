@@ -50,10 +50,9 @@ type InternalSession struct {
 }
 
 const ddrStr = `
-SELECT sh.nspname AS table_schema,
+SELECT 
   tbl.relname AS table_name,
   col.attname AS column_name,
-  referenced_sh.nspname AS foreign_table_schema,
   referenced_tbl.relname AS foreign_table_name,
   referenced_field.attname AS foreign_column_name
 FROM pg_constraint c
@@ -318,9 +317,10 @@ func dataRequestTask(taskId string, id string, ip string, del bool) {
 	}).Err()
 
 	var keys []*struct {
-		ForeignTable string `db:"foreign_table_name"`
-		TableName    string `db:"table_name"`
-		ColumnName   string `db:"column_name"`
+		ForeignTable      string `db:"foreign_table_name"`
+		TableName         string `db:"table_name"`
+		ColumnName        string `db:"column_name"`
+		ForeignColumnName string `db:"foreign_column_name"`
 	}
 
 	data, err := pool.Query(ctx, ddrStr)
@@ -335,7 +335,7 @@ func dataRequestTask(taskId string, id string, ip string, del bool) {
 		return
 	}
 
-	if err := pgxscan.ScanAll(keys, data); err != nil {
+	if err := pgxscan.ScanAll(&keys, data); err != nil {
 		log.Error(err)
 
 		redisCache.SetArgs(ctx, taskId, "Critical:"+err.Error(), redis.SetArgs{
@@ -357,7 +357,7 @@ func dataRequestTask(taskId string, id string, ip string, del bool) {
 
 			var rows []map[string]any
 
-			if err := pgxscan.ScanAll(rows, data); err != nil {
+			if err := pgxscan.ScanAll(&rows, data); err != nil {
 				log.Error(err)
 
 				redisCache.SetArgs(ctx, taskId, "Critical:"+err.Error(), redis.SetArgs{
@@ -391,7 +391,7 @@ func dataRequestTask(taskId string, id string, ip string, del bool) {
 		KeepTTL: true,
 	})
 
-	rows, err := pool.Query(ctx, "SELECT col, data, ts, id FROM backups")
+	rows, err := backupPool.Query(ctx, "SELECT col, data, ts, id FROM backups")
 
 	if err != nil {
 		log.Error("Failed to get backups")
@@ -459,7 +459,7 @@ func dataRequestTask(taskId string, id string, ip string, del bool) {
 			backups = append(backups, backupDat)
 
 			if del {
-				_, err := pool.Exec(ctx, "DELETE FROM backups WHERE id=$1", toString(uid))
+				_, err := backupPool.Exec(ctx, "DELETE FROM backups WHERE id=$1", toString(uid))
 				if err != nil {
 					log.Error("Failed to delete backup")
 					redisCache.SetArgs(ctx, taskId, "Failed to delete backup: "+err.Error(), redis.SetArgs{

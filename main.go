@@ -40,6 +40,7 @@ const (
 	statusPage = "https://status.botlist.site"
 	apiBot     = "https://discord.com/api/oauth2/authorize?client_id=818419115068751892&permissions=140898593856&scope=bot%20applications.commands"
 	pgConn     = "postgresql:///infinity"
+	backupConn = "postgresql:///backups"
 
 	notFound         = "{\"message\":\"Slow down, bucko! We couldn't find this resource *anywhere*!\",\"error\":true}"
 	notFoundPage     = "{\"message\":\"Slow down, bucko! You got the path wrong or something but this endpoint doesn't exist!\",\"error\":true}"
@@ -74,6 +75,7 @@ var (
 	redisCache *redis.Client
 	iblCache   *redis.Client
 	pool       *pgxpool.Pool
+	backupPool *pgxpool.Pool
 	ctx        context.Context
 	r          *mux.Router
 
@@ -363,6 +365,12 @@ func main() {
 	iblCache = redis.NewClient(rOptionsNext)
 
 	pool, err = pgxpool.Connect(ctx, pgConn)
+
+	if err != nil {
+		panic(err)
+	}
+
+	backupPool, err = pgxpool.Connect(ctx, backupConn)
 
 	if err != nil {
 		panic(err)
