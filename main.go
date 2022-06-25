@@ -703,7 +703,7 @@ func main() {
 		limit := perPage
 		offset := (pageNum - 1) * perPage
 
-		rows, err := pool.Query(ctx, "SELECT "+botsColsStr+" FROM bots ORDER BY created DESC LIMIT $1 OFFSET $2", limit, offset)
+		rows, err := pool.Query(ctx, "SELECT "+botsColsStr+" FROM bots ORDER BY date DESC LIMIT $1 OFFSET $2", limit, offset)
 
 		if err != nil {
 			log.Error(err)

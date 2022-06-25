@@ -49,14 +49,14 @@ type Bot struct {
 	CrossAdd         bool               `db:"cross_add" json:"cross_add"`
 	StartPeriod      int                `db:"start_premium_period" json:"start_premium_period"`
 	SubPeriod        int                `db:"premium_period_length" json:"premium_period_length"`
-	CertReason       string             `db:"cert_reason" json:"cert_reason"`
+	CertReason       pgtype.Text        `db:"cert_reason" json:"cert_reason"`
 	Announce         pgtype.Text        `db:"announce" json:"announce"`
-	AnnounceMessage  string             `db:"announce_message" json:"announce_message"`
+	AnnounceMessage  pgtype.Text        `db:"announce_message" json:"announce_message"`
 	Uptime           int                `db:"uptime" json:"uptime"`
 	TotalUptime      int                `db:"total_uptime" json:"total_uptime"`
 	Claimed          bool               `db:"claimed" json:"claimed"`
-	ClaimedBy        string             `db:"claimed_by" json:"claimed_by"`
-	Note             string             `db:"approval_note" json:"approval_note"`
+	ClaimedBy        pgtype.Text        `db:"claimed_by" json:"claimed_by"`
+	Note             pgtype.Text        `db:"approval_note" json:"approval_note"`
 	Date             pgtype.Timestamptz `db:"date" json:"date"`
 }
 
