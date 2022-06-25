@@ -1,4 +1,4 @@
-# Popplio!
+# Popplio
 
 Popplio is the new rewrite of the Infinity Bot List API in golang
 
