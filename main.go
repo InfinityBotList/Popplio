@@ -380,7 +380,7 @@ func main() {
 	// Index
 	var helloWorldB Hello
 
-	helloWorldB.Message = "Hello world from IBL API v5!"
+	helloWorldB.Message = "Hello world from IBL API v6!"
 	helloWorldB.Docs = docsSite
 	helloWorldB.OurSite = mainSite
 	helloWorldB.Status = statusPage
@@ -1069,7 +1069,7 @@ print(req.json())
 								},
 								{
 									Name:   "Vote Page",
-									Value:  "[Click here to vote](https://botlist.site/" + vars["bid"],
+									Value:  "[Click here to vote](https://botlist.site/" + vars["bid"] + ")",
 									Inline: true,
 								},
 							},
@@ -1565,7 +1565,14 @@ print(req.json())
 
 		if profile.About != "" {
 			// Update about
-			pool.Exec(ctx, "UPDATE users SET about = $1 WHERE id = $2", profile.About, id)
+			_, err = pool.Exec(ctx, "UPDATE users SET about = $1 WHERE user_id = $2", profile.About, id)
+
+			if err != nil {
+				log.Error(err)
+				w.WriteHeader(http.StatusInternalServerError)
+				w.Write([]byte(internalError))
+				return
+			}
 		}
 	}))
 
