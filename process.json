@@ -1,6 +1,6 @@
 [
 	{
-		"name": "Popplio",
+		"name": "PopplioLegacy",
 		"script": "unbuffer ./popplio",
 		"cwd": "/root/Popplio/"
 	}

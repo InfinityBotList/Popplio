@@ -979,11 +979,22 @@ func sendWebhook(webhook types.WebhookPost) error {
 		tries := 0
 
 		for tries < 3 {
+			if webhook.Test {
+				webhook.UserID = "510065483693817867"
+			}
+
+			var dUser, err = utils.GetDiscordUser(metro, redisCache, ctx, webhook.UserID)
+
+			if err != nil {
+				log.Error(err)
+			}
+
 			// Create response body
 			body := types.WebhookData{
 				Votes:        webhook.Votes,
 				UserID:       webhook.UserID,
 				BotID:        webhook.BotID,
+				UserObj:      dUser,
 				UserIDLegacy: webhook.UserID,
 				BotIDLegacy:  webhook.BotID,
 				Test:         webhook.Test,

@@ -87,7 +87,7 @@ func (adp DummyAdapter) GetConfig() types.ListConfig {
 		RequestLogs: true,
 		StartupLogs: true,
 		BindAddr:    ":8080",
-		DomainName:  "https://spider.infinitybotlist.com",
+		DomainName:  "https://api.infinitybotlist.com",
 	}
 }
 
