@@ -131,6 +131,7 @@ func bucketHandle(bucket moderatedBucket, id string, w http.ResponseWriter, r *h
 
 	if vInt < 0 {
 		redisCache.Expire(ctx, rlKey, 1*time.Second)
+		vInt = 0
 	}
 
 	if vInt > bucket.Requests {

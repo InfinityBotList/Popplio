@@ -45,6 +45,17 @@ func addBot(bot *types.Bot) (*mongo.InsertOneResult, error) {
 		invite = "https://discord.com/oauth2/authorize?client_id=" + bot.BotID + "&permissions=0&scope=bot%20applications.commands"
 	}
 
+	// Check if bot exists in DB
+	count, err := col.CountDocuments(ctx, bson.M{"botID": bot.BotID})
+
+	if err != nil {
+		return nil, err
+	}
+
+	if count > 0 {
+		col.DeleteOne(ctx, bson.M{"botID": bot.BotID})
+	}
+
 	res, err := col.InsertOne(ctx, bson.M{
 		"botID":             bot.BotID,
 		"botName":           bot.Username,
