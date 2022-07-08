@@ -75,10 +75,10 @@ type Review struct {
 	Author      string         `db:"author" json:"author"`
 	Content     string         `db:"content" json:"content"`
 	Rate        bool           `db:"rate" json:"rate"`
-	StarRate    int            `db:"stars" json:"stars"`
+	StarRate    pgtype.Int4    `db:"stars" json:"stars"`
 	LikesRaw    map[string]any `db:"likes" json:"likes"`
 	DislikesRaw map[string]any `db:"dislikes" json:"dislikes"`
-	Date        int            `db:"date" json:"date"`
+	Date        pgtype.Int8    `db:"date" json:"date"`
 	Replies     map[string]any `db:"replies" json:"replies"`
 	Editted     bool           `db:"editted" json:"editted"`
 	Flagged     bool           `db:"flagged" json:"flagged"`
