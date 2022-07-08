@@ -348,7 +348,7 @@ func main() {
 	r = mux.NewRouter()
 
 	// Init redisCache
-	rOptions, err := redis.ParseURL("redis://localhost:6379")
+	rOptions, err := redis.ParseURL("redis://localhost:6379/12")
 
 	if err != nil {
 		panic(err)
@@ -493,13 +493,6 @@ func main() {
 	}))
 
 	r.HandleFunc("/_duser/{id}", func(w http.ResponseWriter, r *http.Request) {
-		if r.Header.Get("X-Forwarded-For") != "" {
-			// Request proxied, cancel
-			w.Header().Set("Content-Type", "application/json")
-			w.Write([]byte(notFound))
-			return
-		}
-
 		var id = mux.Vars(r)["id"]
 
 		user, err := utils.GetDiscordUser(metro, redisCache, ctx, id)
@@ -825,11 +818,11 @@ print(req.json())
 		},
 	}, []string{"Variants"}, types.BotStatsTyped{}, types.ApiError{}, []string{"Bot"})
 
-	r.HandleFunc("/bots/stats", rateLimitWrap(4, 1*time.Minute, "stats", statsFn))
+	r.HandleFunc("/bots/stats", rateLimitWrap(10, 1*time.Minute, "stats", statsFn))
 
 	// Note that only token matters for this endpoint at this time
 	// TODO: Handle bot id as well
-	r.HandleFunc("/bots/{id}/stats", rateLimitWrap(4, 1*time.Minute, "stats", statsFn))
+	r.HandleFunc("/bots/{id}/stats", rateLimitWrap(10, 1*time.Minute, "stats", statsFn))
 
 	docs.AddDocs("GET", "/users/{uid}/bots/{bid}/votes", "get_user_votes", "Get User Votes", "Gets the users votes. **Requires authentication**", []docs.Paramater{
 		{

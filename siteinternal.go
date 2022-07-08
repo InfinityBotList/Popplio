@@ -341,6 +341,8 @@ func dataRequestTask(taskId string, id string, ip string, del bool) {
 		redisCache.SetArgs(ctx, taskId, "Critical:"+err.Error(), redis.SetArgs{
 			KeepTTL: true,
 		})
+
+		return
 	}
 
 	finalDump := make(map[string]any)
@@ -641,10 +643,21 @@ func sendWebhook(webhook types.WebhookPost) error {
 		tries := 0
 
 		for tries < 3 {
+			if webhook.Test {
+				webhook.UserID = "510065483693817867"
+			}
+
+			var dUser, err = utils.GetDiscordUser(metro, redisCache, ctx, webhook.UserID)
+
+			if err != nil {
+				log.Error(err)
+			}
+
 			// Create response body
 			body := types.WebhookData{
 				Votes:        webhook.Votes,
 				UserID:       webhook.UserID,
+				UserObj:      dUser,
 				BotID:        webhook.BotID,
 				UserIDLegacy: webhook.UserID,
 				BotIDLegacy:  webhook.BotID,
