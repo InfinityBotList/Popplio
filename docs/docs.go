@@ -119,8 +119,22 @@ type Openapi struct {
 var api = Openapi{
 	OpenAPI: "3.0.3",
 	Info: info{
-		Title:          "Infinity Bot List API",
-		Description:    "The API for https://infinitybotlist.com",
+		Title: "Infinity Bot List API",
+		Description: `
+Welcome to the Infinity Bot List API documentation!
+
+## Libraries
+
+We offer several libraries for interacting with the API:
+
+- [Java](https://guide.infinitybots.gg/docs/libraries/java)
+- [JavaScript](https://guide.infinitybots.gg/docs/libraries/javascript)
+- [Python](https://guide.infinitybots.gg/docs/libraries/python)
+
+## Ratelimits
+
+You can find documentation on ratelimits and other resources [here](https://guide.infinitybots.gg/docs/resources/ratelimits)
+`,
 		TermsOfService: "https://infinitybotlist.com/terms",
 		Version:        "5.0",
 		Contact: contact{
