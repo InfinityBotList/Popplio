@@ -19,6 +19,10 @@ import (
 )
 
 func IsNone(s *string) bool {
+	if s == nil {
+		return true
+	}
+
 	if *s == "None" || *s == "none" || *s == "" || *s == "null" {
 		return true
 	}

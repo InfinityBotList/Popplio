@@ -129,6 +129,10 @@ func bucketHandle(bucket moderatedBucket, id string, w http.ResponseWriter, r *h
 		return false
 	}
 
+	if vInt < 0 {
+		redisCache.Expire(ctx, rlKey, 1*time.Second)
+	}
+
 	if vInt > bucket.Requests {
 		w.Header().Set("Content-Type", "application/json")
 		retryAfter := redisCache.TTL(ctx, rlKey).Val()
