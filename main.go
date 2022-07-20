@@ -1064,20 +1064,63 @@ print(req.json())
 				return
 			}
 
+			userObj, err := utils.GetDiscordUser(metro, redisCache, ctx, vars["uid"])
+
+			if err != nil {
+				// Revert vote
+				_, err := mongoDb.Collection("votes").DeleteOne(ctx, bson.M{"_id": r.InsertedID})
+
+				log.Error(err)
+				w.WriteHeader(http.StatusInternalServerError)
+				w.Write([]byte(internalError))
+				return
+			}
+
+			botObj, err := utils.GetDiscordUser(metro, redisCache, ctx, vars["bid"])
+
+			if err != nil {
+				// Revert vote
+				_, err := mongoDb.Collection("votes").DeleteOne(ctx, bson.M{"_id": r.InsertedID})
+
+				log.Error(err)
+				w.WriteHeader(http.StatusInternalServerError)
+				w.Write([]byte(internalError))
+				return
+			}
+
 			messageNotifyChannel <- types.DiscordLog{
 				WebhookID:    os.Getenv("VOTE_LOG_WEBHOOK_ID"),
 				WebhookToken: os.Getenv("VOTE_LOG_WEBHOOK_TOKEN"),
 				WebhookData: &discordgo.WebhookParams{
+					AvatarURL: botObj.Avatar,
 					Embeds: []*discordgo.MessageEmbed{
 						{
-							URL:         "https://botlist.site/" + vars["bid"],
-							Title:       ":tada: New Vote :heart:",
-							Description: ":heart: <@" + vars["uid"] + "> has voted for <@" + vars["bid"] + "> which now has " + strconv.Itoa(oldVotes.Votes) + " votes",
-							Color:       0x00ff00,
+							URL: "https://botlist.site/" + vars["bid"],
+							Thumbnail: &discordgo.MessageEmbedThumbnail{
+								URL: botObj.Avatar,
+							},
+							Title:       "🎉 Vote Count Updated!",
+							Description: ":heart:" + userObj.Username + "#" + userObj.Discriminator + " has voted for " + botObj.Username,
+							Color:       0x8A6BFD,
 							Fields: []*discordgo.MessageEmbedField{
 								{
+									Name:   "Vote Count:",
+									Value:  strconv.Itoa(oldVotes.Votes),
+									Inline: true,
+								},
+								{
+									Name:   "User ID:",
+									Value:  userObj.ID,
+									Inline: true,
+								},
+								{
 									Name:   "Vote Page",
-									Value:  "[Click here to vote](https://botlist.site/" + vars["bid"] + "/vote)",
+									Value:  "[View " + botObj.Username + "](https://botlist.site/" + vars["bid"] + ")",
+									Inline: true,
+								},
+								{
+									Name:   "Vote Page",
+									Value:  "[Vote for " + botObj.Username + "](https://botlist.site/" + vars["bid"] + "/vote)",
 									Inline: true,
 								},
 							},
