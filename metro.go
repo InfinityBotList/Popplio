@@ -43,6 +43,12 @@ func addBot(bot *types.Bot) (pgconn.CommandTag, error) {
 		invite = "https://discord.com/oauth2/authorize?client_id=" + bot.BotID + "&permissions=0&scope=bot%20applications.commands"
 	}
 
+	_, err := pool.Exec(ctx, "DELETE FROM bots WHERE bot_id = $1", bot.BotID)
+
+	if err != nil {
+		log.Error(err)
+	}
+
 	return pool.Exec(
 		ctx,
 		`INSERT INTO bots (bot_id, name, vanity, approval_note, date, prefix, website, github, donate, nsfw, library, 
