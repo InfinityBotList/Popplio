@@ -33,8 +33,8 @@ import (
 
 var json = jsoniter.ConfigCompatibleWithStandardLibrary
 
-var (
-	mongoUrl   = os.Getenv("MONGO")
+const (
+	mongoUrl   = ""
 	docsSite   = "https://docs.botlist.site"
 	mainSite   = "https://infinitybotlist.com"
 	statusPage = "https://status.botlist.site"
@@ -360,7 +360,7 @@ func main() {
 		panic(err)
 	}
 
-	client, err := mongo.Connect(ctx, options.Client().ApplyURI(mongoUrl))
+	client, err := mongo.Connect(ctx, options.Client().ApplyURI(os.Getenv("MONGO")))
 
 	if err != nil {
 		panic(err)
