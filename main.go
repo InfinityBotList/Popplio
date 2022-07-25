@@ -33,8 +33,8 @@ import (
 
 var json = jsoniter.ConfigCompatibleWithStandardLibrary
 
-const (
-	mongoUrl string = os.Getenv("MONGO")
+var (
+	mongoUrl   = os.Getenv("MONGO")
 	docsSite   = "https://docs.botlist.site"
 	mainSite   = "https://infinitybotlist.com"
 	statusPage = "https://status.botlist.site"
