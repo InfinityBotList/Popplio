@@ -34,7 +34,7 @@ import (
 var json = jsoniter.ConfigCompatibleWithStandardLibrary
 
 const (
-	mongoUrl   = "mongodb://127.0.0.1:27017/infinity" // Is already public in 10 other places so
+	mongoUrl   = os.Getenv("MONGO") // Is already public in 10 other places so
 	docsSite   = "https://docs.botlist.site"
 	mainSite   = "https://infinitybotlist.com"
 	statusPage = "https://status.botlist.site"
