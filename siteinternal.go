@@ -973,6 +973,17 @@ func sendWebhook(webhook types.WebhookPost) error {
 			log.WithFields(log.Fields{
 				"webhook": webhookId,
 			}).Warning("Failed to execute webhook", err)
+
+			// Remove webhook from db as the webhook is invalid
+			col := mongoDb.Collection("bots")
+			_, err2 := col.UpdateOne(ctx, bson.M{"botID": webhook.BotID}, bson.M{"$set": bson.M{"webhook": "", "webURL": ""}})
+
+			if err2 != nil {
+				log.WithFields(log.Fields{
+					"webhook": webhookId,
+				}).Warning("Failed to remove dead webhook(s)", err2)
+			}
+
 			return err
 		}
 	} else {

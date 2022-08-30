@@ -1088,46 +1088,43 @@ print(req.json())
 				return
 			}
 
-			messageNotifyChannel <- types.DiscordLog{
-				WebhookID:    os.Getenv("VOTE_LOG_WEBHOOK_ID"),
-				WebhookToken: os.Getenv("VOTE_LOG_WEBHOOK_TOKEN"),
-				WebhookData: &discordgo.WebhookParams{
-					AvatarURL: botObj.Avatar,
-					Embeds: []*discordgo.MessageEmbed{
-						{
-							URL: "https://botlist.site/" + vars["bid"],
-							Thumbnail: &discordgo.MessageEmbedThumbnail{
-								URL: botObj.Avatar,
+			channel := os.Getenv("VOTE_LOGS_CHANNEL")
+
+			metro.ChannelMessageSendComplex(channel, &discordgo.MessageSend{
+				Embeds: []*discordgo.MessageEmbed{
+					{
+						URL: "https://botlist.site/" + vars["bid"],
+						Thumbnail: &discordgo.MessageEmbedThumbnail{
+							URL: botObj.Avatar,
+						},
+						Title:       "🎉 Vote Count Updated!",
+						Description: ":heart:" + userObj.Username + "#" + userObj.Discriminator + " has voted for " + botObj.Username,
+						Color:       0x8A6BFD,
+						Fields: []*discordgo.MessageEmbedField{
+							{
+								Name:   "Vote Count:",
+								Value:  strconv.Itoa(oldVotes.Votes),
+								Inline: true,
 							},
-							Title:       "🎉 Vote Count Updated!",
-							Description: ":heart:" + userObj.Username + "#" + userObj.Discriminator + " has voted for " + botObj.Username,
-							Color:       0x8A6BFD,
-							Fields: []*discordgo.MessageEmbedField{
-								{
-									Name:   "Vote Count:",
-									Value:  strconv.Itoa(oldVotes.Votes),
-									Inline: true,
-								},
-								{
-									Name:   "User ID:",
-									Value:  userObj.ID,
-									Inline: true,
-								},
-								{
-									Name:   "Vote Page",
-									Value:  "[View " + botObj.Username + "](https://botlist.site/" + vars["bid"] + ")",
-									Inline: true,
-								},
-								{
-									Name:   "Vote Page",
-									Value:  "[Vote for " + botObj.Username + "](https://botlist.site/" + vars["bid"] + "/vote)",
-									Inline: true,
-								},
+							{
+								Name:   "User ID:",
+								Value:  userObj.ID,
+								Inline: true,
+							},
+							{
+								Name:   "Vote Page",
+								Value:  "[View " + botObj.Username + "](https://botlist.site/" + vars["bid"] + ")",
+								Inline: true,
+							},
+							{
+								Name:   "Vote Page",
+								Value:  "[Vote for " + botObj.Username + "](https://botlist.site/" + vars["bid"] + "/vote)",
+								Inline: true,
 							},
 						},
 					},
 				},
-			}
+			})
 
 			// Send webhook in a goroutine refunding the vote if it failed
 			go func() {
