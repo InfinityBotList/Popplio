@@ -97,7 +97,6 @@ func (adp DummyAdapter) GetConfig() types.ListConfig {
 		ListID:      os.Getenv("LIST_ID"),
 		RequestLogs: true,
 		StartupLogs: true,
-		BindAddr:    ":8080",
 		DomainName:  "https://api.infinitybotlist.com",
 	}
 }

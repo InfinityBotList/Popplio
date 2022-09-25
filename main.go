@@ -20,6 +20,7 @@ import (
 	integrase "github.com/MetroReviews/metro-integrase/lib"
 	"github.com/bwmarrin/discordgo"
 	"github.com/go-redis/redis/v8"
+	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
 	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/joho/godotenv"
@@ -2065,5 +2066,10 @@ print(req.json())
 
 	createBucketMods()
 
-	integrase.StartServer(adp, r)
+	integrase.Prepare(adp, integrase.MuxWrap{Router: r})
+
+	// Add any middleware here (ex: logging middleware)
+	log := handlers.LoggingHandler(os.Stdout, r)
+
+	http.ListenAndServe(":8080", log)
 }
