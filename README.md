@@ -4,6 +4,8 @@ Popplio is the new rewrite of the Infinity Bot List API in golang
 
 It is open source for transparency but we do not support self-hosting of this whatsoever
 
+**You may use the metro.go file freely as a example of a metro integration under the MIT**
+
 ## User Tokens
 
 Some APIs on Popplio require a user token. To get one, go to https://spider.infinitybotlist.com/login/gettoken
