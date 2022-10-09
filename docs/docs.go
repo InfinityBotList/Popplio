@@ -136,7 +136,7 @@ We offer several libraries for interacting with the API:
 You can find documentation on ratelimits and other resources [here](https://guide.infinitybots.gg/docs/resources/ratelimits)
 `,
 		TermsOfService: "https://infinitybotlist.com/terms",
-		Version:        "5.0",
+		Version:        "6.0",
 		Contact: contact{
 			Name:  "Infinity Bot List",
 			URL:   "https://infinitybotlist.com",
@@ -150,7 +150,7 @@ You can find documentation on ratelimits and other resources [here](https://guid
 	Servers: []server{
 		{
 			URL:         "https://spider.infinitybotlist.com",
-			Description: "Popplio (v5)",
+			Description: "Popplio (v6)",
 			Variables:   map[string]any{},
 		},
 	},
