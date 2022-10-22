@@ -518,6 +518,9 @@ func main() {
 			return
 		}
 
+		w.Header().Set("Content-Type", "application/json")
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+
 		w.Write(bytes)
 	})
 
@@ -1314,6 +1317,18 @@ print(req.json())
 		}
 
 		utils.ParseBot(&bot)
+
+		var uniqueClicks int64
+		err = pool.QueryRow(ctx, "SELECT cardinality(unique_clicks) AS unique_clicks FROM bots WHERE bot_id = $1", bot.BotID).Scan(&uniqueClicks)
+
+		if err != nil {
+			log.Error(err)
+			w.WriteHeader(http.StatusNotFound)
+			w.Write([]byte(notFound))
+			return
+		}
+
+		bot.UniqueClicks = uniqueClicks
 
 		/* Removing or modifying fields directly in API is very dangerous as scrapers will
 		 * just ignore owner checks anyways or cross-reference via another list. Also we

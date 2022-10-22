@@ -13,10 +13,10 @@ import (
 
 // A bot is a Discord bot that is on the infinity botlist.
 type Bot struct {
-	//Avatar           pgtype.Text        `db:"-" json:"avatar"` (TODO)
 	ITag             pgtype.UUID        `db:"itag" json:"itag"`
 	BotID            string             `db:"bot_id" json:"bot_id"`
 	Name             string             `db:"name" json:"name"`
+	Avatar           string             `db:"avatar" json:"avatar"`
 	Tags             []string           `db:"tags" json:"tags"`
 	Prefix           pgtype.Text        `db:"prefix" json:"prefix"`
 	Owner            string             `db:"owner" json:"owner"`
@@ -37,6 +37,7 @@ type Bot struct {
 	Users            int                `db:"users" json:"users"`
 	Votes            int                `db:"votes" json:"votes"`
 	Views            int                `db:"clicks" json:"views"`
+	UniqueClicks     int64              `json:"unique_clicks"` // Must be parsed internally
 	InviteClicks     int                `db:"invite_clicks" json:"invites"`
 	Github           pgtype.Text        `db:"github" json:"github"`
 	Banner           pgtype.Text        `db:"banner" json:"banner"`
