@@ -97,7 +97,7 @@ func (adp DummyAdapter) GetConfig() types.ListConfig {
 		ListID:      os.Getenv("LIST_ID"),
 		RequestLogs: true,
 		StartupLogs: true,
-		DomainName:  "https://api.infinitybotlist.com",
+		DomainName:  "https://api.infinitybots.gg",
 	}
 }
 
