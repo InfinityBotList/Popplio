@@ -75,15 +75,16 @@ type ResolvedPackBot struct {
 }
 
 type BotPack struct {
-	Owner        string            `db:"owner" json:"owner_id"`
-	Name         string            `db:"name" json:"name"`
-	Short        string            `db:"short" json:"short"`
-	Votes        int64             `db:"votes" json:"votes"`
-	Tags         []string          `db:"tags" json:"tags"`
-	URL          string            `db:"url" json:"url"`
-	Date         time.Time         `db:"date" json:"date"`
-	Bots         []string          `db:"bots" json:"-"`
-	ResolvedBots []ResolvedPackBot `db:"-" json:"bots"`
+	Owner         string            `db:"owner" json:"-"`
+	ResolvedOwner *DiscordUser      `db:"-" json:"owner"`
+	Name          string            `db:"name" json:"name"`
+	Short         string            `db:"short" json:"short"`
+	Votes         int64             `db:"votes" json:"votes"`
+	Tags          []string          `db:"tags" json:"tags"`
+	URL           string            `db:"url" json:"url"`
+	Date          time.Time         `db:"date" json:"date"`
+	Bots          []string          `db:"bots" json:"-"`
+	ResolvedBots  []ResolvedPackBot `db:"-" json:"bots"`
 }
 
 type AllPacks struct {

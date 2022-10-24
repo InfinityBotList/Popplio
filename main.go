@@ -896,7 +896,74 @@ func main() {
 		}
 
 		w.Write(bytes)
+	}))
 
+	docs.AddDocs("GET", "/packs/{id}", "get_pack", "Get Pack", "Gets a pack by either URL or Name.",
+		[]docs.Paramater{
+			{
+				Name:     "id",
+				In:       "path",
+				Required: true,
+				Schema:   docs.IdSchema,
+			},
+		}, []string{"Packs"}, nil, types.BotPack{}, []string{})
+
+	r.HandleFunc("/packs/{id}", rateLimitWrap(10, 3*time.Minute, "gpack", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != "GET" {
+			w.WriteHeader(http.StatusMethodNotAllowed)
+			w.Write([]byte(methodNotAllowed))
+			return
+		}
+
+		vars := mux.Vars(r)
+
+		id := vars["id"]
+
+		if id == "" {
+			w.WriteHeader(http.StatusBadRequest)
+			w.Write([]byte(badRequest))
+			return
+		}
+
+		var pack types.BotPack
+
+		row, err := pool.Query(ctx, "SELECT "+packsColsString+" FROM packs WHERE url = $1 OR name = $1", id)
+
+		if err != nil {
+			log.Error(err)
+			w.WriteHeader(http.StatusNotFound)
+			w.Write([]byte(notFound))
+			return
+		}
+
+		err = pgxscan.ScanOne(&pack, row)
+
+		if err != nil {
+			log.Error(err)
+			w.WriteHeader(http.StatusNotFound)
+			w.Write([]byte(notFound))
+			return
+		}
+
+		err = utils.ResolveBotPack(ctx, pool, &pack, metro, redisCache)
+
+		if err != nil {
+			log.Error(err)
+			w.WriteHeader(http.StatusInternalServerError)
+			w.Write([]byte(internalError))
+			return
+		}
+
+		bytes, err := json.Marshal(pack)
+
+		if err != nil {
+			log.Error(err)
+			w.WriteHeader(http.StatusInternalServerError)
+			w.Write([]byte(internalError))
+			return
+		}
+
+		w.Write(bytes)
 	}))
 
 	docs.AddDocs("POST", "/bots/stats", "post_stats", "Post New Stats", `

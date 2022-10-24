@@ -53,6 +53,14 @@ func ParseBot(bot *types.Bot) {
 }
 
 func ResolveBotPack(ctx context.Context, pool *pgxpool.Pool, pack *types.BotPack, s *discordgo.Session, redisCache *redis.Client) error {
+	ownerUser, err := GetDiscordUser(s, redisCache, ctx, pack.Owner)
+
+	if err != nil {
+		return err
+	}
+
+	pack.ResolvedOwner = ownerUser
+
 	for _, botId := range pack.Bots {
 		var short string
 		err := pool.QueryRow(ctx, "SELECT short FROM bots WHERE bot_id = $1", botId).Scan(&short)
