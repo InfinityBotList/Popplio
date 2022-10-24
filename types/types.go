@@ -91,7 +91,7 @@ type AllPacks struct {
 	PerPage  uint64     `json:"per_page"`
 	Next     string     `json:"next"`
 	Previous string     `json:"previous"`
-	Results  []*BotPack `json:"bots"`
+	Results  []*BotPack `json:"packs"`
 }
 
 // A review is a review on ibl
