@@ -69,6 +69,31 @@ type AllBots struct {
 	Results  []*Bot `json:"bots"`
 }
 
+type ResolvedPackBot struct {
+	User  *DiscordUser `json:"user"`
+	Short string       `json:"short"`
+}
+
+type BotPack struct {
+	Owner        string            `db:"owner" json:"owner_id"`
+	Name         string            `db:"name" json:"name"`
+	Short        string            `db:"short" json:"short"`
+	Votes        int64             `db:"votes" json:"votes"`
+	Tags         []string          `db:"tags" json:"tags"`
+	URL          string            `db:"url" json:"url"`
+	Date         time.Time         `db:"date" json:"date"`
+	Bots         []string          `db:"bots" json:"-"`
+	ResolvedBots []ResolvedPackBot `db:"-" json:"bots"`
+}
+
+type AllPacks struct {
+	Count    uint64     `json:"count"`
+	PerPage  uint64     `json:"per_page"`
+	Next     string     `json:"next"`
+	Previous string     `json:"previous"`
+	Results  []*BotPack `json:"bots"`
+}
+
 // A review is a review on ibl
 type Review struct {
 	ITag        pgtype.UUID    `db:"itag" json:"itag"`

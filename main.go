@@ -92,6 +92,9 @@ var (
 	botsCols    = utils.GetCols(types.Bot{})
 	botsColsStr = strings.Join(botsCols, ",")
 
+	packsCols       = utils.GetCols(types.BotPack{})
+	packsColsString = strings.Join(packsCols, ",")
+
 	usersCols    = utils.GetCols(types.User{})
 	usersColsStr = strings.Join(usersCols, ",")
 
@@ -767,6 +770,117 @@ func main() {
 		data := types.AllBots{
 			Count:    count,
 			Results:  bots,
+			PerPage:  perPage,
+			Previous: previous.String(),
+			Next:     next.String(),
+		}
+
+		bytes, err := json.Marshal(data)
+
+		if err != nil {
+			log.Error(err)
+			w.WriteHeader(http.StatusInternalServerError)
+			w.Write([]byte(internalError))
+			return
+		}
+
+		w.Write(bytes)
+
+	}))
+
+	docs.AddDocs("GET", "/packs/all", "get_all_packs", "Get All Bots", "Gets all packs on the list", []docs.Paramater{}, []string{"System"}, nil, types.AllPacks{}, []string{})
+	r.Handle("/packs/all", rateLimitWrap(5, 2*time.Second, "allpacks", func(w http.ResponseWriter, r *http.Request) {
+		const perPage = 10
+
+		if r.Method != "GET" {
+			w.WriteHeader(http.StatusMethodNotAllowed)
+			w.Write([]byte(methodNotAllowed))
+			return
+		}
+
+		page := r.URL.Query().Get("page")
+
+		if page == "" {
+			page = "1"
+		}
+
+		pageNum, err := strconv.ParseUint(page, 10, 32)
+
+		if err != nil {
+			w.WriteHeader(http.StatusBadRequest)
+			w.Write([]byte(badRequest))
+			return
+		}
+
+		limit := perPage
+		offset := (pageNum - 1) * perPage
+
+		rows, err := pool.Query(ctx, "SELECT "+packsColsString+" FROM packs ORDER BY date DESC LIMIT $1 OFFSET $2", limit, offset)
+
+		if err != nil {
+			log.Error(err)
+			w.WriteHeader(http.StatusInternalServerError)
+			w.Write([]byte(internalError))
+			return
+		}
+
+		var packs []*types.BotPack
+
+		err = pgxscan.ScanAll(&packs, rows)
+
+		if err != nil {
+			log.Error(err)
+			w.WriteHeader(http.StatusInternalServerError)
+			w.Write([]byte(internalError))
+			return
+		}
+
+		for _, pack := range packs {
+			err := utils.ResolveBotPack(ctx, pool, pack, metro, redisCache)
+
+			if err != nil {
+				log.Error(err)
+				w.WriteHeader(http.StatusInternalServerError)
+				w.Write([]byte(internalError))
+				return
+			}
+		}
+
+		var previous strings.Builder
+
+		// More optimized string concat
+		previous.WriteString(os.Getenv("SITE_URL"))
+		previous.WriteString("/packs/all?page=")
+		previous.WriteString(strconv.FormatUint(pageNum-1, 10))
+
+		if pageNum-1 < 1 || pageNum == 0 {
+			previous.Reset()
+		}
+
+		var count uint64
+
+		err = pool.QueryRow(ctx, "SELECT COUNT(*) FROM packs").Scan(&count)
+
+		if err != nil {
+			log.Error(err)
+			w.WriteHeader(http.StatusInternalServerError)
+			w.Write([]byte(internalError))
+			return
+		}
+
+		var next strings.Builder
+
+		next.WriteString(os.Getenv("SITE_URL"))
+		next.WriteString("/packs/all?page=")
+		next.WriteString(strconv.FormatUint(pageNum+1, 10))
+
+		if float64(pageNum+1) > math.Ceil(float64(count)/perPage) {
+			next.Reset()
+		}
+
+		data := types.AllPacks{
+			Count:    count,
+			Results:  packs,
 			PerPage:  perPage,
 			Previous: previous.String(),
 			Next:     next.String(),

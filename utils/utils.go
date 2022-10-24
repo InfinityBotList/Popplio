@@ -14,6 +14,7 @@ import (
 	"github.com/georgysavva/scany/pgxscan"
 	"github.com/go-redis/redis/v8"
 	"github.com/jackc/pgtype"
+	"github.com/jackc/pgx/v4"
 	"github.com/jackc/pgx/v4/pgxpool"
 	log "github.com/sirupsen/logrus"
 )
@@ -49,6 +50,34 @@ func ParseBot(bot *types.Bot) {
 	if IsNone(bot.Invite.String) {
 		bot.Invite.Status = pgtype.Null
 	}
+}
+
+func ResolveBotPack(ctx context.Context, pool *pgxpool.Pool, pack *types.BotPack, s *discordgo.Session, redisCache *redis.Client) error {
+	for _, botId := range pack.Bots {
+		var short string
+		err := pool.QueryRow(ctx, "SELECT short FROM bots WHERE bot_id = $1", botId).Scan(&short)
+
+		if err == pgx.ErrNoRows {
+			continue
+		}
+
+		if err != nil {
+			return err
+		}
+
+		botUser, err := GetDiscordUser(s, redisCache, ctx, botId)
+
+		if err != nil {
+			return err
+		}
+
+		pack.ResolvedBots = append(pack.ResolvedBots, types.ResolvedPackBot{
+			Short: short,
+			User:  botUser,
+		})
+	}
+
+	return nil
 }
 
 func ParseUser(user *types.User) {
