@@ -110,6 +110,26 @@ func init() {
 	godotenv.Load()
 }
 
+func apiDefaultReturn(statusCode int, w http.ResponseWriter, r *http.Request) {
+	switch statusCode {
+	case http.StatusUnauthorized:
+		w.WriteHeader(http.StatusUnauthorized)
+		w.Write([]byte(unauthorized))
+	case http.StatusNotFound:
+		w.WriteHeader(http.StatusNotFound)
+		w.Write([]byte(notFound))
+	case http.StatusBadRequest:
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte(badRequest))
+	case http.StatusInternalServerError:
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte(internalError))
+	case http.StatusMethodNotAllowed:
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		w.Write([]byte(methodNotAllowed))
+	}
+}
+
 func authCheck(token string, bot bool) *string {
 	if token == "" {
 		return nil
@@ -158,8 +178,7 @@ func bucketHandle(bucket moderatedBucket, id string, w http.ResponseWriter, r *h
 		if err != nil {
 			log.Error(err)
 			w.Header().Set("Content-Type", "application/json")
-			w.WriteHeader(http.StatusInternalServerError)
-			w.Write([]byte(internalError))
+			apiDefaultReturn(http.StatusInternalServerError, w, r)
 			return false
 		}
 	}
@@ -169,8 +188,7 @@ func bucketHandle(bucket moderatedBucket, id string, w http.ResponseWriter, r *h
 	if err != nil {
 		log.Error(err)
 		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte(internalError))
+		apiDefaultReturn(http.StatusInternalServerError, w, r)
 		return false
 	}
 
@@ -179,8 +197,7 @@ func bucketHandle(bucket moderatedBucket, id string, w http.ResponseWriter, r *h
 	if err != nil {
 		log.Error(err)
 		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte(internalError))
+		apiDefaultReturn(http.StatusInternalServerError, w, r)
 		return false
 	}
 
@@ -425,8 +442,7 @@ func main() {
 	docs.AddDocs("GET", "/announcements", "announcements", "Get Announcements", "Gets the announcements. User authentication is optional and using it will show user targetted announcements", []docs.Paramater{}, []string{"System"}, nil, types.Announcement{}, []string{"User"})
 	r.HandleFunc("/announcements", rateLimitWrap(30, 1*time.Minute, "gannounce", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != "GET" {
-			w.WriteHeader(http.StatusMethodNotAllowed)
-			w.Write([]byte(methodNotAllowed))
+			apiDefaultReturn(http.StatusMethodNotAllowed, w, r)
 			return
 		}
 
@@ -434,8 +450,7 @@ func main() {
 
 		if err != nil {
 			log.Error(err)
-			w.WriteHeader(http.StatusInternalServerError)
-			w.Write([]byte(internalError))
+			apiDefaultReturn(http.StatusNotFound, w, r)
 			return
 		}
 
@@ -445,8 +460,7 @@ func main() {
 
 		if err != nil {
 			log.Error(err)
-			w.WriteHeader(http.StatusInternalServerError)
-			w.Write([]byte(internalError))
+			apiDefaultReturn(http.StatusNotFound, w, r)
 			return
 		}
 
@@ -460,8 +474,7 @@ func main() {
 
 			if targetId != nil {
 				log.Error(err)
-				w.WriteHeader(http.StatusUnauthorized)
-				w.Write([]byte(unauthorized))
+				apiDefaultReturn(http.StatusUnauthorized, w, r)
 				return
 			}
 
@@ -492,8 +505,7 @@ func main() {
 
 		if err != nil {
 			log.Error(err)
-			w.WriteHeader(http.StatusInternalServerError)
-			w.Write([]byte(internalError))
+			apiDefaultReturn(http.StatusInternalServerError, w, r)
 			return
 		}
 
@@ -507,8 +519,7 @@ func main() {
 
 		if err != nil {
 			log.Error(err)
-			w.WriteHeader(http.StatusInternalServerError)
-			w.Write([]byte(err.Error()))
+			apiDefaultReturn(http.StatusInternalServerError, w, r)
 			return
 		}
 
@@ -516,8 +527,7 @@ func main() {
 
 		if err != nil {
 			log.Error(err)
-			w.WriteHeader(http.StatusInternalServerError)
-			w.Write([]byte(err.Error()))
+			apiDefaultReturn(http.StatusInternalServerError, w, r)
 			return
 		}
 
@@ -530,8 +540,7 @@ func main() {
 	docs.AddDocs("GET", "/openapi", "openapi", "Get OpenAPI", "Gets the OpenAPI spec", []docs.Paramater{}, []string{"System"}, nil, map[string]any{}, []string{})
 	r.HandleFunc("/openapi", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != "GET" {
-			w.WriteHeader(http.StatusMethodNotAllowed)
-			w.Write([]byte(methodNotAllowed))
+			apiDefaultReturn(http.StatusMethodNotAllowed, w, r)
 			return
 		}
 
@@ -541,7 +550,6 @@ func main() {
 		openapi, err := json.Marshal(docs.GetSchema())
 
 		if err != nil {
-			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusInternalServerError)
 			w.Write([]byte(err.Error()))
 			return
@@ -565,14 +573,12 @@ func main() {
 		w.Header().Set("Content-Type", "application/json")
 
 		if r.Method == "GET" || r.Method == "DELETE" {
-			w.WriteHeader(http.StatusMethodNotAllowed)
-			w.Write([]byte(methodNotAllowed))
+			apiDefaultReturn(http.StatusMethodNotAllowed, w, r)
 			return
 		}
 
 		if r.Body == nil {
-			w.WriteHeader(http.StatusBadRequest)
-			w.Write([]byte(badRequest))
+			apiDefaultReturn(http.StatusBadRequest, w, r)
 			return
 		}
 
@@ -580,16 +586,14 @@ func main() {
 
 		// Check token
 		if r.Header.Get("Authorization") == "" {
-			w.WriteHeader(http.StatusUnauthorized)
-			w.Write([]byte(unauthorized))
+			apiDefaultReturn(http.StatusUnauthorized, w, r)
 			return
 		} else {
 			id = authCheck(r.Header.Get("Authorization"), true)
 
 			if id == nil {
 				log.Error(err)
-				w.WriteHeader(http.StatusUnauthorized)
-				w.Write([]byte(unauthorized))
+				apiDefaultReturn(http.StatusUnauthorized, w, r)
 				return
 			}
 		}
@@ -602,8 +606,7 @@ func main() {
 
 		if err != nil {
 			log.Error(err)
-			w.WriteHeader(http.StatusInternalServerError)
-			w.Write([]byte(internalError))
+			apiDefaultReturn(http.StatusInternalServerError, w, r)
 			return
 		}
 
@@ -625,8 +628,7 @@ func main() {
 
 			if err != nil {
 				log.Error(err)
-				w.WriteHeader(http.StatusBadRequest)
-				w.Write([]byte(badRequestStats))
+				apiDefaultReturn(http.StatusBadRequest, w, r)
 				return
 			}
 
@@ -642,8 +644,7 @@ func main() {
 
 			if err != nil {
 				log.Error(err)
-				w.WriteHeader(http.StatusInternalServerError)
-				w.Write([]byte(internalError))
+				apiDefaultReturn(http.StatusInternalServerError, w, r)
 				return
 			}
 		}
@@ -653,8 +654,7 @@ func main() {
 
 			if err != nil {
 				log.Error(err)
-				w.WriteHeader(http.StatusInternalServerError)
-				w.Write([]byte(internalError))
+				apiDefaultReturn(http.StatusInternalServerError, w, r)
 				return
 			}
 		}
@@ -664,8 +664,7 @@ func main() {
 
 			if err != nil {
 				log.Error(err)
-				w.WriteHeader(http.StatusInternalServerError)
-				w.Write([]byte(internalError))
+				apiDefaultReturn(http.StatusInternalServerError, w, r)
 				return
 			}
 		}
@@ -693,8 +692,7 @@ func main() {
 		const perPage = 10
 
 		if r.Method != "GET" {
-			w.WriteHeader(http.StatusMethodNotAllowed)
-			w.Write([]byte(methodNotAllowed))
+			apiDefaultReturn(http.StatusMethodNotAllowed, w, r)
 			return
 		}
 
@@ -707,8 +705,7 @@ func main() {
 		pageNum, err := strconv.ParseUint(page, 10, 32)
 
 		if err != nil {
-			w.WriteHeader(http.StatusBadRequest)
-			w.Write([]byte(badRequest))
+			apiDefaultReturn(http.StatusBadRequest, w, r)
 			return
 		}
 
@@ -719,8 +716,7 @@ func main() {
 
 		if err != nil {
 			log.Error(err)
-			w.WriteHeader(http.StatusInternalServerError)
-			w.Write([]byte(internalError))
+			apiDefaultReturn(http.StatusInternalServerError, w, r)
 			return
 		}
 
@@ -730,8 +726,7 @@ func main() {
 
 		if err != nil {
 			log.Error(err)
-			w.WriteHeader(http.StatusInternalServerError)
-			w.Write([]byte(internalError))
+			apiDefaultReturn(http.StatusInternalServerError, w, r)
 			return
 		}
 
@@ -752,8 +747,7 @@ func main() {
 
 		if err != nil {
 			log.Error(err)
-			w.WriteHeader(http.StatusInternalServerError)
-			w.Write([]byte(internalError))
+			apiDefaultReturn(http.StatusInternalServerError, w, r)
 			return
 		}
 
@@ -779,8 +773,7 @@ func main() {
 
 		if err != nil {
 			log.Error(err)
-			w.WriteHeader(http.StatusInternalServerError)
-			w.Write([]byte(internalError))
+			apiDefaultReturn(http.StatusInternalServerError, w, r)
 			return
 		}
 
@@ -793,8 +786,7 @@ func main() {
 		const perPage = 10
 
 		if r.Method != "GET" {
-			w.WriteHeader(http.StatusMethodNotAllowed)
-			w.Write([]byte(methodNotAllowed))
+			apiDefaultReturn(http.StatusMethodNotAllowed, w, r)
 			return
 		}
 
@@ -807,8 +799,7 @@ func main() {
 		pageNum, err := strconv.ParseUint(page, 10, 32)
 
 		if err != nil {
-			w.WriteHeader(http.StatusBadRequest)
-			w.Write([]byte(badRequest))
+			apiDefaultReturn(http.StatusBadRequest, w, r)
 			return
 		}
 
@@ -819,8 +810,7 @@ func main() {
 
 		if err != nil {
 			log.Error(err)
-			w.WriteHeader(http.StatusInternalServerError)
-			w.Write([]byte(internalError))
+			apiDefaultReturn(http.StatusInternalServerError, w, r)
 			return
 		}
 
@@ -830,8 +820,7 @@ func main() {
 
 		if err != nil {
 			log.Error(err)
-			w.WriteHeader(http.StatusInternalServerError)
-			w.Write([]byte(internalError))
+			apiDefaultReturn(http.StatusInternalServerError, w, r)
 			return
 		}
 
@@ -840,8 +829,7 @@ func main() {
 
 			if err != nil {
 				log.Error(err)
-				w.WriteHeader(http.StatusInternalServerError)
-				w.Write([]byte(internalError))
+				apiDefaultReturn(http.StatusInternalServerError, w, r)
 				return
 			}
 		}
@@ -863,8 +851,7 @@ func main() {
 
 		if err != nil {
 			log.Error(err)
-			w.WriteHeader(http.StatusInternalServerError)
-			w.Write([]byte(internalError))
+			apiDefaultReturn(http.StatusInternalServerError, w, r)
 			return
 		}
 
@@ -890,8 +877,7 @@ func main() {
 
 		if err != nil {
 			log.Error(err)
-			w.WriteHeader(http.StatusInternalServerError)
-			w.Write([]byte(internalError))
+			apiDefaultReturn(http.StatusInternalServerError, w, r)
 			return
 		}
 
@@ -910,8 +896,7 @@ func main() {
 
 	r.HandleFunc("/packs/{id}", rateLimitWrap(10, 3*time.Minute, "gpack", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != "GET" {
-			w.WriteHeader(http.StatusMethodNotAllowed)
-			w.Write([]byte(methodNotAllowed))
+			apiDefaultReturn(http.StatusMethodNotAllowed, w, r)
 			return
 		}
 
@@ -920,8 +905,7 @@ func main() {
 		id := vars["id"]
 
 		if id == "" {
-			w.WriteHeader(http.StatusBadRequest)
-			w.Write([]byte(badRequest))
+			apiDefaultReturn(http.StatusBadRequest, w, r)
 			return
 		}
 
@@ -931,8 +915,7 @@ func main() {
 
 		if err != nil {
 			log.Error(err)
-			w.WriteHeader(http.StatusNotFound)
-			w.Write([]byte(notFound))
+			apiDefaultReturn(http.StatusNotFound, w, r)
 			return
 		}
 
@@ -940,8 +923,7 @@ func main() {
 
 		if err != nil {
 			log.Error(err)
-			w.WriteHeader(http.StatusNotFound)
-			w.Write([]byte(notFound))
+			apiDefaultReturn(http.StatusNotFound, w, r)
 			return
 		}
 
@@ -949,8 +931,7 @@ func main() {
 
 		if err != nil {
 			log.Error(err)
-			w.WriteHeader(http.StatusInternalServerError)
-			w.Write([]byte(internalError))
+			apiDefaultReturn(http.StatusInternalServerError, w, r)
 			return
 		}
 
@@ -958,8 +939,7 @@ func main() {
 
 		if err != nil {
 			log.Error(err)
-			w.WriteHeader(http.StatusInternalServerError)
-			w.Write([]byte(internalError))
+			apiDefaultReturn(http.StatusInternalServerError, w, r)
 			return
 		}
 
@@ -1035,8 +1015,7 @@ print(req.json())
 		w.Header().Set("Content-Type", "application/json")
 
 		if r.Method != "GET" && r.Method != "PUT" {
-			w.WriteHeader(http.StatusMethodNotAllowed)
-			w.Write([]byte(methodNotAllowed))
+			apiDefaultReturn(http.StatusMethodNotAllowed, w, r)
 			return
 		}
 
@@ -1048,16 +1027,14 @@ print(req.json())
 		var userAuth bool = strings.HasPrefix(r.Header.Get("Authorization"), "User ")
 
 		if r.Header.Get("Authorization") == "" {
-			w.WriteHeader(http.StatusUnauthorized)
-			w.Write([]byte(unauthorized))
+			apiDefaultReturn(http.StatusUnauthorized, w, r)
 			return
 		} else {
 			if strings.HasPrefix(r.Header.Get("Authorization"), "User ") {
 				uid := authCheck(r.Header.Get("Authorization"), false)
 
 				if uid == nil || *uid != vars["uid"] {
-					w.WriteHeader(http.StatusUnauthorized)
-					w.Write([]byte(unauthorized))
+					apiDefaultReturn(http.StatusUnauthorized, w, r)
 					return
 				}
 
@@ -1067,8 +1044,7 @@ print(req.json())
 
 				if err != nil {
 					log.Error(err)
-					w.WriteHeader(http.StatusInternalServerError)
-					w.Write([]byte(internalError))
+					apiDefaultReturn(http.StatusInternalServerError, w, r)
 					return
 				}
 
@@ -1084,8 +1060,7 @@ print(req.json())
 
 				if err != nil {
 					log.Error(err)
-					w.WriteHeader(http.StatusInternalServerError)
-					w.Write([]byte(internalError))
+					apiDefaultReturn(http.StatusInternalServerError, w, r)
 					return
 				}
 
@@ -1101,8 +1076,7 @@ print(req.json())
 
 				if err != nil || botId.Status != pgtype.Present || botType.Status != pgtype.Present {
 					log.Error(err)
-					w.WriteHeader(http.StatusNotFound)
-					w.Write([]byte(notFound))
+					apiDefaultReturn(http.StatusNotFound, w, r)
 					return
 				}
 
@@ -1111,8 +1085,7 @@ print(req.json())
 				id := authCheck(r.Header.Get("Authorization"), true)
 
 				if id == nil || *id != vars["bid"] {
-					w.WriteHeader(http.StatusUnauthorized)
-					w.Write([]byte(unauthorized))
+					apiDefaultReturn(http.StatusUnauthorized, w, r)
 					return
 				}
 			}
@@ -1125,8 +1098,7 @@ print(req.json())
 		}
 
 		if !userAuth && r.Method == "PUT" {
-			w.WriteHeader(http.StatusNotFound)
-			w.Write([]byte(notFound))
+			apiDefaultReturn(http.StatusNotFound, w, r)
 			return
 		}
 
@@ -1134,8 +1106,7 @@ print(req.json())
 
 		if err != nil {
 			log.Error(err)
-			w.WriteHeader(http.StatusInternalServerError)
-			w.Write([]byte(internalError))
+			apiDefaultReturn(http.StatusInternalServerError, w, r)
 			return
 		}
 
@@ -1144,8 +1115,7 @@ print(req.json())
 
 			if err != nil {
 				log.Error(err)
-				w.WriteHeader(http.StatusInternalServerError)
-				w.Write([]byte(badRequest))
+				apiDefaultReturn(http.StatusInternalServerError, w, r)
 				return
 			}
 
@@ -1174,8 +1144,7 @@ print(req.json())
 
 				if err != nil {
 					log.Error(err)
-					w.WriteHeader(http.StatusInternalServerError)
-					w.Write([]byte(internalError))
+					apiDefaultReturn(http.StatusInternalServerError, w, r)
 					return
 				}
 
@@ -1192,8 +1161,7 @@ print(req.json())
 				// Revert vote
 				_, err := pool.Exec(ctx, "DELETE FROM votes WHERE itag = $1", itag)
 				log.Error(err)
-				w.WriteHeader(http.StatusInternalServerError)
-				w.Write([]byte(internalError))
+				apiDefaultReturn(http.StatusInternalServerError, w, r)
 				return
 			}
 
@@ -1206,8 +1174,7 @@ print(req.json())
 				_, err := pool.Exec(ctx, "DELETE FROM votes WHERE itag = $1", itag)
 
 				log.Error(err)
-				w.WriteHeader(http.StatusInternalServerError)
-				w.Write([]byte(internalError))
+				apiDefaultReturn(http.StatusInternalServerError, w, r)
 				return
 			}
 
@@ -1228,8 +1195,7 @@ print(req.json())
 				_, err := pool.Exec(ctx, "DELETE FROM votes WHERE itag = $1", itag)
 
 				log.Error(err)
-				w.WriteHeader(http.StatusInternalServerError)
-				w.Write([]byte(internalError))
+				apiDefaultReturn(http.StatusInternalServerError, w, r)
 				return
 			}
 
@@ -1240,8 +1206,7 @@ print(req.json())
 				_, err := pool.Exec(ctx, "DELETE FROM votes WHERE itag = $1", itag)
 
 				log.Error(err)
-				w.WriteHeader(http.StatusInternalServerError)
-				w.Write([]byte(internalError))
+				apiDefaultReturn(http.StatusInternalServerError, w, r)
 				return
 			}
 
@@ -1252,8 +1217,7 @@ print(req.json())
 				_, err := pool.Exec(ctx, "DELETE FROM votes WHERE itag = $1", itag)
 
 				log.Error(err)
-				w.WriteHeader(http.StatusInternalServerError)
-				w.Write([]byte(internalError))
+				apiDefaultReturn(http.StatusInternalServerError, w, r)
 				return
 			}
 
@@ -1331,23 +1295,20 @@ print(req.json())
 	// For compatibility with old API
 	r.HandleFunc("/votes/{bot_id}/{user_id}", rateLimitWrap(10, 1*time.Minute, "deprecated-gvotes", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != "GET" {
-			w.WriteHeader(http.StatusMethodNotAllowed)
-			w.Write([]byte(methodNotAllowed))
+			apiDefaultReturn(http.StatusMethodNotAllowed, w, r)
 			return
 		}
 
 		vars := mux.Vars(r)
 
 		if r.Header.Get("Authorization") == "" {
-			w.WriteHeader(http.StatusUnauthorized)
-			w.Write([]byte(unauthorized))
+			apiDefaultReturn(http.StatusUnauthorized, w, r)
 			return
 		} else {
 			id := authCheck(r.Header.Get("Authorization"), true)
 
 			if id == nil || *id != vars["bot_id"] {
-				w.WriteHeader(http.StatusUnauthorized)
-				w.Write([]byte(unauthorized))
+				apiDefaultReturn(http.StatusUnauthorized, w, r)
 				return
 			}
 
@@ -1358,8 +1319,7 @@ print(req.json())
 
 			if err != nil {
 				log.Error(err)
-				w.WriteHeader(http.StatusUnauthorized)
-				w.Write([]byte(unauthorized))
+				apiDefaultReturn(http.StatusUnauthorized, w, r)
 				return
 			}
 		}
@@ -1378,8 +1338,7 @@ print(req.json())
 
 		if err != nil {
 			log.Error(err)
-			w.WriteHeader(http.StatusInternalServerError)
-			w.Write([]byte(internalError))
+			apiDefaultReturn(http.StatusInternalServerError, w, r)
 			return
 		}
 
@@ -1391,8 +1350,7 @@ print(req.json())
 
 		if err != nil {
 			log.Error(err)
-			w.WriteHeader(http.StatusInternalServerError)
-			w.Write([]byte(badRequest))
+			apiDefaultReturn(http.StatusInternalServerError, w, r)
 			return
 		}
 
@@ -1404,8 +1362,7 @@ print(req.json())
 		w.Header().Set("Content-Type", "application/json")
 
 		if r.Method != "GET" {
-			w.WriteHeader(http.StatusMethodNotAllowed)
-			w.Write([]byte(methodNotAllowed))
+			apiDefaultReturn(http.StatusMethodNotAllowed, w, r)
 			return
 		}
 
@@ -1417,8 +1374,7 @@ print(req.json())
 
 		if err != nil {
 			log.Error(err)
-			w.WriteHeader(http.StatusInternalServerError)
-			w.Write([]byte(badRequest))
+			apiDefaultReturn(http.StatusInternalServerError, w, r)
 			return
 		}
 
@@ -1444,16 +1400,13 @@ print(req.json())
 	}, []string{"Bots"}, nil, types.Bot{}, []string{})
 
 	getBotsFn := rateLimitWrap(10, 1*time.Minute, "gbot", func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-
 		if r.Method == "POST" {
 			statsFn(w, r)
 			return
 		}
 
 		if r.Method != "GET" {
-			w.WriteHeader(http.StatusMethodNotAllowed)
-			w.Write([]byte(methodNotAllowed))
+			apiDefaultReturn(http.StatusMethodNotAllowed, w, r)
 			return
 		}
 
@@ -1462,8 +1415,7 @@ print(req.json())
 		name := vars["id"]
 
 		if name == "" {
-			w.WriteHeader(http.StatusBadRequest)
-			w.Write([]byte(badRequest))
+			apiDefaultReturn(http.StatusBadRequest, w, r)
 			return
 		}
 
@@ -1483,8 +1435,7 @@ print(req.json())
 
 		if err != nil {
 			log.Error(err)
-			w.WriteHeader(http.StatusNotFound)
-			w.Write([]byte(notFound))
+			apiDefaultReturn(http.StatusNotFound, w, r)
 			return
 		}
 
@@ -1492,8 +1443,7 @@ print(req.json())
 
 		if err != nil {
 			log.Error(err)
-			w.WriteHeader(http.StatusNotFound)
-			w.Write([]byte(notFound))
+			apiDefaultReturn(http.StatusNotFound, w, r)
 			return
 		}
 
@@ -1504,8 +1454,7 @@ print(req.json())
 
 		if err != nil {
 			log.Error(err)
-			w.WriteHeader(http.StatusNotFound)
-			w.Write([]byte(notFound))
+			apiDefaultReturn(http.StatusNotFound, w, r)
 			return
 		}
 
@@ -1521,8 +1470,7 @@ print(req.json())
 
 		if err != nil {
 			log.Error(err)
-			w.WriteHeader(http.StatusInternalServerError)
-			w.Write([]byte(internalError))
+			apiDefaultReturn(http.StatusInternalServerError, w, r)
 			return
 		}
 
@@ -1542,11 +1490,8 @@ print(req.json())
 		}, []string{"Users"}, nil, types.User{}, []string{})
 
 	r.HandleFunc("/users/{id}", rateLimitWrap(10, 3*time.Minute, "guser", func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-
 		if r.Method != "GET" {
-			w.WriteHeader(http.StatusMethodNotAllowed)
-			w.Write([]byte(methodNotAllowed))
+			apiDefaultReturn(http.StatusMethodNotAllowed, w, r)
 			return
 		}
 
@@ -1555,8 +1500,7 @@ print(req.json())
 		name := vars["id"]
 
 		if name == "" {
-			w.WriteHeader(http.StatusBadRequest)
-			w.Write([]byte(badRequest))
+			apiDefaultReturn(http.StatusBadRequest, w, r)
 			return
 		}
 
@@ -1576,8 +1520,7 @@ print(req.json())
 
 		if err != nil {
 			log.Error(err)
-			w.WriteHeader(http.StatusNotFound)
-			w.Write([]byte(notFound))
+			apiDefaultReturn(http.StatusNotFound, w, r)
 			return
 		}
 
@@ -1585,8 +1528,7 @@ print(req.json())
 
 		if err != nil {
 			log.Error(err)
-			w.WriteHeader(http.StatusNotFound)
-			w.Write([]byte(notFound))
+			apiDefaultReturn(http.StatusNotFound, w, r)
 			return
 		}
 
@@ -1602,8 +1544,7 @@ print(req.json())
 
 		if err != nil {
 			log.Error(err)
-			w.WriteHeader(http.StatusInternalServerError)
-			w.Write([]byte(internalError))
+			apiDefaultReturn(http.StatusInternalServerError, w, r)
 			return
 		}
 
@@ -1629,8 +1570,7 @@ print(req.json())
 
 		if err != nil {
 			log.Error(err)
-			w.WriteHeader(http.StatusBadRequest)
-			w.Write([]byte(notFound))
+			apiDefaultReturn(http.StatusNotFound, w, r)
 			return
 		}
 
@@ -1640,8 +1580,7 @@ print(req.json())
 
 		if err != nil {
 			log.Error(err)
-			w.WriteHeader(http.StatusInternalServerError)
-			w.Write([]byte(badRequest))
+			apiDefaultReturn(http.StatusInternalServerError, w, r)
 			return
 		}
 
@@ -1649,8 +1588,7 @@ print(req.json())
 
 		if err != nil {
 			log.Error(err)
-			w.WriteHeader(http.StatusInternalServerError)
-			w.Write([]byte(badRequest))
+			apiDefaultReturn(http.StatusInternalServerError, w, r)
 			return
 		}
 
@@ -1667,8 +1605,7 @@ print(req.json())
 
 	r.HandleFunc("/webhook-test", rateLimitWrap(7, 3*time.Minute, "webtest", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != "POST" {
-			w.WriteHeader(http.StatusMethodNotAllowed)
-			w.Write([]byte(methodNotAllowed))
+			apiDefaultReturn(http.StatusMethodNotAllowed, w, r)
 			return
 		}
 
@@ -1680,8 +1617,7 @@ print(req.json())
 
 		if err != nil {
 			log.Error(err)
-			w.WriteHeader(http.StatusInternalServerError)
-			w.Write([]byte(internalError))
+			apiDefaultReturn(http.StatusInternalServerError, w, r)
 			return
 		}
 
@@ -1689,14 +1625,12 @@ print(req.json())
 
 		if err != nil {
 			log.Error(err)
-			w.WriteHeader(http.StatusInternalServerError)
-			w.Write([]byte(internalError))
+			apiDefaultReturn(http.StatusInternalServerError, w, r)
 			return
 		}
 
 		if utils.IsNone(payload.URL) && utils.IsNone(payload.URL2) {
-			w.WriteHeader(http.StatusBadRequest)
-			w.Write([]byte(badRequest))
+			apiDefaultReturn(http.StatusBadRequest, w, r)
 			return
 		}
 
@@ -1735,8 +1669,7 @@ print(req.json())
 
 		if err != nil {
 			log.Error(err)
-			w.WriteHeader(http.StatusInternalServerError)
-			w.Write([]byte(internalError))
+			apiDefaultReturn(http.StatusInternalServerError, w, r)
 			return
 		}
 
@@ -1748,8 +1681,7 @@ print(req.json())
 
 	r.HandleFunc("/_protozoa/profile/{id}", rateLimitWrap(7, 1*time.Minute, "profile_update", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != "PATCH" {
-			w.WriteHeader(http.StatusMethodNotAllowed)
-			w.Write([]byte(methodNotAllowed))
+			apiDefaultReturn(http.StatusMethodNotAllowed, w, r)
 			return
 		}
 
@@ -1757,16 +1689,14 @@ print(req.json())
 
 		// Fetch auth from mongodb
 		if r.Header.Get("Authorization") == "" {
-			w.WriteHeader(http.StatusUnauthorized)
-			w.Write([]byte(unauthorized))
+			apiDefaultReturn(http.StatusUnauthorized, w, r)
 			return
 		} else {
 			authId := authCheck(r.Header.Get("Authorization"), false)
 
 			if authId == nil || *authId != id {
 				log.Error(err)
-				w.WriteHeader(http.StatusUnauthorized)
-				w.Write([]byte(unauthorized))
+				apiDefaultReturn(http.StatusUnauthorized, w, r)
 				return
 			}
 		}
@@ -1778,8 +1708,7 @@ print(req.json())
 
 		if err != nil {
 			log.Error(err)
-			w.WriteHeader(http.StatusInternalServerError)
-			w.Write([]byte(internalError))
+			apiDefaultReturn(http.StatusInternalServerError, w, r)
 			return
 		}
 
@@ -1787,8 +1716,7 @@ print(req.json())
 
 		if err != nil {
 			log.Error(err)
-			w.WriteHeader(http.StatusInternalServerError)
-			w.Write([]byte(internalError))
+			apiDefaultReturn(http.StatusInternalServerError, w, r)
 			return
 		}
 
@@ -1798,16 +1726,13 @@ print(req.json())
 
 			if err != nil {
 				log.Error(err)
-				w.WriteHeader(http.StatusInternalServerError)
-				w.Write([]byte(internalError))
+				apiDefaultReturn(http.StatusInternalServerError, w, r)
 				return
 			}
 		}
 	}))
 
 	r.HandleFunc("/_protozoa/notifications/info", rateLimitWrap(10, 1*time.Minute, "notif_info", func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-
 		data := map[string]any{
 			"public_key": os.Getenv("VAPID_PUBLIC_KEY"),
 		}
@@ -1816,8 +1741,7 @@ print(req.json())
 
 		if err != nil {
 			log.Error(err)
-			w.WriteHeader(http.StatusInternalServerError)
-			w.Write([]byte(internalError))
+			apiDefaultReturn(http.StatusInternalServerError, w, r)
 			return
 		}
 
@@ -1826,31 +1750,27 @@ print(req.json())
 
 	r.HandleFunc("/_protozoa/notifications/{id}", rateLimitWrap(40, 1*time.Minute, "get_notifs", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != "GET" && r.Method != "DELETE" {
-			w.WriteHeader(http.StatusMethodNotAllowed)
-			w.Write([]byte(methodNotAllowed))
+			apiDefaultReturn(http.StatusMethodNotAllowed, w, r)
 			return
 		}
 
 		id := mux.Vars(r)["id"]
 
 		if id == "" {
-			w.WriteHeader(http.StatusBadRequest)
-			w.Write([]byte(badRequest))
+			apiDefaultReturn(http.StatusBadRequest, w, r)
 			return
 		}
 
 		// Fetch auth from mongodb
 		if r.Header.Get("Authorization") == "" {
-			w.WriteHeader(http.StatusUnauthorized)
-			w.Write([]byte(unauthorized))
+			apiDefaultReturn(http.StatusUnauthorized, w, r)
 			return
 		} else {
 			authId := authCheck(r.Header.Get("Authorization"), false)
 
 			if authId == nil || *authId != id {
 				log.Error(err)
-				w.WriteHeader(http.StatusUnauthorized)
-				w.Write([]byte(unauthorized))
+				apiDefaultReturn(http.StatusUnauthorized, w, r)
 				return
 			}
 		}
@@ -1869,8 +1789,7 @@ print(req.json())
 
 			if err != nil {
 				log.Error(err)
-				w.WriteHeader(http.StatusInternalServerError)
-				w.Write([]byte(internalError))
+				apiDefaultReturn(http.StatusInternalServerError, w, r)
 				return
 			}
 
@@ -1878,14 +1797,12 @@ print(req.json())
 
 			if err != nil {
 				log.Error(err)
-				w.WriteHeader(http.StatusInternalServerError)
-				w.Write([]byte(internalError))
+				apiDefaultReturn(http.StatusInternalServerError, w, r)
 				return
 			}
 
 			if len(subscriptionDb) == 0 {
-				w.WriteHeader(http.StatusNotFound)
-				w.Write([]byte(notFound))
+				apiDefaultReturn(http.StatusNotFound, w, r)
 				return
 			}
 
@@ -1912,8 +1829,7 @@ print(req.json())
 
 			if err != nil {
 				log.Error(err)
-				w.WriteHeader(http.StatusInternalServerError)
-				w.Write([]byte(internalError))
+				apiDefaultReturn(http.StatusInternalServerError, w, r)
 				return
 			}
 
@@ -1921,8 +1837,7 @@ print(req.json())
 		} else {
 			// Delete the notif
 			if r.URL.Query().Get("notif_id") == "" {
-				w.WriteHeader(http.StatusBadRequest)
-				w.Write([]byte(badRequest))
+				apiDefaultReturn(http.StatusBadRequest, w, r)
 				return
 			}
 
@@ -1930,8 +1845,7 @@ print(req.json())
 
 			if err != nil {
 				log.Error(err)
-				w.WriteHeader(http.StatusInternalServerError)
-				w.Write([]byte(internalError))
+				apiDefaultReturn(http.StatusInternalServerError, w, r)
 				return
 			}
 
@@ -1941,8 +1855,7 @@ print(req.json())
 
 	r.HandleFunc("/_protozoa/notifications/{id}/sub", rateLimitWrap(10, 1*time.Minute, "notif_info", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != "POST" {
-			w.WriteHeader(http.StatusMethodNotAllowed)
-			w.Write([]byte(methodNotAllowed))
+			apiDefaultReturn(http.StatusMethodNotAllowed, w, r)
 			return
 		}
 
@@ -1957,8 +1870,7 @@ print(req.json())
 		id := vars["id"]
 
 		if id == "" {
-			w.WriteHeader(http.StatusBadRequest)
-			w.Write([]byte(badRequest))
+			apiDefaultReturn(http.StatusBadRequest, w, r)
 			return
 		}
 
@@ -1968,8 +1880,7 @@ print(req.json())
 
 		if err != nil {
 			log.Error(err)
-			w.WriteHeader(http.StatusInternalServerError)
-			w.Write([]byte(internalError))
+			apiDefaultReturn(http.StatusInternalServerError, w, r)
 			return
 		}
 
@@ -1977,29 +1888,25 @@ print(req.json())
 
 		if err != nil {
 			log.Error(err)
-			w.WriteHeader(http.StatusInternalServerError)
-			w.Write([]byte(internalError))
+			apiDefaultReturn(http.StatusInternalServerError, w, r)
 			return
 		}
 
 		if subscription.Auth == "" || subscription.P256dh == "" {
-			w.WriteHeader(http.StatusBadRequest)
-			w.Write([]byte(badRequest))
+			apiDefaultReturn(http.StatusBadRequest, w, r)
 			return
 		}
 
 		// Fetch auth from mongodb
 		if r.Header.Get("Authorization") == "" {
-			w.WriteHeader(http.StatusUnauthorized)
-			w.Write([]byte(unauthorized))
+			apiDefaultReturn(http.StatusUnauthorized, w, r)
 			return
 		} else {
 			authId := authCheck(r.Header.Get("Authorization"), false)
 
 			if authId == nil || *authId != id {
 				log.Error(err)
-				w.WriteHeader(http.StatusUnauthorized)
-				w.Write([]byte(unauthorized))
+				apiDefaultReturn(http.StatusUnauthorized, w, r)
 				return
 			}
 		}
@@ -2038,8 +1945,7 @@ print(req.json())
 
 	r.HandleFunc("/_protozoa/reminders/{id}", rateLimitWrap(40, 1*time.Minute, "greminder", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != "PUT" && r.Method != "GET" && r.Method != "DELETE" {
-			w.WriteHeader(http.StatusMethodNotAllowed)
-			w.Write([]byte(methodNotAllowed))
+			apiDefaultReturn(http.StatusMethodNotAllowed, w, r)
 			return
 		}
 
@@ -2048,23 +1954,20 @@ print(req.json())
 		id := vars["id"]
 
 		if id == "" {
-			w.WriteHeader(http.StatusBadRequest)
-			w.Write([]byte(badRequest))
+			apiDefaultReturn(http.StatusBadRequest, w, r)
 			return
 		}
 
 		// Fetch auth from mongodb
 		if r.Header.Get("Authorization") == "" {
-			w.WriteHeader(http.StatusUnauthorized)
-			w.Write([]byte(unauthorized))
+			apiDefaultReturn(http.StatusUnauthorized, w, r)
 			return
 		} else {
 			authId := authCheck(r.Header.Get("Authorization"), false)
 
 			if authId == nil || *authId != id {
 				log.Error(err)
-				w.WriteHeader(http.StatusUnauthorized)
-				w.Write([]byte(unauthorized))
+				apiDefaultReturn(http.StatusUnauthorized, w, r)
 				return
 			}
 		}
@@ -2075,8 +1978,7 @@ print(req.json())
 
 			if err != nil {
 				log.Error(err)
-				w.WriteHeader(http.StatusInternalServerError)
-				w.Write([]byte(internalError))
+				apiDefaultReturn(http.StatusInternalServerError, w, r)
 				return
 			}
 
@@ -2086,8 +1988,7 @@ print(req.json())
 
 			if err != nil {
 				log.Error(err)
-				w.WriteHeader(http.StatusInternalServerError)
-				w.Write([]byte(internalError))
+				apiDefaultReturn(http.StatusInternalServerError, w, r)
 				return
 			}
 
@@ -2115,8 +2016,7 @@ print(req.json())
 
 			if err != nil {
 				log.Error(err)
-				w.WriteHeader(http.StatusInternalServerError)
-				w.Write([]byte(internalError))
+				apiDefaultReturn(http.StatusInternalServerError, w, r)
 				return
 			}
 
@@ -2129,8 +2029,7 @@ print(req.json())
 
 			if err != nil || botId.Status != pgtype.Present || botId.String == "" {
 				log.Error("Error adding reminder: ", err)
-				w.WriteHeader(http.StatusNotFound)
-				w.Write([]byte(notFound))
+				apiDefaultReturn(http.StatusNotFound, w, r)
 				return
 			}
 
@@ -2143,8 +2042,7 @@ print(req.json())
 
 				if err != nil {
 					log.Error("Error adding reminder: ", err)
-					w.WriteHeader(http.StatusNotFound)
-					w.Write([]byte(notFound))
+					apiDefaultReturn(http.StatusNotFound, w, r)
 					return
 				}
 			}
@@ -2157,8 +2055,7 @@ print(req.json())
 
 	r.NotFoundHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusNotFound)
-		w.Write([]byte(notFoundPage))
+		apiDefaultReturn(http.StatusNotFound, w, r)
 	})
 
 	createBucketMods()
