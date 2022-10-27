@@ -803,6 +803,14 @@ func main() {
 			return
 		}
 
+		// Check cache, this is how we can avoid hefty ratelimits
+		cache := redisCache.Get(ctx, "pca-"+strconv.FormatUint(pageNum, 10)).Val()
+		if cache != "" {
+			w.Header().Add("X-Popplio-Cached", "true")
+			w.Write([]byte(cache))
+			return
+		}
+
 		limit := perPage
 		offset := (pageNum - 1) * perPage
 
@@ -880,6 +888,8 @@ func main() {
 			apiDefaultReturn(http.StatusInternalServerError, w, r)
 			return
 		}
+
+		redisCache.Set(ctx, "pca-"+strconv.FormatUint(pageNum, 10), bytes, 2*time.Minute)
 
 		w.Write(bytes)
 	}))
