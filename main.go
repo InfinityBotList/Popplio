@@ -783,7 +783,7 @@ func main() {
 
 	docs.AddDocs("GET", "/packs/all", "get_all_packs", "Get All Packs", "Gets all packs on the list", []docs.Paramater{}, []string{"System"}, nil, types.AllPacks{}, []string{})
 	r.Handle("/packs/all", rateLimitWrap(5, 2*time.Second, "allpacks", func(w http.ResponseWriter, r *http.Request) {
-		const perPage = 10
+		const perPage = 12
 
 		if r.Method != "GET" {
 			apiDefaultReturn(http.StatusMethodNotAllowed, w, r)
