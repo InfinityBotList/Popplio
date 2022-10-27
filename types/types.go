@@ -70,8 +70,19 @@ type AllBots struct {
 }
 
 type ResolvedPackBot struct {
-	User  *DiscordUser `json:"user"`
-	Short string       `json:"short"`
+	User         *DiscordUser `json:"user"`
+	Short        string       `json:"short"`
+	Type         pgtype.Text  `json:"type"`
+	Vanity       pgtype.Text  `json:"vanity"`
+	Banner       pgtype.Text  `json:"banner"`
+	NSFW         bool         `json:"nsfw"`
+	Premium      bool         `json:"premium"`
+	Certified    bool         `json:"certified"`
+	Shards       int          `json:"shards"`
+	Votes        int          `json:"votes"`
+	InviteClicks int          `json:"invites"`
+	Servers      int          `json:"servers"`
+	Tags         []string     `json:"tags"`
 }
 
 type BotPack struct {
