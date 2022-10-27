@@ -63,7 +63,18 @@ func ResolveBotPack(ctx context.Context, pool *pgxpool.Pool, pack *types.BotPack
 
 	for _, botId := range pack.Bots {
 		var short string
-		err := pool.QueryRow(ctx, "SELECT short FROM bots WHERE bot_id = $1", botId).Scan(&short)
+		var bot_type pgtype.Text
+		var vanity pgtype.Text
+		var banner pgtype.Text
+		var nsfw bool
+		var premium bool
+		var certified bool
+		var shards int
+		var votes int
+		var invites int
+		var servers int
+		var tags []string
+		err := pool.QueryRow(ctx, "SELECT short, type, vanity, banner, nsfw, premium, certified, shards, votes, invites, servers, tags FROM bots WHERE bot_id = $1", botId).Scan(&short, &bot_type, &vanity, &banner, &nsfw, &premium, &certified, &shards, &votes, &invites, &servers, &tags)
 
 		if err == pgx.ErrNoRows {
 			continue
@@ -80,8 +91,19 @@ func ResolveBotPack(ctx context.Context, pool *pgxpool.Pool, pack *types.BotPack
 		}
 
 		pack.ResolvedBots = append(pack.ResolvedBots, types.ResolvedPackBot{
-			Short: short,
-			User:  botUser,
+			Short:        short,
+			User:         botUser,
+			Type:         bot_type,
+			Vanity:       vanity,
+			Banner:       banner,
+			NSFW:         nsfw,
+			Premium:      premium,
+			Certified:    certified,
+			Shards:       shards,
+			Votes:        votes,
+			InviteClicks: invites,
+			Servers:      servers,
+			Tags:         tags,
 		})
 	}
 
