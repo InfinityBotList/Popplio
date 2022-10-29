@@ -104,6 +104,9 @@ var (
 	reviewCols    = utils.GetCols(types.Review{})
 	reviewColsStr = strings.Join(reviewCols, ",")
 
+	indexBotsCol    = utils.GetCols(types.IndexBot{})
+	indexBotsColStr = strings.Join(indexBotsCol, ",")
+
 	silverpeltCols = utils.GetCols(types.Reminder{})
 
 	silverpeltColsStr = strings.Join(silverpeltCols, ",")
@@ -1010,6 +1013,128 @@ print(req.json())
 	// Note that only token matters for this endpoint at this time
 	// TODO: Handle bot id as well
 	r.HandleFunc("/bots/{id}/stats", rateLimitWrap(10, 1*time.Minute, "stats", statsFn))
+
+	docs.AddDocs("GET", "/list/index", "get_list_index", "Get list index", "Gets the index of the list. Note that this endpoint does not resolve the bots of a pack", []docs.Paramater{}, []string{"Stats"}, nil, types.ListIndex{}, []string{})
+	r.HandleFunc("/list/index", rateLimitWrap(5, 1*time.Minute, "glstats", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != "GET" {
+			apiDefaultReturn(http.StatusMethodNotAllowed, w, r)
+			return
+		}
+
+		// Check cache, this is how we can avoid hefty ratelimits
+		cache := redisCache.Get(ctx, "indexcache").Val()
+		if cache != "" {
+			w.Header().Add("X-Popplio-Cached", "true")
+			w.Write([]byte(cache))
+			return
+		}
+
+		listIndex := types.ListIndex{}
+
+		certRow, err := pool.Query(ctx, "SELECT "+indexBotsColStr+" FROM bots WHERE certified = true AND type = 'approved' ORDER BY votes DESC LIMIT 9")
+		if err != nil {
+			log.Error(err)
+			apiDefaultReturn(http.StatusInternalServerError, w, r)
+			return
+		}
+
+		certDat := []types.IndexBot{}
+		err = pgxscan.ScanAll(&certDat, certRow)
+		if err != nil {
+			log.Error(err)
+			apiDefaultReturn(http.StatusInternalServerError, w, r)
+			return
+		}
+		listIndex.Certified = certDat
+
+		mostViewedRow, err := pool.Query(ctx, "SELECT "+indexBotsColStr+" FROM bots WHERE type = 'approved' ORDER BY clicks DESC LIMIT 9")
+		if err != nil {
+			log.Error(err)
+			apiDefaultReturn(http.StatusInternalServerError, w, r)
+			return
+		}
+		mostViewedDat := []types.IndexBot{}
+		err = pgxscan.ScanAll(&mostViewedDat, mostViewedRow)
+		if err != nil {
+			log.Error(err)
+			apiDefaultReturn(http.StatusInternalServerError, w, r)
+			return
+		}
+		listIndex.MostViewed = mostViewedDat
+
+		recentlyAddedRow, err := pool.Query(ctx, "SELECT "+indexBotsColStr+" FROM bots WHERE type = 'approved' ORDER BY date DESC LIMIT 9")
+		if err != nil {
+			log.Error(err)
+			apiDefaultReturn(http.StatusInternalServerError, w, r)
+			return
+		}
+		recentlyAddedDat := []types.IndexBot{}
+		err = pgxscan.ScanAll(&recentlyAddedDat, recentlyAddedRow)
+		if err != nil {
+			log.Error(err)
+			apiDefaultReturn(http.StatusInternalServerError, w, r)
+			return
+		}
+		listIndex.RecentlyAdded = recentlyAddedDat
+
+		topVotedRow, err := pool.Query(ctx, "SELECT "+indexBotsColStr+" FROM bots WHERE type = 'approved' ORDER BY votes DESC LIMIT 9")
+		if err != nil {
+			log.Error(err)
+			apiDefaultReturn(http.StatusInternalServerError, w, r)
+			return
+		}
+		topVotedDat := []types.IndexBot{}
+		err = pgxscan.ScanAll(&topVotedDat, topVotedRow)
+		if err != nil {
+			log.Error(err)
+			apiDefaultReturn(http.StatusInternalServerError, w, r)
+			return
+		}
+		listIndex.TopVoted = topVotedDat
+
+		rows, err := pool.Query(ctx, "SELECT "+packsColsString+" FROM packs ORDER BY date DESC")
+
+		if err != nil {
+			log.Error(err)
+			apiDefaultReturn(http.StatusInternalServerError, w, r)
+			return
+		}
+
+		var packs []*types.BotPack
+
+		err = pgxscan.ScanAll(&packs, rows)
+
+		if err != nil {
+			log.Error(err)
+			apiDefaultReturn(http.StatusInternalServerError, w, r)
+			return
+		}
+
+		for _, pack := range packs {
+			packOwner, err := utils.GetDiscordUser(metro, redisCache, ctx, pack.Owner)
+
+			if err != nil {
+				log.Error(err)
+				apiDefaultReturn(http.StatusInternalServerError, w, r)
+				return
+			}
+
+			pack.ResolvedOwner = packOwner
+		}
+
+		listIndex.Packs = packs
+
+		bytes, err := json.Marshal(listIndex)
+
+		if err != nil {
+			log.Error(err)
+			apiDefaultReturn(http.StatusInternalServerError, w, r)
+			return
+		}
+
+		redisCache.Set(ctx, "indexcache", string(bytes), 10*time.Minute)
+		w.Write(bytes)
+	}))
 
 	// func AddDocs(method string, pathStr string, opId string, summary string, description string, params []Paramater, tags []string, req any, resp any, authType []string) {
 	docs.AddDocs("GET", "/list/stats", "get_stats", "Get list statistics", "Gets the statistics of the list", []docs.Paramater{}, []string{"Stats"}, nil, types.ListStats{

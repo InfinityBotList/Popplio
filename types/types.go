@@ -98,8 +98,8 @@ type BotPack struct {
 	Tags          []string          `db:"tags" json:"tags"`
 	URL           string            `db:"url" json:"url"`
 	Date          time.Time         `db:"date" json:"date"`
-	Bots          []string          `db:"bots" json:"-"`
-	ResolvedBots  []ResolvedPackBot `db:"-" json:"bots"`
+	Bots          []string          `db:"bots" json:"bot_ids"`
+	ResolvedBots  []ResolvedPackBot `db:"-" json:"bots"` // May be null in some API endpoints
 }
 
 type AllPacks struct {
@@ -136,6 +136,7 @@ type UserBot struct {
 	Shards             int          `db:"shards" json:"shards"`
 	Library            string       `db:"library" json:"library"`
 	InviteClick        int          `db:"invite_clicks" json:"invite_clicks"`
+	Views              int          `db:"clicks" json:"clicks"`
 	Servers            int          `db:"servers" json:"servers"`
 	NSFW               bool         `db:"nsfw" json:"nsfw"`
 	Tags               []string     `db:"tags" json:"tags"`
@@ -143,6 +144,34 @@ type UserBot struct {
 	Premium            bool         `db:"premium" json:"premium"`
 	Certified          bool         `db:"certified" json:"certified"`
 	AdditionalOwnerIDS []string     `db:"additional_owners" json:"additional_owner_ids"`
+}
+
+type IndexBot struct {
+	BotID       string      `db:"bot_id" json:"bot_id"`
+	Name        string      `db:"name" json:"name"`
+	Avatar      string      `db:"avatar" json:"avatar_db"`
+	Short       string      `db:"short" json:"short"`
+	Type        string      `db:"type" json:"type"`
+	Vanity      string      `db:"vanity" json:"vanity"`
+	Votes       int         `db:"votes" json:"votes"`
+	Shards      int         `db:"shards" json:"shards"`
+	Library     string      `db:"library" json:"library"`
+	InviteClick int         `db:"invite_clicks" json:"invite_clicks"`
+	Servers     int         `db:"servers" json:"servers"`
+	NSFW        bool        `db:"nsfw" json:"nsfw"`
+	Tags        []string    `db:"tags" json:"tags"`
+	Premium     bool        `db:"premium" json:"premium"`
+	Certified   bool        `db:"certified" json:"certified"`
+	Views       int         `db:"clicks" json:"clicks"`
+	Banner      pgtype.Text `db:"banner" json:"banner"`
+}
+
+type ListIndex struct {
+	Certified     []IndexBot `json:"certified"`
+	MostViewed    []IndexBot `json:"most_viewed"`
+	Packs         []*BotPack `json:"packs"`
+	RecentlyAdded []IndexBot `json:"recently_added"`
+	TopVoted      []IndexBot `json:"top_voted"`
 }
 
 type User struct {
