@@ -41,13 +41,22 @@ func createBucketMods() {
 
 	bucketModerators["gbot"] = func(r *http.Request) moderatedBucket {
 		return moderatedBucket{
-			Bypass: true,
+			BucketName: "gbot",
+			Bypass:     true,
+		}
+	}
+
+	bucketModerators["guser"] = func(r *http.Request) moderatedBucket {
+		return moderatedBucket{
+			BucketName: "guser",
+			Bypass:     true,
 		}
 	}
 
 	bucketModerators["glstats"] = func(r *http.Request) moderatedBucket {
 		return moderatedBucket{
-			Bypass: true,
+			BucketName: "glstats",
+			Bypass:     true,
 		}
 	}
 }

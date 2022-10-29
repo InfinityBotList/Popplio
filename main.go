@@ -86,7 +86,7 @@ var (
 	bucketModerators map[string]func(r *http.Request) moderatedBucket = make(map[string]func(r *http.Request) moderatedBucket)
 
 	// Default global ratelimit handler
-	defaultGlobalBucket = moderatedBucket{BucketName: "global", Requests: 2000, Time: 1 * time.Hour}
+	defaultGlobalBucket = moderatedBucket{BucketName: "global", Requests: 500, Time: 2 * time.Minute}
 
 	announcementCols = utils.GetCols(types.Announcement{})
 
