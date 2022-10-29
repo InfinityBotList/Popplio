@@ -40,7 +40,7 @@ type Bot struct {
 	Shards                   int                `db:"shards" json:"shards"`
 	Users                    int                `db:"users" json:"users"`
 	Votes                    int                `db:"votes" json:"votes"`
-	Views                    int                `db:"clicks" json:"views"`
+	Views                    int                `db:"clicks" json:"clicks"`
 	UniqueClicks             int64              `json:"unique_clicks"` // Must be parsed internally
 	InviteClicks             int                `db:"invite_clicks" json:"invites"`
 	Github                   pgtype.Text        `db:"github" json:"github"`
@@ -126,9 +126,20 @@ type Review struct {
 	Flagged     bool           `db:"flagged" json:"flagged"`
 }
 
+type UserBot struct {
+	BotID   string       `db:"bot_id" json:"bot_id"`
+	User    *DiscordUser `db:"-" json:"user"`
+	Short   string       `db:"short" json:"short"`
+	Type    string       `db:"type" json:"type"`
+	Vanity  string       `db:"vanity" json:"vanity"`
+	Servers int          `db:"servers" json:"servers"`
+	NSFW    bool         `db:"nsfw" json:"nsfw"`
+}
+
 type User struct {
 	ITag      pgtype.UUID    `db:"itag" json:"itag"`
 	ID        string         `db:"user_id" json:"user_id"`
+	User      *DiscordUser   `db:"-" json:"user"`  // Must be handled internally
 	Votes     map[string]any `db:"votes" json:"-"` // Not sent due to privacy reasons
 	PackVotes map[string]any `db:"pack_votes" json:"pack_votes"`
 	Staff     bool           `db:"staff" json:"staff"`
@@ -144,6 +155,8 @@ type User struct {
 
 	VoteBanned bool `db:"vote_banned" json:"vote_banned"`
 	Admin      bool `db:"admin" json:"admin"`
+
+	UserBots []*UserBot `json:"user_bots"` // Must be handled internally
 }
 
 type VoteInfo struct {

@@ -1609,7 +1609,13 @@ print(req.json())
 			return
 		}
 
-		utils.ParseUser(&user)
+		err = utils.ParseUser(ctx, pool, &user, metro, redisCache)
+
+		if err != nil {
+			log.Error(err)
+			apiDefaultReturn(http.StatusInternalServerError, w, r)
+			return
+		}
 
 		/* Removing or modifying fields directly in API is very dangerous as scrapers will
 		 * just ignore owner checks anyways or cross-reference via another list. Also we

@@ -20,6 +20,11 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
+var (
+	userBotCols    = GetCols(types.UserBot{})
+	userBotColsStr = strings.Join(userBotCols, ",")
+)
+
 func IsNone(s string) bool {
 	if s == "None" || s == "none" || s == "" || s == "null" {
 		return true
@@ -171,7 +176,7 @@ func ResolveBotPack(ctx context.Context, pool *pgxpool.Pool, pack *types.BotPack
 	return nil
 }
 
-func ParseUser(user *types.User) {
+func ParseUser(ctx context.Context, pool *pgxpool.Pool, user *types.User, s *discordgo.Session, redisCache *redis.Client) error {
 	if IsNone(user.Website.String) {
 		user.Website.Status = pgtype.Null
 	}
@@ -187,6 +192,45 @@ func ParseUser(user *types.User) {
 	if IsNone(user.Nickname.String) {
 		user.Nickname.Status = pgtype.Null
 	}
+
+	userObj, err := GetDiscordUser(s, redisCache, ctx, user.ID)
+
+	if err != nil {
+		return err
+	}
+
+	user.User = userObj
+
+	userBotsRows, err := pool.Query(ctx, "SELECT "+userBotColsStr+" FROM bots WHERE (owner = $1 OR $2 && additional_owners)", user.ID, []string{user.ID})
+
+	if err != nil {
+		return err
+	}
+
+	var userBots []types.UserBot = []types.UserBot{}
+
+	err = pgxscan.ScanAll(&userBots, userBotsRows)
+
+	if err != nil {
+		return err
+	}
+
+	parsedUserBots := []*types.UserBot{}
+	for _, bot := range userBots {
+		userObj, err := GetDiscordUser(s, redisCache, ctx, bot.BotID)
+
+		if err != nil {
+			log.Error(err)
+			continue
+		}
+
+		bot.User = userObj
+		parsedUserBots = append(parsedUserBots, &bot)
+	}
+
+	user.UserBots = parsedUserBots
+
+	return nil
 }
 
 const letterBytes = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
