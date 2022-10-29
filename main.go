@@ -1813,6 +1813,8 @@ print(req.json())
 				return
 			}
 		}
+
+		redisCache.Del(ctx, "uc-"+id)
 	}))
 
 	r.HandleFunc("/_protozoa/notifications/info", rateLimitWrap(10, 1*time.Minute, "notif_info", func(w http.ResponseWriter, r *http.Request) {

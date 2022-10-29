@@ -132,9 +132,16 @@ type UserBot struct {
 	Short              string       `db:"short" json:"short"`
 	Type               string       `db:"type" json:"type"`
 	Vanity             string       `db:"vanity" json:"vanity"`
+	Votes              int          `db:"votes" json:"votes"`
+	Shards             int          `db:"shards" json:"shards"`
+	Library            string       `db:"library" json:"library"`
+	InviteClick        int          `db:"invite_clicks" json:"invite_clicks"`
 	Servers            int          `db:"servers" json:"servers"`
 	NSFW               bool         `db:"nsfw" json:"nsfw"`
+	Tags               []string     `db:"tags" json:"tags"`
 	OwnerID            string       `db:"owner" json:"owner_id"`
+	Premium            bool         `db:"premium" json:"premium"`
+	Certified          bool         `db:"certified" json:"certified"`
 	AdditionalOwnerIDS []string     `db:"additional_owners" json:"additional_owner_ids"`
 }
 
