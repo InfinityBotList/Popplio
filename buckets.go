@@ -38,4 +38,16 @@ func createBucketMods() {
 
 		return newBucket
 	}
+
+	bucketModerators["gbot"] = func(r *http.Request) moderatedBucket {
+		return moderatedBucket{
+			Bypass: true,
+		}
+	}
+
+	bucketModerators["glstats"] = func(r *http.Request) moderatedBucket {
+		return moderatedBucket{
+			Bypass: true,
+		}
+	}
 }

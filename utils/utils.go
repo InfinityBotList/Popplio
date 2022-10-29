@@ -68,6 +68,8 @@ func ParseBot(ctx context.Context, pool *pgxpool.Pool, bot *types.Bot, s *discor
 
 	bot.User = botUser
 
+	bot.ResolvedAdditionalOwners = []*types.DiscordUser{}
+
 	for _, owner := range bot.AdditionalOwners {
 		ownerUser, err := GetDiscordUser(s, redisCache, ctx, owner)
 

@@ -16,7 +16,7 @@ type Bot struct {
 	ITag                     pgtype.UUID        `db:"itag" json:"itag"`
 	BotID                    string             `db:"bot_id" json:"bot_id"`
 	Name                     string             `db:"name" json:"name"`
-	Avatar                   string             `db:"avatar" json:"avatar"`
+	Avatar                   string             `db:"avatar" json:"avatar_db"`
 	Tags                     []string           `db:"tags" json:"tags"`
 	Prefix                   pgtype.Text        `db:"prefix" json:"prefix"`
 	User                     *DiscordUser       `json:"user"` // Must be parsed internally
@@ -508,4 +508,18 @@ type DiscordLog struct {
 
 type ProfileUpdate struct {
 	About string `json:"bio"`
+}
+
+type ListStatsBot struct {
+	BotID              string   `json:"bot_id"`
+	Name               string   `json:"name"`
+	AvatarDB           string   `json:"avatar_db"`
+	Short              string   `json:"short"`
+	Type               string   `json:"type"`
+	MainOwnerID        string   `json:"main_owner_id"`
+	AdditionalOwnerIDS []string `json:"additional_owners_ids"`
+}
+
+type ListStats struct {
+	Bots []ListStatsBot `json:"bots"`
 }

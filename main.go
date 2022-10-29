@@ -69,6 +69,9 @@ type moderatedBucket struct {
 
 	Requests int
 	Time     time.Duration
+
+	// Whether or not to just bypass the ratelimit altogether
+	Bypass bool
 }
 
 var (
@@ -165,6 +168,11 @@ func authCheck(token string, bot bool) *string {
 }
 
 func bucketHandle(bucket moderatedBucket, id string, w http.ResponseWriter, r *http.Request) bool {
+	if r.Header.Get("CF-RAY") == "" && r.Header.Get("X-Forwarded-For") == "" {
+		return true // Don't ratelimit internal API calls, the internal API should itself be handling ratelimits there
+	} else if bucket.Bypass {
+		return true // Don't ratelimit bypass buckets
+	}
 
 	rlKey := "rl:" + id + "-" + bucket.BucketName
 
@@ -1003,6 +1011,67 @@ print(req.json())
 	// TODO: Handle bot id as well
 	r.HandleFunc("/bots/{id}/stats", rateLimitWrap(10, 1*time.Minute, "stats", statsFn))
 
+	// func AddDocs(method string, pathStr string, opId string, summary string, description string, params []Paramater, tags []string, req any, resp any, authType []string) {
+	docs.AddDocs("GET", "/list/stats", "get_stats", "Get list statistics", "Gets the statistics of the list", []docs.Paramater{}, []string{"Stats"}, nil, types.ListStats{
+		Bots: []types.ListStatsBot{},
+	}, []string{})
+	r.HandleFunc("/list/stats", rateLimitWrap(5, 1*time.Minute, "glstats", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != "GET" {
+			apiDefaultReturn(http.StatusMethodNotAllowed, w, r)
+			return
+		}
+
+		listStats := types.ListStats{}
+
+		bots, err := pool.Query(ctx, "SELECT bot_id, name, short, type, owner, additional_owners, avatar FROM bots")
+
+		if err != nil {
+			log.Error(err)
+			apiDefaultReturn(http.StatusInternalServerError, w, r)
+			return
+		}
+
+		defer bots.Close()
+
+		for bots.Next() {
+			var botId string
+			var name string
+			var short string
+			var typeStr string
+			var owner string
+			var additionalOwners []string
+			var avatar string
+
+			err := bots.Scan(&botId, &name, &short, &typeStr, &owner, &additionalOwners, &avatar)
+
+			if err != nil {
+				log.Error(err)
+				apiDefaultReturn(http.StatusInternalServerError, w, r)
+				return
+			}
+
+			listStats.Bots = append(listStats.Bots, types.ListStatsBot{
+				BotID:              botId,
+				Name:               name,
+				Short:              short,
+				Type:               typeStr,
+				AvatarDB:           avatar,
+				MainOwnerID:        owner,
+				AdditionalOwnerIDS: additionalOwners,
+			})
+		}
+
+		bytes, err := json.Marshal(listStats)
+
+		if err != nil {
+			log.Error(err)
+			apiDefaultReturn(http.StatusInternalServerError, w, r)
+			return
+		}
+
+		w.Write(bytes)
+	}))
+
 	docs.AddDocs("GET", "/users/{uid}/bots/{bid}/votes", "get_user_votes", "Get User Votes", "Gets the users votes. **Requires authentication**", []docs.Paramater{
 		{
 			Name:     "uid",
@@ -1022,8 +1091,6 @@ print(req.json())
 		HasVoted:   true,
 	}, []string{"User", "Bot"})
 	r.HandleFunc("/users/{uid}/bots/{bid}/votes", rateLimitWrap(5, 1*time.Minute, "gvotes", func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-
 		if r.Method != "GET" && r.Method != "PUT" {
 			apiDefaultReturn(http.StatusMethodNotAllowed, w, r)
 			return
@@ -1391,7 +1458,7 @@ print(req.json())
 		w.Write(b)
 	})
 
-	docs.AddDocs("GET", "/bots/{id}", "get_bot", "Get Bot", "Gets a bot by id or name, set ``resolve`` to true to also handle bot names."+`
+	docs.AddDocs("GET", "/bots/{id}", "get_bot", "Get Bot", "Gets a bot by id or name. This does not have ratelimits at this time"+`
 
 - `+backTick+backTick+`external_source`+backTick+backTick+` shows the source of where a bot came from (Metro Reviews etc etc.). If this is set to `+backTick+backTick+`metro`+backTick+backTick+`, then `+backTick+backTick+`list_source`+backTick+backTick+` will be set to the metro list ID where it came from`+`
 	`, []docs.Paramater{
@@ -1400,12 +1467,6 @@ print(req.json())
 			In:       "path",
 			Required: true,
 			Schema:   docs.IdSchema,
-		},
-		{
-			Name:     "resolve",
-			In:       "query",
-			Required: true,
-			Schema:   docs.BoolSchema,
 		},
 	}, []string{"Bots"}, nil, types.Bot{}, []string{})
 
