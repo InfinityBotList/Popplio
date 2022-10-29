@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"math/rand"
 	"reflect"
+	"strings"
 	"time"
 	"unsafe"
 
@@ -26,7 +27,7 @@ func IsNone(s string) bool {
 	return false
 }
 
-func ParseBot(bot *types.Bot) {
+func ParseBot(ctx context.Context, pool *pgxpool.Pool, bot *types.Bot, s *discordgo.Session, redisCache *redis.Client) error {
 	if IsNone(bot.Website.String) {
 		bot.Website.Status = pgtype.Null
 	}
@@ -50,6 +51,64 @@ func ParseBot(bot *types.Bot) {
 	if IsNone(bot.Invite.String) {
 		bot.Invite.Status = pgtype.Null
 	}
+
+	ownerUser, err := GetDiscordUser(s, redisCache, ctx, bot.Owner)
+
+	if err != nil {
+		return err
+	}
+
+	bot.MainOwner = ownerUser
+
+	botUser, err := GetDiscordUser(s, redisCache, ctx, bot.BotID)
+
+	if err != nil {
+		return err
+	}
+
+	bot.User = botUser
+
+	for _, owner := range bot.AdditionalOwners {
+		ownerUser, err := GetDiscordUser(s, redisCache, ctx, owner)
+
+		if err != nil {
+			log.Error(err)
+			continue
+		}
+
+		bot.ResolvedAdditionalOwners = append(bot.ResolvedAdditionalOwners, ownerUser)
+	}
+
+	bot.LongDescIsURL = strings.HasPrefix(strings.ReplaceAll(bot.Long, "\n", ""), "https://")
+
+	if bot.LongDescIsURL {
+		/*
+		   desc = `<iframe src="${bot.long
+		       .replace('\n', '')
+		       .replace(
+		           ' ',
+		           ''
+		       )}" width="100%" height="100%" style="width: 100%; height: 100vh; color: black;"><object data="${bot.long
+		       .replace('\n', '')
+		       .replace(
+		           ' ',
+		           ''
+		       )}" width="100%" height="100%" style="width: 100%; height: 100vh; color: black;"><embed src="${bot.long
+		       .replace('\n', '')
+		       .replace(
+		           ' ',
+		           ''
+		       )}" width="100%" height="100%" style="width: 100%; height: 100vh; color: black;"> </embed>${bot.long
+		       .replace('\n', '')
+		       .replace(' ', '')}</object></iframe>`
+		*/
+
+		longDesc := strings.ReplaceAll(bot.Long, "\n", "")
+
+		bot.Long = "<iframe src=\"" + longDesc + "\" width=\"100%\" height=\"100%\" style=\"width: 100%; height: 100vh; color: black;\"><object data=\"" + longDesc + "\" width=\"100%\" height=\"100%\" style=\"width: 100%; height: 100vh; color: black;\"><embed src=\"" + longDesc + "\" width=\"100%\" height=\"100%\" style=\"width: 100%; height: 100vh; color: black;\">i</embed>" + longDesc + "</object></iframe>"
+	}
+
+	return nil
 }
 
 func ResolveBotPack(ctx context.Context, pool *pgxpool.Pool, pack *types.BotPack, s *discordgo.Session, redisCache *redis.Client) error {

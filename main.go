@@ -1457,7 +1457,13 @@ print(req.json())
 			return
 		}
 
-		utils.ParseBot(&bot)
+		err = utils.ParseBot(ctx, pool, &bot, metro, redisCache)
+
+		if err != nil {
+			log.Error(err)
+			apiDefaultReturn(http.StatusNotFound, w, r)
+			return
+		}
 
 		var uniqueClicks int64
 		err = pool.QueryRow(ctx, "SELECT cardinality(unique_clicks) AS unique_clicks FROM bots WHERE bot_id = $1", bot.BotID).Scan(&uniqueClicks)
