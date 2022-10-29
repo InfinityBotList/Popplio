@@ -127,13 +127,15 @@ type Review struct {
 }
 
 type UserBot struct {
-	BotID   string       `db:"bot_id" json:"bot_id"`
-	User    *DiscordUser `db:"-" json:"user"`
-	Short   string       `db:"short" json:"short"`
-	Type    string       `db:"type" json:"type"`
-	Vanity  string       `db:"vanity" json:"vanity"`
-	Servers int          `db:"servers" json:"servers"`
-	NSFW    bool         `db:"nsfw" json:"nsfw"`
+	BotID              string       `db:"bot_id" json:"bot_id"`
+	User               *DiscordUser `db:"-" json:"user"`
+	Short              string       `db:"short" json:"short"`
+	Type               string       `db:"type" json:"type"`
+	Vanity             string       `db:"vanity" json:"vanity"`
+	Servers            int          `db:"servers" json:"servers"`
+	NSFW               bool         `db:"nsfw" json:"nsfw"`
+	OwnerID            string       `db:"owner" json:"owner_id"`
+	AdditionalOwnerIDS []string     `db:"additional_owners" json:"additional_owner_ids"`
 }
 
 type User struct {
