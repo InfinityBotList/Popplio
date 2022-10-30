@@ -22,8 +22,8 @@ import (
 
 	"github.com/bwmarrin/discordgo"
 	"github.com/georgysavva/scany/pgxscan"
+	"github.com/go-chi/chi/v5"
 	"github.com/go-redis/redis/v8"
-	"github.com/gorilla/mux"
 	"github.com/jackc/pgtype"
 	"github.com/jackc/pgx/v5"
 	log "github.com/sirupsen/logrus"
@@ -69,18 +69,19 @@ WHERE c.contype = 'f'`
 func oauthFn(w http.ResponseWriter, r *http.Request) {
 	cliId := os.Getenv("CLIENT_ID")
 	redirectUrl := os.Getenv("REDIRECT_URL")
-	vars := mux.Vars(r)
 
 	// Create HMAC of current time in seconds to protect against fucked up redirects
 	h := hmac.New(sha512.New, []byte(os.Getenv("CLIENT_SECRET")))
 
 	ctime := strconv.FormatInt(time.Now().Unix(), 10)
 
-	h.Write([]byte(ctime + "@" + vars["act"]))
+	var act = chi.URLParam(r, "act")
+
+	h.Write([]byte(ctime + "@" + act))
 
 	hmacData := hex.EncodeToString(h.Sum(nil))
 
-	http.Redirect(w, r, "https://discord.com/api/oauth2/authorize?client_id="+cliId+"&scope=identify&response_type=code&redirect_uri="+redirectUrl+"&state="+ctime+"."+hmacData+"."+vars["act"], http.StatusFound)
+	http.Redirect(w, r, "https://discord.com/api/oauth2/authorize?client_id="+cliId+"&scope=identify&response_type=code&redirect_uri="+redirectUrl+"&state="+ctime+"."+hmacData+"."+act, http.StatusFound)
 }
 
 func performAct(w http.ResponseWriter, r *http.Request) {
@@ -160,7 +161,7 @@ func performAct(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if token.Scope != "identify" {
-		http.Error(w, "Invalid scope: scope must be set to ONLY identify", http.StatusBadRequest)
+		http.Error(w, "Invalid scope: scope must be set to ONLY identify, is currently "+token.Scope, http.StatusBadRequest)
 		return
 	}
 
@@ -241,7 +242,7 @@ func performAct(w http.ResponseWriter, r *http.Request) {
 func taskFn(w http.ResponseWriter, r *http.Request) {
 	var user InternalOauthUser
 
-	tid := mux.Vars(r)["tid"]
+	tid := chi.URLParam(r, "tid")
 
 	if tid == "" {
 		http.Error(w, "Invalid task id", http.StatusBadRequest)
@@ -285,7 +286,7 @@ func taskFn(w http.ResponseWriter, r *http.Request) {
 }
 
 func getTask(w http.ResponseWriter, r *http.Request) {
-	tid := mux.Vars(r)["tid"]
+	tid := chi.URLParam(r, "tid")
 
 	if tid == "" {
 		http.Error(w, "No task id provided", http.StatusBadRequest)
