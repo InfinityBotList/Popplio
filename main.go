@@ -21,14 +21,15 @@ import (
 	"github.com/bwmarrin/discordgo"
 	"github.com/georgysavva/scany/pgxscan"
 	"github.com/go-redis/redis/v8"
-	"github.com/gorilla/handlers"
-	"github.com/gorilla/mux"
 	"github.com/jackc/pgtype"
 	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/joho/godotenv"
 	jsoniter "github.com/json-iterator/go"
 	ua "github.com/mileusna/useragent"
 	log "github.com/sirupsen/logrus"
+
+	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/chi/v5/middleware"
 )
 
 var json = jsoniter.ConfigCompatibleWithStandardLibrary
@@ -80,7 +81,6 @@ var (
 	pool       *pgxpool.Pool
 	backupPool *pgxpool.Pool
 	ctx        context.Context
-	r          *mux.Router
 
 	// This is used when we need to moderate whether or not to ratelimit a request (such as on a combined endpoint like gvotes)
 	bucketModerators map[string]func(r *http.Request) moderatedBucket = make(map[string]func(r *http.Request) moderatedBucket)
@@ -381,7 +381,18 @@ func main() {
 
 	ctx = context.Background()
 
-	r = mux.NewRouter()
+	r := chi.NewRouter()
+
+	// A good base middleware stack
+	r.Use(middleware.RequestID)
+	r.Use(middleware.RealIP)
+	r.Use(middleware.Logger)
+	r.Use(middleware.Recoverer)
+
+	// Set a timeout value on the request context (ctx), that will signal
+	// through ctx.Done() that the request has timed out and further
+	// processing should be stopped.
+	r.Use(middleware.Timeout(60 * time.Second))
 
 	// Init redisCache
 	rOptions, err := redis.ParseURL("redis://localhost:6379/12")
@@ -445,18 +456,13 @@ func main() {
 	}
 
 	docs.AddDocs("GET", "/", "ping", "Ping Server", "Pings the server", []docs.Paramater{}, []string{"System"}, nil, helloWorldB, []string{})
-	r.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+	r.Get("/", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.Write([]byte(helloWorld))
 	})
 
 	docs.AddDocs("GET", "/announcements", "announcements", "Get Announcements", "Gets the announcements. User authentication is optional and using it will show user targetted announcements", []docs.Paramater{}, []string{"System"}, nil, types.Announcement{}, []string{"User"})
-	r.HandleFunc("/announcements", rateLimitWrap(30, 1*time.Minute, "gannounce", func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != "GET" {
-			apiDefaultReturn(http.StatusMethodNotAllowed, w, r)
-			return
-		}
-
+	r.Get("/announcements", rateLimitWrap(30, 1*time.Minute, "gannounce", func(w http.ResponseWriter, r *http.Request) {
 		rows, err := pool.Query(ctx, "SELECT "+announcementColsStr+" FROM announcements ORDER BY id DESC")
 
 		if err != nil {
@@ -523,8 +529,8 @@ func main() {
 		w.Write(bytes)
 	}))
 
-	r.HandleFunc("/_duser/{id}", func(w http.ResponseWriter, r *http.Request) {
-		var id = mux.Vars(r)["id"]
+	r.Get("/_duser/{id}", func(w http.ResponseWriter, r *http.Request) {
+		var id = chi.URLParam(r, "id")
 
 		user, err := utils.GetDiscordUser(metro, redisCache, ctx, id)
 
@@ -549,12 +555,7 @@ func main() {
 	})
 
 	docs.AddDocs("GET", "/openapi", "openapi", "Get OpenAPI", "Gets the OpenAPI spec", []docs.Paramater{}, []string{"System"}, nil, map[string]any{}, []string{})
-	r.HandleFunc("/openapi", func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != "GET" {
-			apiDefaultReturn(http.StatusMethodNotAllowed, w, r)
-			return
-		}
-
+	r.Get("/openapi", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.Header().Set("Access-Control-Allow-Origin", "*")
 
@@ -569,7 +570,7 @@ func main() {
 		w.Write([]byte(openapi))
 	})
 
-	r.HandleFunc("/docs", func(w http.ResponseWriter, r *http.Request) {
+	r.Get("/docs", func(w http.ResponseWriter, r *http.Request) {
 		t, err := template.ParseFiles("html/docs.html")
 
 		if err != nil {
@@ -581,8 +582,6 @@ func main() {
 	})
 
 	statsFn := func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-
 		if r.Method == "GET" || r.Method == "DELETE" {
 			apiDefaultReturn(http.StatusMethodNotAllowed, w, r)
 			return
@@ -699,13 +698,8 @@ func main() {
 	}
 
 	docs.AddDocs("GET", "/bots/all", "get_all_bots", "Get All Bots", "Gets all bots on the list", []docs.Paramater{}, []string{"System"}, nil, types.AllBots{}, []string{})
-	r.Handle("/bots/all", rateLimitWrap(5, 2*time.Second, "allbots", func(w http.ResponseWriter, r *http.Request) {
+	r.Get("/bots/all", rateLimitWrap(5, 2*time.Second, "allbots", func(w http.ResponseWriter, r *http.Request) {
 		const perPage = 10
-
-		if r.Method != "GET" {
-			apiDefaultReturn(http.StatusMethodNotAllowed, w, r)
-			return
-		}
 
 		page := r.URL.Query().Get("page")
 
@@ -793,13 +787,8 @@ func main() {
 	}))
 
 	docs.AddDocs("GET", "/packs/all", "get_all_packs", "Get All Packs", "Gets all packs on the list", []docs.Paramater{}, []string{"System"}, nil, types.AllPacks{}, []string{})
-	r.Handle("/packs/all", rateLimitWrap(5, 2*time.Second, "allpacks", func(w http.ResponseWriter, r *http.Request) {
+	r.Get("/packs/all", rateLimitWrap(5, 2*time.Second, "allpacks", func(w http.ResponseWriter, r *http.Request) {
 		const perPage = 12
-
-		if r.Method != "GET" {
-			apiDefaultReturn(http.StatusMethodNotAllowed, w, r)
-			return
-		}
 
 		page := r.URL.Query().Get("page")
 
@@ -915,15 +904,8 @@ func main() {
 			},
 		}, []string{"Packs"}, nil, types.BotPack{}, []string{})
 
-	r.HandleFunc("/packs/{id}", rateLimitWrap(10, 3*time.Minute, "gpack", func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != "GET" {
-			apiDefaultReturn(http.StatusMethodNotAllowed, w, r)
-			return
-		}
-
-		vars := mux.Vars(r)
-
-		id := vars["id"]
+	r.Get("/packs/{id}", rateLimitWrap(10, 3*time.Minute, "gpack", func(w http.ResponseWriter, r *http.Request) {
+		var id = chi.URLParam(r, "id")
 
 		if id == "" {
 			apiDefaultReturn(http.StatusBadRequest, w, r)
@@ -1015,12 +997,7 @@ print(req.json())
 	r.HandleFunc("/bots/{id}/stats", rateLimitWrap(10, 1*time.Minute, "stats", statsFn))
 
 	docs.AddDocs("GET", "/list/index", "get_list_index", "Get list index", "Gets the index of the list. Note that this endpoint does not resolve the owner or the bots of a pack and will only give the `owner_id` and the `bot_ids` for performance purposes", []docs.Paramater{}, []string{"Stats"}, nil, types.ListIndex{}, []string{})
-	r.HandleFunc("/list/index", rateLimitWrap(5, 1*time.Minute, "glstats", func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != "GET" {
-			apiDefaultReturn(http.StatusMethodNotAllowed, w, r)
-			return
-		}
-
+	r.Get("/list/index", rateLimitWrap(5, 1*time.Minute, "glstats", func(w http.ResponseWriter, r *http.Request) {
 		// Check cache, this is how we can avoid hefty ratelimits
 		cache := redisCache.Get(ctx, "indexcache").Val()
 		if cache != "" {
@@ -1128,12 +1105,7 @@ print(req.json())
 	docs.AddDocs("GET", "/list/stats", "get_stats", "Get list statistics", "Gets the statistics of the list", []docs.Paramater{}, []string{"Stats"}, nil, types.ListStats{
 		Bots: []types.ListStatsBot{},
 	}, []string{})
-	r.HandleFunc("/list/stats", rateLimitWrap(5, 1*time.Minute, "glstats", func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != "GET" {
-			apiDefaultReturn(http.StatusMethodNotAllowed, w, r)
-			return
-		}
-
+	r.Get("/list/stats", rateLimitWrap(5, 1*time.Minute, "glstats", func(w http.ResponseWriter, r *http.Request) {
 		listStats := types.ListStats{}
 
 		bots, err := pool.Query(ctx, "SELECT bot_id, name, short, type, owner, additional_owners, avatar FROM bots")
@@ -1203,24 +1175,28 @@ print(req.json())
 		VoteTime:   12,
 		HasVoted:   true,
 	}, []string{"User", "Bot"})
+	// TODO: Document POST as well and seperate the two funcs
 	r.HandleFunc("/users/{uid}/bots/{bid}/votes", rateLimitWrap(5, 1*time.Minute, "gvotes", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != "GET" && r.Method != "PUT" {
 			apiDefaultReturn(http.StatusMethodNotAllowed, w, r)
 			return
 		}
 
-		vars := mux.Vars(r)
+		var vars = map[string]string{
+			"uid": chi.URLParam(r, "uid"),
+			"bid": chi.URLParam(r, "bid"),
+		}
+
+		userAuth := strings.HasPrefix(r.Header.Get("Authorization"), "User ")
 
 		var botId pgtype.Text
 		var botType pgtype.Text
-
-		var userAuth bool = strings.HasPrefix(r.Header.Get("Authorization"), "User ")
 
 		if r.Header.Get("Authorization") == "" {
 			apiDefaultReturn(http.StatusUnauthorized, w, r)
 			return
 		} else {
-			if strings.HasPrefix(r.Header.Get("Authorization"), "User ") {
+			if userAuth {
 				uid := authCheck(r.Header.Get("Authorization"), false)
 
 				if uid == nil || *uid != vars["uid"] {
@@ -1489,7 +1465,8 @@ print(req.json())
 			return
 		}
 
-		vars := mux.Vars(r)
+		var botId = chi.URLParam(r, "bot_id")
+		var userId = chi.URLParam(r, "user_id")
 
 		if r.Header.Get("Authorization") == "" {
 			apiDefaultReturn(http.StatusUnauthorized, w, r)
@@ -1497,7 +1474,7 @@ print(req.json())
 		} else {
 			id := authCheck(r.Header.Get("Authorization"), true)
 
-			if id == nil || *id != vars["bot_id"] {
+			if id == nil || *id != botId {
 				apiDefaultReturn(http.StatusUnauthorized, w, r)
 				return
 			}
@@ -1516,7 +1493,7 @@ print(req.json())
 
 		var botType pgtype.Text
 
-		pool.QueryRow(ctx, "SELECT type FROM bots WHERE bot_id = $1", vars["bot_id"]).Scan(&botType)
+		pool.QueryRow(ctx, "SELECT type FROM bots WHERE bot_id = $1", botId).Scan(&botType)
 
 		if botType.String != "approved" {
 			w.WriteHeader(http.StatusBadRequest)
@@ -1524,7 +1501,7 @@ print(req.json())
 			return
 		}
 
-		voteParsed, err := utils.GetVoteData(ctx, pool, vars["user_id"], vars["bot_id"])
+		voteParsed, err := utils.GetVoteData(ctx, pool, userId, botId)
 
 		if err != nil {
 			log.Error(err)
@@ -1548,14 +1525,7 @@ print(req.json())
 	}))
 
 	docs.AddDocs("GET", "/voteinfo", "voteinfo", "Get Vote Info", "Returns basic voting info such as if its a weekend double vote", []docs.Paramater{}, []string{"Votes"}, nil, types.VoteInfo{Weekend: true}, []string{})
-	r.HandleFunc("/voteinfo", func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-
-		if r.Method != "GET" {
-			apiDefaultReturn(http.StatusMethodNotAllowed, w, r)
-			return
-		}
-
+	r.Get("/voteinfo", func(w http.ResponseWriter, r *http.Request) {
 		var payload = types.VoteInfo{
 			Weekend: utils.GetDoubleVote(),
 		}
@@ -1584,19 +1554,7 @@ print(req.json())
 	}, []string{"Bots"}, nil, types.Bot{}, []string{})
 
 	getBotsFn := rateLimitWrap(10, 1*time.Minute, "gbot", func(w http.ResponseWriter, r *http.Request) {
-		if r.Method == "POST" {
-			statsFn(w, r)
-			return
-		}
-
-		if r.Method != "GET" {
-			apiDefaultReturn(http.StatusMethodNotAllowed, w, r)
-			return
-		}
-
-		vars := mux.Vars(r)
-
-		name := vars["id"]
+		name := chi.URLParam(r, "id")
 
 		if name == "" {
 			apiDefaultReturn(http.StatusBadRequest, w, r)
@@ -1679,15 +1637,8 @@ print(req.json())
 			},
 		}, []string{"Users"}, nil, types.User{}, []string{})
 
-	r.HandleFunc("/users/{id}", rateLimitWrap(10, 3*time.Minute, "guser", func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != "GET" {
-			apiDefaultReturn(http.StatusMethodNotAllowed, w, r)
-			return
-		}
-
-		vars := mux.Vars(r)
-
-		name := vars["id"]
+	r.Get("/users/{id}", rateLimitWrap(10, 3*time.Minute, "guser", func(w http.ResponseWriter, r *http.Request) {
+		name := chi.URLParam(r, "id")
 
 		if name == "" {
 			apiDefaultReturn(http.StatusBadRequest, w, r)
@@ -1749,8 +1700,8 @@ print(req.json())
 		w.Write(bytes)
 	}))
 
-	r.HandleFunc("/bots/{id}", getBotsFn)
-	r.HandleFunc("/bot/{id}", getBotsFn)
+	r.Get("/bots/{id}", getBotsFn)
+	r.Get("/bot/{id}", getBotsFn)
 
 	docs.AddDocs("GET", "/bots/{id}/reviews", "get_bot_reviews", "Get Bot Reviews", "Gets the reviews of a bot by its ID (names are not resolved by this endpoint)",
 		[]docs.Paramater{
@@ -1761,8 +1712,8 @@ print(req.json())
 				Schema:   docs.IdSchema,
 			},
 		}, []string{"Bots"}, nil, []types.Review{}, []string{})
-	r.HandleFunc("/bots/{id}/reviews", rateLimitWrap(10, 1*time.Minute, "greview", func(w http.ResponseWriter, r *http.Request) {
-		rows, err := pool.Query(ctx, "SELECT "+reviewColsStr+" FROM reviews WHERE bot_id = $1", mux.Vars(r)["id"])
+	r.Get("/bots/{id}/reviews", rateLimitWrap(10, 1*time.Minute, "greview", func(w http.ResponseWriter, r *http.Request) {
+		rows, err := pool.Query(ctx, "SELECT "+reviewColsStr+" FROM reviews WHERE bot_id = $1", chi.URLParam(r, "id"))
 
 		if err != nil {
 			log.Error(err)
@@ -1799,12 +1750,7 @@ print(req.json())
 	docs.AddDocs("POST", "/webhook-test", "webhook_test", "Test Webhook", "Sends a test webhook to allow testing your vote system. **All fields are mandatory for test bot**",
 		[]docs.Paramater{}, []string{"System"}, types.WebhookPost{}, types.ApiError{}, []string{})
 
-	r.HandleFunc("/webhook-test", rateLimitWrap(7, 3*time.Minute, "webtest", func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != "POST" {
-			apiDefaultReturn(http.StatusMethodNotAllowed, w, r)
-			return
-		}
-
+	r.Post("/webhook-test", rateLimitWrap(7, 3*time.Minute, "webtest", func(w http.ResponseWriter, r *http.Request) {
 		defer r.Body.Close()
 
 		var payload types.WebhookPost
@@ -1875,13 +1821,8 @@ print(req.json())
 
 	// Internal APIs
 
-	r.HandleFunc("/_protozoa/profile/{id}", rateLimitWrap(7, 1*time.Minute, "profile_update", func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != "PATCH" {
-			apiDefaultReturn(http.StatusMethodNotAllowed, w, r)
-			return
-		}
-
-		id := mux.Vars(r)["id"]
+	r.Patch("/_protozoa/profile/{id}", rateLimitWrap(7, 1*time.Minute, "profile_update", func(w http.ResponseWriter, r *http.Request) {
+		id := chi.URLParam(r, "id")
 
 		// Fetch auth from mongodb
 		if r.Header.Get("Authorization") == "" {
@@ -1930,7 +1871,7 @@ print(req.json())
 		redisCache.Del(ctx, "uc-"+id)
 	}))
 
-	r.HandleFunc("/_protozoa/notifications/info", rateLimitWrap(10, 1*time.Minute, "notif_info", func(w http.ResponseWriter, r *http.Request) {
+	r.Get("/_protozoa/notifications/info", rateLimitWrap(10, 1*time.Minute, "notif_info", func(w http.ResponseWriter, r *http.Request) {
 		data := map[string]any{
 			"public_key": os.Getenv("VAPID_PUBLIC_KEY"),
 		}
@@ -1952,7 +1893,7 @@ print(req.json())
 			return
 		}
 
-		id := mux.Vars(r)["id"]
+		var id = chi.URLParam(r, "id")
 
 		if id == "" {
 			apiDefaultReturn(http.StatusBadRequest, w, r)
@@ -2051,21 +1992,14 @@ print(req.json())
 		}
 	}))
 
-	r.HandleFunc("/_protozoa/notifications/{id}/sub", rateLimitWrap(10, 1*time.Minute, "notif_info", func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != "POST" {
-			apiDefaultReturn(http.StatusMethodNotAllowed, w, r)
-			return
-		}
-
+	r.Post("/_protozoa/notifications/{id}/sub", rateLimitWrap(10, 1*time.Minute, "notif_info", func(w http.ResponseWriter, r *http.Request) {
 		var subscription struct {
 			Auth     string `json:"auth"`
 			P256dh   string `json:"p256dh"`
 			Endpoint string `json:"endpoint"`
 		}
 
-		vars := mux.Vars(r)
-
-		id := vars["id"]
+		var id = chi.URLParam(r, "id")
 
 		if id == "" {
 			apiDefaultReturn(http.StatusBadRequest, w, r)
@@ -2147,9 +2081,7 @@ print(req.json())
 			return
 		}
 
-		vars := mux.Vars(r)
-
-		id := vars["id"]
+		var id = chi.URLParam(r, "id")
 
 		if id == "" {
 			apiDefaultReturn(http.StatusBadRequest, w, r)
@@ -2251,17 +2183,14 @@ print(req.json())
 
 	adp := DummyAdapter{}
 
-	r.NotFoundHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	r.NotFound(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		apiDefaultReturn(http.StatusNotFound, w, r)
 	})
 
 	createBucketMods()
 
-	integrase.Prepare(adp, integrase.MuxWrap{Router: r})
+	integrase.Prepare(adp, chiWrap{Router: r})
 
-	// Add logging middleware
-	log := handlers.LoggingHandler(os.Stdout, r)
-
-	http.ListenAndServe(":8081", log)
+	http.ListenAndServe(":8081", r)
 }

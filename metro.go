@@ -2,6 +2,7 @@ package main
 
 import (
 	"errors"
+	"net/http"
 	"os"
 	"popplio/utils"
 	"regexp"
@@ -11,12 +12,21 @@ import (
 	popltypes "popplio/types"
 
 	"github.com/MetroReviews/metro-integrase/types"
+	"github.com/go-chi/chi/v5"
 	"github.com/jackc/pgconn"
 	"github.com/jackc/pgtype"
 	log "github.com/sirupsen/logrus"
 
 	"github.com/bwmarrin/discordgo"
 )
+
+type chiWrap struct {
+	Router *chi.Mux
+}
+
+func (c chiWrap) HandleFunc(path string, f func(http.ResponseWriter, *http.Request)) {
+	c.Router.HandleFunc(path, f)
+}
 
 var regex *regexp.Regexp
 var metro *discordgo.Session
