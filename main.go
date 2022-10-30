@@ -1014,7 +1014,7 @@ print(req.json())
 	// TODO: Handle bot id as well
 	r.HandleFunc("/bots/{id}/stats", rateLimitWrap(10, 1*time.Minute, "stats", statsFn))
 
-	docs.AddDocs("GET", "/list/index", "get_list_index", "Get list index", "Gets the index of the list. Note that this endpoint does not resolve the bots of a pack", []docs.Paramater{}, []string{"Stats"}, nil, types.ListIndex{}, []string{})
+	docs.AddDocs("GET", "/list/index", "get_list_index", "Get list index", "Gets the index of the list. Note that this endpoint does not resolve the owner or the bots of a pack and will only give the `owner_id` and the `bot_ids` for performance purposes", []docs.Paramater{}, []string{"Stats"}, nil, types.ListIndex{}, []string{})
 	r.HandleFunc("/list/index", rateLimitWrap(5, 1*time.Minute, "glstats", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != "GET" {
 			apiDefaultReturn(http.StatusMethodNotAllowed, w, r)
@@ -1108,18 +1108,6 @@ print(req.json())
 			log.Error(err)
 			apiDefaultReturn(http.StatusInternalServerError, w, r)
 			return
-		}
-
-		for _, pack := range packs {
-			packOwner, err := utils.GetDiscordUser(metro, redisCache, ctx, pack.Owner)
-
-			if err != nil {
-				log.Error(err)
-				apiDefaultReturn(http.StatusInternalServerError, w, r)
-				return
-			}
-
-			pack.ResolvedOwner = packOwner
 		}
 
 		listIndex.Packs = packs

@@ -90,8 +90,8 @@ type ResolvedPackBot struct {
 }
 
 type BotPack struct {
-	Owner         string            `db:"owner" json:"-"`
-	ResolvedOwner *DiscordUser      `db:"-" json:"owner"`
+	Owner         string            `db:"owner" json:"owner_id"`
+	ResolvedOwner *DiscordUser      `db:"-" json:"owner"` // This may be null in some API endpoints
 	Name          string            `db:"name" json:"name"`
 	Short         string            `db:"short" json:"short"`
 	Votes         int64             `db:"votes" json:"votes"`
