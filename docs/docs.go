@@ -1,13 +1,62 @@
 package docs
 
 import (
+	"embed"
 	"popplio/types"
 	"reflect"
 	"strings"
 
 	"github.com/getkin/kin-openapi/openapi3"
 	"github.com/getkin/kin-openapi/openapi3gen"
+	"golang.org/x/exp/slices"
+	"gopkg.in/yaml.v3"
 )
+
+//go:embed docs-md/*
+var docsFiles embed.FS
+
+var docsMd string
+
+func init() {
+	ordersFile, err := docsFiles.ReadFile("docs-md/order.yaml")
+
+	if err != nil {
+		panic(err)
+	}
+
+	var order []string
+
+	err = yaml.Unmarshal(ordersFile, &order)
+
+	if err != nil {
+		panic(err)
+	}
+
+	entries, err := docsFiles.ReadDir("docs-md")
+
+	if err != nil {
+		panic(err)
+	}
+
+	for _, entry := range entries {
+		if entry.Name() == "order.yaml" {
+			continue
+		}
+
+		if !slices.Contains(order, entry.Name()) {
+			panic(entry.Name() + " not in order.yaml")
+		}
+	}
+
+	for _, entry := range order {
+		docsFile, err := docsFiles.ReadFile("docs-md/" + entry)
+		if err != nil {
+			panic(err)
+		}
+
+		docsMd += string(docsFile) + "\n\n"
+	}
+}
 
 type server struct {
 	URL         string         `json:"url"`
@@ -123,17 +172,6 @@ var api = Openapi{
 		Description: `
 Welcome to the Infinity Bot List API documentation!
 
-## Libraries
-
-We offer several libraries for interacting with the API:
-
-- [Java](https://guide.infinitybots.gg/docs/libraries/java)
-- [JavaScript](https://guide.infinitybots.gg/docs/libraries/javascript)
-- [Python](https://guide.infinitybots.gg/docs/libraries/python)
-
-## Ratelimits
-
-You can find documentation on ratelimits and other resources [here](https://guide.infinitybots.gg/docs/resources/ratelimits)
 `,
 		TermsOfService: "https://infinitybotlist.com/terms",
 		Version:        "6.0",
@@ -160,6 +198,10 @@ You can find documentation on ratelimits and other resources [here](https://guid
 		RequestBodies: make(map[string]reqBody),
 	},
 	Paths: make(map[string]path),
+}
+
+func init() {
+	api.Info.Description += docsMd
 }
 
 var badRequestSchema *openapi3.SchemaRef

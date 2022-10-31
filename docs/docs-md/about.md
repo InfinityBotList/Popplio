@@ -1,0 +1,56 @@
+# Introduction
+
+Hey there 👋, welcome to our Official Documentation!
+
+---
+
+#### Navigation
+
+If you want to just see the list of endpoints, click [here](#Endpoints)
+
+#### I'm busy son!
+
+We offer several libraries for interacting with the API as seen below:
+
+## Getting Help
+
+If you need some help or think you have spotted a problem with our API you can talk to us in our 
+[`#api-support`](https://discord.com/channels/758641373074423808/826363644295643136) channel in our [discord server](https://infinitybotlist.com/discord).
+
+---
+
+## API Intro
+
+Infinity uses a REST API for general operations such as sending and receiving `POST` and `GET` requests.
+
+#### Base Url
+
+[api.infinitybotlist.com](https://api.infinitybotlist.com) (latest stable API)
+
+[spider.infinitybotlist.com](https://spider.infinitybotlist.com) (beta API)
+
+#### Beta API Note
+
+[spider.infinitybotlist.com](https://spider.infinitybotlist.com) is the beta API and will always point to the current latest API version. 
+
+The current latest beta API version is ``v5``. The current stable API version is ``v5`` (which is what currently runs on https://api.infinitybotlist.com)
+
+**Note that in most cases, ``spider.infinitybotlist.com`` and ``api.infinitybotlist.com`` will be in sync and will point to the same server**
+
+**There are several breaking changes in ``v5``. Your library should be taking care of these differences (such as 'flatter'/simpler to use API responses)
+
+---
+
+## Authorization
+
+To access our API you need to authorize yourself or in this case your bot, this can be done by using your Infinity API Token which can be found in the `Owner Section` of your bots page.
+
+![Owner Section Screenshot](https://media.discordapp.net/attachments/832011830238248961/871632845821591562/image0.png)
+
+Authentication is performed with the `authorization` HTTP header:
+
+```json
+{
+  "authorization": "your-secret-token"
+}
+```

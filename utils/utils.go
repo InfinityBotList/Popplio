@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"math/rand"
+	"os"
 	"reflect"
 	"strings"
 	"time"
@@ -269,7 +270,49 @@ func GetDiscordUser(s *discordgo.Session, redisCache *redis.Client, ctx context.
 	if s.State != nil {
 		guilds := s.State.Guilds
 
+		// First try for main server
+		member, err := s.State.Member(os.Getenv("MAIN_SERVER"), id)
+
+		if err == nil {
+			p, pErr := s.State.Presence(os.Getenv("MAIN_SERVER"), id)
+
+			if pErr != nil {
+				p = &discordgo.Presence{
+					User:   member.User,
+					Status: discordgo.StatusOffline,
+				}
+			}
+
+			obj := &types.DiscordUser{
+				ID:             id,
+				Username:       member.User.Username,
+				Avatar:         member.User.AvatarURL(""),
+				Discriminator:  member.User.Discriminator,
+				Bot:            member.User.Bot,
+				Nickname:       member.Nick,
+				Guild:          os.Getenv("MAIN_SERVER"),
+				Mention:        member.User.Mention(),
+				Status:         p.Status,
+				System:         member.User.System,
+				Flags:          member.User.Flags,
+				Tag:            member.User.Username + "#" + member.User.Discriminator,
+				IsServerMember: true,
+			}
+
+			bytes, err := json.Marshal(obj)
+
+			if err == nil {
+				redisCache.Set(ctx, "uobj:"+id, bytes, userExpiryTime)
+			}
+
+			return obj, nil
+		}
+
 		for _, guild := range guilds {
+			if guild.ID == os.Getenv("MAIN_SERVER") {
+				continue // Already checked
+			}
+
 			member, err := s.State.Member(guild.ID, id)
 
 			if err == nil {
@@ -283,18 +326,19 @@ func GetDiscordUser(s *discordgo.Session, redisCache *redis.Client, ctx context.
 				}
 
 				obj := &types.DiscordUser{
-					ID:            id,
-					Username:      member.User.Username,
-					Avatar:        member.User.AvatarURL(""),
-					Discriminator: member.User.Discriminator,
-					Bot:           member.User.Bot,
-					Nickname:      member.Nick,
-					Guild:         guild.ID,
-					Mention:       member.User.Mention(),
-					Status:        p.Status,
-					System:        member.User.System,
-					Flags:         member.User.Flags,
-					Tag:           member.User.Username + "#" + member.User.Discriminator,
+					ID:             id,
+					Username:       member.User.Username,
+					Avatar:         member.User.AvatarURL(""),
+					Discriminator:  member.User.Discriminator,
+					Bot:            member.User.Bot,
+					Nickname:       member.Nick,
+					Guild:          guild.ID,
+					Mention:        member.User.Mention(),
+					Status:         p.Status,
+					System:         member.User.System,
+					Flags:          member.User.Flags,
+					Tag:            member.User.Username + "#" + member.User.Discriminator,
+					IsServerMember: false,
 				}
 
 				bytes, err := json.Marshal(obj)

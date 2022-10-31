@@ -507,18 +507,19 @@ type Announcement struct {
 
 // A discord user
 type DiscordUser struct {
-	ID            string           `json:"id"`
-	Username      string           `json:"username"`
-	Discriminator string           `json:"discriminator"`
-	Avatar        string           `json:"avatar"`
-	Bot           bool             `json:"bot"`
-	Mention       string           `json:"mention"`
-	Status        discordgo.Status `json:"status"`
-	System        bool             `json:"system"`
-	Nickname      string           `json:"nickname"`
-	Guild         string           `json:"in_guild"`
-	Flags         int              `json:"flags"`
-	Tag           string           `json:"tag"`
+	ID             string           `json:"id"`
+	Username       string           `json:"username"`
+	Discriminator  string           `json:"discriminator"`
+	Avatar         string           `json:"avatar"`
+	Bot            bool             `json:"bot"`
+	Mention        string           `json:"mention"`
+	Status         discordgo.Status `json:"status"`
+	System         bool             `json:"system"`
+	Nickname       string           `json:"nickname"`
+	Guild          string           `json:"in_guild"`
+	Flags          int              `json:"flags"`
+	Tag            string           `json:"tag"`
+	IsServerMember bool             `json:"is_member"`
 }
 
 type Notification struct {

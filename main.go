@@ -468,6 +468,21 @@ func main() {
 		w.Write([]byte(helloWorld))
 	})
 
+	docs.AddDocs("GET", "/_duser/{id}/clear", "clear_duser", "Clear Discord User From Cache", "Clear Discord User From Cache", []docs.Paramater{
+		{
+			Name:     "id",
+			In:       "path",
+			Required: true,
+			Schema:   docs.IdSchema,
+		},
+	}, []string{"System"}, nil, types.ApiError{}, []string{})
+	r.Get("/_duser/{id}/clear", func(w http.ResponseWriter, r *http.Request) {
+		id := chi.URLParam(r, "id")
+		w.Header().Set("Content-Type", "application/json")
+		redisCache.Del(ctx, "uobj:"+id)
+		w.Write([]byte(success))
+	})
+
 	docs.AddDocs("GET", "/announcements", "announcements", "Get Announcements", "Gets the announcements. User authentication is optional and using it will show user targetted announcements", []docs.Paramater{}, []string{"System"}, nil, types.Announcement{}, []string{"User"})
 	r.Get("/announcements", rateLimitWrap(30, 1*time.Minute, "gannounce", func(w http.ResponseWriter, r *http.Request) {
 		rows, err := pool.Query(ctx, "SELECT "+announcementColsStr+" FROM announcements ORDER BY id DESC")
@@ -1848,9 +1863,9 @@ print(req.json())
 		var errD = types.ApiError{}
 
 		if err1 != nil {
-			log.Error(err)
+			log.Error(err1)
 
-			errD.Message = err.Error()
+			errD.Message = err1.Error()
 			errD.Error = true
 		}
 
