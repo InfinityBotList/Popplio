@@ -3,7 +3,6 @@ package utils
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"math/rand"
 	"reflect"
 	"strings"
@@ -218,7 +217,6 @@ func ParseUser(ctx context.Context, pool *pgxpool.Pool, user *types.User, s *dis
 
 	parsedUserBots := []types.UserBot{}
 	for _, bot := range userBots {
-		fmt.Println(bot)
 		userObj, err := GetDiscordUser(s, redisCache, ctx, bot.BotID)
 
 		if err != nil {
