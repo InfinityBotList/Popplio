@@ -1541,6 +1541,54 @@ print(req.json())
 		w.Write(b)
 	})
 
+	docs.AddDocs("GET", "/bots/{id}/seo", "get_seo_bot", "Get SEO Bot", "Gets the SEO form of a bot for embed/search purposes", []docs.Paramater{
+		{
+			Name:     "id",
+			In:       "path",
+			Required: true,
+			Schema:   docs.IdSchema,
+		},
+	}, []string{"System"}, nil, types.SEOBot{}, []string{})
+	r.Get("/bots/{id}/seo", rateLimitWrap(15, 1*time.Minute, "gbot", func(w http.ResponseWriter, r *http.Request) {
+		name := chi.URLParam(r, "id")
+
+		if name == "" {
+			apiDefaultReturn(http.StatusBadRequest, w, r)
+			return
+		}
+
+		var botId string
+		var short string
+		err := pool.QueryRow(ctx, "SELECT bot_id, short FROM bots WHERE (bot_id = $1 OR vanity = $1 OR name = $1)", name).Scan(&botId, &short)
+
+		if err != nil {
+			log.Error(err)
+			apiDefaultReturn(http.StatusNotFound, w, r)
+			return
+		}
+
+		bot, err := utils.GetDiscordUser(metro, redisCache, ctx, botId)
+
+		if err != nil {
+			log.Error(err)
+			apiDefaultReturn(http.StatusInternalServerError, w, r)
+			return
+		}
+
+		bytes, err := json.Marshal(types.SEOBot{
+			User:  bot,
+			Short: short,
+		})
+
+		if err != nil {
+			log.Error(err)
+			apiDefaultReturn(http.StatusInternalServerError, w, r)
+			return
+		}
+
+		w.Write(bytes)
+	}))
+
 	docs.AddDocs("GET", "/bots/{id}", "get_bot", "Get Bot", "Gets a bot by id or name. This does not have ratelimits at this time"+`
 
 - `+backTick+backTick+`external_source`+backTick+backTick+` shows the source of where a bot came from (Metro Reviews etc etc.). If this is set to `+backTick+backTick+`metro`+backTick+backTick+`, then `+backTick+backTick+`list_source`+backTick+backTick+` will be set to the metro list ID where it came from`+`

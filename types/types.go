@@ -65,6 +65,12 @@ type Bot struct {
 	Date                     pgtype.Timestamptz `db:"date" json:"date"`
 }
 
+// SEO Bot (minified bot for seo purposes
+type SEOBot struct {
+	User  *DiscordUser `json:"user"`
+	Short string       `json:"short"`
+}
+
 type AllBots struct {
 	Count    uint64 `json:"count"`
 	PerPage  uint64 `json:"per_page"`
