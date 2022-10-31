@@ -53,6 +53,13 @@ func createBucketMods() {
 		}
 	}
 
+	bucketModerators["gpack"] = func(r *http.Request) moderatedBucket {
+		return moderatedBucket{
+			BucketName: "gpack",
+			Bypass:     true,
+		}
+	}
+
 	bucketModerators["glstats"] = func(r *http.Request) moderatedBucket {
 		return moderatedBucket{
 			BucketName: "glstats",

@@ -200,7 +200,7 @@ type User struct {
 	VoteBanned bool `db:"vote_banned" json:"vote_banned"`
 	Admin      bool `db:"admin" json:"admin"`
 
-	UserBots []*UserBot `json:"user_bots"` // Must be handled internally
+	UserBots []UserBot `json:"user_bots"` // Must be handled internally
 }
 
 type VoteInfo struct {

@@ -3,6 +3,7 @@ package utils
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"math/rand"
 	"reflect"
 	"strings"
@@ -201,7 +202,7 @@ func ParseUser(ctx context.Context, pool *pgxpool.Pool, user *types.User, s *dis
 
 	user.User = userObj
 
-	userBotsRows, err := pool.Query(ctx, "SELECT "+userBotColsStr+" FROM bots WHERE (owner = $1 OR $2 && additional_owners)", user.ID, []string{user.ID})
+	userBotsRows, err := pool.Query(ctx, "SELECT "+userBotColsStr+" FROM bots WHERE owner = $1 OR additional_owners && $2", user.ID, []string{user.ID})
 
 	if err != nil {
 		return err
@@ -215,8 +216,9 @@ func ParseUser(ctx context.Context, pool *pgxpool.Pool, user *types.User, s *dis
 		return err
 	}
 
-	parsedUserBots := []*types.UserBot{}
+	parsedUserBots := []types.UserBot{}
 	for _, bot := range userBots {
+		fmt.Println(bot)
 		userObj, err := GetDiscordUser(s, redisCache, ctx, bot.BotID)
 
 		if err != nil {
@@ -225,7 +227,7 @@ func ParseUser(ctx context.Context, pool *pgxpool.Pool, user *types.User, s *dis
 		}
 
 		bot.User = userObj
-		parsedUserBots = append(parsedUserBots, &bot)
+		parsedUserBots = append(parsedUserBots, bot)
 	}
 
 	user.UserBots = parsedUserBots
@@ -427,8 +429,9 @@ func GetCols(s any) []string {
 
 	for _, f := range reflect.VisibleFields(refType) {
 		db := f.Tag.Get("db")
+		reflectOpts := f.Tag.Get("reflect")
 
-		if db == "-" || db == "" {
+		if db == "-" || db == "" || reflectOpts == "ignore" {
 			continue
 		}
 

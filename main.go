@@ -283,15 +283,6 @@ func rateLimitWrap(reqs int, t time.Duration, bucket string, fn http.HandlerFunc
 
 		globalBucket.Global = true // Just in case
 
-		if strings.HasSuffix(r.Header.Get("Origin"), "infinitybots.gg") || strings.HasPrefix(r.Header.Get("Origin"), "localhost:") {
-			w.Header().Set("Access-Control-Allow-Origin", r.Header.Get("Origin"))
-			w.Header().Set("Access-Control-Allow-Credentials", "true")
-		} else {
-			w.Header().Set("Access-Control-Allow-Origin", "*")
-		}
-		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
-		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE")
-
 		w.Header().Set("X-Ratelimit-Bucket", reqBucket.BucketName)
 		w.Header().Set("X-Ratelimit-Bucket-Global", globalBucket.BucketName)
 
@@ -300,11 +291,6 @@ func rateLimitWrap(reqs int, t time.Duration, bucket string, fn http.HandlerFunc
 
 		w.Header().Set("X-Ratelimit-Bucket-Global-Reqs-Allowed-Second", strconv.FormatFloat(globalBucket.Time.Seconds(), 'g', -1, 64))
 		w.Header().Set("X-Ratelimit-Bucket-Reqs-Allowed-Second", strconv.FormatFloat(reqBucket.Time.Seconds(), 'g', -1, 64))
-
-		if r.Method == "OPTIONS" {
-			w.Write([]byte(""))
-			return
-		}
 
 		// Get ratelimit from redis
 		var id string
@@ -360,6 +346,26 @@ func rateLimitWrap(reqs int, t time.Duration, bucket string, fn http.HandlerFunc
 	}
 }
 
+func corsMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if strings.HasSuffix(r.Header.Get("Origin"), "infinitybots.gg") || strings.HasPrefix(r.Header.Get("Origin"), "localhost:") {
+			w.Header().Set("Access-Control-Allow-Origin", r.Header.Get("Origin"))
+			w.Header().Set("Access-Control-Allow-Credentials", "true")
+		} else {
+			w.Header().Set("Access-Control-Allow-Origin", "*")
+		}
+		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
+		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE")
+
+		if r.Method == "OPTIONS" {
+			w.Write([]byte{})
+			return
+		}
+
+		next.ServeHTTP(w, r)
+	})
+}
+
 type Hello struct {
 	Message string `json:"message"`
 	Docs    string `json:"docs"`
@@ -384,6 +390,7 @@ func main() {
 	r := chi.NewRouter()
 
 	// A good base middleware stack
+	r.Use(corsMiddleware)
 	r.Use(middleware.RequestID)
 	r.Use(middleware.RealIP)
 	r.Use(middleware.Logger)
@@ -549,7 +556,6 @@ func main() {
 		}
 
 		w.Header().Set("Content-Type", "application/json")
-		w.Header().Set("Access-Control-Allow-Origin", "*")
 
 		w.Write(bytes)
 	})
@@ -2167,6 +2173,11 @@ print(req.json())
 			if err != nil {
 				log.Error(err)
 				apiDefaultReturn(http.StatusInternalServerError, w, r)
+				return
+			}
+
+			if len(reminders) == 0 {
+				apiDefaultReturn(http.StatusNotFound, w, r)
 				return
 			}
 
