@@ -188,7 +188,6 @@ func bucketHandle(bucket moderatedBucket, id string, w http.ResponseWriter, r *h
 
 		if err != nil {
 			log.Error(err)
-			w.Header().Set("Content-Type", "application/json")
 			apiDefaultReturn(http.StatusInternalServerError, w, r)
 			return false
 		}
@@ -198,7 +197,6 @@ func bucketHandle(bucket moderatedBucket, id string, w http.ResponseWriter, r *h
 
 	if err != nil {
 		log.Error(err)
-		w.Header().Set("Content-Type", "application/json")
 		apiDefaultReturn(http.StatusInternalServerError, w, r)
 		return false
 	}
@@ -207,7 +205,6 @@ func bucketHandle(bucket moderatedBucket, id string, w http.ResponseWriter, r *h
 
 	if err != nil {
 		log.Error(err)
-		w.Header().Set("Content-Type", "application/json")
 		apiDefaultReturn(http.StatusInternalServerError, w, r)
 		return false
 	}
@@ -218,7 +215,6 @@ func bucketHandle(bucket moderatedBucket, id string, w http.ResponseWriter, r *h
 	}
 
 	if vInt > bucket.Requests {
-		w.Header().Set("Content-Type", "application/json")
 		retryAfter := redisCache.TTL(ctx, rlKey).Val()
 
 		if bucket.Global {
@@ -303,7 +299,6 @@ func rateLimitWrap(reqs int, t time.Duration, bucket string, fn http.HandlerFunc
 
 				if idCheck == nil {
 					// Bot does not exist, return
-					w.Header().Set("Content-Type", "application/json")
 					w.WriteHeader(http.StatusForbidden)
 					w.Write([]byte("{\"message\":\"Invalid API token\",\"error\":true}"))
 					return
@@ -315,7 +310,6 @@ func rateLimitWrap(reqs int, t time.Duration, bucket string, fn http.HandlerFunc
 
 				if idCheck == nil {
 					// Bot does not exist, return
-					w.Header().Set("Content-Type", "application/json")
 					w.WriteHeader(http.StatusForbidden)
 					w.Write([]byte("{\"message\":\"Invalid API token\",\"error\":true}"))
 					return
@@ -339,8 +333,6 @@ func rateLimitWrap(reqs int, t time.Duration, bucket string, fn http.HandlerFunc
 		if ok := bucketHandle(reqBucket, id, w, r); !ok {
 			return
 		}
-
-		w.Header().Set("Content-Type", "application/json")
 
 		fn(w, r)
 	}
@@ -372,6 +364,8 @@ func corsMiddleware(next http.Handler) http.Handler {
 			r.Header.Set("Authorization", "Bot "+r.Header.Get("Bot-Auth"))
 		}
 
+		w.Header().Set("Content-Type", "application/json")
+
 		next.ServeHTTP(w, r)
 	})
 }
@@ -389,7 +383,6 @@ func main() {
 	docs.AddTag("Bots", "These API endpoints are related to bots on IBL")
 	docs.AddTag("Users", "These API endpoints are related to users on IBL")
 	docs.AddTag("Votes", "These API endpoints are related to user votes on IBL")
-	docs.AddTag("Variants", "These API endpoints are variants of other APIs or that do similar/same things as other API")
 
 	docs.AddSecuritySchema("User", "User-Auth", "Requires a user token. Usually must be prefixed with `User `. Note that both ``User-Auth`` and ``Authorization`` headers are supported")
 	docs.AddSecuritySchema("Bot", "Bot-Auth", "Requires a bot token. Can be optionally prefixed. Note that both ``Bot-Auth`` and ``Authorization`` headers are supported")
@@ -481,7 +474,6 @@ func main() {
 		Resp:        helloWorldB,
 	})
 	r.Get("/", func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
 		w.Write([]byte(helloWorld))
 	})
 
@@ -505,7 +497,6 @@ func main() {
 	})
 	r.Get("/_duser/{id}/clear", func(w http.ResponseWriter, r *http.Request) {
 		id := chi.URLParam(r, "id")
-		w.Header().Set("Content-Type", "application/json")
 		redisCache.Del(ctx, "uobj:"+id)
 		w.Write([]byte(success))
 	})
@@ -628,8 +619,6 @@ func main() {
 			return
 		}
 
-		w.Header().Set("Content-Type", "application/json")
-
 		w.Write(bytes)
 	})
 
@@ -643,9 +632,6 @@ func main() {
 		Resp:        types.OpenAPI{},
 	})
 	r.Get("/openapi", func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		w.Header().Set("Access-Control-Allow-Origin", "*")
-
 		openapi, err := json.Marshal(docs.GetSchema())
 
 		if err != nil {
@@ -664,6 +650,8 @@ func main() {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
+
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
 
 		t.Execute(w, nil)
 	})
@@ -968,39 +956,6 @@ print(req.json())
 		Resp:     types.ApiError{},
 		AuthType: []string{"Bot"},
 	})
-	docs.Route(&docs.Doc{
-		Method:  "POST",
-		Path:    "/bots/{bot_id}/stats",
-		OpId:    "post_stats",
-		Summary: "Post Bot Stats (Variant/Alternative URL)",
-		Description: `
-This endpoint can be used to post the stats of a bot. This alternative URL takes in a Bot ID as well for highly pedantic etc. people to use.
-
-**Note that only the token is checked, not the bot ID at this time**
-
-**Example:**
-
-` + backTick + backTick + backTick + `py
-import requests
-
-req = requests.post(f"{API_URL}/bots/{bot_id}/stats", json={"servers": 4000, "shards": 2}, headers={"Authorization": "{TOKEN}"})
-
-print(req.json())
-` + backTick + backTick + backTick + "\n\n",
-		Tags: []string{"Variant"},
-		Params: []docs.Parameter{
-			{
-				Name:        "id",
-				Description: "The ID of the bot.",
-				Required:    true,
-				In:          "path",
-				Schema:      docs.IdSchema,
-			},
-		},
-		Req:      types.BotStatsDocs{},
-		Resp:     types.ApiError{},
-		AuthType: []string{"Bot"},
-	})
 	statsFn := func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == "GET" || r.Method == "DELETE" {
 			apiDefaultReturn(http.StatusMethodNotAllowed, w, r)
@@ -1119,8 +1074,7 @@ print(req.json())
 
 	r.HandleFunc("/bots/stats", rateLimitWrap(10, 1*time.Minute, "stats", statsFn))
 
-	// Note that only token matters for this endpoint at this time
-	// TODO: Handle bot id as well
+	// Intentionally not documented, variant endpoint
 	r.HandleFunc("/bots/{id}/stats", rateLimitWrap(10, 1*time.Minute, "stats", statsFn))
 
 	docs.Route(&docs.Doc{
@@ -2477,7 +2431,6 @@ Gets a bot by id or name
 	adp := DummyAdapter{}
 
 	r.NotFound(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
 		apiDefaultReturn(http.StatusNotFound, w, r)
 	})
 
