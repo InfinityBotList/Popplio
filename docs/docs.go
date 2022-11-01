@@ -2,6 +2,7 @@ package docs
 
 import (
 	"embed"
+	"fmt"
 	"popplio/types"
 	"reflect"
 	"strings"
@@ -230,7 +231,7 @@ func init() {
 		panic(err)
 	}
 
-	api.Components.Schemas["ApiError"] = badRequestSchema
+	api.Components.Schemas["types.ApiError"] = badRequestSchema
 }
 
 func AddTag(name, description string) {
@@ -251,30 +252,26 @@ func AddSecuritySchema(id string, description string) {
 
 func AddDocs(method string, pathStr string, opId string, summary string, description string, params []Paramater, tags []string, req any, resp any, authType []string) {
 	// Generate schemaName, taking out bad things
-	schemaName := strings.ReplaceAll(reflect.TypeOf(resp).String(), "[", "-")
-
-	schemaName = strings.ReplaceAll(schemaName, "]", "-")
-	schemaName = strings.ReplaceAll(schemaName, " ", "")
-	schemaName = strings.ReplaceAll(schemaName, "{", "")
-	schemaName = strings.ReplaceAll(schemaName, "}", "")
-
-	// Remove last - if it exists
-	schemaName = strings.TrimSuffix(schemaName, "-")
+	schemaName := reflect.TypeOf(resp).String()
 
 	schemaName = strings.ReplaceAll(schemaName, "docs.", "")
 
-	if _, ok := api.Components.Schemas[schemaName]; !ok {
+	if schemaName != "types.ApiError" {
+		fmt.Println(schemaName)
 
-		schemaRef, err := openapi3gen.NewSchemaRefForValue(resp, nil)
+		if _, ok := api.Components.Schemas[schemaName]; !ok {
+			schemaRef, err := openapi3gen.NewSchemaRefForValue(resp, nil)
 
-		if err != nil {
-			panic(err)
+			if err != nil {
+				panic(err)
+			}
+
+			api.Components.Schemas[schemaName] = schemaRef
 		}
-
-		api.Components.Schemas[schemaName] = schemaRef
 	}
 
 	// Add in requests
+	var reqBodyRef *ref
 	if req != nil {
 		schemaRef, err := openapi3gen.NewSchemaRefForValue(req, nil)
 
@@ -282,8 +279,12 @@ func AddDocs(method string, pathStr string, opId string, summary string, descrip
 			panic(err)
 		}
 
-		api.Components.RequestBodies["method-"+schemaName] = reqBody{
-			Description: "Request body",
+		reqSchemaName := reflect.TypeOf(req).String()
+
+		fmt.Println("REQUEST:", reqSchemaName)
+
+		api.Components.RequestBodies[method+"_"+reqSchemaName] = reqBody{
+			Description: "Request body: " + reflect.TypeOf(req).String(),
 			Required:    true,
 			Content: map[string]content{
 				"application/json": {
@@ -291,19 +292,12 @@ func AddDocs(method string, pathStr string, opId string, summary string, descrip
 				},
 			},
 		}
-	}
 
-	if _, ok := api.Paths[pathStr]; !ok {
-		api.Paths[pathStr] = path{}
-	}
+		if _, ok := api.Paths[pathStr]; !ok {
+			api.Paths[pathStr] = path{}
+		}
 
-	refName := "#/components/schemas/" + schemaName
-	reqName := "#/components/requestBodies/" + "method-" + schemaName
-
-	var reqBody *ref
-
-	if req != nil {
-		reqBody = &ref{Ref: reqName}
+		reqBodyRef = &ref{Ref: "#/components/requestBodies/" + method + "_" + reqSchemaName}
 	}
 
 	operationData := &operation{
@@ -312,14 +306,14 @@ func AddDocs(method string, pathStr string, opId string, summary string, descrip
 		Description: description,
 		ID:          opId,
 		Parameters:  params,
-		RequestBody: reqBody,
+		RequestBody: reqBodyRef,
 		Responses: map[string]response{
 			"200": {
 				Description: "Success",
 				Content: map[string]schemaResp{
 					"application/json": {
 						Schema: ref{
-							Ref: refName,
+							Ref: "#/components/schemas/" + schemaName,
 						},
 					},
 				},
@@ -329,7 +323,7 @@ func AddDocs(method string, pathStr string, opId string, summary string, descrip
 				Content: map[string]schemaResp{
 					"application/json": {
 						Schema: ref{
-							Ref: "#/components/schemas/ApiError",
+							Ref: "#/components/schemas/types.ApiError",
 						},
 					},
 				},
@@ -344,7 +338,6 @@ func AddDocs(method string, pathStr string, opId string, summary string, descrip
 	operationData.Security = []map[string][]string{}
 
 	for _, auth := range authType {
-
 		operationData.Security = append(operationData.Security, map[string][]string{
 			auth: {},
 		})

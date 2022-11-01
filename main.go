@@ -575,7 +575,7 @@ func main() {
 		w.Write(bytes)
 	})
 
-	docs.AddDocs("GET", "/openapi", "openapi", "Get OpenAPI", "Gets the OpenAPI spec", []docs.Paramater{}, []string{"System"}, nil, map[string]any{}, []string{})
+	docs.AddDocs("GET", "/openapi", "openapi", "Get OpenAPI", "Gets the OpenAPI spec", []docs.Paramater{}, []string{"System"}, nil, types.OpenAPI{}, []string{})
 	r.Get("/openapi", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.Header().Set("Access-Control-Allow-Origin", "*")
@@ -985,9 +985,9 @@ req = requests.post(f"{API_URL}/bots/stats", json={"servers": 4000, "shards": 2}
 print(req.json())
 `+backTick+backTick+backTick+`
 
-`, []docs.Paramater{}, []string{"Bots"}, types.BotStatsTyped{}, types.ApiError{}, []string{"Bot"})
+`, []docs.Paramater{}, []string{"Bots"}, types.BotStatsDocs{}, types.ApiError{}, []string{"Bot"})
 
-	docs.AddDocs("POST", "/bots/{id}/stats", "post_stats_variant2", "Post New Stats", `
+	docs.AddDocs("POST", "/bots/{id}/stats", "post_stats_variant2", "Post New Stats (2)", `
 This endpoint can be used to post the stats of a bot.
 
 The variation`+backTick+`/bots/{bot_id}/stats`+backTick+` can be used to post the stats of a bot. **Note that only the token is checked, not the bot ID at this time**
@@ -1009,7 +1009,7 @@ print(req.json())
 			Required: true,
 			Schema:   docs.IdSchema,
 		},
-	}, []string{"Variants"}, types.BotStatsTyped{}, types.ApiError{}, []string{"Bot"})
+	}, []string{"Variants"}, types.BotStatsDocs{}, types.ApiError{}, []string{"Bot"})
 
 	r.HandleFunc("/bots/stats", rateLimitWrap(10, 1*time.Minute, "stats", statsFn))
 
@@ -1780,7 +1780,7 @@ print(req.json())
 				Required: true,
 				Schema:   docs.IdSchema,
 			},
-		}, []string{"Bots"}, nil, []types.Review{}, []string{})
+		}, []string{"Bots"}, nil, types.ReviewList{}, []string{})
 	r.Get("/bots/{id}/reviews", rateLimitWrap(10, 1*time.Minute, "greview", func(w http.ResponseWriter, r *http.Request) {
 		rows, err := pool.Query(ctx, "SELECT "+reviewColsStr+" FROM reviews WHERE bot_id = $1", chi.URLParam(r, "id"))
 
@@ -1800,7 +1800,11 @@ print(req.json())
 			return
 		}
 
-		bytes, err := json.Marshal(reviews)
+		var allReviews types.ReviewList = types.ReviewList{
+			Reviews: reviews,
+		}
+
+		bytes, err := json.Marshal(allReviews)
 
 		if err != nil {
 			log.Error(err)
@@ -1818,7 +1822,6 @@ print(req.json())
 
 	docs.AddDocs("POST", "/webhook-test", "webhook_test", "Test Webhook", "Sends a test webhook to allow testing your vote system. **All fields are mandatory for test bot**",
 		[]docs.Paramater{}, []string{"System"}, types.WebhookPost{}, types.ApiError{}, []string{})
-
 	r.Post("/webhook-test", rateLimitWrap(7, 3*time.Minute, "webtest", func(w http.ResponseWriter, r *http.Request) {
 		defer r.Body.Close()
 

@@ -132,6 +132,10 @@ type Review struct {
 	Flagged     bool           `db:"flagged" json:"flagged"`
 }
 
+type ReviewList struct {
+	Reviews []Review `json:"reviews"`
+}
+
 type UserBot struct {
 	BotID              string       `db:"bot_id" json:"bot_id"`
 	User               *DiscordUser `db:"-" json:"user"`
@@ -226,29 +230,10 @@ type NotifGet struct {
 }
 
 // For documentation purposes
-type BotStatsTyped struct {
-	// Fields are ordered in the way they are searched
-	// The simple servers, shards way
-	Servers *uint `json:"servers"`
-	Shards  *uint `json:"shards"`
-
-	// Fates List uses this (server count)
-	GuildCount *uint `json:"guild_count"`
-
-	// Top.gg uses this (server count)
-	ServerCount *uint `json:"server_count"`
-
-	// Top.gg and Fates List uses this (shard count)
-	ShardCount *uint `json:"shard_count"`
-
-	// Rovel Discord List and dlist.gg (kinda) uses this (server count)
-	Count *uint `json:"count"`
-
-	// Discordbotlist.com uses this (server count)
-	Guilds *uint `json:"guilds"`
-
-	Users     *uint `json:"users"`
-	UserCount *uint `json:"user_count"`
+type BotStatsDocs struct {
+	Servers   int `json:"servers"`
+	Shards    int `json:"shards"`
+	UserCount int `json:"user_count"`
 }
 
 // This uses any to allow bad stats to still work
@@ -581,3 +566,6 @@ type ListStatsBot struct {
 type ListStats struct {
 	Bots []ListStatsBot `json:"bots"`
 }
+
+// For documentation
+type OpenAPI struct{}
