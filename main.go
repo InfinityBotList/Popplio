@@ -305,7 +305,7 @@ func rateLimitWrap(reqs int, t time.Duration, bucket string, fn http.HandlerFunc
 					// Bot does not exist, return
 					w.Header().Set("Content-Type", "application/json")
 					w.WriteHeader(http.StatusForbidden)
-					w.Write([]byte("{\"error\":\"Invalid API token\"}"))
+					w.Write([]byte("{\"message\":\"Invalid API token\",\"error\":true}"))
 					return
 				}
 
@@ -317,7 +317,7 @@ func rateLimitWrap(reqs int, t time.Duration, bucket string, fn http.HandlerFunc
 					// Bot does not exist, return
 					w.Header().Set("Content-Type", "application/json")
 					w.WriteHeader(http.StatusForbidden)
-					w.Write([]byte("{\"error\":\"Invalid API token\"}"))
+					w.Write([]byte("{\"message\":\"Invalid API token\",\"error\":true}"))
 					return
 				}
 
