@@ -1,6 +1,18 @@
-<!DOCTYPE html>
+<!doctype html> <!-- Important: must specify -->
 <html>
-    <redoc spec-url="/openapi"></redoc>
-
-    <script src="https://cdn.redoc.ly/redoc/latest/bundles/redoc.standalone.js"> </script>
+<head>
+  <meta charset="utf-8"> <!-- Important: rapi-doc uses utf8 characters -->
+  <script type="module" src="https://unpkg.com/rapidoc/dist/rapidoc-min.js"></script>
+</head>
+<body>
+  <rapi-doc
+    spec-url="/openapi"
+    theme = "dark"
+    render-style="read"
+    info-description-headings-in-navbar="true"
+    allow-spec-url-load="false"
+    allow-spec-file-load="false"
+    persist-auth="true"
+  > </rapi-doc>
+</body>
 </html>
