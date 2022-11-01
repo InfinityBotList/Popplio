@@ -52,7 +52,7 @@ window.addEventListener('DOMContentLoaded', () => {
 
     // Add second showMenu always on top of page
     let showMenuBottom = document.createElement("button");
-    showMenuBottom.style = "position:fixed;top:0;right:3px;border:none;background:none;font-size:2em;color:white;";
+    showMenuBottom.style = "position:fixed;top:0;right:3px;border:none;background:none;font-size:2em;color:white;cursor:pointer;z-index:9999";
     showMenuBottom.classList.add("mobile-menu")
     showMenuBottom.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>`;
     showMenuBottom.ariaLabel = "Show Menu";
