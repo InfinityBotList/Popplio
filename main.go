@@ -957,7 +957,7 @@ print(req.json())
 		Tags:     []string{"Bots"},
 		Req:      types.BotStatsDocs{},
 		Resp:     types.ApiError{},
-		AuthType: []string{"Bots"},
+		AuthType: []string{"Bot"},
 	})
 	docs.Route(&docs.Doc{
 		Method:  "POST",
@@ -978,7 +978,7 @@ req = requests.post(f"{API_URL}/bots/{bot_id}/stats", json={"servers": 4000, "sh
 
 print(req.json())
 ` + backTick + backTick + backTick + "\n\n",
-		Tags: []string{"Bots"},
+		Tags: []string{"Variant"},
 		Params: []docs.Parameter{
 			{
 				Name:        "id",
@@ -990,7 +990,7 @@ print(req.json())
 		},
 		Req:      types.BotStatsDocs{},
 		Resp:     types.ApiError{},
-		AuthType: []string{"Variant"},
+		AuthType: []string{"Bot"},
 	})
 	statsFn := func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == "GET" || r.Method == "DELETE" {

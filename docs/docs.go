@@ -387,7 +387,7 @@ func Route(doc *Doc) {
 	}
 
 	if len(doc.AuthType) == 0 {
-		doc.AuthType = []string{"None"}
+		doc.AuthType = []string{}
 	}
 
 	operationData.Security = []map[string][]string{}
