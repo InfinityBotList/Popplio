@@ -27,7 +27,7 @@ window.addEventListener('DOMContentLoaded', () => {
     // Inject CSS
     let style = document.createElement('style');
     
-    style.innerHTML = `.mobile-menu:hover {opacity: 0.8 !important;}`;
+    style.innerHTML = `.mobile-menu:hover {opacity:0.8!important;}`;
     shadow.appendChild(style);
 
     // Add all mobile navigation elements
@@ -47,12 +47,12 @@ window.addEventListener('DOMContentLoaded', () => {
 
     // Close button
     menuTargets.push({
-        "el": `<span style="display: flex; items-align: center; margin-top: 30px !important"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg><span style="margin-left: 3px;">Close</span></span>`
+        "el": `<span style="display:flex;items-align:center;margin-top:30px!important"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg><span style="margin-left:3px;">Close</span></span>`
     })
 
     // Add second showMenu always on top of page
     let showMenuBottom = document.createElement("button");
-    showMenuBottom.style = "position: fixed; top: 0; right: 3px; border: none; background: none; font-size: 2em; color: white;";
+    showMenuBottom.style = "position:fixed;top:0;right:3px;border:none;background:none;font-size:2em;color:white;";
     showMenuBottom.classList.add("mobile-menu")
     showMenuBottom.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>`;
     showMenuBottom.ariaLabel = "Show Menu";
@@ -62,13 +62,13 @@ window.addEventListener('DOMContentLoaded', () => {
 
         // Create simple navbar below the main header
         menu = document.createElement("div");
-        menu.style = fullScreen+"background: rgba(0, 0, 0, 0.8); z-index: 9999; display: none;";
+        menu.style = fullScreen+"background:rgba(0, 0, 0, 0.8);z-index:9999;display:none;";
 
         let menuContent = document.createElement("div");
-        menuContent.style = fullScreen+"display: flex; flex-direction: column; justify-content: center; align-items: center;";
+        menuContent.style = fullScreen+"display:flex;flex-direction:column;justify-content:center;align-items:center";
 
         let menuContentList = document.createElement("ul");
-        menuContentList.style = "list-style: none; padding: 0; margin: 0;";
+        menuContentList.style = "list-style:none;padding:0;margin:0;";
 
         menuTargets.forEach(el => {
             let menuContentListItem = document.createElement("li");
@@ -76,7 +76,7 @@ window.addEventListener('DOMContentLoaded', () => {
             menuContentListItem.classList.add("mobile-menu")
 
             let menuContentListItemLink = document.createElement("a");
-            menuContentListItemLink.style = "color: white; text-decoration: none; font-size: 16px;";
+            menuContentListItemLink.style = "color:white;text-decoration:none;font-size:16px";
             menuContentListItemLink.href = "javascript:void(0);"
             menuContentListItemLink.innerHTML = el.el;
             menuContentListItemLink.onclick = () => {
