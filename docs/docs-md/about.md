@@ -6,7 +6,7 @@ Hey there 👋, welcome to our Official Documentation!
 
 #### Navigation
 
-If you want to just see the list of endpoints, click [here](#servers).
+If you want to just see the list of endpoints, click [here](#operations-top).
 
 #### I'm busy son!
 

@@ -2,19 +2,26 @@
 <html>
 <head>
   <meta charset="utf-8"> <!-- Important: rapi-doc uses utf8 characters -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <script type="module" src="https://unpkg.com/rapidoc/dist/rapidoc-min.js"></script>
 </head>
 <body>
   <rapi-doc
+    id="api"
     spec-url="/openapi"
-    theme = "dark"
-    render-style="read"
+    theme="dark"
+    render-style={{.RenderType}}
     info-description-headings-in-navbar="true"
     allow-spec-url-load="false"
     allow-spec-file-load="false"
     persist-auth="true"
     allow-spec-file-download="true"
+    allow-server-selection="false"
   > 
+    <script>
+      {{.JS}}
+    </script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/iconify/3.0.0/iconify.min.js" integrity="sha512-EeYPY+3nx/BPm2ZgRlHllRBsaFLIgpYXJYxXjPBJGaxE8RxBhn/X9cI3eG9Z6Iin72om/zZ/TX+aUb4RImKDTQ==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
   </rapi-doc>
 </body>
 </html>

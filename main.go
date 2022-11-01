@@ -28,15 +28,38 @@ import (
 	ua "github.com/mileusna/useragent"
 	log "github.com/sirupsen/logrus"
 
+	_ "embed"
+
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
+	"github.com/tdewolff/minify/v2"
+	"github.com/tdewolff/minify/v2/css"
+	"github.com/tdewolff/minify/v2/js"
 )
+
+//go:embed html/ext.js
+var extUnminified string
+
+func init() {
+	m := minify.New()
+	m.AddFunc("application/javascript", js.Minify)
+	m.AddFunc("text/css", css.Minify)
+
+	strWriter := &strings.Builder{}
+
+	strReader := strings.NewReader(extUnminified)
+
+	if err := m.Minify("application/javascript", strWriter, strReader); err != nil {
+		panic(err)
+	}
+
+	docsJs = strWriter.String()
+}
 
 var json = jsoniter.ConfigCompatibleWithStandardLibrary
 
 const (
-	mongoUrl   = "mongodb://127.0.0.1:27017/infinity" // Is already public in 10 other places so
-	docsSite   = "https://docs.botlist.site"
+	docsSite   = "https://spider.infinitybotlist.com/docs"
 	mainSite   = "https://infinitybotlist.com"
 	statusPage = "https://status.botlist.site"
 	apiBot     = "https://discord.com/api/oauth2/authorize?client_id=818419115068751892&permissions=140898593856&scope=bot%20applications.commands"
@@ -81,6 +104,8 @@ var (
 	pool       *pgxpool.Pool
 	backupPool *pgxpool.Pool
 	ctx        context.Context
+
+	docsJs string
 
 	// This is used when we need to moderate whether or not to ratelimit a request (such as on a combined endpoint like gvotes)
 	bucketModerators map[string]func(r *http.Request) moderatedBucket = make(map[string]func(r *http.Request) moderatedBucket)
@@ -401,7 +426,7 @@ func main() {
 	// Set a timeout value on the request context (ctx), that will signal
 	// through ctx.Done() that the request has timed out and further
 	// processing should be stopped.
-	r.Use(middleware.Timeout(60 * time.Second))
+	r.Use(middleware.Timeout(30 * time.Second))
 
 	// Init redisCache
 	rOptions, err := redis.ParseURL("redis://localhost:6379/12")
@@ -653,7 +678,30 @@ func main() {
 
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
 
-		t.Execute(w, nil)
+		var templateData struct {
+			RenderType string
+			Mobile     bool
+			JS         template.JS
+		}
+
+		templateData.RenderType = "read"
+		templateData.JS = template.JS(docsJs)
+
+		if r.Header.Get("User-Agent") != "" {
+			uaD := ua.Parse(r.Header.Get("User-Agent"))
+
+			if uaD.Mobile || r.URL.Query().Get("debug-view") == "true" {
+				templateData.Mobile = true
+			}
+		}
+
+		err = t.Execute(w, templateData)
+
+		if err != nil {
+			log.Error(err)
+			w.Write([]byte(err.Error()))
+			return
+		}
 	})
 
 	docs.Route(&docs.Doc{
@@ -2066,7 +2114,7 @@ Gets a bot by id or name
 	r.Patch("/_protozoa/profile/{id}", rateLimitWrap(7, 1*time.Minute, "profile_update", func(w http.ResponseWriter, r *http.Request) {
 		id := chi.URLParam(r, "id")
 
-		// Fetch auth from mongodb
+		// Fetch auth from postgresdb
 		if r.Header.Get("Authorization") == "" {
 			apiDefaultReturn(http.StatusUnauthorized, w, r)
 			return
@@ -2142,7 +2190,7 @@ Gets a bot by id or name
 			return
 		}
 
-		// Fetch auth from mongodb
+		// Fetch auth from postgresdb
 		if r.Header.Get("Authorization") == "" {
 			apiDefaultReturn(http.StatusUnauthorized, w, r)
 			return
@@ -2271,7 +2319,7 @@ Gets a bot by id or name
 			return
 		}
 
-		// Fetch auth from mongodb
+		// Fetch auth from postgresdb
 		if r.Header.Get("Authorization") == "" {
 			apiDefaultReturn(http.StatusUnauthorized, w, r)
 			return
@@ -2330,7 +2378,7 @@ Gets a bot by id or name
 			return
 		}
 
-		// Fetch auth from mongodb
+		// Fetch auth from postgresdb
 		if r.Header.Get("Authorization") == "" {
 			apiDefaultReturn(http.StatusUnauthorized, w, r)
 			return
@@ -2345,7 +2393,7 @@ Gets a bot by id or name
 		}
 
 		if r.Method == "GET" {
-			// Fetch reminder from mongodb
+			// Fetch reminder from postgresdb
 			rows, err := pool.Query(ctx, "SELECT "+silverpeltColsStr+" FROM silverpelt WHERE user_id = $1", id)
 
 			if err != nil {

@@ -19,7 +19,7 @@ To use the embed, you can insert the following link as an IFrame or Image into y
 ---
 
 ## Preview IFrame
-![Sample Widget](https://infinitybotlist.com/bots/815553000470478850/widget?size=large)
+![Sample Widget](https://infinitybots.gg/bots/infinity-bot-list/widget?size=large)
 
 ---
 
