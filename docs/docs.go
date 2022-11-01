@@ -241,10 +241,10 @@ func AddTag(name, description string) {
 	})
 }
 
-func AddSecuritySchema(id string, description string) {
+func AddSecuritySchema(id, header, description string) {
 	api.Components.Security[id] = security{
 		Type:        "apiKey",
-		Name:        "Authorization",
+		Name:        header,
 		In:          "header",
 		Description: description,
 	}

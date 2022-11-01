@@ -354,12 +354,22 @@ func corsMiddleware(next http.Handler) http.Handler {
 		} else {
 			w.Header().Set("Access-Control-Allow-Origin", "*")
 		}
-		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
+		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization, User-Auth, Bot-Auth")
 		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE")
 
 		if r.Method == "OPTIONS" {
 			w.Write([]byte{})
 			return
+		}
+
+		if r.Header.Get("User-Auth") != "" {
+			if strings.HasPrefix(r.Header.Get("User-Auth"), "User ") {
+				r.Header.Set("Authorization", r.Header.Get("User-Auth"))
+			} else {
+				r.Header.Set("Authorization", "User "+r.Header.Get("User-Auth"))
+			}
+		} else if r.Header.Get("Bot-Auth") != "" {
+			r.Header.Set("Authorization", "Bot "+r.Header.Get("Bot-Auth"))
 		}
 
 		next.ServeHTTP(w, r)
@@ -381,9 +391,8 @@ func main() {
 	docs.AddTag("Votes", "These API endpoints are related to user votes on IBL")
 	docs.AddTag("Variants", "These API endpoints are variants of other APIs or that do similar/same things as other API")
 
-	docs.AddSecuritySchema("User", "Requires a user token. Usually must be prefixed with `User `")
-	docs.AddSecuritySchema("Bot", "Requires a bot token. Cannot be prefixed")
-	docs.AddSecuritySchema("None", "No authentication required however some APIs may not return all data")
+	docs.AddSecuritySchema("User", "User-Auth", "Requires a user token. Usually must be prefixed with `User `. Note that both ``User-Auth`` and ``Authorization`` headers are supported")
+	docs.AddSecuritySchema("Bot", "Bot-Auth", "Requires a bot token. Can be optionally prefixed. Note that both ``Bot-Auth`` and ``Authorization`` headers are supported")
 
 	ctx = context.Background()
 
