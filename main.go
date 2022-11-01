@@ -109,7 +109,8 @@ var (
 	backupPool *pgxpool.Pool
 	ctx        context.Context
 
-	docsJs string
+	docsJs  string
+	openapi []byte
 
 	// This is used when we need to moderate whether or not to ratelimit a request (such as on a combined endpoint like gvotes)
 	bucketModerators map[string]func(r *http.Request) moderatedBucket = make(map[string]func(r *http.Request) moderatedBucket)
@@ -661,15 +662,7 @@ func main() {
 		Resp:        types.OpenAPI{},
 	})
 	r.Get("/openapi", func(w http.ResponseWriter, r *http.Request) {
-		openapi, err := json.Marshal(docs.GetSchema())
-
-		if err != nil {
-			w.WriteHeader(http.StatusInternalServerError)
-			w.Write([]byte(err.Error()))
-			return
-		}
-
-		w.Write([]byte(openapi))
+		w.Write(openapi)
 	})
 
 	r.Get("/docs", func(w http.ResponseWriter, r *http.Request) {
@@ -2448,6 +2441,13 @@ Gets a bot by id or name
 			w.Write([]byte(success))
 		}
 	}))
+
+	// Load openapi here to avoid large marshalling in every request
+	openapi, err = json.Marshal(docs.GetSchema())
+
+	if err != nil {
+		panic(err)
+	}
 
 	adp := DummyAdapter{}
 
