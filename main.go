@@ -4,7 +4,6 @@ import (
 	"context"
 	"crypto/sha512"
 	"fmt"
-	"html/template"
 	"io"
 	"math"
 	"net/http"
@@ -40,6 +39,9 @@ import (
 //go:embed html/ext.js
 var extUnminified string
 
+//go:embed html/docs.html
+var docsHTML string
+
 func init() {
 	m := minify.New()
 	m.AddFunc("application/javascript", js.Minify)
@@ -54,6 +56,8 @@ func init() {
 	}
 
 	docsJs = strWriter.String()
+
+	docsHTML = strings.Replace(docsHTML, "[JS]", docsJs, 1)
 }
 
 var json = jsoniter.ConfigCompatibleWithStandardLibrary
@@ -669,39 +673,8 @@ func main() {
 	})
 
 	r.Get("/docs", func(w http.ResponseWriter, r *http.Request) {
-		t, err := template.ParseFiles("html/docs.html")
-
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
-
-		var templateData struct {
-			RenderType string
-			Mobile     bool
-			JS         template.JS
-		}
-
-		templateData.RenderType = "read"
-		templateData.JS = template.JS(docsJs)
-
-		if r.Header.Get("User-Agent") != "" {
-			uaD := ua.Parse(r.Header.Get("User-Agent"))
-
-			if uaD.Mobile || r.URL.Query().Get("debug-view") == "true" {
-				templateData.Mobile = true
-			}
-		}
-
-		err = t.Execute(w, templateData)
-
-		if err != nil {
-			log.Error(err)
-			w.Write([]byte(err.Error()))
-			return
-		}
+		w.Write([]byte(docsHTML))
 	})
 
 	docs.Route(&docs.Doc{
