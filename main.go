@@ -462,20 +462,38 @@ func main() {
 		panic(err)
 	}
 
-	docs.AddDocs("GET", "/", "ping", "Ping Server", "Pings the server", []docs.Paramater{}, []string{"System"}, nil, helloWorldB, []string{})
+	docs.Route(&docs.Doc{
+		Method:      "GET",
+		Path:        "/",
+		OpId:        "ping",
+		Summary:     "Ping Server",
+		Description: "This is a simple ping endpoint to check if the API is online. It will return a simple JSON object with a message, docs link, our site link and status page link.",
+		Tags:        []string{"System"},
+		Resp:        helloWorldB,
+	})
 	r.Get("/", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.Write([]byte(helloWorld))
 	})
 
-	docs.AddDocs("GET", "/_duser/{id}/clear", "clear_duser", "Clear Discord User From Cache", "Clear Discord User From Cache", []docs.Paramater{
-		{
-			Name:     "id",
-			In:       "path",
-			Required: true,
-			Schema:   docs.IdSchema,
+	docs.Route(&docs.Doc{
+		Method:      "GET",
+		Path:        "/_duser/{id}/clear",
+		OpId:        "clear_duser",
+		Summary:     "Clear Discord User Cache",
+		Description: "This endpoint will clear the cache for a specific discord user. This is useful if you the user's data has changes",
+		Tags:        []string{"System"},
+		Params: []docs.Parameter{
+			{
+				Name:        "id",
+				Description: "The ID of the user to clear the cache for",
+				In:          "path",
+				Required:    true,
+				Schema:      docs.IdSchema,
+			},
 		},
-	}, []string{"System"}, nil, types.ApiError{}, []string{})
+		Resp: types.ApiError{},
+	})
 	r.Get("/_duser/{id}/clear", func(w http.ResponseWriter, r *http.Request) {
 		id := chi.URLParam(r, "id")
 		w.Header().Set("Content-Type", "application/json")
@@ -483,7 +501,16 @@ func main() {
 		w.Write([]byte(success))
 	})
 
-	docs.AddDocs("GET", "/announcements", "announcements", "Get Announcements", "Gets the announcements. User authentication is optional and using it will show user targetted announcements", []docs.Paramater{}, []string{"System"}, nil, types.Announcement{}, []string{"User"})
+	docs.Route(&docs.Doc{
+		Method:      "GET",
+		Path:        "announcements",
+		OpId:        "announcements",
+		Summary:     "Get Announcements",
+		Description: "This endpoint will return a list of announcements. User authentication is optional and using it will show user targetted announcements.",
+		Tags:        []string{"System"},
+		Resp:        []types.AnnouncementList{},
+		AuthType:    []string{"User"},
+	})
 	r.Get("/announcements", rateLimitWrap(30, 1*time.Minute, "gannounce", func(w http.ResponseWriter, r *http.Request) {
 		rows, err := pool.Query(ctx, "SELECT "+announcementColsStr+" FROM announcements ORDER BY id DESC")
 
@@ -493,7 +520,7 @@ func main() {
 			return
 		}
 
-		var announcements []*types.Announcement
+		var announcements []types.Announcement
 
 		err = pgxscan.ScanAll(&announcements, rows)
 
@@ -522,7 +549,7 @@ func main() {
 			target = types.UserID{}
 		}
 
-		annList := []*types.Announcement{}
+		annList := []types.Announcement{}
 
 		for _, announcement := range announcements {
 			if announcement.Status == "private" {
@@ -540,7 +567,11 @@ func main() {
 			annList = append(annList, announcement)
 		}
 
-		bytes, err := json.Marshal(annList)
+		annListObj := types.AnnouncementList{
+			Announcements: annList,
+		}
+
+		bytes, err := json.Marshal(annListObj)
 
 		if err != nil {
 			log.Error(err)
@@ -551,6 +582,24 @@ func main() {
 		w.Write(bytes)
 	}))
 
+	docs.Route(&docs.Doc{
+		Method:      "GET",
+		Path:        "/_duser/{id}",
+		OpId:        "get_duser",
+		Summary:     "Get Discord User",
+		Description: "This endpoint will return a discord user object. This is useful for getting a user's avatar, username or discriminator etc.",
+		Tags:        []string{"System"},
+		Params: []docs.Parameter{
+			{
+				Name:        "id",
+				In:          "path",
+				Description: "The user's ID",
+				Required:    true,
+				Schema:      docs.IdSchema,
+			},
+		},
+		Resp: types.DiscordUser{},
+	})
 	r.Get("/_duser/{id}", func(w http.ResponseWriter, r *http.Request) {
 		var id = chi.URLParam(r, "id")
 
@@ -575,7 +624,15 @@ func main() {
 		w.Write(bytes)
 	})
 
-	docs.AddDocs("GET", "/openapi", "openapi", "Get OpenAPI", "Gets the OpenAPI spec", []docs.Paramater{}, []string{"System"}, nil, types.OpenAPI{}, []string{})
+	docs.Route(&docs.Doc{
+		Method:      "GET",
+		Path:        "/openapi",
+		OpId:        "openapi",
+		Summary:     "Get OpenAPI Spec",
+		Description: "This endpoint will return the OpenAPI spec for the API. This is useful for generating clients for the API.",
+		Tags:        []string{"System"},
+		Resp:        types.OpenAPI{},
+	})
 	r.Get("/openapi", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.Header().Set("Access-Control-Allow-Origin", "*")
@@ -602,6 +659,339 @@ func main() {
 		t.Execute(w, nil)
 	})
 
+	docs.Route(&docs.Doc{
+		Method:      "GET",
+		Path:        "/bots/all",
+		OpId:        "get_all_bots",
+		Summary:     "Get All Bots",
+		Description: "Gets all bots on the list.",
+		Tags:        []string{"Bots"},
+		Resp:        types.AllBots{},
+	})
+	r.Get("/bots/all", rateLimitWrap(5, 2*time.Second, "allbots", func(w http.ResponseWriter, r *http.Request) {
+		const perPage = 10
+
+		page := r.URL.Query().Get("page")
+
+		if page == "" {
+			page = "1"
+		}
+
+		pageNum, err := strconv.ParseUint(page, 10, 32)
+
+		if err != nil {
+			apiDefaultReturn(http.StatusBadRequest, w, r)
+			return
+		}
+
+		limit := perPage
+		offset := (pageNum - 1) * perPage
+
+		rows, err := pool.Query(ctx, "SELECT "+botsColsStr+" FROM bots ORDER BY date DESC LIMIT $1 OFFSET $2", limit, offset)
+
+		if err != nil {
+			log.Error(err)
+			apiDefaultReturn(http.StatusInternalServerError, w, r)
+			return
+		}
+
+		var bots []*types.Bot
+
+		err = pgxscan.ScanAll(&bots, rows)
+
+		if err != nil {
+			log.Error(err)
+			apiDefaultReturn(http.StatusInternalServerError, w, r)
+			return
+		}
+
+		var previous strings.Builder
+
+		// More optimized string concat
+		previous.WriteString(os.Getenv("SITE_URL"))
+		previous.WriteString("/bots/all?page=")
+		previous.WriteString(strconv.FormatUint(pageNum-1, 10))
+
+		if pageNum-1 < 1 || pageNum == 0 {
+			previous.Reset()
+		}
+
+		var count uint64
+
+		err = pool.QueryRow(ctx, "SELECT COUNT(*) FROM bots").Scan(&count)
+
+		if err != nil {
+			log.Error(err)
+			apiDefaultReturn(http.StatusInternalServerError, w, r)
+			return
+		}
+
+		var next strings.Builder
+
+		next.WriteString(os.Getenv("SITE_URL"))
+		next.WriteString("/bots/all?page=")
+		next.WriteString(strconv.FormatUint(pageNum+1, 10))
+
+		if float64(pageNum+1) > math.Ceil(float64(count)/perPage) {
+			next.Reset()
+		}
+
+		data := types.AllBots{
+			Count:    count,
+			Results:  bots,
+			PerPage:  perPage,
+			Previous: previous.String(),
+			Next:     next.String(),
+		}
+
+		bytes, err := json.Marshal(data)
+
+		if err != nil {
+			log.Error(err)
+			apiDefaultReturn(http.StatusInternalServerError, w, r)
+			return
+		}
+
+		w.Write(bytes)
+
+	}))
+
+	docs.Route(&docs.Doc{
+		Method:      "GET",
+		Path:        "/packs/all",
+		OpId:        "get_all_packs",
+		Summary:     "Get All Packs",
+		Description: "Gets all packs on the list.",
+		Tags:        []string{"Bot Packs"},
+		Resp:        types.AllPacks{},
+	})
+	r.Get("/packs/all", rateLimitWrap(5, 2*time.Second, "allpacks", func(w http.ResponseWriter, r *http.Request) {
+		const perPage = 12
+
+		page := r.URL.Query().Get("page")
+
+		if page == "" {
+			page = "1"
+		}
+
+		pageNum, err := strconv.ParseUint(page, 10, 32)
+
+		if err != nil {
+			apiDefaultReturn(http.StatusBadRequest, w, r)
+			return
+		}
+
+		// Check cache, this is how we can avoid hefty ratelimits
+		cache := redisCache.Get(ctx, "pca-"+strconv.FormatUint(pageNum, 10)).Val()
+		if cache != "" {
+			w.Header().Add("X-Popplio-Cached", "true")
+			w.Write([]byte(cache))
+			return
+		}
+
+		limit := perPage
+		offset := (pageNum - 1) * perPage
+
+		rows, err := pool.Query(ctx, "SELECT "+packsColsString+" FROM packs ORDER BY date DESC LIMIT $1 OFFSET $2", limit, offset)
+
+		if err != nil {
+			log.Error(err)
+			apiDefaultReturn(http.StatusInternalServerError, w, r)
+			return
+		}
+
+		var packs []*types.BotPack
+
+		err = pgxscan.ScanAll(&packs, rows)
+
+		if err != nil {
+			log.Error(err)
+			apiDefaultReturn(http.StatusInternalServerError, w, r)
+			return
+		}
+
+		for _, pack := range packs {
+			err := utils.ResolveBotPack(ctx, pool, pack, metro, redisCache)
+
+			if err != nil {
+				log.Error(err)
+				apiDefaultReturn(http.StatusInternalServerError, w, r)
+				return
+			}
+		}
+
+		var previous strings.Builder
+
+		// More optimized string concat
+		previous.WriteString(os.Getenv("SITE_URL"))
+		previous.WriteString("/packs/all?page=")
+		previous.WriteString(strconv.FormatUint(pageNum-1, 10))
+
+		if pageNum-1 < 1 || pageNum == 0 {
+			previous.Reset()
+		}
+
+		var count uint64
+
+		err = pool.QueryRow(ctx, "SELECT COUNT(*) FROM packs").Scan(&count)
+
+		if err != nil {
+			log.Error(err)
+			apiDefaultReturn(http.StatusInternalServerError, w, r)
+			return
+		}
+
+		var next strings.Builder
+
+		next.WriteString(os.Getenv("SITE_URL"))
+		next.WriteString("/packs/all?page=")
+		next.WriteString(strconv.FormatUint(pageNum+1, 10))
+
+		if float64(pageNum+1) > math.Ceil(float64(count)/perPage) {
+			next.Reset()
+		}
+
+		data := types.AllPacks{
+			Count:    count,
+			Results:  packs,
+			PerPage:  perPage,
+			Previous: previous.String(),
+			Next:     next.String(),
+		}
+
+		bytes, err := json.Marshal(data)
+
+		if err != nil {
+			log.Error(err)
+			apiDefaultReturn(http.StatusInternalServerError, w, r)
+			return
+		}
+
+		redisCache.Set(ctx, "pca-"+strconv.FormatUint(pageNum, 10), bytes, 2*time.Minute)
+
+		w.Write(bytes)
+	}))
+
+	docs.Route(&docs.Doc{
+		Method:      "GET",
+		Path:        "/packs/{id}",
+		OpId:        "get_packs",
+		Summary:     "Get Packs",
+		Description: "Gets a pack on the list based on either URL or Name.",
+		Tags:        []string{"Bot Packs"},
+		Params: []docs.Parameter{
+			{
+				Name:        "id",
+				Description: "The ID of the pack.",
+				Required:    true,
+				In:          "path",
+				Schema:      docs.IdSchema,
+			},
+		},
+		Resp: types.BotPack{},
+	})
+	r.Get("/packs/{id}", rateLimitWrap(10, 3*time.Minute, "gpack", func(w http.ResponseWriter, r *http.Request) {
+		var id = chi.URLParam(r, "id")
+
+		if id == "" {
+			apiDefaultReturn(http.StatusBadRequest, w, r)
+			return
+		}
+
+		var pack types.BotPack
+
+		row, err := pool.Query(ctx, "SELECT "+packsColsString+" FROM packs WHERE url = $1 OR name = $1", id)
+
+		if err != nil {
+			log.Error(err)
+			apiDefaultReturn(http.StatusNotFound, w, r)
+			return
+		}
+
+		err = pgxscan.ScanOne(&pack, row)
+
+		if err != nil {
+			log.Error(err)
+			apiDefaultReturn(http.StatusNotFound, w, r)
+			return
+		}
+
+		err = utils.ResolveBotPack(ctx, pool, &pack, metro, redisCache)
+
+		if err != nil {
+			log.Error(err)
+			apiDefaultReturn(http.StatusInternalServerError, w, r)
+			return
+		}
+
+		bytes, err := json.Marshal(pack)
+
+		if err != nil {
+			log.Error(err)
+			apiDefaultReturn(http.StatusInternalServerError, w, r)
+			return
+		}
+
+		w.Write(bytes)
+	}))
+
+	docs.Route(&docs.Doc{
+		Method:  "POST",
+		Path:    "/bots/stats",
+		OpId:    "post_stats",
+		Summary: "Post Bot Stats",
+		Description: `
+This endpoint can be used to post the stats of a bot.
+
+The variation` + backTick + `/bots/{bot_id}/stats` + backTick + ` can also be used to post the stats of a bot. **Note that only the token is checked, not the bot ID at this time**
+
+**Example:**
+
+` + backTick + backTick + backTick + `py
+import requests
+
+req = requests.post(f"{API_URL}/bots/stats", json={"servers": 4000, "shards": 2}, headers={"Authorization": "{TOKEN}"})
+
+print(req.json())
+` + backTick + backTick + backTick + "\n\n",
+		Tags:     []string{"Bots"},
+		Req:      types.BotStatsDocs{},
+		Resp:     types.ApiError{},
+		AuthType: []string{"Bots"},
+	})
+	docs.Route(&docs.Doc{
+		Method:  "POST",
+		Path:    "/bots/{bot_id}/stats",
+		OpId:    "post_stats",
+		Summary: "Post Bot Stats (Variant/Alternative URL)",
+		Description: `
+This endpoint can be used to post the stats of a bot. This alternative URL takes in a Bot ID as well for highly pedantic etc. people to use.
+
+**Note that only the token is checked, not the bot ID at this time**
+
+**Example:**
+
+` + backTick + backTick + backTick + `py
+import requests
+
+req = requests.post(f"{API_URL}/bots/{bot_id}/stats", json={"servers": 4000, "shards": 2}, headers={"Authorization": "{TOKEN}"})
+
+print(req.json())
+` + backTick + backTick + backTick + "\n\n",
+		Tags: []string{"Bots"},
+		Params: []docs.Parameter{
+			{
+				Name:        "id",
+				Description: "The ID of the bot.",
+				Required:    true,
+				In:          "path",
+				Schema:      docs.IdSchema,
+			},
+		},
+		Req:      types.BotStatsDocs{},
+		Resp:     types.ApiError{},
+		AuthType: []string{"Variant"},
+	})
 	statsFn := func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == "GET" || r.Method == "DELETE" {
 			apiDefaultReturn(http.StatusMethodNotAllowed, w, r)
@@ -718,306 +1108,21 @@ func main() {
 		w.Write([]byte(success))
 	}
 
-	docs.AddDocs("GET", "/bots/all", "get_all_bots", "Get All Bots", "Gets all bots on the list", []docs.Paramater{}, []string{"System"}, nil, types.AllBots{}, []string{})
-	r.Get("/bots/all", rateLimitWrap(5, 2*time.Second, "allbots", func(w http.ResponseWriter, r *http.Request) {
-		const perPage = 10
-
-		page := r.URL.Query().Get("page")
-
-		if page == "" {
-			page = "1"
-		}
-
-		pageNum, err := strconv.ParseUint(page, 10, 32)
-
-		if err != nil {
-			apiDefaultReturn(http.StatusBadRequest, w, r)
-			return
-		}
-
-		limit := perPage
-		offset := (pageNum - 1) * perPage
-
-		rows, err := pool.Query(ctx, "SELECT "+botsColsStr+" FROM bots ORDER BY date DESC LIMIT $1 OFFSET $2", limit, offset)
-
-		if err != nil {
-			log.Error(err)
-			apiDefaultReturn(http.StatusInternalServerError, w, r)
-			return
-		}
-
-		var bots []*types.Bot
-
-		err = pgxscan.ScanAll(&bots, rows)
-
-		if err != nil {
-			log.Error(err)
-			apiDefaultReturn(http.StatusInternalServerError, w, r)
-			return
-		}
-
-		var previous strings.Builder
-
-		// More optimized string concat
-		previous.WriteString(os.Getenv("SITE_URL"))
-		previous.WriteString("/bots/all?page=")
-		previous.WriteString(strconv.FormatUint(pageNum-1, 10))
-
-		if pageNum-1 < 1 || pageNum == 0 {
-			previous.Reset()
-		}
-
-		var count uint64
-
-		err = pool.QueryRow(ctx, "SELECT COUNT(*) FROM bots").Scan(&count)
-
-		if err != nil {
-			log.Error(err)
-			apiDefaultReturn(http.StatusInternalServerError, w, r)
-			return
-		}
-
-		var next strings.Builder
-
-		next.WriteString(os.Getenv("SITE_URL"))
-		next.WriteString("/bots/all?page=")
-		next.WriteString(strconv.FormatUint(pageNum+1, 10))
-
-		if float64(pageNum+1) > math.Ceil(float64(count)/perPage) {
-			next.Reset()
-		}
-
-		data := types.AllBots{
-			Count:    count,
-			Results:  bots,
-			PerPage:  perPage,
-			Previous: previous.String(),
-			Next:     next.String(),
-		}
-
-		bytes, err := json.Marshal(data)
-
-		if err != nil {
-			log.Error(err)
-			apiDefaultReturn(http.StatusInternalServerError, w, r)
-			return
-		}
-
-		w.Write(bytes)
-
-	}))
-
-	docs.AddDocs("GET", "/packs/all", "get_all_packs", "Get All Packs", "Gets all packs on the list", []docs.Paramater{}, []string{"System"}, nil, types.AllPacks{}, []string{})
-	r.Get("/packs/all", rateLimitWrap(5, 2*time.Second, "allpacks", func(w http.ResponseWriter, r *http.Request) {
-		const perPage = 12
-
-		page := r.URL.Query().Get("page")
-
-		if page == "" {
-			page = "1"
-		}
-
-		pageNum, err := strconv.ParseUint(page, 10, 32)
-
-		if err != nil {
-			apiDefaultReturn(http.StatusBadRequest, w, r)
-			return
-		}
-
-		// Check cache, this is how we can avoid hefty ratelimits
-		cache := redisCache.Get(ctx, "pca-"+strconv.FormatUint(pageNum, 10)).Val()
-		if cache != "" {
-			w.Header().Add("X-Popplio-Cached", "true")
-			w.Write([]byte(cache))
-			return
-		}
-
-		limit := perPage
-		offset := (pageNum - 1) * perPage
-
-		rows, err := pool.Query(ctx, "SELECT "+packsColsString+" FROM packs ORDER BY date DESC LIMIT $1 OFFSET $2", limit, offset)
-
-		if err != nil {
-			log.Error(err)
-			apiDefaultReturn(http.StatusInternalServerError, w, r)
-			return
-		}
-
-		var packs []*types.BotPack
-
-		err = pgxscan.ScanAll(&packs, rows)
-
-		if err != nil {
-			log.Error(err)
-			apiDefaultReturn(http.StatusInternalServerError, w, r)
-			return
-		}
-
-		for _, pack := range packs {
-			err := utils.ResolveBotPack(ctx, pool, pack, metro, redisCache)
-
-			if err != nil {
-				log.Error(err)
-				apiDefaultReturn(http.StatusInternalServerError, w, r)
-				return
-			}
-		}
-
-		var previous strings.Builder
-
-		// More optimized string concat
-		previous.WriteString(os.Getenv("SITE_URL"))
-		previous.WriteString("/packs/all?page=")
-		previous.WriteString(strconv.FormatUint(pageNum-1, 10))
-
-		if pageNum-1 < 1 || pageNum == 0 {
-			previous.Reset()
-		}
-
-		var count uint64
-
-		err = pool.QueryRow(ctx, "SELECT COUNT(*) FROM packs").Scan(&count)
-
-		if err != nil {
-			log.Error(err)
-			apiDefaultReturn(http.StatusInternalServerError, w, r)
-			return
-		}
-
-		var next strings.Builder
-
-		next.WriteString(os.Getenv("SITE_URL"))
-		next.WriteString("/packs/all?page=")
-		next.WriteString(strconv.FormatUint(pageNum+1, 10))
-
-		if float64(pageNum+1) > math.Ceil(float64(count)/perPage) {
-			next.Reset()
-		}
-
-		data := types.AllPacks{
-			Count:    count,
-			Results:  packs,
-			PerPage:  perPage,
-			Previous: previous.String(),
-			Next:     next.String(),
-		}
-
-		bytes, err := json.Marshal(data)
-
-		if err != nil {
-			log.Error(err)
-			apiDefaultReturn(http.StatusInternalServerError, w, r)
-			return
-		}
-
-		redisCache.Set(ctx, "pca-"+strconv.FormatUint(pageNum, 10), bytes, 2*time.Minute)
-
-		w.Write(bytes)
-	}))
-
-	docs.AddDocs("GET", "/packs/{id}", "get_pack", "Get Pack", "Gets a pack by either URL or Name.",
-		[]docs.Paramater{
-			{
-				Name:     "id",
-				In:       "path",
-				Required: true,
-				Schema:   docs.IdSchema,
-			},
-		}, []string{"Packs"}, nil, types.BotPack{}, []string{})
-
-	r.Get("/packs/{id}", rateLimitWrap(10, 3*time.Minute, "gpack", func(w http.ResponseWriter, r *http.Request) {
-		var id = chi.URLParam(r, "id")
-
-		if id == "" {
-			apiDefaultReturn(http.StatusBadRequest, w, r)
-			return
-		}
-
-		var pack types.BotPack
-
-		row, err := pool.Query(ctx, "SELECT "+packsColsString+" FROM packs WHERE url = $1 OR name = $1", id)
-
-		if err != nil {
-			log.Error(err)
-			apiDefaultReturn(http.StatusNotFound, w, r)
-			return
-		}
-
-		err = pgxscan.ScanOne(&pack, row)
-
-		if err != nil {
-			log.Error(err)
-			apiDefaultReturn(http.StatusNotFound, w, r)
-			return
-		}
-
-		err = utils.ResolveBotPack(ctx, pool, &pack, metro, redisCache)
-
-		if err != nil {
-			log.Error(err)
-			apiDefaultReturn(http.StatusInternalServerError, w, r)
-			return
-		}
-
-		bytes, err := json.Marshal(pack)
-
-		if err != nil {
-			log.Error(err)
-			apiDefaultReturn(http.StatusInternalServerError, w, r)
-			return
-		}
-
-		w.Write(bytes)
-	}))
-
-	docs.AddDocs("POST", "/bots/stats", "post_stats", "Post New Stats", `
-This endpoint can be used to post the stats of a bot.
-
-The variation`+backTick+`/bots/{bot_id}/stats`+backTick+` can be used to post the stats of a bot. **Note that only the token is checked, not the bot ID at this time**
-
-**Example:**
-
-`+backTick+backTick+backTick+`py
-import requests
-
-req = requests.post(f"{API_URL}/bots/stats", json={"servers": 4000, "shards": 2}, headers={"Authorization": "{TOKEN}"})
-
-print(req.json())
-`+backTick+backTick+backTick+`
-
-`, []docs.Paramater{}, []string{"Bots"}, types.BotStatsDocs{}, types.ApiError{}, []string{"Bot"})
-
-	docs.AddDocs("POST", "/bots/{id}/stats", "post_stats_variant2", "Post New Stats (2)", `
-This endpoint can be used to post the stats of a bot.
-
-The variation`+backTick+`/bots/{bot_id}/stats`+backTick+` can be used to post the stats of a bot. **Note that only the token is checked, not the bot ID at this time**
-
-**Example:**
-
-`+backTick+backTick+backTick+`py
-import requests
-
-req = requests.post(f"{API_URL}/bots/stats", json={"servers": 4000, "shards": 2}, headers={"Authorization": "{TOKEN}"})
-
-print(req.json())
-`+backTick+backTick+backTick+`
-
-`, []docs.Paramater{
-		{
-			Name:     "id",
-			In:       "path",
-			Required: true,
-			Schema:   docs.IdSchema,
-		},
-	}, []string{"Variants"}, types.BotStatsDocs{}, types.ApiError{}, []string{"Bot"})
-
 	r.HandleFunc("/bots/stats", rateLimitWrap(10, 1*time.Minute, "stats", statsFn))
 
 	// Note that only token matters for this endpoint at this time
 	// TODO: Handle bot id as well
 	r.HandleFunc("/bots/{id}/stats", rateLimitWrap(10, 1*time.Minute, "stats", statsFn))
 
-	docs.AddDocs("GET", "/list/index", "get_list_index", "Get list index", "Gets the index of the list. Note that this endpoint does not resolve the owner or the bots of a pack and will only give the `owner_id` and the `bot_ids` for performance purposes", []docs.Paramater{}, []string{"Stats"}, nil, types.ListIndex{}, []string{})
+	docs.Route(&docs.Doc{
+		Method:      "GET",
+		Path:        "/list/index",
+		OpId:        "get_list_index",
+		Summary:     "Get List Index",
+		Description: "Gets the index of the list. Note that this endpoint does not resolve the owner or the bots of a pack and will only give the `owner_id` and the `bot_ids` for performance purposes",
+		Tags:        []string{"System"},
+		Resp:        types.ListIndex{},
+	})
 	r.Get("/list/index", rateLimitWrap(5, 1*time.Minute, "glstats", func(w http.ResponseWriter, r *http.Request) {
 		// Check cache, this is how we can avoid hefty ratelimits
 		cache := redisCache.Get(ctx, "indexcache").Val()
@@ -1122,10 +1227,17 @@ print(req.json())
 		w.Write(bytes)
 	}))
 
-	// func AddDocs(method string, pathStr string, opId string, summary string, description string, params []Paramater, tags []string, req any, resp any, authType []string) {
-	docs.AddDocs("GET", "/list/stats", "get_stats", "Get list statistics", "Gets the statistics of the list", []docs.Paramater{}, []string{"Stats"}, nil, types.ListStats{
-		Bots: []types.ListStatsBot{},
-	}, []string{})
+	docs.Route(&docs.Doc{
+		Method:      "GET",
+		Path:        "/list/stats",
+		OpId:        "get_list_stats",
+		Summary:     "Get List Statistics",
+		Description: "Gets the statistics of the list",
+		Tags:        []string{"System"},
+		Resp: types.ListStats{
+			Bots: []types.ListStatsBot{},
+		},
+	})
 	r.Get("/list/stats", rateLimitWrap(5, 1*time.Minute, "glstats", func(w http.ResponseWriter, r *http.Request) {
 		listStats := types.ListStats{}
 
@@ -1178,24 +1290,63 @@ print(req.json())
 		w.Write(bytes)
 	}))
 
-	docs.AddDocs("GET", "/users/{uid}/bots/{bid}/votes", "get_user_votes", "Get User Votes", "Gets the users votes. **Requires authentication**", []docs.Paramater{
-		{
-			Name:     "uid",
-			In:       "path",
-			Required: true,
-			Schema:   docs.IdSchema,
+	docs.Route(&docs.Doc{
+		Method:      "GET",
+		Path:        "/users/{uid}/bots/{bid}/votes",
+		OpId:        "get_user_votes",
+		Summary:     "Get User Votes",
+		Description: "Gets the users votes. **Requires authentication**",
+		Tags:        []string{"Votes"},
+		Params: []docs.Parameter{
+			{
+				Name:        "uid",
+				Description: "The user ID",
+				Required:    true,
+				In:          "path",
+				Schema:      docs.IdSchema,
+			},
+			{
+				Name:        "bid",
+				Description: "The bot ID",
+				Required:    true,
+				In:          "path",
+				Schema:      docs.IdSchema,
+			},
 		},
-		{
-			Name:     "bid",
-			In:       "path",
-			Required: true,
-			Schema:   docs.IdSchema,
+		Resp: types.UserVote{
+			Timestamps: []int64{},
+			VoteTime:   12,
+			HasVoted:   true,
 		},
-	}, []string{"Votes"}, nil, types.UserVote{
-		Timestamps: []int64{},
-		VoteTime:   12,
-		HasVoted:   true,
-	}, []string{"User", "Bot"})
+		AuthType: []string{"User", "Bot"},
+	})
+
+	docs.Route(&docs.Doc{
+		Method:      "POST",
+		Path:        "/users/{uid}/bots/{bid}/votes",
+		OpId:        "post_user_votes",
+		Summary:     "Post User Votes",
+		Description: "Posts a users votes. **For internal use only**",
+		Tags:        []string{"Votes"},
+		Params: []docs.Parameter{
+			{
+				Name:        "uid",
+				Description: "The user ID",
+				Required:    true,
+				In:          "path",
+				Schema:      docs.IdSchema,
+			},
+			{
+				Name:        "bid",
+				Description: "The bot ID",
+				Required:    true,
+				In:          "path",
+				Schema:      docs.IdSchema,
+			},
+		},
+		Resp:     types.ApiError{},
+		AuthType: []string{"User"},
+	})
 	// TODO: Document POST as well and seperate the two funcs
 	r.HandleFunc("/users/{uid}/bots/{bid}/votes", rateLimitWrap(5, 1*time.Minute, "gvotes", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != "GET" && r.Method != "PUT" {
@@ -1545,7 +1696,15 @@ print(req.json())
 		w.Write(bytes)
 	}))
 
-	docs.AddDocs("GET", "/voteinfo", "voteinfo", "Get Vote Info", "Returns basic voting info such as if its a weekend double vote", []docs.Paramater{}, []string{"Votes"}, nil, types.VoteInfo{Weekend: true}, []string{})
+	docs.Route(&docs.Doc{
+		Method:      "GET",
+		Path:        "/voteinfo",
+		OpId:        "get_iote_info",
+		Summary:     "Get Vote Info",
+		Description: "Returns basic voting info such as if its a weekend double vote.",
+		Resp:        types.VoteInfo{Weekend: true},
+		Tags:        []string{"Votes"},
+	})
 	r.Get("/voteinfo", func(w http.ResponseWriter, r *http.Request) {
 		var payload = types.VoteInfo{
 			Weekend: utils.GetDoubleVote(),
@@ -1562,14 +1721,24 @@ print(req.json())
 		w.Write(b)
 	})
 
-	docs.AddDocs("GET", "/bots/{id}/seo", "get_seo_bot", "Get SEO Bot", "Gets the SEO form of a bot for embed/search purposes", []docs.Paramater{
-		{
-			Name:     "id",
-			In:       "path",
-			Required: true,
-			Schema:   docs.IdSchema,
+	docs.Route(&docs.Doc{
+		Method:      "GET",
+		Path:        "/bots/{id}/seo",
+		OpId:        "get_bot_seo",
+		Summary:     "Get Bot SEO Info",
+		Description: "Gets the minimal SEO information about a bot for embed/search purposes. Used by v4 website for meta tags",
+		Resp:        types.SEOBot{},
+		Tags:        []string{"Bots"},
+		Params: []docs.Parameter{
+			{
+				Name:        "id",
+				Description: "The bots ID, name or vanity",
+				Required:    true,
+				In:          "path",
+				Schema:      docs.IdSchema,
+			},
 		},
-	}, []string{"System"}, nil, types.SEOBot{}, []string{})
+	})
 	r.Get("/bots/{id}/seo", rateLimitWrap(15, 1*time.Minute, "gbot", func(w http.ResponseWriter, r *http.Request) {
 		name := chi.URLParam(r, "id")
 
@@ -1610,18 +1779,30 @@ print(req.json())
 		w.Write(bytes)
 	}))
 
-	docs.AddDocs("GET", "/bots/{id}", "get_bot", "Get Bot", "Gets a bot by id or name. This does not have ratelimits at this time"+`
+	docs.Route(&docs.Doc{
+		Method:  "GET",
+		Path:    "/bots/{id}",
+		OpId:    "get_bot",
+		Summary: "Get Bot",
+		Description: `
+Gets a bot by id or name
 
-- `+backTick+backTick+`external_source`+backTick+backTick+` shows the source of where a bot came from (Metro Reviews etc etc.). If this is set to `+backTick+backTick+`metro`+backTick+backTick+`, then `+backTick+backTick+`list_source`+backTick+backTick+` will be set to the metro list ID where it came from`+`
-	`, []docs.Paramater{
-		{
-			Name:     "id",
-			In:       "path",
-			Required: true,
-			Schema:   docs.IdSchema,
+**Some things to note:**
+
+-` + backTick + backTick + `external_source` + backTick + backTick + ` shows the source of where a bot came from (Metro Reviews etc etc.). If this is set to ` + backTick + backTick + `metro` + backTick + backTick + `, then ` + backTick + backTick + `list_source` + backTick + backTick + ` will be set to the metro list ID where it came from` + `
+	`,
+		Params: []docs.Parameter{
+			{
+				Name:        "id",
+				Description: "The bots ID, name or vanity",
+				Required:    true,
+				In:          "path",
+				Schema:      docs.IdSchema,
+			},
 		},
-	}, []string{"Bots"}, nil, types.Bot{}, []string{})
-
+		Resp: types.Bot{},
+		Tags: []string{"Bots"},
+	})
 	getBotsFn := rateLimitWrap(10, 1*time.Minute, "gbot", func(w http.ResponseWriter, r *http.Request) {
 		name := chi.URLParam(r, "id")
 
@@ -1696,16 +1877,24 @@ print(req.json())
 		w.Write(bytes)
 	})
 
-	docs.AddDocs("GET", "/users/{id}", "get_user", "Get User", "Gets a user by id or name, set ``resolve`` to true to also handle user names.",
-		[]docs.Paramater{
+	docs.Route(&docs.Doc{
+		Method:      "GET",
+		Path:        "/users/{id}",
+		OpId:        "get_user",
+		Summary:     "Get User",
+		Description: "Gets a user by id or username",
+		Params: []docs.Parameter{
 			{
-				Name:     "id",
-				In:       "path",
-				Required: true,
-				Schema:   docs.IdSchema,
+				Name:        "id",
+				Description: "User ID",
+				Required:    true,
+				In:          "path",
+				Schema:      docs.IdSchema,
 			},
-		}, []string{"Users"}, nil, types.User{}, []string{})
-
+		},
+		Resp: types.User{},
+		Tags: []string{"User"},
+	})
 	r.Get("/users/{id}", rateLimitWrap(10, 3*time.Minute, "guser", func(w http.ResponseWriter, r *http.Request) {
 		name := chi.URLParam(r, "id")
 
@@ -1726,7 +1915,7 @@ print(req.json())
 
 		var err error
 
-		row, err := pool.Query(ctx, "SELECT "+usersColsStr+" FROM users WHERE user_id = $1", name)
+		row, err := pool.Query(ctx, "SELECT "+usersColsStr+" FROM users WHERE user_id = $1 OR username = $1", name)
 
 		if err != nil {
 			log.Error(err)
@@ -1772,17 +1961,26 @@ print(req.json())
 	r.Get("/bots/{id}", getBotsFn)
 	r.Get("/bot/{id}", getBotsFn)
 
-	docs.AddDocs("GET", "/bots/{id}/reviews", "get_bot_reviews", "Get Bot Reviews", "Gets the reviews of a bot by its ID (names are not resolved by this endpoint)",
-		[]docs.Paramater{
+	docs.Route(&docs.Doc{
+		Method:      "GET",
+		Path:        "/bots/{id}/reviews",
+		OpId:        "get_bot_reviews",
+		Summary:     "Get Bot Reviews",
+		Description: "Gets the reviews of a bot by its ID, name or vanity",
+		Params: []docs.Parameter{
 			{
-				Name:     "id",
-				In:       "path",
-				Required: true,
-				Schema:   docs.IdSchema,
+				Name:        "id",
+				Description: "The bots ID, name or vanity",
+				Required:    true,
+				In:          "path",
+				Schema:      docs.IdSchema,
 			},
-		}, []string{"Bots"}, nil, types.ReviewList{}, []string{})
+		},
+		Resp: types.ReviewList{},
+		Tags: []string{"Bots"},
+	})
 	r.Get("/bots/{id}/reviews", rateLimitWrap(10, 1*time.Minute, "greview", func(w http.ResponseWriter, r *http.Request) {
-		rows, err := pool.Query(ctx, "SELECT "+reviewColsStr+" FROM reviews WHERE bot_id = $1", chi.URLParam(r, "id"))
+		rows, err := pool.Query(ctx, "SELECT "+reviewColsStr+" FROM reviews WHERE (bot_id = $1 OR vanity = $1 OR name = $1)", chi.URLParam(r, "id"))
 
 		if err != nil {
 			log.Error(err)
@@ -1815,13 +2013,22 @@ print(req.json())
 		w.Write(bytes)
 	}))
 
+	// TODO: Document this once its stable
 	r.HandleFunc("/login/{act}", oauthFn)
 	r.HandleFunc("/cosmog", performAct)
 	r.HandleFunc("/cosmog/tasks/{tid}.arceus", getTask)
 	r.HandleFunc("/cosmog/tasks/{tid}", taskFn)
 
-	docs.AddDocs("POST", "/webhook-test", "webhook_test", "Test Webhook", "Sends a test webhook to allow testing your vote system. **All fields are mandatory for test bot**",
-		[]docs.Paramater{}, []string{"System"}, types.WebhookPost{}, types.ApiError{}, []string{})
+	docs.Route(&docs.Doc{
+		Method:      "POST",
+		Path:        "/webhook-test",
+		OpId:        "webhook_test",
+		Summary:     "Test Webhook",
+		Description: "Sends a test webhook to allow testing your vote system. **All fields are mandatory for this endpoint**",
+		Req:         types.WebhookPost{},
+		Resp:        types.ApiError{},
+		Tags:        []string{"Bots"},
+	})
 	r.Post("/webhook-test", rateLimitWrap(7, 3*time.Minute, "webtest", func(w http.ResponseWriter, r *http.Request) {
 		defer r.Body.Close()
 

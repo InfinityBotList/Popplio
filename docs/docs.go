@@ -123,7 +123,7 @@ type response struct {
 }
 
 // Parameter defines a openAPI parameter
-type Paramater struct {
+type Parameter struct {
 	Name        string `json:"name"`
 	In          string `json:"in"`
 	Description string `json:"description"`
@@ -137,7 +137,7 @@ type operation struct {
 	Description string                `json:"description"`
 	ID          string                `json:"operationId"`
 	RequestBody *ref                  `json:"requestBody,omitempty"`
-	Parameters  []Paramater           `json:"parameters"`
+	Parameters  []Parameter           `json:"parameters"`
 	Responses   map[string]response   `json:"responses"`
 	Security    []map[string][]string `json:"security,omitempty"`
 }
@@ -250,9 +250,64 @@ func AddSecuritySchema(id string, description string) {
 	}
 }
 
-func AddDocs(method string, pathStr string, opId string, summary string, description string, params []Paramater, tags []string, req any, resp any, authType []string) {
+type Doc struct {
+	Method      string
+	Path        string
+	OpId        string
+	Summary     string
+	Description string
+	Params      []Parameter
+	Tags        []string
+	Req         any
+	Resp        any
+	AuthType    []string
+}
+
+func Route(doc *Doc) {
 	// Generate schemaName, taking out bad things
-	schemaName := reflect.TypeOf(resp).String()
+
+	// Basic checks
+	if len(doc.Params) == 0 {
+		doc.Params = []Parameter{}
+	}
+
+	if len(doc.AuthType) == 0 {
+		doc.AuthType = []string{}
+	}
+
+	if len(doc.Tags) == 0 {
+		panic("no tags set in route: " + doc.Path)
+	}
+
+	if len(doc.Params) > 0 {
+		for _, param := range doc.Params {
+			if param.In == "" {
+				panic("no in set in route: " + doc.Path)
+			}
+
+			if param.Name == "" {
+				panic("no name set in route: " + doc.Path)
+			}
+
+			if param.Schema == nil {
+				panic("no schema set in route: " + doc.Path)
+			}
+
+			if param.Description == "" {
+				panic("no description set in route: " + doc.Path)
+			}
+		}
+	}
+
+	if doc.OpId == "" {
+		panic("no opId set in route: " + doc.Path)
+	}
+
+	if doc.Path == "" {
+		panic("no path set in route: " + doc.OpId)
+	}
+
+	schemaName := reflect.TypeOf(doc.Resp).String()
 
 	schemaName = strings.ReplaceAll(schemaName, "docs.", "")
 
@@ -260,7 +315,7 @@ func AddDocs(method string, pathStr string, opId string, summary string, descrip
 		fmt.Println(schemaName)
 
 		if _, ok := api.Components.Schemas[schemaName]; !ok {
-			schemaRef, err := openapi3gen.NewSchemaRefForValue(resp, nil)
+			schemaRef, err := openapi3gen.NewSchemaRefForValue(doc.Resp, nil)
 
 			if err != nil {
 				panic(err)
@@ -272,19 +327,19 @@ func AddDocs(method string, pathStr string, opId string, summary string, descrip
 
 	// Add in requests
 	var reqBodyRef *ref
-	if req != nil {
-		schemaRef, err := openapi3gen.NewSchemaRefForValue(req, nil)
+	if doc.Req != nil {
+		schemaRef, err := openapi3gen.NewSchemaRefForValue(doc.Req, nil)
 
 		if err != nil {
 			panic(err)
 		}
 
-		reqSchemaName := reflect.TypeOf(req).String()
+		reqSchemaName := reflect.TypeOf(doc.Req).String()
 
 		fmt.Println("REQUEST:", reqSchemaName)
 
-		api.Components.RequestBodies[method+"_"+reqSchemaName] = reqBody{
-			Description: "Request body: " + reflect.TypeOf(req).String(),
+		api.Components.RequestBodies[doc.Method+"_"+reqSchemaName] = reqBody{
+			Description: "Request body: " + reflect.TypeOf(doc.Req).String(),
 			Required:    true,
 			Content: map[string]content{
 				"application/json": {
@@ -293,19 +348,19 @@ func AddDocs(method string, pathStr string, opId string, summary string, descrip
 			},
 		}
 
-		if _, ok := api.Paths[pathStr]; !ok {
-			api.Paths[pathStr] = path{}
+		if _, ok := api.Paths[doc.Path]; !ok {
+			api.Paths[doc.Path] = path{}
 		}
 
-		reqBodyRef = &ref{Ref: "#/components/requestBodies/" + method + "_" + reqSchemaName}
+		reqBodyRef = &ref{Ref: "#/components/requestBodies/" + doc.Method + "_" + reqSchemaName}
 	}
 
 	operationData := &operation{
-		Tags:        tags,
-		Summary:     summary,
-		Description: description,
-		ID:          opId,
-		Parameters:  params,
+		Tags:        doc.Tags,
+		Summary:     doc.Summary,
+		Description: doc.Description,
+		ID:          doc.OpId,
+		Parameters:  doc.Params,
 		RequestBody: reqBodyRef,
 		Responses: map[string]response{
 			"200": {
@@ -331,41 +386,41 @@ func AddDocs(method string, pathStr string, opId string, summary string, descrip
 		},
 	}
 
-	if len(authType) == 0 {
-		authType = []string{"None"}
+	if len(doc.AuthType) == 0 {
+		doc.AuthType = []string{"None"}
 	}
 
 	operationData.Security = []map[string][]string{}
 
-	for _, auth := range authType {
+	for _, auth := range doc.AuthType {
 		operationData.Security = append(operationData.Security, map[string][]string{
 			auth: {},
 		})
 	}
 
-	op := api.Paths[pathStr]
+	op := api.Paths[doc.Path]
 
-	switch strings.ToLower(method) {
+	switch strings.ToLower(doc.Method) {
 	case "get":
 		op.Get = operationData
 
-		api.Paths[pathStr] = op
+		api.Paths[doc.Path] = op
 	case "post":
 		op.Post = operationData
 
-		api.Paths[pathStr] = op
+		api.Paths[doc.Path] = op
 	case "put":
 		op.Put = operationData
 
-		api.Paths[pathStr] = op
+		api.Paths[doc.Path] = op
 	case "patch":
 		op.Patch = operationData
 
-		api.Paths[pathStr] = op
+		api.Paths[doc.Path] = op
 	case "delete":
 		op.Delete = operationData
 
-		api.Paths[pathStr] = op
+		api.Paths[doc.Path] = op
 
 	}
 }

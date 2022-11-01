@@ -490,6 +490,10 @@ type Announcement struct {
 	Target       pgtype.Text `db:"target" json:"target"`
 }
 
+type AnnouncementList struct {
+	Announcements []Announcement `json:"announcements"`
+}
+
 // A discord user
 type DiscordUser struct {
 	ID             string           `json:"id"`
