@@ -90,10 +90,11 @@ window.addEventListener('DOMContentLoaded', () => {
             menuContentListItemLink.innerHTML = el.el;
             menuContentListItemLink.onclick = () => {
             window.onscroll = function() {}; // enableScroll();
-            if(el.target) {
-                document.getElementById('api').scrollTo(el.target);
-            }
-            shadow.removeChild(menu);
+              if(el.target) {
+                  document.getElementById('api').scrollTo(el.target);
+              }
+
+              menu.remove()
             }
 
             menuContentListItem.appendChild(menuContentListItemLink);
