@@ -693,6 +693,69 @@ func main() {
 
 	docs.Route(&docs.Doc{
 		Method:      "GET",
+		Path:        "/transcripts/{id}",
+		OpId:        "get_transcript",
+		Summary:     "Get Ticket Transcript",
+		Description: "Gets the transcript of a ticket. **Note that this endpoint is only documented to be useful for staff and the like. It is not useful for normal users**",
+		Tags:        []string{"System"},
+		Resp:        types.Transcript{},
+	})
+	r.Get("/transcripts/{id}", func(w http.ResponseWriter, r *http.Request) {
+		transcriptNum := chi.URLParam(r, "id")
+
+		if transcriptNum == "" {
+			apiDefaultReturn(http.StatusNotFound, w, r)
+			return
+		}
+
+		transcriptNumInt, err := strconv.Atoi(transcriptNum)
+
+		if err != nil {
+			apiDefaultReturn(http.StatusNotFound, w, r)
+			return
+		}
+
+		// Get transcript
+
+		/*
+			Data     pgtype.JSONBArray `json:"data"`
+			ClosedBy pgtype.JSONB      `json:"closed_by"`
+			OpenedBy pgtype.JSONB      `json:"opened_by"`
+
+		*/
+
+		var data pgtype.JSONB
+		var closedBy pgtype.JSONB
+		var openedBy pgtype.JSONB
+
+		err = pool.QueryRow(ctx, "SELECT data, closed_by, opened_by FROM transcripts WHERE id = $1", transcriptNumInt).Scan(&data, &closedBy, &openedBy)
+
+		if err != nil {
+			log.Error(err)
+			apiDefaultReturn(http.StatusInternalServerError, w, r)
+			return
+		}
+
+		var transcript = types.Transcript{
+			ID:       transcriptNumInt,
+			Data:     data,
+			ClosedBy: closedBy,
+			OpenedBy: openedBy,
+		}
+
+		bytes, err := json.Marshal(transcript)
+
+		if err != nil {
+			log.Error(err)
+			apiDefaultReturn(http.StatusInternalServerError, w, r)
+			return
+		}
+
+		w.Write(bytes)
+	})
+
+	docs.Route(&docs.Doc{
+		Method:      "GET",
 		Path:        "/_duser/{id}/clear",
 		OpId:        "clear_duser",
 		Summary:     "Clear Discord User Cache",

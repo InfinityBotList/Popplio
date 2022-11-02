@@ -586,3 +586,10 @@ type AuthUser struct {
 type AuthInfo struct {
 	ClientID string `json:"client_id"`
 }
+
+type Transcript struct {
+	ID       int          `json:"id"`
+	Data     pgtype.JSONB `json:"data"`
+	ClosedBy pgtype.JSONB `json:"closed_by"`
+	OpenedBy pgtype.JSONB `json:"opened_by"`
+}
