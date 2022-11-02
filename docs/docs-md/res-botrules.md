@@ -26,3 +26,16 @@ Here are our rules
     <li>Bots should not have a series of repeated commands, of course bots who have a designated purpose is fine but bots who just repeat the command over and over again with different ways of using them in hopes to get the bot approved will be denied. Example of a bot that does this can be found <a href="https://infinitybotlist.com/bots/835997853263462461">here</a></li>
     <li>As per Discord’s updated Terms of Service bots who offer or provide a Invite Reward based system or feature are strictly prohibited.</li>
 </ol>
+
+---
+
+## Bot Page Rules
+
+<ol>
+    <li>Include spam/junk, or completely irrelevant/nonsensical characters or phrases in your bot description to intentionally use up the character limit.</li>
+    <li>Mention NSFW or include any NSFW content on the bot page (avatar or images)</li>
+    <li>Using your page maliciously against users by either providing or linking to malicious content. </li>
+    <li>Block any essential features, this includes buttons and advertisements </li>
+    <li>Use any of the provided buttons to link to unrelated content </li>
+    <li>List the incorrect prefix on your bot page.</li>
+</ol>
