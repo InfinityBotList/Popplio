@@ -39,3 +39,38 @@ Here are our rules
     <li>Use any of the provided buttons to link to unrelated content </li>
     <li>List the incorrect prefix on your bot page.</li>
 </ol>
+
+---
+
+## Certification Rules
+
+Exceptions can be made to the requirements below under the right circumstances (such as high quality)!
+
+<ol>
+    <li>Has atleast 30 unique views on bot page.</li>
+    <li>Good long description with effective use of MarkDown and or HTML.</li>
+    <li>In 100 or more servers.</li>
+    <li>Follows the Discord Bots best practice.</li>
+    <li>Bot has been listed for at least 1 week.</li>
+    <li>Has an active, friendly and helpful support server.</li>
+    <li>Has at least 50 votes.</li>
+    <li>100% original code that is either not cloned or heavily modified from its source if a fork.</li>
+    <li>[Bonus] Uses the bot widget on a website, command, or Github Repository!</li>
+</ol>
+
+### Benefits
+
+- Certifed Badge for your Bot Card on our home page.
+- Certifed Badge for your bot page.
+- Certified Bot Role in our Discord Server (listed highest amongst other bots).
+- Custom Bot Page URL (vanity).
+- Much higher chances to be featured in a home-page slot.
+
+
+### Certification Terms Of Service
+
+<ol>
+    <li>Abuse of the <code>API</code> or the <code>Voting System</code> in an attempt to gain access to this program will result in a ban from the <code>Voting System</code> or a permanent banning of your bot and/or you from the service.</li>
+    <li>Any attempts to harm the <code>Infinity Bot List</code> service may lead to the permanent banning of your bot and/or you from the service.</li>
+    <li>The staff team reserves the right to revoke your bot's certification at any time without warning.</li>
+</ol>

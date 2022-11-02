@@ -22,7 +22,7 @@ This is our Official NPM Module used for Posting and Getting Stats.
 ---
 
 ### postBotStats()
-```jsx
+```js
    const poster = new InfinityBots('AUTH_TOKEN', client.user.id);
 
    await poster.postBotStats({
@@ -63,37 +63,34 @@ This is our Official NPM Module used for posting Server and Shard Count Stats.
 ---
 
 
-### Supported Librarys
+### Supported Libraries
 - Discord.js
 - Eris
 
 ---
 
 ### Example
-```jsx
+```js
 const { InfinityAutoPoster } = require('ibl-autopost')
 
 const poster = InfinityAutoPoster('auth_token', client) // your discord.js or eris client
 
 // Optional Logger
 poster.on('posted', (stats) => {
-
   console.log(`Posted stats to the Infinity Bot List API | ${stats.servers} servers`)
-
 });
 ```
 
 ---
 
 ### Example Error
-```jsx
+```js
 const { InfinityAutoPoster } = require('ibl-autopost')
 
 const poster = InfinityAutoPoster('auth_token', client) // your discord.js or eris client
 
 // Optional Logger
 poster.on('error', (err) => {
-
   console.log(err)
 })
 ```
@@ -136,19 +133,41 @@ Follow the steps listed below and you should have no issues!
 ---
 
 ### Response Paramaters
-| Param       | Description                                                                      |
-| ----------- | -------------------------------------------------------------------------------- |
-| botID       | The Discord ID (Snowflake) for the Bot who Recieved a Vote                       |
-| userID      | The Discord ID (Snowflake) of the User who Voted                                 |
-| userName    | The Username of the User who Voted                                               |
-| count       | The Bots new Vote Count                                                          |
-| timestamp   | The Date and Time of the Vote                                                    |
-| type        | The TYPE of Request (Should always be "VOTE" or "TEST" for test Requests)        |
+Since examples are always better than tables, heres a example webhook response:
+
+```json
+{
+  "votes": 0,
+  "user": "510065483693817867",
+  "userObj": {
+    "id": "510065483693817867",
+    "username": "Toxic Dev",
+    "discriminator": "5936",
+    "avatar": "https://cdn.discordapp.com/avatars/510065483693817867/5cb2392c0e474fd78a37a3a05c623165.png",
+    "bot": false,
+    "mention": "<@510065483693817867>",
+    "status": "dnd",
+    "system": false,
+    "nickname": "Токсичний | Toxic",
+    "in_guild": "758641373074423808",
+    "flags": 0,
+    "tag": "Toxic Dev#5936"
+  },
+  "bot": "1019662370278228028",
+  "userID": "510065483693817867",
+  "botID": "1019662370278228028",
+  "test": true,
+  "time": 1667237562
+}
+```
+
+#### Deprecations
+- Note that ``bot``, ``user`` and ``userID`` are deprecated and may be removed in the future.
 
 ---
 
 ### Example (Express)
-```jsx
+```js
 const express = require('express')
 const Infinity = require('infinity-bots')
 
@@ -157,19 +176,17 @@ const app = express() // Your express app
 const webhook = new Infinity.Webhook('Some_Auth_Token') // Add your Webhooks Auth Token
 
 app.post('/votes', webhook.hookListener(async (vote, req, res) => {
-
         let client = req.app.get('client')
 
         let voteLog = new MessageEmbed()
           .setTitle('⬆️ UpVote Logs')
           .setColor('#0EFF00')
           .setDescription(`Somone has voted for me on [Infinity Bot List](https://infinitybotlist.com/bots/BOT_ID/vote)`)
-          .addField('User', `${vote.userName}`, true)
+          .addField('User', `${vote.userObj.name}`, true)
           .addField('User ID', `${vote.userID}`, true
           .setTimestamp()
             
         await client.guilds.cache.get('Some_Server_ID').channels.cache.get('Some_Channel_ID').send({ embeds: [voteLog] }); 
-
 }))
 
 app.listen(3000) // your port
@@ -179,7 +196,7 @@ app.listen(3000) // your port
 ---
 
 ### Example (Fastify)
-```jsx
+```js
 const Infinity = require('infinity-bots');
 
 const webhook = new Infinity.Webhook('Some_Auth_Token')
@@ -242,7 +259,7 @@ This is our Official NPM Module used for interacting with your bots Votes.
 ---
 
 ### Example Usage
-```jsx
+```js
 const { MessageEmbed } = require('discord.js');
 const moment = require('moment');
 const fetch = require('node-fetch');

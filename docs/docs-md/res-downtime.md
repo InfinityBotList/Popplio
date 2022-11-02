@@ -9,7 +9,7 @@ This helps keep our website free of clutter and ensure our users can find a bot 
 
 ## Percentage Schema
 
-```jsx
+```js
 
 let percent = bot.uptime / bot.total_uptime * 100
 

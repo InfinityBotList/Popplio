@@ -9,7 +9,7 @@ get you started xD
 
 ## Javascript Usage
 
-```jsx
+```js
 const fetch = require("node-fetch")
 fetch(`https://spider.infinitybotlist.com/bots/stats`, {
             method: "POST",
@@ -24,7 +24,7 @@ fetch(`https://spider.infinitybotlist.com/bots/stats`, {
         }).then(async res => console.log(await res.json()))
 ```
 
-```jsx
+```js
 const fetch = require("node-fetch")
 fetch(`https://spider.infinitybotlist.com/bots/:botID`, {
             method: "GET",

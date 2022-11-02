@@ -36,7 +36,7 @@ window.addEventListener('DOMContentLoaded', () => {
     // Inject CSS
     let style = document.createElement('style');
     
-    style.innerHTML = `.mobile-menu:hover {opacity:0.8!important;} html,h1,h2,h3,h4,h5,h6,p,span,body,div {font-family: 'Lexend Deca', sans-serif !important;} p`;
+    style.innerHTML = `.mobile-menu:hover {opacity:0.8!important;}`;
     shadow.appendChild(style);
 
     // Add all mobile navigation elements
