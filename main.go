@@ -113,9 +113,6 @@ var (
 	docsJs  string
 	openapi []byte
 
-	// This is used when we need to moderate whether or not to ratelimit a request (such as on a combined endpoint like gvotes)
-	bucketModerators map[string]func(r *http.Request) moderatedBucket = make(map[string]func(r *http.Request) moderatedBucket)
-
 	// Default global ratelimit handler
 	defaultGlobalBucket = moderatedBucket{BucketName: "global", Requests: 500, Time: 2 * time.Minute}
 
@@ -142,11 +139,13 @@ var (
 
 	silverpeltColsStr = strings.Join(silverpeltCols, ",")
 
-	rlEnabled = false // For now, v4 needs ratelimits to be disabled
+	cliInfo string
 )
 
 func init() {
 	godotenv.Load()
+
+	cliInfo = `{"client_id":"` + os.Getenv("CLIENT_ID") + `"}`
 }
 
 func apiDefaultReturn(statusCode int, w http.ResponseWriter, r *http.Request) {
@@ -270,113 +269,51 @@ func bucketHandle(bucket moderatedBucket, id string, w http.ResponseWriter, r *h
 	return true
 }
 
-func rateLimitWrap(reqs int, t time.Duration, bucket string, fn http.HandlerFunc) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		// Check if moderated buckets are needed, if so use them
-		var reqBucket = moderatedBucket{}
-		var globalBucket = defaultGlobalBucket
+// Public ratelimit handler
+func Ratelimit(reqs int, t time.Duration, bucket moderatedBucket, w http.ResponseWriter, r *http.Request) bool {
+	// Get ratelimit from redis
+	var id string
 
-		if modBucket, ok := bucketModerators[bucket]; ok {
-			log.Info("Found modBucket")
-			modBucketData := modBucket(r)
+	auth := r.Header.Get("Authorization")
 
-			if r.Header.Get("CF-RAY") == "" && r.Header.Get("X-Forwarded-For") == "" {
-				// Don't ratelimit internal API calls, the internal API should itself be handling ratelimits there
-				log.Debug("Bypassing ratelimit for " + bucket + " for " + modBucketData.BucketName)
-				fn(w, r)
-				return
+	if auth != "" {
+		if strings.HasPrefix(auth, "User ") {
+			idCheck := authCheck(auth, false)
+
+			if idCheck == nil {
+				// Bot does not exist, return
+				w.WriteHeader(http.StatusForbidden)
+				w.Write([]byte("{\"message\":\"Invalid API token\",\"error\":true}"))
+				return false
 			}
 
-			if (!rlEnabled || modBucketData.Bypass) && r.Header.Get("Origin") != "" {
-				log.Debug("Bypassing ratelimit for "+bucket+" for "+modBucketData.BucketName, " for origin ", r.Header.Get("Origin"))
-				fn(w, r)
-				return
-			}
-
-			if modBucketData.ChangeRL {
-				reqBucket = modBucketData
-			} else {
-				reqBucket.Requests = reqs
-				reqBucket.Time = t
-				reqBucket.BucketName = modBucketData.BucketName
-			}
+			id = *idCheck
 		} else {
-			reqBucket.Requests = reqs
-			reqBucket.Time = t
-			reqBucket.BucketName = bucket
-		}
+			idCheck := authCheck(auth, true)
 
-		if modBucket, ok := bucketModerators["global"]; ok {
-			log.Info("Found globalBucket")
-			modBucketData := modBucket(r)
-			if modBucketData.ChangeRL {
-				globalBucket = modBucketData
-			} else {
-				globalBucket.Requests = reqs
-				globalBucket.Time = t
-				globalBucket.BucketName = modBucketData.BucketName
+			if idCheck == nil {
+				// Bot does not exist, return
+				w.WriteHeader(http.StatusForbidden)
+				w.Write([]byte("{\"message\":\"Invalid API token\",\"error\":true}"))
+				return false
 			}
+
+			id = *idCheck
 		}
+	} else {
+		remoteIp := strings.Split(strings.ReplaceAll(r.Header.Get("X-Forwarded-For"), " ", ""), ",")
 
-		globalBucket.Global = true // Just in case
-
-		w.Header().Set("X-Ratelimit-Bucket", reqBucket.BucketName)
-		w.Header().Set("X-Ratelimit-Bucket-Global", globalBucket.BucketName)
-
-		w.Header().Set("X-Ratelimit-Bucket-Global-Reqs-Allowed-Count", strconv.Itoa(globalBucket.Requests))
-		w.Header().Set("X-Ratelimit-Bucket-Reqs-Allowed-Count", strconv.Itoa(reqBucket.Requests))
-
-		w.Header().Set("X-Ratelimit-Bucket-Global-Reqs-Allowed-Second", strconv.FormatFloat(globalBucket.Time.Seconds(), 'g', -1, 64))
-		w.Header().Set("X-Ratelimit-Bucket-Reqs-Allowed-Second", strconv.FormatFloat(reqBucket.Time.Seconds(), 'g', -1, 64))
-
-		// Get ratelimit from redis
-		var id string
-
-		auth := r.Header.Get("Authorization")
-
-		if auth != "" {
-			if strings.HasPrefix(auth, "User ") {
-				idCheck := authCheck(auth, false)
-
-				if idCheck == nil {
-					// Bot does not exist, return
-					w.WriteHeader(http.StatusForbidden)
-					w.Write([]byte("{\"message\":\"Invalid API token\",\"error\":true}"))
-					return
-				}
-
-				id = *idCheck
-			} else {
-				idCheck := authCheck(auth, true)
-
-				if idCheck == nil {
-					// Bot does not exist, return
-					w.WriteHeader(http.StatusForbidden)
-					w.Write([]byte("{\"message\":\"Invalid API token\",\"error\":true}"))
-					return
-				}
-
-				id = *idCheck
-			}
-		} else {
-			remoteIp := strings.Split(strings.ReplaceAll(r.Header.Get("X-Forwarded-For"), " ", ""), ",")
-
-			// For user privacy, hash the remote ip
-			hasher := sha512.New()
-			hasher.Write([]byte(remoteIp[0]))
-			id = fmt.Sprintf("%x", hasher.Sum(nil))
-		}
-
-		if ok := bucketHandle(globalBucket, id, w, r); !ok {
-			return
-		}
-
-		if ok := bucketHandle(reqBucket, id, w, r); !ok {
-			return
-		}
-
-		fn(w, r)
+		// For user privacy, hash the remote ip
+		hasher := sha512.New()
+		hasher.Write([]byte(remoteIp[0]))
+		id = fmt.Sprintf("%x", hasher.Sum(nil))
 	}
+
+	if ok := bucketHandle(bucket, id, w, r); !ok {
+		return false
+	}
+
+	return true
 }
 
 func corsMiddleware(next http.Handler) http.Handler {
@@ -520,7 +457,36 @@ func main() {
 
 	docs.Route(&docs.Doc{
 		Method:      "GET",
-		Path:        "/authorize",
+		Path:        "/authorize/info",
+		OpId:        "get_authorize_info",
+		Summary:     "Get Login Info",
+		Description: "Gets the login info such as the client ID to use for the login.",
+		Tags:        []string{"System"},
+		Resp:        types.AuthInfo{},
+	})
+	r.Get("/authorize/info", func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte(cliInfo))
+	})
+
+	docs.Route(&docs.Doc{
+		Method: "GET",
+		Path:   "/authorize",
+		Params: []docs.Parameter{
+			{
+				Name:        "code",
+				Description: "The code from the OAuth2 redirect",
+				Required:    true,
+				In:          "query",
+				Schema:      docs.IdSchema,
+			},
+			{
+				Name:        "redirect_uri",
+				Description: "The redirect URI you used in the OAuth2 redirect",
+				Required:    true,
+				In:          "query",
+				Schema:      docs.IdSchema,
+			},
+		},
 		OpId:        "authorize",
 		Summary:     "Login User",
 		Description: "Takes in a ``code`` query parameter and returns a user ``token``.",
@@ -663,7 +629,7 @@ func main() {
 				ctx,
 				"INSERT INTO users (user_id, api_token, username, staff, developer, certified) VALUES ($1, $2, $3, false, false, false)",
 				user.ID,
-				token,
+				apiToken,
 				user.Username,
 			)
 
@@ -759,7 +725,7 @@ func main() {
 		Resp:        []types.AnnouncementList{},
 		AuthType:    []string{"User"},
 	})
-	r.Get("/announcements", rateLimitWrap(30, 1*time.Minute, "gannounce", func(w http.ResponseWriter, r *http.Request) {
+	r.Get("/announcements", func(w http.ResponseWriter, r *http.Request) {
 		rows, err := pool.Query(ctx, "SELECT "+announcementColsStr+" FROM announcements ORDER BY id DESC")
 
 		if err != nil {
@@ -828,7 +794,7 @@ func main() {
 		}
 
 		w.Write(bytes)
-	}))
+	})
 
 	docs.Route(&docs.Doc{
 		Method:      "GET",
@@ -897,7 +863,7 @@ func main() {
 		Tags:        []string{"Bots"},
 		Resp:        types.AllBots{},
 	})
-	r.Get("/bots/all", rateLimitWrap(5, 2*time.Second, "allbots", func(w http.ResponseWriter, r *http.Request) {
+	r.Get("/bots/all", func(w http.ResponseWriter, r *http.Request) {
 		const perPage = 10
 
 		page := r.URL.Query().Get("page")
@@ -982,8 +948,7 @@ func main() {
 		}
 
 		w.Write(bytes)
-
-	}))
+	})
 
 	docs.Route(&docs.Doc{
 		Method:      "GET",
@@ -994,7 +959,7 @@ func main() {
 		Tags:        []string{"Bot Packs"},
 		Resp:        types.AllPacks{},
 	})
-	r.Get("/packs/all", rateLimitWrap(5, 2*time.Second, "allpacks", func(w http.ResponseWriter, r *http.Request) {
+	r.Get("/packs/all", func(w http.ResponseWriter, r *http.Request) {
 		const perPage = 12
 
 		page := r.URL.Query().Get("page")
@@ -1099,7 +1064,7 @@ func main() {
 		redisCache.Set(ctx, "pca-"+strconv.FormatUint(pageNum, 10), bytes, 2*time.Minute)
 
 		w.Write(bytes)
-	}))
+	})
 
 	docs.Route(&docs.Doc{
 		Method:      "GET",
@@ -1119,7 +1084,7 @@ func main() {
 		},
 		Resp: types.BotPack{},
 	})
-	r.Get("/packs/{id}", rateLimitWrap(10, 3*time.Minute, "gpack", func(w http.ResponseWriter, r *http.Request) {
+	r.Get("/packs/{id}", func(w http.ResponseWriter, r *http.Request) {
 		var id = chi.URLParam(r, "id")
 
 		if id == "" {
@@ -1162,7 +1127,7 @@ func main() {
 		}
 
 		w.Write(bytes)
-	}))
+	})
 
 	docs.Route(&docs.Doc{
 		Method:  "POST",
@@ -1304,10 +1269,10 @@ print(req.json())
 		w.Write([]byte(success))
 	}
 
-	r.HandleFunc("/bots/stats", rateLimitWrap(10, 1*time.Minute, "stats", statsFn))
+	r.HandleFunc("/bots/stats", statsFn)
 
 	// Intentionally not documented, variant endpoint
-	r.HandleFunc("/bots/{id}/stats", rateLimitWrap(10, 1*time.Minute, "stats", statsFn))
+	r.HandleFunc("/bots/{id}/stats", statsFn)
 
 	docs.Route(&docs.Doc{
 		Method:      "GET",
@@ -1318,7 +1283,7 @@ print(req.json())
 		Tags:        []string{"System"},
 		Resp:        types.ListIndex{},
 	})
-	r.Get("/list/index", rateLimitWrap(5, 1*time.Minute, "glstats", func(w http.ResponseWriter, r *http.Request) {
+	r.Get("/list/index", func(w http.ResponseWriter, r *http.Request) {
 		// Check cache, this is how we can avoid hefty ratelimits
 		cache := redisCache.Get(ctx, "indexcache").Val()
 		if cache != "" {
@@ -1420,7 +1385,7 @@ print(req.json())
 
 		redisCache.Set(ctx, "indexcache", string(bytes), 10*time.Minute)
 		w.Write(bytes)
-	}))
+	})
 
 	docs.Route(&docs.Doc{
 		Method:      "GET",
@@ -1433,7 +1398,7 @@ print(req.json())
 			Bots: []types.ListStatsBot{},
 		},
 	})
-	r.Get("/list/stats", rateLimitWrap(5, 1*time.Minute, "glstats", func(w http.ResponseWriter, r *http.Request) {
+	r.Get("/list/stats", func(w http.ResponseWriter, r *http.Request) {
 		listStats := types.ListStats{}
 
 		bots, err := pool.Query(ctx, "SELECT bot_id, name, short, type, owner, additional_owners, avatar, certified, claimed FROM bots")
@@ -1498,7 +1463,7 @@ print(req.json())
 		}
 
 		w.Write(bytes)
-	}))
+	})
 
 	docs.Route(&docs.Doc{
 		Method:      "GET",
@@ -1558,7 +1523,7 @@ print(req.json())
 		AuthType: []string{"User"},
 	})
 	// TODO: Document POST as well and seperate the two funcs
-	r.HandleFunc("/users/{uid}/bots/{bid}/votes", rateLimitWrap(5, 1*time.Minute, "gvotes", func(w http.ResponseWriter, r *http.Request) {
+	r.HandleFunc("/users/{uid}/bots/{bid}/votes", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != "GET" && r.Method != "PUT" {
 			apiDefaultReturn(http.StatusMethodNotAllowed, w, r)
 			return
@@ -1838,10 +1803,10 @@ print(req.json())
 			w.WriteHeader(http.StatusOK)
 			w.Write([]byte(success))
 		}
-	}))
+	})
 
 	// For compatibility with old API
-	r.HandleFunc("/votes/{bot_id}/{user_id}", rateLimitWrap(10, 1*time.Minute, "deprecated-gvotes", func(w http.ResponseWriter, r *http.Request) {
+	r.HandleFunc("/votes/{bot_id}/{user_id}", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != "GET" {
 			apiDefaultReturn(http.StatusMethodNotAllowed, w, r)
 			return
@@ -1904,7 +1869,7 @@ print(req.json())
 		}
 
 		w.Write(bytes)
-	}))
+	})
 
 	docs.Route(&docs.Doc{
 		Method:      "GET",
@@ -1949,7 +1914,7 @@ print(req.json())
 			},
 		},
 	})
-	r.Get("/bots/{id}/seo", rateLimitWrap(15, 1*time.Minute, "gbot", func(w http.ResponseWriter, r *http.Request) {
+	r.Get("/bots/{id}/seo", func(w http.ResponseWriter, r *http.Request) {
 		name := chi.URLParam(r, "id")
 
 		if name == "" {
@@ -1987,7 +1952,7 @@ print(req.json())
 		}
 
 		w.Write(bytes)
-	}))
+	})
 
 	docs.Route(&docs.Doc{
 		Method:  "GET",
@@ -2013,7 +1978,7 @@ Gets a bot by id or name
 		Resp: types.Bot{},
 		Tags: []string{"Bots"},
 	})
-	getBotsFn := rateLimitWrap(10, 1*time.Minute, "gbot", func(w http.ResponseWriter, r *http.Request) {
+	getBotsFn := func(w http.ResponseWriter, r *http.Request) {
 		name := chi.URLParam(r, "id")
 
 		if name == "" {
@@ -2085,7 +2050,7 @@ Gets a bot by id or name
 		redisCache.Set(ctx, "bc-"+name, string(bytes), time.Minute*3)
 
 		w.Write(bytes)
-	})
+	}
 
 	docs.Route(&docs.Doc{
 		Method:      "GET",
@@ -2105,7 +2070,7 @@ Gets a bot by id or name
 		Resp: types.User{},
 		Tags: []string{"User"},
 	})
-	r.Get("/users/{id}", rateLimitWrap(10, 3*time.Minute, "guser", func(w http.ResponseWriter, r *http.Request) {
+	r.Get("/users/{id}", func(w http.ResponseWriter, r *http.Request) {
 		name := chi.URLParam(r, "id")
 
 		if name == "" {
@@ -2166,7 +2131,7 @@ Gets a bot by id or name
 		redisCache.Set(ctx, "uc-"+name, string(bytes), time.Minute*3)
 
 		w.Write(bytes)
-	}))
+	})
 
 	r.Get("/bots/{id}", getBotsFn)
 	r.Get("/bot/{id}", getBotsFn)
@@ -2189,7 +2154,7 @@ Gets a bot by id or name
 		Resp: types.ReviewList{},
 		Tags: []string{"Bots"},
 	})
-	r.Get("/bots/{id}/reviews", rateLimitWrap(10, 1*time.Minute, "greview", func(w http.ResponseWriter, r *http.Request) {
+	r.Get("/bots/{id}/reviews", func(w http.ResponseWriter, r *http.Request) {
 		rows, err := pool.Query(ctx, "SELECT "+reviewColsStr+" FROM reviews WHERE (bot_id = $1 OR vanity = $1 OR name = $1)", chi.URLParam(r, "id"))
 
 		if err != nil {
@@ -2221,7 +2186,7 @@ Gets a bot by id or name
 		}
 
 		w.Write(bytes)
-	}))
+	})
 
 	// TODO: Document this once its stable
 	r.HandleFunc("/login/{act}", oauthFn)
@@ -2239,7 +2204,7 @@ Gets a bot by id or name
 		Resp:        types.ApiError{},
 		Tags:        []string{"Bots"},
 	})
-	r.Post("/webhook-test", rateLimitWrap(7, 3*time.Minute, "webtest", func(w http.ResponseWriter, r *http.Request) {
+	r.Post("/webhook-test", func(w http.ResponseWriter, r *http.Request) {
 		defer r.Body.Close()
 
 		var payload types.WebhookPost
@@ -2306,11 +2271,11 @@ Gets a bot by id or name
 
 		w.WriteHeader(http.StatusBadRequest)
 		w.Write(bytes)
-	}))
+	})
 
 	// Internal APIs
 
-	r.Patch("/_protozoa/profile/{id}", rateLimitWrap(7, 1*time.Minute, "profile_update", func(w http.ResponseWriter, r *http.Request) {
+	r.Patch("/_protozoa/profile/{id}", func(w http.ResponseWriter, r *http.Request) {
 		id := chi.URLParam(r, "id")
 
 		// Fetch auth from postgresdb
@@ -2358,9 +2323,9 @@ Gets a bot by id or name
 		}
 
 		redisCache.Del(ctx, "uc-"+id)
-	}))
+	})
 
-	r.Get("/_protozoa/notifications/info", rateLimitWrap(10, 1*time.Minute, "notif_info", func(w http.ResponseWriter, r *http.Request) {
+	r.Get("/_protozoa/notifications/info", func(w http.ResponseWriter, r *http.Request) {
 		data := map[string]any{
 			"public_key": os.Getenv("VAPID_PUBLIC_KEY"),
 		}
@@ -2374,9 +2339,9 @@ Gets a bot by id or name
 		}
 
 		w.Write(bytes)
-	}))
+	})
 
-	r.HandleFunc("/_protozoa/notifications/{id}", rateLimitWrap(40, 1*time.Minute, "get_notifs", func(w http.ResponseWriter, r *http.Request) {
+	r.HandleFunc("/_protozoa/notifications/{id}", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != "GET" && r.Method != "DELETE" {
 			apiDefaultReturn(http.StatusMethodNotAllowed, w, r)
 			return
@@ -2479,9 +2444,9 @@ Gets a bot by id or name
 
 			w.WriteHeader(http.StatusOK)
 		}
-	}))
+	})
 
-	r.Post("/_protozoa/notifications/{id}/sub", rateLimitWrap(10, 1*time.Minute, "notif_info", func(w http.ResponseWriter, r *http.Request) {
+	r.Post("/_protozoa/notifications/{id}/sub", func(w http.ResponseWriter, r *http.Request) {
 		var subscription struct {
 			Auth     string `json:"auth"`
 			P256dh   string `json:"p256dh"`
@@ -2562,9 +2527,9 @@ Gets a bot by id or name
 		}
 
 		w.Write([]byte(success))
-	}))
+	})
 
-	r.HandleFunc("/_protozoa/reminders/{id}", rateLimitWrap(40, 1*time.Minute, "greminder", func(w http.ResponseWriter, r *http.Request) {
+	r.HandleFunc("/_protozoa/reminders/{id}", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != "PUT" && r.Method != "GET" && r.Method != "DELETE" {
 			apiDefaultReturn(http.StatusMethodNotAllowed, w, r)
 			return
@@ -2673,7 +2638,7 @@ Gets a bot by id or name
 
 			w.Write([]byte(success))
 		}
-	}))
+	})
 
 	// Load openapi here to avoid large marshalling in every request
 	openapi, err = json.Marshal(docs.GetSchema())
@@ -2687,8 +2652,6 @@ Gets a bot by id or name
 	r.NotFound(func(w http.ResponseWriter, r *http.Request) {
 		apiDefaultReturn(http.StatusNotFound, w, r)
 	})
-
-	createBucketMods()
 
 	integrase.Prepare(adp, chiWrap{Router: r})
 

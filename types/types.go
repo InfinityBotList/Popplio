@@ -582,3 +582,7 @@ type AuthUser struct {
 	AccessToken string       `json:"access_token"`
 	User        *DiscordUser `json:"user"`
 }
+
+type AuthInfo struct {
+	ClientID string `json:"client_id"`
+}
