@@ -19,15 +19,24 @@ function enableScroll() {
 
 window.addEventListener('DOMContentLoaded', () => {
   const rapidocEl = document.getElementById('api');
+  document.querySelector("#logo").style.display = "block"
   rapidocEl.addEventListener('spec-loaded', () => {
     let menuTargets = [];
 
     let shadow = document.getElementById('api').shadowRoot;
 
+    // Add Lexand Deca font
+    let fontLink = document.createElement('link');
+    fontLink.rel = 'stylesheet';
+    fontLink.setAttribute('type', 'text/css');
+    fontLink.href = 'https://fonts.googleapis.com/css2?family=Lexend+Deca&display=swap';
+    //shadow.appendChild(fontLink);
+    document.head.appendChild(fontLink);
+
     // Inject CSS
     let style = document.createElement('style');
     
-    style.innerHTML = `.mobile-menu:hover {opacity:0.8!important;}`;
+    style.innerHTML = `.mobile-menu:hover {opacity:0.8!important;} html,h1,h2,h3,h4,h5,h6,p,span,body,div {font-family: 'Lexend Deca', sans-serif !important;} p`;
     shadow.appendChild(style);
 
     // Add all mobile navigation elements

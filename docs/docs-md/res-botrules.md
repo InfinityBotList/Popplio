@@ -1,0 +1,28 @@
+# Our Rules
+
+Here are our rules
+
+---
+
+## Bot Rules
+
+<ol>
+    <li>Abide by Infinity Bots <a href="https://infinitybotlist.com/terms">Terms of Service</a>, Discord’s <a href="https://discord.com/terms">Terms of Service</a>, <a href="https://discord.com/developers/docs/topics/rate-limits">API Rate Limits</a> and <a href="https://discord.com/developers/docs/legal">Developer Terms</a>. </li>
+    <li>Must be online during review, public and invitable</li>
+    <li>The main feature and majority of the commands must work</li>
+    <li>Keep NSFW content (including, but not limited: links that source to pornographic material) inside of NSFW channels</li>
+    <li>May not include any seizure-inducing content (gifs, emojis)</li>
+    <li>Commands must only require permissions that the command being run needs. (e.g the kick command can only require the kick permission as it’s required to be used). Bots cannot require the administrator permission for it to work.</li>
+    <li>Must not be an unmodified instance or fork of another bot and must have a considerable amount of modification. </li>
+    <li>Must have a clear and obvious point of entry (e.g. a working help command) as well as a minimum of 7 working commands. Excluding bots who serve a designated purpose</li>
+    <li>Must not be in competition with Infinity Bot List</li>
+    <li>The term “loli” or any other term that refers to the sexualization of underage children cannot be used anywhere throughout your bot. </li>
+    <li>Must not have the sole intent of impersonating other bots </li>
+    <li>Must not reward users for voting for a different bot</li>
+    <li>Your bot must keep all owner commands locked to developers (e.g evals, status/presence commands and any other commands that may present vulnerabilities with your bot)</li>
+    <li>Bots with commands allowing a user to DM another user must either state the author or that it was anonymous; in addition to having a block or opt-out feature.</li>
+    <li>Bots that provide voting reminders must allow users to unsubscribe from them and must specify how to do so in the notification</li>
+    <li>Must not be hosted on BDFD, Bot Ghost or any other “Copy Paste” bot maker.</li>
+    <li>Bots should not have a series of repeated commands, of course bots who have a designated purpose is fine but bots who just repeat the command over and over again with different ways of using them in hopes to get the bot approved will be denied. Example of a bot that does this can be found <a href="https://infinitybotlist.com/bots/835997853263462461">here</a></li>
+    <li>As per Discord’s updated Terms of Service bots who offer or provide a Invite Reward based system or feature are strictly prohibited.</li>
+</ol>
