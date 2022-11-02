@@ -27,6 +27,7 @@ import (
 	jsoniter "github.com/json-iterator/go"
 	ua "github.com/mileusna/useragent"
 	log "github.com/sirupsen/logrus"
+	"golang.org/x/exp/slices"
 
 	_ "embed"
 
@@ -140,6 +141,11 @@ var (
 	silverpeltColsStr = strings.Join(silverpeltCols, ",")
 
 	cliInfo string
+
+	allowedRedirectURLs = []string{
+		"http://localhost:3000/api/v4/auth/login",
+		"https://reedwhisker.infinitybots.gg/api/v4/auth/login",
+	}
 )
 
 func init() {
@@ -489,11 +495,24 @@ func main() {
 		},
 		OpId:        "authorize",
 		Summary:     "Login User",
-		Description: "Takes in a ``code`` query parameter and returns a user ``token``.",
+		Description: "Takes in a ``code`` query parameter and returns a user ``token``. **Cannot be used outside of the site for security reasons but documented in case we wish to allow its use in the future.**",
 		Tags:        []string{"System"},
 		Resp:        types.AuthUser{},
 	})
 	r.Get("/authorize", func(w http.ResponseWriter, r *http.Request) {
+		redirectUri := r.URL.Query().Get("redirect_uri")
+		if !slices.Contains(allowedRedirectURLs, redirectUri) {
+			w.WriteHeader(http.StatusBadRequest)
+			w.Write([]byte(`{"success":false,"message":"Malformed redirect_uri"}`))
+			return
+		}
+
+		if r.Header.Get("Wistala-Server") != os.Getenv("WISTALA_SERVER_SECRET") {
+			w.WriteHeader(http.StatusBadRequest)
+			w.Write([]byte(`{"success":false,"message":"This endpoint is not meant to be used by you"}`))
+			return
+		}
+
 		code := r.URL.Query().Get("code")
 
 		if code == "" {
@@ -502,12 +521,20 @@ func main() {
 			return
 		}
 
+		if redisCache.Exists(ctx, "codecache:"+code).Val() == 1 {
+			w.WriteHeader(http.StatusBadRequest)
+			w.Write([]byte(`{"success":false,"message":"Code has been used before and is as such invalid"}`))
+			return
+		}
+
+		redisCache.Set(ctx, "codecache:"+code, "0", 5*time.Minute)
+
 		resp, err := http.PostForm("https://discord.com/api/v10/oauth2/token", url.Values{
 			"client_id":     {os.Getenv("CLIENT_ID")},
 			"client_secret": {os.Getenv("CLIENT_SECRET")},
 			"grant_type":    {"authorization_code"},
 			"code":          {code},
-			"redirect_uri":  {r.URL.Query().Get("redirect_uri")},
+			"redirect_uri":  {redirectUri},
 			"scope":         {"identify"},
 		})
 
@@ -2138,6 +2165,11 @@ Gets a bot by id or name
 
 		if name == "" {
 			apiDefaultReturn(http.StatusBadRequest, w, r)
+			return
+		}
+
+		if name == "undefined" {
+			w.Write([]byte(`{"success":"false","message":"Handling known issue"}`))
 			return
 		}
 
