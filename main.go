@@ -140,6 +140,8 @@ var (
 	silverpeltCols = utils.GetCols(types.Reminder{})
 
 	silverpeltColsStr = strings.Join(silverpeltCols, ",")
+
+	rlEnabled = false // For now, v4 needs ratelimits to be disabled
 )
 
 func init() {
@@ -201,12 +203,6 @@ func authCheck(token string, bot bool) *string {
 }
 
 func bucketHandle(bucket moderatedBucket, id string, w http.ResponseWriter, r *http.Request) bool {
-	if r.Header.Get("CF-RAY") == "" && r.Header.Get("X-Forwarded-For") == "" {
-		return true // Don't ratelimit internal API calls, the internal API should itself be handling ratelimits there
-	} else if bucket.Bypass {
-		return true // Don't ratelimit bypass buckets
-	}
-
 	rlKey := "rl:" + id + "-" + bucket.BucketName
 
 	v := redisCache.Get(r.Context(), rlKey).Val()
@@ -282,6 +278,20 @@ func rateLimitWrap(reqs int, t time.Duration, bucket string, fn http.HandlerFunc
 		if modBucket, ok := bucketModerators[bucket]; ok {
 			log.Info("Found modBucket")
 			modBucketData := modBucket(r)
+
+			if r.Header.Get("CF-RAY") == "" && r.Header.Get("X-Forwarded-For") == "" {
+				// Don't ratelimit internal API calls, the internal API should itself be handling ratelimits there
+				log.Debug("Bypassing ratelimit for " + bucket + " for " + modBucketData.BucketName)
+				fn(w, r)
+				return
+			}
+
+			if (!rlEnabled || modBucketData.Bypass) && r.Header.Get("Origin") != "" {
+				log.Debug("Bypassing ratelimit for "+bucket+" for "+modBucketData.BucketName, " for origin ", r.Header.Get("Origin"))
+				fn(w, r)
+				return
+			}
+
 			if modBucketData.ChangeRL {
 				reqBucket = modBucketData
 			} else {

@@ -9,29 +9,34 @@ get you started xD
 
 ## Javascript Usage
 
+**Post Stats**
+
 ```js
 const fetch = require("node-fetch")
 fetch(`https://spider.infinitybotlist.com/bots/stats`, {
-            method: "POST",
-            headers: {
-                "authorization": "api-key-here",
-                "Content-Type": "application/json"
-            },
-            body: JSON.stringify({
-                servers: 100,
-                shards: 69
-            })
-        }).then(async res => console.log(await res.json()))
+    method: "POST",
+    headers: {
+        "authorization": "api-key-here",
+        "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+        servers: 100,
+        shards: 69
+    })
+}).then(res => res.json())
+.then(json => console.log(json))
 ```
+
+**Get Bot**
 
 ```js
 const fetch = require("node-fetch")
 fetch(`https://spider.infinitybotlist.com/bots/:botID`, {
-            method: "GET",
-            headers: {
-                "Content-Type": "application/json"
-            }
-        }).then(async res => console.log(await res.json()));
+    method: "GET",
+    headers: {
+        "Content-Type": "application/json"
+    }
+}).then(async res => console.log(await res.json()));
 ```
 
 ---
