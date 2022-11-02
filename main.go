@@ -1436,7 +1436,7 @@ print(req.json())
 	r.Get("/list/stats", rateLimitWrap(5, 1*time.Minute, "glstats", func(w http.ResponseWriter, r *http.Request) {
 		listStats := types.ListStats{}
 
-		bots, err := pool.Query(ctx, "SELECT bot_id, name, short, type, owner, additional_owners, avatar FROM bots")
+		bots, err := pool.Query(ctx, "SELECT bot_id, name, short, type, owner, additional_owners, avatar, certified, claimed FROM bots")
 
 		if err != nil {
 			log.Error(err)
@@ -1454,8 +1454,10 @@ print(req.json())
 			var owner string
 			var additionalOwners []string
 			var avatar string
+			var certified bool
+			var claimed bool
 
-			err := bots.Scan(&botId, &name, &short, &typeStr, &owner, &additionalOwners, &avatar)
+			err := bots.Scan(&botId, &name, &short, &typeStr, &owner, &additionalOwners, &avatar, &certified, &claimed)
 
 			if err != nil {
 				log.Error(err)
@@ -1471,6 +1473,8 @@ print(req.json())
 				AvatarDB:           avatar,
 				MainOwnerID:        owner,
 				AdditionalOwnerIDS: additionalOwners,
+				Certified:          certified,
+				Claimed:            claimed,
 			})
 		}
 

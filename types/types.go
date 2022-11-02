@@ -563,6 +563,8 @@ type ListStatsBot struct {
 	AvatarDB           string   `json:"avatar_db"`
 	Short              string   `json:"short"`
 	Type               string   `json:"type"`
+	Certified          bool     `json:"certified"`
+	Claimed            bool     `json:"claimed"`
 	MainOwnerID        string   `json:"main_owner_id"`
 	AdditionalOwnerIDS []string `json:"additional_owners_ids"`
 }
