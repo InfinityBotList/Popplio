@@ -7,6 +7,7 @@ import (
 	"io"
 	"math"
 	"net/http"
+	"net/url"
 	"os"
 	"strconv"
 	"strings"
@@ -515,6 +516,213 @@ func main() {
 	})
 	r.Get("/", func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(helloWorld))
+	})
+
+	docs.Route(&docs.Doc{
+		Method:      "GET",
+		Path:        "/authorize",
+		OpId:        "authorize",
+		Summary:     "Login User",
+		Description: "Takes in a ``code`` query parameter and returns a user ``token``.",
+		Tags:        []string{"System"},
+		Resp:        types.AuthUser{},
+	})
+	r.Get("/authorize", func(w http.ResponseWriter, r *http.Request) {
+		code := r.URL.Query().Get("code")
+
+		if code == "" {
+			w.WriteHeader(http.StatusBadRequest)
+			w.Write([]byte(`{"success":false,"message":"No code provided"}`))
+			return
+		}
+
+		resp, err := http.PostForm("https://discord.com/api/v10/oauth2/token", url.Values{
+			"client_id":     {os.Getenv("CLIENT_ID")},
+			"client_secret": {os.Getenv("CLIENT_SECRET")},
+			"grant_type":    {"authorization_code"},
+			"code":          {code},
+			"redirect_uri":  {r.URL.Query().Get("redirect_uri")},
+			"scope":         {"identify"},
+		})
+
+		if err != nil {
+			log.Error(err)
+			w.WriteHeader(http.StatusInternalServerError)
+			w.Write([]byte(`{"success":false,"message":"Failed to get token from Discord"}`))
+			return
+		}
+
+		defer resp.Body.Close()
+
+		body, err := io.ReadAll(resp.Body)
+
+		if err != nil {
+			log.Error(err)
+			w.WriteHeader(http.StatusInternalServerError)
+			w.Write([]byte(`{"success":false,"message":"Failed to read response body"}`))
+			return
+		}
+
+		var token struct {
+			AccessToken string `json:"access_token"`
+		}
+
+		err = json.Unmarshal(body, &token)
+
+		if err != nil {
+			log.Error(err)
+			w.WriteHeader(http.StatusInternalServerError)
+			w.Write([]byte(`{"success":false,"message":"Failed to unmarshal response body from Discord"}`))
+			return
+		}
+
+		if token.AccessToken == "" {
+			log.Error(err)
+			w.WriteHeader(http.StatusBadRequest)
+			w.Write([]byte(`{"success":false,"message":"No access token provided by Discord?"}`))
+			return
+		}
+
+		cli := &http.Client{}
+
+		req, err := http.NewRequest("GET", "https://discord.com/api/v10/users/@me", nil)
+
+		if err != nil {
+			log.Error(err)
+			w.WriteHeader(http.StatusInternalServerError)
+			w.Write([]byte(`{"success":false,"message":"Failed to create request to Discord"}`))
+			return
+		}
+
+		req.Header.Set("Authorization", "Bearer "+token.AccessToken)
+
+		resp, err = cli.Do(req)
+
+		if err != nil {
+			log.Error(err)
+			w.WriteHeader(http.StatusInternalServerError)
+			w.Write([]byte(`{"success":false,"message":"Failed to get user from Discord"}`))
+			return
+		}
+
+		defer resp.Body.Close()
+
+		body, err = io.ReadAll(resp.Body)
+
+		if err != nil {
+			log.Error(err)
+			w.WriteHeader(http.StatusInternalServerError)
+			w.Write([]byte(`{"success":false,"message":"Failed to read response body"}`))
+			return
+		}
+
+		var user InternalOauthUser
+
+		err = json.Unmarshal(body, &user)
+
+		if err != nil {
+			log.Error(err)
+			w.WriteHeader(http.StatusInternalServerError)
+			w.Write([]byte(`{"success":false,"message":"Failed to unmarshal response body from Discord"}`))
+			return
+		}
+
+		if user.ID == "" {
+			log.Error(err)
+			w.WriteHeader(http.StatusBadRequest)
+			w.Write([]byte(`{"success":false,"message":"No user ID provided by Discord?"}`))
+			return
+		}
+
+		// Check if user exists on database
+		var exists bool
+
+		err = pool.QueryRow(ctx, "SELECT EXISTS(SELECT 1 FROM users WHERE user_id = $1)", user.ID).Scan(&exists)
+
+		if err != nil {
+			log.Error(err)
+			w.WriteHeader(http.StatusInternalServerError)
+			w.Write([]byte(`{"success":false,"message":"Failed to check if user exists"}`))
+			return
+		}
+
+		discordUser, err := utils.GetDiscordUser(metro, redisCache, ctx, user.ID)
+
+		if err != nil {
+			log.Error(err)
+			w.WriteHeader(http.StatusInternalServerError)
+			w.Write([]byte(`{"success":false,"message":"Failed to get user from Discord"}`))
+			return
+		}
+
+		var apiToken string
+		if !exists {
+			// Create user
+			apiToken = utils.RandString(128)
+			_, err = pool.Exec(
+				ctx,
+				"INSERT INTO users (user_id, api_token, username, staff, developer, certified) VALUES ($1, $2, $3, false, false, false)",
+				user.ID,
+				token,
+				user.Username,
+			)
+
+			if err != nil {
+				log.Error(err)
+				w.WriteHeader(http.StatusInternalServerError)
+				w.Write([]byte(`{"success":false,"message":"Failed to create user"}`))
+				return
+			}
+		} else {
+			// Update user
+			_, err = pool.Exec(
+				ctx,
+				"UPDATE users SET username = $1 WHERE user_id = $2",
+				user.Username,
+				user.ID,
+			)
+
+			if err != nil {
+				log.Error(err)
+				w.WriteHeader(http.StatusInternalServerError)
+				w.Write([]byte(`{"success":false,"message":"Failed to update user"}`))
+				return
+			}
+
+			// Get API token
+			var tokenStr pgtype.Text
+
+			err = pool.QueryRow(ctx, "SELECT api_token FROM users WHERE user_id = $1", user.ID).Scan(&tokenStr)
+
+			if err != nil {
+				log.Error(err)
+				w.WriteHeader(http.StatusInternalServerError)
+				w.Write([]byte(`{"success":false,"message":"Failed to get API token"}`))
+				return
+			}
+
+			apiToken = tokenStr.String
+		}
+
+		// Check if user is banned from main server (TODO, not yet implemented)
+
+		// Create authUser and send
+		var authUser types.AuthUser = types.AuthUser{
+			User:        discordUser,
+			AccessToken: token.AccessToken,
+			Token:       apiToken,
+		}
+
+		bytes, err := json.Marshal(authUser)
+
+		if err != nil {
+			log.Error(err)
+			w.WriteHeader(http.StatusInternalServerError)
+			w.Write([]byte(`{"success":false,"message":"Failed to marshal auth info"}`))
+			return
+		}
+
+		w.Write(bytes)
 	})
 
 	docs.Route(&docs.Doc{
