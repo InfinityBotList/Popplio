@@ -3,9 +3,11 @@ package utils
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"math/rand"
 	"os"
 	"reflect"
+	"strconv"
 	"strings"
 	"time"
 	"unsafe"
@@ -265,7 +267,17 @@ func RandString(n int) string {
 func GetDiscordUser(s *discordgo.Session, redisCache *redis.Client, ctx context.Context, id string) (*types.DiscordUser, error) {
 	// Check if in discordgo session first
 
-	const userExpiryTime = 4 * time.Hour
+	const userExpiryTime = 8 * time.Hour
+
+	// Before wasting time searching state, ensure the ID is actually a valid snowflake
+	if _, err := strconv.ParseUint(id, 10, 64); err != nil {
+		return nil, err
+	}
+
+	// For all practical purposes, a simple length check can handle a lot of illegal IDs
+	if len(id) <= 16 || len(id) > 20 {
+		return nil, errors.New("invalid snowflake")
+	}
 
 	if s.State != nil {
 		guilds := s.State.Guilds
