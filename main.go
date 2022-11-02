@@ -1478,6 +1478,17 @@ print(req.json())
 			})
 		}
 
+		var activeStaff pgtype.Int8
+		err = pool.QueryRow(ctx, "SELECT COUNT(*) FROM users WHERE staff = true").Scan(&activeStaff)
+
+		if err != nil {
+			log.Error(err)
+			apiDefaultReturn(http.StatusInternalServerError, w, r)
+			return
+		}
+
+		listStats.TotalStaff = activeStaff.Int
+
 		bytes, err := json.Marshal(listStats)
 
 		if err != nil {
