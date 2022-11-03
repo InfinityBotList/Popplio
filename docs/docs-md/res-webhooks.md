@@ -25,7 +25,7 @@ Start by setting up your webhook URL in the edit form of your bot on our site, i
 
 ## Acknowledgement
 - Webhooks sent by `infinitybotlist.com` **must** be acknowledged with a `2XX` status response (like 200) in order to be considered successful. 
-- Unsuccessful webhooks will trigger a [retry](#retrial).
+- Unsuccessful webhooks will trigger a [retry](#overview--retrial).
 
 Official `infinitybotlist.com` libraries will be setup to acknowledge webhooks automatically in the near future if not already present for your language.
 
@@ -43,21 +43,37 @@ Responses to webhooks must be returned within 5 seconds, otherwise they are cons
 ---
 
 ## Data Format
-The format of the data your webhook URL will receive in a `POST` request.
 
-#### Bot Webhooks
+Since examples are always better than tables, heres a example webhook request sent by the API:
 
-**TODO: This section has to be updated**
+```json
+{
+  "votes": 0,
+  "user": "510065483693817867",
+  "userObj": {
+    "id": "510065483693817867",
+    "username": "Toxic Dev",
+    "discriminator": "5936",
+    "avatar": "https://cdn.discordapp.com/avatars/510065483693817867/5cb2392c0e474fd78a37a3a05c623165.png",
+    "bot": false,
+    "mention": "<@510065483693817867>",
+    "status": "dnd",
+    "system": false,
+    "nickname": "Токсичний | Toxic",
+    "in_guild": "758641373074423808",
+    "flags": 0,
+    "tag": "Toxic Dev#5936"
+  },
+  "bot": "1019662370278228028",
+  "userID": "510065483693817867",
+  "botID": "1019662370278228028",
+  "test": true,
+  "time": 1667237562
+}
+```
 
-
-| Param       | Description                                                                      |
-| ----------- | -------------------------------------------------------------------------------- |
-| botID       | The Discord ID (Snowflake) for the Bot who Recieved a Vote                       |
-| userID      | The Discord ID (Snowflake) of the User who Voted                                 |
-| userName    | The Username of the User who Voted                                               |
-| count       | The Bots new Vote Count                                                          |
-| timestamp   | The Date and Time of the Vote                                                    |
-| type        | The TYPE of Request (Should always be "VOTE" or "TEST" for test Requests)        |
+#### Deprecations
+- Note that ``bot``, ``user`` and ``userID`` are deprecated and may be removed in the future.
 
 ---
 

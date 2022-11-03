@@ -133,7 +133,7 @@ Follow the steps listed below and you should have no issues!
 ---
 
 ### Response Paramaters
-Since examples are always better than tables, heres a example webhook response:
+Since examples are always better than tables, heres a example webhook request sent by the API:
 
 ```json
 {
