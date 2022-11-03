@@ -161,8 +161,10 @@ func performAct(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if token.Scope != "identify" {
-		http.Error(w, "Invalid scope: scope must be set to ONLY identify, is currently "+token.Scope, http.StatusBadRequest)
+	log.Info(token)
+
+	if !strings.Contains(token.Scope, "identify") {
+		http.Error(w, "Invalid scope: scope contain identify, is currently "+token.Scope, http.StatusBadRequest)
 		return
 	}
 
