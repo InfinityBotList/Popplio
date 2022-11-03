@@ -143,7 +143,7 @@ var (
 	cliInfo string
 
 	allowedRedirectURLs = []string{
-		"http://localhost:3000/api/v4/auth/login",
+		"http://localhost:3000/api/v4/auth/login", // First one must be dev
 		"https://reedwhisker.infinitybots.gg/api/v4/auth/login",
 	}
 )
@@ -507,10 +507,18 @@ func main() {
 			return
 		}
 
-		if r.Header.Get("Wistala-Server") != os.Getenv("WISTALA_SERVER_SECRET") {
-			w.WriteHeader(http.StatusBadRequest)
-			w.Write([]byte(`{"success":false,"message":"This endpoint is not meant to be used by you"}`))
-			return
+		if redirectUri != allowedRedirectURLs[0] {
+			if r.Header.Get("Wistala-Server") != os.Getenv("DEV_WISTALA_SERVER_SECRET") {
+				w.WriteHeader(http.StatusBadRequest)
+				w.Write([]byte(`{"success":false,"message":"This endpoint is not meant to be used by you"}`))
+				return
+			}
+		} else {
+			if r.Header.Get("Wistala-Server") != os.Getenv("WISTALA_SERVER_SECRET") {
+				w.WriteHeader(http.StatusBadRequest)
+				w.Write([]byte(`{"success":false,"message":"This endpoint is not meant to be used by you"}`))
+				return
+			}
 		}
 
 		code := r.URL.Query().Get("code")
