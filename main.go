@@ -507,7 +507,7 @@ func main() {
 			return
 		}
 
-		if redirectUri != allowedRedirectURLs[0] {
+		if redirectUri == allowedRedirectURLs[0] {
 			if r.Header.Get("Wistala-Server") != os.Getenv("DEV_WISTALA_SERVER_SECRET") {
 				w.WriteHeader(http.StatusBadRequest)
 				w.Write([]byte(`{"success":false,"message":"This endpoint is not meant to be used by you"}`))
