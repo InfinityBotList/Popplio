@@ -27,7 +27,7 @@ func init() {
 				"id": id,
 			}).Warning("Removing premium bot: ", id)
 
-			_, err := pool.Exec(ctx, "UPDATE bots SET premium = false, start_period = $1, sub_period = $2, WHERE bot_id = $3", time.Now().UnixMilli(), 2592000000, id)
+			_, err := pool.Exec(ctx, "UPDATE bots SET premium = false, start_premium_period = $1, premium_period_length = $2 WHERE bot_id = $3", time.Now().UnixMilli(), 2592000000, id)
 
 			if err != nil {
 				log.WithFields(log.Fields{
