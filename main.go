@@ -1541,7 +1541,7 @@ print(req.json())
 			})
 		}
 
-		var activeStaff pgtype.Int8
+		var activeStaff int64
 		err = pool.QueryRow(ctx, "SELECT COUNT(*) FROM users WHERE staff = true").Scan(&activeStaff)
 
 		if err != nil {
@@ -1550,7 +1550,51 @@ print(req.json())
 			return
 		}
 
-		listStats.TotalStaff = activeStaff.Int
+		listStats.TotalStaff = activeStaff
+
+		var totalUsers int64
+		err = pool.QueryRow(ctx, "SELECT COUNT(*) FROM users").Scan(&totalUsers)
+
+		if err != nil {
+			log.Error(err)
+			apiDefaultReturn(http.StatusInternalServerError, w, r)
+			return
+		}
+
+		listStats.TotalUsers = totalUsers
+
+		var totalVotes int64
+		err = pool.QueryRow(ctx, "SELECT SUM(votes) FROM bots").Scan(&totalVotes)
+
+		if err != nil {
+			log.Error(err)
+			apiDefaultReturn(http.StatusInternalServerError, w, r)
+			return
+		}
+
+		listStats.TotalVotes = totalVotes
+
+		var totalPacks int64
+		err = pool.QueryRow(ctx, "SELECT COUNT(*) FROM packs").Scan(&totalPacks)
+
+		if err != nil {
+			log.Error(err)
+			apiDefaultReturn(http.StatusInternalServerError, w, r)
+			return
+		}
+
+		listStats.TotalPacks = totalPacks
+
+		var totalTickets int64
+		err = pool.QueryRow(ctx, "SELECT COUNT(*) FROM transcripts").Scan(&totalTickets)
+
+		if err != nil {
+			log.Error(err)
+			apiDefaultReturn(http.StatusInternalServerError, w, r)
+			return
+		}
+
+		listStats.TotalTickets = totalTickets
 
 		bytes, err := json.Marshal(listStats)
 

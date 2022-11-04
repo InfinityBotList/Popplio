@@ -570,8 +570,12 @@ type ListStatsBot struct {
 }
 
 type ListStats struct {
-	Bots       []ListStatsBot `json:"bots"`
-	TotalStaff int64          `json:"total_staff"`
+	Bots         []ListStatsBot `json:"bots"`
+	TotalStaff   int64          `json:"total_staff"`
+	TotalUsers   int64          `json:"total_users"`
+	TotalVotes   int64          `json:"total_votes"`
+	TotalPacks   int64          `json:"total_packs"`
+	TotalTickets int64          `json:"total_tickets"`
 }
 
 // For documentation
