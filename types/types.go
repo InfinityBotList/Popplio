@@ -66,7 +66,7 @@ type Bot struct {
 }
 
 // SEO Bot (minified bot for seo purposes
-type SEOBot struct {
+type SEO struct {
 	User  *DiscordUser `json:"user"`
 	Short string       `json:"short"`
 }

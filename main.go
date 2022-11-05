@@ -2044,7 +2044,7 @@ print(req.json())
 		OpId:        "get_bot_seo",
 		Summary:     "Get Bot SEO Info",
 		Description: "Gets the minimal SEO information about a bot for embed/search purposes. Used by v4 website for meta tags",
-		Resp:        types.SEOBot{},
+		Resp:        types.SEO{},
 		Tags:        []string{"Bots"},
 		Params: []docs.Parameter{
 			{
@@ -2061,6 +2061,13 @@ print(req.json())
 
 		if name == "" {
 			apiDefaultReturn(http.StatusBadRequest, w, r)
+			return
+		}
+
+		cache := redisCache.Get(ctx, "seob:"+name).Val()
+		if cache != "" {
+			w.Header().Add("X-Popplio-Cached", "true")
+			w.Write([]byte(cache))
 			return
 		}
 
@@ -2082,7 +2089,7 @@ print(req.json())
 			return
 		}
 
-		bytes, err := json.Marshal(types.SEOBot{
+		bytes, err := json.Marshal(types.SEO{
 			User:  bot,
 			Short: short,
 		})
@@ -2092,6 +2099,8 @@ print(req.json())
 			apiDefaultReturn(http.StatusInternalServerError, w, r)
 			return
 		}
+
+		redisCache.Set(ctx, "seob:"+name, string(bytes), time.Minute*30)
 
 		w.Write(bytes)
 	})
@@ -2193,6 +2202,73 @@ Gets a bot by id or name
 
 		w.Write(bytes)
 	}
+
+	docs.Route(&docs.Doc{
+		Method:      "GET",
+		Path:        "/users/{id}/seo",
+		OpId:        "get_user_seo",
+		Summary:     "Get User",
+		Description: "Gets a users SEO data by id or username",
+		Params: []docs.Parameter{
+			{
+				Name:        "id",
+				Description: "User ID",
+				Required:    true,
+				In:          "path",
+				Schema:      docs.IdSchema,
+			},
+		},
+		Resp: types.SEO{},
+		Tags: []string{"User"},
+	})
+	r.Get("/users/{id}/seo", func(w http.ResponseWriter, r *http.Request) {
+		name := chi.URLParam(r, "id")
+
+		if name == "" {
+			apiDefaultReturn(http.StatusBadRequest, w, r)
+			return
+		}
+
+		cache := redisCache.Get(ctx, "seou:"+name).Val()
+		if cache != "" {
+			w.Header().Add("X-Popplio-Cached", "true")
+			w.Write([]byte(cache))
+			return
+		}
+
+		var about string
+		var userId string
+		err := pool.QueryRow(ctx, "SELECT about, user_id FROM users WHERE user_id = $1 OR username = $1", name).Scan(&about, &userId)
+
+		if err != nil {
+			log.Error(err)
+			apiDefaultReturn(http.StatusNotFound, w, r)
+			return
+		}
+
+		user, err := utils.GetDiscordUser(metro, redisCache, ctx, userId)
+
+		if err != nil {
+			log.Error(err)
+			apiDefaultReturn(http.StatusInternalServerError, w, r)
+			return
+		}
+
+		bytes, err := json.Marshal(types.SEO{
+			User:  user,
+			Short: about,
+		})
+
+		if err != nil {
+			log.Error(err)
+			apiDefaultReturn(http.StatusInternalServerError, w, r)
+			return
+		}
+
+		redisCache.Set(ctx, "seou:"+name, string(bytes), time.Minute*30)
+
+		w.Write(bytes)
+	})
 
 	docs.Route(&docs.Doc{
 		Method:      "GET",
