@@ -143,8 +143,8 @@ var (
 	cliInfo string
 
 	allowedRedirectURLs = []string{
-		"http://localhost:3000/api/v4/auth/login", // First one must be dev
-		"https://reedwhisker.infinitybots.gg/api/v4/auth/login",
+		"http://localhost:3000/api/login", // First one must be dev
+		"https://reedwhisker.infinitybots.gg/api/login",
 	}
 )
 
@@ -376,6 +376,7 @@ func main() {
 	r := chi.NewRouter()
 
 	// A good base middleware stack
+	r.Use(middleware.CleanPath)
 	r.Use(corsMiddleware)
 	r.Use(middleware.RequestID)
 	r.Use(middleware.RealIP)
@@ -503,20 +504,20 @@ func main() {
 		redirectUri := r.URL.Query().Get("redirect_uri")
 		if !slices.Contains(allowedRedirectURLs, redirectUri) {
 			w.WriteHeader(http.StatusBadRequest)
-			w.Write([]byte(`{"success":false,"message":"Malformed redirect_uri"}`))
+			w.Write([]byte(`{"error":true,"message":"Malformed redirect_uri"}`))
 			return
 		}
 
 		if redirectUri == allowedRedirectURLs[0] {
 			if r.Header.Get("Wistala-Server") != os.Getenv("DEV_WISTALA_SERVER_SECRET") {
 				w.WriteHeader(http.StatusBadRequest)
-				w.Write([]byte(`{"success":false,"message":"This endpoint is not meant to be used by you"}`))
+				w.Write([]byte(`{"error":true,"message":"This endpoint is not meant to be used by you"}`))
 				return
 			}
 		} else {
 			if r.Header.Get("Wistala-Server") != os.Getenv("WISTALA_SERVER_SECRET") {
 				w.WriteHeader(http.StatusBadRequest)
-				w.Write([]byte(`{"success":false,"message":"This endpoint is not meant to be used by you"}`))
+				w.Write([]byte(`{"error":true,"message":"This endpoint is not meant to be used by you"}`))
 				return
 			}
 		}
@@ -525,13 +526,13 @@ func main() {
 
 		if code == "" {
 			w.WriteHeader(http.StatusBadRequest)
-			w.Write([]byte(`{"success":false,"message":"No code provided"}`))
+			w.Write([]byte(`{"error":true,"message":"No code provided"}`))
 			return
 		}
 
 		if redisCache.Exists(ctx, "codecache:"+code).Val() == 1 {
 			w.WriteHeader(http.StatusBadRequest)
-			w.Write([]byte(`{"success":false,"message":"Code has been used before and is as such invalid"}`))
+			w.Write([]byte(`{"error":true,"message":"Code has been used before and is as such invalid"}`))
 			return
 		}
 
@@ -549,7 +550,7 @@ func main() {
 		if err != nil {
 			log.Error(err)
 			w.WriteHeader(http.StatusInternalServerError)
-			w.Write([]byte(`{"success":false,"message":"Failed to get token from Discord"}`))
+			w.Write([]byte(`{"error":true,"message":"Failed to get token from Discord"}`))
 			return
 		}
 
@@ -560,7 +561,7 @@ func main() {
 		if err != nil {
 			log.Error(err)
 			w.WriteHeader(http.StatusInternalServerError)
-			w.Write([]byte(`{"success":false,"message":"Failed to read response body"}`))
+			w.Write([]byte(`{"error":true,"message":"Failed to read response body"}`))
 			return
 		}
 
@@ -573,14 +574,14 @@ func main() {
 		if err != nil {
 			log.Error(err)
 			w.WriteHeader(http.StatusInternalServerError)
-			w.Write([]byte(`{"success":false,"message":"Failed to unmarshal response body from Discord"}`))
+			w.Write([]byte(`{"error":true,"message":"Failed to unmarshal response body from Discord"}`))
 			return
 		}
 
 		if token.AccessToken == "" {
 			log.Error(err)
 			w.WriteHeader(http.StatusBadRequest)
-			w.Write([]byte(`{"success":false,"message":"No access token provided by Discord?"}`))
+			w.Write([]byte(`{"error":true,"message":"No access token provided by Discord?"}`))
 			return
 		}
 
@@ -591,7 +592,7 @@ func main() {
 		if err != nil {
 			log.Error(err)
 			w.WriteHeader(http.StatusInternalServerError)
-			w.Write([]byte(`{"success":false,"message":"Failed to create request to Discord"}`))
+			w.Write([]byte(`{"error":true,"message":"Failed to create request to Discord"}`))
 			return
 		}
 
@@ -602,7 +603,7 @@ func main() {
 		if err != nil {
 			log.Error(err)
 			w.WriteHeader(http.StatusInternalServerError)
-			w.Write([]byte(`{"success":false,"message":"Failed to get user from Discord"}`))
+			w.Write([]byte(`{"error":true,"message":"Failed to get user from Discord"}`))
 			return
 		}
 
@@ -613,7 +614,7 @@ func main() {
 		if err != nil {
 			log.Error(err)
 			w.WriteHeader(http.StatusInternalServerError)
-			w.Write([]byte(`{"success":false,"message":"Failed to read response body"}`))
+			w.Write([]byte(`{"error":true,"message":"Failed to read response body"}`))
 			return
 		}
 
@@ -624,14 +625,14 @@ func main() {
 		if err != nil {
 			log.Error(err)
 			w.WriteHeader(http.StatusInternalServerError)
-			w.Write([]byte(`{"success":false,"message":"Failed to unmarshal response body from Discord"}`))
+			w.Write([]byte(`{"error":true,"message":"Failed to unmarshal response body from Discord"}`))
 			return
 		}
 
 		if user.ID == "" {
 			log.Error(err)
 			w.WriteHeader(http.StatusBadRequest)
-			w.Write([]byte(`{"success":false,"message":"No user ID provided by Discord?"}`))
+			w.Write([]byte(`{"error":true,"message":"No user ID provided by Discord?"}`))
 			return
 		}
 
@@ -643,7 +644,7 @@ func main() {
 		if err != nil {
 			log.Error(err)
 			w.WriteHeader(http.StatusInternalServerError)
-			w.Write([]byte(`{"success":false,"message":"Failed to check if user exists"}`))
+			w.Write([]byte(`{"error":true,"message":"Failed to check if user exists"}`))
 			return
 		}
 
@@ -652,7 +653,7 @@ func main() {
 		if err != nil {
 			log.Error(err)
 			w.WriteHeader(http.StatusInternalServerError)
-			w.Write([]byte(`{"success":false,"message":"Failed to get user from Discord"}`))
+			w.Write([]byte(`{"error":true,"message":"Failed to get user from Discord"}`))
 			return
 		}
 
@@ -671,7 +672,7 @@ func main() {
 			if err != nil {
 				log.Error(err)
 				w.WriteHeader(http.StatusInternalServerError)
-				w.Write([]byte(`{"success":false,"message":"Failed to create user"}`))
+				w.Write([]byte(`{"error":true,"message":"Failed to create user"}`))
 				return
 			}
 		} else {
@@ -686,7 +687,7 @@ func main() {
 			if err != nil {
 				log.Error(err)
 				w.WriteHeader(http.StatusInternalServerError)
-				w.Write([]byte(`{"success":false,"message":"Failed to update user"}`))
+				w.Write([]byte(`{"error":true,"message":"Failed to update user"}`))
 				return
 			}
 
@@ -698,7 +699,7 @@ func main() {
 			if err != nil {
 				log.Error(err)
 				w.WriteHeader(http.StatusInternalServerError)
-				w.Write([]byte(`{"success":false,"message":"Failed to get API token"}`))
+				w.Write([]byte(`{"error":true,"message":"Failed to get API token"}`))
 				return
 			}
 
@@ -719,7 +720,7 @@ func main() {
 		if err != nil {
 			log.Error(err)
 			w.WriteHeader(http.StatusInternalServerError)
-			w.Write([]byte(`{"success":false,"message":"Failed to marshal auth info"}`))
+			w.Write([]byte(`{"error":true,"message":"Failed to marshal auth info"}`))
 			return
 		}
 
@@ -2090,8 +2091,10 @@ print(req.json())
 		}
 
 		bytes, err := json.Marshal(types.SEO{
-			User:  bot,
-			Short: short,
+			ID:       bot.ID,
+			Username: bot.Username,
+			Avatar:   bot.Avatar,
+			Short:    short,
 		})
 
 		if err != nil {
@@ -2255,8 +2258,10 @@ Gets a bot by id or name
 		}
 
 		bytes, err := json.Marshal(types.SEO{
-			User:  user,
-			Short: about,
+			ID:       user.ID,
+			Username: user.Username,
+			Avatar:   user.Avatar,
+			Short:    about,
 		})
 
 		if err != nil {
@@ -2297,7 +2302,7 @@ Gets a bot by id or name
 		}
 
 		if name == "undefined" {
-			w.Write([]byte(`{"success":"false","message":"Handling known issue"}`))
+			w.Write([]byte(`{"error":"false","message":"Handling known issue"}`))
 			return
 		}
 
