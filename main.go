@@ -963,7 +963,7 @@ func main() {
 		Resp:        types.AllBots{},
 	})
 	r.Get("/bots/all", func(w http.ResponseWriter, r *http.Request) {
-		const perPage = 10
+		const perPage = 12
 
 		page := r.URL.Query().Get("page")
 
