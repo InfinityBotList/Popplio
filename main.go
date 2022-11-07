@@ -2210,7 +2210,7 @@ Gets a bot by id or name
 		Method:      "GET",
 		Path:        "/users/{id}/seo",
 		OpId:        "get_user_seo",
-		Summary:     "Get User",
+		Summary:     "Get User SEO Info",
 		Description: "Gets a users SEO data by id or username",
 		Params: []docs.Parameter{
 			{
