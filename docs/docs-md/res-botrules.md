@@ -40,6 +40,12 @@ Here are our rules
     <li>List the incorrect prefix on your bot page.</li>
 </ol>
 
+### Pro Tip
+
+If you find yourself repeating the same thing over and over again, you can use *variable substitution*:
+
+To do so, create a ``Extra Link`` starting with a underscore (such as ``_foo``), then use it in your description like this: ``{{_foo}}`` (note the double curly braces) and the value of ``_foo`` will be substituted in all places it appears before markdown parsing or sanitization.
+
 ---
 
 ## Certification Rules
