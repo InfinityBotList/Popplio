@@ -26,6 +26,58 @@ func HasMigrated(ctx context.Context, pool *pgxpool.Pool) bool {
 	return true
 }
 
+func parseLink(key string, link string) string {
+	if strings.HasPrefix(link, "http://") {
+		return strings.Replace(link, "http://", "https://", 1)
+	}
+
+	if strings.HasPrefix(link, "https://") {
+		return link
+	}
+
+	fmt.Println("Invalid URL found:", link)
+
+	if key == "Support" && !strings.Contains(link, " ") {
+		link = strings.Replace(link, "www", "", 1)
+		if strings.HasPrefix(link, "discord.gg/") {
+			link = "https://discord.gg/" + link[11:]
+		} else if strings.HasPrefix(link, "discord.com/invite/") {
+			link = "https://discord.gg/" + link[19:]
+		} else if strings.HasPrefix(link, "discord.com/") {
+			link = "https://discord.gg/" + link[12:]
+		} else {
+			link = "https://discord.gg/" + link
+		}
+		fmt.Println("HOTFIX: Fixed support link to", link)
+		return link
+	} else {
+		// But wait, it may be safe still
+		split := strings.Split(link, "/")[0]
+		tldLst := strings.Split(split, ".")
+
+		if len(tldLst) > 1 && (len(tldLst[len(tldLst)-1]) == 2 || slices.Contains([]string{
+			"com",
+			"net",
+			"org",
+			"fun",
+			"app",
+			"dev",
+			"xyz",
+		}, tldLst[len(tldLst)-1])) {
+			fmt.Println("Fixed found URL link to", "https://"+link)
+			return "https://" + link
+		} else {
+			if strings.HasPrefix(link, "https://") {
+				return link
+			}
+
+			log.Warning("Removing invalid link: ", link)
+			time.Sleep(5 * time.Second)
+			return ""
+		}
+	}
+}
+
 func XSSCheck(ctx context.Context, pool *pgxpool.Pool) {
 	// get every extra_link
 	rows, err := pool.Query(ctx, "SELECT bot_id, extra_links FROM bots")
@@ -69,54 +121,12 @@ func XSSCheck(ctx context.Context, pool *pgxpool.Pool) {
 			}
 
 			// Validate URL
-			if strings.HasPrefix(links[k], "http://") {
-				links[k] = strings.Replace(links[k], "http://", "https://", 1)
-				continue
-			}
+			links[k] = parseLink(k, links[k])
 
-			if strings.HasPrefix(links[k], "https://") {
-				continue
-			}
+			fmt.Println("Parsed link for", k, "is", links[k])
 
-			fmt.Println("Invalid URL found:", k, links[k])
-
-			if k == "Support" && !strings.Contains(links[k], " ") {
-				links[k] = strings.Replace(links[k], "www", "", 1)
-				if strings.HasPrefix(links[k], "discord.gg/") {
-					links[k] = "https://discord.gg/" + links[k][11:]
-				} else if strings.HasPrefix(links[k], "discord.com/invite/") {
-					links[k] = "https://discord.gg/" + links[k][19:]
-				} else if strings.HasPrefix(links[k], "discord.com/") {
-					links[k] = "https://discord.gg/" + links[k][12:]
-				} else {
-					links[k] = "https://discord.gg/" + links[k]
-				}
-				fmt.Println("HOTFIX: Fixed support link to", links[k])
-			} else {
-				// But wait, it may be safe still
-				split := strings.Split(links[k], "/")[0]
-				tldLst := strings.Split(split, ".")
-
-				if len(tldLst) > 1 && (len(tldLst[len(tldLst)-1]) == 2 || slices.Contains([]string{
-					"com",
-					"net",
-					"org",
-					"fun",
-					"app",
-					"dev",
-					"xyz",
-				}, tldLst[len(tldLst)-1])) {
-					fmt.Println("Fixed found URL link to", "https://"+links[k])
-					links[k] = "https://" + links[k]
-				} else {
-					if strings.HasPrefix(links[k], "https://") {
-						continue
-					}
-
-					log.Warning("Removing invalid link: ", links[k])
-					delete(links, k)
-					time.Sleep(5 * time.Second)
-				}
+			if links[k] == "" {
+				delete(links, k)
 			}
 		}
 
