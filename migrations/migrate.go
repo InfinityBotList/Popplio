@@ -104,6 +104,7 @@ func XSSCheck(ctx context.Context, pool *pgxpool.Pool) {
 					"fun",
 					"app",
 					"dev",
+					"xyz",
 				}, tldLst[len(tldLst)-1])) {
 					fmt.Println("Fixed found URL link to", "https://"+links[k])
 					links[k] = "https://" + links[k]
