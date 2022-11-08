@@ -139,6 +139,10 @@ func init() {
 	go func() {
 		d := 5 * time.Second
 		for x := range time.Tick(d) {
+			if migration {
+				return
+			}
+
 			log.Info("Tick at ", x, ", checking reminders")
 
 			rows, err := pool.Query(ctx, "SELECT "+silverpeltColsStr+" FROM silverpelt WHERE NOW() - last_acked > interval '4 hours'")
@@ -271,6 +275,10 @@ func init() {
 	go func() {
 		d := 10 * time.Second
 		for x := range time.Tick(d) {
+			if migration {
+				return
+			}
+
 			log.Info("Tick at ", x, ", checking premiums")
 
 			rows, err := pool.Query(ctx, "SELECT bot_id, start_premium_period, premium_period_length, type FROM bots WHERE premium = true")

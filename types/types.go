@@ -16,6 +16,7 @@ type Bot struct {
 	ITag                     pgtype.UUID        `db:"itag" json:"itag"`
 	BotID                    string             `db:"bot_id" json:"bot_id"`
 	Name                     string             `db:"name" json:"name"`
+	ExtraLinks               pgtype.JSONB       `db:"extra_links" json:"extra_links"`
 	Avatar                   string             `db:"avatar" json:"avatar_db"`
 	Tags                     []string           `db:"tags" json:"tags"`
 	Prefix                   pgtype.Text        `db:"prefix" json:"prefix"`
@@ -29,9 +30,6 @@ type Bot struct {
 	Long                     string             `db:"long" json:"long"`
 	LongDescIsURL            bool               `json:"long_desc_is_url"`
 	Library                  pgtype.Text        `db:"library" json:"library"`
-	Website                  pgtype.Text        `db:"website" json:"website"`
-	Donate                   pgtype.Text        `db:"donate" json:"donate"`
-	Support                  pgtype.Text        `db:"support" json:"support"`
 	NSFW                     bool               `db:"nsfw" json:"nsfw"`
 	Premium                  bool               `db:"premium" json:"premium"`
 	Certified                bool               `db:"certified" json:"certified"`
@@ -43,7 +41,6 @@ type Bot struct {
 	Views                    int                `db:"clicks" json:"clicks"`
 	UniqueClicks             int64              `json:"unique_clicks"` // Must be parsed internally
 	InviteClicks             int                `db:"invite_clicks" json:"invites"`
-	Github                   pgtype.Text        `db:"github" json:"github"`
 	Banner                   pgtype.Text        `db:"banner" json:"banner"`
 	Invite                   pgtype.Text        `db:"invite" json:"invite"`
 	Type                     string             `db:"type" json:"type"` // For auditing reasons, we do not filter out denied/banned bots in API

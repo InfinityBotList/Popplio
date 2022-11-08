@@ -36,22 +36,6 @@ func IsNone(s string) bool {
 }
 
 func ParseBot(ctx context.Context, pool *pgxpool.Pool, bot *types.Bot, s *discordgo.Session, redisCache *redis.Client) error {
-	if IsNone(bot.Website.String) || !strings.HasPrefix(bot.Website.String, "https://") {
-		bot.Website.Status = pgtype.Null
-	}
-
-	if IsNone(bot.Donate.String) || !strings.HasPrefix(bot.Donate.String, "https://") {
-		bot.Donate.Status = pgtype.Null
-	}
-
-	if IsNone(bot.Github.String) || !strings.HasPrefix(bot.Github.String, "https://") {
-		bot.Github.Status = pgtype.Null
-	}
-
-	if IsNone(bot.Support.String) || !strings.HasPrefix(bot.Support.String, "https://") {
-		bot.Support.Status = pgtype.Null
-	}
-
 	if IsNone(bot.Banner.String) || !strings.HasPrefix(bot.Banner.String, "https://") {
 		bot.Banner.Status = pgtype.Null
 	}

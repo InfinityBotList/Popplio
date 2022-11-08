@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"popplio/docs"
+	"popplio/migrations"
 	"popplio/types"
 	"popplio/utils"
 
@@ -110,6 +111,7 @@ var (
 	pool       *pgxpool.Pool
 	backupPool *pgxpool.Pool
 	ctx        context.Context
+	migration  bool
 
 	docsJs  string
 	openapi []byte
@@ -409,6 +411,16 @@ func main() {
 
 	if err != nil {
 		panic(err)
+	}
+
+	if os.Getenv("MIGRATION") == "true" || os.Getenv("MIGRATION") == "1" {
+		migration = true
+		migrations.Migrate(ctx, pool)
+		os.Exit(0)
+	}
+
+	if !migrations.HasMigrated(ctx, pool) {
+		panic("Database has not been migrated, run popplio with the MIGRATION environment variable set to true to migrate")
 	}
 
 	backupPool, err = pgxpool.Connect(ctx, backupConn)
