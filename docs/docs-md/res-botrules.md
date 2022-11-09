@@ -69,8 +69,8 @@ Exceptions can be made to the requirements below under the right circumstances (
 - Certifed Badge for your Bot Card on our home page.
 - Certifed Badge for your bot page.
 - Certified Bot Role in our Discord Server (listed highest amongst other bots).
-- Custom Bot Page URL (vanity).
-- Much higher chances to be featured in a home-page slot.
+- Custom Bot Page URL (vanity). *May become generally available in the future, undecided*
+- Almost guaranteed chances of being featured in a home-page slot.
 
 
 ### Certification Terms Of Service
