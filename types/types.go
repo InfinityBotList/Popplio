@@ -46,7 +46,7 @@ type Bot struct {
 	Type                     string             `db:"type" json:"type"` // For auditing reasons, we do not filter out denied/banned bots in API
 	Vanity                   pgtype.Text        `db:"vanity" json:"vanity"`
 	ExternalSource           pgtype.Text        `db:"external_source" json:"external_source"`
-	ListSource               pgtype.Text        `db:"list_source" json:"list_source"`
+	ListSource               pgtype.UUID        `db:"list_source" json:"list_source"`
 	VoteBanned               bool               `db:"vote_banned" json:"vote_banned"`
 	CrossAdd                 bool               `db:"cross_add" json:"cross_add"`
 	StartPeriod              int                `db:"start_premium_period" json:"start_premium_period"`
