@@ -75,7 +75,7 @@ func DocumentMicroservices() {
 			} {
 				if v != nil {
 					v.Servers = doc.Servers
-					v.Tags = []string{"Arcadia"}
+					v.Tags = []string{name}
 				}
 			}
 
