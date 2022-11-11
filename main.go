@@ -2552,6 +2552,12 @@ Gets a bot by id or name
 		}
 
 		if profile.About != "" {
+			if len(profile.About) > 1000 {
+				w.Write([]byte(`{"error":true,"message": "About me is over 1000 characters!"}`))
+				w.WriteHeader(http.StatusBadRequest)
+				return
+			}
+
 			// Update about
 			_, err = pool.Exec(ctx, "UPDATE users SET about = $1 WHERE user_id = $2", profile.About, id)
 
