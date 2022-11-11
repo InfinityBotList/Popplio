@@ -2887,6 +2887,8 @@ Gets a bot by id or name
 	})
 
 	// Load openapi here to avoid large marshalling in every request
+	docs.DocumentMicroservices()
+
 	openapi, err = json.Marshal(docs.GetSchema())
 
 	if err != nil {

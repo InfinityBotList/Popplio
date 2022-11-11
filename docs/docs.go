@@ -140,6 +140,7 @@ type operation struct {
 	Parameters  []Parameter           `json:"parameters"`
 	Responses   map[string]response   `json:"responses"`
 	Security    []map[string][]string `json:"security,omitempty"`
+	Servers     []server              `json:"servers,omitempty"`
 }
 
 type path struct {
