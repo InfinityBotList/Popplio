@@ -833,7 +833,7 @@ func main() {
 		Summary:     "Get Announcements",
 		Description: "This endpoint will return a list of announcements. User authentication is optional and using it will show user targetted announcements.",
 		Tags:        []string{"System"},
-		Resp:        []types.AnnouncementList{},
+		Resp:        types.AnnouncementList{},
 		AuthType:    []string{"User"},
 	})
 	r.Get("/announcements", func(w http.ResponseWriter, r *http.Request) {

@@ -90,8 +90,8 @@ type content struct {
 }
 
 type reqBody struct {
-	Description string             `json:"description"`
-	Required    bool               `json:"required"`
+	Description string             `json:"description,omitempty"`
+	Required    bool               `json:"required,omitempty"`
 	Content     map[string]content `json:"content"`
 }
 
@@ -108,12 +108,15 @@ type component struct {
 	RequestBodies map[string]reqBody  `json:"requestBodies"`
 }
 
-type ref struct {
-	Ref string `json:"$ref"`
+type schema struct {
+	Ref        string         `json:"$ref,omitempty"`
+	Type       string         `json:"type,omitempty"`
+	Required   []string       `json:"required,omitempty"`
+	Properties map[string]any `json:"properties,omitempty"`
 }
 
 type schemaResp struct {
-	Schema ref `json:"schema"`
+	Schema schema `json:"schema"`
 }
 
 // Represents a openAPI response
@@ -136,7 +139,7 @@ type operation struct {
 	Tags        []string              `json:"tags,omitempty"`
 	Description string                `json:"description"`
 	ID          string                `json:"operationId"`
-	RequestBody *ref                  `json:"requestBody,omitempty"`
+	RequestBody any                   `json:"requestBody,omitempty"`
 	Parameters  []Parameter           `json:"parameters"`
 	Responses   map[string]response   `json:"responses"`
 	Security    []map[string][]string `json:"security,omitempty"`
@@ -327,7 +330,7 @@ func Route(doc *Doc) {
 	}
 
 	// Add in requests
-	var reqBodyRef *ref
+	var reqBodyRef *schema
 	if doc.Req != nil {
 		schemaRef, err := openapi3gen.NewSchemaRefForValue(doc.Req, nil)
 
@@ -353,7 +356,7 @@ func Route(doc *Doc) {
 			api.Paths[doc.Path] = path{}
 		}
 
-		reqBodyRef = &ref{Ref: "#/components/requestBodies/" + doc.Method + "_" + reqSchemaName}
+		reqBodyRef = &schema{Ref: "#/components/requestBodies/" + doc.Method + "_" + reqSchemaName}
 	}
 
 	operationData := &operation{
@@ -368,7 +371,7 @@ func Route(doc *Doc) {
 				Description: "Success",
 				Content: map[string]schemaResp{
 					"application/json": {
-						Schema: ref{
+						Schema: schema{
 							Ref: "#/components/schemas/" + schemaName,
 						},
 					},
@@ -378,7 +381,7 @@ func Route(doc *Doc) {
 				Description: "Bad Request",
 				Content: map[string]schemaResp{
 					"application/json": {
-						Schema: ref{
+						Schema: schema{
 							Ref: "#/components/schemas/types.ApiError",
 						},
 					},
