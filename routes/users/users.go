@@ -456,6 +456,31 @@ func (b Router) Routes(r *chi.Mux) {
 
 		docs.Route(&docs.Doc{
 			Method:      "GET",
+			Path:        "/users/notifications/info",
+			OpId:        "get_user_notifications",
+			Summary:     "Get User Notifications",
+			Description: "Gets a users notifications",
+			Resp:        types.NotificationInfo{},
+			Tags:        []string{tagName},
+		})
+		r.Get("/notifications/info", func(w http.ResponseWriter, r *http.Request) {
+			data := types.NotificationInfo{
+				PublicKey: os.Getenv("VAPID_PUBLIC_KEY"),
+			}
+
+			bytes, err := json.Marshal(data)
+
+			if err != nil {
+				log.Error(err)
+				utils.ApiDefaultReturn(http.StatusInternalServerError, w, r)
+				return
+			}
+
+			w.Write(bytes)
+		})
+
+		docs.Route(&docs.Doc{
+			Method:      "GET",
 			Path:        "/users/{id}/notifications",
 			OpId:        "get_user_notifications",
 			Summary:     "Get User Notifications",
@@ -617,7 +642,7 @@ func (b Router) Routes(r *chi.Mux) {
 				return
 			}
 
-			w.WriteHeader(http.StatusOK)
+			w.Write([]byte(constants.Success))
 		})
 
 		docs.Route(&docs.Doc{
@@ -743,7 +768,7 @@ func (b Router) Routes(r *chi.Mux) {
 			Resp: types.ReminderList{},
 			Tags: []string{tagName},
 		})
-		r.Delete("/{id}/reminders", func(w http.ResponseWriter, r *http.Request) {
+		r.Delete("/{id}/reminder", func(w http.ResponseWriter, r *http.Request) {
 			var id = chi.URLParam(r, "id")
 
 			if id == "" {

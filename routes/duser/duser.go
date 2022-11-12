@@ -52,7 +52,7 @@ func (b Router) Routes(r *chi.Mux) {
 
 			if err != nil {
 				log.Error(err)
-				utils.ApiDefaultReturn(http.StatusInternalServerError, w, r)
+				utils.ApiDefaultReturn(http.StatusNotFound, w, r)
 				return
 			}
 

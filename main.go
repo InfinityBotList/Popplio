@@ -535,23 +535,6 @@ func main() {
 		w.Write(bytes)
 	})
 
-	// Internal APIs
-	r.Get("/_protozoa/notifications/info", func(w http.ResponseWriter, r *http.Request) {
-		data := map[string]any{
-			"public_key": os.Getenv("VAPID_PUBLIC_KEY"),
-		}
-
-		bytes, err := json.Marshal(data)
-
-		if err != nil {
-			log.Error(err)
-			utils.ApiDefaultReturn(http.StatusInternalServerError, w, r)
-			return
-		}
-
-		w.Write(bytes)
-	})
-
 	// Load openapi here to avoid large marshalling in every request
 	docs.DocumentMicroservices()
 
@@ -564,7 +547,8 @@ func main() {
 	adp := DummyAdapter{}
 
 	r.NotFound(func(w http.ResponseWriter, r *http.Request) {
-		utils.ApiDefaultReturn(http.StatusNotFound, w, r)
+		w.WriteHeader(http.StatusNotFound)
+		w.Write([]byte(constants.NotFoundPage))
 	})
 
 	integrase.Prepare(adp, chiWrap{Router: r})

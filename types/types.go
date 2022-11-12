@@ -616,3 +616,7 @@ type NotifGetList struct {
 type ReminderList struct {
 	Reminders []Reminder `json:"reminders"`
 }
+
+type NotificationInfo struct {
+	PublicKey string `json:"public_key"`
+}
