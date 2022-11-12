@@ -12,4 +12,5 @@ const (
 	VoteBanned       = "{\"message\":\"Slow down, bucko! Either you or this bot is banned from voting right now!\",\"error\":true}"
 	Success          = "{\"message\":\"Success!\",\"error\":false}"
 	BackTick         = "`"
+	TestNotif        = "{\"message\":\"Test notification!\",\"title\":\"Test notification!\",\"icon\":\"https://i.imgur.com/GRo0Zug.png\",\"error\":false}"
 )

@@ -28,10 +28,8 @@ import (
 	"popplio/webhooks"
 
 	integrase "github.com/MetroReviews/metro-integrase/lib"
-	"github.com/georgysavva/scany/pgxscan"
 	"github.com/jackc/pgtype"
 	jsoniter "github.com/json-iterator/go"
-	ua "github.com/mileusna/useragent"
 	log "github.com/sirupsen/logrus"
 
 	_ "embed"
@@ -74,9 +72,6 @@ const (
 	mainSite   = "https://infinitybotlist.com"
 	statusPage = "https://status.botlist.site"
 	apiBot     = "https://discord.com/api/oauth2/authorize?client_id=818419115068751892&permissions=140898593856&scope=bot%20applications.commands"
-
-	testNotif = "{\"message\":\"Test notification!\", \"title\":\"Test notification!\",\"icon\":\"https://i.imgur.com/GRo0Zug.png\",\"error\":false}"
-	backTick  = "`"
 )
 
 // Represents a moderated bucket typically used in 'combined' endpoints like Get/Create Votes which are just branches off a common function
@@ -98,18 +93,13 @@ type moderatedBucket struct {
 }
 
 var (
-	ctx       context.Context
-	migration bool
+	ctx context.Context
 
 	docsJs  string
 	openapi []byte
 
 	// Default global ratelimit handler
 	defaultGlobalBucket = moderatedBucket{BucketName: "global", Requests: 500, Time: 2 * time.Minute}
-
-	silverpeltCols = utils.GetCols(types.Reminder{})
-
-	silverpeltColsStr = strings.Join(silverpeltCols, ",")
 )
 
 func bucketHandle(bucket moderatedBucket, id string, w http.ResponseWriter, r *http.Request) bool {
@@ -295,7 +285,7 @@ func main() {
 	r.Use(middleware.Timeout(30 * time.Second))
 
 	if os.Getenv("MIGRATION") == "true" || os.Getenv("MIGRATION") == "1" {
-		migration = true
+		state.Migration = true
 		migrations.Migrate(ctx, state.Pool)
 		os.Exit(0)
 	}
@@ -560,305 +550,6 @@ func main() {
 		}
 
 		w.Write(bytes)
-	})
-
-	r.HandleFunc("/_protozoa/notifications/{id}", func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != "GET" && r.Method != "DELETE" {
-			utils.ApiDefaultReturn(http.StatusMethodNotAllowed, w, r)
-			return
-		}
-
-		var id = chi.URLParam(r, "id")
-
-		if id == "" {
-			utils.ApiDefaultReturn(http.StatusBadRequest, w, r)
-			return
-		}
-
-		// Fetch auth from postgresdb
-		if r.Header.Get("Authorization") == "" {
-			utils.ApiDefaultReturn(http.StatusUnauthorized, w, r)
-			return
-		} else {
-			authId := utils.AuthCheck(r.Header.Get("Authorization"), false)
-
-			if authId == nil || *authId != id {
-				log.Error(err)
-				utils.ApiDefaultReturn(http.StatusUnauthorized, w, r)
-				return
-			}
-		}
-
-		if r.Method == "GET" {
-			var subscription []types.NotifGet
-
-			var subscriptionDb []struct {
-				Endpoint  string    `db:"endpoint"`
-				NotifID   string    `db:"notif_id"`
-				CreatedAt time.Time `db:"created_at"`
-				UA        string    `db:"ua"`
-			}
-
-			rows, err := state.Pool.Query(ctx, "SELECT endpoint, notif_id, created_at, ua FROM poppypaw WHERE id = $1", id)
-
-			if err != nil {
-				log.Error(err)
-				utils.ApiDefaultReturn(http.StatusInternalServerError, w, r)
-				return
-			}
-
-			err = pgxscan.ScanAll(&subscriptionDb, rows)
-
-			if err != nil {
-				log.Error(err)
-				utils.ApiDefaultReturn(http.StatusInternalServerError, w, r)
-				return
-			}
-
-			if len(subscriptionDb) == 0 {
-				utils.ApiDefaultReturn(http.StatusNotFound, w, r)
-				return
-			}
-
-			for _, sub := range subscriptionDb {
-				uaD := ua.Parse(sub.UA)
-				fmt.Println("Parsing UA:", sub.UA, uaD)
-
-				binfo := types.NotifBrowserInfo{
-					OS:         uaD.OS,
-					Browser:    uaD.Name,
-					BrowserVer: uaD.Version,
-					Mobile:     uaD.Mobile,
-				}
-
-				subscription = append(subscription, types.NotifGet{
-					Endpoint:    sub.Endpoint,
-					NotifID:     sub.NotifID,
-					CreatedAt:   sub.CreatedAt,
-					BrowserInfo: binfo,
-				})
-			}
-
-			bytes, err := json.Marshal(subscription)
-
-			if err != nil {
-				log.Error(err)
-				utils.ApiDefaultReturn(http.StatusInternalServerError, w, r)
-				return
-			}
-
-			w.Write(bytes)
-		} else {
-			// Delete the notif
-			if r.URL.Query().Get("notif_id") == "" {
-				utils.ApiDefaultReturn(http.StatusBadRequest, w, r)
-				return
-			}
-
-			_, err := state.Pool.Exec(ctx, "DELETE FROM poppypaw WHERE id = $1 AND notif_id = $2", id, r.URL.Query().Get("notif_id"))
-
-			if err != nil {
-				log.Error(err)
-				utils.ApiDefaultReturn(http.StatusInternalServerError, w, r)
-				return
-			}
-
-			w.WriteHeader(http.StatusOK)
-		}
-	})
-
-	r.Post("/_protozoa/notifications/{id}/sub", func(w http.ResponseWriter, r *http.Request) {
-		var subscription struct {
-			Auth     string `json:"auth"`
-			P256dh   string `json:"p256dh"`
-			Endpoint string `json:"endpoint"`
-		}
-
-		var id = chi.URLParam(r, "id")
-
-		if id == "" {
-			utils.ApiDefaultReturn(http.StatusBadRequest, w, r)
-			return
-		}
-
-		defer r.Body.Close()
-
-		bodyBytes, err := io.ReadAll(r.Body)
-
-		if err != nil {
-			log.Error(err)
-			utils.ApiDefaultReturn(http.StatusInternalServerError, w, r)
-			return
-		}
-
-		err = json.Unmarshal(bodyBytes, &subscription)
-
-		if err != nil {
-			log.Error(err)
-			utils.ApiDefaultReturn(http.StatusInternalServerError, w, r)
-			return
-		}
-
-		if subscription.Auth == "" || subscription.P256dh == "" {
-			utils.ApiDefaultReturn(http.StatusBadRequest, w, r)
-			return
-		}
-
-		// Fetch auth from postgresdb
-		if r.Header.Get("Authorization") == "" {
-			utils.ApiDefaultReturn(http.StatusUnauthorized, w, r)
-			return
-		} else {
-			authId := utils.AuthCheck(r.Header.Get("Authorization"), false)
-
-			if authId == nil || *authId != id {
-				log.Error(err)
-				utils.ApiDefaultReturn(http.StatusUnauthorized, w, r)
-				return
-			}
-		}
-
-		// Store new subscription
-
-		notifId := utils.RandString(512)
-
-		ua := r.UserAgent()
-
-		if ua == "" {
-			ua = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/80.0.3987.149 Safari/537.36"
-		}
-
-		state.Pool.Exec(ctx, "DELETE FROM poppypaw WHERE id = $1 AND endpoint = $2", id, subscription.Endpoint)
-
-		state.Pool.Exec(
-			ctx,
-			"INSERT INTO poppypaw (id, notif_id, auth, p256dh,  endpoint, ua) VALUES ($1, $2, $3, $4, $5, $6)",
-			id,
-			notifId,
-			subscription.Auth,
-			subscription.P256dh,
-			subscription.Endpoint,
-			ua,
-		)
-
-		// Fan out test notification
-		notifChannel <- types.Notification{
-			NotifID: notifId,
-			Message: []byte(testNotif),
-		}
-
-		w.Write([]byte(constants.Success))
-	})
-
-	r.HandleFunc("/_protozoa/reminders/{id}", func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != "PUT" && r.Method != "GET" && r.Method != "DELETE" {
-			utils.ApiDefaultReturn(http.StatusMethodNotAllowed, w, r)
-			return
-		}
-
-		var id = chi.URLParam(r, "id")
-
-		if id == "" {
-			utils.ApiDefaultReturn(http.StatusBadRequest, w, r)
-			return
-		}
-
-		// Fetch auth from postgresdb
-		if r.Header.Get("Authorization") == "" {
-			utils.ApiDefaultReturn(http.StatusUnauthorized, w, r)
-			return
-		} else {
-			authId := utils.AuthCheck(r.Header.Get("Authorization"), false)
-
-			if authId == nil || *authId != id {
-				log.Error(err)
-				utils.ApiDefaultReturn(http.StatusUnauthorized, w, r)
-				return
-			}
-		}
-
-		if r.Method == "GET" {
-			// Fetch reminder from postgresdb
-			rows, err := state.Pool.Query(ctx, "SELECT "+silverpeltColsStr+" FROM silverpelt WHERE user_id = $1", id)
-
-			if err != nil {
-				log.Error(err)
-				utils.ApiDefaultReturn(http.StatusInternalServerError, w, r)
-				return
-			}
-
-			var reminders []types.Reminder
-
-			pgxscan.ScanAll(&reminders, rows)
-
-			if err != nil {
-				log.Error(err)
-				utils.ApiDefaultReturn(http.StatusInternalServerError, w, r)
-				return
-			}
-
-			if len(reminders) == 0 {
-				utils.ApiDefaultReturn(http.StatusNotFound, w, r)
-				return
-			}
-
-			for i, reminder := range reminders {
-				// Try resolving the bot from discord API
-				var resolvedBot types.ResolvedReminderBot
-				bot, err := utils.GetDiscordUser(reminder.BotID)
-
-				if err != nil {
-					resolvedBot = types.ResolvedReminderBot{
-						Name:   "Unknown",
-						Avatar: "https://cdn.discordapp.com/embed/avatars/0.png",
-					}
-				} else {
-					resolvedBot = types.ResolvedReminderBot{
-						Name:   bot.Username,
-						Avatar: bot.Avatar,
-					}
-				}
-
-				reminders[i].ResolvedBot = resolvedBot
-			}
-
-			bytes, err := json.Marshal(reminders)
-
-			if err != nil {
-				log.Error(err)
-				utils.ApiDefaultReturn(http.StatusInternalServerError, w, r)
-				return
-			}
-
-			w.Write(bytes)
-		} else {
-			// Add subscription to collection
-			var botId pgtype.Text
-
-			err = state.Pool.QueryRow(ctx, "SELECT bot_id FROM bots WHERE (vanity = $1 OR bot_id = $1 OR name = $1)", r.URL.Query().Get("bot_id")).Scan(&botId)
-
-			if err != nil || botId.Status != pgtype.Present || botId.String == "" {
-				log.Error("Error adding reminder: ", err)
-				utils.ApiDefaultReturn(http.StatusNotFound, w, r)
-				return
-			}
-
-			// Delete old
-			state.Pool.Exec(ctx, "DELETE FROM silverpelt WHERE user_id = $1 AND bot_id = $2", id, botId.String)
-
-			// Insert new
-			if r.Method == "PUT" {
-				_, err := state.Pool.Exec(ctx, "INSERT INTO silverpelt (user_id, bot_id) VALUES ($1, $2)", id, botId.String)
-
-				if err != nil {
-					log.Error("Error adding reminder: ", err)
-					utils.ApiDefaultReturn(http.StatusNotFound, w, r)
-					return
-				}
-			}
-
-			w.Write([]byte(constants.Success))
-		}
 	})
 
 	// Load openapi here to avoid large marshalling in every request

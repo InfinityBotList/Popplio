@@ -7,6 +7,7 @@ import (
 	"os"
 	"popplio/constants"
 	"popplio/docs"
+	"popplio/notifications"
 	"popplio/state"
 	"popplio/types"
 	"popplio/utils"
@@ -20,6 +21,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/jackc/pgtype"
 	jsoniter "github.com/json-iterator/go"
+	ua "github.com/mileusna/useragent"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -27,8 +29,10 @@ const tagName = "Users"
 
 var (
 	userColsArr = utils.GetCols(types.User{})
-	//
-	userCols = strings.Join(userColsArr, ",")
+	userCols    = strings.Join(userColsArr, ",")
+
+	silverpeltColsArr = utils.GetCols(types.Reminder{})
+	silverpeltCols    = strings.Join(silverpeltColsArr, ",")
 
 	json = jsoniter.ConfigCompatibleWithStandardLibrary
 )
@@ -451,6 +455,501 @@ func (b Router) Routes(r *chi.Mux) {
 		})
 
 		docs.Route(&docs.Doc{
+			Method:      "GET",
+			Path:        "/users/{id}/notifications",
+			OpId:        "get_user_notifications",
+			Summary:     "Get User Notifications",
+			Description: "Gets a users notifications",
+			Params: []docs.Parameter{
+				{
+					Name:        "id",
+					Description: "User ID",
+					Required:    true,
+					In:          "path",
+					Schema:      docs.IdSchema,
+				},
+			},
+			Resp: types.NotifGetList{},
+			Tags: []string{tagName},
+		})
+		r.Get("/{id}/notifications", func(w http.ResponseWriter, r *http.Request) {
+			var id = chi.URLParam(r, "id")
+
+			if id == "" {
+				utils.ApiDefaultReturn(http.StatusBadRequest, w, r)
+				return
+			}
+
+			// Fetch auth from postgresdb
+			if r.Header.Get("Authorization") == "" {
+				utils.ApiDefaultReturn(http.StatusUnauthorized, w, r)
+				return
+			} else {
+				authId := utils.AuthCheck(r.Header.Get("Authorization"), false)
+
+				if authId == nil || *authId != id {
+					utils.ApiDefaultReturn(http.StatusUnauthorized, w, r)
+					return
+				}
+			}
+
+			var subscription []types.NotifGet
+
+			var subscriptionDb []struct {
+				Endpoint  string    `db:"endpoint"`
+				NotifID   string    `db:"notif_id"`
+				CreatedAt time.Time `db:"created_at"`
+				UA        string    `db:"ua"`
+			}
+
+			rows, err := state.Pool.Query(state.Context, "SELECT endpoint, notif_id, created_at, ua FROM poppypaw WHERE id = $1", id)
+
+			if err != nil {
+				log.Error(err)
+				utils.ApiDefaultReturn(http.StatusInternalServerError, w, r)
+				return
+			}
+
+			err = pgxscan.ScanAll(&subscriptionDb, rows)
+
+			if err != nil {
+				log.Error(err)
+				utils.ApiDefaultReturn(http.StatusInternalServerError, w, r)
+				return
+			}
+
+			if len(subscriptionDb) == 0 {
+				utils.ApiDefaultReturn(http.StatusNotFound, w, r)
+				return
+			}
+
+			for _, sub := range subscriptionDb {
+				uaD := ua.Parse(sub.UA)
+				fmt.Println("Parsing UA:", sub.UA, uaD)
+
+				binfo := types.NotifBrowserInfo{
+					OS:         uaD.OS,
+					Browser:    uaD.Name,
+					BrowserVer: uaD.Version,
+					Mobile:     uaD.Mobile,
+				}
+
+				subscription = append(subscription, types.NotifGet{
+					Endpoint:    sub.Endpoint,
+					NotifID:     sub.NotifID,
+					CreatedAt:   sub.CreatedAt,
+					BrowserInfo: binfo,
+				})
+			}
+
+			sublist := types.NotifGetList{
+				Notifications: subscription,
+			}
+
+			bytes, err := json.Marshal(sublist)
+
+			if err != nil {
+				log.Error(err)
+				utils.ApiDefaultReturn(http.StatusInternalServerError, w, r)
+				return
+			}
+
+			w.Write(bytes)
+		})
+
+		docs.Route(&docs.Doc{
+			Method:      "DELETE",
+			Path:        "/users/{id}/notification",
+			OpId:        "delete_user_notifications",
+			Summary:     "Delete User Notifications",
+			Description: "Deletes a users notification",
+			Params: []docs.Parameter{
+				{
+					Name:        "id",
+					Description: "User ID",
+					Required:    true,
+					In:          "path",
+					Schema:      docs.IdSchema,
+				},
+				{
+					Name:        "notif_id",
+					Description: "Notification ID",
+					Required:    true,
+					In:          "query",
+					Schema:      docs.IdSchema,
+				},
+			},
+			Resp: types.ApiError{},
+			Tags: []string{tagName},
+		})
+		r.Delete("/{id}/notification", func(w http.ResponseWriter, r *http.Request) {
+			var id = chi.URLParam(r, "id")
+
+			if id == "" {
+				utils.ApiDefaultReturn(http.StatusBadRequest, w, r)
+				return
+			}
+
+			// Fetch auth from postgresdb
+			if r.Header.Get("Authorization") == "" {
+				utils.ApiDefaultReturn(http.StatusUnauthorized, w, r)
+				return
+			} else {
+				authId := utils.AuthCheck(r.Header.Get("Authorization"), false)
+
+				if authId == nil || *authId != id {
+					utils.ApiDefaultReturn(http.StatusUnauthorized, w, r)
+					return
+				}
+			}
+
+			// Delete the notif
+			if r.URL.Query().Get("notif_id") == "" {
+				utils.ApiDefaultReturn(http.StatusBadRequest, w, r)
+				return
+			}
+
+			_, err := state.Pool.Exec(state.Context, "DELETE FROM poppypaw WHERE id = $1 AND notif_id = $2", id, r.URL.Query().Get("notif_id"))
+
+			if err != nil {
+				log.Error(err)
+				utils.ApiDefaultReturn(http.StatusInternalServerError, w, r)
+				return
+			}
+
+			w.WriteHeader(http.StatusOK)
+		})
+
+		docs.Route(&docs.Doc{
+			Method:      "GET",
+			Path:        "/users/{id}/reminders",
+			OpId:        "get_user_reminders",
+			Summary:     "Get User Reminders",
+			Description: "Gets a users reminders",
+			Params: []docs.Parameter{
+				{
+					Name:        "id",
+					Description: "User ID",
+					Required:    true,
+					In:          "path",
+					Schema:      docs.IdSchema,
+				},
+			},
+			Resp: types.ReminderList{},
+			Tags: []string{tagName},
+		})
+		r.Get("/{id}/reminders", func(w http.ResponseWriter, r *http.Request) {
+			var id = chi.URLParam(r, "id")
+
+			if id == "" {
+				utils.ApiDefaultReturn(http.StatusBadRequest, w, r)
+				return
+			}
+
+			// Fetch auth from postgresdb
+			if r.Header.Get("Authorization") == "" {
+				utils.ApiDefaultReturn(http.StatusUnauthorized, w, r)
+				return
+			} else {
+				authId := utils.AuthCheck(r.Header.Get("Authorization"), false)
+
+				if authId == nil || *authId != id {
+					utils.ApiDefaultReturn(http.StatusUnauthorized, w, r)
+					return
+				}
+			}
+
+			// Fetch reminder from postgres
+			rows, err := state.Pool.Query(state.Context, "SELECT "+silverpeltCols+" FROM silverpelt WHERE user_id = $1", id)
+
+			if err != nil {
+				log.Error(err)
+				utils.ApiDefaultReturn(http.StatusInternalServerError, w, r)
+				return
+			}
+
+			var reminders []types.Reminder
+
+			pgxscan.ScanAll(&reminders, rows)
+
+			if err != nil {
+				log.Error(err)
+				utils.ApiDefaultReturn(http.StatusInternalServerError, w, r)
+				return
+			}
+
+			if len(reminders) == 0 {
+				utils.ApiDefaultReturn(http.StatusNotFound, w, r)
+				return
+			}
+
+			for i, reminder := range reminders {
+				// Try resolving the bot from discord API
+				var resolvedBot types.ResolvedReminderBot
+				bot, err := utils.GetDiscordUser(reminder.BotID)
+
+				if err != nil {
+					resolvedBot = types.ResolvedReminderBot{
+						Name:   "Unknown",
+						Avatar: "https://cdn.discordapp.com/embed/avatars/0.png",
+					}
+				} else {
+					resolvedBot = types.ResolvedReminderBot{
+						Name:   bot.Username,
+						Avatar: bot.Avatar,
+					}
+				}
+
+				reminders[i].ResolvedBot = resolvedBot
+			}
+
+			reminderList := types.ReminderList{
+				Reminders: reminders,
+			}
+
+			bytes, err := json.Marshal(reminderList)
+
+			if err != nil {
+				log.Error(err)
+				utils.ApiDefaultReturn(http.StatusInternalServerError, w, r)
+				return
+			}
+
+			w.Write(bytes)
+		})
+
+		docs.Route(&docs.Doc{
+			Method:      "DELETE",
+			Path:        "/users/{id}/reminder",
+			OpId:        "del_user_reminders",
+			Summary:     "Delete User Reminders",
+			Description: "Deletes a users reminders",
+			Params: []docs.Parameter{
+				{
+					Name:        "id",
+					Description: "User ID",
+					Required:    true,
+					In:          "path",
+					Schema:      docs.IdSchema,
+				},
+				{
+					Name:        "bot_id",
+					Description: "Bot ID to delete a reminder of",
+					Required:    true,
+					In:          "query",
+					Schema:      docs.IdSchema,
+				},
+			},
+			Resp: types.ReminderList{},
+			Tags: []string{tagName},
+		})
+		r.Delete("/{id}/reminders", func(w http.ResponseWriter, r *http.Request) {
+			var id = chi.URLParam(r, "id")
+
+			if id == "" {
+				utils.ApiDefaultReturn(http.StatusBadRequest, w, r)
+				return
+			}
+
+			// Fetch auth from postgres
+			if r.Header.Get("Authorization") == "" {
+				utils.ApiDefaultReturn(http.StatusUnauthorized, w, r)
+				return
+			} else {
+				authId := utils.AuthCheck(r.Header.Get("Authorization"), false)
+
+				if authId == nil || *authId != id {
+					utils.ApiDefaultReturn(http.StatusUnauthorized, w, r)
+					return
+				}
+			}
+
+			var botId pgtype.Text
+
+			err := state.Pool.QueryRow(state.Context, "SELECT bot_id FROM bots WHERE (vanity = $1 OR bot_id = $1 OR name = $1)", r.URL.Query().Get("bot_id")).Scan(&botId)
+
+			if err != nil || botId.Status != pgtype.Present || botId.String == "" {
+				log.Error("Error deleting reminder: ", err)
+				utils.ApiDefaultReturn(http.StatusNotFound, w, r)
+				return
+			}
+
+			// Delete old
+			state.Pool.Exec(state.Context, "DELETE FROM silverpelt WHERE user_id = $1 AND bot_id = $2", id, botId.String)
+
+			w.Write([]byte(constants.Success))
+		})
+
+		docs.Route(&docs.Doc{
+			Method:      "PUT",
+			Path:        "/users/{id}/reminders",
+			OpId:        "add_user_reminders",
+			Summary:     "Add User Reminder",
+			Description: "Deletes a users reminders",
+			Params: []docs.Parameter{
+				{
+					Name:        "id",
+					Description: "User ID",
+					Required:    true,
+					In:          "path",
+					Schema:      docs.IdSchema,
+				},
+				{
+					Name:        "bot_id",
+					Description: "Bot ID to add a reminder of",
+					Required:    true,
+					In:          "query",
+					Schema:      docs.IdSchema,
+				},
+			},
+			Resp: types.ReminderList{},
+			Tags: []string{tagName},
+		})
+		r.Put("/{id}/reminders", func(w http.ResponseWriter, r *http.Request) {
+			var id = chi.URLParam(r, "id")
+
+			if id == "" {
+				utils.ApiDefaultReturn(http.StatusBadRequest, w, r)
+				return
+			}
+
+			// Fetch auth from postgres
+			if r.Header.Get("Authorization") == "" {
+				utils.ApiDefaultReturn(http.StatusUnauthorized, w, r)
+				return
+			} else {
+				authId := utils.AuthCheck(r.Header.Get("Authorization"), false)
+
+				if authId == nil || *authId != id {
+					utils.ApiDefaultReturn(http.StatusUnauthorized, w, r)
+					return
+				}
+			}
+
+			var botId pgtype.Text
+
+			err := state.Pool.QueryRow(state.Context, "SELECT bot_id FROM bots WHERE (vanity = $1 OR bot_id = $1 OR name = $1)", r.URL.Query().Get("bot_id")).Scan(&botId)
+
+			if err != nil || botId.Status != pgtype.Present || botId.String == "" {
+				log.Error("Error adding reminder: ", err)
+				utils.ApiDefaultReturn(http.StatusNotFound, w, r)
+				return
+			}
+
+			// Delete old
+			state.Pool.Exec(state.Context, "DELETE FROM silverpelt WHERE user_id = $1 AND bot_id = $2", id, botId.String)
+
+			// Add new
+			_, err = state.Pool.Exec(state.Context, "INSERT INTO silverpelt (user_id, bot_id) VALUES ($1, $2)", id, botId.String)
+
+			if err != nil {
+				log.Error("Error adding reminder: ", err)
+				utils.ApiDefaultReturn(http.StatusNotFound, w, r)
+				return
+			}
+
+			w.Write([]byte(constants.Success))
+		})
+
+		docs.Route(&docs.Doc{
+			Method:      "POST",
+			Path:        "/users/{id}/sub",
+			OpId:        "add_user_subscription",
+			Summary:     "Add User Subscription",
+			Description: "Adds a user subscription to a push notification",
+			Params: []docs.Parameter{
+				{
+					Name:        "id",
+					Description: "User ID",
+					Required:    true,
+					In:          "path",
+					Schema:      docs.IdSchema,
+				},
+			},
+			Req:  types.UserSubscription{},
+			Resp: types.ApiError{},
+			Tags: []string{tagName},
+		})
+		r.Post("/{id}/sub", func(w http.ResponseWriter, r *http.Request) {
+			var subscription types.UserSubscription
+
+			var id = chi.URLParam(r, "id")
+
+			if id == "" {
+				utils.ApiDefaultReturn(http.StatusBadRequest, w, r)
+				return
+			}
+
+			defer r.Body.Close()
+
+			bodyBytes, err := io.ReadAll(r.Body)
+
+			if err != nil {
+				log.Error(err)
+				utils.ApiDefaultReturn(http.StatusInternalServerError, w, r)
+				return
+			}
+
+			err = json.Unmarshal(bodyBytes, &subscription)
+
+			if err != nil {
+				log.Error(err)
+				utils.ApiDefaultReturn(http.StatusInternalServerError, w, r)
+				return
+			}
+
+			if subscription.Auth == "" || subscription.P256dh == "" {
+				utils.ApiDefaultReturn(http.StatusBadRequest, w, r)
+				return
+			}
+
+			// Fetch auth from postgres
+			if r.Header.Get("Authorization") == "" {
+				utils.ApiDefaultReturn(http.StatusUnauthorized, w, r)
+				return
+			} else {
+				authId := utils.AuthCheck(r.Header.Get("Authorization"), false)
+
+				if authId == nil || *authId != id {
+					log.Error(err)
+					utils.ApiDefaultReturn(http.StatusUnauthorized, w, r)
+					return
+				}
+			}
+
+			// Store new subscription
+
+			notifId := utils.RandString(512)
+
+			ua := r.UserAgent()
+
+			if ua == "" {
+				ua = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/80.0.3987.149 Safari/537.36"
+			}
+
+			state.Pool.Exec(state.Context, "DELETE FROM poppypaw WHERE id = $1 AND endpoint = $2", id, subscription.Endpoint)
+
+			state.Pool.Exec(
+				state.Context,
+				"INSERT INTO poppypaw (id, notif_id, auth, p256dh,  endpoint, ua) VALUES ($1, $2, $3, $4, $5, $6)",
+				id,
+				notifId,
+				subscription.Auth,
+				subscription.P256dh,
+				subscription.Endpoint,
+				ua,
+			)
+
+			// Fan out test notification
+			notifications.NotifChannel <- types.Notification{
+				NotifID: notifId,
+				Message: []byte(constants.TestNotif),
+			}
+
+			w.Write([]byte(constants.Success))
+		})
+
+		docs.Route(&docs.Doc{
 			Method:      "PATCH",
 			Path:        "/users/{id}",
 			OpId:        "update_user",
@@ -465,7 +964,8 @@ func (b Router) Routes(r *chi.Mux) {
 					Schema:      docs.IdSchema,
 				},
 			},
-			Resp: types.User{},
+			Req:  types.ProfileUpdate{},
+			Resp: types.ApiError{},
 			Tags: []string{tagName},
 		})
 		r.Patch("/{id}", func(w http.ResponseWriter, r *http.Request) {

@@ -602,3 +602,17 @@ type Transcript struct {
 	ClosedBy pgtype.JSONB `json:"closed_by"`
 	OpenedBy pgtype.JSONB `json:"opened_by"`
 }
+
+type UserSubscription struct {
+	Auth     string `json:"auth"`
+	P256dh   string `json:"p256dh"`
+	Endpoint string `json:"endpoint"`
+}
+
+type NotifGetList struct {
+	Notifications []NotifGet `json:"notifications"`
+}
+
+type ReminderList struct {
+	Reminders []Reminder `json:"reminders"`
+}

@@ -17,6 +17,8 @@ var (
 	Redis       *redis.Client
 	Discord     *discordgo.Session
 	Context     = context.Background()
+
+	Migration = false
 )
 
 // This should be the only init function, sets global state
