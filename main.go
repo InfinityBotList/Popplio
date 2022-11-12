@@ -16,9 +16,11 @@ import (
 	"popplio/routes/announcements"
 	"popplio/routes/auth"
 	"popplio/routes/bots"
+	"popplio/routes/compat"
 	"popplio/routes/duser"
 	"popplio/routes/list"
 	"popplio/routes/packs"
+	"popplio/routes/special"
 	"popplio/routes/transcripts"
 	"popplio/routes/users"
 	"popplio/state"
@@ -291,32 +293,37 @@ func main() {
 	}
 
 	routers := []Router{
-		bots.Router{},
-		users.Router{},
-		auth.Router{},
-		duser.Router{},
-		packs.Router{},
+		// Use same order as routes folder
 		announcements.Router{},
+		auth.Router{},
+		bots.Router{},
+		compat.Router{},
+		duser.Router{},
 		list.Router{},
+		packs.Router{},
+		special.Router{},
 		transcripts.Router{},
+		users.Router{},
 	}
 
 	for _, router := range routers {
 		name, desc := router.Tag()
 
-		docs.AddTag(name, desc)
+		if name != "" {
+			docs.AddTag(name, desc)
+		}
 
 		router.Routes(r)
 	}
 
 	// Create base payloads before startup
 	// Index
-	var helloWorldB Hello
-
-	helloWorldB.Message = "Hello world from IBL API v6!"
-	helloWorldB.Docs = docsSite
-	helloWorldB.OurSite = mainSite
-	helloWorldB.Status = statusPage
+	var helloWorldB = Hello{
+		Message: "Hello world from IBL API v6!",
+		Docs:    docsSite,
+		OurSite: mainSite,
+		Status:  statusPage,
+	}
 
 	helloWorld, err := json.Marshal(helloWorldB)
 
@@ -345,14 +352,6 @@ func main() {
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
 		w.Write([]byte(docsHTML))
 	})
-
-	// For compatibility with old API
-
-	// TODO: Document this once its stable
-	r.HandleFunc("/login/{act}", oauthFn)
-	r.HandleFunc("/cosmog", performAct)
-	r.HandleFunc("/cosmog/tasks/{tid}.arceus", getTask)
-	r.HandleFunc("/cosmog/tasks/{tid}", taskFn)
 
 	// Load openapi here to avoid large marshalling in every request
 	docs.DocumentMicroservices()
