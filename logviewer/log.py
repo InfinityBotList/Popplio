@@ -3,6 +3,9 @@ import fastapi
 from fastapi.responses import ORJSONResponse
 import orjson
 import uvicorn
+import secrets
+
+psk = secrets.token_hex(128)
 
 app = fastapi.FastAPI()
 
@@ -10,10 +13,15 @@ app = fastapi.FastAPI()
 async def options(fn: str):
     return ORJSONResponse({}, headers={
         "Access-Control-Allow-Origin": "*",
+        "Access-Control-Allow-Methods": "GET, OPTIONS",
+        "Access-Control-Allow-Headers": "PSK",
     })
 
 @app.get("/{fn}")
 async def read_item(request: fastapi.Request, fn: str, limit: int, offset: int):
+    if request.headers.get("PSK") != psk:
+        return ORJSONResponse({"error": "invalid psk"}, status_code=403)
+    
     if limit > 300:
         return ORJSONResponse({"error": "limit too large"}, status_code=400)
     
@@ -41,7 +49,11 @@ async def read_item(request: fastapi.Request, fn: str, limit: int, offset: int):
     
     return ORJSONResponse(vals, headers={
         "Access-Control-Allow-Origin": "*",
+        "Access-Control-Allow-Methods": "GET, OPTIONS",
+        "Access-Control-Allow-Headers": "PSK",
     })
+
+print(f"PSK for logviewer: {psk}")
 
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=1039)  # type: ignore  # type: ignore)
