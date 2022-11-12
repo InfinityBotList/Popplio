@@ -45,6 +45,7 @@ func (b Router) Tag() (string, string) {
 
 func (b Router) Routes(r *chi.Mux) {
 	r.Route("/users", func(r chi.Router) {
+
 		docs.Route(&docs.Doc{
 			Method:      "GET",
 			Path:        "/users/{uid}/bots/{bid}/votes",
@@ -75,11 +76,84 @@ func (b Router) Routes(r *chi.Mux) {
 			},
 			AuthType: []string{"User", "Bot"},
 		})
+		r.Get("/{uid}/bots/{bid}/votes", func(w http.ResponseWriter, r *http.Request) {
+			var vars = map[string]string{
+				"uid": chi.URLParam(r, "uid"),
+				"bid": chi.URLParam(r, "bid"),
+			}
+
+			userAuth := strings.HasPrefix(r.Header.Get("Authorization"), "User ")
+
+			var botId pgtype.Text
+			var botType pgtype.Text
+
+			if r.Header.Get("Authorization") == "" {
+				utils.ApiDefaultReturn(http.StatusUnauthorized, w, r)
+				return
+			}
+
+			var err error
+
+			if userAuth {
+				uid := utils.AuthCheck(r.Header.Get("Authorization"), false)
+
+				if uid == nil || *uid != vars["uid"] {
+					utils.ApiDefaultReturn(http.StatusUnauthorized, w, r)
+					return
+				}
+
+				err = state.Pool.QueryRow(state.Context, "SELECT bot_id FROM bots WHERE (bot_id = $1 OR vanity = $1 OR name = $1)", vars["bid"]).Scan(&botId)
+
+				if err != nil || botId.Status != pgtype.Present {
+					log.Error(err)
+					utils.ApiDefaultReturn(http.StatusNotFound, w, r)
+					return
+				}
+
+				vars["bid"] = botId.String
+			} else {
+				err = state.Pool.QueryRow(state.Context, "SELECT bot_id, type FROM bots WHERE (vanity = $1 OR bot_id = $1 OR name = $1)", vars["bid"]).Scan(&botId, &botType)
+
+				if err != nil || botId.Status != pgtype.Present || botType.Status != pgtype.Present {
+					log.Error(err)
+					utils.ApiDefaultReturn(http.StatusNotFound, w, r)
+					return
+				}
+
+				id := utils.AuthCheck(r.Header.Get("Authorization"), true)
+
+				if id == nil || *id != vars["bid"] {
+					utils.ApiDefaultReturn(http.StatusUnauthorized, w, r)
+					return
+				}
+
+				vars["bid"] = botId.String
+			}
+
+			voteParsed, err := utils.GetVoteData(state.Context, vars["uid"], vars["bid"])
+
+			if err != nil {
+				log.Error(err)
+				utils.ApiDefaultReturn(http.StatusInternalServerError, w, r)
+				return
+			}
+
+			bytes, err := json.Marshal(voteParsed)
+
+			if err != nil {
+				log.Error(err)
+				utils.ApiDefaultReturn(http.StatusInternalServerError, w, r)
+				return
+			}
+
+			w.Write(bytes)
+		})
+
 		docs.Route(&docs.Doc{
-			Method:      "POST",
+			Method:      "PUT",
 			Path:        "/users/{uid}/bots/{bid}/votes",
-			OpId:        "post_user_votes",
-			Summary:     "Post User Votes",
+			OpId:        "put_user_votes",
+			Summary:     "Put User Votes",
 			Description: "Posts a users votes. **For internal use only**",
 			Tags:        []string{tagName},
 			Params: []docs.Parameter{
@@ -101,18 +175,16 @@ func (b Router) Routes(r *chi.Mux) {
 			Resp:     types.ApiError{},
 			AuthType: []string{"User"},
 		})
-		r.HandleFunc("/{uid}/bots/{bid}/votes", func(w http.ResponseWriter, r *http.Request) {
-			if r.Method != "GET" && r.Method != "PUT" {
-				utils.ApiDefaultReturn(http.StatusMethodNotAllowed, w, r)
-				return
-			}
-
+		r.Put("/{uid}/bots/{bid}/votes", func(w http.ResponseWriter, r *http.Request) {
 			var vars = map[string]string{
 				"uid": chi.URLParam(r, "uid"),
 				"bid": chi.URLParam(r, "bid"),
 			}
 
-			userAuth := strings.HasPrefix(r.Header.Get("Authorization"), "User ")
+			if !strings.HasPrefix(r.Header.Get("Authorization"), "User ") {
+				utils.ApiDefaultReturn(http.StatusNotFound, w, r)
+				return
+			}
 
 			var botId pgtype.Text
 			var botType pgtype.Text
@@ -120,78 +192,52 @@ func (b Router) Routes(r *chi.Mux) {
 			if r.Header.Get("Authorization") == "" {
 				utils.ApiDefaultReturn(http.StatusUnauthorized, w, r)
 				return
-			} else {
-				var err error
-
-				if userAuth {
-					uid := utils.AuthCheck(r.Header.Get("Authorization"), false)
-
-					if uid == nil || *uid != vars["uid"] {
-						utils.ApiDefaultReturn(http.StatusUnauthorized, w, r)
-						return
-					}
-
-					var voteBannedState bool
-
-					err := state.Pool.QueryRow(state.Context, "SELECT vote_banned FROM users WHERE user_id = $1", uid).Scan(&voteBannedState)
-
-					if err != nil {
-						log.Error(err)
-						utils.ApiDefaultReturn(http.StatusInternalServerError, w, r)
-						return
-					}
-
-					if voteBannedState && r.Method == "PUT" {
-						w.WriteHeader(http.StatusForbidden)
-						w.Write([]byte(constants.VoteBanned))
-						return
-					}
-
-					var voteBannedBotsState bool
-
-					err = state.Pool.QueryRow(state.Context, "SELECT bot_id, type, vote_banned FROM bots WHERE (bot_id = $1 OR vanity = $1 OR name = $1)", vars["bid"]).Scan(&botId, &botType, &voteBannedBotsState)
-
-					if err != nil {
-						log.Error(err)
-						utils.ApiDefaultReturn(http.StatusInternalServerError, w, r)
-						return
-					}
-
-					if voteBannedBotsState && r.Method == "PUT" {
-						w.WriteHeader(http.StatusForbidden)
-						w.Write([]byte(constants.VoteBanned))
-						return
-					}
-
-					vars["bid"] = botId.String
-				} else {
-					err = state.Pool.QueryRow(state.Context, "SELECT bot_id, type FROM bots WHERE (vanity = $1 OR bot_id = $1 OR name = $1)", vars["bid"]).Scan(&botId, &botType)
-
-					if err != nil || botId.Status != pgtype.Present || botType.Status != pgtype.Present {
-						log.Error(err)
-						utils.ApiDefaultReturn(http.StatusNotFound, w, r)
-						return
-					}
-
-					vars["bid"] = botId.String
-
-					id := utils.AuthCheck(r.Header.Get("Authorization"), true)
-
-					if id == nil || *id != vars["bid"] {
-						utils.ApiDefaultReturn(http.StatusUnauthorized, w, r)
-						return
-					}
-				}
 			}
 
-			if botType.String != "approved" && r.Method == "PUT" {
-				w.WriteHeader(http.StatusBadRequest)
-				w.Write([]byte(constants.NotApproved))
+			uid := utils.AuthCheck(r.Header.Get("Authorization"), false)
+
+			if uid == nil || *uid != vars["uid"] {
+				utils.ApiDefaultReturn(http.StatusUnauthorized, w, r)
 				return
 			}
 
-			if !userAuth && r.Method == "PUT" {
-				utils.ApiDefaultReturn(http.StatusNotFound, w, r)
+			var voteBannedState bool
+
+			err := state.Pool.QueryRow(state.Context, "SELECT vote_banned FROM users WHERE user_id = $1", uid).Scan(&voteBannedState)
+
+			if err != nil {
+				log.Error(err)
+				utils.ApiDefaultReturn(http.StatusInternalServerError, w, r)
+				return
+			}
+
+			if voteBannedState {
+				w.WriteHeader(http.StatusForbidden)
+				w.Write([]byte(constants.VoteBanned))
+				return
+			}
+
+			var voteBannedBotsState bool
+
+			err = state.Pool.QueryRow(state.Context, "SELECT bot_id, type, vote_banned FROM bots WHERE (bot_id = $1 OR vanity = $1 OR name = $1)", vars["bid"]).Scan(&botId, &botType, &voteBannedBotsState)
+
+			if err != nil {
+				log.Error(err)
+				utils.ApiDefaultReturn(http.StatusInternalServerError, w, r)
+				return
+			}
+
+			if voteBannedBotsState {
+				w.WriteHeader(http.StatusForbidden)
+				w.Write([]byte(constants.VoteBanned))
+				return
+			}
+
+			vars["bid"] = botId.String
+
+			if botType.String != "approved" {
+				w.WriteHeader(http.StatusBadRequest)
+				w.Write([]byte(constants.NotApproved))
 				return
 			}
 
@@ -203,8 +249,26 @@ func (b Router) Routes(r *chi.Mux) {
 				return
 			}
 
-			if r.Method == "GET" {
-				bytes, err := json.Marshal(voteParsed)
+			if voteParsed.HasVoted {
+				timeElapsed := time.Now().UnixMilli() - voteParsed.LastVoteTime
+				log.Info(timeElapsed)
+
+				timeToWait := int64(utils.GetVoteTime())*60*60*1000 - timeElapsed
+
+				timeToWaitTime := (time.Duration(timeToWait) * time.Millisecond)
+
+				hours := timeToWaitTime / time.Hour
+				mins := (timeToWaitTime - (hours * time.Hour)) / time.Minute
+				secs := (timeToWaitTime - (hours*time.Hour + mins*time.Minute)) / time.Second
+
+				timeStr := fmt.Sprintf("%02d hours, %02d minutes. %02d seconds", hours, mins, secs)
+
+				var alreadyVotedMsg = types.ApiError{
+					Message: "Please wait " + timeStr + " before voting again",
+					Error:   true,
+				}
+
+				bytes, err := json.Marshal(alreadyVotedMsg)
 
 				if err != nil {
 					log.Error(err)
@@ -212,177 +276,147 @@ func (b Router) Routes(r *chi.Mux) {
 					return
 				}
 
+				w.WriteHeader(http.StatusBadRequest)
 				w.Write(bytes)
-			} else if r.Method == "PUT" {
-				if voteParsed.HasVoted {
-					timeElapsed := time.Now().UnixMilli() - voteParsed.LastVoteTime
-					log.Info(timeElapsed)
+				return
+			}
 
-					timeToWait := int64(utils.GetVoteTime())*60*60*1000 - timeElapsed
+			// Record new vote
+			var itag pgtype.UUID
+			err = state.Pool.QueryRow(state.Context, "INSERT INTO votes (user_id, bot_id) VALUES ($1, $2) RETURNING itag", vars["uid"], vars["bid"]).Scan(&itag)
 
-					timeToWaitTime := (time.Duration(timeToWait) * time.Millisecond)
+			if err != nil {
+				// Revert vote
+				_, err := state.Pool.Exec(state.Context, "DELETE FROM votes WHERE itag = $1", itag)
+				log.Error(err)
+				utils.ApiDefaultReturn(http.StatusInternalServerError, w, r)
+				return
+			}
 
-					hours := timeToWaitTime / time.Hour
-					mins := (timeToWaitTime - (hours * time.Hour)) / time.Minute
-					secs := (timeToWaitTime - (hours*time.Hour + mins*time.Minute)) / time.Second
+			var oldVotes pgtype.Int4
 
-					timeStr := fmt.Sprintf("%02d hours, %02d minutes. %02d seconds", hours, mins, secs)
+			err = state.Pool.QueryRow(state.Context, "SELECT votes FROM bots WHERE bot_id = $1", vars["bid"]).Scan(&oldVotes)
 
-					var alreadyVotedMsg = types.ApiError{
-						Message: "Please wait " + timeStr + " before voting again",
-						Error:   true,
-					}
+			if err != nil {
+				// Revert vote
+				_, err := state.Pool.Exec(state.Context, "DELETE FROM votes WHERE itag = $1", itag)
 
-					bytes, err := json.Marshal(alreadyVotedMsg)
+				log.Error(err)
+				utils.ApiDefaultReturn(http.StatusInternalServerError, w, r)
+				return
+			}
 
-					if err != nil {
-						log.Error(err)
-						utils.ApiDefaultReturn(http.StatusInternalServerError, w, r)
-						return
-					}
+			var incr = 1
+			var votes = oldVotes.Int
 
-					w.WriteHeader(http.StatusBadRequest)
-					w.Write(bytes)
-					return
-				}
+			if utils.GetDoubleVote() {
+				incr = 2
+				votes += 2
+			} else {
+				votes++
+			}
 
-				// Record new vote
-				var itag pgtype.UUID
-				err := state.Pool.QueryRow(state.Context, "INSERT INTO votes (user_id, bot_id) VALUES ($1, $2) RETURNING itag", vars["uid"], vars["bid"]).Scan(&itag)
+			_, err = state.Pool.Exec(state.Context, "UPDATE bots SET votes = votes + $1 WHERE bot_id = $2", incr, vars["bid"])
 
-				if err != nil {
-					// Revert vote
-					_, err := state.Pool.Exec(state.Context, "DELETE FROM votes WHERE itag = $1", itag)
-					log.Error(err)
-					utils.ApiDefaultReturn(http.StatusInternalServerError, w, r)
-					return
-				}
+			if err != nil {
+				// Revert vote
+				_, err := state.Pool.Exec(state.Context, "DELETE FROM votes WHERE itag = $1", itag)
 
-				var oldVotes pgtype.Int4
+				log.Error(err)
+				utils.ApiDefaultReturn(http.StatusInternalServerError, w, r)
+				return
+			}
 
-				err = state.Pool.QueryRow(state.Context, "SELECT votes FROM bots WHERE bot_id = $1", vars["bid"]).Scan(&oldVotes)
+			userObj, err := utils.GetDiscordUser(vars["uid"])
 
-				if err != nil {
-					// Revert vote
-					_, err := state.Pool.Exec(state.Context, "DELETE FROM votes WHERE itag = $1", itag)
+			if err != nil {
+				// Revert vote
+				_, err := state.Pool.Exec(state.Context, "DELETE FROM votes WHERE itag = $1", itag)
 
-					log.Error(err)
-					utils.ApiDefaultReturn(http.StatusInternalServerError, w, r)
-					return
-				}
+				log.Error(err)
+				utils.ApiDefaultReturn(http.StatusInternalServerError, w, r)
+				return
+			}
 
-				var incr = 1
-				var votes = oldVotes.Int
+			botObj, err := utils.GetDiscordUser(vars["bid"])
 
-				if utils.GetDoubleVote() {
-					incr = 2
-					votes += 2
-				} else {
-					votes++
-				}
+			if err != nil {
+				// Revert vote
+				_, err := state.Pool.Exec(state.Context, "DELETE FROM votes WHERE itag = $1", itag)
 
-				_, err = state.Pool.Exec(state.Context, "UPDATE bots SET votes = votes + $1 WHERE bot_id = $2", incr, vars["bid"])
+				log.Error(err)
+				utils.ApiDefaultReturn(http.StatusInternalServerError, w, r)
+				return
+			}
 
-				if err != nil {
-					// Revert vote
-					_, err := state.Pool.Exec(state.Context, "DELETE FROM votes WHERE itag = $1", itag)
+			channel := os.Getenv("VOTE_LOGS_CHANNEL")
 
-					log.Error(err)
-					utils.ApiDefaultReturn(http.StatusInternalServerError, w, r)
-					return
-				}
-
-				userObj, err := utils.GetDiscordUser(vars["uid"])
-
-				if err != nil {
-					// Revert vote
-					_, err := state.Pool.Exec(state.Context, "DELETE FROM votes WHERE itag = $1", itag)
-
-					log.Error(err)
-					utils.ApiDefaultReturn(http.StatusInternalServerError, w, r)
-					return
-				}
-
-				botObj, err := utils.GetDiscordUser(vars["bid"])
-
-				if err != nil {
-					// Revert vote
-					_, err := state.Pool.Exec(state.Context, "DELETE FROM votes WHERE itag = $1", itag)
-
-					log.Error(err)
-					utils.ApiDefaultReturn(http.StatusInternalServerError, w, r)
-					return
-				}
-
-				channel := os.Getenv("VOTE_LOGS_CHANNEL")
-
-				state.Discord.ChannelMessageSendComplex(channel, &discordgo.MessageSend{
-					Embeds: []*discordgo.MessageEmbed{
-						{
-							URL: "https://botlist.site/" + vars["bid"],
-							Thumbnail: &discordgo.MessageEmbedThumbnail{
-								URL: botObj.Avatar,
+			state.Discord.ChannelMessageSendComplex(channel, &discordgo.MessageSend{
+				Embeds: []*discordgo.MessageEmbed{
+					{
+						URL: "https://botlist.site/" + vars["bid"],
+						Thumbnail: &discordgo.MessageEmbedThumbnail{
+							URL: botObj.Avatar,
+						},
+						Title:       "🎉 Vote Count Updated!",
+						Description: ":heart:" + userObj.Username + "#" + userObj.Discriminator + " has voted for " + botObj.Username,
+						Color:       0x8A6BFD,
+						Fields: []*discordgo.MessageEmbedField{
+							{
+								Name:   "Vote Count:",
+								Value:  strconv.Itoa(int(votes)),
+								Inline: true,
 							},
-							Title:       "🎉 Vote Count Updated!",
-							Description: ":heart:" + userObj.Username + "#" + userObj.Discriminator + " has voted for " + botObj.Username,
-							Color:       0x8A6BFD,
-							Fields: []*discordgo.MessageEmbedField{
-								{
-									Name:   "Vote Count:",
-									Value:  strconv.Itoa(int(votes)),
-									Inline: true,
-								},
-								{
-									Name:   "User ID:",
-									Value:  userObj.ID,
-									Inline: true,
-								},
-								{
-									Name:   "Vote Page",
-									Value:  "[View " + botObj.Username + "](https://botlist.site/" + vars["bid"] + ")",
-									Inline: true,
-								},
-								{
-									Name:   "Vote Page",
-									Value:  "[Vote for " + botObj.Username + "](https://botlist.site/" + vars["bid"] + "/vote)",
-									Inline: true,
-								},
+							{
+								Name:   "User ID:",
+								Value:  userObj.ID,
+								Inline: true,
+							},
+							{
+								Name:   "Vote Page",
+								Value:  "[View " + botObj.Username + "](https://botlist.site/" + vars["bid"] + ")",
+								Inline: true,
+							},
+							{
+								Name:   "Vote Page",
+								Value:  "[Vote for " + botObj.Username + "](https://botlist.site/" + vars["bid"] + "/vote)",
+								Inline: true,
 							},
 						},
 					},
+				},
+			})
+
+			// Send webhook in a goroutine refunding the vote if it failed
+			go func() {
+				err = webhooks.Send(types.WebhookPost{
+					BotID:  vars["bid"],
+					UserID: vars["uid"],
+					Votes:  int(votes),
 				})
 
-				// Send webhook in a goroutine refunding the vote if it failed
-				go func() {
-					err = webhooks.Send(types.WebhookPost{
-						BotID:  vars["bid"],
-						UserID: vars["uid"],
-						Votes:  int(votes),
-					})
+				if err != nil {
+					state.Pool.Exec(
+						state.Context,
+						"INSERT INTO notifications (user_id, url, message, type) VALUES ($1, $2, $3, $4)",
+						vars["uid"],
+						"https://infinitybots.gg/bots/"+vars["bid"],
+						"Whoa there! We've failed to notify this bot about this vote. The error was: "+err.Error()+".",
+						"error")
+				} else {
+					state.Pool.Exec(
+						state.Context,
+						"INSERT INTO notifications (user_id, url, message, type) VALUES ($1, $2, $3, $4)",
+						vars["uid"],
+						"https://infinitybots.gg/bots/"+vars["bid"],
+						"state.Successfully voted for bot with ID of "+vars["bid"],
+						"info",
+					)
+				}
+			}()
 
-					if err != nil {
-						state.Pool.Exec(
-							state.Context,
-							"INSERT INTO notifications (user_id, url, message, type) VALUES ($1, $2, $3, $4)",
-							vars["uid"],
-							"https://infinitybots.gg/bots/"+vars["bid"],
-							"Whoa there! We've failed to notify this bot about this vote. The error was: "+err.Error()+".",
-							"error")
-					} else {
-						state.Pool.Exec(
-							state.Context,
-							"INSERT INTO notifications (user_id, url, message, type) VALUES ($1, $2, $3, $4)",
-							vars["uid"],
-							"https://infinitybots.gg/bots/"+vars["bid"],
-							"state.Successfully voted for bot with ID of "+vars["bid"],
-							"info",
-						)
-					}
-				}()
-
-				w.WriteHeader(http.StatusOK)
-				w.Write([]byte(constants.Success))
-			}
+			w.WriteHeader(http.StatusOK)
+			w.Write([]byte(constants.Success))
 		})
 
 		docs.Route(&docs.Doc{
