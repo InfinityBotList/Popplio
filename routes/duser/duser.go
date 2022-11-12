@@ -2,6 +2,7 @@ package duser
 
 import (
 	"net/http"
+	"popplio/constants"
 	"popplio/docs"
 	"popplio/state"
 	"popplio/types"
@@ -86,7 +87,7 @@ func (b Router) Routes(r *chi.Mux) {
 		r.Get("/clear", func(w http.ResponseWriter, r *http.Request) {
 			id := chi.URLParam(r, "id")
 			state.Redis.Del(state.Context, "uobj:"+id)
-			w.Write([]byte(state.Success))
+			w.Write([]byte(constants.Success))
 		})
 	})
 }

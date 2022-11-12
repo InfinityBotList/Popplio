@@ -5,6 +5,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"popplio/constants"
 	"popplio/docs"
 	"popplio/state"
 	"popplio/types"
@@ -138,7 +139,7 @@ func (b Router) Routes(r *chi.Mux) {
 
 					if voteBannedState && r.Method == "PUT" {
 						w.WriteHeader(http.StatusForbidden)
-						w.Write([]byte(state.VoteBanned))
+						w.Write([]byte(constants.VoteBanned))
 						return
 					}
 
@@ -154,7 +155,7 @@ func (b Router) Routes(r *chi.Mux) {
 
 					if voteBannedBotsState && r.Method == "PUT" {
 						w.WriteHeader(http.StatusForbidden)
-						w.Write([]byte(state.VoteBanned))
+						w.Write([]byte(constants.VoteBanned))
 						return
 					}
 
@@ -181,7 +182,7 @@ func (b Router) Routes(r *chi.Mux) {
 
 			if botType.String != "approved" && r.Method == "PUT" {
 				w.WriteHeader(http.StatusBadRequest)
-				w.Write([]byte(state.NotApproved))
+				w.Write([]byte(constants.NotApproved))
 				return
 			}
 
@@ -376,7 +377,7 @@ func (b Router) Routes(r *chi.Mux) {
 				}()
 
 				w.WriteHeader(http.StatusOK)
-				w.Write([]byte(state.Success))
+				w.Write([]byte(constants.Success))
 			}
 		})
 

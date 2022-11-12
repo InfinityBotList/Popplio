@@ -11,6 +11,7 @@ import (
 	"strings"
 	"time"
 
+	"popplio/constants"
 	"popplio/docs"
 	"popplio/migrations"
 	"popplio/routes/announcements"
@@ -407,7 +408,7 @@ func main() {
 
 		if botType.String != "approved" {
 			w.WriteHeader(http.StatusBadRequest)
-			w.Write([]byte(state.NotApproved))
+			w.Write([]byte(constants.NotApproved))
 			return
 		}
 
@@ -746,7 +747,7 @@ func main() {
 			Message: []byte(testNotif),
 		}
 
-		w.Write([]byte(state.Success))
+		w.Write([]byte(constants.Success))
 	})
 
 	r.HandleFunc("/_protozoa/reminders/{id}", func(w http.ResponseWriter, r *http.Request) {
@@ -856,7 +857,7 @@ func main() {
 				}
 			}
 
-			w.Write([]byte(state.Success))
+			w.Write([]byte(constants.Success))
 		}
 	})
 

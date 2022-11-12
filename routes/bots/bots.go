@@ -5,6 +5,7 @@ import (
 	"math"
 	"net/http"
 	"os"
+	"popplio/constants"
 	"popplio/docs"
 	"popplio/state"
 	"popplio/types"
@@ -147,7 +148,7 @@ Gets a bot by id or name
 
 **Some things to note:**
 
--` + state.BackTick + state.BackTick + `external_source` + state.BackTick + state.BackTick + ` shows the source of where a bot came from (Metro Reviews etc etr.). If this is set to ` + state.BackTick + state.BackTick + `metro` + state.BackTick + state.BackTick + `, then ` + state.BackTick + state.BackTick + `list_source` + state.BackTick + state.BackTick + ` will be set to the metro list ID where it came from` + `
+-` + constants.BackTick + constants.BackTick + `external_source` + constants.BackTick + constants.BackTick + ` shows the source of where a bot came from (Metro Reviews etc etr.). If this is set to ` + constants.BackTick + constants.BackTick + `metro` + constants.BackTick + constants.BackTick + `, then ` + constants.BackTick + constants.BackTick + `list_source` + constants.BackTick + constants.BackTick + ` will be set to the metro list ID where it came from` + `
 	`,
 			Params: []docs.Parameter{
 				{
@@ -243,17 +244,17 @@ Gets a bot by id or name
 			Description: `
 	This endpoint can be used to post the stats of a bot.
 	
-	The variation` + state.BackTick + `/bots/{bot_id}/stats` + state.BackTick + ` can also be used to post the stats of a bot. **Note that only the token is checked, not the bot ID at this time**
+	The variation` + constants.BackTick + `/bots/{bot_id}/stats` + constants.BackTick + ` can also be used to post the stats of a bot. **Note that only the token is checked, not the bot ID at this time**
 	
 	**Example:**
 	
-	` + state.BackTick + state.BackTick + state.BackTick + `py
+	` + constants.BackTick + constants.BackTick + constants.BackTick + `py
 	import requests
 	
 	req = requests.post(f"{API_URL}/bots/stats", json={"servers": 4000, "shards": 2}, headers={"Authorization": "{TOKEN}"})
 	
 	print(req.json())
-	` + state.BackTick + state.BackTick + state.BackTick + "\n\n",
+	` + constants.BackTick + constants.BackTick + constants.BackTick + "\n\n",
 			Tags:     []string{tagName},
 			Req:      types.BotStatsDocs{},
 			Resp:     types.ApiError{},
@@ -300,7 +301,7 @@ Gets a bot by id or name
 				} else {
 					log.Error(err)
 					w.WriteHeader(http.StatusBadRequest)
-					w.Write([]byte(state.BadRequestStats))
+					w.Write([]byte(constants.BadRequestStats))
 					return
 				}
 			}
@@ -361,7 +362,7 @@ Gets a bot by id or name
 			state.Redis.Del(state.Context, "bc-"+vanity)
 			state.Redis.Del(state.Context, "bc-"+*id)
 
-			w.Write([]byte(state.Success))
+			w.Write([]byte(constants.Success))
 		})
 
 		docs.Route(&docs.Doc{

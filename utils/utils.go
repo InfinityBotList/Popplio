@@ -13,6 +13,7 @@ import (
 	"time"
 	"unsafe"
 
+	"popplio/constants"
 	"popplio/state"
 	"popplio/types"
 
@@ -467,19 +468,19 @@ func ApiDefaultReturn(statusCode int, w http.ResponseWriter, r *http.Request) {
 	switch statusCode {
 	case http.StatusUnauthorized:
 		w.WriteHeader(http.StatusUnauthorized)
-		w.Write([]byte(state.Unauthorized))
+		w.Write([]byte(constants.Unauthorized))
 	case http.StatusNotFound:
 		w.WriteHeader(http.StatusNotFound)
-		w.Write([]byte(state.NotFound))
+		w.Write([]byte(constants.NotFound))
 	case http.StatusBadRequest:
 		w.WriteHeader(http.StatusBadRequest)
-		w.Write([]byte(state.BadRequest))
+		w.Write([]byte(constants.BadRequest))
 	case http.StatusInternalServerError:
 		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte(state.InternalError))
+		w.Write([]byte(constants.InternalError))
 	case http.StatusMethodNotAllowed:
 		w.WriteHeader(http.StatusMethodNotAllowed)
-		w.Write([]byte(state.MethodNotAllowed))
+		w.Write([]byte(constants.MethodNotAllowed))
 	}
 }
 

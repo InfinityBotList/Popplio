@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"popplio/constants"
 	"popplio/state"
 	"popplio/utils"
 	"strconv"
@@ -231,7 +232,7 @@ func performAct(w http.ResponseWriter, r *http.Request) {
 
 	} else {
 		w.WriteHeader(http.StatusNotFound)
-		w.Write([]byte(state.NotFound))
+		w.Write([]byte(constants.NotFound))
 		return
 	}
 
