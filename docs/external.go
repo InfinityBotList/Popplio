@@ -4,12 +4,11 @@ package docs
 import (
 	"io"
 	"net/http"
+	"popplio/state"
 	"strconv"
 	"time"
 
 	jsoniter "github.com/json-iterator/go"
-
-	log "github.com/sirupsen/logrus"
 )
 
 var json = jsoniter.ConfigCompatibleWithStandardLibrary
@@ -29,7 +28,7 @@ func DocumentMicroservices() {
 
 	for i, service := range services {
 		name, url := service()
-		log.Info("Adding documentation from service " + strconv.Itoa(i) + " (" + name + ")" + " [" + url + "]")
+		state.Logger.Info("Adding documentation from service " + strconv.Itoa(i) + " (" + name + ")" + " [" + url + "]")
 
 		client := http.Client{
 			Timeout: time.Second * 10,
@@ -38,12 +37,12 @@ func DocumentMicroservices() {
 		req, err := client.Get(url)
 
 		if err != nil {
-			log.Error("Failed to get documentation from "+name+" [ "+url+" ]", err)
+			state.Logger.Error("Failed to get documentation from "+name+" [ "+url+" ]", err)
 			continue
 		}
 
 		if req.StatusCode != 200 {
-			log.Error("Failed to get documentation from " + name + " [ " + url + " ] with status code " + strconv.Itoa(req.StatusCode))
+			state.Logger.Error("Failed to get documentation from " + name + " [ " + url + " ] with status code " + strconv.Itoa(req.StatusCode))
 			continue
 		}
 
@@ -52,7 +51,7 @@ func DocumentMicroservices() {
 		body, err := io.ReadAll(req.Body)
 
 		if err != nil {
-			log.Error("Failed to get documentation from "+name+" [ "+url+" ]", err)
+			state.Logger.Error("Failed to get documentation from "+name+" [ "+url+" ]", err)
 			continue
 		}
 
@@ -61,7 +60,7 @@ func DocumentMicroservices() {
 		err = json.Unmarshal(body, &doc)
 
 		if err != nil {
-			log.Error("Failed to get documentation from "+name+" [ "+url+" ]", err)
+			state.Logger.Error("Failed to get documentation from "+name+" [ "+url+" ]", err)
 			continue
 		}
 

@@ -11,7 +11,6 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/jackc/pgtype"
 	jsoniter "github.com/json-iterator/go"
-	log "github.com/sirupsen/logrus"
 )
 
 const tagName = "Tickets + Transcripts"
@@ -69,7 +68,7 @@ func (b Router) Routes(r *chi.Mux) {
 			err = state.Pool.QueryRow(state.Context, "SELECT data, closed_by, opened_by FROM transcripts WHERE id = $1", transcriptNumInt).Scan(&data, &closedBy, &openedBy)
 
 			if err != nil {
-				log.Error(err)
+				state.Logger.Error(err)
 				utils.ApiDefaultReturn(http.StatusNotFound, w, r)
 				return
 			}
@@ -84,7 +83,7 @@ func (b Router) Routes(r *chi.Mux) {
 			bytes, err := json.Marshal(transcript)
 
 			if err != nil {
-				log.Error(err)
+				state.Logger.Error(err)
 				utils.ApiDefaultReturn(http.StatusInternalServerError, w, r)
 				return
 			}

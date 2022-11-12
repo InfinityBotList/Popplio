@@ -9,6 +9,9 @@ import (
 	"github.com/go-redis/redis/v8"
 	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/joho/godotenv"
+	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
+	"gopkg.in/natefinch/lumberjack.v2"
 )
 
 var (
@@ -16,6 +19,7 @@ var (
 	BackupsPool *pgxpool.Pool
 	Redis       *redis.Client
 	Discord     *discordgo.Session
+	Logger      *zap.SugaredLogger
 	Context     = context.Background()
 
 	Migration = false
@@ -68,4 +72,20 @@ func init() {
 		panic(err)
 	}
 
+	// lumberjack.Logger is already safe for concurrent use, so we don't need to
+	// lock it.
+	w := zapcore.AddSync(&lumberjack.Logger{
+		Filename:   "/var/log/popplio.log",
+		MaxSize:    10, // megabytes
+		MaxBackups: 3,
+		MaxAge:     28, // days
+	})
+
+	core := zapcore.NewCore(
+		zapcore.NewJSONEncoder(zap.NewProductionEncoderConfig()),
+		w,
+		zap.DebugLevel,
+	)
+
+	Logger = zap.New(core).Sugar()
 }

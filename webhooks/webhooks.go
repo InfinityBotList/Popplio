@@ -19,7 +19,7 @@ import (
 	"github.com/georgysavva/scany/pgxscan"
 	"github.com/jackc/pgtype"
 	"github.com/jackc/pgx/v4"
-	log "github.com/sirupsen/logrus"
+	"go.uber.org/zap"
 )
 
 func isDiscord(url string) bool {
@@ -59,7 +59,7 @@ func Send(webhook types.WebhookPost) error {
 		err := pgxscan.Get(state.Context, state.Pool, &bot, "SELECT webhook, custom_webhook, web_auth, token, hmac FROM bots WHERE bot_id = $1", webhook.BotID)
 
 		if err != nil {
-			log.Error("Failed to fetch webhook: ", err.Error())
+			state.Logger.Error("Failed to fetch webhook: ", err.Error())
 			return err
 		}
 
@@ -74,7 +74,7 @@ func Send(webhook types.WebhookPost) error {
 				_, err := state.Pool.Exec(state.Context, "UPDATE bots SET web_auth = $1 WHERE bot_id = $2", token, webhook.BotID)
 
 				if err != pgx.ErrNoRows && err != nil {
-					log.Error("Failed to update webhook: ", err.Error())
+					state.Logger.Error("Failed to update webhook: ", err.Error())
 					return err
 				}
 			}
@@ -85,24 +85,24 @@ func Send(webhook types.WebhookPost) error {
 		webhook.HMACAuth = bot.HMACAuth.Bool
 		webhook.Token = bot.CustomAuth.String
 
-		log.Info("Using hmac: ", webhook.HMACAuth)
+		state.Logger.Info("Using hmac: ", webhook.HMACAuth)
 
 		// For each url, make a new sendWebhook
 		if !utils.IsNone(bot.CustomURL.String) {
 			webhook.URL = bot.CustomURL.String
 			err := Send(webhook)
-			log.Error("Custom URL send error", err)
+			state.Logger.Error("Custom URL send error", err)
 		}
 
 		if !utils.IsNone(bot.Discord.String) {
 			webhook.URL = bot.Discord.String
 			err := Send(webhook)
-			log.Error("Discord send error", err)
+			state.Logger.Error("Discord send error", err)
 		}
 	}
 
 	if utils.IsNone(url) {
-		log.Warning("Refusing to continue as no webhook")
+		state.Logger.Error("Refusing to continue as no webhook")
 		return nil
 	}
 
@@ -113,9 +113,9 @@ func Send(webhook types.WebhookPost) error {
 	if isDiscordIntegration {
 		parts := strings.Split(url, "/")
 		if len(parts) < 7 {
-			log.WithFields(log.Fields{
-				"url": url,
-			}).Warning("Invalid webhook URL")
+			state.Logger.With(
+				zap.String("url", url),
+			).Warn("Could not parse webhook URL")
 			return errors.New("invalid discord webhook URL. Could not parse")
 		}
 
@@ -132,17 +132,17 @@ func Send(webhook types.WebhookPost) error {
 			}
 		}
 
-		log.WithFields(log.Fields{
-			"user":      webhook.UserID,
-			"webhookId": webhookId,
-			"token":     webhookToken,
-		}).Warning("Got here in parsing webhook for discord")
+		state.Logger.With(
+			zap.String("user", webhook.UserID),
+			zap.String("webhookId", webhookId),
+		).Info("Got here in parsing webhook for discord")
 
 		botObj, err := utils.GetDiscordUser(webhook.BotID)
 		if err != nil {
-			log.WithFields(log.Fields{
-				"user": webhook.BotID,
-			}).Warning(err)
+			state.Logger.With(
+				zap.String("bot", webhook.BotID),
+				zap.Error(err),
+			).Warn("Could not get bot user")
 			return err
 		}
 		userWithDisc := userObj.Username + "#" + userObj.Discriminator // Create the user object
@@ -164,9 +164,10 @@ func Send(webhook types.WebhookPost) error {
 		})
 
 		if err != nil {
-			log.WithFields(log.Fields{
-				"webhook": webhookId,
-			}).Warning("Failed to execute webhook", err)
+			state.Logger.With(
+				zap.String("webhookId", webhookId),
+				zap.Error(err),
+			).Warn("Could not execute webhook")
 			return err
 		}
 	} else {
@@ -180,7 +181,7 @@ func Send(webhook types.WebhookPost) error {
 			var dUser, err = utils.GetDiscordUser(webhook.UserID)
 
 			if err != nil {
-				log.Error(err)
+				state.Logger.Error(err)
 			}
 
 			// Create response body
@@ -198,7 +199,7 @@ func Send(webhook types.WebhookPost) error {
 			data, err := json.Marshal(body)
 
 			if err != nil {
-				log.Error("Failed to encode data")
+				state.Logger.Error("Failed to encode data")
 				return err
 			}
 
@@ -214,7 +215,7 @@ func Send(webhook types.WebhookPost) error {
 			req, err := http.NewRequest("POST", url, responseBody)
 
 			if err != nil {
-				log.Error("Failed to create request")
+				state.Logger.Error("Failed to create request")
 				return err
 			}
 
@@ -227,12 +228,12 @@ func Send(webhook types.WebhookPost) error {
 			resp, err := client.Do(req)
 
 			if err != nil {
-				log.Error("Failed to send request")
+				state.Logger.Error("Failed to send request")
 				return err
 			}
 
 			if resp.StatusCode >= 400 && resp.StatusCode < 500 {
-				log.Info("Retrying webhook again. Got status code of ", resp.StatusCode)
+				state.Logger.Info("Retrying webhook again. Got status code of ", resp.StatusCode)
 				tries++
 				continue
 			}

@@ -26,7 +26,6 @@ import (
 	"github.com/go-redis/redis/v8"
 	"github.com/jackc/pgtype"
 	jsoniter "github.com/json-iterator/go"
-	log "github.com/sirupsen/logrus"
 )
 
 const (
@@ -184,7 +183,7 @@ func (b Router) Routes(r *chi.Mux) {
 			return
 		}
 
-		log.Info(token)
+		state.Logger.Info(token)
 
 		if !strings.Contains(token.Scope, "identify") {
 			http.Error(w, "Invalid scope: scope contain identify, is currently "+token.Scope, http.StatusBadRequest)
@@ -368,7 +367,7 @@ func dataTask(taskId string, id string, ip string, del bool) {
 	data, err := state.Pool.Query(state.Context, ddrStr)
 
 	if err != nil {
-		log.Error(err)
+		state.Logger.Error(err)
 
 		state.Redis.SetArgs(state.Context, taskId, "Critical:"+err.Error(), redis.SetArgs{
 			KeepTTL: true,
@@ -378,7 +377,7 @@ func dataTask(taskId string, id string, ip string, del bool) {
 	}
 
 	if err := pgxscan.ScanAll(&keys, data); err != nil {
-		log.Error(err)
+		state.Logger.Error(err)
 
 		state.Redis.SetArgs(state.Context, taskId, "Critical:"+err.Error(), redis.SetArgs{
 			KeepTTL: true,
@@ -396,13 +395,13 @@ func dataTask(taskId string, id string, ip string, del bool) {
 			data, err := state.Pool.Query(state.Context, sqlStmt, id)
 
 			if err != nil {
-				log.Error(err)
+				state.Logger.Error(err)
 			}
 
 			var rows []map[string]any
 
 			if err := pgxscan.ScanAll(&rows, data); err != nil {
-				log.Error(err)
+				state.Logger.Error(err)
 
 				state.Redis.SetArgs(state.Context, taskId, "Critical:"+err.Error(), redis.SetArgs{
 					KeepTTL: true,
@@ -417,7 +416,7 @@ func dataTask(taskId string, id string, ip string, del bool) {
 				_, err := state.Pool.Exec(state.Context, sqlStmt, id)
 
 				if err != nil {
-					log.Error(err)
+					state.Logger.Error(err)
 
 					state.Redis.SetArgs(state.Context, taskId, "Critical:"+err.Error(), redis.SetArgs{
 						KeepTTL: true,
@@ -438,7 +437,7 @@ func dataTask(taskId string, id string, ip string, del bool) {
 	rows, err := state.BackupsPool.Query(state.Context, "SELECT col, data, ts, id FROM backups")
 
 	if err != nil {
-		log.Error("Failed to get backups")
+		state.Logger.Error("Failed to get backups")
 		state.Redis.SetArgs(state.Context, taskId, "Failed to fetch backup data: "+err.Error(), redis.SetArgs{
 			KeepTTL: true,
 		})
@@ -460,7 +459,7 @@ func dataTask(taskId string, id string, ip string, del bool) {
 		err = rows.Scan(&col, &data, &ts, &uid)
 
 		if err != nil {
-			log.Error("Failed to scan backup")
+			state.Logger.Error("Failed to scan backup")
 			state.Redis.SetArgs(state.Context, taskId, "Failed to fetch backup data: "+err.Error()+". Ignoring", redis.SetArgs{
 				KeepTTL: true,
 			})
@@ -472,7 +471,7 @@ func dataTask(taskId string, id string, ip string, del bool) {
 		err = json.Unmarshal([]byte(data.Bytes), &dataPacket)
 
 		if err != nil {
-			log.Error("Failed to decode backup")
+			state.Logger.Error("Failed to decode backup")
 			state.Redis.SetArgs(state.Context, taskId, "Failed to fetch backup data: "+err.Error()+". Ignoring", redis.SetArgs{
 				KeepTTL: true,
 			})
@@ -505,7 +504,7 @@ func dataTask(taskId string, id string, ip string, del bool) {
 			if del {
 				_, err := state.BackupsPool.Exec(state.Context, "DELETE FROM backups WHERE id=$1", toString(uid))
 				if err != nil {
-					log.Error("Failed to delete backup")
+					state.Logger.Error("Failed to delete backup")
 					state.Redis.SetArgs(state.Context, taskId, "Failed to delete backup: "+err.Error(), redis.SetArgs{
 						KeepTTL: true,
 					})
@@ -522,7 +521,7 @@ func dataTask(taskId string, id string, ip string, del bool) {
 	bytes, err := json.Marshal(finalDump)
 
 	if err != nil {
-		log.Error("Failed to encode data")
+		state.Logger.Error("Failed to encode data")
 		state.Redis.SetArgs(state.Context, taskId, "Failed to encode data: "+err.Error(), redis.SetArgs{
 			KeepTTL: true,
 		})

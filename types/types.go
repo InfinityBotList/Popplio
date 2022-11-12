@@ -1,6 +1,7 @@
 package types
 
 import (
+	"popplio/state"
 	"strconv"
 	"time"
 
@@ -8,7 +9,6 @@ import (
 
 	"github.com/bwmarrin/discordgo"
 	"github.com/jackc/pgtype"
-	log "github.com/sirupsen/logrus"
 )
 
 // A bot is a Discord bot that is on the infinity botlist.
@@ -433,16 +433,14 @@ func (s BotStats) GetStats() (servers uint64, shards uint64, users uint64) {
 		}
 	}
 
-	log.Info(reflect.TypeOf(serverCount))
-
-	log.WithFields(log.Fields{
-		"servers":     serversParsed,
-		"shards":      shardsParsed,
-		"users":       usersParsed,
-		"serversType": reflect.TypeOf(serverCount),
-		"shardsType":  reflect.TypeOf(shardCount),
-		"usersType":   reflect.TypeOf(userCount),
-	}).Info("Setting stats")
+	state.Logger.With(
+		"serverCount", serversParsed,
+		"shardCount", shardsParsed,
+		"userCount", usersParsed,
+		"serversType", reflect.TypeOf(serverCount),
+		"shardsType", reflect.TypeOf(shardCount),
+		"usersType", reflect.TypeOf(userCount),
+	).Info("Parsed stats")
 
 	return serversParsed, shardsParsed, usersParsed
 }

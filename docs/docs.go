@@ -3,6 +3,7 @@ package docs
 import (
 	"embed"
 	"fmt"
+	"os"
 	"popplio/types"
 	"reflect"
 	"strings"
@@ -316,7 +317,9 @@ func Route(doc *Doc) {
 	schemaName = strings.ReplaceAll(schemaName, "docs.", "")
 
 	if schemaName != "types.ApiError" {
-		fmt.Println(schemaName)
+		if os.Getenv("DEBUG") == "true" {
+			fmt.Println(schemaName)
+		}
 
 		if _, ok := api.Components.Schemas[schemaName]; !ok {
 			schemaRef, err := openapi3gen.NewSchemaRefForValue(doc.Resp, nil)
@@ -340,7 +343,9 @@ func Route(doc *Doc) {
 
 		reqSchemaName := reflect.TypeOf(doc.Req).String()
 
-		fmt.Println("REQUEST:", reqSchemaName)
+		if os.Getenv("DEBUG") == "true" {
+			fmt.Println("REQUEST:", reqSchemaName)
+		}
 
 		api.Components.RequestBodies[doc.Method+"_"+reqSchemaName] = reqBody{
 			Description: "Request body: " + reflect.TypeOf(doc.Req).String(),

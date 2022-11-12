@@ -17,7 +17,6 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/jackc/pgconn"
 	"github.com/jackc/pgtype"
-	log "github.com/sirupsen/logrus"
 
 	"github.com/bwmarrin/discordgo"
 )
@@ -57,7 +56,7 @@ func addBot(bot *types.Bot) (pgconn.CommandTag, error) {
 	_, err := state.Pool.Exec(ctx, "DELETE FROM bots WHERE bot_id = $1", bot.BotID)
 
 	if err != nil {
-		log.Error(err)
+		state.Logger.Error(err)
 	}
 
 	return state.Pool.Exec(
@@ -103,7 +102,7 @@ func getBotType(id string) string {
 	err := state.Pool.QueryRow(ctx, `SELECT type FROM bots WHERE bot_id = $1`, id).Scan(&botType)
 
 	if err != nil {
-		log.Error(err)
+		state.Logger.Error(err)
 	}
 
 	return botType.String
@@ -117,14 +116,13 @@ func (adp DummyAdapter) GetConfig() types.ListConfig {
 	return types.ListConfig{
 		SecretKey:   os.Getenv("SECRET_KEY"),
 		ListID:      os.Getenv("LIST_ID"),
-		RequestLogs: true,
-		StartupLogs: true,
+		StartupLogs: false,
 		DomainName:  "",
 	}
 }
 
 func (adp DummyAdapter) ClaimBot(bot *types.Bot) error {
-	log.Info("Called ClaimBot")
+	state.Logger.Info("Called ClaimBot")
 	if bot == nil {
 		return errors.New("bot is nil")
 	}
@@ -145,7 +143,7 @@ func (adp DummyAdapter) ClaimBot(bot *types.Bot) error {
 }
 
 func (adp DummyAdapter) UnclaimBot(bot *types.Bot) error {
-	log.Info("Called UnclaimBot")
+	state.Logger.Info("Called UnclaimBot")
 	if bot == nil {
 		return errors.New("bot is nil")
 	}
@@ -166,7 +164,7 @@ func (adp DummyAdapter) UnclaimBot(bot *types.Bot) error {
 }
 
 func (adp DummyAdapter) ApproveBot(bot *types.Bot) error {
-	log.Info("Called ApproveBot")
+	state.Logger.Info("Called ApproveBot")
 	if bot == nil {
 		return errors.New("bot is nil")
 	}
@@ -185,7 +183,7 @@ func (adp DummyAdapter) ApproveBot(bot *types.Bot) error {
 			return err
 		}
 
-		log.Info("Added bot: ", res.RowsAffected())
+		state.Logger.Info("Added bot: ", res.RowsAffected())
 
 	} else {
 		if botType != "pending" {
@@ -199,7 +197,7 @@ func (adp DummyAdapter) ApproveBot(bot *types.Bot) error {
 		return err
 	}
 
-	log.Info("Updated ", res.RowsAffected(), " bots")
+	state.Logger.Info("Updated ", res.RowsAffected(), " bots")
 
 	notifications.MessageNotifyChannel <- popltypes.DiscordLog{
 		ChannelID: os.Getenv("CHANNEL_ID"),
@@ -245,7 +243,7 @@ func (adp DummyAdapter) ApproveBot(bot *types.Bot) error {
 }
 
 func (adp DummyAdapter) DenyBot(bot *types.Bot) error {
-	log.Info("Called DenyBot")
+	state.Logger.Info("Called DenyBot")
 	if bot == nil {
 		return errors.New("bot is nil")
 	}
@@ -264,7 +262,7 @@ func (adp DummyAdapter) DenyBot(bot *types.Bot) error {
 			return err
 		}
 
-		log.Info("Added bot: ", res.RowsAffected())
+		state.Logger.Info("Added bot: ", res.RowsAffected())
 
 	} else {
 		if botType != "pending" {
@@ -278,7 +276,7 @@ func (adp DummyAdapter) DenyBot(bot *types.Bot) error {
 		return err
 	}
 
-	log.Info("Updated ", res.RowsAffected(), " bots")
+	state.Logger.Info("Updated ", res.RowsAffected(), " bots")
 
 	notifications.MessageNotifyChannel <- popltypes.DiscordLog{
 		ChannelID: os.Getenv("CHANNEL_ID"),

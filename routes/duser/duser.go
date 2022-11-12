@@ -10,7 +10,6 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	jsoniter "github.com/json-iterator/go"
-	log "github.com/sirupsen/logrus"
 )
 
 const tagName = "Discord User"
@@ -51,7 +50,7 @@ func (b Router) Routes(r *chi.Mux) {
 			user, err := utils.GetDiscordUser(id)
 
 			if err != nil {
-				log.Error(err)
+				state.Logger.Error(err)
 				utils.ApiDefaultReturn(http.StatusNotFound, w, r)
 				return
 			}
@@ -59,7 +58,7 @@ func (b Router) Routes(r *chi.Mux) {
 			bytes, err := json.Marshal(user)
 
 			if err != nil {
-				log.Error(err)
+				state.Logger.Error(err)
 				utils.ApiDefaultReturn(http.StatusInternalServerError, w, r)
 				return
 			}

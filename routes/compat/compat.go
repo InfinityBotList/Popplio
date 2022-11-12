@@ -11,7 +11,6 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/jackc/pgtype"
 	jsoniter "github.com/json-iterator/go"
-	log "github.com/sirupsen/logrus"
 )
 
 const tagName = "Legacy"
@@ -74,7 +73,7 @@ func (b Router) Routes(r *chi.Mux) {
 			err := state.Pool.QueryRow(state.Context, "SELECT vote_banned FROM bots WHERE bot_id = $1", id).Scan(&voteBannedState)
 
 			if err != nil {
-				log.Error(err)
+				state.Logger.Error(err)
 				utils.ApiDefaultReturn(http.StatusUnauthorized, w, r)
 				return
 			}
@@ -93,7 +92,7 @@ func (b Router) Routes(r *chi.Mux) {
 		voteParsed, err := utils.GetVoteData(state.Context, userId, botId)
 
 		if err != nil {
-			log.Error(err)
+			state.Logger.Error(err)
 			utils.ApiDefaultReturn(http.StatusInternalServerError, w, r)
 			return
 		}
@@ -105,7 +104,7 @@ func (b Router) Routes(r *chi.Mux) {
 		bytes, err := json.Marshal(compatData)
 
 		if err != nil {
-			log.Error(err)
+			state.Logger.Error(err)
 			utils.ApiDefaultReturn(http.StatusInternalServerError, w, r)
 			return
 		}

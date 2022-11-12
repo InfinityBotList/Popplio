@@ -17,7 +17,6 @@ import (
 	"github.com/georgysavva/scany/pgxscan"
 	"github.com/go-chi/chi/v5"
 	jsoniter "github.com/json-iterator/go"
-	log "github.com/sirupsen/logrus"
 )
 
 const tagName = "Bots"
@@ -73,7 +72,7 @@ func (b Router) Routes(r *chi.Mux) {
 			rows, err := state.Pool.Query(state.Context, "SELECT "+botCols+" FROM bots ORDER BY date DESC LIMIT $1 OFFSET $2", limit, offset)
 
 			if err != nil {
-				log.Error(err)
+				state.Logger.Error(err)
 				utils.ApiDefaultReturn(http.StatusInternalServerError, w, r)
 				return
 			}
@@ -83,7 +82,7 @@ func (b Router) Routes(r *chi.Mux) {
 			err = pgxscan.ScanAll(&bots, rows)
 
 			if err != nil {
-				log.Error(err)
+				state.Logger.Error(err)
 				utils.ApiDefaultReturn(http.StatusInternalServerError, w, r)
 				return
 			}
@@ -104,7 +103,7 @@ func (b Router) Routes(r *chi.Mux) {
 			err = state.Pool.QueryRow(state.Context, "SELECT COUNT(*) FROM bots").Scan(&count)
 
 			if err != nil {
-				log.Error(err)
+				state.Logger.Error(err)
 				utils.ApiDefaultReturn(http.StatusInternalServerError, w, r)
 				return
 			}
@@ -130,7 +129,7 @@ func (b Router) Routes(r *chi.Mux) {
 			bytes, err := json.Marshal(data)
 
 			if err != nil {
-				log.Error(err)
+				state.Logger.Error(err)
 				utils.ApiDefaultReturn(http.StatusInternalServerError, w, r)
 				return
 			}
@@ -185,7 +184,7 @@ Gets a bot by id or name
 			row, err := state.Pool.Query(state.Context, "SELECT "+botCols+" FROM bots WHERE (bot_id = $1 OR vanity = $1 OR name = $1)", name)
 
 			if err != nil {
-				log.Error(err)
+				state.Logger.Error(err)
 				utils.ApiDefaultReturn(http.StatusNotFound, w, r)
 				return
 			}
@@ -193,7 +192,7 @@ Gets a bot by id or name
 			err = pgxscan.ScanOne(&bot, row)
 
 			if err != nil {
-				log.Error(err)
+				state.Logger.Error(err)
 				utils.ApiDefaultReturn(http.StatusNotFound, w, r)
 				return
 			}
@@ -201,7 +200,7 @@ Gets a bot by id or name
 			err = utils.ParseBot(state.Context, state.Pool, &bot, state.Discord, state.Redis)
 
 			if err != nil {
-				log.Error(err)
+				state.Logger.Error(err)
 				utils.ApiDefaultReturn(http.StatusNotFound, w, r)
 				return
 			}
@@ -210,7 +209,7 @@ Gets a bot by id or name
 			err = state.Pool.QueryRow(state.Context, "SELECT cardinality(unique_clicks) AS unique_clicks FROM bots WHERE bot_id = $1", bot.BotID).Scan(&uniqueClicks)
 
 			if err != nil {
-				log.Error(err)
+				state.Logger.Error(err)
 				utils.ApiDefaultReturn(http.StatusNotFound, w, r)
 				return
 			}
@@ -226,7 +225,7 @@ Gets a bot by id or name
 			bytes, err := json.Marshal(bot)
 
 			if err != nil {
-				log.Error(err)
+				state.Logger.Error(err)
 				utils.ApiDefaultReturn(http.StatusInternalServerError, w, r)
 				return
 			}
@@ -288,7 +287,7 @@ Gets a bot by id or name
 			bodyBytes, err := io.ReadAll(r.Body)
 
 			if err != nil {
-				log.Error(err)
+				state.Logger.Error(err)
 				utils.ApiDefaultReturn(http.StatusInternalServerError, w, r)
 				return
 			}
@@ -299,7 +298,7 @@ Gets a bot by id or name
 				if r.URL.Query().Get("count") != "" {
 					payload = types.BotStats{}
 				} else {
-					log.Error(err)
+					state.Logger.Error(err)
 					w.WriteHeader(http.StatusBadRequest)
 					w.Write([]byte(constants.BadRequestStats))
 					return
@@ -310,7 +309,7 @@ Gets a bot by id or name
 				count, err := strconv.ParseUint(r.URL.Query().Get("count"), 10, 32)
 
 				if err != nil {
-					log.Error(err)
+					state.Logger.Error(err)
 					utils.ApiDefaultReturn(http.StatusBadRequest, w, r)
 					return
 				}
@@ -326,7 +325,7 @@ Gets a bot by id or name
 				_, err = state.Pool.Exec(state.Context, "UPDATE bots SET servers = $1 WHERE bot_id = $2", servers, id)
 
 				if err != nil {
-					log.Error(err)
+					state.Logger.Error(err)
 					utils.ApiDefaultReturn(http.StatusInternalServerError, w, r)
 					return
 				}
@@ -336,7 +335,7 @@ Gets a bot by id or name
 				_, err = state.Pool.Exec(state.Context, "UPDATE bots SET shards = $1 WHERE bot_id = $2", shards, id)
 
 				if err != nil {
-					log.Error(err)
+					state.Logger.Error(err)
 					utils.ApiDefaultReturn(http.StatusInternalServerError, w, r)
 					return
 				}
@@ -346,7 +345,7 @@ Gets a bot by id or name
 				_, err = state.Pool.Exec(state.Context, "UPDATE bots SET users = $1 WHERE bot_id = $2", users, id)
 
 				if err != nil {
-					log.Error(err)
+					state.Logger.Error(err)
 					utils.ApiDefaultReturn(http.StatusInternalServerError, w, r)
 					return
 				}
@@ -403,7 +402,7 @@ Gets a bot by id or name
 			err := state.Pool.QueryRow(state.Context, "SELECT bot_id, short FROM bots WHERE (bot_id = $1 OR vanity = $1 OR name = $1)", name).Scan(&botId, &short)
 
 			if err != nil {
-				log.Error(err)
+				state.Logger.Error(err)
 				utils.ApiDefaultReturn(http.StatusNotFound, w, r)
 				return
 			}
@@ -411,7 +410,7 @@ Gets a bot by id or name
 			bot, err := utils.GetDiscordUser(botId)
 
 			if err != nil {
-				log.Error(err)
+				state.Logger.Error(err)
 				utils.ApiDefaultReturn(http.StatusInternalServerError, w, r)
 				return
 			}
@@ -424,7 +423,7 @@ Gets a bot by id or name
 			})
 
 			if err != nil {
-				log.Error(err)
+				state.Logger.Error(err)
 				utils.ApiDefaultReturn(http.StatusInternalServerError, w, r)
 				return
 			}
@@ -456,7 +455,7 @@ Gets a bot by id or name
 			rows, err := state.Pool.Query(state.Context, "SELECT "+reviewCols+" FROM reviews WHERE (bot_id = $1 OR vanity = $1 OR name = $1)", chi.URLParam(r, "id"))
 
 			if err != nil {
-				log.Error(err)
+				state.Logger.Error(err)
 				utils.ApiDefaultReturn(http.StatusNotFound, w, r)
 				return
 			}
@@ -466,7 +465,7 @@ Gets a bot by id or name
 			err = pgxscan.ScanAll(&reviews, rows)
 
 			if err != nil {
-				log.Error(err)
+				state.Logger.Error(err)
 				utils.ApiDefaultReturn(http.StatusInternalServerError, w, r)
 				return
 			}
@@ -478,7 +477,7 @@ Gets a bot by id or name
 			bytes, err := json.Marshal(allReviews)
 
 			if err != nil {
-				log.Error(err)
+				state.Logger.Error(err)
 				utils.ApiDefaultReturn(http.StatusInternalServerError, w, r)
 				return
 			}

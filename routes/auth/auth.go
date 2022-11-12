@@ -14,7 +14,6 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/jackc/pgtype"
-	log "github.com/sirupsen/logrus"
 	"golang.org/x/exp/slices"
 )
 
@@ -131,7 +130,7 @@ func (b Router) Routes(r *chi.Mux) {
 			})
 
 			if err != nil {
-				log.Error(err)
+				state.Logger.Error(err)
 				w.WriteHeader(http.StatusInternalServerError)
 				w.Write([]byte(`{"error":true,"message":"Failed to get token from Discord"}`))
 				return
@@ -142,7 +141,7 @@ func (b Router) Routes(r *chi.Mux) {
 			body, err := io.ReadAll(resp.Body)
 
 			if err != nil {
-				log.Error(err)
+				state.Logger.Error(err)
 				w.WriteHeader(http.StatusInternalServerError)
 				w.Write([]byte(`{"error":true,"message":"Failed to read response body"}`))
 				return
@@ -155,14 +154,14 @@ func (b Router) Routes(r *chi.Mux) {
 			err = json.Unmarshal(body, &token)
 
 			if err != nil {
-				log.Error(err)
+				state.Logger.Error(err)
 				w.WriteHeader(http.StatusInternalServerError)
 				w.Write([]byte(`{"error":true,"message":"Failed to unmarshal response body from Discord"}`))
 				return
 			}
 
 			if token.AccessToken == "" {
-				log.Error(err)
+				state.Logger.Error(err)
 				w.WriteHeader(http.StatusBadRequest)
 				w.Write([]byte(`{"error":true,"message":"No access token provided by Discord?"}`))
 				return
@@ -173,7 +172,7 @@ func (b Router) Routes(r *chi.Mux) {
 			req, err := http.NewRequest("GET", "https://discord.com/api/v10/users/@me", nil)
 
 			if err != nil {
-				log.Error(err)
+				state.Logger.Error(err)
 				w.WriteHeader(http.StatusInternalServerError)
 				w.Write([]byte(`{"error":true,"message":"Failed to create request to Discord"}`))
 				return
@@ -184,7 +183,7 @@ func (b Router) Routes(r *chi.Mux) {
 			resp, err = cli.Do(req)
 
 			if err != nil {
-				log.Error(err)
+				state.Logger.Error(err)
 				w.WriteHeader(http.StatusInternalServerError)
 				w.Write([]byte(`{"error":true,"message":"Failed to get user from Discord"}`))
 				return
@@ -195,7 +194,7 @@ func (b Router) Routes(r *chi.Mux) {
 			body, err = io.ReadAll(resp.Body)
 
 			if err != nil {
-				log.Error(err)
+				state.Logger.Error(err)
 				w.WriteHeader(http.StatusInternalServerError)
 				w.Write([]byte(`{"error":true,"message":"Failed to read response body"}`))
 				return
@@ -206,14 +205,14 @@ func (b Router) Routes(r *chi.Mux) {
 			err = json.Unmarshal(body, &user)
 
 			if err != nil {
-				log.Error(err)
+				state.Logger.Error(err)
 				w.WriteHeader(http.StatusInternalServerError)
 				w.Write([]byte(`{"error":true,"message":"Failed to unmarshal response body from Discord"}`))
 				return
 			}
 
 			if user.ID == "" {
-				log.Error(err)
+				state.Logger.Error(err)
 				w.WriteHeader(http.StatusBadRequest)
 				w.Write([]byte(`{"error":true,"message":"No user ID provided by Discord?"}`))
 				return
@@ -225,7 +224,7 @@ func (b Router) Routes(r *chi.Mux) {
 			err = state.Pool.QueryRow(state.Context, "SELECT EXISTS(SELECT 1 FROM users WHERE user_id = $1)", user.ID).Scan(&exists)
 
 			if err != nil {
-				log.Error(err)
+				state.Logger.Error(err)
 				w.WriteHeader(http.StatusInternalServerError)
 				w.Write([]byte(`{"error":true,"message":"Failed to check if user exists"}`))
 				return
@@ -234,7 +233,7 @@ func (b Router) Routes(r *chi.Mux) {
 			discordUser, err := utils.GetDiscordUser(user.ID)
 
 			if err != nil {
-				log.Error(err)
+				state.Logger.Error(err)
 				w.WriteHeader(http.StatusInternalServerError)
 				w.Write([]byte(`{"error":true,"message":"Failed to get user from Discord"}`))
 				return
@@ -253,7 +252,7 @@ func (b Router) Routes(r *chi.Mux) {
 				)
 
 				if err != nil {
-					log.Error(err)
+					state.Logger.Error(err)
 					w.WriteHeader(http.StatusInternalServerError)
 					w.Write([]byte(`{"error":true,"message":"Failed to create user"}`))
 					return
@@ -268,7 +267,7 @@ func (b Router) Routes(r *chi.Mux) {
 				)
 
 				if err != nil {
-					log.Error(err)
+					state.Logger.Error(err)
 					w.WriteHeader(http.StatusInternalServerError)
 					w.Write([]byte(`{"error":true,"message":"Failed to update user"}`))
 					return
@@ -280,7 +279,7 @@ func (b Router) Routes(r *chi.Mux) {
 				err = state.Pool.QueryRow(state.Context, "SELECT api_token FROM users WHERE user_id = $1", user.ID).Scan(&tokenStr)
 
 				if err != nil {
-					log.Error(err)
+					state.Logger.Error(err)
 					w.WriteHeader(http.StatusInternalServerError)
 					w.Write([]byte(`{"error":true,"message":"Failed to get API token"}`))
 					return
@@ -301,7 +300,7 @@ func (b Router) Routes(r *chi.Mux) {
 			bytes, err := json.Marshal(authUser)
 
 			if err != nil {
-				log.Error(err)
+				state.Logger.Error(err)
 				w.WriteHeader(http.StatusInternalServerError)
 				w.Write([]byte(`{"error":true,"message":"Failed to marshal auth info"}`))
 				return

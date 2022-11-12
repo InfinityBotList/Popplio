@@ -3,13 +3,13 @@ package migrations
 import (
 	"context"
 	"fmt"
+	"popplio/state"
 	"strconv"
 	"strings"
 	"time"
 
 	"github.com/jackc/pgtype"
 	"github.com/jackc/pgx/v4/pgxpool"
-	log "github.com/sirupsen/logrus"
 	"golang.org/x/exp/slices"
 )
 
@@ -71,7 +71,7 @@ func parseLink(key string, link string) string {
 				return link
 			}
 
-			log.Warning("Removing invalid link: ", link)
+			state.Logger.Warn("Removing invalid link: ", link)
 			time.Sleep(5 * time.Second)
 			return ""
 		}

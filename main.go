@@ -28,9 +28,10 @@ import (
 
 	integrase "github.com/MetroReviews/metro-integrase/lib"
 	jsoniter "github.com/json-iterator/go"
-	log "github.com/sirupsen/logrus"
 
 	_ "embed"
+
+	"popplio/zapchi"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
@@ -111,7 +112,7 @@ func bucketHandle(bucket moderatedBucket, id string, w http.ResponseWriter, r *h
 		err := state.Redis.Set(ctx, rlKey, "0", bucket.Time).Err()
 
 		if err != nil {
-			log.Error(err)
+			state.Logger.Error(err)
 			utils.ApiDefaultReturn(http.StatusInternalServerError, w, r)
 			return false
 		}
@@ -120,7 +121,7 @@ func bucketHandle(bucket moderatedBucket, id string, w http.ResponseWriter, r *h
 	err := state.Redis.Incr(ctx, rlKey).Err()
 
 	if err != nil {
-		log.Error(err)
+		state.Logger.Error(err)
 		utils.ApiDefaultReturn(http.StatusInternalServerError, w, r)
 		return false
 	}
@@ -128,7 +129,7 @@ func bucketHandle(bucket moderatedBucket, id string, w http.ResponseWriter, r *h
 	vInt, err := strconv.Atoi(v)
 
 	if err != nil {
-		log.Error(err)
+		state.Logger.Error(err)
 		utils.ApiDefaultReturn(http.StatusInternalServerError, w, r)
 		return false
 	}
@@ -259,8 +260,7 @@ type Router interface {
 }
 
 func main() {
-	// Add the base tags
-	docs.AddTag("System", "These API endpoints are core basic system APIs")
+	state.Logger.Info("Test\n\n")
 
 	docs.AddSecuritySchema("User", "User-Auth", "Requires a user token. Usually must be prefixed with `User `. Note that both ``User-Auth`` and ``Authorization`` headers are supported")
 	docs.AddSecuritySchema("Bot", "Bot-Auth", "Requires a bot token. Can be optionally prefixed. Note that both ``Bot-Auth`` and ``Authorization`` headers are supported")
@@ -272,10 +272,9 @@ func main() {
 	// A good base middleware stack
 	r.Use(middleware.CleanPath)
 	r.Use(corsMiddleware)
-	r.Use(middleware.RequestID)
 	r.Use(middleware.RealIP)
-	r.Use(middleware.Logger)
 	r.Use(middleware.Recoverer)
+	r.Use(zapchi.Logger(state.Logger, "api"))
 
 	// Set a timeout value on the request context (ctx), that will signal
 	// through ctx.Done() that the request has timed out and further

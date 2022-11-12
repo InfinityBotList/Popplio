@@ -22,7 +22,7 @@ import (
 	"github.com/jackc/pgtype"
 	jsoniter "github.com/json-iterator/go"
 	ua "github.com/mileusna/useragent"
-	log "github.com/sirupsen/logrus"
+	"go.uber.org/zap"
 )
 
 const tagName = "Users"
@@ -105,7 +105,7 @@ func (b Router) Routes(r *chi.Mux) {
 				err = state.Pool.QueryRow(state.Context, "SELECT bot_id FROM bots WHERE (bot_id = $1 OR vanity = $1 OR name = $1)", vars["bid"]).Scan(&botId)
 
 				if err != nil || botId.Status != pgtype.Present {
-					log.Error(err)
+					state.Logger.Error(err)
 					utils.ApiDefaultReturn(http.StatusNotFound, w, r)
 					return
 				}
@@ -115,7 +115,7 @@ func (b Router) Routes(r *chi.Mux) {
 				err = state.Pool.QueryRow(state.Context, "SELECT bot_id, type FROM bots WHERE (vanity = $1 OR bot_id = $1 OR name = $1)", vars["bid"]).Scan(&botId, &botType)
 
 				if err != nil || botId.Status != pgtype.Present || botType.Status != pgtype.Present {
-					log.Error(err)
+					state.Logger.Error(err)
 					utils.ApiDefaultReturn(http.StatusNotFound, w, r)
 					return
 				}
@@ -133,7 +133,7 @@ func (b Router) Routes(r *chi.Mux) {
 			voteParsed, err := utils.GetVoteData(state.Context, vars["uid"], vars["bid"])
 
 			if err != nil {
-				log.Error(err)
+				state.Logger.Error(err)
 				utils.ApiDefaultReturn(http.StatusInternalServerError, w, r)
 				return
 			}
@@ -141,7 +141,7 @@ func (b Router) Routes(r *chi.Mux) {
 			bytes, err := json.Marshal(voteParsed)
 
 			if err != nil {
-				log.Error(err)
+				state.Logger.Error(err)
 				utils.ApiDefaultReturn(http.StatusInternalServerError, w, r)
 				return
 			}
@@ -206,7 +206,7 @@ func (b Router) Routes(r *chi.Mux) {
 			err := state.Pool.QueryRow(state.Context, "SELECT vote_banned FROM users WHERE user_id = $1", uid).Scan(&voteBannedState)
 
 			if err != nil {
-				log.Error(err)
+				state.Logger.Error(err)
 				utils.ApiDefaultReturn(http.StatusInternalServerError, w, r)
 				return
 			}
@@ -222,7 +222,7 @@ func (b Router) Routes(r *chi.Mux) {
 			err = state.Pool.QueryRow(state.Context, "SELECT bot_id, type, vote_banned FROM bots WHERE (bot_id = $1 OR vanity = $1 OR name = $1)", vars["bid"]).Scan(&botId, &botType, &voteBannedBotsState)
 
 			if err != nil {
-				log.Error(err)
+				state.Logger.Error(err)
 				utils.ApiDefaultReturn(http.StatusInternalServerError, w, r)
 				return
 			}
@@ -244,14 +244,14 @@ func (b Router) Routes(r *chi.Mux) {
 			voteParsed, err := utils.GetVoteData(state.Context, vars["uid"], vars["bid"])
 
 			if err != nil {
-				log.Error(err)
+				state.Logger.Error(err)
 				utils.ApiDefaultReturn(http.StatusInternalServerError, w, r)
 				return
 			}
 
 			if voteParsed.HasVoted {
 				timeElapsed := time.Now().UnixMilli() - voteParsed.LastVoteTime
-				log.Info(timeElapsed)
+				state.Logger.Info(timeElapsed)
 
 				timeToWait := int64(utils.GetVoteTime())*60*60*1000 - timeElapsed
 
@@ -271,7 +271,7 @@ func (b Router) Routes(r *chi.Mux) {
 				bytes, err := json.Marshal(alreadyVotedMsg)
 
 				if err != nil {
-					log.Error(err)
+					state.Logger.Error(err)
 					utils.ApiDefaultReturn(http.StatusInternalServerError, w, r)
 					return
 				}
@@ -288,7 +288,7 @@ func (b Router) Routes(r *chi.Mux) {
 			if err != nil {
 				// Revert vote
 				_, err := state.Pool.Exec(state.Context, "DELETE FROM votes WHERE itag = $1", itag)
-				log.Error(err)
+				state.Logger.Error(err)
 				utils.ApiDefaultReturn(http.StatusInternalServerError, w, r)
 				return
 			}
@@ -301,7 +301,7 @@ func (b Router) Routes(r *chi.Mux) {
 				// Revert vote
 				_, err := state.Pool.Exec(state.Context, "DELETE FROM votes WHERE itag = $1", itag)
 
-				log.Error(err)
+				state.Logger.Error(err)
 				utils.ApiDefaultReturn(http.StatusInternalServerError, w, r)
 				return
 			}
@@ -322,7 +322,7 @@ func (b Router) Routes(r *chi.Mux) {
 				// Revert vote
 				_, err := state.Pool.Exec(state.Context, "DELETE FROM votes WHERE itag = $1", itag)
 
-				log.Error(err)
+				state.Logger.Error(err)
 				utils.ApiDefaultReturn(http.StatusInternalServerError, w, r)
 				return
 			}
@@ -333,7 +333,7 @@ func (b Router) Routes(r *chi.Mux) {
 				// Revert vote
 				_, err := state.Pool.Exec(state.Context, "DELETE FROM votes WHERE itag = $1", itag)
 
-				log.Error(err)
+				state.Logger.Error(err)
 				utils.ApiDefaultReturn(http.StatusInternalServerError, w, r)
 				return
 			}
@@ -344,7 +344,7 @@ func (b Router) Routes(r *chi.Mux) {
 				// Revert vote
 				_, err := state.Pool.Exec(state.Context, "DELETE FROM votes WHERE itag = $1", itag)
 
-				log.Error(err)
+				state.Logger.Error(err)
 				utils.ApiDefaultReturn(http.StatusInternalServerError, w, r)
 				return
 			}
@@ -457,7 +457,7 @@ func (b Router) Routes(r *chi.Mux) {
 			err := state.Pool.QueryRow(state.Context, "SELECT about, user_id FROM users WHERE user_id = $1 OR username = $1", name).Scan(&about, &userId)
 
 			if err != nil {
-				log.Error(err)
+				state.Logger.Error(err)
 				utils.ApiDefaultReturn(http.StatusNotFound, w, r)
 				return
 			}
@@ -465,7 +465,7 @@ func (b Router) Routes(r *chi.Mux) {
 			user, err := utils.GetDiscordUser(userId)
 
 			if err != nil {
-				log.Error(err)
+				state.Logger.Error(err)
 				utils.ApiDefaultReturn(http.StatusInternalServerError, w, r)
 				return
 			}
@@ -478,7 +478,7 @@ func (b Router) Routes(r *chi.Mux) {
 			})
 
 			if err != nil {
-				log.Error(err)
+				state.Logger.Error(err)
 				utils.ApiDefaultReturn(http.StatusInternalServerError, w, r)
 				return
 			}
@@ -505,7 +505,7 @@ func (b Router) Routes(r *chi.Mux) {
 			bytes, err := json.Marshal(data)
 
 			if err != nil {
-				log.Error(err)
+				state.Logger.Error(err)
 				utils.ApiDefaultReturn(http.StatusInternalServerError, w, r)
 				return
 			}
@@ -564,7 +564,7 @@ func (b Router) Routes(r *chi.Mux) {
 			rows, err := state.Pool.Query(state.Context, "SELECT endpoint, notif_id, created_at, ua FROM poppypaw WHERE id = $1", id)
 
 			if err != nil {
-				log.Error(err)
+				state.Logger.Error(err)
 				utils.ApiDefaultReturn(http.StatusInternalServerError, w, r)
 				return
 			}
@@ -572,7 +572,7 @@ func (b Router) Routes(r *chi.Mux) {
 			err = pgxscan.ScanAll(&subscriptionDb, rows)
 
 			if err != nil {
-				log.Error(err)
+				state.Logger.Error(err)
 				utils.ApiDefaultReturn(http.StatusInternalServerError, w, r)
 				return
 			}
@@ -584,7 +584,13 @@ func (b Router) Routes(r *chi.Mux) {
 
 			for _, sub := range subscriptionDb {
 				uaD := ua.Parse(sub.UA)
-				fmt.Println("Parsing UA:", sub.UA, uaD)
+				state.Logger.With(
+					zap.String("endpoint", sub.Endpoint),
+					zap.String("notif_id", sub.NotifID),
+					zap.Time("created_at", sub.CreatedAt),
+					zap.String("ua", sub.UA),
+					zap.Any("browser", uaD),
+				).Info("Parsed UA")
 
 				binfo := types.NotifBrowserInfo{
 					OS:         uaD.OS,
@@ -608,7 +614,7 @@ func (b Router) Routes(r *chi.Mux) {
 			bytes, err := json.Marshal(sublist)
 
 			if err != nil {
-				log.Error(err)
+				state.Logger.Error(err)
 				utils.ApiDefaultReturn(http.StatusInternalServerError, w, r)
 				return
 			}
@@ -671,7 +677,7 @@ func (b Router) Routes(r *chi.Mux) {
 			_, err := state.Pool.Exec(state.Context, "DELETE FROM poppypaw WHERE id = $1 AND notif_id = $2", id, r.URL.Query().Get("notif_id"))
 
 			if err != nil {
-				log.Error(err)
+				state.Logger.Error(err)
 				utils.ApiDefaultReturn(http.StatusInternalServerError, w, r)
 				return
 			}
@@ -722,7 +728,7 @@ func (b Router) Routes(r *chi.Mux) {
 			rows, err := state.Pool.Query(state.Context, "SELECT "+silverpeltCols+" FROM silverpelt WHERE user_id = $1", id)
 
 			if err != nil {
-				log.Error(err)
+				state.Logger.Error(err)
 				utils.ApiDefaultReturn(http.StatusInternalServerError, w, r)
 				return
 			}
@@ -732,7 +738,7 @@ func (b Router) Routes(r *chi.Mux) {
 			pgxscan.ScanAll(&reminders, rows)
 
 			if err != nil {
-				log.Error(err)
+				state.Logger.Error(err)
 				utils.ApiDefaultReturn(http.StatusInternalServerError, w, r)
 				return
 			}
@@ -769,7 +775,7 @@ func (b Router) Routes(r *chi.Mux) {
 			bytes, err := json.Marshal(reminderList)
 
 			if err != nil {
-				log.Error(err)
+				state.Logger.Error(err)
 				utils.ApiDefaultReturn(http.StatusInternalServerError, w, r)
 				return
 			}
@@ -828,7 +834,7 @@ func (b Router) Routes(r *chi.Mux) {
 			err := state.Pool.QueryRow(state.Context, "SELECT bot_id FROM bots WHERE (vanity = $1 OR bot_id = $1 OR name = $1)", r.URL.Query().Get("bot_id")).Scan(&botId)
 
 			if err != nil || botId.Status != pgtype.Present || botId.String == "" {
-				log.Error("Error deleting reminder: ", err)
+				state.Logger.Error("Error deleting reminder: ", err)
 				utils.ApiDefaultReturn(http.StatusNotFound, w, r)
 				return
 			}
@@ -890,7 +896,7 @@ func (b Router) Routes(r *chi.Mux) {
 			err := state.Pool.QueryRow(state.Context, "SELECT bot_id FROM bots WHERE (vanity = $1 OR bot_id = $1 OR name = $1)", r.URL.Query().Get("bot_id")).Scan(&botId)
 
 			if err != nil || botId.Status != pgtype.Present || botId.String == "" {
-				log.Error("Error adding reminder: ", err)
+				state.Logger.Error("Error adding reminder: ", err)
 				utils.ApiDefaultReturn(http.StatusNotFound, w, r)
 				return
 			}
@@ -902,7 +908,7 @@ func (b Router) Routes(r *chi.Mux) {
 			_, err = state.Pool.Exec(state.Context, "INSERT INTO silverpelt (user_id, bot_id) VALUES ($1, $2)", id, botId.String)
 
 			if err != nil {
-				log.Error("Error adding reminder: ", err)
+				state.Logger.Error("Error adding reminder: ", err)
 				utils.ApiDefaultReturn(http.StatusNotFound, w, r)
 				return
 			}
@@ -944,7 +950,7 @@ func (b Router) Routes(r *chi.Mux) {
 			bodyBytes, err := io.ReadAll(r.Body)
 
 			if err != nil {
-				log.Error(err)
+				state.Logger.Error(err)
 				utils.ApiDefaultReturn(http.StatusInternalServerError, w, r)
 				return
 			}
@@ -952,7 +958,7 @@ func (b Router) Routes(r *chi.Mux) {
 			err = json.Unmarshal(bodyBytes, &subscription)
 
 			if err != nil {
-				log.Error(err)
+				state.Logger.Error(err)
 				utils.ApiDefaultReturn(http.StatusInternalServerError, w, r)
 				return
 			}
@@ -970,7 +976,7 @@ func (b Router) Routes(r *chi.Mux) {
 				authId := utils.AuthCheck(r.Header.Get("Authorization"), false)
 
 				if authId == nil || *authId != id {
-					log.Error(err)
+					state.Logger.Error(err)
 					utils.ApiDefaultReturn(http.StatusUnauthorized, w, r)
 					return
 				}
@@ -1049,7 +1055,7 @@ func (b Router) Routes(r *chi.Mux) {
 			bodyBytes, err := io.ReadAll(r.Body)
 
 			if err != nil {
-				log.Error(err)
+				state.Logger.Error(err)
 				utils.ApiDefaultReturn(http.StatusInternalServerError, w, r)
 				return
 			}
@@ -1057,7 +1063,7 @@ func (b Router) Routes(r *chi.Mux) {
 			err = json.Unmarshal(bodyBytes, &profile)
 
 			if err != nil {
-				log.Error(err)
+				state.Logger.Error(err)
 				utils.ApiDefaultReturn(http.StatusInternalServerError, w, r)
 				return
 			}
@@ -1073,7 +1079,7 @@ func (b Router) Routes(r *chi.Mux) {
 				_, err = state.Pool.Exec(state.Context, "UPDATE users SET about = $1 WHERE user_id = $2", profile.About, id)
 
 				if err != nil {
-					log.Error(err)
+					state.Logger.Error(err)
 					utils.ApiDefaultReturn(http.StatusInternalServerError, w, r)
 					return
 				}
@@ -1128,7 +1134,7 @@ func (b Router) Routes(r *chi.Mux) {
 			row, err := state.Pool.Query(state.Context, "SELECT "+userCols+" FROM users WHERE user_id = $1 OR username = $1", name)
 
 			if err != nil {
-				log.Error(err)
+				state.Logger.Error(err)
 				utils.ApiDefaultReturn(http.StatusNotFound, w, r)
 				return
 			}
@@ -1136,7 +1142,7 @@ func (b Router) Routes(r *chi.Mux) {
 			err = pgxscan.ScanOne(&user, row)
 
 			if err != nil {
-				log.Error(err)
+				state.Logger.Error(err)
 				utils.ApiDefaultReturn(http.StatusNotFound, w, r)
 				return
 			}
@@ -1144,7 +1150,7 @@ func (b Router) Routes(r *chi.Mux) {
 			err = utils.ParseUser(state.Context, state.Pool, &user, state.Discord, state.Redis)
 
 			if err != nil {
-				log.Error(err)
+				state.Logger.Error(err)
 				utils.ApiDefaultReturn(http.StatusInternalServerError, w, r)
 				return
 			}
@@ -1158,7 +1164,7 @@ func (b Router) Routes(r *chi.Mux) {
 			bytes, err := json.Marshal(user)
 
 			if err != nil {
-				log.Error(err)
+				state.Logger.Error(err)
 				utils.ApiDefaultReturn(http.StatusInternalServerError, w, r)
 				return
 			}

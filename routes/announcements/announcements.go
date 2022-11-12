@@ -11,7 +11,6 @@ import (
 	"github.com/georgysavva/scany/pgxscan"
 	"github.com/go-chi/chi/v5"
 	jsoniter "github.com/json-iterator/go"
-	log "github.com/sirupsen/logrus"
 )
 
 const tagName = "Announcements"
@@ -45,7 +44,7 @@ func (b Router) Routes(r *chi.Mux) {
 			rows, err := state.Pool.Query(state.Context, "SELECT "+announcementCols+" FROM announcements ORDER BY id DESC")
 
 			if err != nil {
-				log.Error(err)
+				state.Logger.Error("Could not", err)
 				utils.ApiDefaultReturn(http.StatusNotFound, w, r)
 				return
 			}
@@ -55,7 +54,7 @@ func (b Router) Routes(r *chi.Mux) {
 			err = pgxscan.ScanAll(&announcements, rows)
 
 			if err != nil {
-				log.Error(err)
+				state.Logger.Error(err)
 				utils.ApiDefaultReturn(http.StatusNotFound, w, r)
 				return
 			}
@@ -69,7 +68,7 @@ func (b Router) Routes(r *chi.Mux) {
 				targetId := utils.AuthCheck(auth, false)
 
 				if targetId != nil {
-					log.Error(err)
+					state.Logger.Error(err)
 					utils.ApiDefaultReturn(http.StatusUnauthorized, w, r)
 					return
 				}
@@ -104,7 +103,7 @@ func (b Router) Routes(r *chi.Mux) {
 			bytes, err := json.Marshal(annListObj)
 
 			if err != nil {
-				log.Error(err)
+				state.Logger.Error(err)
 				utils.ApiDefaultReturn(http.StatusInternalServerError, w, r)
 				return
 			}

@@ -15,7 +15,6 @@ import (
 	"github.com/georgysavva/scany/pgxscan"
 	"github.com/go-chi/chi/v5"
 	jsoniter "github.com/json-iterator/go"
-	log "github.com/sirupsen/logrus"
 )
 
 const tagName = "Bot Packs"
@@ -66,7 +65,7 @@ func (b Router) Routes(r *chi.Mux) {
 			row, err := state.Pool.Query(state.Context, "SELECT "+packCols+" FROM packs WHERE url = $1 OR name = $1", id)
 
 			if err != nil {
-				log.Error(err)
+				state.Logger.Error(err)
 				utils.ApiDefaultReturn(http.StatusNotFound, w, r)
 				return
 			}
@@ -74,7 +73,7 @@ func (b Router) Routes(r *chi.Mux) {
 			err = pgxscan.ScanOne(&pack, row)
 
 			if err != nil {
-				log.Error(err)
+				state.Logger.Error(err)
 				utils.ApiDefaultReturn(http.StatusNotFound, w, r)
 				return
 			}
@@ -82,7 +81,7 @@ func (b Router) Routes(r *chi.Mux) {
 			err = utils.ResolveBotPack(state.Context, state.Pool, &pack, state.Discord, state.Redis)
 
 			if err != nil {
-				log.Error(err)
+				state.Logger.Error(err)
 				utils.ApiDefaultReturn(http.StatusInternalServerError, w, r)
 				return
 			}
@@ -90,7 +89,7 @@ func (b Router) Routes(r *chi.Mux) {
 			bytes, err := json.Marshal(pack)
 
 			if err != nil {
-				log.Error(err)
+				state.Logger.Error(err)
 				utils.ApiDefaultReturn(http.StatusInternalServerError, w, r)
 				return
 			}
@@ -137,7 +136,7 @@ func (b Router) Routes(r *chi.Mux) {
 			rows, err := state.Pool.Query(state.Context, "SELECT "+packCols+" FROM packs ORDER BY date DESC LIMIT $1 OFFSET $2", limit, offset)
 
 			if err != nil {
-				log.Error(err)
+				state.Logger.Error(err)
 				utils.ApiDefaultReturn(http.StatusInternalServerError, w, r)
 				return
 			}
@@ -147,7 +146,7 @@ func (b Router) Routes(r *chi.Mux) {
 			err = pgxscan.ScanAll(&packs, rows)
 
 			if err != nil {
-				log.Error(err)
+				state.Logger.Error(err)
 				utils.ApiDefaultReturn(http.StatusInternalServerError, w, r)
 				return
 			}
@@ -156,7 +155,7 @@ func (b Router) Routes(r *chi.Mux) {
 				err := utils.ResolveBotPack(state.Context, state.Pool, pack, state.Discord, state.Redis)
 
 				if err != nil {
-					log.Error(err)
+					state.Logger.Error(err)
 					utils.ApiDefaultReturn(http.StatusInternalServerError, w, r)
 					return
 				}
@@ -178,7 +177,7 @@ func (b Router) Routes(r *chi.Mux) {
 			err = state.Pool.QueryRow(state.Context, "SELECT COUNT(*) FROM packs").Scan(&count)
 
 			if err != nil {
-				log.Error(err)
+				state.Logger.Error(err)
 				utils.ApiDefaultReturn(http.StatusInternalServerError, w, r)
 				return
 			}
@@ -204,7 +203,7 @@ func (b Router) Routes(r *chi.Mux) {
 			bytes, err := json.Marshal(data)
 
 			if err != nil {
-				log.Error(err)
+				state.Logger.Error(err)
 				utils.ApiDefaultReturn(http.StatusInternalServerError, w, r)
 				return
 			}

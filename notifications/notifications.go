@@ -14,7 +14,6 @@ import (
 	"github.com/bwmarrin/discordgo"
 	"github.com/georgysavva/scany/pgxscan"
 	"github.com/jackc/pgtype"
-	log "github.com/sirupsen/logrus"
 	"golang.org/x/exp/slices"
 )
 
@@ -24,23 +23,19 @@ var (
 	MessageNotifyChannel = make(chan types.DiscordLog)
 
 	silverpeltColsArr = utils.GetCols(types.Reminder{})
-	silverpeltCols = strings.Join(silverpeltColsArr, ",")
+	silverpeltCols    = strings.Join(silverpeltColsArr, ",")
 )
 
 func init() {
 	/* This channel is used to fan out premium removals */
 	go func() {
 		for id := range PremiumChannel {
-			log.WithFields(log.Fields{
-				"id": id,
-			}).Warning("Removing premium bot: ", id)
+			state.Logger.Info("Removing premium bot: ", id)
 
 			_, err := state.Pool.Exec(state.Context, "UPDATE bots SET premium = false, start_premium_period = $1, premium_period_length = $2 WHERE bot_id = $3", time.Now().UnixMilli(), 2592000000, id)
 
 			if err != nil {
-				log.WithFields(log.Fields{
-					"id": id,
-				}).Error("Error setting premium: ", err)
+				state.Logger.Errorw("Error removing premium", "error", err, "bot_id", id)
 				continue
 			}
 
@@ -48,9 +43,7 @@ func init() {
 			botObj, err := utils.GetDiscordUser(id)
 
 			if err != nil {
-				log.WithFields(log.Fields{
-					"id": id,
-				}).Error("Error getting bot object: ", err)
+				state.Logger.Errorw("Error getting bot object", "error", err, "bot_id", id)
 				continue
 			}
 
@@ -59,18 +52,14 @@ func init() {
 			err = state.Pool.QueryRow(state.Context, "SELECT owner FROM bots WHERE bot_id = $1", id).Scan(&owner)
 
 			if err != nil || owner.Status != pgtype.Present {
-				log.WithFields(log.Fields{
-					"id": id,
-				}).Error("Error getting bot ownership info: ", err)
+				state.Logger.Errorw("Error getting bot ownership info:", "error", err, "bot_id", id)
 				continue
 			}
 
 			userObj, err := utils.GetDiscordUser(owner.String)
 
 			if err != nil {
-				log.WithFields(log.Fields{
-					"id": id,
-				}).Error("Error getting main owner info: ", err)
+				state.Logger.Errorw("Error getting main owner info:", "error", err, "user_id", owner.String, "bot_id", id)
 				continue
 			}
 
@@ -81,9 +70,7 @@ func init() {
 			dmChannel, err := state.Discord.UserChannelCreate(owner.String)
 
 			if err != nil {
-				log.WithFields(log.Fields{
-					"id": id,
-				}).Error("Error creating DM channel: ", err)
+				state.Logger.Errorw("Error creating DM channel", "error", err, "user_id", owner.String, "bot_id", id)
 				continue
 			}
 
@@ -109,7 +96,7 @@ func init() {
 			err := state.Pool.QueryRow(state.Context, "SELECT auth, endpoint, p256dh FROM poppypaw WHERE notif_id = $1", msg.NotifID).Scan(&auth, &endpoint, &p256dh)
 
 			if err != nil {
-				log.Error("Error finding notification: %s", err)
+				state.Logger.Error("Error finding notification: %s", err)
 				continue
 			}
 
@@ -134,12 +121,12 @@ func init() {
 					// Delete the subscription
 					state.Pool.Exec(state.Context, "DELETE FROM poppypaw WHERE notif_id = $1", msg.NotifID)
 				}
-				log.Error(err)
+				state.Logger.Error(err)
 				continue
 			}
 
 			msg, _ := ioutil.ReadAll(resp.Body)
-			log.Info(resp.StatusCode, msg)
+			state.Logger.Info(resp.StatusCode, msg)
 			resp.Body.Close()
 		}
 	}()
@@ -152,12 +139,12 @@ func init() {
 				return
 			}
 
-			log.Info("Tick at ", x, ", checking reminders")
+			state.Logger.Debug("Tick at ", x, ", checking reminders")
 
 			rows, err := state.Pool.Query(state.Context, "SELECT "+silverpeltCols+" FROM silverpelt WHERE NOW() - last_acked > interval '4 hours'")
 
 			if err != nil {
-				log.Error("Error finding reminders: ", err)
+				state.Logger.Error("Error finding reminders: ", err)
 				continue
 			}
 
@@ -166,7 +153,7 @@ func init() {
 				err := pgxscan.ScanRow(&reminder, rows)
 
 				if err != nil {
-					log.Error("Error decoding reminder:", err)
+					state.Logger.Error("Error decoding reminder:", err)
 					continue
 				}
 
@@ -176,20 +163,20 @@ func init() {
 				err = state.Pool.QueryRow(state.Context, "SELECT COUNT(*) FROM silverpelt WHERE bot_id = $1 AND user_id = $2", reminder.BotID, reminder.UserID).Scan(&count)
 
 				if err != nil {
-					log.Error("Error counting reminders:", err)
+					state.Logger.Error("Error counting reminders:", err)
 				} else {
 					if count > 1 {
-						log.Warning("Reminder has duplicates, deleting one of them")
+						state.Logger.Warn("Reminder has duplicates, deleting one of them")
 						_, err = state.Pool.Exec(state.Context, "DELETE FROM silverpelt WHERE bot_id = $1 AND user_id = $2", reminder.BotID, reminder.UserID)
 
 						if err != nil {
-							log.Error("Error deleting reminder:", err)
+							state.Logger.Error("Error deleting reminder:", err)
 						}
 
 						_, err = state.Pool.Exec(state.Context, "INSERT INTO silverpelt (bot_id, user_id) VALUES ($1, $2)", reminder.BotID, reminder.UserID)
 
 						if err != nil {
-							log.Error("Error readding reminder:", err)
+							state.Logger.Error("Error readding reminder:", err)
 						}
 					}
 				}
@@ -197,25 +184,25 @@ func init() {
 				voteParsed, err := utils.GetVoteData(state.Context, reminder.UserID, reminder.BotID)
 
 				if err != nil {
-					log.Error(err)
+					state.Logger.Error(err)
 					continue
 				}
 
 				if !voteParsed.HasVoted {
 					res, err := state.Pool.Exec(state.Context, "UPDATE silverpelt SET last_acked = NOW() WHERE bot_id = $1 AND user_id = $2", reminder.BotID, reminder.UserID)
 					if err != nil {
-						log.Error("Error updating reminder: %s", err)
+						state.Logger.Error("Error updating reminder: %s", err)
 						continue
 					}
 
-					log.Info("Updated reminders: ", res.RowsAffected())
+					state.Logger.Info("Updated reminders: ", res.RowsAffected())
 
 					// Loop over all user poppypaw subscriptions and push to goro
 					go func(id string, bId string) {
 						rows, err := state.Pool.Query(state.Context, "SELECT notif_id, endpoint FROM poppypaw WHERE id = $1", id)
 
 						if err != nil {
-							log.Error("Error finding subscriptions:", err)
+							state.Logger.Error("Error finding subscriptions:", err)
 							return
 						}
 
@@ -227,14 +214,14 @@ func init() {
 						err = pgxscan.ScanAll(&notifs, rows)
 
 						if err != nil {
-							log.Error("Error finding subscriptions:", err)
+							state.Logger.Error("Error finding subscriptions:", err)
 							return
 						}
 
 						botInf, err := utils.GetDiscordUser(bId)
 
 						if err != nil {
-							log.Error("Error finding bot info:", err)
+							state.Logger.Error("Error finding bot info:", err)
 							return
 						}
 
@@ -247,7 +234,7 @@ func init() {
 						bytes, err := json.Marshal(message)
 
 						if err != nil {
-							log.Error(err)
+							state.Logger.Error(err)
 							return
 						}
 
@@ -255,14 +242,14 @@ func init() {
 						doneNotifs := []string{}
 
 						for _, notif := range notifs {
-							log.Info("NotifID: ", notif.NotifId)
+							state.Logger.Info("NotifID: ", notif.NotifId)
 
 							if notif.NotifId == "" {
 								continue
 							}
 
 							if slices.Contains(doneIds, notif.Endpoint) || slices.Contains(doneNotifs, notif.Endpoint) {
-								log.Info("Already sent notification to: ", notif.Endpoint)
+								state.Logger.Info("Already sent notification to: ", notif.Endpoint)
 								continue
 							}
 
@@ -289,12 +276,12 @@ func init() {
 				return
 			}
 
-			log.Info("Tick at ", x, ", checking premiums")
+			state.Logger.Debug("Tick at ", x, ", checking premiums")
 
 			rows, err := state.Pool.Query(state.Context, "SELECT bot_id, start_premium_period, premium_period_length, type FROM bots WHERE premium = true")
 
 			if err != nil {
-				log.Error("Error finding bots: %s", err)
+				state.Logger.Error("Error finding bots: %s", err)
 				continue
 			}
 
@@ -308,20 +295,20 @@ func init() {
 				err := rows.Scan(&botId, &startPremiumPeriod, &premiumPeriodLength, &typeStr)
 
 				if err != nil {
-					log.Error("Error decoding bot: %s", err)
+					state.Logger.Error("Error decoding bot: %s", err)
 					continue
 				}
 
 				if typeStr != "approved" {
 					// This bot isnt approved, so we should remove premium
-					log.Info("Removing premium from bot: ", botId)
+					state.Logger.Info("Removing premium from bot: ", botId)
 					PremiumChannel <- botId
 				}
 
 				// Check start and sub period
 				if int64(premiumPeriodLength)-(time.Now().UnixMilli()-int64(startPremiumPeriod)) < 0 {
 					// This bot isnt premium, so we should remove premium
-					log.Info("Removing premium from bot: ", botId)
+					state.Logger.Info("Removing premium from bot: ", botId)
 					PremiumChannel <- botId
 				}
 			}
@@ -337,13 +324,13 @@ func init() {
 				continue
 			}
 
-			log.Info("Sending message to: ", msg.ChannelID)
+			state.Logger.Info("Sending message to: ", msg.ChannelID)
 
 			// Send message to channel
 			_, err := state.Discord.ChannelMessageSendComplex(msg.ChannelID, msg.Message)
 
 			if err != nil {
-				log.Error("Error sending message: ", err)
+				state.Logger.Error("Error sending message: ", err)
 				continue
 			}
 		}

@@ -23,7 +23,7 @@ import (
 	"github.com/jackc/pgtype"
 	"github.com/jackc/pgx/v4"
 	"github.com/jackc/pgx/v4/pgxpool"
-	log "github.com/sirupsen/logrus"
+	"go.uber.org/zap"
 )
 
 var (
@@ -70,7 +70,7 @@ func ParseBot(ctx context.Context, pool *pgxpool.Pool, bot *types.Bot, s *discor
 		ownerUser, err := GetDiscordUser(owner)
 
 		if err != nil {
-			log.Error(err)
+			state.Logger.Error(err)
 			continue
 		}
 
@@ -211,7 +211,7 @@ func ParseUser(ctx context.Context, pool *pgxpool.Pool, user *types.User, s *dis
 		userObj, err := GetDiscordUser(bot.BotID)
 
 		if err != nil {
-			log.Error(err)
+			state.Logger.Error(err)
 			continue
 		}
 
@@ -436,19 +436,19 @@ func GetVoteData(ctx context.Context, userID, botID string) (*types.UserVote, er
 		VoteTime: GetVoteTime(),
 	}
 
-	log.WithFields(log.Fields{
-		"uid":   userID,
-		"bid":   botID,
-		"votes": votes,
-		"err":   err,
-	}).Info("Got vote info")
+	state.Logger.With(
+		zap.String("user_id", userID),
+		zap.String("bot_id", botID),
+		zap.Int64s("votes", votes),
+		zap.Error(err),
+	).Info("Got vote data")
 
 	voteParsed.Timestamps = votes
 
 	// In most cases, will be one but not always
 	if len(votes) > 0 {
 		if time.Now().UnixMilli() < votes[0] {
-			log.Error("detected illegal vote time", votes[0])
+			state.Logger.Error("detected illegal vote time", votes[0])
 			votes[0] = time.Now().UnixMilli()
 		}
 
@@ -513,7 +513,7 @@ func AuthCheck(token string, bot bool) *string {
 		err := state.Pool.QueryRow(state.Context, "SELECT bot_id FROM bots WHERE token = $1", strings.Replace(token, "Bot ", "", 1)).Scan(&id)
 
 		if err != nil {
-			log.Error(err)
+			state.Logger.Error(err)
 			return nil
 		} else {
 			if id.Status == pgtype.Null {
@@ -526,7 +526,7 @@ func AuthCheck(token string, bot bool) *string {
 		err := state.Pool.QueryRow(state.Context, "SELECT user_id FROM users WHERE api_token = $1", strings.Replace(token, "User ", "", 1)).Scan(&id)
 
 		if err != nil {
-			log.Error(err)
+			state.Logger.Error(err)
 			return nil
 		} else {
 			if id.Status == pgtype.Null {
