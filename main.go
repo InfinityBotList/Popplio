@@ -270,11 +270,13 @@ func main() {
 	r := chi.NewRouter()
 
 	// A good base middleware stack
-	r.Use(middleware.CleanPath)
-	r.Use(corsMiddleware)
-	r.Use(middleware.RealIP)
-	r.Use(middleware.Recoverer)
-	r.Use(zapchi.Logger(state.Logger, "api"))
+	r.Use(
+		middleware.Recoverer,
+		middleware.RealIP,
+		middleware.CleanPath,
+		corsMiddleware,
+		zapchi.Logger(state.Logger, "api"),
+	)
 
 	// Set a timeout value on the request context (ctx), that will signal
 	// through ctx.Done() that the request has timed out and further
