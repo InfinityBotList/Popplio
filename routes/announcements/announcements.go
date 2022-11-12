@@ -33,7 +33,7 @@ func (b Router) Routes(r *chi.Mux) {
 	r.Route("/announcements", func(r chi.Router) {
 		docs.Route(&docs.Doc{
 			Method:      "GET",
-			Path:        "announcements",
+			Path:        "/announcements",
 			OpId:        "announcements",
 			Summary:     "Get Announcements",
 			Description: "This endpoint will return a list of announcements. User authentication is optional and using it will show user targetted announcements.",

@@ -34,8 +34,17 @@ func (b Router) Routes(r *chi.Mux) {
 			OpId:        "get_transcript",
 			Summary:     "Get Ticket Transcript",
 			Description: "Gets the transcript of a ticket. **Note that this endpoint is only documented to be useful for staff and the like. It is not useful for normal users**",
-			Tags:        []string{"System"},
-			Resp:        types.Transcript{},
+			Tags:        []string{tagName},
+			Params: []docs.Parameter{
+				{
+					Name:        "id",
+					In:          "path",
+					Description: "The ticket's ID",
+					Required:    true,
+					Schema:      docs.IdSchema,
+				},
+			},
+			Resp: types.Transcript{},
 		})
 		r.Get("/{id}", func(w http.ResponseWriter, r *http.Request) {
 			transcriptNum := chi.URLParam(r, "id")
@@ -61,7 +70,7 @@ func (b Router) Routes(r *chi.Mux) {
 
 			if err != nil {
 				log.Error(err)
-				utils.ApiDefaultReturn(http.StatusInternalServerError, w, r)
+				utils.ApiDefaultReturn(http.StatusNotFound, w, r)
 				return
 			}
 

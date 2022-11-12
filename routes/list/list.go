@@ -1,11 +1,13 @@
 package list
 
 import (
+	"io"
 	"net/http"
 	"popplio/docs"
 	"popplio/state"
 	"popplio/types"
 	"popplio/utils"
+	"popplio/webhooks"
 	"strings"
 	"time"
 
@@ -41,7 +43,7 @@ func (b Router) Routes(r *chi.Mux) {
 			OpId:        "get_list_index",
 			Summary:     "Get List Index",
 			Description: "Gets the index of the list. Note that this endpoint does not resolve the owner or the bots of a pack and will only give the `owner_id` and the `bot_ids` for performance purposes",
-			Tags:        []string{"System"},
+			Tags:        []string{tagName},
 			Resp:        types.ListIndex{},
 		})
 		r.Get("/index", func(w http.ResponseWriter, r *http.Request) {
@@ -154,7 +156,7 @@ func (b Router) Routes(r *chi.Mux) {
 			OpId:        "get_list_stats",
 			Summary:     "Get List Statistics",
 			Description: "Gets the statistics of the list",
-			Tags:        []string{"System"},
+			Tags:        []string{tagName},
 			Resp: types.ListStats{
 				Bots: []types.ListStatsBot{},
 			},
@@ -267,6 +269,110 @@ func (b Router) Routes(r *chi.Mux) {
 				return
 			}
 
+			w.Write(bytes)
+		})
+
+		docs.Route(&docs.Doc{
+			Method:      "GET",
+			Path:        "/list/vote-info",
+			OpId:        "get_vote_info",
+			Summary:     "Get Vote Info",
+			Description: "Returns basic voting info such as if its a weekend double vote.",
+			Resp:        types.VoteInfo{Weekend: true},
+			Tags:        []string{tagName},
+		})
+		r.Get("/vote-info", func(w http.ResponseWriter, r *http.Request) {
+			var payload = types.VoteInfo{
+				Weekend: utils.GetDoubleVote(),
+			}
+
+			b, err := json.Marshal(payload)
+
+			if err != nil {
+				log.Error(err)
+				utils.ApiDefaultReturn(http.StatusInternalServerError, w, r)
+				return
+			}
+
+			w.Write(b)
+		})
+
+		docs.Route(&docs.Doc{
+			Method:      "POST",
+			Path:        "/list/webhook-test",
+			OpId:        "webhook_test",
+			Summary:     "Test Webhook",
+			Description: "Sends a test webhook to allow testing your vote system. **All fields are mandatory for this endpoint**",
+			Req:         types.WebhookPost{},
+			Resp:        types.ApiError{},
+			Tags:        []string{tagName},
+		})
+		r.Post("/webhook-test", func(w http.ResponseWriter, r *http.Request) {
+			defer r.Body.Close()
+
+			var payload types.WebhookPost
+
+			bodyBytes, err := io.ReadAll(r.Body)
+
+			if err != nil {
+				log.Error(err)
+				utils.ApiDefaultReturn(http.StatusInternalServerError, w, r)
+				return
+			}
+
+			err = json.Unmarshal(bodyBytes, &payload)
+
+			if err != nil {
+				log.Error(err)
+				utils.ApiDefaultReturn(http.StatusInternalServerError, w, r)
+				return
+			}
+
+			if utils.IsNone(payload.URL) && utils.IsNone(payload.URL2) {
+				utils.ApiDefaultReturn(http.StatusBadRequest, w, r)
+				return
+			}
+
+			payload.Test = true // Always true
+
+			var err1 error
+
+			if !utils.IsNone(payload.URL) {
+				err1 = webhooks.Send(payload)
+			}
+
+			var err2 error
+
+			if !utils.IsNone(payload.URL2) {
+				payload.URL = payload.URL2 // Test second enpdoint if it's not empty
+				err2 = webhooks.Send(payload)
+			}
+
+			var errD = types.ApiError{}
+
+			if err1 != nil {
+				log.Error(err1)
+
+				errD.Message = err1.Error()
+				errD.Error = true
+			}
+
+			if err2 != nil {
+				log.Error(err2)
+
+				errD.Message += err2.Error()
+				errD.Error = true
+			}
+
+			bytes, err := json.Marshal(errD)
+
+			if err != nil {
+				log.Error(err)
+				utils.ApiDefaultReturn(http.StatusInternalServerError, w, r)
+				return
+			}
+
+			w.WriteHeader(http.StatusBadRequest)
 			w.Write(bytes)
 		})
 	})

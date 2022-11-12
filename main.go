@@ -4,7 +4,6 @@ import (
 	"context"
 	"crypto/sha512"
 	"fmt"
-	"io"
 	"net/http"
 	"os"
 	"strconv"
@@ -23,12 +22,9 @@ import (
 	"popplio/routes/transcripts"
 	"popplio/routes/users"
 	"popplio/state"
-	"popplio/types"
 	"popplio/utils"
-	"popplio/webhooks"
 
 	integrase "github.com/MetroReviews/metro-integrase/lib"
-	"github.com/jackc/pgtype"
 	jsoniter "github.com/json-iterator/go"
 	log "github.com/sirupsen/logrus"
 
@@ -341,15 +337,6 @@ func main() {
 		w.Write([]byte(helloWorld))
 	})
 
-	docs.Route(&docs.Doc{
-		Method:      "GET",
-		Path:        "/openapi",
-		OpId:        "openapi",
-		Summary:     "Get OpenAPI Spec",
-		Description: "This endpoint will return the OpenAPI spec for the API. This is useful for generating clients for the API.",
-		Tags:        []string{"System"},
-		Resp:        types.OpenAPI{},
-	})
 	r.Get("/openapi", func(w http.ResponseWriter, r *http.Request) {
 		w.Write(openapi)
 	})
@@ -360,180 +347,12 @@ func main() {
 	})
 
 	// For compatibility with old API
-	r.HandleFunc("/votes/{bot_id}/{user_id}", func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != "GET" {
-			utils.ApiDefaultReturn(http.StatusMethodNotAllowed, w, r)
-			return
-		}
-
-		var botId = chi.URLParam(r, "bot_id")
-		var userId = chi.URLParam(r, "user_id")
-
-		if r.Header.Get("Authorization") == "" {
-			utils.ApiDefaultReturn(http.StatusUnauthorized, w, r)
-			return
-		} else {
-			id := utils.AuthCheck(r.Header.Get("Authorization"), true)
-
-			if id == nil || *id != botId {
-				utils.ApiDefaultReturn(http.StatusUnauthorized, w, r)
-				return
-			}
-
-			// To try and push users into new API, vote ban and approved check on GET is enforced on the old API
-			var voteBannedState bool
-
-			err := state.Pool.QueryRow(ctx, "SELECT vote_banned FROM bots WHERE bot_id = $1", id).Scan(&voteBannedState)
-
-			if err != nil {
-				log.Error(err)
-				utils.ApiDefaultReturn(http.StatusUnauthorized, w, r)
-				return
-			}
-		}
-
-		var botType pgtype.Text
-
-		state.Pool.QueryRow(ctx, "SELECT type FROM bots WHERE bot_id = $1", botId).Scan(&botType)
-
-		if botType.String != "approved" {
-			w.WriteHeader(http.StatusBadRequest)
-			w.Write([]byte(constants.NotApproved))
-			return
-		}
-
-		voteParsed, err := utils.GetVoteData(ctx, userId, botId)
-
-		if err != nil {
-			log.Error(err)
-			utils.ApiDefaultReturn(http.StatusInternalServerError, w, r)
-			return
-		}
-
-		var compatData = types.UserVoteCompat{
-			HasVoted: voteParsed.HasVoted,
-		}
-
-		bytes, err := json.Marshal(compatData)
-
-		if err != nil {
-			log.Error(err)
-			utils.ApiDefaultReturn(http.StatusInternalServerError, w, r)
-			return
-		}
-
-		w.Write(bytes)
-	})
-
-	docs.Route(&docs.Doc{
-		Method:      "GET",
-		Path:        "/voteinfo",
-		OpId:        "get_iote_info",
-		Summary:     "Get Vote Info",
-		Description: "Returns basic voting info such as if its a weekend double vote.",
-		Resp:        types.VoteInfo{Weekend: true},
-		Tags:        []string{"Votes"},
-	})
-	r.Get("/voteinfo", func(w http.ResponseWriter, r *http.Request) {
-		var payload = types.VoteInfo{
-			Weekend: utils.GetDoubleVote(),
-		}
-
-		b, err := json.Marshal(payload)
-
-		if err != nil {
-			log.Error(err)
-			utils.ApiDefaultReturn(http.StatusInternalServerError, w, r)
-			return
-		}
-
-		w.Write(b)
-	})
 
 	// TODO: Document this once its stable
 	r.HandleFunc("/login/{act}", oauthFn)
 	r.HandleFunc("/cosmog", performAct)
 	r.HandleFunc("/cosmog/tasks/{tid}.arceus", getTask)
 	r.HandleFunc("/cosmog/tasks/{tid}", taskFn)
-
-	docs.Route(&docs.Doc{
-		Method:      "POST",
-		Path:        "/webhook-test",
-		OpId:        "webhook_test",
-		Summary:     "Test Webhook",
-		Description: "Sends a test webhook to allow testing your vote system. **All fields are mandatory for this endpoint**",
-		Req:         types.WebhookPost{},
-		Resp:        types.ApiError{},
-		Tags:        []string{"Bots"},
-	})
-	r.Post("/webhook-test", func(w http.ResponseWriter, r *http.Request) {
-		defer r.Body.Close()
-
-		var payload types.WebhookPost
-
-		bodyBytes, err := io.ReadAll(r.Body)
-
-		if err != nil {
-			log.Error(err)
-			utils.ApiDefaultReturn(http.StatusInternalServerError, w, r)
-			return
-		}
-
-		err = json.Unmarshal(bodyBytes, &payload)
-
-		if err != nil {
-			log.Error(err)
-			utils.ApiDefaultReturn(http.StatusInternalServerError, w, r)
-			return
-		}
-
-		if utils.IsNone(payload.URL) && utils.IsNone(payload.URL2) {
-			utils.ApiDefaultReturn(http.StatusBadRequest, w, r)
-			return
-		}
-
-		payload.Test = true // Always true
-
-		var err1 error
-
-		if !utils.IsNone(payload.URL) {
-			err1 = webhooks.Send(payload)
-		}
-
-		var err2 error
-
-		if !utils.IsNone(payload.URL2) {
-			payload.URL = payload.URL2 // Test second enpdoint if it's not empty
-			err2 = webhooks.Send(payload)
-		}
-
-		var errD = types.ApiError{}
-
-		if err1 != nil {
-			log.Error(err1)
-
-			errD.Message = err1.Error()
-			errD.Error = true
-		}
-
-		if err2 != nil {
-			log.Error(err2)
-
-			errD.Message += err2.Error()
-			errD.Error = true
-		}
-
-		bytes, err := json.Marshal(errD)
-
-		if err != nil {
-			log.Error(err)
-			utils.ApiDefaultReturn(http.StatusInternalServerError, w, r)
-			return
-		}
-
-		w.WriteHeader(http.StatusBadRequest)
-		w.Write(bytes)
-	})
 
 	// Load openapi here to avoid large marshalling in every request
 	docs.DocumentMicroservices()
