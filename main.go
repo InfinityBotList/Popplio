@@ -5,9 +5,7 @@ import (
 	"crypto/sha512"
 	"fmt"
 	"io"
-	"math"
 	"net/http"
-	"net/url"
 	"os"
 	"strconv"
 	"strings"
@@ -15,20 +13,25 @@ import (
 
 	"popplio/docs"
 	"popplio/migrations"
+	"popplio/routes/announcements"
+	"popplio/routes/auth"
+	"popplio/routes/bots"
+	"popplio/routes/duser"
+	"popplio/routes/list"
+	"popplio/routes/packs"
+	"popplio/routes/transcripts"
+	"popplio/routes/users"
+	"popplio/state"
 	"popplio/types"
 	"popplio/utils"
+	"popplio/webhooks"
 
 	integrase "github.com/MetroReviews/metro-integrase/lib"
-	"github.com/bwmarrin/discordgo"
 	"github.com/georgysavva/scany/pgxscan"
-	"github.com/go-redis/redis/v8"
 	"github.com/jackc/pgtype"
-	"github.com/jackc/pgx/v4/pgxpool"
-	"github.com/joho/godotenv"
 	jsoniter "github.com/json-iterator/go"
 	ua "github.com/mileusna/useragent"
 	log "github.com/sirupsen/logrus"
-	"golang.org/x/exp/slices"
 
 	_ "embed"
 
@@ -70,21 +73,9 @@ const (
 	mainSite   = "https://infinitybotlist.com"
 	statusPage = "https://status.botlist.site"
 	apiBot     = "https://discord.com/api/oauth2/authorize?client_id=818419115068751892&permissions=140898593856&scope=bot%20applications.commands"
-	pgConn     = "postgresql:///infinity"
-	backupConn = "postgresql:///backups"
 
-	notFound         = "{\"message\":\"Slow down, bucko! We couldn't find this resource *anywhere*!\",\"error\":true}"
-	notFoundPage     = "{\"message\":\"Slow down, bucko! You got the path wrong or something but this endpoint doesn't exist!\",\"error\":true}"
-	badRequest       = "{\"message\":\"Slow down, bucko! You're doing something illegal!!!\",\"error\":true}"
-	badRequestStats  = "{\"message\":\"Slow down, bucko! You're not posting stats correctly. Hint: try posting stats as integers and not as strings?\",\"error\":true}"
-	unauthorized     = "{\"message\":\"Slow down, bucko! You're not authorized to do this or did you forget a API token somewhere?\",\"error\":true}"
-	internalError    = "{\"message\":\"Slow down, bucko! Something went wrong on our end!\",\"error\":true}"
-	methodNotAllowed = "{\"message\":\"Slow down, bucko! That method is not allowed for this endpoint!!!\",\"error\":true}"
-	notApproved      = "{\"message\":\"Woah there, your bot needs to be approved. Calling the police right now over this infraction!\",\"error\":true}"
-	voteBanned       = "{\"message\":\"Slow down, bucko! Either you or this bot is banned from voting right now!\",\"error\":true}"
-	success          = "{\"message\":\"Success!\",\"error\":false}"
-	testNotif        = "{\"message\":\"Test notification!\", \"title\":\"Test notification!\",\"icon\":\"https://i.imgur.com/GRo0Zug.png\",\"error\":false}"
-	backTick         = "`"
+	testNotif = "{\"message\":\"Test notification!\", \"title\":\"Test notification!\",\"icon\":\"https://i.imgur.com/GRo0Zug.png\",\"error\":false}"
+	backTick  = "`"
 )
 
 // Represents a moderated bucket typically used in 'combined' endpoints like Get/Create Votes which are just branches off a common function
@@ -106,12 +97,8 @@ type moderatedBucket struct {
 }
 
 var (
-	redisCache *redis.Client
-	iblCache   *redis.Client
-	pool       *pgxpool.Pool
-	backupPool *pgxpool.Pool
-	ctx        context.Context
-	migration  bool
+	ctx       context.Context
+	migration bool
 
 	docsJs  string
 	openapi []byte
@@ -119,119 +106,33 @@ var (
 	// Default global ratelimit handler
 	defaultGlobalBucket = moderatedBucket{BucketName: "global", Requests: 500, Time: 2 * time.Minute}
 
-	announcementCols = utils.GetCols(types.Announcement{})
-
-	announcementColsStr = strings.Join(announcementCols, ",")
-
-	botsCols    = utils.GetCols(types.Bot{})
-	botsColsStr = strings.Join(botsCols, ",")
-
-	packsCols       = utils.GetCols(types.BotPack{})
-	packsColsString = strings.Join(packsCols, ",")
-
-	usersCols    = utils.GetCols(types.User{})
-	usersColsStr = strings.Join(usersCols, ",")
-
-	reviewCols    = utils.GetCols(types.Review{})
-	reviewColsStr = strings.Join(reviewCols, ",")
-
-	indexBotsCol    = utils.GetCols(types.IndexBot{})
-	indexBotsColStr = strings.Join(indexBotsCol, ",")
-
 	silverpeltCols = utils.GetCols(types.Reminder{})
 
 	silverpeltColsStr = strings.Join(silverpeltCols, ",")
-
-	cliInfo string
-
-	allowedRedirectURLs = []string{
-		"http://localhost:3000/api/login", // First one must be dev
-		"https://reedwhisker.infinitybots.gg/api/login",
-	}
 )
-
-func init() {
-	godotenv.Load()
-
-	cliInfo = `{"client_id":"` + os.Getenv("CLIENT_ID") + `"}`
-}
-
-func apiDefaultReturn(statusCode int, w http.ResponseWriter, r *http.Request) {
-	switch statusCode {
-	case http.StatusUnauthorized:
-		w.WriteHeader(http.StatusUnauthorized)
-		w.Write([]byte(unauthorized))
-	case http.StatusNotFound:
-		w.WriteHeader(http.StatusNotFound)
-		w.Write([]byte(notFound))
-	case http.StatusBadRequest:
-		w.WriteHeader(http.StatusBadRequest)
-		w.Write([]byte(badRequest))
-	case http.StatusInternalServerError:
-		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte(internalError))
-	case http.StatusMethodNotAllowed:
-		w.WriteHeader(http.StatusMethodNotAllowed)
-		w.Write([]byte(methodNotAllowed))
-	}
-}
-
-func authCheck(token string, bot bool) *string {
-	if token == "" {
-		return nil
-	}
-
-	if bot {
-		var id pgtype.Text
-		err := pool.QueryRow(ctx, "SELECT bot_id FROM bots WHERE token = $1", strings.Replace(token, "Bot ", "", 1)).Scan(&id)
-
-		if err != nil {
-			fmt.Println(err)
-			return nil
-		} else {
-			if id.Status == pgtype.Null {
-				return nil
-			}
-			return &id.String
-		}
-	} else {
-		var id pgtype.Text
-		err := pool.QueryRow(ctx, "SELECT user_id FROM users WHERE api_token = $1", strings.Replace(token, "User ", "", 1)).Scan(&id)
-
-		if err != nil {
-			fmt.Println(err)
-			return nil
-		} else {
-			if id.Status == pgtype.Null {
-				return nil
-			}
-			return &id.String
-		}
-	}
-}
 
 func bucketHandle(bucket moderatedBucket, id string, w http.ResponseWriter, r *http.Request) bool {
 	rlKey := "rl:" + id + "-" + bucket.BucketName
 
-	v := redisCache.Get(r.Context(), rlKey).Val()
+	v := state.Redis.Get(r.Context(), rlKey).Val()
 
 	if v == "" {
 		v = "0"
 
-		err := redisCache.Set(ctx, rlKey, "0", bucket.Time).Err()
+		err := state.Redis.Set(ctx, rlKey, "0", bucket.Time).Err()
 
 		if err != nil {
 			log.Error(err)
-			apiDefaultReturn(http.StatusInternalServerError, w, r)
+			utils.ApiDefaultReturn(http.StatusInternalServerError, w, r)
 			return false
 		}
 	}
 
-	err := redisCache.Incr(ctx, rlKey).Err()
+	err := state.Redis.Incr(ctx, rlKey).Err()
 
 	if err != nil {
 		log.Error(err)
-		apiDefaultReturn(http.StatusInternalServerError, w, r)
+		utils.ApiDefaultReturn(http.StatusInternalServerError, w, r)
 		return false
 	}
 
@@ -239,17 +140,17 @@ func bucketHandle(bucket moderatedBucket, id string, w http.ResponseWriter, r *h
 
 	if err != nil {
 		log.Error(err)
-		apiDefaultReturn(http.StatusInternalServerError, w, r)
+		utils.ApiDefaultReturn(http.StatusInternalServerError, w, r)
 		return false
 	}
 
 	if vInt < 0 {
-		redisCache.Expire(ctx, rlKey, 1*time.Second)
+		state.Redis.Expire(ctx, rlKey, 1*time.Second)
 		vInt = 0
 	}
 
 	if vInt > bucket.Requests {
-		retryAfter := redisCache.TTL(ctx, rlKey).Val()
+		retryAfter := state.Redis.TTL(ctx, rlKey).Val()
 
 		if bucket.Global {
 			w.Header().Set("X-Global-Ratelimit", "true")
@@ -261,7 +162,7 @@ func bucketHandle(bucket moderatedBucket, id string, w http.ResponseWriter, r *h
 
 		// Set ratelimit to expire in more time if not global
 		if !bucket.Global {
-			redisCache.Expire(ctx, rlKey, retryAfter+2*time.Second)
+			state.Redis.Expire(ctx, rlKey, retryAfter+2*time.Second)
 		}
 
 		w.Write([]byte("{\"message\":\"You're being rate limited!\",\"error\":true}"))
@@ -286,7 +187,7 @@ func Ratelimit(reqs int, t time.Duration, bucket moderatedBucket, w http.Respons
 
 	if auth != "" {
 		if strings.HasPrefix(auth, "User ") {
-			idCheck := authCheck(auth, false)
+			idCheck := utils.AuthCheck(auth, false)
 
 			if idCheck == nil {
 				// Bot does not exist, return
@@ -297,7 +198,7 @@ func Ratelimit(reqs int, t time.Duration, bucket moderatedBucket, w http.Respons
 
 			id = *idCheck
 		} else {
-			idCheck := authCheck(auth, true)
+			idCheck := utils.AuthCheck(auth, true)
 
 			if idCheck == nil {
 				// Bot does not exist, return
@@ -363,12 +264,14 @@ type Hello struct {
 	Status  string `json:"status"`
 }
 
+type Router interface {
+	Routes(r *chi.Mux)
+	Tag() (string, string)
+}
+
 func main() {
 	// Add the base tags
 	docs.AddTag("System", "These API endpoints are core basic system APIs")
-	docs.AddTag("Bots", "These API endpoints are related to bots on IBL")
-	docs.AddTag("Users", "These API endpoints are related to users on IBL")
-	docs.AddTag("Votes", "These API endpoints are related to user votes on IBL")
 
 	docs.AddSecuritySchema("User", "User-Auth", "Requires a user token. Usually must be prefixed with `User `. Note that both ``User-Auth`` and ``Authorization`` headers are supported")
 	docs.AddSecuritySchema("Bot", "Bot-Auth", "Requires a bot token. Can be optionally prefixed. Note that both ``Bot-Auth`` and ``Authorization`` headers are supported")
@@ -390,43 +293,33 @@ func main() {
 	// processing should be stopped.
 	r.Use(middleware.Timeout(30 * time.Second))
 
-	// Init redisCache
-	rOptions, err := redis.ParseURL("redis://localhost:6379/12")
-
-	if err != nil {
-		panic(err)
-	}
-
-	redisCache = redis.NewClient(rOptions)
-
-	rOptionsNext, err := redis.ParseURL("redis://localhost:6379/1")
-
-	if err != nil {
-		panic(err)
-	}
-
-	iblCache = redis.NewClient(rOptionsNext)
-
-	pool, err = pgxpool.Connect(ctx, pgConn)
-
-	if err != nil {
-		panic(err)
-	}
-
 	if os.Getenv("MIGRATION") == "true" || os.Getenv("MIGRATION") == "1" {
 		migration = true
-		migrations.Migrate(ctx, pool)
+		migrations.Migrate(ctx, state.Pool)
 		os.Exit(0)
 	}
 
-	if !migrations.HasMigrated(ctx, pool) {
+	if !migrations.HasMigrated(ctx, state.Pool) {
 		panic("Database has not been migrated, run popplio with the MIGRATION environment variable set to true to migrate")
 	}
 
-	backupPool, err = pgxpool.Connect(ctx, backupConn)
+	routers := []Router{
+		bots.Router{},
+		users.Router{},
+		auth.Router{},
+		duser.Router{},
+		packs.Router{},
+		announcements.Router{},
+		list.Router{},
+		transcripts.Router{},
+	}
 
-	if err != nil {
-		panic(err)
+	for _, router := range routers {
+		name, desc := router.Tag()
+
+		docs.AddTag(name, desc)
+
+		router.Routes(r)
 	}
 
 	// Create base payloads before startup
@@ -444,23 +337,6 @@ func main() {
 		panic(err)
 	}
 
-	if err != nil {
-		panic(err)
-	}
-
-	metro, err = discordgo.New("Bot " + os.Getenv("DISCORD_TOKEN"))
-
-	if err != nil {
-		panic(err)
-	}
-
-	metro.Identify.Intents = discordgo.IntentsGuilds | discordgo.IntentGuildPresences | discordgo.IntentsGuildMembers
-
-	err = metro.Open()
-	if err != nil {
-		panic(err)
-	}
-
 	docs.Route(&docs.Doc{
 		Method:      "GET",
 		Path:        "/",
@@ -472,479 +348,6 @@ func main() {
 	})
 	r.Get("/", func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(helloWorld))
-	})
-
-	docs.Route(&docs.Doc{
-		Method:      "GET",
-		Path:        "/authorize/info",
-		OpId:        "get_authorize_info",
-		Summary:     "Get Login Info",
-		Description: "Gets the login info such as the client ID to use for the login.",
-		Tags:        []string{"System"},
-		Resp:        types.AuthInfo{},
-	})
-	r.Get("/authorize/info", func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte(cliInfo))
-	})
-
-	docs.Route(&docs.Doc{
-		Method: "GET",
-		Path:   "/authorize",
-		Params: []docs.Parameter{
-			{
-				Name:        "code",
-				Description: "The code from the OAuth2 redirect",
-				Required:    true,
-				In:          "query",
-				Schema:      docs.IdSchema,
-			},
-			{
-				Name:        "redirect_uri",
-				Description: "The redirect URI you used in the OAuth2 redirect",
-				Required:    true,
-				In:          "query",
-				Schema:      docs.IdSchema,
-			},
-		},
-		OpId:        "authorize",
-		Summary:     "Login User",
-		Description: "Takes in a ``code`` query parameter and returns a user ``token``. **Cannot be used outside of the site for security reasons but documented in case we wish to allow its use in the future.**",
-		Tags:        []string{"System"},
-		Resp:        types.AuthUser{},
-	})
-	r.Get("/authorize", func(w http.ResponseWriter, r *http.Request) {
-		redirectUri := r.URL.Query().Get("redirect_uri")
-		if !slices.Contains(allowedRedirectURLs, redirectUri) {
-			w.WriteHeader(http.StatusBadRequest)
-			w.Write([]byte(`{"error":true,"message":"Malformed redirect_uri"}`))
-			return
-		}
-
-		if redirectUri == allowedRedirectURLs[0] {
-			if r.Header.Get("Wistala-Server") != os.Getenv("DEV_WISTALA_SERVER_SECRET") {
-				w.WriteHeader(http.StatusBadRequest)
-				w.Write([]byte(`{"error":true,"message":"This endpoint is not meant to be used by you"}`))
-				return
-			}
-		} else {
-			if r.Header.Get("Wistala-Server") != os.Getenv("WISTALA_SERVER_SECRET") {
-				w.WriteHeader(http.StatusBadRequest)
-				w.Write([]byte(`{"error":true,"message":"This endpoint is not meant to be used by you"}`))
-				return
-			}
-		}
-
-		code := r.URL.Query().Get("code")
-
-		if code == "" {
-			w.WriteHeader(http.StatusBadRequest)
-			w.Write([]byte(`{"error":true,"message":"No code provided"}`))
-			return
-		}
-
-		if redisCache.Exists(ctx, "codecache:"+code).Val() == 1 {
-			w.WriteHeader(http.StatusBadRequest)
-			w.Write([]byte(`{"error":true,"message":"Code has been used before and is as such invalid"}`))
-			return
-		}
-
-		redisCache.Set(ctx, "codecache:"+code, "0", 5*time.Minute)
-
-		resp, err := http.PostForm("https://discord.com/api/v10/oauth2/token", url.Values{
-			"client_id":     {os.Getenv("CLIENT_ID")},
-			"client_secret": {os.Getenv("CLIENT_SECRET")},
-			"grant_type":    {"authorization_code"},
-			"code":          {code},
-			"redirect_uri":  {redirectUri},
-			"scope":         {"identify"},
-		})
-
-		if err != nil {
-			log.Error(err)
-			w.WriteHeader(http.StatusInternalServerError)
-			w.Write([]byte(`{"error":true,"message":"Failed to get token from Discord"}`))
-			return
-		}
-
-		defer resp.Body.Close()
-
-		body, err := io.ReadAll(resp.Body)
-
-		if err != nil {
-			log.Error(err)
-			w.WriteHeader(http.StatusInternalServerError)
-			w.Write([]byte(`{"error":true,"message":"Failed to read response body"}`))
-			return
-		}
-
-		var token struct {
-			AccessToken string `json:"access_token"`
-		}
-
-		err = json.Unmarshal(body, &token)
-
-		if err != nil {
-			log.Error(err)
-			w.WriteHeader(http.StatusInternalServerError)
-			w.Write([]byte(`{"error":true,"message":"Failed to unmarshal response body from Discord"}`))
-			return
-		}
-
-		if token.AccessToken == "" {
-			log.Error(err)
-			w.WriteHeader(http.StatusBadRequest)
-			w.Write([]byte(`{"error":true,"message":"No access token provided by Discord?"}`))
-			return
-		}
-
-		cli := &http.Client{}
-
-		req, err := http.NewRequest("GET", "https://discord.com/api/v10/users/@me", nil)
-
-		if err != nil {
-			log.Error(err)
-			w.WriteHeader(http.StatusInternalServerError)
-			w.Write([]byte(`{"error":true,"message":"Failed to create request to Discord"}`))
-			return
-		}
-
-		req.Header.Set("Authorization", "Bearer "+token.AccessToken)
-
-		resp, err = cli.Do(req)
-
-		if err != nil {
-			log.Error(err)
-			w.WriteHeader(http.StatusInternalServerError)
-			w.Write([]byte(`{"error":true,"message":"Failed to get user from Discord"}`))
-			return
-		}
-
-		defer resp.Body.Close()
-
-		body, err = io.ReadAll(resp.Body)
-
-		if err != nil {
-			log.Error(err)
-			w.WriteHeader(http.StatusInternalServerError)
-			w.Write([]byte(`{"error":true,"message":"Failed to read response body"}`))
-			return
-		}
-
-		var user InternalOauthUser
-
-		err = json.Unmarshal(body, &user)
-
-		if err != nil {
-			log.Error(err)
-			w.WriteHeader(http.StatusInternalServerError)
-			w.Write([]byte(`{"error":true,"message":"Failed to unmarshal response body from Discord"}`))
-			return
-		}
-
-		if user.ID == "" {
-			log.Error(err)
-			w.WriteHeader(http.StatusBadRequest)
-			w.Write([]byte(`{"error":true,"message":"No user ID provided by Discord?"}`))
-			return
-		}
-
-		// Check if user exists on database
-		var exists bool
-
-		err = pool.QueryRow(ctx, "SELECT EXISTS(SELECT 1 FROM users WHERE user_id = $1)", user.ID).Scan(&exists)
-
-		if err != nil {
-			log.Error(err)
-			w.WriteHeader(http.StatusInternalServerError)
-			w.Write([]byte(`{"error":true,"message":"Failed to check if user exists"}`))
-			return
-		}
-
-		discordUser, err := utils.GetDiscordUser(metro, redisCache, ctx, user.ID)
-
-		if err != nil {
-			log.Error(err)
-			w.WriteHeader(http.StatusInternalServerError)
-			w.Write([]byte(`{"error":true,"message":"Failed to get user from Discord"}`))
-			return
-		}
-
-		var apiToken string
-		if !exists {
-			// Create user
-			apiToken = utils.RandString(128)
-			_, err = pool.Exec(
-				ctx,
-				"INSERT INTO users (user_id, api_token, username, staff, developer, certified) VALUES ($1, $2, $3, false, false, false)",
-				user.ID,
-				apiToken,
-				user.Username,
-			)
-
-			if err != nil {
-				log.Error(err)
-				w.WriteHeader(http.StatusInternalServerError)
-				w.Write([]byte(`{"error":true,"message":"Failed to create user"}`))
-				return
-			}
-		} else {
-			// Update user
-			_, err = pool.Exec(
-				ctx,
-				"UPDATE users SET username = $1 WHERE user_id = $2",
-				user.Username,
-				user.ID,
-			)
-
-			if err != nil {
-				log.Error(err)
-				w.WriteHeader(http.StatusInternalServerError)
-				w.Write([]byte(`{"error":true,"message":"Failed to update user"}`))
-				return
-			}
-
-			// Get API token
-			var tokenStr pgtype.Text
-
-			err = pool.QueryRow(ctx, "SELECT api_token FROM users WHERE user_id = $1", user.ID).Scan(&tokenStr)
-
-			if err != nil {
-				log.Error(err)
-				w.WriteHeader(http.StatusInternalServerError)
-				w.Write([]byte(`{"error":true,"message":"Failed to get API token"}`))
-				return
-			}
-
-			apiToken = tokenStr.String
-		}
-
-		// Check if user is banned from main server (TODO, not yet implemented)
-
-		// Create authUser and send
-		var authUser types.AuthUser = types.AuthUser{
-			User:        discordUser,
-			AccessToken: token.AccessToken,
-			Token:       apiToken,
-		}
-
-		bytes, err := json.Marshal(authUser)
-
-		if err != nil {
-			log.Error(err)
-			w.WriteHeader(http.StatusInternalServerError)
-			w.Write([]byte(`{"error":true,"message":"Failed to marshal auth info"}`))
-			return
-		}
-
-		w.Write(bytes)
-	})
-
-	docs.Route(&docs.Doc{
-		Method:      "GET",
-		Path:        "/transcripts/{id}",
-		OpId:        "get_transcript",
-		Summary:     "Get Ticket Transcript",
-		Description: "Gets the transcript of a ticket. **Note that this endpoint is only documented to be useful for staff and the like. It is not useful for normal users**",
-		Tags:        []string{"System"},
-		Resp:        types.Transcript{},
-	})
-	r.Get("/transcripts/{id}", func(w http.ResponseWriter, r *http.Request) {
-		transcriptNum := chi.URLParam(r, "id")
-
-		if transcriptNum == "" {
-			apiDefaultReturn(http.StatusNotFound, w, r)
-			return
-		}
-
-		transcriptNumInt, err := strconv.Atoi(transcriptNum)
-
-		if err != nil {
-			apiDefaultReturn(http.StatusNotFound, w, r)
-			return
-		}
-
-		// Get transcript
-
-		/*
-			Data     pgtype.JSONBArray `json:"data"`
-			ClosedBy pgtype.JSONB      `json:"closed_by"`
-			OpenedBy pgtype.JSONB      `json:"opened_by"`
-
-		*/
-
-		var data pgtype.JSONB
-		var closedBy pgtype.JSONB
-		var openedBy pgtype.JSONB
-
-		err = pool.QueryRow(ctx, "SELECT data, closed_by, opened_by FROM transcripts WHERE id = $1", transcriptNumInt).Scan(&data, &closedBy, &openedBy)
-
-		if err != nil {
-			log.Error(err)
-			apiDefaultReturn(http.StatusInternalServerError, w, r)
-			return
-		}
-
-		var transcript = types.Transcript{
-			ID:       transcriptNumInt,
-			Data:     data,
-			ClosedBy: closedBy,
-			OpenedBy: openedBy,
-		}
-
-		bytes, err := json.Marshal(transcript)
-
-		if err != nil {
-			log.Error(err)
-			apiDefaultReturn(http.StatusInternalServerError, w, r)
-			return
-		}
-
-		w.Write(bytes)
-	})
-
-	docs.Route(&docs.Doc{
-		Method:      "GET",
-		Path:        "/_duser/{id}/clear",
-		OpId:        "clear_duser",
-		Summary:     "Clear Discord User Cache",
-		Description: "This endpoint will clear the cache for a specific discord user. This is useful if you the user's data has changes",
-		Tags:        []string{"System"},
-		Params: []docs.Parameter{
-			{
-				Name:        "id",
-				Description: "The ID of the user to clear the cache for",
-				In:          "path",
-				Required:    true,
-				Schema:      docs.IdSchema,
-			},
-		},
-		Resp: types.ApiError{},
-	})
-	r.Get("/_duser/{id}/clear", func(w http.ResponseWriter, r *http.Request) {
-		id := chi.URLParam(r, "id")
-		redisCache.Del(ctx, "uobj:"+id)
-		w.Write([]byte(success))
-	})
-
-	docs.Route(&docs.Doc{
-		Method:      "GET",
-		Path:        "announcements",
-		OpId:        "announcements",
-		Summary:     "Get Announcements",
-		Description: "This endpoint will return a list of announcements. User authentication is optional and using it will show user targetted announcements.",
-		Tags:        []string{"System"},
-		Resp:        types.AnnouncementList{},
-		AuthType:    []string{"User"},
-	})
-	r.Get("/announcements", func(w http.ResponseWriter, r *http.Request) {
-		rows, err := pool.Query(ctx, "SELECT "+announcementColsStr+" FROM announcements ORDER BY id DESC")
-
-		if err != nil {
-			log.Error(err)
-			apiDefaultReturn(http.StatusNotFound, w, r)
-			return
-		}
-
-		var announcements []types.Announcement
-
-		err = pgxscan.ScanAll(&announcements, rows)
-
-		if err != nil {
-			log.Error(err)
-			apiDefaultReturn(http.StatusNotFound, w, r)
-			return
-		}
-
-		// Auth header check
-		auth := r.Header.Get("Authorization")
-
-		var target types.UserID
-
-		if auth != "" {
-			targetId := authCheck(auth, false)
-
-			if targetId != nil {
-				log.Error(err)
-				apiDefaultReturn(http.StatusUnauthorized, w, r)
-				return
-			}
-
-			target = types.UserID{UserID: *targetId}
-		} else {
-			target = types.UserID{}
-		}
-
-		annList := []types.Announcement{}
-
-		for _, announcement := range announcements {
-			if announcement.Status == "private" {
-				// Staff only
-				continue
-			}
-
-			if announcement.Targetted {
-				// Check auth header
-				if target.UserID != announcement.Target.String {
-					continue
-				}
-			}
-
-			annList = append(annList, announcement)
-		}
-
-		annListObj := types.AnnouncementList{
-			Announcements: annList,
-		}
-
-		bytes, err := json.Marshal(annListObj)
-
-		if err != nil {
-			log.Error(err)
-			apiDefaultReturn(http.StatusInternalServerError, w, r)
-			return
-		}
-
-		w.Write(bytes)
-	})
-
-	docs.Route(&docs.Doc{
-		Method:      "GET",
-		Path:        "/_duser/{id}",
-		OpId:        "get_duser",
-		Summary:     "Get Discord User",
-		Description: "This endpoint will return a discord user object. This is useful for getting a user's avatar, username or discriminator etc.",
-		Tags:        []string{"System"},
-		Params: []docs.Parameter{
-			{
-				Name:        "id",
-				In:          "path",
-				Description: "The user's ID",
-				Required:    true,
-				Schema:      docs.IdSchema,
-			},
-		},
-		Resp: types.DiscordUser{},
-	})
-	r.Get("/_duser/{id}", func(w http.ResponseWriter, r *http.Request) {
-		var id = chi.URLParam(r, "id")
-
-		user, err := utils.GetDiscordUser(metro, redisCache, ctx, id)
-
-		if err != nil {
-			log.Error(err)
-			apiDefaultReturn(http.StatusInternalServerError, w, r)
-			return
-		}
-
-		bytes, err := json.Marshal(user)
-
-		if err != nil {
-			log.Error(err)
-			apiDefaultReturn(http.StatusInternalServerError, w, r)
-			return
-		}
-
-		w.Write(bytes)
 	})
 
 	docs.Route(&docs.Doc{
@@ -965,1005 +368,10 @@ func main() {
 		w.Write([]byte(docsHTML))
 	})
 
-	docs.Route(&docs.Doc{
-		Method:      "GET",
-		Path:        "/bots/all",
-		OpId:        "get_all_bots",
-		Summary:     "Get All Bots",
-		Description: "Gets all bots on the list.",
-		Tags:        []string{"Bots"},
-		Resp:        types.AllBots{},
-	})
-	r.Get("/bots/all", func(w http.ResponseWriter, r *http.Request) {
-		const perPage = 12
-
-		page := r.URL.Query().Get("page")
-
-		if page == "" {
-			page = "1"
-		}
-
-		pageNum, err := strconv.ParseUint(page, 10, 32)
-
-		if err != nil {
-			apiDefaultReturn(http.StatusBadRequest, w, r)
-			return
-		}
-
-		limit := perPage
-		offset := (pageNum - 1) * perPage
-
-		rows, err := pool.Query(ctx, "SELECT "+botsColsStr+" FROM bots ORDER BY date DESC LIMIT $1 OFFSET $2", limit, offset)
-
-		if err != nil {
-			log.Error(err)
-			apiDefaultReturn(http.StatusInternalServerError, w, r)
-			return
-		}
-
-		var bots []*types.Bot
-
-		err = pgxscan.ScanAll(&bots, rows)
-
-		if err != nil {
-			log.Error(err)
-			apiDefaultReturn(http.StatusInternalServerError, w, r)
-			return
-		}
-
-		var previous strings.Builder
-
-		// More optimized string concat
-		previous.WriteString(os.Getenv("SITE_URL"))
-		previous.WriteString("/bots/all?page=")
-		previous.WriteString(strconv.FormatUint(pageNum-1, 10))
-
-		if pageNum-1 < 1 || pageNum == 0 {
-			previous.Reset()
-		}
-
-		var count uint64
-
-		err = pool.QueryRow(ctx, "SELECT COUNT(*) FROM bots").Scan(&count)
-
-		if err != nil {
-			log.Error(err)
-			apiDefaultReturn(http.StatusInternalServerError, w, r)
-			return
-		}
-
-		var next strings.Builder
-
-		next.WriteString(os.Getenv("SITE_URL"))
-		next.WriteString("/bots/all?page=")
-		next.WriteString(strconv.FormatUint(pageNum+1, 10))
-
-		if float64(pageNum+1) > math.Ceil(float64(count)/perPage) {
-			next.Reset()
-		}
-
-		data := types.AllBots{
-			Count:    count,
-			Results:  bots,
-			PerPage:  perPage,
-			Previous: previous.String(),
-			Next:     next.String(),
-		}
-
-		bytes, err := json.Marshal(data)
-
-		if err != nil {
-			log.Error(err)
-			apiDefaultReturn(http.StatusInternalServerError, w, r)
-			return
-		}
-
-		w.Write(bytes)
-	})
-
-	docs.Route(&docs.Doc{
-		Method:      "GET",
-		Path:        "/packs/all",
-		OpId:        "get_all_packs",
-		Summary:     "Get All Packs",
-		Description: "Gets all packs on the list.",
-		Tags:        []string{"Bot Packs"},
-		Resp:        types.AllPacks{},
-	})
-	r.Get("/packs/all", func(w http.ResponseWriter, r *http.Request) {
-		const perPage = 12
-
-		page := r.URL.Query().Get("page")
-
-		if page == "" {
-			page = "1"
-		}
-
-		pageNum, err := strconv.ParseUint(page, 10, 32)
-
-		if err != nil {
-			apiDefaultReturn(http.StatusBadRequest, w, r)
-			return
-		}
-
-		// Check cache, this is how we can avoid hefty ratelimits
-		cache := redisCache.Get(ctx, "pca-"+strconv.FormatUint(pageNum, 10)).Val()
-		if cache != "" {
-			w.Header().Add("X-Popplio-Cached", "true")
-			w.Write([]byte(cache))
-			return
-		}
-
-		limit := perPage
-		offset := (pageNum - 1) * perPage
-
-		rows, err := pool.Query(ctx, "SELECT "+packsColsString+" FROM packs ORDER BY date DESC LIMIT $1 OFFSET $2", limit, offset)
-
-		if err != nil {
-			log.Error(err)
-			apiDefaultReturn(http.StatusInternalServerError, w, r)
-			return
-		}
-
-		var packs []*types.BotPack
-
-		err = pgxscan.ScanAll(&packs, rows)
-
-		if err != nil {
-			log.Error(err)
-			apiDefaultReturn(http.StatusInternalServerError, w, r)
-			return
-		}
-
-		for _, pack := range packs {
-			err := utils.ResolveBotPack(ctx, pool, pack, metro, redisCache)
-
-			if err != nil {
-				log.Error(err)
-				apiDefaultReturn(http.StatusInternalServerError, w, r)
-				return
-			}
-		}
-
-		var previous strings.Builder
-
-		// More optimized string concat
-		previous.WriteString(os.Getenv("SITE_URL"))
-		previous.WriteString("/packs/all?page=")
-		previous.WriteString(strconv.FormatUint(pageNum-1, 10))
-
-		if pageNum-1 < 1 || pageNum == 0 {
-			previous.Reset()
-		}
-
-		var count uint64
-
-		err = pool.QueryRow(ctx, "SELECT COUNT(*) FROM packs").Scan(&count)
-
-		if err != nil {
-			log.Error(err)
-			apiDefaultReturn(http.StatusInternalServerError, w, r)
-			return
-		}
-
-		var next strings.Builder
-
-		next.WriteString(os.Getenv("SITE_URL"))
-		next.WriteString("/packs/all?page=")
-		next.WriteString(strconv.FormatUint(pageNum+1, 10))
-
-		if float64(pageNum+1) > math.Ceil(float64(count)/perPage) {
-			next.Reset()
-		}
-
-		data := types.AllPacks{
-			Count:    count,
-			Results:  packs,
-			PerPage:  perPage,
-			Previous: previous.String(),
-			Next:     next.String(),
-		}
-
-		bytes, err := json.Marshal(data)
-
-		if err != nil {
-			log.Error(err)
-			apiDefaultReturn(http.StatusInternalServerError, w, r)
-			return
-		}
-
-		redisCache.Set(ctx, "pca-"+strconv.FormatUint(pageNum, 10), bytes, 2*time.Minute)
-
-		w.Write(bytes)
-	})
-
-	docs.Route(&docs.Doc{
-		Method:      "GET",
-		Path:        "/packs/{id}",
-		OpId:        "get_packs",
-		Summary:     "Get Packs",
-		Description: "Gets a pack on the list based on either URL or Name.",
-		Tags:        []string{"Bot Packs"},
-		Params: []docs.Parameter{
-			{
-				Name:        "id",
-				Description: "The ID of the pack.",
-				Required:    true,
-				In:          "path",
-				Schema:      docs.IdSchema,
-			},
-		},
-		Resp: types.BotPack{},
-	})
-	r.Get("/packs/{id}", func(w http.ResponseWriter, r *http.Request) {
-		var id = chi.URLParam(r, "id")
-
-		if id == "" {
-			apiDefaultReturn(http.StatusBadRequest, w, r)
-			return
-		}
-
-		var pack types.BotPack
-
-		row, err := pool.Query(ctx, "SELECT "+packsColsString+" FROM packs WHERE url = $1 OR name = $1", id)
-
-		if err != nil {
-			log.Error(err)
-			apiDefaultReturn(http.StatusNotFound, w, r)
-			return
-		}
-
-		err = pgxscan.ScanOne(&pack, row)
-
-		if err != nil {
-			log.Error(err)
-			apiDefaultReturn(http.StatusNotFound, w, r)
-			return
-		}
-
-		err = utils.ResolveBotPack(ctx, pool, &pack, metro, redisCache)
-
-		if err != nil {
-			log.Error(err)
-			apiDefaultReturn(http.StatusInternalServerError, w, r)
-			return
-		}
-
-		bytes, err := json.Marshal(pack)
-
-		if err != nil {
-			log.Error(err)
-			apiDefaultReturn(http.StatusInternalServerError, w, r)
-			return
-		}
-
-		w.Write(bytes)
-	})
-
-	docs.Route(&docs.Doc{
-		Method:  "POST",
-		Path:    "/bots/stats",
-		OpId:    "post_stats",
-		Summary: "Post Bot Stats",
-		Description: `
-This endpoint can be used to post the stats of a bot.
-
-The variation` + backTick + `/bots/{bot_id}/stats` + backTick + ` can also be used to post the stats of a bot. **Note that only the token is checked, not the bot ID at this time**
-
-**Example:**
-
-` + backTick + backTick + backTick + `py
-import requests
-
-req = requests.post(f"{API_URL}/bots/stats", json={"servers": 4000, "shards": 2}, headers={"Authorization": "{TOKEN}"})
-
-print(req.json())
-` + backTick + backTick + backTick + "\n\n",
-		Tags:     []string{"Bots"},
-		Req:      types.BotStatsDocs{},
-		Resp:     types.ApiError{},
-		AuthType: []string{"Bot"},
-	})
-	statsFn := func(w http.ResponseWriter, r *http.Request) {
-		if r.Method == "GET" || r.Method == "DELETE" {
-			apiDefaultReturn(http.StatusMethodNotAllowed, w, r)
-			return
-		}
-
-		if r.Body == nil {
-			apiDefaultReturn(http.StatusBadRequest, w, r)
-			return
-		}
-
-		var id *string
-
-		// Check token
-		if r.Header.Get("Authorization") == "" {
-			apiDefaultReturn(http.StatusUnauthorized, w, r)
-			return
-		} else {
-			id = authCheck(r.Header.Get("Authorization"), true)
-
-			if id == nil {
-				log.Error(err)
-				apiDefaultReturn(http.StatusUnauthorized, w, r)
-				return
-			}
-		}
-
-		defer r.Body.Close()
-
-		var payload types.BotStats
-
-		bodyBytes, err := io.ReadAll(r.Body)
-
-		if err != nil {
-			log.Error(err)
-			apiDefaultReturn(http.StatusInternalServerError, w, r)
-			return
-		}
-
-		err = json.Unmarshal(bodyBytes, &payload)
-
-		if err != nil {
-			if r.URL.Query().Get("count") != "" {
-				payload = types.BotStats{}
-			} else {
-				log.Error(err)
-				w.WriteHeader(http.StatusBadRequest)
-				w.Write([]byte(badRequestStats))
-				return
-			}
-		}
-
-		if r.URL.Query().Get("count") != "" {
-			count, err := strconv.ParseUint(r.URL.Query().Get("count"), 10, 32)
-
-			if err != nil {
-				log.Error(err)
-				apiDefaultReturn(http.StatusBadRequest, w, r)
-				return
-			}
-
-			var countAny any = count
-
-			payload.Count = &countAny
-		}
-
-		servers, shards, users := payload.GetStats()
-
-		if servers > 0 {
-			_, err = pool.Exec(ctx, "UPDATE bots SET servers = $1 WHERE bot_id = $2", servers, id)
-
-			if err != nil {
-				log.Error(err)
-				apiDefaultReturn(http.StatusInternalServerError, w, r)
-				return
-			}
-		}
-
-		if shards > 0 {
-			_, err = pool.Exec(ctx, "UPDATE bots SET shards = $1 WHERE bot_id = $2", shards, id)
-
-			if err != nil {
-				log.Error(err)
-				apiDefaultReturn(http.StatusInternalServerError, w, r)
-				return
-			}
-		}
-
-		if users > 0 {
-			_, err = pool.Exec(ctx, "UPDATE bots SET users = $1 WHERE bot_id = $2", users, id)
-
-			if err != nil {
-				log.Error(err)
-				apiDefaultReturn(http.StatusInternalServerError, w, r)
-				return
-			}
-		}
-
-		// Get name and vanity, delete from cache
-		var name, vanity string
-
-		pool.QueryRow(ctx, "SELECT name, vanity FROM bots WHERE bot_id = $1", id).Scan(&name, &vanity)
-
-		// Delete from cache
-		redisCache.Del(ctx, "bc-"+name)
-		redisCache.Del(ctx, "bc-"+vanity)
-		redisCache.Del(ctx, "bc-"+*id)
-
-		// Clear ibl next cache
-		iblCache.Del(ctx, *id+"_data")
-		iblCache.Del(ctx, name+"_data")
-		iblCache.Del(ctx, vanity+"_data")
-
-		w.Write([]byte(success))
-	}
-
-	r.HandleFunc("/bots/stats", statsFn)
-
-	// Intentionally not documented, variant endpoint
-	r.HandleFunc("/bots/{id}/stats", statsFn)
-
-	docs.Route(&docs.Doc{
-		Method:      "GET",
-		Path:        "/list/index",
-		OpId:        "get_list_index",
-		Summary:     "Get List Index",
-		Description: "Gets the index of the list. Note that this endpoint does not resolve the owner or the bots of a pack and will only give the `owner_id` and the `bot_ids` for performance purposes",
-		Tags:        []string{"System"},
-		Resp:        types.ListIndex{},
-	})
-	r.Get("/list/index", func(w http.ResponseWriter, r *http.Request) {
-		// Check cache, this is how we can avoid hefty ratelimits
-		cache := redisCache.Get(ctx, "indexcache").Val()
-		if cache != "" {
-			w.Header().Add("X-Popplio-Cached", "true")
-			w.Write([]byte(cache))
-			return
-		}
-
-		listIndex := types.ListIndex{}
-
-		certRow, err := pool.Query(ctx, "SELECT "+indexBotsColStr+" FROM bots WHERE certified = true AND type = 'approved' ORDER BY votes DESC LIMIT 9")
-		if err != nil {
-			log.Error(err)
-			apiDefaultReturn(http.StatusInternalServerError, w, r)
-			return
-		}
-
-		certDat := []types.IndexBot{}
-		err = pgxscan.ScanAll(&certDat, certRow)
-		if err != nil {
-			log.Error(err)
-			apiDefaultReturn(http.StatusInternalServerError, w, r)
-			return
-		}
-		listIndex.Certified = certDat
-
-		mostViewedRow, err := pool.Query(ctx, "SELECT "+indexBotsColStr+" FROM bots WHERE type = 'approved' ORDER BY clicks DESC LIMIT 9")
-		if err != nil {
-			log.Error(err)
-			apiDefaultReturn(http.StatusInternalServerError, w, r)
-			return
-		}
-		mostViewedDat := []types.IndexBot{}
-		err = pgxscan.ScanAll(&mostViewedDat, mostViewedRow)
-		if err != nil {
-			log.Error(err)
-			apiDefaultReturn(http.StatusInternalServerError, w, r)
-			return
-		}
-		listIndex.MostViewed = mostViewedDat
-
-		recentlyAddedRow, err := pool.Query(ctx, "SELECT "+indexBotsColStr+" FROM bots WHERE type = 'approved' ORDER BY date DESC LIMIT 9")
-		if err != nil {
-			log.Error(err)
-			apiDefaultReturn(http.StatusInternalServerError, w, r)
-			return
-		}
-		recentlyAddedDat := []types.IndexBot{}
-		err = pgxscan.ScanAll(&recentlyAddedDat, recentlyAddedRow)
-		if err != nil {
-			log.Error(err)
-			apiDefaultReturn(http.StatusInternalServerError, w, r)
-			return
-		}
-		listIndex.RecentlyAdded = recentlyAddedDat
-
-		topVotedRow, err := pool.Query(ctx, "SELECT "+indexBotsColStr+" FROM bots WHERE type = 'approved' ORDER BY votes DESC LIMIT 9")
-		if err != nil {
-			log.Error(err)
-			apiDefaultReturn(http.StatusInternalServerError, w, r)
-			return
-		}
-		topVotedDat := []types.IndexBot{}
-		err = pgxscan.ScanAll(&topVotedDat, topVotedRow)
-		if err != nil {
-			log.Error(err)
-			apiDefaultReturn(http.StatusInternalServerError, w, r)
-			return
-		}
-		listIndex.TopVoted = topVotedDat
-
-		rows, err := pool.Query(ctx, "SELECT "+packsColsString+" FROM packs ORDER BY date DESC")
-
-		if err != nil {
-			log.Error(err)
-			apiDefaultReturn(http.StatusInternalServerError, w, r)
-			return
-		}
-
-		var packs []*types.BotPack
-
-		err = pgxscan.ScanAll(&packs, rows)
-
-		if err != nil {
-			log.Error(err)
-			apiDefaultReturn(http.StatusInternalServerError, w, r)
-			return
-		}
-
-		listIndex.Packs = packs
-
-		bytes, err := json.Marshal(listIndex)
-
-		if err != nil {
-			log.Error(err)
-			apiDefaultReturn(http.StatusInternalServerError, w, r)
-			return
-		}
-
-		redisCache.Set(ctx, "indexcache", string(bytes), 10*time.Minute)
-		w.Write(bytes)
-	})
-
-	docs.Route(&docs.Doc{
-		Method:      "GET",
-		Path:        "/list/stats",
-		OpId:        "get_list_stats",
-		Summary:     "Get List Statistics",
-		Description: "Gets the statistics of the list",
-		Tags:        []string{"System"},
-		Resp: types.ListStats{
-			Bots: []types.ListStatsBot{},
-		},
-	})
-	r.Get("/list/stats", func(w http.ResponseWriter, r *http.Request) {
-		listStats := types.ListStats{}
-
-		bots, err := pool.Query(ctx, "SELECT bot_id, name, short, type, owner, additional_owners, avatar, certified, claimed FROM bots")
-
-		if err != nil {
-			log.Error(err)
-			apiDefaultReturn(http.StatusInternalServerError, w, r)
-			return
-		}
-
-		defer bots.Close()
-
-		for bots.Next() {
-			var botId string
-			var name string
-			var short string
-			var typeStr string
-			var owner string
-			var additionalOwners []string
-			var avatar string
-			var certified bool
-			var claimed bool
-
-			err := bots.Scan(&botId, &name, &short, &typeStr, &owner, &additionalOwners, &avatar, &certified, &claimed)
-
-			if err != nil {
-				log.Error(err)
-				apiDefaultReturn(http.StatusInternalServerError, w, r)
-				return
-			}
-
-			listStats.Bots = append(listStats.Bots, types.ListStatsBot{
-				BotID:              botId,
-				Name:               name,
-				Short:              short,
-				Type:               typeStr,
-				AvatarDB:           avatar,
-				MainOwnerID:        owner,
-				AdditionalOwnerIDS: additionalOwners,
-				Certified:          certified,
-				Claimed:            claimed,
-			})
-		}
-
-		var activeStaff int64
-		err = pool.QueryRow(ctx, "SELECT COUNT(*) FROM users WHERE staff = true").Scan(&activeStaff)
-
-		if err != nil {
-			log.Error(err)
-			apiDefaultReturn(http.StatusInternalServerError, w, r)
-			return
-		}
-
-		listStats.TotalStaff = activeStaff
-
-		var totalUsers int64
-		err = pool.QueryRow(ctx, "SELECT COUNT(*) FROM users").Scan(&totalUsers)
-
-		if err != nil {
-			log.Error(err)
-			apiDefaultReturn(http.StatusInternalServerError, w, r)
-			return
-		}
-
-		listStats.TotalUsers = totalUsers
-
-		var totalVotes int64
-		err = pool.QueryRow(ctx, "SELECT SUM(votes) FROM bots").Scan(&totalVotes)
-
-		if err != nil {
-			log.Error(err)
-			apiDefaultReturn(http.StatusInternalServerError, w, r)
-			return
-		}
-
-		listStats.TotalVotes = totalVotes
-
-		var totalPacks int64
-		err = pool.QueryRow(ctx, "SELECT COUNT(*) FROM packs").Scan(&totalPacks)
-
-		if err != nil {
-			log.Error(err)
-			apiDefaultReturn(http.StatusInternalServerError, w, r)
-			return
-		}
-
-		listStats.TotalPacks = totalPacks
-
-		var totalTickets int64
-		err = pool.QueryRow(ctx, "SELECT COUNT(*) FROM transcripts").Scan(&totalTickets)
-
-		if err != nil {
-			log.Error(err)
-			apiDefaultReturn(http.StatusInternalServerError, w, r)
-			return
-		}
-
-		listStats.TotalTickets = totalTickets
-
-		bytes, err := json.Marshal(listStats)
-
-		if err != nil {
-			log.Error(err)
-			apiDefaultReturn(http.StatusInternalServerError, w, r)
-			return
-		}
-
-		w.Write(bytes)
-	})
-
-	docs.Route(&docs.Doc{
-		Method:      "GET",
-		Path:        "/users/{uid}/bots/{bid}/votes",
-		OpId:        "get_user_votes",
-		Summary:     "Get User Votes",
-		Description: "Gets the users votes. **Requires authentication**",
-		Tags:        []string{"Votes"},
-		Params: []docs.Parameter{
-			{
-				Name:        "uid",
-				Description: "The user ID",
-				Required:    true,
-				In:          "path",
-				Schema:      docs.IdSchema,
-			},
-			{
-				Name:        "bid",
-				Description: "The bot ID",
-				Required:    true,
-				In:          "path",
-				Schema:      docs.IdSchema,
-			},
-		},
-		Resp: types.UserVote{
-			Timestamps: []int64{},
-			VoteTime:   12,
-			HasVoted:   true,
-		},
-		AuthType: []string{"User", "Bot"},
-	})
-
-	docs.Route(&docs.Doc{
-		Method:      "POST",
-		Path:        "/users/{uid}/bots/{bid}/votes",
-		OpId:        "post_user_votes",
-		Summary:     "Post User Votes",
-		Description: "Posts a users votes. **For internal use only**",
-		Tags:        []string{"Votes"},
-		Params: []docs.Parameter{
-			{
-				Name:        "uid",
-				Description: "The user ID",
-				Required:    true,
-				In:          "path",
-				Schema:      docs.IdSchema,
-			},
-			{
-				Name:        "bid",
-				Description: "The bot ID",
-				Required:    true,
-				In:          "path",
-				Schema:      docs.IdSchema,
-			},
-		},
-		Resp:     types.ApiError{},
-		AuthType: []string{"User"},
-	})
-	// TODO: Document POST as well and seperate the two funcs
-	r.HandleFunc("/users/{uid}/bots/{bid}/votes", func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != "GET" && r.Method != "PUT" {
-			apiDefaultReturn(http.StatusMethodNotAllowed, w, r)
-			return
-		}
-
-		var vars = map[string]string{
-			"uid": chi.URLParam(r, "uid"),
-			"bid": chi.URLParam(r, "bid"),
-		}
-
-		userAuth := strings.HasPrefix(r.Header.Get("Authorization"), "User ")
-
-		var botId pgtype.Text
-		var botType pgtype.Text
-
-		if r.Header.Get("Authorization") == "" {
-			apiDefaultReturn(http.StatusUnauthorized, w, r)
-			return
-		} else {
-			if userAuth {
-				uid := authCheck(r.Header.Get("Authorization"), false)
-
-				if uid == nil || *uid != vars["uid"] {
-					apiDefaultReturn(http.StatusUnauthorized, w, r)
-					return
-				}
-
-				var voteBannedState bool
-
-				err := pool.QueryRow(ctx, "SELECT vote_banned FROM users WHERE user_id = $1", uid).Scan(&voteBannedState)
-
-				if err != nil {
-					log.Error(err)
-					apiDefaultReturn(http.StatusInternalServerError, w, r)
-					return
-				}
-
-				if voteBannedState && r.Method == "PUT" {
-					w.WriteHeader(http.StatusForbidden)
-					w.Write([]byte(voteBanned))
-					return
-				}
-
-				var voteBannedBotsState bool
-
-				err = pool.QueryRow(ctx, "SELECT bot_id, type, vote_banned FROM bots WHERE (bot_id = $1 OR vanity = $1 OR name = $1)", vars["bid"]).Scan(&botId, &botType, &voteBannedBotsState)
-
-				if err != nil {
-					log.Error(err)
-					apiDefaultReturn(http.StatusInternalServerError, w, r)
-					return
-				}
-
-				if voteBannedBotsState && r.Method == "PUT" {
-					w.WriteHeader(http.StatusForbidden)
-					w.Write([]byte(voteBanned))
-					return
-				}
-
-				vars["bid"] = botId.String
-			} else {
-				err = pool.QueryRow(ctx, "SELECT bot_id, type FROM bots WHERE (vanity = $1 OR bot_id = $1 OR name = $1)", vars["bid"]).Scan(&botId, &botType)
-
-				if err != nil || botId.Status != pgtype.Present || botType.Status != pgtype.Present {
-					log.Error(err)
-					apiDefaultReturn(http.StatusNotFound, w, r)
-					return
-				}
-
-				vars["bid"] = botId.String
-
-				id := authCheck(r.Header.Get("Authorization"), true)
-
-				if id == nil || *id != vars["bid"] {
-					apiDefaultReturn(http.StatusUnauthorized, w, r)
-					return
-				}
-			}
-		}
-
-		if botType.String != "approved" && r.Method == "PUT" {
-			w.WriteHeader(http.StatusBadRequest)
-			w.Write([]byte(notApproved))
-			return
-		}
-
-		if !userAuth && r.Method == "PUT" {
-			apiDefaultReturn(http.StatusNotFound, w, r)
-			return
-		}
-
-		voteParsed, err := utils.GetVoteData(ctx, pool, vars["uid"], vars["bid"])
-
-		if err != nil {
-			log.Error(err)
-			apiDefaultReturn(http.StatusInternalServerError, w, r)
-			return
-		}
-
-		if r.Method == "GET" {
-			bytes, err := json.Marshal(voteParsed)
-
-			if err != nil {
-				log.Error(err)
-				apiDefaultReturn(http.StatusInternalServerError, w, r)
-				return
-			}
-
-			w.Write(bytes)
-		} else if r.Method == "PUT" {
-			if voteParsed.HasVoted {
-				timeElapsed := time.Now().UnixMilli() - voteParsed.LastVoteTime
-				log.Info(timeElapsed)
-
-				timeToWait := int64(utils.GetVoteTime())*60*60*1000 - timeElapsed
-
-				timeToWaitTime := (time.Duration(timeToWait) * time.Millisecond)
-
-				hours := timeToWaitTime / time.Hour
-				mins := (timeToWaitTime - (hours * time.Hour)) / time.Minute
-				secs := (timeToWaitTime - (hours*time.Hour + mins*time.Minute)) / time.Second
-
-				timeStr := fmt.Sprintf("%02d hours, %02d minutes. %02d seconds", hours, mins, secs)
-
-				var alreadyVotedMsg = types.ApiError{
-					Message: "Please wait " + timeStr + " before voting again",
-					Error:   true,
-				}
-
-				bytes, err := json.Marshal(alreadyVotedMsg)
-
-				if err != nil {
-					log.Error(err)
-					apiDefaultReturn(http.StatusInternalServerError, w, r)
-					return
-				}
-
-				w.WriteHeader(http.StatusBadRequest)
-				w.Write(bytes)
-				return
-			}
-
-			// Record new vote
-			var itag pgtype.UUID
-			err := pool.QueryRow(ctx, "INSERT INTO votes (user_id, bot_id) VALUES ($1, $2) RETURNING itag", vars["uid"], vars["bid"]).Scan(&itag)
-
-			if err != nil {
-				// Revert vote
-				_, err := pool.Exec(ctx, "DELETE FROM votes WHERE itag = $1", itag)
-				log.Error(err)
-				apiDefaultReturn(http.StatusInternalServerError, w, r)
-				return
-			}
-
-			var oldVotes pgtype.Int4
-
-			err = pool.QueryRow(ctx, "SELECT votes FROM bots WHERE bot_id = $1", vars["bid"]).Scan(&oldVotes)
-
-			if err != nil {
-				// Revert vote
-				_, err := pool.Exec(ctx, "DELETE FROM votes WHERE itag = $1", itag)
-
-				log.Error(err)
-				apiDefaultReturn(http.StatusInternalServerError, w, r)
-				return
-			}
-
-			var incr = 1
-			var votes = oldVotes.Int
-
-			if utils.GetDoubleVote() {
-				incr = 2
-				votes += 2
-			} else {
-				votes++
-			}
-
-			_, err = pool.Exec(ctx, "UPDATE bots SET votes = votes + $1 WHERE bot_id = $2", incr, vars["bid"])
-
-			if err != nil {
-				// Revert vote
-				_, err := pool.Exec(ctx, "DELETE FROM votes WHERE itag = $1", itag)
-
-				log.Error(err)
-				apiDefaultReturn(http.StatusInternalServerError, w, r)
-				return
-			}
-
-			userObj, err := utils.GetDiscordUser(metro, redisCache, ctx, vars["uid"])
-
-			if err != nil {
-				// Revert vote
-				_, err := pool.Exec(ctx, "DELETE FROM votes WHERE itag = $1", itag)
-
-				log.Error(err)
-				apiDefaultReturn(http.StatusInternalServerError, w, r)
-				return
-			}
-
-			botObj, err := utils.GetDiscordUser(metro, redisCache, ctx, vars["bid"])
-
-			if err != nil {
-				// Revert vote
-				_, err := pool.Exec(ctx, "DELETE FROM votes WHERE itag = $1", itag)
-
-				log.Error(err)
-				apiDefaultReturn(http.StatusInternalServerError, w, r)
-				return
-			}
-
-			channel := os.Getenv("VOTE_LOGS_CHANNEL")
-
-			metro.ChannelMessageSendComplex(channel, &discordgo.MessageSend{
-				Embeds: []*discordgo.MessageEmbed{
-					{
-						URL: "https://botlist.site/" + vars["bid"],
-						Thumbnail: &discordgo.MessageEmbedThumbnail{
-							URL: botObj.Avatar,
-						},
-						Title:       "🎉 Vote Count Updated!",
-						Description: ":heart:" + userObj.Username + "#" + userObj.Discriminator + " has voted for " + botObj.Username,
-						Color:       0x8A6BFD,
-						Fields: []*discordgo.MessageEmbedField{
-							{
-								Name:   "Vote Count:",
-								Value:  strconv.Itoa(int(votes)),
-								Inline: true,
-							},
-							{
-								Name:   "User ID:",
-								Value:  userObj.ID,
-								Inline: true,
-							},
-							{
-								Name:   "Vote Page",
-								Value:  "[View " + botObj.Username + "](https://botlist.site/" + vars["bid"] + ")",
-								Inline: true,
-							},
-							{
-								Name:   "Vote Page",
-								Value:  "[Vote for " + botObj.Username + "](https://botlist.site/" + vars["bid"] + "/vote)",
-								Inline: true,
-							},
-						},
-					},
-				},
-			})
-
-			// Send webhook in a goroutine refunding the vote if it failed
-			go func() {
-				err = sendWebhook(types.WebhookPost{
-					BotID:  vars["bid"],
-					UserID: vars["uid"],
-					Votes:  int(votes),
-				})
-
-				if err != nil {
-					pool.Exec(
-						ctx,
-						"INSERT INTO notifications (user_id, url, message, type) VALUES ($1, $2, $3, $4)",
-						vars["uid"],
-						"https://infinitybots.gg/bots/"+vars["bid"],
-						"Whoa there! We've failed to notify this bot about this vote. The error was: "+err.Error()+".",
-						"error")
-				} else {
-					pool.Exec(
-						ctx,
-						"INSERT INTO notifications (user_id, url, message, type) VALUES ($1, $2, $3, $4)",
-						vars["uid"],
-						"https://infinitybots.gg/bots/"+vars["bid"],
-						"Successfully voted for bot with ID of "+vars["bid"],
-						"info",
-					)
-				}
-			}()
-
-			w.WriteHeader(http.StatusOK)
-			w.Write([]byte(success))
-		}
-	})
-
 	// For compatibility with old API
 	r.HandleFunc("/votes/{bot_id}/{user_id}", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != "GET" {
-			apiDefaultReturn(http.StatusMethodNotAllowed, w, r)
+			utils.ApiDefaultReturn(http.StatusMethodNotAllowed, w, r)
 			return
 		}
 
@@ -1971,43 +379,43 @@ print(req.json())
 		var userId = chi.URLParam(r, "user_id")
 
 		if r.Header.Get("Authorization") == "" {
-			apiDefaultReturn(http.StatusUnauthorized, w, r)
+			utils.ApiDefaultReturn(http.StatusUnauthorized, w, r)
 			return
 		} else {
-			id := authCheck(r.Header.Get("Authorization"), true)
+			id := utils.AuthCheck(r.Header.Get("Authorization"), true)
 
 			if id == nil || *id != botId {
-				apiDefaultReturn(http.StatusUnauthorized, w, r)
+				utils.ApiDefaultReturn(http.StatusUnauthorized, w, r)
 				return
 			}
 
 			// To try and push users into new API, vote ban and approved check on GET is enforced on the old API
 			var voteBannedState bool
 
-			err := pool.QueryRow(ctx, "SELECT vote_banned FROM bots WHERE bot_id = $1", id).Scan(&voteBannedState)
+			err := state.Pool.QueryRow(ctx, "SELECT vote_banned FROM bots WHERE bot_id = $1", id).Scan(&voteBannedState)
 
 			if err != nil {
 				log.Error(err)
-				apiDefaultReturn(http.StatusUnauthorized, w, r)
+				utils.ApiDefaultReturn(http.StatusUnauthorized, w, r)
 				return
 			}
 		}
 
 		var botType pgtype.Text
 
-		pool.QueryRow(ctx, "SELECT type FROM bots WHERE bot_id = $1", botId).Scan(&botType)
+		state.Pool.QueryRow(ctx, "SELECT type FROM bots WHERE bot_id = $1", botId).Scan(&botType)
 
 		if botType.String != "approved" {
 			w.WriteHeader(http.StatusBadRequest)
-			w.Write([]byte(notApproved))
+			w.Write([]byte(state.NotApproved))
 			return
 		}
 
-		voteParsed, err := utils.GetVoteData(ctx, pool, userId, botId)
+		voteParsed, err := utils.GetVoteData(ctx, userId, botId)
 
 		if err != nil {
 			log.Error(err)
-			apiDefaultReturn(http.StatusInternalServerError, w, r)
+			utils.ApiDefaultReturn(http.StatusInternalServerError, w, r)
 			return
 		}
 
@@ -2019,7 +427,7 @@ print(req.json())
 
 		if err != nil {
 			log.Error(err)
-			apiDefaultReturn(http.StatusInternalServerError, w, r)
+			utils.ApiDefaultReturn(http.StatusInternalServerError, w, r)
 			return
 		}
 
@@ -2044,388 +452,11 @@ print(req.json())
 
 		if err != nil {
 			log.Error(err)
-			apiDefaultReturn(http.StatusInternalServerError, w, r)
+			utils.ApiDefaultReturn(http.StatusInternalServerError, w, r)
 			return
 		}
 
 		w.Write(b)
-	})
-
-	docs.Route(&docs.Doc{
-		Method:      "GET",
-		Path:        "/bots/{id}/seo",
-		OpId:        "get_bot_seo",
-		Summary:     "Get Bot SEO Info",
-		Description: "Gets the minimal SEO information about a bot for embed/search purposes. Used by v4 website for meta tags",
-		Resp:        types.SEO{},
-		Tags:        []string{"Bots"},
-		Params: []docs.Parameter{
-			{
-				Name:        "id",
-				Description: "The bots ID, name or vanity",
-				Required:    true,
-				In:          "path",
-				Schema:      docs.IdSchema,
-			},
-		},
-	})
-	r.Get("/bots/{id}/seo", func(w http.ResponseWriter, r *http.Request) {
-		name := chi.URLParam(r, "id")
-
-		if name == "" {
-			apiDefaultReturn(http.StatusBadRequest, w, r)
-			return
-		}
-
-		cache := redisCache.Get(ctx, "seob:"+name).Val()
-		if cache != "" {
-			w.Header().Add("X-Popplio-Cached", "true")
-			w.Write([]byte(cache))
-			return
-		}
-
-		var botId string
-		var short string
-		err := pool.QueryRow(ctx, "SELECT bot_id, short FROM bots WHERE (bot_id = $1 OR vanity = $1 OR name = $1)", name).Scan(&botId, &short)
-
-		if err != nil {
-			log.Error(err)
-			apiDefaultReturn(http.StatusNotFound, w, r)
-			return
-		}
-
-		bot, err := utils.GetDiscordUser(metro, redisCache, ctx, botId)
-
-		if err != nil {
-			log.Error(err)
-			apiDefaultReturn(http.StatusInternalServerError, w, r)
-			return
-		}
-
-		bytes, err := json.Marshal(types.SEO{
-			ID:       bot.ID,
-			Username: bot.Username,
-			Avatar:   bot.Avatar,
-			Short:    short,
-		})
-
-		if err != nil {
-			log.Error(err)
-			apiDefaultReturn(http.StatusInternalServerError, w, r)
-			return
-		}
-
-		redisCache.Set(ctx, "seob:"+name, string(bytes), time.Minute*30)
-
-		w.Write(bytes)
-	})
-
-	docs.Route(&docs.Doc{
-		Method:  "GET",
-		Path:    "/bots/{id}",
-		OpId:    "get_bot",
-		Summary: "Get Bot",
-		Description: `
-Gets a bot by id or name
-
-**Some things to note:**
-
--` + backTick + backTick + `external_source` + backTick + backTick + ` shows the source of where a bot came from (Metro Reviews etc etc.). If this is set to ` + backTick + backTick + `metro` + backTick + backTick + `, then ` + backTick + backTick + `list_source` + backTick + backTick + ` will be set to the metro list ID where it came from` + `
-	`,
-		Params: []docs.Parameter{
-			{
-				Name:        "id",
-				Description: "The bots ID, name or vanity",
-				Required:    true,
-				In:          "path",
-				Schema:      docs.IdSchema,
-			},
-		},
-		Resp: types.Bot{},
-		Tags: []string{"Bots"},
-	})
-	getBotsFn := func(w http.ResponseWriter, r *http.Request) {
-		name := chi.URLParam(r, "id")
-
-		if name == "" {
-			apiDefaultReturn(http.StatusBadRequest, w, r)
-			return
-		}
-
-		// Check cache, this is how we can avoid hefty ratelimits
-		cache := redisCache.Get(ctx, "bc-"+name).Val()
-		if cache != "" {
-			w.Header().Add("X-Popplio-Cached", "true")
-			w.Write([]byte(cache))
-			return
-		}
-
-		var bot types.Bot
-
-		var err error
-
-		row, err := pool.Query(ctx, "SELECT "+botsColsStr+" FROM bots WHERE (bot_id = $1 OR vanity = $1 OR name = $1)", name)
-
-		if err != nil {
-			log.Error(err)
-			apiDefaultReturn(http.StatusNotFound, w, r)
-			return
-		}
-
-		err = pgxscan.ScanOne(&bot, row)
-
-		if err != nil {
-			log.Error(err)
-			apiDefaultReturn(http.StatusNotFound, w, r)
-			return
-		}
-
-		err = utils.ParseBot(ctx, pool, &bot, metro, redisCache)
-
-		if err != nil {
-			log.Error(err)
-			apiDefaultReturn(http.StatusNotFound, w, r)
-			return
-		}
-
-		var uniqueClicks int64
-		err = pool.QueryRow(ctx, "SELECT cardinality(unique_clicks) AS unique_clicks FROM bots WHERE bot_id = $1", bot.BotID).Scan(&uniqueClicks)
-
-		if err != nil {
-			log.Error(err)
-			apiDefaultReturn(http.StatusNotFound, w, r)
-			return
-		}
-
-		bot.UniqueClicks = uniqueClicks
-
-		/* Removing or modifying fields directly in API is very dangerous as scrapers will
-		 * just ignore owner checks anyways or cross-reference via another list. Also we
-		 * want to respect the permissions of the owner if they're the one giving permission,
-		 * blocking IPs is a better idea to this
-		 */
-
-		bytes, err := json.Marshal(bot)
-
-		if err != nil {
-			log.Error(err)
-			apiDefaultReturn(http.StatusInternalServerError, w, r)
-			return
-		}
-
-		redisCache.Set(ctx, "bc-"+name, string(bytes), time.Minute*3)
-
-		w.Write(bytes)
-	}
-
-	docs.Route(&docs.Doc{
-		Method:      "GET",
-		Path:        "/users/{id}/seo",
-		OpId:        "get_user_seo",
-		Summary:     "Get User SEO Info",
-		Description: "Gets a users SEO data by id or username",
-		Params: []docs.Parameter{
-			{
-				Name:        "id",
-				Description: "User ID",
-				Required:    true,
-				In:          "path",
-				Schema:      docs.IdSchema,
-			},
-		},
-		Resp: types.SEO{},
-		Tags: []string{"User"},
-	})
-	r.Get("/users/{id}/seo", func(w http.ResponseWriter, r *http.Request) {
-		name := chi.URLParam(r, "id")
-
-		if name == "" {
-			apiDefaultReturn(http.StatusBadRequest, w, r)
-			return
-		}
-
-		cache := redisCache.Get(ctx, "seou:"+name).Val()
-		if cache != "" {
-			w.Header().Add("X-Popplio-Cached", "true")
-			w.Write([]byte(cache))
-			return
-		}
-
-		var about string
-		var userId string
-		err := pool.QueryRow(ctx, "SELECT about, user_id FROM users WHERE user_id = $1 OR username = $1", name).Scan(&about, &userId)
-
-		if err != nil {
-			log.Error(err)
-			apiDefaultReturn(http.StatusNotFound, w, r)
-			return
-		}
-
-		user, err := utils.GetDiscordUser(metro, redisCache, ctx, userId)
-
-		if err != nil {
-			log.Error(err)
-			apiDefaultReturn(http.StatusInternalServerError, w, r)
-			return
-		}
-
-		bytes, err := json.Marshal(types.SEO{
-			ID:       user.ID,
-			Username: user.Username,
-			Avatar:   user.Avatar,
-			Short:    about,
-		})
-
-		if err != nil {
-			log.Error(err)
-			apiDefaultReturn(http.StatusInternalServerError, w, r)
-			return
-		}
-
-		redisCache.Set(ctx, "seou:"+name, string(bytes), time.Minute*30)
-
-		w.Write(bytes)
-	})
-
-	docs.Route(&docs.Doc{
-		Method:      "GET",
-		Path:        "/users/{id}",
-		OpId:        "get_user",
-		Summary:     "Get User",
-		Description: "Gets a user by id or username",
-		Params: []docs.Parameter{
-			{
-				Name:        "id",
-				Description: "User ID",
-				Required:    true,
-				In:          "path",
-				Schema:      docs.IdSchema,
-			},
-		},
-		Resp: types.User{},
-		Tags: []string{"User"},
-	})
-	r.Get("/users/{id}", func(w http.ResponseWriter, r *http.Request) {
-		name := chi.URLParam(r, "id")
-
-		if name == "" {
-			apiDefaultReturn(http.StatusBadRequest, w, r)
-			return
-		}
-
-		if name == "undefined" {
-			w.Write([]byte(`{"error":"false","message":"Handling known issue"}`))
-			return
-		}
-
-		// Check cache, this is how we can avoid hefty ratelimits
-		cache := redisCache.Get(ctx, "uc-"+name).Val()
-		if cache != "" {
-			w.Header().Add("X-Popplio-Cached", "true")
-			w.Write([]byte(cache))
-			return
-		}
-
-		var user types.User
-
-		var err error
-
-		row, err := pool.Query(ctx, "SELECT "+usersColsStr+" FROM users WHERE user_id = $1 OR username = $1", name)
-
-		if err != nil {
-			log.Error(err)
-			apiDefaultReturn(http.StatusNotFound, w, r)
-			return
-		}
-
-		err = pgxscan.ScanOne(&user, row)
-
-		if err != nil {
-			log.Error(err)
-			apiDefaultReturn(http.StatusNotFound, w, r)
-			return
-		}
-
-		err = utils.ParseUser(ctx, pool, &user, metro, redisCache)
-
-		if err != nil {
-			log.Error(err)
-			apiDefaultReturn(http.StatusInternalServerError, w, r)
-			return
-		}
-
-		/* Removing or modifying fields directly in API is very dangerous as scrapers will
-		 * just ignore owner checks anyways or cross-reference via another list. Also we
-		 * want to respect the permissions of the owner if they're the one giving permission,
-		 * blocking IPs is a better idea to this
-		 */
-
-		bytes, err := json.Marshal(user)
-
-		if err != nil {
-			log.Error(err)
-			apiDefaultReturn(http.StatusInternalServerError, w, r)
-			return
-		}
-
-		redisCache.Set(ctx, "uc-"+name, string(bytes), time.Minute*3)
-
-		w.Write(bytes)
-	})
-
-	r.Get("/bots/{id}", getBotsFn)
-	r.Get("/bot/{id}", getBotsFn)
-
-	docs.Route(&docs.Doc{
-		Method:      "GET",
-		Path:        "/bots/{id}/reviews",
-		OpId:        "get_bot_reviews",
-		Summary:     "Get Bot Reviews",
-		Description: "Gets the reviews of a bot by its ID, name or vanity",
-		Params: []docs.Parameter{
-			{
-				Name:        "id",
-				Description: "The bots ID, name or vanity",
-				Required:    true,
-				In:          "path",
-				Schema:      docs.IdSchema,
-			},
-		},
-		Resp: types.ReviewList{},
-		Tags: []string{"Bots"},
-	})
-	r.Get("/bots/{id}/reviews", func(w http.ResponseWriter, r *http.Request) {
-		rows, err := pool.Query(ctx, "SELECT "+reviewColsStr+" FROM reviews WHERE (bot_id = $1 OR vanity = $1 OR name = $1)", chi.URLParam(r, "id"))
-
-		if err != nil {
-			log.Error(err)
-			apiDefaultReturn(http.StatusNotFound, w, r)
-			return
-		}
-
-		var reviews []types.Review = []types.Review{}
-
-		err = pgxscan.ScanAll(&reviews, rows)
-
-		if err != nil {
-			log.Error(err)
-			apiDefaultReturn(http.StatusInternalServerError, w, r)
-			return
-		}
-
-		var allReviews types.ReviewList = types.ReviewList{
-			Reviews: reviews,
-		}
-
-		bytes, err := json.Marshal(allReviews)
-
-		if err != nil {
-			log.Error(err)
-			apiDefaultReturn(http.StatusInternalServerError, w, r)
-			return
-		}
-
-		w.Write(bytes)
 	})
 
 	// TODO: Document this once its stable
@@ -2453,7 +484,7 @@ Gets a bot by id or name
 
 		if err != nil {
 			log.Error(err)
-			apiDefaultReturn(http.StatusInternalServerError, w, r)
+			utils.ApiDefaultReturn(http.StatusInternalServerError, w, r)
 			return
 		}
 
@@ -2461,12 +492,12 @@ Gets a bot by id or name
 
 		if err != nil {
 			log.Error(err)
-			apiDefaultReturn(http.StatusInternalServerError, w, r)
+			utils.ApiDefaultReturn(http.StatusInternalServerError, w, r)
 			return
 		}
 
 		if utils.IsNone(payload.URL) && utils.IsNone(payload.URL2) {
-			apiDefaultReturn(http.StatusBadRequest, w, r)
+			utils.ApiDefaultReturn(http.StatusBadRequest, w, r)
 			return
 		}
 
@@ -2475,14 +506,14 @@ Gets a bot by id or name
 		var err1 error
 
 		if !utils.IsNone(payload.URL) {
-			err1 = sendWebhook(payload)
+			err1 = webhooks.Send(payload)
 		}
 
 		var err2 error
 
 		if !utils.IsNone(payload.URL2) {
 			payload.URL = payload.URL2 // Test second enpdoint if it's not empty
-			err2 = sendWebhook(payload)
+			err2 = webhooks.Send(payload)
 		}
 
 		var errD = types.ApiError{}
@@ -2505,7 +536,7 @@ Gets a bot by id or name
 
 		if err != nil {
 			log.Error(err)
-			apiDefaultReturn(http.StatusInternalServerError, w, r)
+			utils.ApiDefaultReturn(http.StatusInternalServerError, w, r)
 			return
 		}
 
@@ -2514,63 +545,6 @@ Gets a bot by id or name
 	})
 
 	// Internal APIs
-
-	r.Patch("/_protozoa/profile/{id}", func(w http.ResponseWriter, r *http.Request) {
-		id := chi.URLParam(r, "id")
-
-		// Fetch auth from postgresdb
-		if r.Header.Get("Authorization") == "" {
-			apiDefaultReturn(http.StatusUnauthorized, w, r)
-			return
-		} else {
-			authId := authCheck(r.Header.Get("Authorization"), false)
-
-			if authId == nil || *authId != id {
-				log.Error(err)
-				apiDefaultReturn(http.StatusUnauthorized, w, r)
-				return
-			}
-		}
-
-		// Fetch profile update from body
-		var profile types.ProfileUpdate
-
-		bodyBytes, err := io.ReadAll(r.Body)
-
-		if err != nil {
-			log.Error(err)
-			apiDefaultReturn(http.StatusInternalServerError, w, r)
-			return
-		}
-
-		err = json.Unmarshal(bodyBytes, &profile)
-
-		if err != nil {
-			log.Error(err)
-			apiDefaultReturn(http.StatusInternalServerError, w, r)
-			return
-		}
-
-		if profile.About != "" {
-			if len(profile.About) > 1000 {
-				w.Write([]byte(`{"error":true,"message": "About me is over 1000 characters!"}`))
-				w.WriteHeader(http.StatusBadRequest)
-				return
-			}
-
-			// Update about
-			_, err = pool.Exec(ctx, "UPDATE users SET about = $1 WHERE user_id = $2", profile.About, id)
-
-			if err != nil {
-				log.Error(err)
-				apiDefaultReturn(http.StatusInternalServerError, w, r)
-				return
-			}
-		}
-
-		redisCache.Del(ctx, "uc-"+id)
-	})
-
 	r.Get("/_protozoa/notifications/info", func(w http.ResponseWriter, r *http.Request) {
 		data := map[string]any{
 			"public_key": os.Getenv("VAPID_PUBLIC_KEY"),
@@ -2580,7 +554,7 @@ Gets a bot by id or name
 
 		if err != nil {
 			log.Error(err)
-			apiDefaultReturn(http.StatusInternalServerError, w, r)
+			utils.ApiDefaultReturn(http.StatusInternalServerError, w, r)
 			return
 		}
 
@@ -2589,27 +563,27 @@ Gets a bot by id or name
 
 	r.HandleFunc("/_protozoa/notifications/{id}", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != "GET" && r.Method != "DELETE" {
-			apiDefaultReturn(http.StatusMethodNotAllowed, w, r)
+			utils.ApiDefaultReturn(http.StatusMethodNotAllowed, w, r)
 			return
 		}
 
 		var id = chi.URLParam(r, "id")
 
 		if id == "" {
-			apiDefaultReturn(http.StatusBadRequest, w, r)
+			utils.ApiDefaultReturn(http.StatusBadRequest, w, r)
 			return
 		}
 
 		// Fetch auth from postgresdb
 		if r.Header.Get("Authorization") == "" {
-			apiDefaultReturn(http.StatusUnauthorized, w, r)
+			utils.ApiDefaultReturn(http.StatusUnauthorized, w, r)
 			return
 		} else {
-			authId := authCheck(r.Header.Get("Authorization"), false)
+			authId := utils.AuthCheck(r.Header.Get("Authorization"), false)
 
 			if authId == nil || *authId != id {
 				log.Error(err)
-				apiDefaultReturn(http.StatusUnauthorized, w, r)
+				utils.ApiDefaultReturn(http.StatusUnauthorized, w, r)
 				return
 			}
 		}
@@ -2624,11 +598,11 @@ Gets a bot by id or name
 				UA        string    `db:"ua"`
 			}
 
-			rows, err := pool.Query(ctx, "SELECT endpoint, notif_id, created_at, ua FROM poppypaw WHERE id = $1", id)
+			rows, err := state.Pool.Query(ctx, "SELECT endpoint, notif_id, created_at, ua FROM poppypaw WHERE id = $1", id)
 
 			if err != nil {
 				log.Error(err)
-				apiDefaultReturn(http.StatusInternalServerError, w, r)
+				utils.ApiDefaultReturn(http.StatusInternalServerError, w, r)
 				return
 			}
 
@@ -2636,12 +610,12 @@ Gets a bot by id or name
 
 			if err != nil {
 				log.Error(err)
-				apiDefaultReturn(http.StatusInternalServerError, w, r)
+				utils.ApiDefaultReturn(http.StatusInternalServerError, w, r)
 				return
 			}
 
 			if len(subscriptionDb) == 0 {
-				apiDefaultReturn(http.StatusNotFound, w, r)
+				utils.ApiDefaultReturn(http.StatusNotFound, w, r)
 				return
 			}
 
@@ -2668,7 +642,7 @@ Gets a bot by id or name
 
 			if err != nil {
 				log.Error(err)
-				apiDefaultReturn(http.StatusInternalServerError, w, r)
+				utils.ApiDefaultReturn(http.StatusInternalServerError, w, r)
 				return
 			}
 
@@ -2676,15 +650,15 @@ Gets a bot by id or name
 		} else {
 			// Delete the notif
 			if r.URL.Query().Get("notif_id") == "" {
-				apiDefaultReturn(http.StatusBadRequest, w, r)
+				utils.ApiDefaultReturn(http.StatusBadRequest, w, r)
 				return
 			}
 
-			_, err := pool.Exec(ctx, "DELETE FROM poppypaw WHERE id = $1 AND notif_id = $2", id, r.URL.Query().Get("notif_id"))
+			_, err := state.Pool.Exec(ctx, "DELETE FROM poppypaw WHERE id = $1 AND notif_id = $2", id, r.URL.Query().Get("notif_id"))
 
 			if err != nil {
 				log.Error(err)
-				apiDefaultReturn(http.StatusInternalServerError, w, r)
+				utils.ApiDefaultReturn(http.StatusInternalServerError, w, r)
 				return
 			}
 
@@ -2702,7 +676,7 @@ Gets a bot by id or name
 		var id = chi.URLParam(r, "id")
 
 		if id == "" {
-			apiDefaultReturn(http.StatusBadRequest, w, r)
+			utils.ApiDefaultReturn(http.StatusBadRequest, w, r)
 			return
 		}
 
@@ -2712,7 +686,7 @@ Gets a bot by id or name
 
 		if err != nil {
 			log.Error(err)
-			apiDefaultReturn(http.StatusInternalServerError, w, r)
+			utils.ApiDefaultReturn(http.StatusInternalServerError, w, r)
 			return
 		}
 
@@ -2720,25 +694,25 @@ Gets a bot by id or name
 
 		if err != nil {
 			log.Error(err)
-			apiDefaultReturn(http.StatusInternalServerError, w, r)
+			utils.ApiDefaultReturn(http.StatusInternalServerError, w, r)
 			return
 		}
 
 		if subscription.Auth == "" || subscription.P256dh == "" {
-			apiDefaultReturn(http.StatusBadRequest, w, r)
+			utils.ApiDefaultReturn(http.StatusBadRequest, w, r)
 			return
 		}
 
 		// Fetch auth from postgresdb
 		if r.Header.Get("Authorization") == "" {
-			apiDefaultReturn(http.StatusUnauthorized, w, r)
+			utils.ApiDefaultReturn(http.StatusUnauthorized, w, r)
 			return
 		} else {
-			authId := authCheck(r.Header.Get("Authorization"), false)
+			authId := utils.AuthCheck(r.Header.Get("Authorization"), false)
 
 			if authId == nil || *authId != id {
 				log.Error(err)
-				apiDefaultReturn(http.StatusUnauthorized, w, r)
+				utils.ApiDefaultReturn(http.StatusUnauthorized, w, r)
 				return
 			}
 		}
@@ -2753,9 +727,9 @@ Gets a bot by id or name
 			ua = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/80.0.3987.149 Safari/537.36"
 		}
 
-		pool.Exec(ctx, "DELETE FROM poppypaw WHERE id = $1 AND endpoint = $2", id, subscription.Endpoint)
+		state.Pool.Exec(ctx, "DELETE FROM poppypaw WHERE id = $1 AND endpoint = $2", id, subscription.Endpoint)
 
-		pool.Exec(
+		state.Pool.Exec(
 			ctx,
 			"INSERT INTO poppypaw (id, notif_id, auth, p256dh,  endpoint, ua) VALUES ($1, $2, $3, $4, $5, $6)",
 			id,
@@ -2772,43 +746,43 @@ Gets a bot by id or name
 			Message: []byte(testNotif),
 		}
 
-		w.Write([]byte(success))
+		w.Write([]byte(state.Success))
 	})
 
 	r.HandleFunc("/_protozoa/reminders/{id}", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != "PUT" && r.Method != "GET" && r.Method != "DELETE" {
-			apiDefaultReturn(http.StatusMethodNotAllowed, w, r)
+			utils.ApiDefaultReturn(http.StatusMethodNotAllowed, w, r)
 			return
 		}
 
 		var id = chi.URLParam(r, "id")
 
 		if id == "" {
-			apiDefaultReturn(http.StatusBadRequest, w, r)
+			utils.ApiDefaultReturn(http.StatusBadRequest, w, r)
 			return
 		}
 
 		// Fetch auth from postgresdb
 		if r.Header.Get("Authorization") == "" {
-			apiDefaultReturn(http.StatusUnauthorized, w, r)
+			utils.ApiDefaultReturn(http.StatusUnauthorized, w, r)
 			return
 		} else {
-			authId := authCheck(r.Header.Get("Authorization"), false)
+			authId := utils.AuthCheck(r.Header.Get("Authorization"), false)
 
 			if authId == nil || *authId != id {
 				log.Error(err)
-				apiDefaultReturn(http.StatusUnauthorized, w, r)
+				utils.ApiDefaultReturn(http.StatusUnauthorized, w, r)
 				return
 			}
 		}
 
 		if r.Method == "GET" {
 			// Fetch reminder from postgresdb
-			rows, err := pool.Query(ctx, "SELECT "+silverpeltColsStr+" FROM silverpelt WHERE user_id = $1", id)
+			rows, err := state.Pool.Query(ctx, "SELECT "+silverpeltColsStr+" FROM silverpelt WHERE user_id = $1", id)
 
 			if err != nil {
 				log.Error(err)
-				apiDefaultReturn(http.StatusInternalServerError, w, r)
+				utils.ApiDefaultReturn(http.StatusInternalServerError, w, r)
 				return
 			}
 
@@ -2818,19 +792,19 @@ Gets a bot by id or name
 
 			if err != nil {
 				log.Error(err)
-				apiDefaultReturn(http.StatusInternalServerError, w, r)
+				utils.ApiDefaultReturn(http.StatusInternalServerError, w, r)
 				return
 			}
 
 			if len(reminders) == 0 {
-				apiDefaultReturn(http.StatusNotFound, w, r)
+				utils.ApiDefaultReturn(http.StatusNotFound, w, r)
 				return
 			}
 
 			for i, reminder := range reminders {
 				// Try resolving the bot from discord API
 				var resolvedBot types.ResolvedReminderBot
-				bot, err := utils.GetDiscordUser(metro, redisCache, ctx, reminder.BotID)
+				bot, err := utils.GetDiscordUser(reminder.BotID)
 
 				if err != nil {
 					resolvedBot = types.ResolvedReminderBot{
@@ -2851,7 +825,7 @@ Gets a bot by id or name
 
 			if err != nil {
 				log.Error(err)
-				apiDefaultReturn(http.StatusInternalServerError, w, r)
+				utils.ApiDefaultReturn(http.StatusInternalServerError, w, r)
 				return
 			}
 
@@ -2860,29 +834,29 @@ Gets a bot by id or name
 			// Add subscription to collection
 			var botId pgtype.Text
 
-			err = pool.QueryRow(ctx, "SELECT bot_id FROM bots WHERE (vanity = $1 OR bot_id = $1 OR name = $1)", r.URL.Query().Get("bot_id")).Scan(&botId)
+			err = state.Pool.QueryRow(ctx, "SELECT bot_id FROM bots WHERE (vanity = $1 OR bot_id = $1 OR name = $1)", r.URL.Query().Get("bot_id")).Scan(&botId)
 
 			if err != nil || botId.Status != pgtype.Present || botId.String == "" {
 				log.Error("Error adding reminder: ", err)
-				apiDefaultReturn(http.StatusNotFound, w, r)
+				utils.ApiDefaultReturn(http.StatusNotFound, w, r)
 				return
 			}
 
 			// Delete old
-			pool.Exec(ctx, "DELETE FROM silverpelt WHERE user_id = $1 AND bot_id = $2", id, botId.String)
+			state.Pool.Exec(ctx, "DELETE FROM silverpelt WHERE user_id = $1 AND bot_id = $2", id, botId.String)
 
 			// Insert new
 			if r.Method == "PUT" {
-				_, err := pool.Exec(ctx, "INSERT INTO silverpelt (user_id, bot_id) VALUES ($1, $2)", id, botId.String)
+				_, err := state.Pool.Exec(ctx, "INSERT INTO silverpelt (user_id, bot_id) VALUES ($1, $2)", id, botId.String)
 
 				if err != nil {
 					log.Error("Error adding reminder: ", err)
-					apiDefaultReturn(http.StatusNotFound, w, r)
+					utils.ApiDefaultReturn(http.StatusNotFound, w, r)
 					return
 				}
 			}
 
-			w.Write([]byte(success))
+			w.Write([]byte(state.Success))
 		}
 	})
 
@@ -2898,7 +872,7 @@ Gets a bot by id or name
 	adp := DummyAdapter{}
 
 	r.NotFound(func(w http.ResponseWriter, r *http.Request) {
-		apiDefaultReturn(http.StatusNotFound, w, r)
+		utils.ApiDefaultReturn(http.StatusNotFound, w, r)
 	})
 
 	integrase.Prepare(adp, chiWrap{Router: r})

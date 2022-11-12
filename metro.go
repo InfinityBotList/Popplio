@@ -4,6 +4,7 @@ import (
 	"errors"
 	"net/http"
 	"os"
+	"popplio/state"
 	"popplio/utils"
 	"regexp"
 	"strings"
@@ -29,7 +30,6 @@ func (c chiWrap) HandleFunc(path string, f func(http.ResponseWriter, *http.Reque
 }
 
 var regex *regexp.Regexp
-var metro *discordgo.Session
 
 func init() {
 	var err error
@@ -53,13 +53,13 @@ func addBot(bot *types.Bot) (pgconn.CommandTag, error) {
 		invite = "https://discord.com/oauth2/authorize?client_id=" + bot.BotID + "&permissions=0&scope=bot%20applications.commands"
 	}
 
-	_, err := pool.Exec(ctx, "DELETE FROM bots WHERE bot_id = $1", bot.BotID)
+	_, err := state.Pool.Exec(ctx, "DELETE FROM bots WHERE bot_id = $1", bot.BotID)
 
 	if err != nil {
 		log.Error(err)
 	}
 
-	return pool.Exec(
+	return state.Pool.Exec(
 		ctx,
 		`INSERT INTO bots (bot_id, name, vanity, approval_note, date, prefix, website, github, donate, nsfw, library, 
 			cross_add, list_source, external_source, short, long, tags, invite, owner, additional_owners,
@@ -99,7 +99,7 @@ func addBot(bot *types.Bot) (pgconn.CommandTag, error) {
 func getBotType(id string) string {
 	var botType pgtype.Text
 
-	err := pool.QueryRow(ctx, `SELECT type FROM bots WHERE bot_id = $1`, id).Scan(&botType)
+	err := state.Pool.QueryRow(ctx, `SELECT type FROM bots WHERE bot_id = $1`, id).Scan(&botType)
 
 	if err != nil {
 		log.Error(err)
@@ -134,7 +134,7 @@ func (adp DummyAdapter) ClaimBot(bot *types.Bot) error {
 		return err
 	}
 
-	_, err = pool.Exec(ctx, `UPDATE bots SET claimed = true, claimed_by = $1 WHERE bot_id = $2`, bot.Reviewer, bot.BotID)
+	_, err = state.Pool.Exec(ctx, `UPDATE bots SET claimed = true, claimed_by = $1 WHERE bot_id = $2`, bot.Reviewer, bot.BotID)
 
 	if err != nil {
 		return err
@@ -155,7 +155,7 @@ func (adp DummyAdapter) UnclaimBot(bot *types.Bot) error {
 		return err
 	}
 
-	_, err = pool.Exec(ctx, `UPDATE bots SET claimed = false, claimed_by = NULL WHERE bot_id = $1`, bot.BotID)
+	_, err = state.Pool.Exec(ctx, `UPDATE bots SET claimed = false, claimed_by = NULL WHERE bot_id = $1`, bot.BotID)
 
 	if err != nil {
 		return err
@@ -192,7 +192,7 @@ func (adp DummyAdapter) ApproveBot(bot *types.Bot) error {
 		}
 	}
 
-	res, err := pool.Exec(ctx, `UPDATE bots SET type = 'approved' WHERE bot_id = $1`, bot.BotID)
+	res, err := state.Pool.Exec(ctx, `UPDATE bots SET type = 'approved' WHERE bot_id = $1`, bot.BotID)
 
 	if err != nil {
 		return err
@@ -271,7 +271,7 @@ func (adp DummyAdapter) DenyBot(bot *types.Bot) error {
 		}
 	}
 
-	res, err := pool.Exec(ctx, `UPDATE bots SET type = 'denied' WHERE bot_id = $1`, bot.BotID)
+	res, err := state.Pool.Exec(ctx, `UPDATE bots SET type = 'denied' WHERE bot_id = $1`, bot.BotID)
 
 	if err != nil {
 		return err

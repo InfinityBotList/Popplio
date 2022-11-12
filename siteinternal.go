@@ -1,10 +1,8 @@
 package main
 
 import (
-	"bytes"
 	"crypto/hmac"
 	"crypto/sha512"
-	"errors"
 	"fmt"
 	"html/template"
 	"io"
@@ -12,7 +10,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
-	"popplio/types"
+	"popplio/state"
 	"popplio/utils"
 	"strconv"
 	"strings"
@@ -21,12 +19,10 @@ import (
 	b64 "encoding/base64"
 	"encoding/hex"
 
-	"github.com/bwmarrin/discordgo"
 	"github.com/georgysavva/scany/pgxscan"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-redis/redis/v8"
 	"github.com/jackc/pgtype"
-	"github.com/jackc/pgx/v5"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -207,7 +203,7 @@ func performAct(w http.ResponseWriter, r *http.Request) {
 
 	taskId := utils.RandString(196)
 
-	err = redisCache.Set(ctx, taskId, "WAITING", time.Hour*8).Err()
+	err = state.Redis.Set(ctx, taskId, "WAITING", time.Hour*8).Err()
 
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -223,7 +219,7 @@ func performAct(w http.ResponseWriter, r *http.Request) {
 	} else if act == "gettoken" {
 		token := utils.RandString(128)
 
-		_, err := pool.Exec(ctx, "UPDATE users SET api_token = $1 WHERE user_id = $2", token, user.ID)
+		_, err := state.Pool.Exec(ctx, "UPDATE users SET api_token = $1 WHERE user_id = $2", token, user.ID)
 
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -235,7 +231,7 @@ func performAct(w http.ResponseWriter, r *http.Request) {
 
 	} else {
 		w.WriteHeader(http.StatusNotFound)
-		w.Write([]byte(notFound))
+		w.Write([]byte(state.NotFound))
 		return
 	}
 
@@ -296,7 +292,7 @@ func getTask(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	task, err := redisCache.Get(ctx, tid).Result()
+	task, err := state.Redis.Get(ctx, tid).Result()
 
 	if err == redis.Nil {
 		http.Error(w, "", http.StatusNotFound)
@@ -316,7 +312,7 @@ func toString(myUUID pgtype.UUID) string {
 }
 
 func dataRequestTask(taskId string, id string, ip string, del bool) {
-	redisCache.SetArgs(ctx, taskId, "Fetching basic user data", redis.SetArgs{
+	state.Redis.SetArgs(ctx, taskId, "Fetching basic user data", redis.SetArgs{
 		KeepTTL: true,
 	}).Err()
 
@@ -327,12 +323,12 @@ func dataRequestTask(taskId string, id string, ip string, del bool) {
 		ForeignColumnName string `db:"foreign_column_name"`
 	}
 
-	data, err := pool.Query(ctx, ddrStr)
+	data, err := state.Pool.Query(ctx, ddrStr)
 
 	if err != nil {
 		log.Error(err)
 
-		redisCache.SetArgs(ctx, taskId, "Critical:"+err.Error(), redis.SetArgs{
+		state.Redis.SetArgs(ctx, taskId, "Critical:"+err.Error(), redis.SetArgs{
 			KeepTTL: true,
 		})
 
@@ -342,7 +338,7 @@ func dataRequestTask(taskId string, id string, ip string, del bool) {
 	if err := pgxscan.ScanAll(&keys, data); err != nil {
 		log.Error(err)
 
-		redisCache.SetArgs(ctx, taskId, "Critical:"+err.Error(), redis.SetArgs{
+		state.Redis.SetArgs(ctx, taskId, "Critical:"+err.Error(), redis.SetArgs{
 			KeepTTL: true,
 		})
 
@@ -355,7 +351,7 @@ func dataRequestTask(taskId string, id string, ip string, del bool) {
 		if key.ForeignTable == "users" {
 			sqlStmt := "SELECT * FROM " + key.TableName + " WHERE " + key.ColumnName + "= $1"
 
-			data, err := pool.Query(ctx, sqlStmt, id)
+			data, err := state.Pool.Query(ctx, sqlStmt, id)
 
 			if err != nil {
 				log.Error(err)
@@ -366,7 +362,7 @@ func dataRequestTask(taskId string, id string, ip string, del bool) {
 			if err := pgxscan.ScanAll(&rows, data); err != nil {
 				log.Error(err)
 
-				redisCache.SetArgs(ctx, taskId, "Critical:"+err.Error(), redis.SetArgs{
+				state.Redis.SetArgs(ctx, taskId, "Critical:"+err.Error(), redis.SetArgs{
 					KeepTTL: true,
 				})
 
@@ -376,12 +372,12 @@ func dataRequestTask(taskId string, id string, ip string, del bool) {
 			if del {
 				sqlStmt = "DELETE FROM " + key.TableName + " WHERE " + key.ColumnName + "= $1"
 
-				_, err := pool.Exec(ctx, sqlStmt, id)
+				_, err := state.Pool.Exec(ctx, sqlStmt, id)
 
 				if err != nil {
 					log.Error(err)
 
-					redisCache.SetArgs(ctx, taskId, "Critical:"+err.Error(), redis.SetArgs{
+					state.Redis.SetArgs(ctx, taskId, "Critical:"+err.Error(), redis.SetArgs{
 						KeepTTL: true,
 					})
 
@@ -393,15 +389,15 @@ func dataRequestTask(taskId string, id string, ip string, del bool) {
 		}
 	}
 
-	redisCache.SetArgs(ctx, taskId, "Fetching postgres backups on this user", redis.SetArgs{
+	state.Redis.SetArgs(ctx, taskId, "Fetching postgres backups on this user", redis.SetArgs{
 		KeepTTL: true,
 	})
 
-	rows, err := backupPool.Query(ctx, "SELECT col, data, ts, id FROM backups")
+	rows, err := state.BackupsPool.Query(ctx, "SELECT col, data, ts, id FROM backups")
 
 	if err != nil {
 		log.Error("Failed to get backups")
-		redisCache.SetArgs(ctx, taskId, "Failed to fetch backup data: "+err.Error(), redis.SetArgs{
+		state.Redis.SetArgs(ctx, taskId, "Failed to fetch backup data: "+err.Error(), redis.SetArgs{
 			KeepTTL: true,
 		})
 		return
@@ -423,7 +419,7 @@ func dataRequestTask(taskId string, id string, ip string, del bool) {
 
 		if err != nil {
 			log.Error("Failed to scan backup")
-			redisCache.SetArgs(ctx, taskId, "Failed to fetch backup data: "+err.Error()+". Ignoring", redis.SetArgs{
+			state.Redis.SetArgs(ctx, taskId, "Failed to fetch backup data: "+err.Error()+". Ignoring", redis.SetArgs{
 				KeepTTL: true,
 			})
 			continue
@@ -435,7 +431,7 @@ func dataRequestTask(taskId string, id string, ip string, del bool) {
 
 		if err != nil {
 			log.Error("Failed to decode backup")
-			redisCache.SetArgs(ctx, taskId, "Failed to fetch backup data: "+err.Error()+". Ignoring", redis.SetArgs{
+			state.Redis.SetArgs(ctx, taskId, "Failed to fetch backup data: "+err.Error()+". Ignoring", redis.SetArgs{
 				KeepTTL: true,
 			})
 			continue
@@ -465,10 +461,10 @@ func dataRequestTask(taskId string, id string, ip string, del bool) {
 			backups = append(backups, backupDat)
 
 			if del {
-				_, err := backupPool.Exec(ctx, "DELETE FROM backups WHERE id=$1", toString(uid))
+				_, err := state.BackupsPool.Exec(ctx, "DELETE FROM backups WHERE id=$1", toString(uid))
 				if err != nil {
 					log.Error("Failed to delete backup")
-					redisCache.SetArgs(ctx, taskId, "Failed to delete backup: "+err.Error(), redis.SetArgs{
+					state.Redis.SetArgs(ctx, taskId, "Failed to delete backup: "+err.Error(), redis.SetArgs{
 						KeepTTL: true,
 					})
 					return
@@ -485,235 +481,13 @@ func dataRequestTask(taskId string, id string, ip string, del bool) {
 
 	if err != nil {
 		log.Error("Failed to encode data")
-		redisCache.SetArgs(ctx, taskId, "Failed to encode data: "+err.Error(), redis.SetArgs{
+		state.Redis.SetArgs(ctx, taskId, "Failed to encode data: "+err.Error(), redis.SetArgs{
 			KeepTTL: true,
 		})
 		return
 	}
 
-	redisCache.SetArgs(ctx, taskId, string(bytes), redis.SetArgs{
+	state.Redis.SetArgs(ctx, taskId, string(bytes), redis.SetArgs{
 		KeepTTL: false,
 	})
-}
-
-func isDiscord(url string) bool {
-	validPrefixes := []string{
-		"https://discordapp.com/api/webhooks/",
-		"https://discord.com/api/webhooks/",
-		"https://canary.discord.com/api/webhooks/",
-		"https://ptb.discord.com/api/webhooks/",
-	}
-
-	for _, prefix := range validPrefixes {
-		if strings.HasPrefix(url, prefix) {
-			return true
-		}
-	}
-
-	return false
-}
-
-// Sends a webhook
-func sendWebhook(webhook types.WebhookPost) error {
-	url, token := webhook.URL, webhook.Token
-
-	isDiscordIntegration := isDiscord(url)
-
-	if !webhook.Test && (utils.IsNone(url) || utils.IsNone(token)) {
-		// Fetch URL from postgres
-
-		var bot struct {
-			Discord    pgtype.Text `db:"webhook"`
-			CustomURL  pgtype.Text `db:"custom_webhook"`
-			CustomAuth pgtype.Text `db:"web_auth"`
-			APIToken   pgtype.Text `db:"token"`
-			HMACAuth   pgtype.Bool `db:"hmac"`
-		}
-
-		err := pgxscan.Get(ctx, pool, &bot, "SELECT webhook, custom_webhook, web_auth, token, hmac FROM bots WHERE bot_id = $1", webhook.BotID)
-
-		if err != nil {
-			log.Error("Failed to fetch webhook: ", err.Error())
-			return err
-		}
-
-		// Check custom auth viability
-		if bot.CustomAuth.Status != pgtype.Present || utils.IsNone(bot.CustomAuth.String) {
-			if bot.APIToken.String != "" {
-				token = bot.APIToken.String
-			} else {
-				// We set the token to the a random string in DB in this case
-				token = utils.RandString(256)
-
-				_, err := pool.Exec(ctx, "UPDATE bots SET web_auth = $1 WHERE bot_id = $2", token, webhook.BotID)
-
-				if err != pgx.ErrNoRows && err != nil {
-					log.Error("Failed to update webhook: ", err.Error())
-					return err
-				}
-			}
-
-			bot.CustomAuth = pgtype.Text{String: token, Status: pgtype.Present}
-		}
-
-		webhook.HMACAuth = bot.HMACAuth.Bool
-		webhook.Token = bot.CustomAuth.String
-
-		log.Info("Using hmac: ", webhook.HMACAuth)
-
-		// For each url, make a new sendWebhook
-		if !utils.IsNone(bot.CustomURL.String) {
-			webhook.URL = bot.CustomURL.String
-			err := sendWebhook(webhook)
-			log.Error("Custom URL send error", err)
-		}
-
-		if !utils.IsNone(bot.Discord.String) {
-			webhook.URL = bot.Discord.String
-			err := sendWebhook(webhook)
-			log.Error("Discord send error", err)
-		}
-	}
-
-	if utils.IsNone(url) {
-		log.Warning("Refusing to continue as no webhook")
-		return nil
-	}
-
-	if isDiscordIntegration && !isDiscord(url) {
-		return errors.New("webhook is not a discord webhook")
-	}
-
-	if isDiscordIntegration {
-		parts := strings.Split(url, "/")
-		if len(parts) < 7 {
-			log.WithFields(log.Fields{
-				"url": url,
-			}).Warning("Invalid webhook URL")
-			return errors.New("invalid discord webhook URL. Could not parse")
-		}
-
-		webhookId := parts[5]
-		webhookToken := parts[6]
-		userObj, err := utils.GetDiscordUser(metro, redisCache, ctx, webhook.UserID)
-
-		if err != nil {
-			userObj = &types.DiscordUser{
-				ID:            "510065483693817867",
-				Username:      "Toxic Dev (test webhook)",
-				Avatar:        "https://cdn.discordapp.com/avatars/510065483693817867/a_96c9cea3c656deac48f1d8fdfdae5007.gif?size=1024",
-				Discriminator: "0000",
-			}
-		}
-
-		log.WithFields(log.Fields{
-			"user":      webhook.UserID,
-			"webhookId": webhookId,
-			"token":     webhookToken,
-		}).Warning("Got here in parsing webhook for discord")
-
-		botObj, err := utils.GetDiscordUser(metro, redisCache, ctx, webhook.BotID)
-		if err != nil {
-			log.WithFields(log.Fields{
-				"user": webhook.BotID,
-			}).Warning(err)
-			return err
-		}
-		userWithDisc := userObj.Username + "#" + userObj.Discriminator // Create the user object
-
-		var embeds []*discordgo.MessageEmbed = []*discordgo.MessageEmbed{
-			{
-				Title: "Congrats! " + botObj.Username + " got a new vote!!!",
-				Description: "**" + userWithDisc + "** just voted for **" + botObj.Username + "**!\n\n" +
-					"**" + botObj.Username + "** now has **" + strconv.Itoa(webhook.Votes) + "** votes!",
-				Color: 0x00ff00,
-				URL:   "https://botlist.site/bots/" + webhook.BotID,
-			},
-		}
-
-		_, err = metro.WebhookExecute(webhookId, webhookToken, true, &discordgo.WebhookParams{
-			Embeds:    embeds,
-			Username:  userObj.Username,
-			AvatarURL: userObj.Avatar,
-		})
-
-		if err != nil {
-			log.WithFields(log.Fields{
-				"webhook": webhookId,
-			}).Warning("Failed to execute webhook", err)
-			return err
-		}
-	} else {
-		tries := 0
-
-		for tries < 3 {
-			if webhook.Test {
-				webhook.UserID = "510065483693817867"
-			}
-
-			var dUser, err = utils.GetDiscordUser(metro, redisCache, ctx, webhook.UserID)
-
-			if err != nil {
-				log.Error(err)
-			}
-
-			// Create response body
-			body := types.WebhookData{
-				Votes:        webhook.Votes,
-				UserID:       webhook.UserID,
-				UserObj:      dUser,
-				BotID:        webhook.BotID,
-				UserIDLegacy: webhook.UserID,
-				BotIDLegacy:  webhook.BotID,
-				Test:         webhook.Test,
-				Time:         time.Now().Unix(),
-			}
-
-			data, err := json.Marshal(body)
-
-			if err != nil {
-				log.Error("Failed to encode data")
-				return err
-			}
-
-			if webhook.HMACAuth {
-				// Generate HMAC token using token and request body
-				h := hmac.New(sha512.New, []byte(token))
-				h.Write(data)
-				token = hex.EncodeToString(h.Sum(nil))
-			}
-
-			// Create request
-			responseBody := bytes.NewBuffer(data)
-			req, err := http.NewRequest("POST", url, responseBody)
-
-			if err != nil {
-				log.Error("Failed to create request")
-				return err
-			}
-
-			req.Header.Set("Content-Type", "application/json")
-			req.Header.Set("User-Agent", "Popplio/v5.0")
-			req.Header.Set("Authorization", token)
-
-			// Send request
-			client := &http.Client{Timeout: time.Second * 5}
-			resp, err := client.Do(req)
-
-			if err != nil {
-				log.Error("Failed to send request")
-				return err
-			}
-
-			if resp.StatusCode >= 400 && resp.StatusCode < 500 {
-				log.Info("Retrying webhook again. Got status code of ", resp.StatusCode)
-				tries++
-				continue
-			}
-
-			break
-		}
-	}
-
-	return nil
 }

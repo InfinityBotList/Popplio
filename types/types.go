@@ -96,7 +96,7 @@ type ResolvedPackBot struct {
 
 type BotPack struct {
 	Owner         string            `db:"owner" json:"owner_id"`
-	ResolvedOwner *DiscordUser      `db:"-" json:"owner"` // This may be null in some API endpoints
+	ResolvedOwner *DiscordUser      `db:"-" json:"owner"`
 	Name          string            `db:"name" json:"name"`
 	Short         string            `db:"short" json:"short"`
 	Votes         int64             `db:"votes" json:"votes"`
@@ -104,7 +104,18 @@ type BotPack struct {
 	URL           string            `db:"url" json:"url"`
 	Date          time.Time         `db:"date" json:"date"`
 	Bots          []string          `db:"bots" json:"bot_ids"`
-	ResolvedBots  []ResolvedPackBot `db:"-" json:"bots"` // May be null in some API endpoints
+	ResolvedBots  []ResolvedPackBot `db:"-" json:"bots"`
+}
+
+type IndexBotPack struct {
+	Owner string    `db:"owner" json:"owner_id"`
+	Name  string    `db:"name" json:"name"`
+	Short string    `db:"short" json:"short"`
+	Votes int64     `db:"votes" json:"votes"`
+	Tags  []string  `db:"tags" json:"tags"`
+	URL   string    `db:"url" json:"url"`
+	Date  time.Time `db:"date" json:"date"`
+	Bots  []string  `db:"bots" json:"bot_ids"`
 }
 
 type AllPacks struct {
@@ -176,11 +187,11 @@ type IndexBot struct {
 }
 
 type ListIndex struct {
-	Certified     []IndexBot `json:"certified"`
-	MostViewed    []IndexBot `json:"most_viewed"`
-	Packs         []*BotPack `json:"packs"`
-	RecentlyAdded []IndexBot `json:"recently_added"`
-	TopVoted      []IndexBot `json:"top_voted"`
+	Certified     []IndexBot      `json:"certified"`
+	MostViewed    []IndexBot      `json:"most_viewed"`
+	Packs         []*IndexBotPack `json:"packs"`
+	RecentlyAdded []IndexBot      `json:"recently_added"`
+	TopVoted      []IndexBot      `json:"top_voted"`
 }
 
 type User struct {
@@ -543,13 +554,8 @@ type Message struct {
 }
 
 type DiscordLog struct {
-	Message     *discordgo.MessageSend
-	WebhookData *discordgo.WebhookParams
-	ChannelID   string
-
-	// Only for webhooks
-	WebhookID    string
-	WebhookToken string
+	Message   *discordgo.MessageSend
+	ChannelID string
 }
 
 type ProfileUpdate struct {

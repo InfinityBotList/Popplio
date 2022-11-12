@@ -3,6 +3,7 @@ package main
 import (
 	"io/ioutil"
 	"os"
+	"popplio/state"
 	"popplio/types"
 	"popplio/utils"
 	"time"
@@ -27,7 +28,7 @@ func init() {
 				"id": id,
 			}).Warning("Removing premium bot: ", id)
 
-			_, err := pool.Exec(ctx, "UPDATE bots SET premium = false, start_premium_period = $1, premium_period_length = $2 WHERE bot_id = $3", time.Now().UnixMilli(), 2592000000, id)
+			_, err := state.Pool.Exec(ctx, "UPDATE bots SET premium = false, start_premium_period = $1, premium_period_length = $2 WHERE bot_id = $3", time.Now().UnixMilli(), 2592000000, id)
 
 			if err != nil {
 				log.WithFields(log.Fields{
@@ -37,7 +38,7 @@ func init() {
 			}
 
 			// Send message
-			botObj, err := utils.GetDiscordUser(metro, redisCache, ctx, id)
+			botObj, err := utils.GetDiscordUser(id)
 
 			if err != nil {
 				log.WithFields(log.Fields{
@@ -48,7 +49,7 @@ func init() {
 
 			var owner pgtype.Text
 
-			err = pool.QueryRow(ctx, "SELECT owner FROM bots WHERE bot_id = $1", id).Scan(&owner)
+			err = state.Pool.QueryRow(ctx, "SELECT owner FROM bots WHERE bot_id = $1", id).Scan(&owner)
 
 			if err != nil || owner.Status != pgtype.Present {
 				log.WithFields(log.Fields{
@@ -57,7 +58,7 @@ func init() {
 				continue
 			}
 
-			userObj, err := utils.GetDiscordUser(metro, redisCache, ctx, owner.String)
+			userObj, err := utils.GetDiscordUser(owner.String)
 
 			if err != nil {
 				log.WithFields(log.Fields{
@@ -66,11 +67,11 @@ func init() {
 				continue
 			}
 
-			metro.ChannelMessageSendComplex(os.Getenv("CHANNEL_ID"), &discordgo.MessageSend{
+			state.Discord.ChannelMessageSendComplex(os.Getenv("CHANNEL_ID"), &discordgo.MessageSend{
 				Content: botObj.Mention + "(" + botObj.Username + ") by " + userObj.Mention + " has been removed from the premium list as their subscription has expired.",
 			})
 
-			dmChannel, err := metro.UserChannelCreate(owner.String)
+			dmChannel, err := state.Discord.UserChannelCreate(owner.String)
 
 			if err != nil {
 				log.WithFields(log.Fields{
@@ -79,7 +80,7 @@ func init() {
 				continue
 			}
 
-			metro.ChannelMessageSendComplex(dmChannel.ID, &discordgo.MessageSend{
+			state.Discord.ChannelMessageSendComplex(dmChannel.ID, &discordgo.MessageSend{
 				Content: "Your bot " + botObj.Mention + "(" + botObj.Username + ") has been removed from the premium list as their subscription has expired.",
 			})
 		}
@@ -98,7 +99,7 @@ func init() {
 			var endpoint string
 			var p256dh string
 
-			err := pool.QueryRow(ctx, "SELECT auth, endpoint, p256dh FROM poppypaw WHERE notif_id = $1", msg.NotifID).Scan(&auth, &endpoint, &p256dh)
+			err := state.Pool.QueryRow(ctx, "SELECT auth, endpoint, p256dh FROM poppypaw WHERE notif_id = $1", msg.NotifID).Scan(&auth, &endpoint, &p256dh)
 
 			if err != nil {
 				log.Error("Error finding notification: %s", err)
@@ -124,7 +125,7 @@ func init() {
 				// TODO: Handle error
 				if resp.StatusCode == 410 {
 					// Delete the subscription
-					pool.Exec(ctx, "DELETE FROM poppypaw WHERE notif_id = $1", msg.NotifID)
+					state.Pool.Exec(ctx, "DELETE FROM poppypaw WHERE notif_id = $1", msg.NotifID)
 				}
 				log.Error(err)
 				continue
@@ -145,7 +146,7 @@ func init() {
 
 			log.Info("Tick at ", x, ", checking reminders")
 
-			rows, err := pool.Query(ctx, "SELECT "+silverpeltColsStr+" FROM silverpelt WHERE NOW() - last_acked > interval '4 hours'")
+			rows, err := state.Pool.Query(ctx, "SELECT "+silverpeltColsStr+" FROM silverpelt WHERE NOW() - last_acked > interval '4 hours'")
 
 			if err != nil {
 				log.Error("Error finding reminders: ", err)
@@ -164,20 +165,20 @@ func init() {
 				// Check for duplicates
 				var count int64
 
-				err = pool.QueryRow(ctx, "SELECT COUNT(*) FROM silverpelt WHERE bot_id = $1 AND user_id = $2", reminder.BotID, reminder.UserID).Scan(&count)
+				err = state.Pool.QueryRow(ctx, "SELECT COUNT(*) FROM silverpelt WHERE bot_id = $1 AND user_id = $2", reminder.BotID, reminder.UserID).Scan(&count)
 
 				if err != nil {
 					log.Error("Error counting reminders:", err)
 				} else {
 					if count > 1 {
 						log.Warning("Reminder has duplicates, deleting one of them")
-						_, err = pool.Exec(ctx, "DELETE FROM silverpelt WHERE bot_id = $1 AND user_id = $2", reminder.BotID, reminder.UserID)
+						_, err = state.Pool.Exec(ctx, "DELETE FROM silverpelt WHERE bot_id = $1 AND user_id = $2", reminder.BotID, reminder.UserID)
 
 						if err != nil {
 							log.Error("Error deleting reminder:", err)
 						}
 
-						_, err = pool.Exec(ctx, "INSERT INTO silverpelt (bot_id, user_id) VALUES ($1, $2)", reminder.BotID, reminder.UserID)
+						_, err = state.Pool.Exec(ctx, "INSERT INTO silverpelt (bot_id, user_id) VALUES ($1, $2)", reminder.BotID, reminder.UserID)
 
 						if err != nil {
 							log.Error("Error readding reminder:", err)
@@ -185,7 +186,7 @@ func init() {
 					}
 				}
 
-				voteParsed, err := utils.GetVoteData(ctx, pool, reminder.UserID, reminder.BotID)
+				voteParsed, err := utils.GetVoteData(ctx, reminder.UserID, reminder.BotID)
 
 				if err != nil {
 					log.Error(err)
@@ -193,7 +194,7 @@ func init() {
 				}
 
 				if !voteParsed.HasVoted {
-					res, err := pool.Exec(ctx, "UPDATE silverpelt SET last_acked = NOW() WHERE bot_id = $1 AND user_id = $2", reminder.BotID, reminder.UserID)
+					res, err := state.Pool.Exec(ctx, "UPDATE silverpelt SET last_acked = NOW() WHERE bot_id = $1 AND user_id = $2", reminder.BotID, reminder.UserID)
 					if err != nil {
 						log.Error("Error updating reminder: %s", err)
 						continue
@@ -203,7 +204,7 @@ func init() {
 
 					// Loop over all user poppypaw subscriptions and push to goro
 					go func(id string, bId string) {
-						rows, err := pool.Query(ctx, "SELECT notif_id, endpoint FROM poppypaw WHERE id = $1", id)
+						rows, err := state.Pool.Query(ctx, "SELECT notif_id, endpoint FROM poppypaw WHERE id = $1", id)
 
 						if err != nil {
 							log.Error("Error finding subscriptions:", err)
@@ -222,7 +223,7 @@ func init() {
 							return
 						}
 
-						botInf, err := utils.GetDiscordUser(metro, redisCache, ctx, bId)
+						botInf, err := utils.GetDiscordUser(bId)
 
 						if err != nil {
 							log.Error("Error finding bot info:", err)
@@ -281,7 +282,7 @@ func init() {
 
 			log.Info("Tick at ", x, ", checking premiums")
 
-			rows, err := pool.Query(ctx, "SELECT bot_id, start_premium_period, premium_period_length, type FROM bots WHERE premium = true")
+			rows, err := state.Pool.Query(ctx, "SELECT bot_id, start_premium_period, premium_period_length, type FROM bots WHERE premium = true")
 
 			if err != nil {
 				log.Error("Error finding bots: %s", err)
@@ -323,16 +324,6 @@ func init() {
 	// Message sending notification goroutine
 	go func() {
 		for msg := range messageNotifyChannel {
-			if msg.WebhookID != "" && msg.WebhookToken != "" && msg.WebhookData != nil {
-				log.Info("Sending message to webhook: ", msg.WebhookID)
-				_, err := metro.WebhookExecute(msg.WebhookID, msg.WebhookToken, false, msg.WebhookData)
-
-				if err != nil {
-					log.Error("Error sending message to webhook: ", err)
-					continue
-				}
-			}
-
 			if msg.Message == nil {
 				continue
 			}
@@ -340,7 +331,7 @@ func init() {
 			log.Info("Sending message to: ", msg.ChannelID)
 
 			// Send message to channel
-			_, err := metro.ChannelMessageSendComplex(msg.ChannelID, msg.Message)
+			_, err := state.Discord.ChannelMessageSendComplex(msg.ChannelID, msg.Message)
 
 			if err != nil {
 				log.Error("Error sending message: ", err)

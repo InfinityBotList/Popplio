@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"math/rand"
+	"net/http"
 	"os"
 	"reflect"
 	"strconv"
@@ -12,6 +13,7 @@ import (
 	"time"
 	"unsafe"
 
+	"popplio/state"
 	"popplio/types"
 
 	"github.com/bwmarrin/discordgo"
@@ -24,8 +26,9 @@ import (
 )
 
 var (
-	userBotCols    = GetCols(types.UserBot{})
-	userBotColsStr = strings.Join(userBotCols, ",")
+	userBotColsArr = GetCols(types.UserBot{})
+	// These are the columns of a userbot object
+	userBotCols = strings.Join(userBotColsArr, ",")
 )
 
 func IsNone(s string) bool {
@@ -44,7 +47,7 @@ func ParseBot(ctx context.Context, pool *pgxpool.Pool, bot *types.Bot, s *discor
 		bot.Invite.Status = pgtype.Null
 	}
 
-	ownerUser, err := GetDiscordUser(s, redisCache, ctx, bot.Owner)
+	ownerUser, err := GetDiscordUser(bot.Owner)
 
 	if err != nil {
 		return err
@@ -52,7 +55,7 @@ func ParseBot(ctx context.Context, pool *pgxpool.Pool, bot *types.Bot, s *discor
 
 	bot.MainOwner = ownerUser
 
-	botUser, err := GetDiscordUser(s, redisCache, ctx, bot.BotID)
+	botUser, err := GetDiscordUser(bot.BotID)
 
 	if err != nil {
 		return err
@@ -63,7 +66,7 @@ func ParseBot(ctx context.Context, pool *pgxpool.Pool, bot *types.Bot, s *discor
 	bot.ResolvedAdditionalOwners = []*types.DiscordUser{}
 
 	for _, owner := range bot.AdditionalOwners {
-		ownerUser, err := GetDiscordUser(s, redisCache, ctx, owner)
+		ownerUser, err := GetDiscordUser(owner)
 
 		if err != nil {
 			log.Error(err)
@@ -106,7 +109,7 @@ func ParseBot(ctx context.Context, pool *pgxpool.Pool, bot *types.Bot, s *discor
 }
 
 func ResolveBotPack(ctx context.Context, pool *pgxpool.Pool, pack *types.BotPack, s *discordgo.Session, redisCache *redis.Client) error {
-	ownerUser, err := GetDiscordUser(s, redisCache, ctx, pack.Owner)
+	ownerUser, err := GetDiscordUser(pack.Owner)
 
 	if err != nil {
 		return err
@@ -137,7 +140,7 @@ func ResolveBotPack(ctx context.Context, pool *pgxpool.Pool, pack *types.BotPack
 			return err
 		}
 
-		botUser, err := GetDiscordUser(s, redisCache, ctx, botId)
+		botUser, err := GetDiscordUser(botId)
 
 		if err != nil {
 			return err
@@ -180,7 +183,7 @@ func ParseUser(ctx context.Context, pool *pgxpool.Pool, user *types.User, s *dis
 		user.Nickname.Status = pgtype.Null
 	}
 
-	userObj, err := GetDiscordUser(s, redisCache, ctx, user.ID)
+	userObj, err := GetDiscordUser(user.ID)
 
 	if err != nil {
 		return err
@@ -188,7 +191,7 @@ func ParseUser(ctx context.Context, pool *pgxpool.Pool, user *types.User, s *dis
 
 	user.User = userObj
 
-	userBotsRows, err := pool.Query(ctx, "SELECT "+userBotColsStr+" FROM bots WHERE owner = $1 OR additional_owners && $2", user.ID, []string{user.ID})
+	userBotsRows, err := pool.Query(ctx, "SELECT "+userBotCols+" FROM bots WHERE owner = $1 OR additional_owners && $2", user.ID, []string{user.ID})
 
 	if err != nil {
 		return err
@@ -204,7 +207,7 @@ func ParseUser(ctx context.Context, pool *pgxpool.Pool, user *types.User, s *dis
 
 	parsedUserBots := []types.UserBot{}
 	for _, bot := range userBots {
-		userObj, err := GetDiscordUser(s, redisCache, ctx, bot.BotID)
+		userObj, err := GetDiscordUser(bot.BotID)
 
 		if err != nil {
 			log.Error(err)
@@ -248,7 +251,7 @@ func RandString(n int) string {
 	return *(*string)(unsafe.Pointer(&b))
 }
 
-func GetDiscordUser(s *discordgo.Session, redisCache *redis.Client, ctx context.Context, id string) (*types.DiscordUser, error) {
+func GetDiscordUser(id string) (*types.DiscordUser, error) {
 	// Check if in discordgo session first
 
 	const userExpiryTime = 8 * time.Hour
@@ -263,14 +266,14 @@ func GetDiscordUser(s *discordgo.Session, redisCache *redis.Client, ctx context.
 		return nil, errors.New("invalid snowflake")
 	}
 
-	if s.State != nil {
-		guilds := s.State.Guilds
+	if state.Discord.State != nil {
+		guilds := state.Discord.State.Guilds
 
 		// First try for main server
-		member, err := s.State.Member(os.Getenv("MAIN_SERVER"), id)
+		member, err := state.Discord.State.Member(os.Getenv("MAIN_SERVER"), id)
 
 		if err == nil {
-			p, pErr := s.State.Presence(os.Getenv("MAIN_SERVER"), id)
+			p, pErr := state.Discord.State.Presence(os.Getenv("MAIN_SERVER"), id)
 
 			if pErr != nil {
 				p = &discordgo.Presence{
@@ -298,7 +301,7 @@ func GetDiscordUser(s *discordgo.Session, redisCache *redis.Client, ctx context.
 			bytes, err := json.Marshal(obj)
 
 			if err == nil {
-				redisCache.Set(ctx, "uobj:"+id, bytes, userExpiryTime)
+				state.Redis.Set(state.Context, "uobj:"+id, bytes, userExpiryTime)
 			}
 
 			return obj, nil
@@ -309,10 +312,10 @@ func GetDiscordUser(s *discordgo.Session, redisCache *redis.Client, ctx context.
 				continue // Already checked
 			}
 
-			member, err := s.State.Member(guild.ID, id)
+			member, err := state.Discord.State.Member(guild.ID, id)
 
 			if err == nil {
-				p, pErr := s.State.Presence(guild.ID, id)
+				p, pErr := state.Discord.State.Presence(guild.ID, id)
 
 				if pErr != nil {
 					p = &discordgo.Presence{
@@ -340,7 +343,7 @@ func GetDiscordUser(s *discordgo.Session, redisCache *redis.Client, ctx context.
 				bytes, err := json.Marshal(obj)
 
 				if err == nil {
-					redisCache.Set(ctx, "uobj:"+id, bytes, userExpiryTime)
+					state.Redis.Set(state.Context, "uobj:"+id, bytes, userExpiryTime)
 				}
 
 				return obj, nil
@@ -349,7 +352,7 @@ func GetDiscordUser(s *discordgo.Session, redisCache *redis.Client, ctx context.
 	}
 
 	// Check if in redis cache
-	userBytes, err := redisCache.Get(ctx, "uobj:"+id).Result()
+	userBytes, err := state.Redis.Get(state.Context, "uobj:"+id).Result()
 
 	if err == nil {
 		// Try to unmarshal
@@ -364,7 +367,7 @@ func GetDiscordUser(s *discordgo.Session, redisCache *redis.Client, ctx context.
 	}
 
 	// Get from discord
-	user, err := s.User(id)
+	user, err := state.Discord.User(id)
 
 	if err != nil {
 		return nil, err
@@ -386,7 +389,7 @@ func GetDiscordUser(s *discordgo.Session, redisCache *redis.Client, ctx context.
 	}
 
 	// Store in redis
-	redisCache.Set(ctx, "uobj:"+id, obj, userExpiryTime)
+	state.Redis.Set(state.Context, "uobj:"+id, obj, userExpiryTime)
 
 	return obj, nil
 }
@@ -407,14 +410,14 @@ func GetVoteTime() uint16 {
 	}
 }
 
-func GetVoteData(ctx context.Context, pool *pgxpool.Pool, userID, botID string) (*types.UserVote, error) {
+func GetVoteData(ctx context.Context, userID, botID string) (*types.UserVote, error) {
 	var votes []int64
 
 	var voteDates []*struct {
 		Date pgtype.Timestamptz `db:"date"`
 	}
 
-	rows, err := pool.Query(ctx, "SELECT date FROM votes WHERE user_id = $1 AND bot_id = $2 ORDER BY date DESC", userID, botID)
+	rows, err := state.Pool.Query(ctx, "SELECT date FROM votes WHERE user_id = $1 AND bot_id = $2 ORDER BY date DESC", userID, botID)
 
 	if err != nil {
 		return nil, err
@@ -460,6 +463,26 @@ func GetVoteData(ctx context.Context, pool *pgxpool.Pool, userID, botID string) 
 	return &voteParsed, nil
 }
 
+func ApiDefaultReturn(statusCode int, w http.ResponseWriter, r *http.Request) {
+	switch statusCode {
+	case http.StatusUnauthorized:
+		w.WriteHeader(http.StatusUnauthorized)
+		w.Write([]byte(state.Unauthorized))
+	case http.StatusNotFound:
+		w.WriteHeader(http.StatusNotFound)
+		w.Write([]byte(state.NotFound))
+	case http.StatusBadRequest:
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte(state.BadRequest))
+	case http.StatusInternalServerError:
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte(state.InternalError))
+	case http.StatusMethodNotAllowed:
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		w.Write([]byte(state.MethodNotAllowed))
+	}
+}
+
 func GetCols(s any) []string {
 	refType := reflect.TypeOf(s)
 
@@ -477,4 +500,38 @@ func GetCols(s any) []string {
 	}
 
 	return cols
+}
+
+func AuthCheck(token string, bot bool) *string {
+	if token == "" {
+		return nil
+	}
+
+	if bot {
+		var id pgtype.Text
+		err := state.Pool.QueryRow(state.Context, "SELECT bot_id FROM bots WHERE token = $1", strings.Replace(token, "Bot ", "", 1)).Scan(&id)
+
+		if err != nil {
+			log.Error(err)
+			return nil
+		} else {
+			if id.Status == pgtype.Null {
+				return nil
+			}
+			return &id.String
+		}
+	} else {
+		var id pgtype.Text
+		err := state.Pool.QueryRow(state.Context, "SELECT user_id FROM users WHERE api_token = $1", strings.Replace(token, "User ", "", 1)).Scan(&id)
+
+		if err != nil {
+			log.Error(err)
+			return nil
+		} else {
+			if id.Status == pgtype.Null {
+				return nil
+			}
+			return &id.String
+		}
+	}
 }
