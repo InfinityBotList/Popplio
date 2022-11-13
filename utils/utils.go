@@ -609,7 +609,7 @@ func Respond(ctx context.Context, w http.ResponseWriter, data chan types.HttpRes
 
 			if msg.CacheKey != "" {
 				go func() {
-					err := state.Redis.Set(state.Context, msg.CacheKey, bytes, msg.CacheTime)
+					err := state.Redis.Set(state.Context, msg.CacheKey, bytes, msg.CacheTime).Err()
 
 					if err != nil {
 						state.Logger.Error(err)

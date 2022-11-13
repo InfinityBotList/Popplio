@@ -384,6 +384,7 @@ func (b Router) Routes(r *chi.Mux) {
 				return
 			}
 
+			w.Header().Set("Content-Type", "text/html; charset=utf-8")
 			t.Execute(w, user)
 
 			resp <- types.HttpResponse{
