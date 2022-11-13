@@ -9,21 +9,34 @@ psk = secrets.token_hex(128)
 
 app = fastapi.FastAPI()
 
+def_headers = {
+    "Access-Control-Allow-Origin": "*",
+    "Access-Control-Allow-Methods": "GET, OPTIONS",
+    "Access-Control-Allow-Headers": "PSK",
+}
+
 @app.options("/{fn}")
 async def options(fn: str):
-    return ORJSONResponse({}, headers={
-        "Access-Control-Allow-Origin": "*",
-        "Access-Control-Allow-Methods": "GET, OPTIONS",
-        "Access-Control-Allow-Headers": "PSK",
-    })
+    return ORJSONResponse({}, headers=def_headers)
+
+@app.options("/conntest/a")
+async def options_ctest():
+    return ORJSONResponse({}, headers=def_headers)
+
+@app.get("/conntest/a")
+async def conntest(request: fastapi.Request):
+    if request.headers.get("PSK") != psk:
+        return ORJSONResponse({"error": "invalid psk"}, status_code=403, headers=def_headers)
+
+    return ORJSONResponse({}, headers=def_headers)
 
 @app.get("/{fn}")
 async def read_item(request: fastapi.Request, fn: str, limit: int, offset: int):
     if request.headers.get("PSK") != psk:
-        return ORJSONResponse({"error": "invalid psk"}, status_code=403)
+        return ORJSONResponse({"error": "invalid psk"}, status_code=403, headers=def_headers)
     
     if limit > 300:
-        return ORJSONResponse({"error": "limit too large"}, status_code=400)
+        return ORJSONResponse({"error": "limit too large"}, status_code=400, headers=def_headers)
     
     # Proxy protection
     if request.headers.get("X-Forwarded-For"):
@@ -47,11 +60,7 @@ async def read_item(request: fastapi.Request, fn: str, limit: int, offset: int):
     for v in json_list[int(offset):int(offset)+int(limit)]:
         vals.append(orjson.loads(v))
     
-    return ORJSONResponse(vals, headers={
-        "Access-Control-Allow-Origin": "*",
-        "Access-Control-Allow-Methods": "GET, OPTIONS",
-        "Access-Control-Allow-Headers": "PSK",
-    })
+    return ORJSONResponse(vals, headers=def_headers)
 
 print(f"PSK for logviewer: {psk}")
 
