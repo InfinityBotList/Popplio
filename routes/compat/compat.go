@@ -10,14 +10,9 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/jackc/pgtype"
-	jsoniter "github.com/json-iterator/go"
 )
 
 const tagName = "Legacy"
-
-var (
-	json = jsoniter.ConfigCompatibleWithStandardLibrary
-)
 
 type Router struct{}
 
@@ -53,62 +48,66 @@ func (b Router) Routes(r *chi.Mux) {
 		AuthType: []string{"User"},
 	})
 	r.Get("/votes/{bot_id}/{user_id}", func(w http.ResponseWriter, r *http.Request) {
-		var botId = chi.URLParam(r, "bot_id")
-		var userId = chi.URLParam(r, "user_id")
+		ctx := r.Context()
+		resp := make(chan types.HttpResponse)
 
-		if r.Header.Get("Authorization") == "" {
-			utils.ApiDefaultReturn(http.StatusUnauthorized, w, r)
-			return
-		} else {
-			id := utils.AuthCheck(r.Header.Get("Authorization"), true)
+		go func() {
+			var botId = chi.URLParam(r, "bot_id")
+			var userId = chi.URLParam(r, "user_id")
 
-			if id == nil || *id != botId {
-				utils.ApiDefaultReturn(http.StatusUnauthorized, w, r)
+			if r.Header.Get("Authorization") == "" {
+				resp <- utils.ApiDefaultReturn(http.StatusUnauthorized)
+				return
+			} else {
+				id := utils.AuthCheck(r.Header.Get("Authorization"), true)
+
+				if id == nil || *id != botId {
+					resp <- utils.ApiDefaultReturn(http.StatusUnauthorized)
+					return
+				}
+
+				// To try and push users into new API, vote ban and approved check on GET is enforced on the old API
+				var voteBannedState bool
+
+				err := state.Pool.QueryRow(ctx, "SELECT vote_banned FROM bots WHERE bot_id = $1", id).Scan(&voteBannedState)
+
+				if err != nil {
+					state.Logger.Error(err)
+					resp <- utils.ApiDefaultReturn(http.StatusUnauthorized)
+					return
+				}
+			}
+
+			var botType pgtype.Text
+
+			state.Pool.QueryRow(ctx, "SELECT type FROM bots WHERE bot_id = $1", botId).Scan(&botType)
+
+			if botType.String != "approved" {
+				resp <- types.HttpResponse{
+					Status: http.StatusBadRequest,
+					Data:   constants.NotApproved,
+				}
 				return
 			}
 
-			// To try and push users into new API, vote ban and approved check on GET is enforced on the old API
-			var voteBannedState bool
-
-			err := state.Pool.QueryRow(state.Context, "SELECT vote_banned FROM bots WHERE bot_id = $1", id).Scan(&voteBannedState)
+			voteParsed, err := utils.GetVoteData(ctx, userId, botId)
 
 			if err != nil {
 				state.Logger.Error(err)
-				utils.ApiDefaultReturn(http.StatusUnauthorized, w, r)
+				resp <- utils.ApiDefaultReturn(http.StatusInternalServerError)
 				return
 			}
-		}
 
-		var botType pgtype.Text
+			var compatData = types.UserVoteCompat{
+				HasVoted: voteParsed.HasVoted,
+			}
 
-		state.Pool.QueryRow(state.Context, "SELECT type FROM bots WHERE bot_id = $1", botId).Scan(&botType)
+			resp <- types.HttpResponse{
+				Status: http.StatusOK,
+				Json:   compatData,
+			}
+		}()
 
-		if botType.String != "approved" {
-			w.WriteHeader(http.StatusBadRequest)
-			w.Write([]byte(constants.NotApproved))
-			return
-		}
-
-		voteParsed, err := utils.GetVoteData(state.Context, userId, botId)
-
-		if err != nil {
-			state.Logger.Error(err)
-			utils.ApiDefaultReturn(http.StatusInternalServerError, w, r)
-			return
-		}
-
-		var compatData = types.UserVoteCompat{
-			HasVoted: voteParsed.HasVoted,
-		}
-
-		bytes, err := json.Marshal(compatData)
-
-		if err != nil {
-			state.Logger.Error(err)
-			utils.ApiDefaultReturn(http.StatusInternalServerError, w, r)
-			return
-		}
-
-		w.Write(bytes)
+		utils.Respond(ctx, w, resp)
 	})
 }

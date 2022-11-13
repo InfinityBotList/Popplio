@@ -10,14 +10,9 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/jackc/pgtype"
-	jsoniter "github.com/json-iterator/go"
 )
 
 const tagName = "Tickets + Transcripts"
-
-var (
-	json = jsoniter.ConfigCompatibleWithStandardLibrary
-)
 
 type Router struct{}
 
@@ -46,49 +41,50 @@ func (b Router) Routes(r *chi.Mux) {
 			Resp: types.Transcript{},
 		})
 		r.Get("/{id}", func(w http.ResponseWriter, r *http.Request) {
-			transcriptNum := chi.URLParam(r, "id")
+			ctx := r.Context()
+			resp := make(chan types.HttpResponse)
 
-			if transcriptNum == "" {
-				utils.ApiDefaultReturn(http.StatusNotFound, w, r)
-				return
-			}
+			go func() {
+				transcriptNum := chi.URLParam(r, "id")
 
-			transcriptNumInt, err := strconv.Atoi(transcriptNum)
+				if transcriptNum == "" {
+					resp <- utils.ApiDefaultReturn(http.StatusNotFound)
+					return
+				}
 
-			if err != nil {
-				utils.ApiDefaultReturn(http.StatusNotFound, w, r)
-				return
-			}
+				transcriptNumInt, err := strconv.Atoi(transcriptNum)
 
-			// Get transcript
-			var data pgtype.JSONB
-			var closedBy pgtype.JSONB
-			var openedBy pgtype.JSONB
+				if err != nil {
+					resp <- utils.ApiDefaultReturn(http.StatusNotFound)
+					return
+				}
 
-			err = state.Pool.QueryRow(state.Context, "SELECT data, closed_by, opened_by FROM transcripts WHERE id = $1", transcriptNumInt).Scan(&data, &closedBy, &openedBy)
+				// Get transcript
+				var data pgtype.JSONB
+				var closedBy pgtype.JSONB
+				var openedBy pgtype.JSONB
 
-			if err != nil {
-				state.Logger.Error(err)
-				utils.ApiDefaultReturn(http.StatusNotFound, w, r)
-				return
-			}
+				err = state.Pool.QueryRow(ctx, "SELECT data, closed_by, opened_by FROM transcripts WHERE id = $1", transcriptNumInt).Scan(&data, &closedBy, &openedBy)
 
-			var transcript = types.Transcript{
-				ID:       transcriptNumInt,
-				Data:     data,
-				ClosedBy: closedBy,
-				OpenedBy: openedBy,
-			}
+				if err != nil {
+					state.Logger.Error(err)
+					resp <- utils.ApiDefaultReturn(http.StatusNotFound)
+					return
+				}
 
-			bytes, err := json.Marshal(transcript)
+				var transcript = types.Transcript{
+					ID:       transcriptNumInt,
+					Data:     data,
+					ClosedBy: closedBy,
+					OpenedBy: openedBy,
+				}
 
-			if err != nil {
-				state.Logger.Error(err)
-				utils.ApiDefaultReturn(http.StatusInternalServerError, w, r)
-				return
-			}
+				resp <- types.HttpResponse{
+					Json: transcript,
+				}
+			}()
 
-			w.Write(bytes)
+			utils.Respond(ctx, w, resp)
 		})
 	})
 }

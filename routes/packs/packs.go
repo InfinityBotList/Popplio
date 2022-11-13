@@ -17,7 +17,10 @@ import (
 	jsoniter "github.com/json-iterator/go"
 )
 
-const tagName = "Bot Packs"
+const (
+	tagName = "Bot Packs"
+	perPage = 12
+)
 
 var (
 	json = jsoniter.ConfigCompatibleWithStandardLibrary
@@ -53,48 +56,48 @@ func (b Router) Routes(r *chi.Mux) {
 			Resp: types.BotPack{},
 		})
 		r.Get("/{id}", func(w http.ResponseWriter, r *http.Request) {
-			var id = chi.URLParam(r, "id")
+			ctx := r.Context()
+			resp := make(chan types.HttpResponse)
 
-			if id == "" {
-				utils.ApiDefaultReturn(http.StatusBadRequest, w, r)
-				return
-			}
+			go func() {
+				var id = chi.URLParam(r, "id")
 
-			var pack types.BotPack
+				if id == "" {
+					resp <- utils.ApiDefaultReturn(http.StatusBadRequest)
+					return
+				}
 
-			row, err := state.Pool.Query(state.Context, "SELECT "+packCols+" FROM packs WHERE url = $1 OR name = $1", id)
+				var pack types.BotPack
 
-			if err != nil {
-				state.Logger.Error(err)
-				utils.ApiDefaultReturn(http.StatusNotFound, w, r)
-				return
-			}
+				row, err := state.Pool.Query(ctx, "SELECT "+packCols+" FROM packs WHERE url = $1 OR name = $1", id)
 
-			err = pgxscan.ScanOne(&pack, row)
+				if err != nil {
+					resp <- utils.ApiDefaultReturn(http.StatusNotFound)
+					return
+				}
 
-			if err != nil {
-				state.Logger.Error(err)
-				utils.ApiDefaultReturn(http.StatusNotFound, w, r)
-				return
-			}
+				err = pgxscan.ScanOne(&pack, row)
 
-			err = utils.ResolveBotPack(state.Context, state.Pool, &pack, state.Discord, state.Redis)
+				if err != nil {
+					state.Logger.Error(err)
+					resp <- utils.ApiDefaultReturn(http.StatusInternalServerError)
+					return
+				}
 
-			if err != nil {
-				state.Logger.Error(err)
-				utils.ApiDefaultReturn(http.StatusInternalServerError, w, r)
-				return
-			}
+				err = utils.ResolveBotPack(ctx, state.Pool, &pack, state.Discord, state.Redis)
 
-			bytes, err := json.Marshal(pack)
+				if err != nil {
+					state.Logger.Error(err)
+					resp <- utils.ApiDefaultReturn(http.StatusInternalServerError)
+					return
+				}
 
-			if err != nil {
-				state.Logger.Error(err)
-				utils.ApiDefaultReturn(http.StatusInternalServerError, w, r)
-				return
-			}
+				resp <- types.HttpResponse{
+					Json: pack,
+				}
+			}()
 
-			w.Write(bytes)
+			utils.Respond(ctx, w, resp)
 		})
 
 		docs.Route(&docs.Doc{
@@ -107,110 +110,113 @@ func (b Router) Routes(r *chi.Mux) {
 			Resp:        types.AllPacks{},
 		})
 		r.Get("/all", func(w http.ResponseWriter, r *http.Request) {
-			const perPage = 12
+			ctx := r.Context()
+			resp := make(chan types.HttpResponse)
 
-			page := r.URL.Query().Get("page")
+			go func() {
+				page := r.URL.Query().Get("page")
 
-			if page == "" {
-				page = "1"
-			}
+				if page == "" {
+					page = "1"
+				}
 
-			pageNum, err := strconv.ParseUint(page, 10, 32)
+				pageNum, err := strconv.ParseUint(page, 10, 32)
 
-			if err != nil {
-				utils.ApiDefaultReturn(http.StatusBadRequest, w, r)
-				return
-			}
+				if err != nil {
+					resp <- utils.ApiDefaultReturn(http.StatusBadRequest)
+					return
+				}
 
-			// Check cache, this is how we can avoid hefty ratelimits
-			cache := state.Redis.Get(state.Context, "pca-"+strconv.FormatUint(pageNum, 10)).Val()
-			if cache != "" {
-				w.Header().Add("X-Popplio-Cached", "true")
-				w.Write([]byte(cache))
-				return
-			}
+				// Check cache, this is how we can avoid hefty ratelimits
+				cache := state.Redis.Get(ctx, "pca-"+strconv.FormatUint(pageNum, 10)).Val()
+				if cache != "" {
+					resp <- types.HttpResponse{
+						Data: cache,
+						Headers: map[string]string{
+							"X-Popplio-Cached": "true",
+						},
+					}
+					return
+				}
 
-			limit := perPage
-			offset := (pageNum - 1) * perPage
+				limit := perPage
+				offset := (pageNum - 1) * perPage
 
-			rows, err := state.Pool.Query(state.Context, "SELECT "+packCols+" FROM packs ORDER BY date DESC LIMIT $1 OFFSET $2", limit, offset)
-
-			if err != nil {
-				state.Logger.Error(err)
-				utils.ApiDefaultReturn(http.StatusInternalServerError, w, r)
-				return
-			}
-
-			var packs []*types.BotPack
-
-			err = pgxscan.ScanAll(&packs, rows)
-
-			if err != nil {
-				state.Logger.Error(err)
-				utils.ApiDefaultReturn(http.StatusInternalServerError, w, r)
-				return
-			}
-
-			for _, pack := range packs {
-				err := utils.ResolveBotPack(state.Context, state.Pool, pack, state.Discord, state.Redis)
+				rows, err := state.Pool.Query(ctx, "SELECT "+packCols+" FROM packs ORDER BY date DESC LIMIT $1 OFFSET $2", limit, offset)
 
 				if err != nil {
 					state.Logger.Error(err)
-					utils.ApiDefaultReturn(http.StatusInternalServerError, w, r)
+					resp <- utils.ApiDefaultReturn(http.StatusInternalServerError)
 					return
 				}
-			}
 
-			var previous strings.Builder
+				var packs []*types.BotPack
 
-			// More optimized string concat
-			previous.WriteString(os.Getenv("SITE_URL"))
-			previous.WriteString("/packs/all?page=")
-			previous.WriteString(strconv.FormatUint(pageNum-1, 10))
+				err = pgxscan.ScanAll(&packs, rows)
 
-			if pageNum-1 < 1 || pageNum == 0 {
-				previous.Reset()
-			}
+				if err != nil {
+					state.Logger.Error(err)
+					resp <- utils.ApiDefaultReturn(http.StatusInternalServerError)
+					return
+				}
 
-			var count uint64
+				for _, pack := range packs {
+					err := utils.ResolveBotPack(ctx, state.Pool, pack, state.Discord, state.Redis)
 
-			err = state.Pool.QueryRow(state.Context, "SELECT COUNT(*) FROM packs").Scan(&count)
+					if err != nil {
+						state.Logger.Error(err)
+						resp <- utils.ApiDefaultReturn(http.StatusInternalServerError)
+						return
+					}
+				}
 
-			if err != nil {
-				state.Logger.Error(err)
-				utils.ApiDefaultReturn(http.StatusInternalServerError, w, r)
-				return
-			}
+				var previous strings.Builder
 
-			var next strings.Builder
+				// More optimized string concat
+				previous.WriteString(os.Getenv("SITE_URL"))
+				previous.WriteString("/packs/all?page=")
+				previous.WriteString(strconv.FormatUint(pageNum-1, 10))
 
-			next.WriteString(os.Getenv("SITE_URL"))
-			next.WriteString("/packs/all?page=")
-			next.WriteString(strconv.FormatUint(pageNum+1, 10))
+				if pageNum-1 < 1 || pageNum == 0 {
+					previous.Reset()
+				}
 
-			if float64(pageNum+1) > math.Ceil(float64(count)/perPage) {
-				next.Reset()
-			}
+				var count uint64
 
-			data := types.AllPacks{
-				Count:    count,
-				Results:  packs,
-				PerPage:  perPage,
-				Previous: previous.String(),
-				Next:     next.String(),
-			}
+				err = state.Pool.QueryRow(ctx, "SELECT COUNT(*) FROM packs").Scan(&count)
 
-			bytes, err := json.Marshal(data)
+				if err != nil {
+					state.Logger.Error(err)
+					resp <- utils.ApiDefaultReturn(http.StatusInternalServerError)
+					return
+				}
 
-			if err != nil {
-				state.Logger.Error(err)
-				utils.ApiDefaultReturn(http.StatusInternalServerError, w, r)
-				return
-			}
+				var next strings.Builder
 
-			state.Redis.Set(state.Context, "pca-"+strconv.FormatUint(pageNum, 10), bytes, 2*time.Minute)
+				next.WriteString(os.Getenv("SITE_URL"))
+				next.WriteString("/packs/all?page=")
+				next.WriteString(strconv.FormatUint(pageNum+1, 10))
 
-			w.Write(bytes)
+				if float64(pageNum+1) > math.Ceil(float64(count)/perPage) {
+					next.Reset()
+				}
+
+				data := types.AllPacks{
+					Count:    count,
+					Results:  packs,
+					PerPage:  perPage,
+					Previous: previous.String(),
+					Next:     next.String(),
+				}
+
+				resp <- types.HttpResponse{
+					Json:      data,
+					CacheKey:  "pca-" + strconv.FormatUint(pageNum, 10),
+					CacheTime: 2 * time.Minute,
+				}
+			}()
+
+			utils.Respond(ctx, w, resp)
 		})
 	})
 }

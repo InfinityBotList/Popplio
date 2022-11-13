@@ -41,74 +41,76 @@ func (b Router) Routes(r *chi.Mux) {
 			AuthType:    []string{"User"},
 		})
 		r.Get("/", func(w http.ResponseWriter, r *http.Request) {
-			rows, err := state.Pool.Query(state.Context, "SELECT "+announcementCols+" FROM announcements ORDER BY id DESC")
+			ctx := r.Context()
 
-			if err != nil {
-				state.Logger.Error("Could not", err)
-				utils.ApiDefaultReturn(http.StatusNotFound, w, r)
-				return
-			}
+			resp := make(chan types.HttpResponse)
 
-			var announcements []types.Announcement
+			go func() {
+				rows, err := state.Pool.Query(ctx, "SELECT "+announcementCols+" FROM announcements ORDER BY id DESC")
 
-			err = pgxscan.ScanAll(&announcements, rows)
-
-			if err != nil {
-				state.Logger.Error(err)
-				utils.ApiDefaultReturn(http.StatusNotFound, w, r)
-				return
-			}
-
-			// Auth header check
-			auth := r.Header.Get("Authorization")
-
-			var target types.UserID
-
-			if auth != "" {
-				targetId := utils.AuthCheck(auth, false)
-
-				if targetId != nil {
-					state.Logger.Error(err)
-					utils.ApiDefaultReturn(http.StatusUnauthorized, w, r)
+				if err != nil {
+					state.Logger.Error("Could not", err)
+					resp <- utils.ApiDefaultReturn(http.StatusNotFound)
 					return
 				}
 
-				target = types.UserID{UserID: *targetId}
-			} else {
-				target = types.UserID{}
-			}
+				var announcements []types.Announcement
 
-			annList := []types.Announcement{}
+				err = pgxscan.ScanAll(&announcements, rows)
 
-			for _, announcement := range announcements {
-				if announcement.Status == "private" {
-					// Staff only
-					continue
+				if err != nil {
+					state.Logger.Error(err)
+					resp <- utils.ApiDefaultReturn(http.StatusNotFound)
+					return
 				}
 
-				if announcement.Targetted {
-					// Check auth header
-					if target.UserID != announcement.Target.String {
+				// Auth header check
+				auth := r.Header.Get("Authorization")
+
+				var target types.UserID
+
+				if auth != "" {
+					targetId := utils.AuthCheck(auth, false)
+
+					if targetId != nil {
+						state.Logger.Error(err)
+						resp <- utils.ApiDefaultReturn(http.StatusUnauthorized)
+						return
+					}
+
+					target = types.UserID{UserID: *targetId}
+				} else {
+					target = types.UserID{}
+				}
+
+				annList := []types.Announcement{}
+
+				for _, announcement := range announcements {
+					if announcement.Status == "private" {
+						// Staff only
 						continue
 					}
+
+					if announcement.Targetted {
+						// Check auth header
+						if target.UserID != announcement.Target.String {
+							continue
+						}
+					}
+
+					annList = append(annList, announcement)
 				}
 
-				annList = append(annList, announcement)
-			}
+				annListObj := types.AnnouncementList{
+					Announcements: annList,
+				}
 
-			annListObj := types.AnnouncementList{
-				Announcements: annList,
-			}
+				resp <- types.HttpResponse{
+					Json: annListObj,
+				}
+			}()
 
-			bytes, err := json.Marshal(annListObj)
-
-			if err != nil {
-				state.Logger.Error(err)
-				utils.ApiDefaultReturn(http.StatusInternalServerError, w, r)
-				return
-			}
-
-			w.Write(bytes)
+			utils.Respond(ctx, w, resp)
 		})
 	})
 }

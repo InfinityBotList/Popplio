@@ -2,7 +2,6 @@ package utils
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"math/rand"
 	"net/http"
@@ -23,6 +22,7 @@ import (
 	"github.com/jackc/pgtype"
 	"github.com/jackc/pgx/v4"
 	"github.com/jackc/pgx/v4/pgxpool"
+	jsoniter "github.com/json-iterator/go"
 	"go.uber.org/zap"
 )
 
@@ -30,6 +30,8 @@ var (
 	userBotColsArr = GetCols(types.UserBot{})
 	// These are the columns of a userbot object
 	userBotCols = strings.Join(userBotColsArr, ",")
+
+	json = jsoniter.ConfigCompatibleWithStandardLibrary
 )
 
 func IsNone(s string) bool {
@@ -464,23 +466,43 @@ func GetVoteData(ctx context.Context, userID, botID string) (*types.UserVote, er
 	return &voteParsed, nil
 }
 
-func ApiDefaultReturn(statusCode int, w http.ResponseWriter, r *http.Request) {
+func ApiDefaultReturn(statusCode int) types.HttpResponse {
 	switch statusCode {
 	case http.StatusUnauthorized:
-		w.WriteHeader(http.StatusUnauthorized)
-		w.Write([]byte(constants.Unauthorized))
+		return types.HttpResponse{
+			Status: statusCode,
+			Data:   constants.Unauthorized,
+		}
 	case http.StatusNotFound:
-		w.WriteHeader(http.StatusNotFound)
-		w.Write([]byte(constants.NotFound))
+		return types.HttpResponse{
+			Status: statusCode,
+			Data:   constants.NotFound,
+		}
 	case http.StatusBadRequest:
-		w.WriteHeader(http.StatusBadRequest)
-		w.Write([]byte(constants.BadRequest))
+		return types.HttpResponse{
+			Status: statusCode,
+			Data:   constants.BadRequest,
+		}
 	case http.StatusInternalServerError:
-		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte(constants.InternalError))
+		return types.HttpResponse{
+			Status: statusCode,
+			Data:   constants.InternalError,
+		}
 	case http.StatusMethodNotAllowed:
-		w.WriteHeader(http.StatusMethodNotAllowed)
-		w.Write([]byte(constants.MethodNotAllowed))
+		return types.HttpResponse{
+			Status: statusCode,
+			Data:   constants.MethodNotAllowed,
+		}
+	case http.StatusOK:
+		return types.HttpResponse{
+			Status: statusCode,
+			Data:   constants.Success,
+		}
+	}
+
+	return types.HttpResponse{
+		Status: statusCode,
+		Data:   constants.InternalError,
 	}
 }
 
@@ -534,5 +556,79 @@ func AuthCheck(token string, bot bool) *string {
 			}
 			return &id.String
 		}
+	}
+}
+
+func Respond(ctx context.Context, w http.ResponseWriter, data chan types.HttpResponse) {
+	select {
+	case <-ctx.Done():
+		return
+	case msg, ok := <-data:
+		if !ok {
+			w.WriteHeader(http.StatusInternalServerError)
+			w.Write([]byte(constants.InternalError))
+		}
+
+		if msg.Stub {
+			return // Already handled
+		}
+
+		if msg.Redirect != "" {
+			msg.Headers = map[string]string{
+				"Location":     msg.Redirect,
+				"Content-Type": "text/html; charset=utf-8",
+			}
+			msg.Data = "<a href=\"" + msg.Redirect + "\">Found</a>.\n"
+			msg.Status = http.StatusFound
+		}
+
+		if len(msg.Headers) > 0 {
+			for k, v := range msg.Headers {
+				w.Header().Set(k, v)
+			}
+		}
+
+		if msg.Json != nil {
+			bytes, err := json.Marshal(msg.Json)
+
+			if err != nil {
+				state.Logger.Error(err)
+				w.WriteHeader(http.StatusInternalServerError)
+				w.Write([]byte(constants.InternalError))
+				return
+			}
+
+			// JSON needs this explicitly to avoid calling WriteHeader twice
+			if msg.Status == 0 {
+				w.WriteHeader(http.StatusOK)
+			} else {
+				w.WriteHeader(msg.Status)
+			}
+
+			w.Write(bytes)
+
+			if msg.CacheKey != "" {
+				go func() {
+					err := state.Redis.Set(state.Context, msg.CacheKey, bytes, msg.CacheTime)
+
+					if err != nil {
+						state.Logger.Error(err)
+					}
+				}()
+			}
+		}
+
+		if msg.Status == 0 {
+			w.WriteHeader(http.StatusOK)
+		} else {
+			w.WriteHeader(msg.Status)
+		}
+
+		if len(msg.Bytes) > 0 {
+			w.Write(msg.Bytes)
+		}
+
+		w.Write([]byte(msg.Data))
+		return
 	}
 }

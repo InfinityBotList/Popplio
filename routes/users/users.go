@@ -77,76 +77,77 @@ func (b Router) Routes(r *chi.Mux) {
 			AuthType: []string{"User", "Bot"},
 		})
 		r.Get("/{uid}/bots/{bid}/votes", func(w http.ResponseWriter, r *http.Request) {
-			var vars = map[string]string{
-				"uid": chi.URLParam(r, "uid"),
-				"bid": chi.URLParam(r, "bid"),
-			}
+			ctx := r.Context()
+			resp := make(chan types.HttpResponse)
 
-			userAuth := strings.HasPrefix(r.Header.Get("Authorization"), "User ")
+			go func() {
+				var vars = map[string]string{
+					"uid": chi.URLParam(r, "uid"),
+					"bid": chi.URLParam(r, "bid"),
+				}
 
-			var botId pgtype.Text
-			var botType pgtype.Text
+				userAuth := strings.HasPrefix(r.Header.Get("Authorization"), "User ")
 
-			if r.Header.Get("Authorization") == "" {
-				utils.ApiDefaultReturn(http.StatusUnauthorized, w, r)
-				return
-			}
+				var botId pgtype.Text
+				var botType pgtype.Text
 
-			var err error
-
-			if userAuth {
-				uid := utils.AuthCheck(r.Header.Get("Authorization"), false)
-
-				if uid == nil || *uid != vars["uid"] {
-					utils.ApiDefaultReturn(http.StatusUnauthorized, w, r)
+				if r.Header.Get("Authorization") == "" {
+					resp <- utils.ApiDefaultReturn(http.StatusUnauthorized)
 					return
 				}
 
-				err = state.Pool.QueryRow(state.Context, "SELECT bot_id FROM bots WHERE (bot_id = $1 OR vanity = $1 OR name = $1)", vars["bid"]).Scan(&botId)
+				var err error
 
-				if err != nil || botId.Status != pgtype.Present {
+				if userAuth {
+					uid := utils.AuthCheck(r.Header.Get("Authorization"), false)
+
+					if uid == nil || *uid != vars["uid"] {
+						resp <- utils.ApiDefaultReturn(http.StatusUnauthorized)
+						return
+					}
+
+					err = state.Pool.QueryRow(ctx, "SELECT bot_id FROM bots WHERE (bot_id = $1 OR vanity = $1 OR name = $1)", vars["bid"]).Scan(&botId)
+
+					if err != nil || botId.Status != pgtype.Present {
+						state.Logger.Error(err)
+						resp <- utils.ApiDefaultReturn(http.StatusNotFound)
+						return
+					}
+
+					vars["bid"] = botId.String
+				} else {
+					err = state.Pool.QueryRow(ctx, "SELECT bot_id, type FROM bots WHERE (vanity = $1 OR bot_id = $1 OR name = $1)", vars["bid"]).Scan(&botId, &botType)
+
+					if err != nil || botId.Status != pgtype.Present || botType.Status != pgtype.Present {
+						state.Logger.Error(err)
+						resp <- utils.ApiDefaultReturn(http.StatusNotFound)
+						return
+					}
+
+					id := utils.AuthCheck(r.Header.Get("Authorization"), true)
+
+					if id == nil || *id != vars["bid"] {
+						resp <- utils.ApiDefaultReturn(http.StatusUnauthorized)
+						return
+					}
+
+					vars["bid"] = botId.String
+				}
+
+				voteParsed, err := utils.GetVoteData(ctx, vars["uid"], vars["bid"])
+
+				if err != nil {
 					state.Logger.Error(err)
-					utils.ApiDefaultReturn(http.StatusNotFound, w, r)
+					resp <- utils.ApiDefaultReturn(http.StatusInternalServerError)
 					return
 				}
 
-				vars["bid"] = botId.String
-			} else {
-				err = state.Pool.QueryRow(state.Context, "SELECT bot_id, type FROM bots WHERE (vanity = $1 OR bot_id = $1 OR name = $1)", vars["bid"]).Scan(&botId, &botType)
-
-				if err != nil || botId.Status != pgtype.Present || botType.Status != pgtype.Present {
-					state.Logger.Error(err)
-					utils.ApiDefaultReturn(http.StatusNotFound, w, r)
-					return
+				resp <- types.HttpResponse{
+					Json: voteParsed,
 				}
+			}()
 
-				id := utils.AuthCheck(r.Header.Get("Authorization"), true)
-
-				if id == nil || *id != vars["bid"] {
-					utils.ApiDefaultReturn(http.StatusUnauthorized, w, r)
-					return
-				}
-
-				vars["bid"] = botId.String
-			}
-
-			voteParsed, err := utils.GetVoteData(state.Context, vars["uid"], vars["bid"])
-
-			if err != nil {
-				state.Logger.Error(err)
-				utils.ApiDefaultReturn(http.StatusInternalServerError, w, r)
-				return
-			}
-
-			bytes, err := json.Marshal(voteParsed)
-
-			if err != nil {
-				state.Logger.Error(err)
-				utils.ApiDefaultReturn(http.StatusInternalServerError, w, r)
-				return
-			}
-
-			w.Write(bytes)
+			utils.Respond(ctx, w, resp)
 		})
 
 		docs.Route(&docs.Doc{
@@ -176,247 +177,256 @@ func (b Router) Routes(r *chi.Mux) {
 			AuthType: []string{"User"},
 		})
 		r.Put("/{uid}/bots/{bid}/votes", func(w http.ResponseWriter, r *http.Request) {
-			var vars = map[string]string{
-				"uid": chi.URLParam(r, "uid"),
-				"bid": chi.URLParam(r, "bid"),
-			}
+			ctx := r.Context()
+			resp := make(chan types.HttpResponse)
 
-			if !strings.HasPrefix(r.Header.Get("Authorization"), "User ") {
-				utils.ApiDefaultReturn(http.StatusNotFound, w, r)
-				return
-			}
-
-			var botId pgtype.Text
-			var botType pgtype.Text
-
-			if r.Header.Get("Authorization") == "" {
-				utils.ApiDefaultReturn(http.StatusUnauthorized, w, r)
-				return
-			}
-
-			uid := utils.AuthCheck(r.Header.Get("Authorization"), false)
-
-			if uid == nil || *uid != vars["uid"] {
-				utils.ApiDefaultReturn(http.StatusUnauthorized, w, r)
-				return
-			}
-
-			var voteBannedState bool
-
-			err := state.Pool.QueryRow(state.Context, "SELECT vote_banned FROM users WHERE user_id = $1", uid).Scan(&voteBannedState)
-
-			if err != nil {
-				state.Logger.Error(err)
-				utils.ApiDefaultReturn(http.StatusInternalServerError, w, r)
-				return
-			}
-
-			if voteBannedState {
-				w.WriteHeader(http.StatusForbidden)
-				w.Write([]byte(constants.VoteBanned))
-				return
-			}
-
-			var voteBannedBotsState bool
-
-			err = state.Pool.QueryRow(state.Context, "SELECT bot_id, type, vote_banned FROM bots WHERE (bot_id = $1 OR vanity = $1 OR name = $1)", vars["bid"]).Scan(&botId, &botType, &voteBannedBotsState)
-
-			if err != nil {
-				state.Logger.Error(err)
-				utils.ApiDefaultReturn(http.StatusInternalServerError, w, r)
-				return
-			}
-
-			if voteBannedBotsState {
-				w.WriteHeader(http.StatusForbidden)
-				w.Write([]byte(constants.VoteBanned))
-				return
-			}
-
-			vars["bid"] = botId.String
-
-			if botType.String != "approved" {
-				w.WriteHeader(http.StatusBadRequest)
-				w.Write([]byte(constants.NotApproved))
-				return
-			}
-
-			voteParsed, err := utils.GetVoteData(state.Context, vars["uid"], vars["bid"])
-
-			if err != nil {
-				state.Logger.Error(err)
-				utils.ApiDefaultReturn(http.StatusInternalServerError, w, r)
-				return
-			}
-
-			if voteParsed.HasVoted {
-				timeElapsed := time.Now().UnixMilli() - voteParsed.LastVoteTime
-				state.Logger.Info(timeElapsed)
-
-				timeToWait := int64(utils.GetVoteTime())*60*60*1000 - timeElapsed
-
-				timeToWaitTime := (time.Duration(timeToWait) * time.Millisecond)
-
-				hours := timeToWaitTime / time.Hour
-				mins := (timeToWaitTime - (hours * time.Hour)) / time.Minute
-				secs := (timeToWaitTime - (hours*time.Hour + mins*time.Minute)) / time.Second
-
-				timeStr := fmt.Sprintf("%02d hours, %02d minutes. %02d seconds", hours, mins, secs)
-
-				var alreadyVotedMsg = types.ApiError{
-					Message: "Please wait " + timeStr + " before voting again",
-					Error:   true,
+			go func() {
+				var vars = map[string]string{
+					"uid": chi.URLParam(r, "uid"),
+					"bid": chi.URLParam(r, "bid"),
 				}
 
-				bytes, err := json.Marshal(alreadyVotedMsg)
-
-				if err != nil {
-					state.Logger.Error(err)
-					utils.ApiDefaultReturn(http.StatusInternalServerError, w, r)
+				if !strings.HasPrefix(r.Header.Get("Authorization"), "User ") {
+					resp <- utils.ApiDefaultReturn(http.StatusNotFound)
 					return
 				}
 
-				w.WriteHeader(http.StatusBadRequest)
-				w.Write(bytes)
-				return
-			}
+				var botId pgtype.Text
+				var botType pgtype.Text
 
-			// Record new vote
-			var itag pgtype.UUID
-			err = state.Pool.QueryRow(state.Context, "INSERT INTO votes (user_id, bot_id) VALUES ($1, $2) RETURNING itag", vars["uid"], vars["bid"]).Scan(&itag)
+				if r.Header.Get("Authorization") == "" {
+					resp <- utils.ApiDefaultReturn(http.StatusUnauthorized)
+					return
+				}
 
-			if err != nil {
-				// Revert vote
-				_, err := state.Pool.Exec(state.Context, "DELETE FROM votes WHERE itag = $1", itag)
-				state.Logger.Error(err)
-				utils.ApiDefaultReturn(http.StatusInternalServerError, w, r)
-				return
-			}
+				uid := utils.AuthCheck(r.Header.Get("Authorization"), false)
 
-			var oldVotes pgtype.Int4
+				if uid == nil || *uid != vars["uid"] {
+					resp <- utils.ApiDefaultReturn(http.StatusUnauthorized)
+					return
+				}
 
-			err = state.Pool.QueryRow(state.Context, "SELECT votes FROM bots WHERE bot_id = $1", vars["bid"]).Scan(&oldVotes)
+				var voteBannedState bool
 
-			if err != nil {
-				// Revert vote
-				_, err := state.Pool.Exec(state.Context, "DELETE FROM votes WHERE itag = $1", itag)
+				err := state.Pool.QueryRow(ctx, "SELECT vote_banned FROM users WHERE user_id = $1", uid).Scan(&voteBannedState)
 
-				state.Logger.Error(err)
-				utils.ApiDefaultReturn(http.StatusInternalServerError, w, r)
-				return
-			}
+				if err != nil {
+					state.Logger.Error(err)
+					resp <- utils.ApiDefaultReturn(http.StatusInternalServerError)
+					return
+				}
 
-			var incr = 1
-			var votes = oldVotes.Int
+				if voteBannedState {
+					resp <- types.HttpResponse{
+						Status: http.StatusForbidden,
+						Data:   constants.VoteBanned,
+					}
+					return
+				}
 
-			if utils.GetDoubleVote() {
-				incr = 2
-				votes += 2
-			} else {
-				votes++
-			}
+				var voteBannedBotsState bool
 
-			_, err = state.Pool.Exec(state.Context, "UPDATE bots SET votes = votes + $1 WHERE bot_id = $2", incr, vars["bid"])
+				err = state.Pool.QueryRow(ctx, "SELECT bot_id, type, vote_banned FROM bots WHERE (bot_id = $1 OR vanity = $1 OR name = $1)", vars["bid"]).Scan(&botId, &botType, &voteBannedBotsState)
 
-			if err != nil {
-				// Revert vote
-				_, err := state.Pool.Exec(state.Context, "DELETE FROM votes WHERE itag = $1", itag)
+				if err != nil {
+					state.Logger.Error(err)
+					resp <- utils.ApiDefaultReturn(http.StatusInternalServerError)
+					return
+				}
 
-				state.Logger.Error(err)
-				utils.ApiDefaultReturn(http.StatusInternalServerError, w, r)
-				return
-			}
+				if voteBannedBotsState {
+					resp <- types.HttpResponse{
+						Status: http.StatusForbidden,
+						Data:   constants.VoteBanned,
+					}
+					return
+				}
 
-			userObj, err := utils.GetDiscordUser(vars["uid"])
+				vars["bid"] = botId.String
 
-			if err != nil {
-				// Revert vote
-				_, err := state.Pool.Exec(state.Context, "DELETE FROM votes WHERE itag = $1", itag)
+				if botType.String != "approved" {
+					resp <- types.HttpResponse{
+						Status: http.StatusBadRequest,
+						Data:   constants.NotApproved,
+					}
+					return
+				}
 
-				state.Logger.Error(err)
-				utils.ApiDefaultReturn(http.StatusInternalServerError, w, r)
-				return
-			}
+				voteParsed, err := utils.GetVoteData(ctx, vars["uid"], vars["bid"])
 
-			botObj, err := utils.GetDiscordUser(vars["bid"])
+				if err != nil {
+					state.Logger.Error(err)
+					resp <- utils.ApiDefaultReturn(http.StatusInternalServerError)
+					return
+				}
 
-			if err != nil {
-				// Revert vote
-				_, err := state.Pool.Exec(state.Context, "DELETE FROM votes WHERE itag = $1", itag)
+				if voteParsed.HasVoted {
+					timeElapsed := time.Now().UnixMilli() - voteParsed.LastVoteTime
+					state.Logger.Info(timeElapsed)
 
-				state.Logger.Error(err)
-				utils.ApiDefaultReturn(http.StatusInternalServerError, w, r)
-				return
-			}
+					timeToWait := int64(utils.GetVoteTime())*60*60*1000 - timeElapsed
 
-			channel := os.Getenv("VOTE_LOGS_CHANNEL")
+					timeToWaitTime := (time.Duration(timeToWait) * time.Millisecond)
 
-			state.Discord.ChannelMessageSendComplex(channel, &discordgo.MessageSend{
-				Embeds: []*discordgo.MessageEmbed{
-					{
-						URL: "https://botlist.site/" + vars["bid"],
-						Thumbnail: &discordgo.MessageEmbedThumbnail{
-							URL: botObj.Avatar,
-						},
-						Title:       "🎉 Vote Count Updated!",
-						Description: ":heart:" + userObj.Username + "#" + userObj.Discriminator + " has voted for " + botObj.Username,
-						Color:       0x8A6BFD,
-						Fields: []*discordgo.MessageEmbedField{
-							{
-								Name:   "Vote Count:",
-								Value:  strconv.Itoa(int(votes)),
-								Inline: true,
+					hours := timeToWaitTime / time.Hour
+					mins := (timeToWaitTime - (hours * time.Hour)) / time.Minute
+					secs := (timeToWaitTime - (hours*time.Hour + mins*time.Minute)) / time.Second
+
+					timeStr := fmt.Sprintf("%02d hours, %02d minutes. %02d seconds", hours, mins, secs)
+
+					var alreadyVotedMsg = types.ApiError{
+						Message: "Please wait " + timeStr + " before voting again",
+						Error:   true,
+					}
+
+					resp <- types.HttpResponse{
+						Status: http.StatusBadRequest,
+						Json:   alreadyVotedMsg,
+					}
+
+					return
+				}
+
+				// Record new vote
+				var itag pgtype.UUID
+				err = state.Pool.QueryRow(ctx, "INSERT INTO votes (user_id, bot_id) VALUES ($1, $2) RETURNING itag", vars["uid"], vars["bid"]).Scan(&itag)
+
+				if err != nil {
+					// Revert vote
+					_, err := state.Pool.Exec(ctx, "DELETE FROM votes WHERE itag = $1", itag)
+					state.Logger.Error(err)
+					resp <- utils.ApiDefaultReturn(http.StatusInternalServerError)
+					return
+				}
+
+				var oldVotes pgtype.Int4
+
+				err = state.Pool.QueryRow(ctx, "SELECT votes FROM bots WHERE bot_id = $1", vars["bid"]).Scan(&oldVotes)
+
+				if err != nil {
+					// Revert vote
+					_, err := state.Pool.Exec(ctx, "DELETE FROM votes WHERE itag = $1", itag)
+
+					state.Logger.Error(err)
+					resp <- utils.ApiDefaultReturn(http.StatusInternalServerError)
+					return
+				}
+
+				var incr = 1
+				var votes = oldVotes.Int
+
+				if utils.GetDoubleVote() {
+					incr = 2
+					votes += 2
+				} else {
+					votes++
+				}
+
+				_, err = state.Pool.Exec(ctx, "UPDATE bots SET votes = votes + $1 WHERE bot_id = $2", incr, vars["bid"])
+
+				if err != nil {
+					// Revert vote
+					_, err := state.Pool.Exec(ctx, "DELETE FROM votes WHERE itag = $1", itag)
+
+					state.Logger.Error(err)
+					resp <- utils.ApiDefaultReturn(http.StatusInternalServerError)
+					return
+				}
+
+				userObj, err := utils.GetDiscordUser(vars["uid"])
+
+				if err != nil {
+					// Revert vote
+					_, err := state.Pool.Exec(ctx, "DELETE FROM votes WHERE itag = $1", itag)
+
+					state.Logger.Error(err)
+					resp <- utils.ApiDefaultReturn(http.StatusInternalServerError)
+					return
+				}
+
+				botObj, err := utils.GetDiscordUser(vars["bid"])
+
+				if err != nil {
+					// Revert vote
+					_, err := state.Pool.Exec(ctx, "DELETE FROM votes WHERE itag = $1", itag)
+
+					state.Logger.Error(err)
+					resp <- utils.ApiDefaultReturn(http.StatusInternalServerError)
+					return
+				}
+
+				channel := os.Getenv("VOTE_LOGS_CHANNEL")
+
+				state.Discord.ChannelMessageSendComplex(channel, &discordgo.MessageSend{
+					Embeds: []*discordgo.MessageEmbed{
+						{
+							URL: "https://botlist.site/" + vars["bid"],
+							Thumbnail: &discordgo.MessageEmbedThumbnail{
+								URL: botObj.Avatar,
 							},
-							{
-								Name:   "User ID:",
-								Value:  userObj.ID,
-								Inline: true,
-							},
-							{
-								Name:   "Vote Page",
-								Value:  "[View " + botObj.Username + "](https://botlist.site/" + vars["bid"] + ")",
-								Inline: true,
-							},
-							{
-								Name:   "Vote Page",
-								Value:  "[Vote for " + botObj.Username + "](https://botlist.site/" + vars["bid"] + "/vote)",
-								Inline: true,
+							Title:       "🎉 Vote Count Updated!",
+							Description: ":heart:" + userObj.Username + "#" + userObj.Discriminator + " has voted for " + botObj.Username,
+							Color:       0x8A6BFD,
+							Fields: []*discordgo.MessageEmbedField{
+								{
+									Name:   "Vote Count:",
+									Value:  strconv.Itoa(int(votes)),
+									Inline: true,
+								},
+								{
+									Name:   "User ID:",
+									Value:  userObj.ID,
+									Inline: true,
+								},
+								{
+									Name:   "Vote Page",
+									Value:  "[View " + botObj.Username + "](https://botlist.site/" + vars["bid"] + ")",
+									Inline: true,
+								},
+								{
+									Name:   "Vote Page",
+									Value:  "[Vote for " + botObj.Username + "](https://botlist.site/" + vars["bid"] + "/vote)",
+									Inline: true,
+								},
 							},
 						},
 					},
-				},
-			})
-
-			// Send webhook in a goroutine refunding the vote if it failed
-			go func() {
-				err = webhooks.Send(types.WebhookPost{
-					BotID:  vars["bid"],
-					UserID: vars["uid"],
-					Votes:  int(votes),
 				})
 
-				if err != nil {
-					state.Pool.Exec(
-						state.Context,
-						"INSERT INTO notifications (user_id, url, message, type) VALUES ($1, $2, $3, $4)",
-						vars["uid"],
-						"https://infinitybots.gg/bots/"+vars["bid"],
-						"Whoa there! We've failed to notify this bot about this vote. The error was: "+err.Error()+".",
-						"error")
-				} else {
-					state.Pool.Exec(
-						state.Context,
-						"INSERT INTO notifications (user_id, url, message, type) VALUES ($1, $2, $3, $4)",
-						vars["uid"],
-						"https://infinitybots.gg/bots/"+vars["bid"],
-						"state.Successfully voted for bot with ID of "+vars["bid"],
-						"info",
-					)
+				// Send webhook in a goroutine refunding the vote if it failed
+				go func() {
+					err = webhooks.Send(types.WebhookPost{
+						BotID:  vars["bid"],
+						UserID: vars["uid"],
+						Votes:  int(votes),
+					})
+
+					if err != nil {
+						state.Pool.Exec(
+							ctx,
+							"INSERT INTO notifications (user_id, url, message, type) VALUES ($1, $2, $3, $4)",
+							vars["uid"],
+							"https://infinitybots.gg/bots/"+vars["bid"],
+							"Whoa there! We've failed to notify this bot about this vote. The error was: "+err.Error()+".",
+							"error")
+					} else {
+						state.Pool.Exec(
+							ctx,
+							"INSERT INTO notifications (user_id, url, message, type) VALUES ($1, $2, $3, $4)",
+							vars["uid"],
+							"https://infinitybots.gg/bots/"+vars["bid"],
+							"state.Successfully voted for bot with ID of "+vars["bid"],
+							"info",
+						)
+					}
+				}()
+
+				resp <- types.HttpResponse{
+					Status: http.StatusNoContent,
 				}
 			}()
 
-			w.WriteHeader(http.StatusOK)
-			w.Write([]byte(constants.Success))
+			utils.Respond(ctx, w, resp)
 		})
 
 		docs.Route(&docs.Doc{
@@ -438,54 +448,61 @@ func (b Router) Routes(r *chi.Mux) {
 			Tags: []string{tagName},
 		})
 		r.Get("/{id}/seo", func(w http.ResponseWriter, r *http.Request) {
-			name := chi.URLParam(r, "id")
+			ctx := r.Context()
+			resp := make(chan types.HttpResponse)
 
-			if name == "" {
-				utils.ApiDefaultReturn(http.StatusBadRequest, w, r)
-				return
-			}
+			go func() {
+				name := chi.URLParam(r, "id")
 
-			cache := state.Redis.Get(state.Context, "seou:"+name).Val()
-			if cache != "" {
-				w.Header().Add("X-Popplio-Cached", "true")
-				w.Write([]byte(cache))
-				return
-			}
+				if name == "" {
+					resp <- utils.ApiDefaultReturn(http.StatusBadRequest)
+					return
+				}
 
-			var about string
-			var userId string
-			err := state.Pool.QueryRow(state.Context, "SELECT about, user_id FROM users WHERE user_id = $1 OR username = $1", name).Scan(&about, &userId)
+				cache := state.Redis.Get(ctx, "seou:"+name).Val()
+				if cache != "" {
+					resp <- types.HttpResponse{
+						Data: cache,
+						Headers: map[string]string{
+							"X-Popplio-Cached": "true",
+						},
+					}
+					return
+				}
 
-			if err != nil {
-				state.Logger.Error(err)
-				utils.ApiDefaultReturn(http.StatusNotFound, w, r)
-				return
-			}
+				var about string
+				var userId string
+				err := state.Pool.QueryRow(ctx, "SELECT about, user_id FROM users WHERE user_id = $1 OR username = $1", name).Scan(&about, &userId)
 
-			user, err := utils.GetDiscordUser(userId)
+				if err != nil {
+					state.Logger.Error(err)
+					resp <- utils.ApiDefaultReturn(http.StatusNotFound)
+					return
+				}
 
-			if err != nil {
-				state.Logger.Error(err)
-				utils.ApiDefaultReturn(http.StatusInternalServerError, w, r)
-				return
-			}
+				user, err := utils.GetDiscordUser(userId)
 
-			bytes, err := json.Marshal(types.SEO{
-				ID:       user.ID,
-				Username: user.Username,
-				Avatar:   user.Avatar,
-				Short:    about,
-			})
+				if err != nil {
+					state.Logger.Error(err)
+					resp <- utils.ApiDefaultReturn(http.StatusInternalServerError)
+					return
+				}
 
-			if err != nil {
-				state.Logger.Error(err)
-				utils.ApiDefaultReturn(http.StatusInternalServerError, w, r)
-				return
-			}
+				seo := types.SEO{
+					ID:       user.ID,
+					Username: user.Username,
+					Avatar:   user.Avatar,
+					Short:    about,
+				}
 
-			state.Redis.Set(state.Context, "seou:"+name, string(bytes), time.Minute*30)
+				resp <- types.HttpResponse{
+					Json:      seo,
+					CacheKey:  "seou:" + name,
+					CacheTime: 30 * time.Minute,
+				}
+			}()
 
-			w.Write(bytes)
+			utils.Respond(ctx, w, resp)
 		})
 
 		docs.Route(&docs.Doc{
@@ -498,19 +515,20 @@ func (b Router) Routes(r *chi.Mux) {
 			Tags:        []string{tagName},
 		})
 		r.Get("/notifications/info", func(w http.ResponseWriter, r *http.Request) {
-			data := types.NotificationInfo{
-				PublicKey: os.Getenv("VAPID_PUBLIC_KEY"),
-			}
+			ctx := r.Context()
+			resp := make(chan types.HttpResponse)
 
-			bytes, err := json.Marshal(data)
+			go func() {
+				data := types.NotificationInfo{
+					PublicKey: os.Getenv("VAPID_PUBLIC_KEY"),
+				}
 
-			if err != nil {
-				state.Logger.Error(err)
-				utils.ApiDefaultReturn(http.StatusInternalServerError, w, r)
-				return
-			}
+				resp <- types.HttpResponse{
+					Json: data,
+				}
+			}()
 
-			w.Write(bytes)
+			utils.Respond(ctx, w, resp)
 		})
 
 		docs.Route(&docs.Doc{
@@ -532,94 +550,95 @@ func (b Router) Routes(r *chi.Mux) {
 			Tags: []string{tagName},
 		})
 		r.Get("/{id}/notifications", func(w http.ResponseWriter, r *http.Request) {
-			var id = chi.URLParam(r, "id")
+			ctx := r.Context()
+			resp := make(chan types.HttpResponse)
 
-			if id == "" {
-				utils.ApiDefaultReturn(http.StatusBadRequest, w, r)
-				return
-			}
+			go func() {
+				var id = chi.URLParam(r, "id")
 
-			// Fetch auth from postgresdb
-			if r.Header.Get("Authorization") == "" {
-				utils.ApiDefaultReturn(http.StatusUnauthorized, w, r)
-				return
-			} else {
-				authId := utils.AuthCheck(r.Header.Get("Authorization"), false)
-
-				if authId == nil || *authId != id {
-					utils.ApiDefaultReturn(http.StatusUnauthorized, w, r)
+				if id == "" {
+					resp <- utils.ApiDefaultReturn(http.StatusBadRequest)
 					return
 				}
-			}
 
-			var subscription []types.NotifGet
+				// Fetch auth from postgresdb
+				if r.Header.Get("Authorization") == "" {
+					resp <- utils.ApiDefaultReturn(http.StatusUnauthorized)
+					return
+				} else {
+					authId := utils.AuthCheck(r.Header.Get("Authorization"), false)
 
-			var subscriptionDb []struct {
-				Endpoint  string    `db:"endpoint"`
-				NotifID   string    `db:"notif_id"`
-				CreatedAt time.Time `db:"created_at"`
-				UA        string    `db:"ua"`
-			}
-
-			rows, err := state.Pool.Query(state.Context, "SELECT endpoint, notif_id, created_at, ua FROM poppypaw WHERE id = $1", id)
-
-			if err != nil {
-				state.Logger.Error(err)
-				utils.ApiDefaultReturn(http.StatusInternalServerError, w, r)
-				return
-			}
-
-			err = pgxscan.ScanAll(&subscriptionDb, rows)
-
-			if err != nil {
-				state.Logger.Error(err)
-				utils.ApiDefaultReturn(http.StatusInternalServerError, w, r)
-				return
-			}
-
-			if len(subscriptionDb) == 0 {
-				utils.ApiDefaultReturn(http.StatusNotFound, w, r)
-				return
-			}
-
-			for _, sub := range subscriptionDb {
-				uaD := ua.Parse(sub.UA)
-				state.Logger.With(
-					zap.String("endpoint", sub.Endpoint),
-					zap.String("notif_id", sub.NotifID),
-					zap.Time("created_at", sub.CreatedAt),
-					zap.String("ua", sub.UA),
-					zap.Any("browser", uaD),
-				).Info("Parsed UA")
-
-				binfo := types.NotifBrowserInfo{
-					OS:         uaD.OS,
-					Browser:    uaD.Name,
-					BrowserVer: uaD.Version,
-					Mobile:     uaD.Mobile,
+					if authId == nil || *authId != id {
+						resp <- utils.ApiDefaultReturn(http.StatusUnauthorized)
+						return
+					}
 				}
 
-				subscription = append(subscription, types.NotifGet{
-					Endpoint:    sub.Endpoint,
-					NotifID:     sub.NotifID,
-					CreatedAt:   sub.CreatedAt,
-					BrowserInfo: binfo,
-				})
-			}
+				var subscription []types.NotifGet
 
-			sublist := types.NotifGetList{
-				Notifications: subscription,
-			}
+				var subscriptionDb []struct {
+					Endpoint  string    `db:"endpoint"`
+					NotifID   string    `db:"notif_id"`
+					CreatedAt time.Time `db:"created_at"`
+					UA        string    `db:"ua"`
+				}
 
-			bytes, err := json.Marshal(sublist)
+				rows, err := state.Pool.Query(ctx, "SELECT endpoint, notif_id, created_at, ua FROM poppypaw WHERE id = $1", id)
 
-			if err != nil {
-				state.Logger.Error(err)
-				utils.ApiDefaultReturn(http.StatusInternalServerError, w, r)
-				return
-			}
+				if err != nil {
+					state.Logger.Error(err)
+					resp <- utils.ApiDefaultReturn(http.StatusInternalServerError)
+					return
+				}
 
-			w.Write(bytes)
+				err = pgxscan.ScanAll(&subscriptionDb, rows)
+
+				if err != nil {
+					state.Logger.Error(err)
+					resp <- utils.ApiDefaultReturn(http.StatusInternalServerError)
+					return
+				}
+
+				if len(subscriptionDb) == 0 {
+					resp <- utils.ApiDefaultReturn(http.StatusNotFound)
+					return
+				}
+
+				for _, sub := range subscriptionDb {
+					uaD := ua.Parse(sub.UA)
+					state.Logger.With(
+						zap.String("endpoint", sub.Endpoint),
+						zap.String("notif_id", sub.NotifID),
+						zap.Time("created_at", sub.CreatedAt),
+						zap.String("ua", sub.UA),
+						zap.Any("browser", uaD),
+					).Info("Parsed UA")
+
+					binfo := types.NotifBrowserInfo{
+						OS:         uaD.OS,
+						Browser:    uaD.Name,
+						BrowserVer: uaD.Version,
+						Mobile:     uaD.Mobile,
+					}
+
+					subscription = append(subscription, types.NotifGet{
+						Endpoint:    sub.Endpoint,
+						NotifID:     sub.NotifID,
+						CreatedAt:   sub.CreatedAt,
+						BrowserInfo: binfo,
+					})
+				}
+
+				sublist := types.NotifGetList{
+					Notifications: subscription,
+				}
+
+				resp <- types.HttpResponse{
+					Json: sublist,
+				}
+			}()
+
+			utils.Respond(ctx, w, resp)
 		})
 
 		docs.Route(&docs.Doc{
@@ -648,41 +667,50 @@ func (b Router) Routes(r *chi.Mux) {
 			Tags: []string{tagName},
 		})
 		r.Delete("/{id}/notification", func(w http.ResponseWriter, r *http.Request) {
-			var id = chi.URLParam(r, "id")
+			ctx := r.Context()
+			resp := make(chan types.HttpResponse)
 
-			if id == "" {
-				utils.ApiDefaultReturn(http.StatusBadRequest, w, r)
-				return
-			}
+			go func() {
+				var id = chi.URLParam(r, "id")
 
-			// Fetch auth from postgresdb
-			if r.Header.Get("Authorization") == "" {
-				utils.ApiDefaultReturn(http.StatusUnauthorized, w, r)
-				return
-			} else {
-				authId := utils.AuthCheck(r.Header.Get("Authorization"), false)
-
-				if authId == nil || *authId != id {
-					utils.ApiDefaultReturn(http.StatusUnauthorized, w, r)
+				if id == "" {
+					resp <- utils.ApiDefaultReturn(http.StatusBadRequest)
 					return
 				}
-			}
 
-			// Delete the notif
-			if r.URL.Query().Get("notif_id") == "" {
-				utils.ApiDefaultReturn(http.StatusBadRequest, w, r)
-				return
-			}
+				// Check for notif_id
+				if r.URL.Query().Get("notif_id") == "" {
+					resp <- utils.ApiDefaultReturn(http.StatusBadRequest)
+					return
+				}
 
-			_, err := state.Pool.Exec(state.Context, "DELETE FROM poppypaw WHERE id = $1 AND notif_id = $2", id, r.URL.Query().Get("notif_id"))
+				// Fetch auth from postgresdb
+				if r.Header.Get("Authorization") == "" {
+					resp <- utils.ApiDefaultReturn(http.StatusUnauthorized)
+					return
+				} else {
+					authId := utils.AuthCheck(r.Header.Get("Authorization"), false)
 
-			if err != nil {
-				state.Logger.Error(err)
-				utils.ApiDefaultReturn(http.StatusInternalServerError, w, r)
-				return
-			}
+					if authId == nil || *authId != id {
+						resp <- utils.ApiDefaultReturn(http.StatusUnauthorized)
+						return
+					}
+				}
 
-			w.Write([]byte(constants.Success))
+				_, err := state.Pool.Exec(ctx, "DELETE FROM poppypaw WHERE id = $1 AND notif_id = $2", id, r.URL.Query().Get("notif_id"))
+
+				if err != nil {
+					state.Logger.Error(err)
+					resp <- utils.ApiDefaultReturn(http.StatusInternalServerError)
+					return
+				}
+
+				resp <- types.HttpResponse{
+					Status: http.StatusNoContent,
+				}
+			}()
+
+			utils.Respond(ctx, w, resp)
 		})
 
 		docs.Route(&docs.Doc{
@@ -704,83 +732,84 @@ func (b Router) Routes(r *chi.Mux) {
 			Tags: []string{tagName},
 		})
 		r.Get("/{id}/reminders", func(w http.ResponseWriter, r *http.Request) {
-			var id = chi.URLParam(r, "id")
+			ctx := r.Context()
+			resp := make(chan types.HttpResponse)
 
-			if id == "" {
-				utils.ApiDefaultReturn(http.StatusBadRequest, w, r)
-				return
-			}
+			go func() {
+				var id = chi.URLParam(r, "id")
 
-			// Fetch auth from postgresdb
-			if r.Header.Get("Authorization") == "" {
-				utils.ApiDefaultReturn(http.StatusUnauthorized, w, r)
-				return
-			} else {
-				authId := utils.AuthCheck(r.Header.Get("Authorization"), false)
-
-				if authId == nil || *authId != id {
-					utils.ApiDefaultReturn(http.StatusUnauthorized, w, r)
+				if id == "" {
+					resp <- utils.ApiDefaultReturn(http.StatusBadRequest)
 					return
 				}
-			}
 
-			// Fetch reminder from postgres
-			rows, err := state.Pool.Query(state.Context, "SELECT "+silverpeltCols+" FROM silverpelt WHERE user_id = $1", id)
-
-			if err != nil {
-				state.Logger.Error(err)
-				utils.ApiDefaultReturn(http.StatusInternalServerError, w, r)
-				return
-			}
-
-			var reminders []types.Reminder
-
-			pgxscan.ScanAll(&reminders, rows)
-
-			if err != nil {
-				state.Logger.Error(err)
-				utils.ApiDefaultReturn(http.StatusInternalServerError, w, r)
-				return
-			}
-
-			if len(reminders) == 0 {
-				utils.ApiDefaultReturn(http.StatusNotFound, w, r)
-				return
-			}
-
-			for i, reminder := range reminders {
-				// Try resolving the bot from discord API
-				var resolvedBot types.ResolvedReminderBot
-				bot, err := utils.GetDiscordUser(reminder.BotID)
-
-				if err != nil {
-					resolvedBot = types.ResolvedReminderBot{
-						Name:   "Unknown",
-						Avatar: "https://cdn.discordapp.com/embed/avatars/0.png",
-					}
+				// Fetch auth from postgresdb
+				if r.Header.Get("Authorization") == "" {
+					resp <- utils.ApiDefaultReturn(http.StatusUnauthorized)
+					return
 				} else {
-					resolvedBot = types.ResolvedReminderBot{
-						Name:   bot.Username,
-						Avatar: bot.Avatar,
+					authId := utils.AuthCheck(r.Header.Get("Authorization"), false)
+
+					if authId == nil || *authId != id {
+						resp <- utils.ApiDefaultReturn(http.StatusUnauthorized)
+						return
 					}
 				}
 
-				reminders[i].ResolvedBot = resolvedBot
-			}
+				// Fetch reminder from postgres
+				rows, err := state.Pool.Query(ctx, "SELECT "+silverpeltCols+" FROM silverpelt WHERE user_id = $1", id)
 
-			reminderList := types.ReminderList{
-				Reminders: reminders,
-			}
+				if err != nil {
+					state.Logger.Error(err)
+					resp <- utils.ApiDefaultReturn(http.StatusInternalServerError)
+					return
+				}
 
-			bytes, err := json.Marshal(reminderList)
+				var reminders []types.Reminder
 
-			if err != nil {
-				state.Logger.Error(err)
-				utils.ApiDefaultReturn(http.StatusInternalServerError, w, r)
-				return
-			}
+				pgxscan.ScanAll(&reminders, rows)
 
-			w.Write(bytes)
+				if err != nil {
+					state.Logger.Error(err)
+					resp <- utils.ApiDefaultReturn(http.StatusInternalServerError)
+					return
+				}
+
+				if len(reminders) == 0 {
+					resp <- utils.ApiDefaultReturn(http.StatusNotFound)
+					return
+				}
+
+				for i, reminder := range reminders {
+					// Try resolving the bot from discord API
+					var resolvedBot types.ResolvedReminderBot
+					bot, err := utils.GetDiscordUser(reminder.BotID)
+
+					if err != nil {
+						resolvedBot = types.ResolvedReminderBot{
+							Name:   "Unknown",
+							Avatar: "https://cdn.discordapp.com/embed/avatars/0.png",
+						}
+					} else {
+						resolvedBot = types.ResolvedReminderBot{
+							Name:   bot.Username,
+							Avatar: bot.Avatar,
+						}
+					}
+
+					reminders[i].ResolvedBot = resolvedBot
+				}
+
+				reminderList := types.ReminderList{
+					Reminders: reminders,
+				}
+
+				resp <- types.HttpResponse{
+					Json: reminderList,
+				}
+			}()
+
+			utils.Respond(ctx, w, resp)
 		})
 
 		docs.Route(&docs.Doc{
@@ -809,40 +838,49 @@ func (b Router) Routes(r *chi.Mux) {
 			Tags: []string{tagName},
 		})
 		r.Delete("/{id}/reminder", func(w http.ResponseWriter, r *http.Request) {
-			var id = chi.URLParam(r, "id")
+			ctx := r.Context()
+			resp := make(chan types.HttpResponse)
 
-			if id == "" {
-				utils.ApiDefaultReturn(http.StatusBadRequest, w, r)
-				return
-			}
+			go func() {
+				var id = chi.URLParam(r, "id")
 
-			// Fetch auth from postgres
-			if r.Header.Get("Authorization") == "" {
-				utils.ApiDefaultReturn(http.StatusUnauthorized, w, r)
-				return
-			} else {
-				authId := utils.AuthCheck(r.Header.Get("Authorization"), false)
-
-				if authId == nil || *authId != id {
-					utils.ApiDefaultReturn(http.StatusUnauthorized, w, r)
+				if id == "" {
+					resp <- utils.ApiDefaultReturn(http.StatusBadRequest)
 					return
 				}
-			}
 
-			var botId pgtype.Text
+				// Fetch auth from postgres
+				if r.Header.Get("Authorization") == "" {
+					resp <- utils.ApiDefaultReturn(http.StatusUnauthorized)
+					return
+				} else {
+					authId := utils.AuthCheck(r.Header.Get("Authorization"), false)
 
-			err := state.Pool.QueryRow(state.Context, "SELECT bot_id FROM bots WHERE (vanity = $1 OR bot_id = $1 OR name = $1)", r.URL.Query().Get("bot_id")).Scan(&botId)
+					if authId == nil || *authId != id {
+						resp <- utils.ApiDefaultReturn(http.StatusUnauthorized)
+						return
+					}
+				}
 
-			if err != nil || botId.Status != pgtype.Present || botId.String == "" {
-				state.Logger.Error("Error deleting reminder: ", err)
-				utils.ApiDefaultReturn(http.StatusNotFound, w, r)
-				return
-			}
+				var botId pgtype.Text
 
-			// Delete old
-			state.Pool.Exec(state.Context, "DELETE FROM silverpelt WHERE user_id = $1 AND bot_id = $2", id, botId.String)
+				err := state.Pool.QueryRow(ctx, "SELECT bot_id FROM bots WHERE (vanity = $1 OR bot_id = $1 OR name = $1)", r.URL.Query().Get("bot_id")).Scan(&botId)
 
-			w.Write([]byte(constants.Success))
+				if err != nil || botId.Status != pgtype.Present || botId.String == "" {
+					state.Logger.Error("Error deleting reminder: ", err)
+					resp <- utils.ApiDefaultReturn(http.StatusNotFound)
+					return
+				}
+
+				// Delete old
+				state.Pool.Exec(ctx, "DELETE FROM silverpelt WHERE user_id = $1 AND bot_id = $2", id, botId.String)
+
+				resp <- types.HttpResponse{
+					Status: http.StatusNoContent,
+				}
+			}()
+
+			utils.Respond(ctx, w, resp)
 		})
 
 		docs.Route(&docs.Doc{
@@ -871,49 +909,58 @@ func (b Router) Routes(r *chi.Mux) {
 			Tags: []string{tagName},
 		})
 		r.Put("/{id}/reminders", func(w http.ResponseWriter, r *http.Request) {
-			var id = chi.URLParam(r, "id")
+			ctx := r.Context()
+			resp := make(chan types.HttpResponse)
 
-			if id == "" {
-				utils.ApiDefaultReturn(http.StatusBadRequest, w, r)
-				return
-			}
+			go func() {
+				var id = chi.URLParam(r, "id")
 
-			// Fetch auth from postgres
-			if r.Header.Get("Authorization") == "" {
-				utils.ApiDefaultReturn(http.StatusUnauthorized, w, r)
-				return
-			} else {
-				authId := utils.AuthCheck(r.Header.Get("Authorization"), false)
-
-				if authId == nil || *authId != id {
-					utils.ApiDefaultReturn(http.StatusUnauthorized, w, r)
+				if id == "" {
+					resp <- utils.ApiDefaultReturn(http.StatusBadRequest)
 					return
 				}
-			}
 
-			var botId pgtype.Text
+				// Fetch auth from postgres
+				if r.Header.Get("Authorization") == "" {
+					resp <- utils.ApiDefaultReturn(http.StatusUnauthorized)
+					return
+				} else {
+					authId := utils.AuthCheck(r.Header.Get("Authorization"), false)
 
-			err := state.Pool.QueryRow(state.Context, "SELECT bot_id FROM bots WHERE (vanity = $1 OR bot_id = $1 OR name = $1)", r.URL.Query().Get("bot_id")).Scan(&botId)
+					if authId == nil || *authId != id {
+						resp <- utils.ApiDefaultReturn(http.StatusUnauthorized)
+						return
+					}
+				}
 
-			if err != nil || botId.Status != pgtype.Present || botId.String == "" {
-				state.Logger.Error("Error adding reminder: ", err)
-				utils.ApiDefaultReturn(http.StatusNotFound, w, r)
-				return
-			}
+				var botId pgtype.Text
 
-			// Delete old
-			state.Pool.Exec(state.Context, "DELETE FROM silverpelt WHERE user_id = $1 AND bot_id = $2", id, botId.String)
+				err := state.Pool.QueryRow(ctx, "SELECT bot_id FROM bots WHERE (vanity = $1 OR bot_id = $1 OR name = $1)", r.URL.Query().Get("bot_id")).Scan(&botId)
 
-			// Add new
-			_, err = state.Pool.Exec(state.Context, "INSERT INTO silverpelt (user_id, bot_id) VALUES ($1, $2)", id, botId.String)
+				if err != nil || botId.Status != pgtype.Present || botId.String == "" {
+					state.Logger.Error("Error adding reminder: ", err)
+					resp <- utils.ApiDefaultReturn(http.StatusNotFound)
+					return
+				}
 
-			if err != nil {
-				state.Logger.Error("Error adding reminder: ", err)
-				utils.ApiDefaultReturn(http.StatusNotFound, w, r)
-				return
-			}
+				// Delete old
+				state.Pool.Exec(ctx, "DELETE FROM silverpelt WHERE user_id = $1 AND bot_id = $2", id, botId.String)
 
-			w.Write([]byte(constants.Success))
+				// Add new
+				_, err = state.Pool.Exec(ctx, "INSERT INTO silverpelt (user_id, bot_id) VALUES ($1, $2)", id, botId.String)
+
+				if err != nil {
+					state.Logger.Error("Error adding reminder: ", err)
+					resp <- utils.ApiDefaultReturn(http.StatusNotFound)
+					return
+				}
+
+				resp <- types.HttpResponse{
+					Status: http.StatusNoContent,
+				}
+			}()
+
+			utils.Respond(ctx, w, resp)
 		})
 
 		docs.Route(&docs.Doc{
@@ -936,82 +983,91 @@ func (b Router) Routes(r *chi.Mux) {
 			Tags: []string{tagName},
 		})
 		r.Post("/{id}/sub", func(w http.ResponseWriter, r *http.Request) {
-			var subscription types.UserSubscription
+			ctx := r.Context()
+			resp := make(chan types.HttpResponse)
 
-			var id = chi.URLParam(r, "id")
+			go func() {
+				var subscription types.UserSubscription
 
-			if id == "" {
-				utils.ApiDefaultReturn(http.StatusBadRequest, w, r)
-				return
-			}
+				var id = chi.URLParam(r, "id")
 
-			defer r.Body.Close()
-
-			bodyBytes, err := io.ReadAll(r.Body)
-
-			if err != nil {
-				state.Logger.Error(err)
-				utils.ApiDefaultReturn(http.StatusInternalServerError, w, r)
-				return
-			}
-
-			err = json.Unmarshal(bodyBytes, &subscription)
-
-			if err != nil {
-				state.Logger.Error(err)
-				utils.ApiDefaultReturn(http.StatusInternalServerError, w, r)
-				return
-			}
-
-			if subscription.Auth == "" || subscription.P256dh == "" {
-				utils.ApiDefaultReturn(http.StatusBadRequest, w, r)
-				return
-			}
-
-			// Fetch auth from postgres
-			if r.Header.Get("Authorization") == "" {
-				utils.ApiDefaultReturn(http.StatusUnauthorized, w, r)
-				return
-			} else {
-				authId := utils.AuthCheck(r.Header.Get("Authorization"), false)
-
-				if authId == nil || *authId != id {
-					state.Logger.Error(err)
-					utils.ApiDefaultReturn(http.StatusUnauthorized, w, r)
+				if id == "" {
+					resp <- utils.ApiDefaultReturn(http.StatusBadRequest)
 					return
 				}
-			}
 
-			// Store new subscription
+				defer r.Body.Close()
 
-			notifId := utils.RandString(512)
+				bodyBytes, err := io.ReadAll(r.Body)
 
-			ua := r.UserAgent()
+				if err != nil {
+					state.Logger.Error(err)
+					resp <- utils.ApiDefaultReturn(http.StatusInternalServerError)
+					return
+				}
 
-			if ua == "" {
-				ua = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/80.0.3987.149 Safari/537.36"
-			}
+				err = json.Unmarshal(bodyBytes, &subscription)
 
-			state.Pool.Exec(state.Context, "DELETE FROM poppypaw WHERE id = $1 AND endpoint = $2", id, subscription.Endpoint)
+				if err != nil {
+					state.Logger.Error(err)
+					resp <- utils.ApiDefaultReturn(http.StatusInternalServerError)
+					return
+				}
 
-			state.Pool.Exec(
-				state.Context,
-				"INSERT INTO poppypaw (id, notif_id, auth, p256dh,  endpoint, ua) VALUES ($1, $2, $3, $4, $5, $6)",
-				id,
-				notifId,
-				subscription.Auth,
-				subscription.P256dh,
-				subscription.Endpoint,
-				ua,
-			)
+				if subscription.Auth == "" || subscription.P256dh == "" {
+					resp <- utils.ApiDefaultReturn(http.StatusBadRequest)
+					return
+				}
 
-			// Fan out test notification
-			notifications.NotifChannel <- types.Notification{
-				NotifID: notifId,
-				Message: []byte(constants.TestNotif),
-			}
+				// Fetch auth from postgres
+				if r.Header.Get("Authorization") == "" {
+					resp <- utils.ApiDefaultReturn(http.StatusUnauthorized)
+					return
+				} else {
+					authId := utils.AuthCheck(r.Header.Get("Authorization"), false)
 
-			w.Write([]byte(constants.Success))
+					if authId == nil || *authId != id {
+						state.Logger.Error(err)
+						resp <- utils.ApiDefaultReturn(http.StatusUnauthorized)
+						return
+					}
+				}
+
+				// Store new subscription
+
+				notifId := utils.RandString(512)
+
+				ua := r.UserAgent()
+
+				if ua == "" {
+					ua = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/80.0.3987.149 Safari/537.36"
+				}
+
+				state.Pool.Exec(ctx, "DELETE FROM poppypaw WHERE id = $1 AND endpoint = $2", id, subscription.Endpoint)
+
+				state.Pool.Exec(
+					ctx,
+					"INSERT INTO poppypaw (id, notif_id, auth, p256dh,  endpoint, ua) VALUES ($1, $2, $3, $4, $5, $6)",
+					id,
+					notifId,
+					subscription.Auth,
+					subscription.P256dh,
+					subscription.Endpoint,
+					ua,
+				)
+
+				// Fan out test notification
+				notifications.NotifChannel <- types.Notification{
+					NotifID: notifId,
+					Message: []byte(constants.TestNotif),
+				}
+
+				resp <- types.HttpResponse{
+					Status: http.StatusNoContent,
+				}
+			}()
+
+			utils.Respond(ctx, w, resp)
 		})
 
 		docs.Route(&docs.Doc{
@@ -1034,58 +1090,71 @@ func (b Router) Routes(r *chi.Mux) {
 			Tags: []string{tagName},
 		})
 		r.Patch("/{id}", func(w http.ResponseWriter, r *http.Request) {
-			id := chi.URLParam(r, "id")
+			ctx := r.Context()
+			resp := make(chan types.HttpResponse)
 
-			// Fetch auth from postgresdb
-			if r.Header.Get("Authorization") == "" {
-				utils.ApiDefaultReturn(http.StatusUnauthorized, w, r)
-				return
-			} else {
-				authId := utils.AuthCheck(r.Header.Get("Authorization"), false)
+			go func() {
+				id := chi.URLParam(r, "id")
 
-				if authId == nil || *authId != id {
-					utils.ApiDefaultReturn(http.StatusUnauthorized, w, r)
+				// Fetch auth from postgresdb
+				if r.Header.Get("Authorization") == "" {
+					resp <- utils.ApiDefaultReturn(http.StatusUnauthorized)
 					return
-				}
-			}
+				} else {
+					authId := utils.AuthCheck(r.Header.Get("Authorization"), false)
 
-			// Fetch profile update from body
-			var profile types.ProfileUpdate
-
-			bodyBytes, err := io.ReadAll(r.Body)
-
-			if err != nil {
-				state.Logger.Error(err)
-				utils.ApiDefaultReturn(http.StatusInternalServerError, w, r)
-				return
-			}
-
-			err = json.Unmarshal(bodyBytes, &profile)
-
-			if err != nil {
-				state.Logger.Error(err)
-				utils.ApiDefaultReturn(http.StatusInternalServerError, w, r)
-				return
-			}
-
-			if profile.About != "" {
-				if len(profile.About) > 1000 {
-					w.Write([]byte(`{"error":true,"message": "About me is over 1000 characters!"}`))
-					w.WriteHeader(http.StatusBadRequest)
-					return
+					if authId == nil || *authId != id {
+						resp <- utils.ApiDefaultReturn(http.StatusUnauthorized)
+						return
+					}
 				}
 
-				// Update about
-				_, err = state.Pool.Exec(state.Context, "UPDATE users SET about = $1 WHERE user_id = $2", profile.About, id)
+				// Fetch profile update from body
+				var profile types.ProfileUpdate
+
+				bodyBytes, err := io.ReadAll(r.Body)
 
 				if err != nil {
 					state.Logger.Error(err)
-					utils.ApiDefaultReturn(http.StatusInternalServerError, w, r)
+					resp <- utils.ApiDefaultReturn(http.StatusInternalServerError)
 					return
 				}
-			}
 
-			state.Redis.Del(state.Context, "uc-"+id)
+				err = json.Unmarshal(bodyBytes, &profile)
+
+				if err != nil {
+					state.Logger.Error(err)
+					resp <- utils.ApiDefaultReturn(http.StatusInternalServerError)
+					return
+				}
+
+				if profile.About != "" {
+					if len(profile.About) > 1000 {
+						resp <- types.HttpResponse{
+							Status: http.StatusBadRequest,
+							Data:   `{"error":true,"message": "About me is over 1000 characters!"}`,
+						}
+						return
+					}
+
+					// Update about
+					_, err = state.Pool.Exec(ctx, "UPDATE users SET about = $1 WHERE user_id = $2", profile.About, id)
+
+					if err != nil {
+						state.Logger.Error(err)
+						resp <- utils.ApiDefaultReturn(http.StatusInternalServerError)
+						return
+					}
+				}
+
+				state.Redis.Del(ctx, "uc-"+id)
+
+				resp <- types.HttpResponse{
+					Status: http.StatusNoContent,
+				}
+			}()
+
+			utils.Respond(ctx, w, resp)
 		})
 
 		docs.Route(&docs.Doc{
@@ -1107,71 +1176,79 @@ func (b Router) Routes(r *chi.Mux) {
 			Tags: []string{tagName},
 		})
 		r.Get("/{id}", func(w http.ResponseWriter, r *http.Request) {
-			name := chi.URLParam(r, "id")
+			ctx := r.Context()
+			resp := make(chan types.HttpResponse)
 
-			if name == "" {
-				utils.ApiDefaultReturn(http.StatusBadRequest, w, r)
-				return
-			}
+			go func() {
+				name := chi.URLParam(r, "id")
 
-			if name == "undefined" {
-				w.Write([]byte(`{"error":"false","message":"Handling known issue"}`))
-				return
-			}
+				if name == "" {
+					resp <- utils.ApiDefaultReturn(http.StatusBadRequest)
+					return
+				}
 
-			// Check cache, this is how we can avoid hefty ratelimits
-			cache := state.Redis.Get(state.Context, "uc-"+name).Val()
-			if cache != "" {
-				w.Header().Add("X-Popplio-Cached", "true")
-				w.Write([]byte(cache))
-				return
-			}
+				if name == "undefined" {
+					resp <- types.HttpResponse{
+						Status: http.StatusOK,
+						Data:   `{"error":"false","message":"Handling known issue"}`,
+					}
+					return
+				}
 
-			var user types.User
+				// Check cache, this is how we can avoid hefty ratelimits
+				cache := state.Redis.Get(ctx, "uc-"+name).Val()
+				if cache != "" {
+					resp <- types.HttpResponse{
+						Data: cache,
+						Headers: map[string]string{
+							"X-Popplio-Cached": "true",
+						},
+					}
+					return
+				}
 
-			var err error
+				var user types.User
 
-			row, err := state.Pool.Query(state.Context, "SELECT "+userCols+" FROM users WHERE user_id = $1 OR username = $1", name)
+				var err error
 
-			if err != nil {
-				state.Logger.Error(err)
-				utils.ApiDefaultReturn(http.StatusNotFound, w, r)
-				return
-			}
+				row, err := state.Pool.Query(ctx, "SELECT "+userCols+" FROM users WHERE user_id = $1 OR username = $1", name)
 
-			err = pgxscan.ScanOne(&user, row)
+				if err != nil {
+					state.Logger.Error(err)
+					resp <- utils.ApiDefaultReturn(http.StatusNotFound)
+					return
+				}
 
-			if err != nil {
-				state.Logger.Error(err)
-				utils.ApiDefaultReturn(http.StatusNotFound, w, r)
-				return
-			}
+				err = pgxscan.ScanOne(&user, row)
 
-			err = utils.ParseUser(state.Context, state.Pool, &user, state.Discord, state.Redis)
+				if err != nil {
+					state.Logger.Error(err)
+					resp <- utils.ApiDefaultReturn(http.StatusNotFound)
+					return
+				}
 
-			if err != nil {
-				state.Logger.Error(err)
-				utils.ApiDefaultReturn(http.StatusInternalServerError, w, r)
-				return
-			}
+				err = utils.ParseUser(ctx, state.Pool, &user, state.Discord, state.Redis)
 
-			/* Removing or modifying fields directly in API is very dangerous as scrapers will
-			 * just ignore owner checks anyways or cross-reference via another list. Also we
-			 * want to respect the permissions of the owner if they're the one giving permission,
-			 * blocking IPs is a better idea to this
-			 */
+				if err != nil {
+					state.Logger.Error(err)
+					resp <- utils.ApiDefaultReturn(http.StatusInternalServerError)
+					return
+				}
 
-			bytes, err := json.Marshal(user)
+				/* Removing or modifying fields directly in API is very dangerous as scrapers will
+				 * just ignore owner checks anyways or cross-reference via another list. Also we
+				 * want to respect the permissions of the owner if they're the one giving permission,
+				 * blocking IPs is a better idea to this
+				 */
 
-			if err != nil {
-				state.Logger.Error(err)
-				utils.ApiDefaultReturn(http.StatusInternalServerError, w, r)
-				return
-			}
+				resp <- types.HttpResponse{
+					Json:      user,
+					CacheKey:  "uc-" + name,
+					CacheTime: 3 * time.Minute,
+				}
+			}()
 
-			state.Redis.Set(state.Context, "uc-"+name, string(bytes), time.Minute*3)
-
-			w.Write(bytes)
+			utils.Respond(ctx, w, resp)
 		})
 	})
 }

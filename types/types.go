@@ -618,3 +618,23 @@ type ReminderList struct {
 type NotificationInfo struct {
 	PublicKey string `json:"public_key"`
 }
+
+type HttpResponse struct {
+	// Data is the data to be sent to the client
+	Data string
+	// Optional, can be used in place of Data
+	Bytes []byte
+	// Json body to be sent to the client
+	Json any
+	// Headers to set
+	Headers map[string]string
+	// Status is the HTTP status code to send
+	Status int
+	// Cache the JSON to redis
+	CacheKey  string
+	CacheTime time.Duration
+	// Redirect to a URL
+	Redirect string
+	// Stub response, just exit
+	Stub bool
+}

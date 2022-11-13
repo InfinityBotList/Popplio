@@ -46,107 +46,113 @@ func (b Router) Routes(r *chi.Mux) {
 			Resp:        types.ListIndex{},
 		})
 		r.Get("/index", func(w http.ResponseWriter, r *http.Request) {
-			// Check cache, this is how we can avoid hefty ratelimits
-			cache := state.Redis.Get(state.Context, "indexcache").Val()
-			if cache != "" {
-				w.Header().Add("X-Popplio-Cached", "true")
-				w.Write([]byte(cache))
-				return
-			}
+			ctx := r.Context()
+			resp := make(chan types.HttpResponse)
 
-			listIndex := types.ListIndex{}
+			go func() {
+				// Check cache, this is how we can avoid hefty ratelimits
+				cache := state.Redis.Get(ctx, "indexcache").Val()
+				if cache != "" {
+					resp <- types.HttpResponse{
+						Data: cache,
+						Headers: map[string]string{
+							"X-Popplio-Cached": "true",
+						},
+					}
+					return
+				}
 
-			certRow, err := state.Pool.Query(state.Context, "SELECT "+indexBotCols+" FROM bots WHERE certified = true AND type = 'approved' ORDER BY votes DESC LIMIT 9")
-			if err != nil {
-				state.Logger.Error(err)
-				utils.ApiDefaultReturn(http.StatusInternalServerError, w, r)
-				return
-			}
+				listIndex := types.ListIndex{}
 
-			certDat := []types.IndexBot{}
-			err = pgxscan.ScanAll(&certDat, certRow)
-			if err != nil {
-				state.Logger.Error(err)
-				utils.ApiDefaultReturn(http.StatusInternalServerError, w, r)
-				return
-			}
-			listIndex.Certified = certDat
+				certRow, err := state.Pool.Query(ctx, "SELECT "+indexBotCols+" FROM bots WHERE certified = true AND type = 'approved' ORDER BY votes DESC LIMIT 9")
+				if err != nil {
+					state.Logger.Error(err)
+					resp <- utils.ApiDefaultReturn(http.StatusInternalServerError)
+					return
+				}
 
-			mostViewedRow, err := state.Pool.Query(state.Context, "SELECT "+indexBotCols+" FROM bots WHERE type = 'approved' ORDER BY clicks DESC LIMIT 9")
-			if err != nil {
-				state.Logger.Error(err)
-				utils.ApiDefaultReturn(http.StatusInternalServerError, w, r)
-				return
-			}
-			mostViewedDat := []types.IndexBot{}
-			err = pgxscan.ScanAll(&mostViewedDat, mostViewedRow)
-			if err != nil {
-				state.Logger.Error(err)
-				utils.ApiDefaultReturn(http.StatusInternalServerError, w, r)
-				return
-			}
-			listIndex.MostViewed = mostViewedDat
+				certDat := []types.IndexBot{}
+				err = pgxscan.ScanAll(&certDat, certRow)
+				if err != nil {
+					state.Logger.Error(err)
+					resp <- utils.ApiDefaultReturn(http.StatusInternalServerError)
+					return
+				}
+				listIndex.Certified = certDat
 
-			recentlyAddedRow, err := state.Pool.Query(state.Context, "SELECT "+indexBotCols+" FROM bots WHERE type = 'approved' ORDER BY date DESC LIMIT 9")
-			if err != nil {
-				state.Logger.Error(err)
-				utils.ApiDefaultReturn(http.StatusInternalServerError, w, r)
-				return
-			}
-			recentlyAddedDat := []types.IndexBot{}
-			err = pgxscan.ScanAll(&recentlyAddedDat, recentlyAddedRow)
-			if err != nil {
-				state.Logger.Error(err)
-				utils.ApiDefaultReturn(http.StatusInternalServerError, w, r)
-				return
-			}
-			listIndex.RecentlyAdded = recentlyAddedDat
+				mostViewedRow, err := state.Pool.Query(ctx, "SELECT "+indexBotCols+" FROM bots WHERE type = 'approved' ORDER BY clicks DESC LIMIT 9")
+				if err != nil {
+					state.Logger.Error(err)
+					resp <- utils.ApiDefaultReturn(http.StatusInternalServerError)
+					return
+				}
+				mostViewedDat := []types.IndexBot{}
+				err = pgxscan.ScanAll(&mostViewedDat, mostViewedRow)
+				if err != nil {
+					state.Logger.Error(err)
+					resp <- utils.ApiDefaultReturn(http.StatusInternalServerError)
+					return
+				}
+				listIndex.MostViewed = mostViewedDat
 
-			topVotedRow, err := state.Pool.Query(state.Context, "SELECT "+indexBotCols+" FROM bots WHERE type = 'approved' ORDER BY votes DESC LIMIT 9")
-			if err != nil {
-				state.Logger.Error(err)
-				utils.ApiDefaultReturn(http.StatusInternalServerError, w, r)
-				return
-			}
-			topVotedDat := []types.IndexBot{}
-			err = pgxscan.ScanAll(&topVotedDat, topVotedRow)
-			if err != nil {
-				state.Logger.Error(err)
-				utils.ApiDefaultReturn(http.StatusInternalServerError, w, r)
-				return
-			}
-			listIndex.TopVoted = topVotedDat
+				recentlyAddedRow, err := state.Pool.Query(ctx, "SELECT "+indexBotCols+" FROM bots WHERE type = 'approved' ORDER BY date DESC LIMIT 9")
+				if err != nil {
+					state.Logger.Error(err)
+					resp <- utils.ApiDefaultReturn(http.StatusInternalServerError)
+					return
+				}
+				recentlyAddedDat := []types.IndexBot{}
+				err = pgxscan.ScanAll(&recentlyAddedDat, recentlyAddedRow)
+				if err != nil {
+					state.Logger.Error(err)
+					resp <- utils.ApiDefaultReturn(http.StatusInternalServerError)
+					return
+				}
+				listIndex.RecentlyAdded = recentlyAddedDat
 
-			rows, err := state.Pool.Query(state.Context, "SELECT "+indexPackCols+" FROM packs ORDER BY date DESC")
+				topVotedRow, err := state.Pool.Query(ctx, "SELECT "+indexBotCols+" FROM bots WHERE type = 'approved' ORDER BY votes DESC LIMIT 9")
+				if err != nil {
+					state.Logger.Error(err)
+					resp <- utils.ApiDefaultReturn(http.StatusInternalServerError)
+					return
+				}
+				topVotedDat := []types.IndexBot{}
+				err = pgxscan.ScanAll(&topVotedDat, topVotedRow)
+				if err != nil {
+					state.Logger.Error(err)
+					resp <- utils.ApiDefaultReturn(http.StatusInternalServerError)
+					return
+				}
+				listIndex.TopVoted = topVotedDat
 
-			if err != nil {
-				state.Logger.Error(err)
-				utils.ApiDefaultReturn(http.StatusInternalServerError, w, r)
-				return
-			}
+				rows, err := state.Pool.Query(ctx, "SELECT "+indexPackCols+" FROM packs ORDER BY date DESC")
 
-			var packs []*types.IndexBotPack
+				if err != nil {
+					state.Logger.Error(err)
+					resp <- utils.ApiDefaultReturn(http.StatusInternalServerError)
+					return
+				}
 
-			err = pgxscan.ScanAll(&packs, rows)
+				var packs []*types.IndexBotPack
 
-			if err != nil {
-				state.Logger.Error(err)
-				utils.ApiDefaultReturn(http.StatusInternalServerError, w, r)
-				return
-			}
+				err = pgxscan.ScanAll(&packs, rows)
 
-			listIndex.Packs = packs
+				if err != nil {
+					state.Logger.Error(err)
+					resp <- utils.ApiDefaultReturn(http.StatusInternalServerError)
+					return
+				}
 
-			bytes, err := json.Marshal(listIndex)
+				listIndex.Packs = packs
 
-			if err != nil {
-				state.Logger.Error(err)
-				utils.ApiDefaultReturn(http.StatusInternalServerError, w, r)
-				return
-			}
+				resp <- types.HttpResponse{
+					Json:      listIndex,
+					CacheKey:  "indexcache",
+					CacheTime: 15 * time.Minute,
+				}
+			}()
 
-			state.Redis.Set(state.Context, "indexcache", string(bytes), 10*time.Minute)
-			w.Write(bytes)
+			utils.Respond(ctx, w, resp)
 		})
 
 		docs.Route(&docs.Doc{
@@ -161,114 +167,115 @@ func (b Router) Routes(r *chi.Mux) {
 			},
 		})
 		r.Get("/stats", func(w http.ResponseWriter, r *http.Request) {
-			listStats := types.ListStats{}
+			ctx := r.Context()
+			resp := make(chan types.HttpResponse)
 
-			bots, err := state.Pool.Query(state.Context, "SELECT bot_id, name, short, type, owner, additional_owners, avatar, certified, claimed FROM bots")
+			go func() {
+				listStats := types.ListStats{}
 
-			if err != nil {
-				state.Logger.Error(err)
-				utils.ApiDefaultReturn(http.StatusInternalServerError, w, r)
-				return
-			}
-
-			defer bots.Close()
-
-			for bots.Next() {
-				var botId string
-				var name string
-				var short string
-				var typeStr string
-				var owner string
-				var additionalOwners []string
-				var avatar string
-				var certified bool
-				var claimed bool
-
-				err := bots.Scan(&botId, &name, &short, &typeStr, &owner, &additionalOwners, &avatar, &certified, &claimed)
+				bots, err := state.Pool.Query(ctx, "SELECT bot_id, name, short, type, owner, additional_owners, avatar, certified, claimed FROM bots")
 
 				if err != nil {
 					state.Logger.Error(err)
-					utils.ApiDefaultReturn(http.StatusInternalServerError, w, r)
+					resp <- utils.ApiDefaultReturn(http.StatusInternalServerError)
 					return
 				}
 
-				listStats.Bots = append(listStats.Bots, types.ListStatsBot{
-					BotID:              botId,
-					Name:               name,
-					Short:              short,
-					Type:               typeStr,
-					AvatarDB:           avatar,
-					MainOwnerID:        owner,
-					AdditionalOwnerIDS: additionalOwners,
-					Certified:          certified,
-					Claimed:            claimed,
-				})
-			}
+				defer bots.Close()
 
-			var activeStaff int64
-			err = state.Pool.QueryRow(state.Context, "SELECT COUNT(*) FROM users WHERE staff = true").Scan(&activeStaff)
+				for bots.Next() {
+					var botId string
+					var name string
+					var short string
+					var typeStr string
+					var owner string
+					var additionalOwners []string
+					var avatar string
+					var certified bool
+					var claimed bool
 
-			if err != nil {
-				state.Logger.Error(err)
-				utils.ApiDefaultReturn(http.StatusInternalServerError, w, r)
-				return
-			}
+					err := bots.Scan(&botId, &name, &short, &typeStr, &owner, &additionalOwners, &avatar, &certified, &claimed)
 
-			listStats.TotalStaff = activeStaff
+					if err != nil {
+						state.Logger.Error(err)
+						resp <- utils.ApiDefaultReturn(http.StatusInternalServerError)
+						return
+					}
 
-			var totalUsers int64
-			err = state.Pool.QueryRow(state.Context, "SELECT COUNT(*) FROM users").Scan(&totalUsers)
+					listStats.Bots = append(listStats.Bots, types.ListStatsBot{
+						BotID:              botId,
+						Name:               name,
+						Short:              short,
+						Type:               typeStr,
+						AvatarDB:           avatar,
+						MainOwnerID:        owner,
+						AdditionalOwnerIDS: additionalOwners,
+						Certified:          certified,
+						Claimed:            claimed,
+					})
+				}
 
-			if err != nil {
-				state.Logger.Error(err)
-				utils.ApiDefaultReturn(http.StatusInternalServerError, w, r)
-				return
-			}
+				var activeStaff int64
+				err = state.Pool.QueryRow(ctx, "SELECT COUNT(*) FROM users WHERE staff = true").Scan(&activeStaff)
 
-			listStats.TotalUsers = totalUsers
+				if err != nil {
+					state.Logger.Error(err)
+					resp <- utils.ApiDefaultReturn(http.StatusInternalServerError)
+					return
+				}
 
-			var totalVotes int64
-			err = state.Pool.QueryRow(state.Context, "SELECT SUM(votes) FROM bots").Scan(&totalVotes)
+				listStats.TotalStaff = activeStaff
 
-			if err != nil {
-				state.Logger.Error(err)
-				utils.ApiDefaultReturn(http.StatusInternalServerError, w, r)
-				return
-			}
+				var totalUsers int64
+				err = state.Pool.QueryRow(ctx, "SELECT COUNT(*) FROM users").Scan(&totalUsers)
 
-			listStats.TotalVotes = totalVotes
+				if err != nil {
+					state.Logger.Error(err)
+					resp <- utils.ApiDefaultReturn(http.StatusInternalServerError)
+					return
+				}
 
-			var totalPacks int64
-			err = state.Pool.QueryRow(state.Context, "SELECT COUNT(*) FROM packs").Scan(&totalPacks)
+				listStats.TotalUsers = totalUsers
 
-			if err != nil {
-				state.Logger.Error(err)
-				utils.ApiDefaultReturn(http.StatusInternalServerError, w, r)
-				return
-			}
+				var totalVotes int64
+				err = state.Pool.QueryRow(ctx, "SELECT SUM(votes) FROM bots").Scan(&totalVotes)
 
-			listStats.TotalPacks = totalPacks
+				if err != nil {
+					state.Logger.Error(err)
+					resp <- utils.ApiDefaultReturn(http.StatusInternalServerError)
+					return
+				}
 
-			var totalTickets int64
-			err = state.Pool.QueryRow(state.Context, "SELECT COUNT(*) FROM transcripts").Scan(&totalTickets)
+				listStats.TotalVotes = totalVotes
 
-			if err != nil {
-				state.Logger.Error(err)
-				utils.ApiDefaultReturn(http.StatusInternalServerError, w, r)
-				return
-			}
+				var totalPacks int64
+				err = state.Pool.QueryRow(ctx, "SELECT COUNT(*) FROM packs").Scan(&totalPacks)
 
-			listStats.TotalTickets = totalTickets
+				if err != nil {
+					state.Logger.Error(err)
+					resp <- utils.ApiDefaultReturn(http.StatusInternalServerError)
+					return
+				}
 
-			bytes, err := json.Marshal(listStats)
+				listStats.TotalPacks = totalPacks
 
-			if err != nil {
-				state.Logger.Error(err)
-				utils.ApiDefaultReturn(http.StatusInternalServerError, w, r)
-				return
-			}
+				var totalTickets int64
+				err = state.Pool.QueryRow(ctx, "SELECT COUNT(*) FROM transcripts").Scan(&totalTickets)
 
-			w.Write(bytes)
+				if err != nil {
+					state.Logger.Error(err)
+					resp <- utils.ApiDefaultReturn(http.StatusInternalServerError)
+					return
+				}
+
+				listStats.TotalTickets = totalTickets
+
+				resp <- types.HttpResponse{
+					Json: listStats,
+				}
+			}()
+
+			utils.Respond(ctx, w, resp)
 		})
 
 		docs.Route(&docs.Doc{
@@ -281,19 +288,20 @@ func (b Router) Routes(r *chi.Mux) {
 			Tags:        []string{tagName},
 		})
 		r.Get("/vote-info", func(w http.ResponseWriter, r *http.Request) {
-			var payload = types.VoteInfo{
-				Weekend: utils.GetDoubleVote(),
-			}
+			ctx := r.Context()
+			resp := make(chan types.HttpResponse)
 
-			b, err := json.Marshal(payload)
+			go func() {
+				var payload = types.VoteInfo{
+					Weekend: utils.GetDoubleVote(),
+				}
 
-			if err != nil {
-				state.Logger.Error(err)
-				utils.ApiDefaultReturn(http.StatusInternalServerError, w, r)
-				return
-			}
+				resp <- types.HttpResponse{
+					Json: payload,
+				}
+			}()
 
-			w.Write(b)
+			utils.Respond(ctx, w, resp)
 		})
 
 		docs.Route(&docs.Doc{
@@ -307,72 +315,73 @@ func (b Router) Routes(r *chi.Mux) {
 			Tags:        []string{tagName},
 		})
 		r.Post("/webhook-test", func(w http.ResponseWriter, r *http.Request) {
-			defer r.Body.Close()
+			ctx := r.Context()
+			resp := make(chan types.HttpResponse)
 
-			var payload types.WebhookPost
+			go func() {
+				defer r.Body.Close()
 
-			bodyBytes, err := io.ReadAll(r.Body)
+				var payload types.WebhookPost
 
-			if err != nil {
-				state.Logger.Error(err)
-				utils.ApiDefaultReturn(http.StatusInternalServerError, w, r)
-				return
-			}
+				bodyBytes, err := io.ReadAll(r.Body)
 
-			err = json.Unmarshal(bodyBytes, &payload)
+				if err != nil {
+					state.Logger.Error(err)
+					resp <- utils.ApiDefaultReturn(http.StatusInternalServerError)
+					return
+				}
 
-			if err != nil {
-				state.Logger.Error(err)
-				utils.ApiDefaultReturn(http.StatusInternalServerError, w, r)
-				return
-			}
+				err = json.Unmarshal(bodyBytes, &payload)
 
-			if utils.IsNone(payload.URL) && utils.IsNone(payload.URL2) {
-				utils.ApiDefaultReturn(http.StatusBadRequest, w, r)
-				return
-			}
+				if err != nil {
+					state.Logger.Error(err)
+					resp <- utils.ApiDefaultReturn(http.StatusInternalServerError)
+					return
+				}
 
-			payload.Test = true // Always true
+				if utils.IsNone(payload.URL) && utils.IsNone(payload.URL2) {
+					resp <- utils.ApiDefaultReturn(http.StatusBadRequest)
+					return
+				}
 
-			var err1 error
+				payload.Test = true // Always true
 
-			if !utils.IsNone(payload.URL) {
-				err1 = webhooks.Send(payload)
-			}
+				var err1 error
 
-			var err2 error
+				if !utils.IsNone(payload.URL) {
+					err1 = webhooks.Send(payload)
+				}
 
-			if !utils.IsNone(payload.URL2) {
-				payload.URL = payload.URL2 // Test second enpdoint if it's not empty
-				err2 = webhooks.Send(payload)
-			}
+				var err2 error
 
-			var errD = types.ApiError{}
+				if !utils.IsNone(payload.URL2) {
+					payload.URL = payload.URL2 // Test second enpdoint if it's not empty
+					err2 = webhooks.Send(payload)
+				}
 
-			if err1 != nil {
-				state.Logger.Error(err1)
+				var errD = types.ApiError{}
 
-				errD.Message = err1.Error()
-				errD.Error = true
-			}
+				if err1 != nil {
+					state.Logger.Error(err1)
 
-			if err2 != nil {
-				state.Logger.Error(err2)
+					errD.Message = err1.Error()
+					errD.Error = true
+				}
 
-				errD.Message += err2.Error()
-				errD.Error = true
-			}
+				if err2 != nil {
+					state.Logger.Error(err2)
 
-			bytes, err := json.Marshal(errD)
+					errD.Message += "|" + err2.Error()
+					errD.Error = true
+				}
 
-			if err != nil {
-				state.Logger.Error(err)
-				utils.ApiDefaultReturn(http.StatusInternalServerError, w, r)
-				return
-			}
+				resp <- types.HttpResponse{
+					Status: http.StatusBadRequest,
+					Json:   errD,
+				}
+			}()
 
-			w.WriteHeader(http.StatusBadRequest)
-			w.Write(bytes)
+			utils.Respond(ctx, w, resp)
 		})
 	})
 }

@@ -11,9 +11,9 @@ import (
 	"net/http"
 	"net/url"
 	"os"
-	"popplio/constants"
 	"popplio/docs"
 	"popplio/state"
+	"popplio/types"
 	"popplio/utils"
 	"strconv"
 	"strings"
@@ -108,160 +108,212 @@ func (b Router) Routes(r *chi.Mux) {
 		Resp:        "[Redirect+Task Creation]",
 	})
 	r.Get("/cosmog", func(w http.ResponseWriter, r *http.Request) {
-		act := r.URL.Query().Get("state")
+		ctx := r.Context()
+		resp := make(chan types.HttpResponse)
 
-		// Split act and hmac
-		actSplit := strings.Split(act, ".")
+		go func() {
+			act := r.URL.Query().Get("state")
 
-		if len(actSplit) != 3 {
-			http.Error(w, "Invalid state", http.StatusBadRequest)
-			return
-		}
+			// Split act and hmac
+			actSplit := strings.Split(act, ".")
 
-		// Check hmac
-		h := hmac.New(sha512.New, []byte(os.Getenv("CLIENT_SECRET")))
-
-		h.Write([]byte(actSplit[0] + "@" + actSplit[2]))
-
-		hmacData := hex.EncodeToString(h.Sum(nil))
-
-		if hmacData != actSplit[1] {
-			http.Error(w, "Invalid state", http.StatusBadRequest)
-			return
-		}
-
-		// Check time
-		ctime, err := strconv.ParseInt(actSplit[0], 10, 64)
-
-		if err != nil {
-			http.Error(w, "Invalid state", http.StatusBadRequest)
-			return
-		}
-
-		if time.Now().Unix()-ctime > 300 {
-			http.Error(w, "Invalid state. HMAC too old", http.StatusBadRequest)
-			return
-		}
-
-		// Remove out the actual action
-		act = actSplit[2]
-
-		// Check code with discords api
-		data := url.Values{}
-
-		data.Set("client_id", os.Getenv("CLIENT_ID"))
-		data.Set("client_secret", os.Getenv("CLIENT_SECRET"))
-		data.Set("grant_type", "authorization_code")
-		data.Set("code", r.URL.Query().Get("code"))
-		data.Set("redirect_uri", os.Getenv("REDIRECT_URL"))
-
-		resp, err := http.PostForm("https://discord.com/api/oauth2/token", data)
-
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-
-		defer resp.Body.Close()
-
-		body, err := io.ReadAll(resp.Body)
-
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-
-		var token struct {
-			AccessToken string `json:"access_token"`
-			Scope       string `json:"scope"`
-		}
-
-		err = json.Unmarshal(body, &token)
-
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-
-		state.Logger.Info(token)
-
-		if !strings.Contains(token.Scope, "identify") {
-			http.Error(w, "Invalid scope: scope contain identify, is currently "+token.Scope, http.StatusBadRequest)
-			return
-		}
-
-		// Get user info
-		req, err := http.NewRequest("GET", "https://discord.com/api/users/@me", nil)
-
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-
-		req.Header.Set("Authorization", "Bearer "+token.AccessToken)
-
-		client := &http.Client{Timeout: time.Second * 10}
-
-		resp, err = client.Do(req)
-
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-
-		defer resp.Body.Close()
-
-		body, err = ioutil.ReadAll(resp.Body)
-
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-
-		var user InternalOauthUser
-
-		err = json.Unmarshal(body, &user)
-
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-
-		taskId := utils.RandString(196)
-
-		err = state.Redis.Set(state.Context, taskId, "WAITING", time.Hour*8).Err()
-
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-
-		remoteIp := strings.Split(strings.ReplaceAll(r.Header.Get("X-Forwarded-For"), " ", ""), ",")
-
-		if act == "dr" {
-			go dataTask(taskId, user.ID, remoteIp[0], false)
-		} else if act == "ddr" {
-			go dataTask(taskId, user.ID, remoteIp[0], true)
-		} else if act == "gettoken" {
-			token := utils.RandString(128)
-
-			_, err := state.Pool.Exec(state.Context, "UPDATE users SET api_token = $1 WHERE user_id = $2", token, user.ID)
-
-			if err != nil {
-				http.Error(w, err.Error(), http.StatusInternalServerError)
+			if len(actSplit) != 3 {
+				resp <- types.HttpResponse{
+					Status: http.StatusBadRequest,
+					Data:   "Invalid state",
+				}
 				return
 			}
 
-			w.Write([]byte(token))
-			return
+			// Check hmac
+			h := hmac.New(sha512.New, []byte(os.Getenv("CLIENT_SECRET")))
 
-		} else {
-			w.WriteHeader(http.StatusNotFound)
-			w.Write([]byte(constants.NotFound))
-			return
-		}
+			h.Write([]byte(actSplit[0] + "@" + actSplit[2]))
 
-		http.Redirect(w, r, "/cosmog/tasks/"+taskId+"?n="+b64.URLEncoding.EncodeToString(body), http.StatusFound)
+			hmacData := hex.EncodeToString(h.Sum(nil))
+
+			if hmacData != actSplit[1] {
+				resp <- types.HttpResponse{
+					Status: http.StatusBadRequest,
+					Data:   "Invalid state",
+				}
+				return
+			}
+
+			// Check time
+			ctime, err := strconv.ParseInt(actSplit[0], 10, 64)
+
+			if err != nil {
+				resp <- types.HttpResponse{
+					Status: http.StatusBadRequest,
+					Data:   "Invalid state",
+				}
+				return
+			}
+
+			if time.Now().Unix()-ctime > 300 {
+				resp <- types.HttpResponse{
+					Status: http.StatusBadRequest,
+					Data:   "Invalid state, HMAC is too old",
+				}
+				return
+			}
+
+			// Remove out the actual action
+			act = actSplit[2]
+
+			// Check code with discords api
+			data := url.Values{}
+
+			data.Set("client_id", os.Getenv("CLIENT_ID"))
+			data.Set("client_secret", os.Getenv("CLIENT_SECRET"))
+			data.Set("grant_type", "authorization_code")
+			data.Set("code", r.URL.Query().Get("code"))
+			data.Set("redirect_uri", os.Getenv("REDIRECT_URL"))
+
+			response, err := http.PostForm("https://discord.com/api/oauth2/token", data)
+
+			if err != nil {
+				resp <- types.HttpResponse{
+					Status: http.StatusInternalServerError,
+					Data:   err.Error(),
+				}
+				return
+			}
+
+			defer response.Body.Close()
+
+			body, err := io.ReadAll(response.Body)
+
+			if err != nil {
+				resp <- types.HttpResponse{
+					Status: http.StatusInternalServerError,
+					Data:   err.Error(),
+				}
+				return
+			}
+
+			var token struct {
+				AccessToken string `json:"access_token"`
+				Scope       string `json:"scope"`
+			}
+
+			err = json.Unmarshal(body, &token)
+
+			if err != nil {
+				resp <- types.HttpResponse{
+					Status: http.StatusInternalServerError,
+					Data:   err.Error(),
+				}
+				return
+			}
+
+			state.Logger.Info(token)
+
+			if !strings.Contains(token.Scope, "identify") {
+				resp <- types.HttpResponse{
+					Status: http.StatusBadRequest,
+					Data:   "Invalid scope: scope contain identify, is currently " + token.Scope,
+				}
+				return
+			}
+
+			// Get user info
+			req, err := http.NewRequest("GET", "https://discord.com/api/users/@me", nil)
+
+			if err != nil {
+				resp <- types.HttpResponse{
+					Status: http.StatusInternalServerError,
+					Data:   err.Error(),
+				}
+				return
+			}
+
+			req.Header.Set("Authorization", "Bearer "+token.AccessToken)
+
+			client := &http.Client{Timeout: time.Second * 10}
+
+			response, err = client.Do(req)
+
+			if err != nil {
+				resp <- types.HttpResponse{
+					Status: http.StatusInternalServerError,
+					Data:   err.Error(),
+				}
+				return
+			}
+
+			defer response.Body.Close()
+
+			body, err = ioutil.ReadAll(response.Body)
+
+			if err != nil {
+				resp <- types.HttpResponse{
+					Status: http.StatusInternalServerError,
+					Data:   err.Error(),
+				}
+				return
+			}
+
+			var user InternalOauthUser
+
+			err = json.Unmarshal(body, &user)
+
+			if err != nil {
+				resp <- types.HttpResponse{
+					Status: http.StatusInternalServerError,
+					Data:   err.Error(),
+				}
+				return
+			}
+
+			taskId := utils.RandString(196)
+
+			err = state.Redis.Set(state.Context, taskId, "WAITING", time.Hour*8).Err()
+
+			if err != nil {
+				resp <- types.HttpResponse{
+					Status: http.StatusInternalServerError,
+					Data:   err.Error(),
+				}
+				return
+			}
+
+			remoteIp := strings.Split(strings.ReplaceAll(r.Header.Get("X-Forwarded-For"), " ", ""), ",")
+
+			if act == "dr" {
+				go dataTask(taskId, user.ID, remoteIp[0], false)
+			} else if act == "ddr" {
+				go dataTask(taskId, user.ID, remoteIp[0], true)
+			} else if act == "gettoken" {
+				token := utils.RandString(128)
+
+				_, err := state.Pool.Exec(state.Context, "UPDATE users SET api_token = $1 WHERE user_id = $2", token, user.ID)
+
+				if err != nil {
+					resp <- types.HttpResponse{
+						Status: http.StatusInternalServerError,
+						Data:   err.Error(),
+					}
+					return
+				}
+
+				resp <- types.HttpResponse{
+					Data: token,
+				}
+				return
+
+			} else {
+				resp <- utils.ApiDefaultReturn(http.StatusNotFound)
+				return
+			}
+
+			resp <- types.HttpResponse{
+				Redirect: "/cosmog/tasks/" + taskId + "?n=" + b64.URLEncoding.EncodeToString(body),
+			}
+		}()
+
+		utils.Respond(ctx, w, resp)
 	})
 
 	docs.Route(&docs.Doc{
@@ -274,49 +326,72 @@ func (b Router) Routes(r *chi.Mux) {
 		Resp:        "[HTML]",
 	})
 	r.Get("/cosmog/tasks/{tid}", func(w http.ResponseWriter, r *http.Request) {
-		var user InternalOauthUser
+		ctx := r.Context()
+		resp := make(chan types.HttpResponse)
 
-		tid := chi.URLParam(r, "tid")
+		go func() {
+			var user InternalOauthUser
 
-		if tid == "" {
-			http.Error(w, "Invalid task id", http.StatusBadRequest)
-			return
-		}
+			tid := chi.URLParam(r, "tid")
 
-		userStr := r.URL.Query().Get("n")
-
-		if userStr == "" {
-			user = InternalOauthUser{
-				ID:       "Unknown",
-				Username: "Unknown",
-				Disc:     "0000",
-			}
-		} else {
-			body, err := b64.URLEncoding.DecodeString(userStr)
-
-			if err != nil {
-				http.Error(w, err.Error(), http.StatusInternalServerError)
+			if tid == "" {
+				resp <- types.HttpResponse{
+					Status: http.StatusBadRequest,
+					Data:   "Invalid task id",
+				}
 				return
 			}
 
-			err = json.Unmarshal(body, &user)
+			userStr := r.URL.Query().Get("n")
+
+			if userStr == "" {
+				user = InternalOauthUser{
+					ID:       "Unknown",
+					Username: "Unknown",
+					Disc:     "0000",
+				}
+			} else {
+				body, err := b64.URLEncoding.DecodeString(userStr)
+
+				if err != nil {
+					resp <- types.HttpResponse{
+						Status: http.StatusInternalServerError,
+						Data:   err.Error(),
+					}
+					return
+				}
+
+				err = json.Unmarshal(body, &user)
+
+				if err != nil {
+					resp <- types.HttpResponse{
+						Status: http.StatusInternalServerError,
+						Data:   err.Error(),
+					}
+					return
+				}
+			}
+
+			user.TID = tid
+
+			t, err := template.ParseFiles("html/taskpage.html")
 
 			if err != nil {
-				http.Error(w, err.Error(), http.StatusInternalServerError)
+				resp <- types.HttpResponse{
+					Status: http.StatusInternalServerError,
+					Data:   err.Error(),
+				}
 				return
 			}
-		}
 
-		user.TID = tid
+			t.Execute(w, user)
 
-		t, err := template.ParseFiles("html/taskpage.html")
+			resp <- types.HttpResponse{
+				Stub: true,
+			}
+		}()
 
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-
-		t.Execute(w, user)
+		utils.Respond(ctx, w, resp)
 	})
 
 	docs.Route(&docs.Doc{
@@ -329,26 +404,44 @@ func (b Router) Routes(r *chi.Mux) {
 		Resp:        "[JSON]",
 	})
 	r.Get("/cosmog/tasks/{tid}.arceus", func(w http.ResponseWriter, r *http.Request) {
-		tid := chi.URLParam(r, "tid")
+		ctx := r.Context()
+		resp := make(chan types.HttpResponse)
 
-		if tid == "" {
-			http.Error(w, "No task id provided", http.StatusBadRequest)
-			return
-		}
+		go func() {
+			tid := chi.URLParam(r, "tid")
 
-		task, err := state.Redis.Get(state.Context, tid).Result()
+			if tid == "" {
+				resp <- types.HttpResponse{
+					Status: http.StatusBadRequest,
+					Data:   "Invalid task id",
+				}
+				return
+			}
 
-		if err == redis.Nil {
-			http.Error(w, "", http.StatusNotFound)
-			return
-		}
+			task, err := state.Redis.Get(state.Context, tid).Result()
 
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
+			if err == redis.Nil {
+				resp <- types.HttpResponse{
+					Status: http.StatusNotFound,
+					Data:   "Task not found",
+				}
+				return
+			}
 
-		w.Write([]byte(task))
+			if err != nil {
+				resp <- types.HttpResponse{
+					Status: http.StatusInternalServerError,
+					Data:   err.Error(),
+				}
+				return
+			}
+
+			resp <- types.HttpResponse{
+				Data: task,
+			}
+		}()
+
+		utils.Respond(ctx, w, resp)
 	})
 }
 

@@ -9,14 +9,9 @@ import (
 	"popplio/utils"
 
 	"github.com/go-chi/chi/v5"
-	jsoniter "github.com/json-iterator/go"
 )
 
 const tagName = "Discord User"
-
-var (
-	json = jsoniter.ConfigCompatibleWithStandardLibrary
-)
 
 type Router struct{}
 
@@ -45,25 +40,27 @@ func (b Router) Routes(r *chi.Mux) {
 			Resp: types.DiscordUser{},
 		})
 		r.Get("/", func(w http.ResponseWriter, r *http.Request) {
-			var id = chi.URLParam(r, "id")
+			ctx := r.Context()
+			resp := make(chan types.HttpResponse)
 
-			user, err := utils.GetDiscordUser(id)
+			go func() {
+				var id = chi.URLParam(r, "id")
 
-			if err != nil {
-				state.Logger.Error(err)
-				utils.ApiDefaultReturn(http.StatusNotFound, w, r)
-				return
-			}
+				user, err := utils.GetDiscordUser(id)
 
-			bytes, err := json.Marshal(user)
+				if err != nil {
+					state.Logger.Error(err)
+					resp <- utils.ApiDefaultReturn(http.StatusNotFound)
+					return
+				}
 
-			if err != nil {
-				state.Logger.Error(err)
-				utils.ApiDefaultReturn(http.StatusInternalServerError, w, r)
-				return
-			}
+				resp <- types.HttpResponse{
+					Status: http.StatusOK,
+					Json:   user,
+				}
+			}()
 
-			w.Write(bytes)
+			utils.Respond(ctx, w, resp)
 		})
 		docs.Route(&docs.Doc{
 			Method:      "GET",
@@ -84,9 +81,19 @@ func (b Router) Routes(r *chi.Mux) {
 			Resp: types.ApiError{},
 		})
 		r.Get("/clear", func(w http.ResponseWriter, r *http.Request) {
-			id := chi.URLParam(r, "id")
-			state.Redis.Del(state.Context, "uobj:"+id)
-			w.Write([]byte(constants.Success))
+			ctx := r.Context()
+			resp := make(chan types.HttpResponse)
+
+			go func() {
+				id := chi.URLParam(r, "id")
+				state.Redis.Del(state.Context, "uobj:"+id)
+				resp <- types.HttpResponse{
+					Status: http.StatusOK,
+					Data:   constants.Success,
+				}
+			}()
+
+			utils.Respond(ctx, w, resp)
 		})
 	})
 }
