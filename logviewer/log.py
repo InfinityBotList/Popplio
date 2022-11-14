@@ -95,7 +95,6 @@ async def read_item(request: fastapi.Request, fn: str, limit: int, offset: int):
                 if len(json_list) >= limit:
                     break
             read += 1
-            print(read)
     
     return ORJSONResponse(json_list, headers=def_headers)
 
