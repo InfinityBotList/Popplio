@@ -7,6 +7,7 @@ from fastapi.responses import ORJSONResponse
 import orjson
 import uvicorn
 import secrets
+from dateutil.parser import parse
 
 psk = secrets.token_hex(128)
 
@@ -23,7 +24,7 @@ def line_count(filename: str):
 
 def char_check(s: str) -> bool:
     """Returns true if string is alphanumeric or a dot"""
-    return all(c.isalnum() or c == '.' for c in s)
+    return all(c.isalnum() or c == "-" or c == '.' for c in s)
 
 class FilteredFile():
     def __init__(
@@ -41,6 +42,10 @@ class FilteredFile():
 
             if line.get("level"):
                 line["level"] = line["level"].lower()
+
+            if line.get("ts"):
+                if isinstance(line.get("ts"), str):
+                    line["ts"] = parse(line["ts"]).timestamp()
 
             if not self.allowed_levels:
                 yield line
