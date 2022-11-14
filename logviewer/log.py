@@ -1,5 +1,7 @@
 #!/usr/bin/python3
+from io import TextIOWrapper
 import subprocess
+from typing import Sequence
 import fastapi
 from fastapi.responses import ORJSONResponse
 import orjson
@@ -23,6 +25,27 @@ def char_check(s: str) -> bool:
     """Returns true if string is alphanumeric or a dot"""
     return all(c.isalnum() or c == '.' for c in s)
 
+class FilteredFile():
+    def __init__(
+        self, 
+        fobj: TextIOWrapper, 
+        allowed_levels: Sequence[str] = []
+    ):
+        self.fobj = fobj
+        self.allowed_levels = allowed_levels
+    
+    def __iter__(self):
+        for line in self.fobj:
+            if not self.allowed_levels:
+                yield orjson.loads(line)
+            else:
+                line = orjson.loads(line)
+                if line.get("level") in self.allowed_levels:
+                    yield line
+    
+    def __len__(self):
+        return sum(1 for _ in self)
+
 @app.options("/{fn}")
 async def options(fn: str):
     return ORJSONResponse({}, headers=def_headers)
@@ -43,7 +66,7 @@ async def options_length(fn: str):
     return ORJSONResponse({}, headers=def_headers)
 
 @app.get("/{fn}/length")
-async def length(fn: str, request: fastapi.Request):
+async def length(fn: str, request: fastapi.Request, allowed_levels: list[str] | None = None):
     if request.headers.get("PSK") != psk:
         return ORJSONResponse({"error": "invalid psk"}, status_code=403, headers=def_headers)
 
@@ -60,10 +83,16 @@ async def length(fn: str, request: fastapi.Request):
     if not char_check(fn):
         return fastapi.Response(status_code=400)
 
-    return ORJSONResponse({"length": line_count(f"/var/log/{fn}")}, headers=def_headers)
+    if not allowed_levels:
+        # Fast happy path
+        return ORJSONResponse({"length": line_count(f"/var/log/{fn}")}, headers=def_headers)
+
+    # Slow path since filters are applied
+    with open(f"/var/log/{fn}") as f:
+        return ORJSONResponse({"length": len(FilteredFile(f, allowed_levels))}, headers=def_headers)
 
 @app.get("/{fn}")
-async def read_item(request: fastapi.Request, fn: str, limit: int, offset: int):
+async def read_item(request: fastapi.Request, fn: str, limit: int, offset: int, allowed_levels: list[str] | None = None):
     if request.headers.get("PSK") != psk:
         return ORJSONResponse({"error": "invalid psk"}, status_code=403, headers=def_headers)
     
@@ -89,9 +118,9 @@ async def read_item(request: fastapi.Request, fn: str, limit: int, offset: int):
 
         json_list = []
 
-        for v in json_file:
+        for v in FilteredFile(json_file, allowed_levels or []):
             if read >= offset:
-                json_list.append(orjson.loads(v))
+                json_list.append(v)
                 if len(json_list) >= limit:
                     break
             read += 1
