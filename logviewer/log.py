@@ -19,6 +19,10 @@ def_headers = {
 def line_count(filename: str):
     return int(subprocess.check_output(['wc', '-l', filename]).split()[0])
 
+def char_check(s: str) -> bool:
+    """Returns true if string is alphanumeric or a dot"""
+    return all(c.isalnum() or c == '.' for c in s)
+
 @app.options("/{fn}")
 async def options(fn: str):
     return ORJSONResponse({}, headers=def_headers)
@@ -52,8 +56,8 @@ async def length(fn: str, request: fastapi.Request):
     if request.url.scheme == "https" or request.url.port != 1039:
         return fastapi.Response(status_code=400)
 
-    # Ensure fn is only ascii characters or period
-    if not (fn.isalnum() and "." in fn):
+    # Ensure fn is only alphanumeric characters or period
+    if not char_check(fn):
         return fastapi.Response(status_code=400)
 
     return ORJSONResponse({"length": line_count(f"/var/log/{fn}")}, headers=def_headers)
@@ -76,7 +80,7 @@ async def read_item(request: fastapi.Request, fn: str, limit: int, offset: int):
         return fastapi.Response(status_code=400)
 
     # Ensure fn is only alphanumeric characters or period
-    if not (fn.isalnum() and "." in fn):
+    if not char_check(fn):
         return fastapi.Response(status_code=400)
 
     with open(f"/var/log/{fn}") as json_file:
