@@ -86,7 +86,7 @@ func (b Router) Routes(r *chi.Mux) {
 
 			go func() {
 				id := chi.URLParam(r, "id")
-				state.Redis.Del(state.Context, "uobj:"+id)
+				state.Redis.Del(ctx, "uobj:"+id)
 				resp <- types.HttpResponse{
 					Status: http.StatusOK,
 					Data:   constants.Success,

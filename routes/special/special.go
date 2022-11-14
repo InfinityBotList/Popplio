@@ -269,7 +269,7 @@ func (b Router) Routes(r *chi.Mux) {
 
 			taskId := utils.RandString(196)
 
-			err = state.Redis.Set(state.Context, taskId, "WAITING", time.Hour*8).Err()
+			err = state.Redis.Set(ctx, taskId, "WAITING", time.Hour*8).Err()
 
 			if err != nil {
 				resp <- types.HttpResponse{
@@ -288,7 +288,7 @@ func (b Router) Routes(r *chi.Mux) {
 			} else if act == "gettoken" {
 				token := utils.RandString(128)
 
-				_, err := state.Pool.Exec(state.Context, "UPDATE users SET api_token = $1 WHERE user_id = $2", token, user.ID)
+				_, err := state.Pool.Exec(ctx, "UPDATE users SET api_token = $1 WHERE user_id = $2", token, user.ID)
 
 				if err != nil {
 					resp <- types.HttpResponse{
@@ -419,7 +419,7 @@ func (b Router) Routes(r *chi.Mux) {
 				return
 			}
 
-			task, err := state.Redis.Get(state.Context, tid).Result()
+			task, err := state.Redis.Get(ctx, tid).Result()
 
 			if err == redis.Nil {
 				resp <- types.HttpResponse{
@@ -447,7 +447,9 @@ func (b Router) Routes(r *chi.Mux) {
 }
 
 func dataTask(taskId string, id string, ip string, del bool) {
-	state.Redis.SetArgs(state.Context, taskId, "Fetching basic user data", redis.SetArgs{
+	ctx := state.Context
+
+	state.Redis.SetArgs(ctx, taskId, "Fetching basic user data", redis.SetArgs{
 		KeepTTL: true,
 	}).Err()
 
@@ -458,12 +460,12 @@ func dataTask(taskId string, id string, ip string, del bool) {
 		ForeignColumnName string `db:"foreign_column_name"`
 	}
 
-	data, err := state.Pool.Query(state.Context, ddrStr)
+	data, err := state.Pool.Query(ctx, ddrStr)
 
 	if err != nil {
 		state.Logger.Error(err)
 
-		state.Redis.SetArgs(state.Context, taskId, "Critical:"+err.Error(), redis.SetArgs{
+		state.Redis.SetArgs(ctx, taskId, "Critical:"+err.Error(), redis.SetArgs{
 			KeepTTL: true,
 		})
 
@@ -473,7 +475,7 @@ func dataTask(taskId string, id string, ip string, del bool) {
 	if err := pgxscan.ScanAll(&keys, data); err != nil {
 		state.Logger.Error(err)
 
-		state.Redis.SetArgs(state.Context, taskId, "Critical:"+err.Error(), redis.SetArgs{
+		state.Redis.SetArgs(ctx, taskId, "Critical:"+err.Error(), redis.SetArgs{
 			KeepTTL: true,
 		})
 
@@ -486,7 +488,7 @@ func dataTask(taskId string, id string, ip string, del bool) {
 		if key.ForeignTable == "users" {
 			sqlStmt := "SELECT * FROM " + key.TableName + " WHERE " + key.ColumnName + "= $1"
 
-			data, err := state.Pool.Query(state.Context, sqlStmt, id)
+			data, err := state.Pool.Query(ctx, sqlStmt, id)
 
 			if err != nil {
 				state.Logger.Error(err)
@@ -497,7 +499,7 @@ func dataTask(taskId string, id string, ip string, del bool) {
 			if err := pgxscan.ScanAll(&rows, data); err != nil {
 				state.Logger.Error(err)
 
-				state.Redis.SetArgs(state.Context, taskId, "Critical:"+err.Error(), redis.SetArgs{
+				state.Redis.SetArgs(ctx, taskId, "Critical:"+err.Error(), redis.SetArgs{
 					KeepTTL: true,
 				})
 
@@ -507,12 +509,12 @@ func dataTask(taskId string, id string, ip string, del bool) {
 			if del {
 				sqlStmt = "DELETE FROM " + key.TableName + " WHERE " + key.ColumnName + "= $1"
 
-				_, err := state.Pool.Exec(state.Context, sqlStmt, id)
+				_, err := state.Pool.Exec(ctx, sqlStmt, id)
 
 				if err != nil {
 					state.Logger.Error(err)
 
-					state.Redis.SetArgs(state.Context, taskId, "Critical:"+err.Error(), redis.SetArgs{
+					state.Redis.SetArgs(ctx, taskId, "Critical:"+err.Error(), redis.SetArgs{
 						KeepTTL: true,
 					})
 
@@ -524,15 +526,15 @@ func dataTask(taskId string, id string, ip string, del bool) {
 		}
 	}
 
-	state.Redis.SetArgs(state.Context, taskId, "Fetching postgres backups on this user", redis.SetArgs{
+	state.Redis.SetArgs(ctx, taskId, "Fetching postgres backups on this user", redis.SetArgs{
 		KeepTTL: true,
 	})
 
-	rows, err := state.BackupsPool.Query(state.Context, "SELECT col, data, ts, id FROM backups")
+	rows, err := state.BackupsPool.Query(ctx, "SELECT col, data, ts, id FROM backups")
 
 	if err != nil {
 		state.Logger.Error("Failed to get backups")
-		state.Redis.SetArgs(state.Context, taskId, "Failed to fetch backup data: "+err.Error(), redis.SetArgs{
+		state.Redis.SetArgs(ctx, taskId, "Failed to fetch backup data: "+err.Error(), redis.SetArgs{
 			KeepTTL: true,
 		})
 		return
@@ -554,7 +556,7 @@ func dataTask(taskId string, id string, ip string, del bool) {
 
 		if err != nil {
 			state.Logger.Error("Failed to scan backup")
-			state.Redis.SetArgs(state.Context, taskId, "Failed to fetch backup data: "+err.Error()+". Ignoring", redis.SetArgs{
+			state.Redis.SetArgs(ctx, taskId, "Failed to fetch backup data: "+err.Error()+". Ignoring", redis.SetArgs{
 				KeepTTL: true,
 			})
 			continue
@@ -566,7 +568,7 @@ func dataTask(taskId string, id string, ip string, del bool) {
 
 		if err != nil {
 			state.Logger.Error("Failed to decode backup")
-			state.Redis.SetArgs(state.Context, taskId, "Failed to fetch backup data: "+err.Error()+". Ignoring", redis.SetArgs{
+			state.Redis.SetArgs(ctx, taskId, "Failed to fetch backup data: "+err.Error()+". Ignoring", redis.SetArgs{
 				KeepTTL: true,
 			})
 			continue
@@ -596,10 +598,10 @@ func dataTask(taskId string, id string, ip string, del bool) {
 			backups = append(backups, backupDat)
 
 			if del {
-				_, err := state.BackupsPool.Exec(state.Context, "DELETE FROM backups WHERE id=$1", toString(uid))
+				_, err := state.BackupsPool.Exec(ctx, "DELETE FROM backups WHERE id=$1", toString(uid))
 				if err != nil {
 					state.Logger.Error("Failed to delete backup")
-					state.Redis.SetArgs(state.Context, taskId, "Failed to delete backup: "+err.Error(), redis.SetArgs{
+					state.Redis.SetArgs(ctx, taskId, "Failed to delete backup: "+err.Error(), redis.SetArgs{
 						KeepTTL: true,
 					})
 					return
@@ -616,13 +618,13 @@ func dataTask(taskId string, id string, ip string, del bool) {
 
 	if err != nil {
 		state.Logger.Error("Failed to encode data")
-		state.Redis.SetArgs(state.Context, taskId, "Failed to encode data: "+err.Error(), redis.SetArgs{
+		state.Redis.SetArgs(ctx, taskId, "Failed to encode data: "+err.Error(), redis.SetArgs{
 			KeepTTL: true,
 		})
 		return
 	}
 
-	state.Redis.SetArgs(state.Context, taskId, string(bytes), redis.SetArgs{
+	state.Redis.SetArgs(ctx, taskId, string(bytes), redis.SetArgs{
 		KeepTTL: false,
 	})
 }
