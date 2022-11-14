@@ -35,11 +35,16 @@ class FilteredFile():
         self.allowed_levels = allowed_levels
     
     def __iter__(self):
-        for line in self.fobj:
+        for _line in self.fobj:
+            
+            line = orjson.loads(_line)
+
+            if line.get("level"):
+                line["level"] = line["level"].lower()
+
             if not self.allowed_levels:
-                yield orjson.loads(line)
+                yield line
             else:
-                line = orjson.loads(line)
                 if line.get("level") in self.allowed_levels:
                     yield line
     
