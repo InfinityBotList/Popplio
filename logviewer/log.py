@@ -53,7 +53,7 @@ async def length(fn: str, request: fastapi.Request):
         return fastapi.Response(status_code=400)
 
     # Ensure fn is only ascii characters or period
-    if not (fn.isascii() and "." in fn):
+    if not (fn.isalnum() and "." in fn):
         return fastapi.Response(status_code=400)
 
     return ORJSONResponse({"length": line_count(f"/var/log/{fn}")}, headers=def_headers)
@@ -75,8 +75,8 @@ async def read_item(request: fastapi.Request, fn: str, limit: int, offset: int):
     if request.url.scheme == "https" or request.url.port != 1039:
         return fastapi.Response(status_code=400)
 
-    # Ensure fn is only ascii characters or period
-    if not (fn.isascii() and "." in fn):
+    # Ensure fn is only alphanumeric characters or period
+    if not (fn.isalnum() and "." in fn):
         return fastapi.Response(status_code=400)
 
     with open(f"/var/log/{fn}") as json_file:
