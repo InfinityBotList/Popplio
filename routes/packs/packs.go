@@ -105,7 +105,7 @@ func (b Router) Routes(r *chi.Mux) {
 			Path:        "/packs/all",
 			OpId:        "get_all_packs",
 			Summary:     "Get All Packs",
-			Description: "Gets all packs on the list.",
+			Description: "Gets all packs on the list. Note that ``owner``, ``bots`` and other API-resolved keys will be ``null`` when using this endpoint.",
 			Tags:        []string{tagName},
 			Resp:        types.AllPacks{},
 		})
@@ -158,16 +158,6 @@ func (b Router) Routes(r *chi.Mux) {
 					state.Logger.Error(err)
 					resp <- utils.ApiDefaultReturn(http.StatusInternalServerError)
 					return
-				}
-
-				for _, pack := range packs {
-					err := utils.ResolveBotPack(ctx, state.Pool, pack, state.Discord, state.Redis)
-
-					if err != nil {
-						state.Logger.Error(err)
-						resp <- utils.ApiDefaultReturn(http.StatusInternalServerError)
-						return
-					}
 				}
 
 				var previous strings.Builder

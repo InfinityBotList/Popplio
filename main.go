@@ -159,7 +159,6 @@ func main() {
 
 	for _, router := range routers {
 		name, desc := router.Tag()
-
 		if name != "" {
 			docs.AddTag(name, desc)
 		}

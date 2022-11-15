@@ -41,7 +41,7 @@ func (b Router) Routes(r *chi.Mux) {
 			Path:        "/list/index",
 			OpId:        "get_list_index",
 			Summary:     "Get List Index",
-			Description: "Gets the index of the list. Note that this endpoint does not resolve the owner or the bots of a pack and will only give the `owner_id` and the `bot_ids` for performance purposes",
+			Description: "Gets the index of the list. Note that ``owner``, ``bots`` and other API-resolved keys of *bot packs* will be ``null`` when using this endpoint.",
 			Tags:        []string{tagName},
 			Resp:        types.ListIndex{},
 		})

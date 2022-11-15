@@ -58,7 +58,7 @@ func (b Router) Routes(r *chi.Mux) {
 		OpId:        "ping",
 		Summary:     "Ping Server",
 		Description: "This is a simple ping endpoint to check if the API is online. It will return a simple JSON object with a message, docs link, our site link and status page link.",
-		Tags:        []string{"System"},
+		Tags:        []string{tagName},
 		Resp:        helloWorldB,
 	})
 	r.Get("/", func(w http.ResponseWriter, r *http.Request) {
