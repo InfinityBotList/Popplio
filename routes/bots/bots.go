@@ -26,12 +26,13 @@ const (
 
 var (
 	botColsArr = utils.GetCols(types.Bot{})
-	// These are the columns of a bot
-	botCols = strings.Join(botColsArr, ",")
+	botCols    = strings.Join(botColsArr, ",")
 
 	reviewColsArr = utils.GetCols(types.Review{})
-	// These are the columns of a review
-	reviewCols = strings.Join(reviewColsArr, ",")
+	reviewCols    = strings.Join(reviewColsArr, ",")
+
+	indexBotColsArr = utils.GetCols(types.IndexBot{})
+	indexBotCols    = strings.Join(indexBotColsArr, ",")
 
 	json = jsoniter.ConfigCompatibleWithStandardLibrary
 )
@@ -49,7 +50,7 @@ func (b Router) Routes(r *chi.Mux) {
 			Path:        "/bots/all",
 			OpId:        "get_all_bots",
 			Summary:     "Get All Bots",
-			Description: "Gets all bots on the list.",
+			Description: "Gets all bots on the list. Returns a ``Index`` object",
 			Tags:        []string{tagName},
 			Resp:        types.AllBots{},
 		})
@@ -75,7 +76,7 @@ func (b Router) Routes(r *chi.Mux) {
 				limit := perPage
 				offset := (pageNum - 1) * perPage
 
-				rows, err := state.Pool.Query(ctx, "SELECT "+botCols+" FROM bots ORDER BY date DESC LIMIT $1 OFFSET $2", limit, offset)
+				rows, err := state.Pool.Query(ctx, "SELECT "+indexBotCols+" FROM bots ORDER BY date DESC LIMIT $1 OFFSET $2", limit, offset)
 
 				if err != nil {
 					state.Logger.Error(err)
@@ -83,7 +84,7 @@ func (b Router) Routes(r *chi.Mux) {
 					return
 				}
 
-				var bots []*types.Bot
+				var bots []*types.IndexBot
 
 				err = pgxscan.ScanAll(&bots, rows)
 

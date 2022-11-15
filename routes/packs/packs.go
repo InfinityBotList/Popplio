@@ -27,6 +27,9 @@ var (
 
 	packColArr = utils.GetCols(types.BotPack{})
 	packCols   = strings.Join(packColArr, ",")
+
+	indexPackColArr = utils.GetCols(types.IndexBotPack{})
+	indexPackCols   = strings.Join(indexPackColArr, ",")
 )
 
 type Router struct{}
@@ -105,7 +108,7 @@ func (b Router) Routes(r *chi.Mux) {
 			Path:        "/packs/all",
 			OpId:        "get_all_packs",
 			Summary:     "Get All Packs",
-			Description: "Gets all packs on the list. Note that ``owner``, ``bots`` and other API-resolved keys will be ``null`` when using this endpoint.",
+			Description: "Gets all packs on the list. Returns a ``Index`` object",
 			Tags:        []string{tagName},
 			Resp:        types.AllPacks{},
 		})
@@ -142,7 +145,7 @@ func (b Router) Routes(r *chi.Mux) {
 				limit := perPage
 				offset := (pageNum - 1) * perPage
 
-				rows, err := state.Pool.Query(ctx, "SELECT "+packCols+" FROM packs ORDER BY date DESC LIMIT $1 OFFSET $2", limit, offset)
+				rows, err := state.Pool.Query(ctx, "SELECT "+indexPackCols+" FROM packs ORDER BY date DESC LIMIT $1 OFFSET $2", limit, offset)
 
 				if err != nil {
 					state.Logger.Error(err)
@@ -150,7 +153,7 @@ func (b Router) Routes(r *chi.Mux) {
 					return
 				}
 
-				var packs []*types.BotPack
+				var packs []*types.IndexBotPack
 
 				err = pgxscan.ScanAll(&packs, rows)
 

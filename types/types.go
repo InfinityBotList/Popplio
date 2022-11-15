@@ -71,11 +71,11 @@ type SEO struct {
 }
 
 type AllBots struct {
-	Count    uint64 `json:"count"`
-	PerPage  uint64 `json:"per_page"`
-	Next     string `json:"next"`
-	Previous string `json:"previous"`
-	Results  []*Bot `json:"bots"`
+	Count    uint64      `json:"count"`
+	PerPage  uint64      `json:"per_page"`
+	Next     string      `json:"next"`
+	Previous string      `json:"previous"`
+	Results  []*IndexBot `json:"bots"`
 }
 
 type ResolvedPackBot struct {
@@ -119,11 +119,11 @@ type IndexBotPack struct {
 }
 
 type AllPacks struct {
-	Count    uint64     `json:"count"`
-	PerPage  uint64     `json:"per_page"`
-	Next     string     `json:"next"`
-	Previous string     `json:"previous"`
-	Results  []*BotPack `json:"packs"`
+	Count    uint64          `json:"count"`
+	PerPage  uint64          `json:"per_page"`
+	Next     string          `json:"next"`
+	Previous string          `json:"previous"`
+	Results  []*IndexBotPack `json:"packs"`
 }
 
 // A review is a review on ibl
