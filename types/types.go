@@ -16,7 +16,6 @@ type Bot struct {
 	ITag                     pgtype.UUID        `db:"itag" json:"itag"`
 	BotID                    string             `db:"bot_id" json:"bot_id"`
 	ExtraLinks               pgtype.JSONB       `db:"extra_links" json:"extra_links"`
-	Avatar                   string             `db:"avatar" json:"avatar_db"`
 	Tags                     []string           `db:"tags" json:"tags"`
 	Prefix                   pgtype.Text        `db:"prefix" json:"prefix"`
 	User                     *DiscordUser       `json:"user"` // Must be parsed internally
@@ -532,7 +531,7 @@ type NotifBrowserInfo struct {
 
 type ResolvedReminderBot struct {
 	Name   string `db:"-" json:"name"`
-	Avatar string `db:"avatar" json:"avatar"`
+	Avatar string `db:"-" json:"avatar"`
 }
 
 type Reminder struct {
@@ -561,7 +560,6 @@ type ProfileUpdate struct {
 type ListStatsBot struct {
 	BotID              string   `json:"bot_id"`
 	Vanity             string   `json:"vanity"`
-	AvatarDB           string   `json:"avatar_db"`
 	Short              string   `json:"short"`
 	Type               string   `json:"type"`
 	Certified          bool     `json:"certified"`

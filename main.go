@@ -3,13 +3,11 @@ package main
 import (
 	"context"
 	"net/http"
-	"os"
 	"strings"
 	"time"
 
 	"popplio/constants"
 	"popplio/docs"
-	"popplio/migrations"
 	"popplio/routes/announcements"
 	"popplio/routes/auth"
 	"popplio/routes/bots"
@@ -131,16 +129,6 @@ func main() {
 	// through ctx.Done() that the request has timed out and further
 	// processing should be stopped.
 	r.Use()
-
-	if os.Getenv("MIGRATION") == "true" || os.Getenv("MIGRATION") == "1" {
-		state.Migration = true
-		migrations.Migrate(ctx, state.Pool)
-		os.Exit(0)
-	}
-
-	if !migrations.HasMigrated(ctx, state.Pool) {
-		panic("Database has not been migrated, run popplio with the MIGRATION environment variable set to true to migrate")
-	}
 
 	routers := []Router{
 		// Use same order as routes folder
