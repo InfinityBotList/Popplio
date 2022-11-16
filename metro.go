@@ -59,6 +59,7 @@ func addBot(bot *types.Bot) (pgconn.CommandTag, error) {
 		state.Logger.Error(err)
 	}
 
+	// Outdated, TODO: FIX
 	return state.Pool.Exec(
 		ctx,
 		`INSERT INTO bots (bot_id, name, vanity, approval_note, date, prefix, website, github, donate, nsfw, library, 

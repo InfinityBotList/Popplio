@@ -172,6 +172,8 @@ Gets a bot by id or name
 			go func() {
 				name := chi.URLParam(r, "id")
 
+				name = strings.ToLower(name)
+
 				if name == "" {
 					resp <- utils.ApiDefaultReturn(http.StatusBadRequest)
 					return
@@ -193,7 +195,7 @@ Gets a bot by id or name
 
 				var err error
 
-				row, err := state.Pool.Query(ctx, "SELECT "+botCols+" FROM bots WHERE (bot_id = $1 OR vanity = $1 OR name = $1)", name)
+				row, err := state.Pool.Query(ctx, "SELECT "+botCols+" FROM bots WHERE (bot_id = $1 OR vanity = $1) LIMIT 1", name)
 
 				if err != nil {
 					state.Logger.Error(err)
@@ -367,12 +369,11 @@ Gets a bot by id or name
 				}
 
 				// Get name and vanity, delete from cache
-				var name, vanity string
+				var vanity string
 
-				state.Pool.QueryRow(ctx, "SELECT name, vanity FROM bots WHERE bot_id = $1", id).Scan(&name, &vanity)
+				state.Pool.QueryRow(ctx, "SELECT vanity FROM bots WHERE bot_id = $1", id).Scan(&vanity)
 
 				// Delete from cache
-				state.Redis.Del(ctx, "bc-"+name)
 				state.Redis.Del(ctx, "bc-"+vanity)
 				state.Redis.Del(ctx, "bc-"+*id)
 
@@ -427,7 +428,7 @@ Gets a bot by id or name
 
 				var botId string
 				var short string
-				err := state.Pool.QueryRow(ctx, "SELECT bot_id, short FROM bots WHERE (bot_id = $1 OR vanity = $1 OR name = $1)", name).Scan(&botId, &short)
+				err := state.Pool.QueryRow(ctx, "SELECT bot_id, short FROM bots WHERE (bot_id = $1 OR vanity = $1)", name).Scan(&botId, &short)
 
 				if err != nil {
 					state.Logger.Error(err)
@@ -483,7 +484,7 @@ Gets a bot by id or name
 			resp := make(chan types.HttpResponse)
 
 			go func() {
-				rows, err := state.Pool.Query(ctx, "SELECT "+reviewCols+" FROM reviews WHERE (bot_id = $1 OR vanity = $1 OR name = $1)", chi.URLParam(r, "id"))
+				rows, err := state.Pool.Query(ctx, "SELECT "+reviewCols+" FROM reviews WHERE (bot_id = $1 OR vanity = $1)", chi.URLParam(r, "id"))
 
 				if err != nil {
 					state.Logger.Error(err)

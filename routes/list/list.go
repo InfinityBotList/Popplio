@@ -173,7 +173,7 @@ func (b Router) Routes(r *chi.Mux) {
 			go func() {
 				listStats := types.ListStats{}
 
-				bots, err := state.Pool.Query(ctx, "SELECT bot_id, name, short, type, owner, additional_owners, avatar, certified, claimed FROM bots")
+				bots, err := state.Pool.Query(ctx, "SELECT bot_id, vanity, short, type, owner, additional_owners, avatar, certified, claimed FROM bots")
 
 				if err != nil {
 					state.Logger.Error(err)
@@ -185,7 +185,7 @@ func (b Router) Routes(r *chi.Mux) {
 
 				for bots.Next() {
 					var botId string
-					var name string
+					var vanity string
 					var short string
 					var typeStr string
 					var owner string
@@ -194,7 +194,7 @@ func (b Router) Routes(r *chi.Mux) {
 					var certified bool
 					var claimed bool
 
-					err := bots.Scan(&botId, &name, &short, &typeStr, &owner, &additionalOwners, &avatar, &certified, &claimed)
+					err := bots.Scan(&botId, &vanity, &short, &typeStr, &owner, &additionalOwners, &avatar, &certified, &claimed)
 
 					if err != nil {
 						state.Logger.Error(err)
@@ -204,7 +204,7 @@ func (b Router) Routes(r *chi.Mux) {
 
 					listStats.Bots = append(listStats.Bots, types.ListStatsBot{
 						BotID:              botId,
-						Name:               name,
+						Vanity:             vanity,
 						Short:              short,
 						Type:               typeStr,
 						AvatarDB:           avatar,

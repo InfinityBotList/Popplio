@@ -106,7 +106,7 @@ func (b Router) Routes(r *chi.Mux) {
 						return
 					}
 
-					err = state.Pool.QueryRow(ctx, "SELECT bot_id FROM bots WHERE (bot_id = $1 OR vanity = $1 OR name = $1)", vars["bid"]).Scan(&botId)
+					err = state.Pool.QueryRow(ctx, "SELECT bot_id FROM bots WHERE (bot_id = $1 OR vanity = $1)", vars["bid"]).Scan(&botId)
 
 					if err != nil || botId.Status != pgtype.Present {
 						state.Logger.Error(err)
@@ -116,7 +116,7 @@ func (b Router) Routes(r *chi.Mux) {
 
 					vars["bid"] = botId.String
 				} else {
-					err = state.Pool.QueryRow(ctx, "SELECT bot_id, type FROM bots WHERE (vanity = $1 OR bot_id = $1 OR name = $1)", vars["bid"]).Scan(&botId, &botType)
+					err = state.Pool.QueryRow(ctx, "SELECT bot_id, type FROM bots WHERE (vanity = $1 OR bot_id = $1)", vars["bid"]).Scan(&botId, &botType)
 
 					if err != nil || botId.Status != pgtype.Present || botType.Status != pgtype.Present {
 						state.Logger.Error(err)
@@ -226,7 +226,7 @@ func (b Router) Routes(r *chi.Mux) {
 
 				var voteBannedBotsState bool
 
-				err = state.Pool.QueryRow(ctx, "SELECT bot_id, type, vote_banned FROM bots WHERE (bot_id = $1 OR vanity = $1 OR name = $1)", vars["bid"]).Scan(&botId, &botType, &voteBannedBotsState)
+				err = state.Pool.QueryRow(ctx, "SELECT bot_id, type, vote_banned FROM bots WHERE (bot_id = $1 OR vanity = $1)", vars["bid"]).Scan(&botId, &botType, &voteBannedBotsState)
 
 				if err != nil {
 					state.Logger.Error(err)
@@ -864,7 +864,7 @@ func (b Router) Routes(r *chi.Mux) {
 
 				var botId pgtype.Text
 
-				err := state.Pool.QueryRow(ctx, "SELECT bot_id FROM bots WHERE (vanity = $1 OR bot_id = $1 OR name = $1)", r.URL.Query().Get("bot_id")).Scan(&botId)
+				err := state.Pool.QueryRow(ctx, "SELECT bot_id FROM bots WHERE (vanity = $1 OR bot_id = $1)", r.URL.Query().Get("bot_id")).Scan(&botId)
 
 				if err != nil || botId.Status != pgtype.Present || botId.String == "" {
 					state.Logger.Error("Error deleting reminder: ", err)
@@ -935,7 +935,7 @@ func (b Router) Routes(r *chi.Mux) {
 
 				var botId pgtype.Text
 
-				err := state.Pool.QueryRow(ctx, "SELECT bot_id FROM bots WHERE (vanity = $1 OR bot_id = $1 OR name = $1)", r.URL.Query().Get("bot_id")).Scan(&botId)
+				err := state.Pool.QueryRow(ctx, "SELECT bot_id FROM bots WHERE (vanity = $1 OR bot_id = $1)", r.URL.Query().Get("bot_id")).Scan(&botId)
 
 				if err != nil || botId.Status != pgtype.Present || botId.String == "" {
 					state.Logger.Error("Error adding reminder: ", err)

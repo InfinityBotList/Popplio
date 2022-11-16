@@ -15,7 +15,6 @@ import (
 type Bot struct {
 	ITag                     pgtype.UUID        `db:"itag" json:"itag"`
 	BotID                    string             `db:"bot_id" json:"bot_id"`
-	Name                     string             `db:"name" json:"name"`
 	ExtraLinks               pgtype.JSONB       `db:"extra_links" json:"extra_links"`
 	Avatar                   string             `db:"avatar" json:"avatar_db"`
 	Tags                     []string           `db:"tags" json:"tags"`
@@ -168,7 +167,6 @@ type UserBot struct {
 
 type IndexBot struct {
 	BotID       string      `db:"bot_id" json:"bot_id"`
-	Name        string      `db:"name" json:"name"`
 	Avatar      string      `db:"avatar" json:"avatar_db"`
 	Short       string      `db:"short" json:"short"`
 	Type        string      `db:"type" json:"type"`
@@ -533,7 +531,7 @@ type NotifBrowserInfo struct {
 }
 
 type ResolvedReminderBot struct {
-	Name   string `db:"botName" json:"name"`
+	Name   string `db:"-" json:"name"`
 	Avatar string `db:"avatar" json:"avatar"`
 }
 
@@ -562,7 +560,7 @@ type ProfileUpdate struct {
 
 type ListStatsBot struct {
 	BotID              string   `json:"bot_id"`
-	Name               string   `json:"name"`
+	Vanity             string   `json:"vanity"`
 	AvatarDB           string   `json:"avatar_db"`
 	Short              string   `json:"short"`
 	Type               string   `json:"type"`
