@@ -78,6 +78,15 @@ func (b Router) Routes(r *chi.Mux) {
 					resp <- utils.ApiDefaultReturn(http.StatusInternalServerError)
 					return
 				}
+
+				certDat, err = utils.ResolveIndexBot(certDat)
+
+				if err != nil {
+					state.Logger.Error(err)
+					resp <- utils.ApiDefaultReturn(http.StatusInternalServerError)
+					return
+				}
+
 				listIndex.Certified = certDat
 
 				mostViewedRow, err := state.Pool.Query(ctx, "SELECT "+indexBotCols+" FROM bots WHERE type = 'approved' ORDER BY clicks DESC LIMIT 9")
@@ -93,6 +102,15 @@ func (b Router) Routes(r *chi.Mux) {
 					resp <- utils.ApiDefaultReturn(http.StatusInternalServerError)
 					return
 				}
+
+				mostViewedDat, err = utils.ResolveIndexBot(mostViewedDat)
+
+				if err != nil {
+					state.Logger.Error(err)
+					resp <- utils.ApiDefaultReturn(http.StatusInternalServerError)
+					return
+				}
+
 				listIndex.MostViewed = mostViewedDat
 
 				recentlyAddedRow, err := state.Pool.Query(ctx, "SELECT "+indexBotCols+" FROM bots WHERE type = 'approved' ORDER BY date DESC LIMIT 9")
@@ -108,6 +126,15 @@ func (b Router) Routes(r *chi.Mux) {
 					resp <- utils.ApiDefaultReturn(http.StatusInternalServerError)
 					return
 				}
+
+				recentlyAddedDat, err = utils.ResolveIndexBot(recentlyAddedDat)
+
+				if err != nil {
+					state.Logger.Error(err)
+					resp <- utils.ApiDefaultReturn(http.StatusInternalServerError)
+					return
+				}
+
 				listIndex.RecentlyAdded = recentlyAddedDat
 
 				topVotedRow, err := state.Pool.Query(ctx, "SELECT "+indexBotCols+" FROM bots WHERE type = 'approved' ORDER BY votes DESC LIMIT 9")
@@ -123,6 +150,14 @@ func (b Router) Routes(r *chi.Mux) {
 					resp <- utils.ApiDefaultReturn(http.StatusInternalServerError)
 					return
 				}
+				topVotedDat, err = utils.ResolveIndexBot(topVotedDat)
+
+				if err != nil {
+					state.Logger.Error(err)
+					resp <- utils.ApiDefaultReturn(http.StatusInternalServerError)
+					return
+				}
+
 				listIndex.TopVoted = topVotedDat
 
 				rows, err := state.Pool.Query(ctx, "SELECT "+indexPackCols+" FROM packs ORDER BY date DESC")

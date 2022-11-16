@@ -73,6 +73,18 @@ func (b Router) Routes(r *chi.Mux) {
 					return
 				}
 
+				// Check cache, this is how we can avoid hefty ratelimits
+				cache := state.Redis.Get(ctx, "allbots-"+strconv.FormatUint(pageNum, 10)).Val()
+				if cache != "" {
+					resp <- types.HttpResponse{
+						Data: cache,
+						Headers: map[string]string{
+							"X-Popplio-Cached": "true",
+						},
+					}
+					return
+				}
+
 				limit := perPage
 				offset := (pageNum - 1) * perPage
 
@@ -84,9 +96,17 @@ func (b Router) Routes(r *chi.Mux) {
 					return
 				}
 
-				var bots []*types.IndexBot
+				var bots []types.IndexBot
 
 				err = pgxscan.ScanAll(&bots, rows)
+
+				if err != nil {
+					state.Logger.Error(err)
+					resp <- utils.ApiDefaultReturn(http.StatusInternalServerError)
+					return
+				}
+
+				bots, err = utils.ResolveIndexBot(bots)
 
 				if err != nil {
 					state.Logger.Error(err)
@@ -134,7 +154,9 @@ func (b Router) Routes(r *chi.Mux) {
 				}
 
 				resp <- types.HttpResponse{
-					Json: data,
+					Json:      data,
+					CacheKey:  "allbots-" + strconv.FormatUint(pageNum, 10),
+					CacheTime: 10 * time.Minute,
 				}
 			}()
 
@@ -410,6 +432,8 @@ Gets a bot by id or name
 			go func() {
 				name := chi.URLParam(r, "id")
 
+				name = strings.ToLower(name)
+
 				if name == "" {
 					resp <- utils.ApiDefaultReturn(http.StatusBadRequest)
 					return
@@ -484,7 +508,16 @@ Gets a bot by id or name
 			resp := make(chan types.HttpResponse)
 
 			go func() {
-				rows, err := state.Pool.Query(ctx, "SELECT "+reviewCols+" FROM reviews WHERE (bot_id = $1 OR vanity = $1)", chi.URLParam(r, "id"))
+				name := chi.URLParam(r, "id")
+
+				name = strings.ToLower(name)
+
+				if name == "" {
+					resp <- utils.ApiDefaultReturn(http.StatusNotFound)
+					return
+				}
+
+				rows, err := state.Pool.Query(ctx, "SELECT "+reviewCols+" FROM reviews WHERE (bot_id = $1 OR vanity = $1)", name)
 
 				if err != nil {
 					state.Logger.Error(err)

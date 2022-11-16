@@ -111,7 +111,21 @@ func ParseBot(ctx context.Context, pool *pgxpool.Pool, bot *types.Bot, s *discor
 	return nil
 }
 
-func ResolveBotPack(ctx context.Context, pool *pgxpool.Pool, pack *types.BotPack, s *discordgo.Session, redisCache *redis.Client) error {
+func ResolveIndexBot(ib []types.IndexBot) ([]types.IndexBot, error) {
+	for i, bot := range ib {
+		botUser, err := GetDiscordUser(bot.BotID)
+
+		if err != nil {
+			return nil, err
+		}
+
+		ib[i].User = botUser
+	}
+
+	return ib, nil
+}
+
+func ResolveBotPack(ctx context.Context, pool *pgxpool.Pool, pack *types.BotPack) error {
 	ownerUser, err := GetDiscordUser(pack.Owner)
 
 	if err != nil {

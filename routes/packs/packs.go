@@ -14,7 +14,6 @@ import (
 
 	"github.com/georgysavva/scany/pgxscan"
 	"github.com/go-chi/chi/v5"
-	jsoniter "github.com/json-iterator/go"
 )
 
 const (
@@ -23,8 +22,6 @@ const (
 )
 
 var (
-	json = jsoniter.ConfigCompatibleWithStandardLibrary
-
 	packColArr = utils.GetCols(types.BotPack{})
 	packCols   = strings.Join(packColArr, ",")
 
@@ -87,7 +84,7 @@ func (b Router) Routes(r *chi.Mux) {
 					return
 				}
 
-				err = utils.ResolveBotPack(ctx, state.Pool, &pack, state.Discord, state.Redis)
+				err = utils.ResolveBotPack(ctx, state.Pool, &pack)
 
 				if err != nil {
 					state.Logger.Error(err)

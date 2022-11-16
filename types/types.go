@@ -70,11 +70,11 @@ type SEO struct {
 }
 
 type AllBots struct {
-	Count    uint64      `json:"count"`
-	PerPage  uint64      `json:"per_page"`
-	Next     string      `json:"next"`
-	Previous string      `json:"previous"`
-	Results  []*IndexBot `json:"bots"`
+	Count    uint64     `json:"count"`
+	PerPage  uint64     `json:"per_page"`
+	Next     string     `json:"next"`
+	Previous string     `json:"previous"`
+	Results  []IndexBot `json:"bots"`
 }
 
 type ResolvedPackBot struct {
@@ -166,22 +166,22 @@ type UserBot struct {
 }
 
 type IndexBot struct {
-	BotID       string      `db:"bot_id" json:"bot_id"`
-	Avatar      string      `db:"avatar" json:"avatar_db"`
-	Short       string      `db:"short" json:"short"`
-	Type        string      `db:"type" json:"type"`
-	Vanity      string      `db:"vanity" json:"vanity"`
-	Votes       int         `db:"votes" json:"votes"`
-	Shards      int         `db:"shards" json:"shards"`
-	Library     string      `db:"library" json:"library"`
-	InviteClick int         `db:"invite_clicks" json:"invite_clicks"`
-	Servers     int         `db:"servers" json:"servers"`
-	NSFW        bool        `db:"nsfw" json:"nsfw"`
-	Tags        []string    `db:"tags" json:"tags"`
-	Premium     bool        `db:"premium" json:"premium"`
-	Certified   bool        `db:"certified" json:"certified"`
-	Views       int         `db:"clicks" json:"clicks"`
-	Banner      pgtype.Text `db:"banner" json:"banner"`
+	BotID       string       `db:"bot_id" json:"bot_id"`
+	User        *DiscordUser `db:"-" json:"user"`
+	Short       string       `db:"short" json:"short"`
+	Type        string       `db:"type" json:"type"`
+	Vanity      string       `db:"vanity" json:"vanity"`
+	Votes       int          `db:"votes" json:"votes"`
+	Shards      int          `db:"shards" json:"shards"`
+	Library     string       `db:"library" json:"library"`
+	InviteClick int          `db:"invite_clicks" json:"invite_clicks"`
+	Servers     int          `db:"servers" json:"servers"`
+	NSFW        bool         `db:"nsfw" json:"nsfw"`
+	Tags        []string     `db:"tags" json:"tags"`
+	Premium     bool         `db:"premium" json:"premium"`
+	Certified   bool         `db:"certified" json:"certified"`
+	Views       int          `db:"clicks" json:"clicks"`
+	Banner      pgtype.Text  `db:"banner" json:"banner"`
 }
 
 type ListIndex struct {
