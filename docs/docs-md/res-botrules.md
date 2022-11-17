@@ -46,7 +46,7 @@ If you find yourself repeating the same thing over and over again, you can use *
 
 To do so, create a ``Extra Link`` starting with a underscore (such as ``_foo``), then use it in your description like this: ``{{_foo}}`` (note the double curly braces) and the value of ``_foo`` will be substituted in all places it appears before markdown parsing or sanitization.
 
-**Also, extra links are by default sorted and as such lose their position, you can avoid this by setting a ``__linkOrder`` key to a comma-seperated list of keys for the order in which the client will render the keys** 
+**Also, extra links are by default sorted and as such lose their position, you can avoid this by either editting your bot/profile (which will automatically create a ``__linkOrder`` key for this) or by setting a ``__linkOrder`` key to a comma-seperated list of keys for the order in which the client will render the keys** 
 
 ---
 
