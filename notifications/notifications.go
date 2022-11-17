@@ -12,8 +12,8 @@ import (
 
 	"github.com/SherClockHolmes/webpush-go"
 	"github.com/bwmarrin/discordgo"
-	"github.com/georgysavva/scany/pgxscan"
-	"github.com/jackc/pgtype"
+	"github.com/georgysavva/scany/v2/pgxscan"
+	"github.com/jackc/pgx/v5/pgtype"
 	"golang.org/x/exp/slices"
 )
 
@@ -51,7 +51,7 @@ func init() {
 
 			err = state.Pool.QueryRow(state.Context, "SELECT owner FROM bots WHERE bot_id = $1", id).Scan(&owner)
 
-			if err != nil || owner.Status != pgtype.Present {
+			if err != nil || !owner.Valid {
 				state.Logger.Errorw("Error getting bot ownership info:", "error", err, "bot_id", id)
 				continue
 			}

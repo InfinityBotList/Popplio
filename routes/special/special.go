@@ -21,10 +21,10 @@ import (
 
 	b64 "encoding/base64"
 
-	"github.com/georgysavva/scany/pgxscan"
+	"github.com/georgysavva/scany/v2/pgxscan"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-redis/redis/v8"
-	"github.com/jackc/pgtype"
+	"github.com/jackc/pgx/v5/pgtype"
 	jsoniter "github.com/json-iterator/go"
 )
 
@@ -548,7 +548,7 @@ func dataTask(taskId string, id string, ip string, del bool) {
 
 	for rows.Next() {
 		var col pgtype.Text
-		var data pgtype.JSONB
+		var data []byte
 		var ts pgtype.Timestamptz
 		var uid pgtype.UUID
 
@@ -564,7 +564,7 @@ func dataTask(taskId string, id string, ip string, del bool) {
 
 		var dataPacket []KVPair
 
-		err = json.Unmarshal([]byte(data.Bytes), &dataPacket)
+		err = json.Unmarshal(data, &dataPacket)
 
 		if err != nil {
 			state.Logger.Error("Failed to decode backup")

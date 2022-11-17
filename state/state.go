@@ -7,7 +7,7 @@ import (
 
 	"github.com/bwmarrin/discordgo"
 	"github.com/go-redis/redis/v8"
-	"github.com/jackc/pgx/v4/pgxpool"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/joho/godotenv"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
@@ -39,13 +39,13 @@ func init() {
 	flag.Parse()
 
 	var err error
-	Pool, err = pgxpool.Connect(Context, connUrl)
+	Pool, err = pgxpool.New(Context, connUrl)
 
 	if err != nil {
 		panic(err)
 	}
 
-	BackupsPool, err = pgxpool.Connect(Context, backupsConnUrl)
+	BackupsPool, err = pgxpool.New(Context, backupsConnUrl)
 
 	if err != nil {
 		panic(err)

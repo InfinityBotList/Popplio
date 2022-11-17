@@ -16,9 +16,9 @@ import (
 	"time"
 
 	"github.com/bwmarrin/discordgo"
-	"github.com/georgysavva/scany/pgxscan"
-	"github.com/jackc/pgtype"
-	"github.com/jackc/pgx/v4"
+	"github.com/georgysavva/scany/v2/pgxscan"
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgtype"
 	"go.uber.org/zap"
 )
 
@@ -64,7 +64,7 @@ func Send(webhook types.WebhookPost) error {
 		}
 
 		// Check custom auth viability
-		if bot.CustomAuth.Status != pgtype.Present || utils.IsNone(bot.CustomAuth.String) {
+		if !bot.CustomAuth.Valid || utils.IsNone(bot.CustomAuth.String) {
 			if bot.APIToken.String != "" {
 				token = bot.APIToken.String
 			} else {
@@ -79,7 +79,7 @@ func Send(webhook types.WebhookPost) error {
 				}
 			}
 
-			bot.CustomAuth = pgtype.Text{String: token, Status: pgtype.Present}
+			bot.CustomAuth = pgtype.Text{String: token, Valid: true}
 		}
 
 		webhook.HMACAuth = bot.HMACAuth.Bool

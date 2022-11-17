@@ -15,8 +15,8 @@ import (
 
 	"github.com/MetroReviews/metro-integrase/types"
 	"github.com/go-chi/chi/v5"
-	"github.com/jackc/pgconn"
-	"github.com/jackc/pgtype"
+	"github.com/jackc/pgx/v5/pgconn"
+	"github.com/jackc/pgx/v5/pgtype"
 
 	"github.com/bwmarrin/discordgo"
 )

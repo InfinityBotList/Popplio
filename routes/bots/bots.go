@@ -14,7 +14,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/georgysavva/scany/pgxscan"
+	"github.com/georgysavva/scany/v2/pgxscan"
 	"github.com/go-chi/chi/v5"
 	jsoniter "github.com/json-iterator/go"
 )
@@ -232,6 +232,9 @@ Gets a bot by id or name
 					resp <- utils.ApiDefaultReturn(http.StatusNotFound)
 					return
 				}
+
+				// Parse JSON data
+				bot.ParseJSONB()
 
 				err = utils.ParseBot(ctx, state.Pool, &bot, state.Discord, state.Redis)
 

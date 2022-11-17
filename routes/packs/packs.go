@@ -12,7 +12,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/georgysavva/scany/pgxscan"
+	"github.com/georgysavva/scany/v2/pgxscan"
 	"github.com/go-chi/chi/v5"
 )
 
@@ -150,7 +150,7 @@ func (b Router) Routes(r *chi.Mux) {
 					return
 				}
 
-				var packs []*types.IndexBotPack
+				packs := []types.IndexBotPack{}
 
 				err = pgxscan.ScanAll(&packs, rows)
 
@@ -158,6 +158,16 @@ func (b Router) Routes(r *chi.Mux) {
 					state.Logger.Error(err)
 					resp <- utils.ApiDefaultReturn(http.StatusInternalServerError)
 					return
+				}
+
+				for _, pack := range packs {
+					pack.Votes, err = utils.ResolvePackVotes(ctx, pack.URL)
+
+					if err != nil {
+						state.Logger.Error(err)
+						resp <- utils.ApiDefaultReturn(http.StatusInternalServerError)
+						return
+					}
 				}
 
 				var previous strings.Builder

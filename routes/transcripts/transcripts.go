@@ -9,10 +9,12 @@ import (
 	"strconv"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/jackc/pgtype"
+	jsoniter "github.com/json-iterator/go"
 )
 
 const tagName = "Tickets + Transcripts"
+
+var json = jsoniter.ConfigCompatibleWithStandardLibrary
 
 type Router struct{}
 
@@ -60,9 +62,9 @@ func (b Router) Routes(r *chi.Mux) {
 				}
 
 				// Get transcript
-				var data pgtype.JSONB
-				var closedBy pgtype.JSONB
-				var openedBy pgtype.JSONB
+				var data []byte
+				var closedBy []byte
+				var openedBy []byte
 
 				err = state.Pool.QueryRow(ctx, "SELECT data, closed_by, opened_by FROM transcripts WHERE id = $1", transcriptNumInt).Scan(&data, &closedBy, &openedBy)
 
@@ -72,11 +74,41 @@ func (b Router) Routes(r *chi.Mux) {
 					return
 				}
 
+				var dataParsed map[string]any
+
+				err = json.Unmarshal(data, &dataParsed)
+
+				if err != nil {
+					state.Logger.Error(err)
+					resp <- utils.ApiDefaultReturn(http.StatusInternalServerError)
+					return
+				}
+
+				var closedByParsed map[string]any
+
+				err = json.Unmarshal(closedBy, &closedByParsed)
+
+				if err != nil {
+					state.Logger.Error(err)
+					resp <- utils.ApiDefaultReturn(http.StatusInternalServerError)
+					return
+				}
+
+				var openedByParsed map[string]any
+
+				err = json.Unmarshal(openedBy, &openedByParsed)
+
+				if err != nil {
+					state.Logger.Error(err)
+					resp <- utils.ApiDefaultReturn(http.StatusInternalServerError)
+					return
+				}
+
 				var transcript = types.Transcript{
 					ID:       transcriptNumInt,
-					Data:     data,
-					ClosedBy: closedBy,
-					OpenedBy: openedBy,
+					Data:     dataParsed,
+					ClosedBy: closedByParsed,
+					OpenedBy: openedByParsed,
 				}
 
 				resp <- types.HttpResponse{

@@ -17,9 +17,9 @@ import (
 	"time"
 
 	"github.com/bwmarrin/discordgo"
-	"github.com/georgysavva/scany/pgxscan"
+	"github.com/georgysavva/scany/v2/pgxscan"
 	"github.com/go-chi/chi/v5"
-	"github.com/jackc/pgtype"
+	"github.com/jackc/pgx/v5/pgtype"
 	jsoniter "github.com/json-iterator/go"
 	ua "github.com/mileusna/useragent"
 	"go.uber.org/zap"
@@ -108,7 +108,7 @@ func (b Router) Routes(r *chi.Mux) {
 
 					err = state.Pool.QueryRow(ctx, "SELECT bot_id FROM bots WHERE (lower(vanity) = $1 OR bot_id = $1)", vars["bid"]).Scan(&botId)
 
-					if err != nil || botId.Status != pgtype.Present {
+					if err != nil || !botId.Valid {
 						state.Logger.Error(err)
 						resp <- utils.ApiDefaultReturn(http.StatusNotFound)
 						return
@@ -118,7 +118,7 @@ func (b Router) Routes(r *chi.Mux) {
 				} else {
 					err = state.Pool.QueryRow(ctx, "SELECT bot_id, type FROM bots WHERE (lower(vanity) = $1 OR bot_id = $1)", vars["bid"]).Scan(&botId, &botType)
 
-					if err != nil || botId.Status != pgtype.Present || botType.Status != pgtype.Present {
+					if err != nil || !botId.Valid || !botType.Valid {
 						state.Logger.Error(err)
 						resp <- utils.ApiDefaultReturn(http.StatusNotFound)
 						return
@@ -313,7 +313,7 @@ func (b Router) Routes(r *chi.Mux) {
 				}
 
 				var incr = 1
-				var votes = oldVotes.Int
+				var votes = oldVotes.Int32
 
 				if utils.GetDoubleVote() {
 					incr = 2
@@ -866,7 +866,7 @@ func (b Router) Routes(r *chi.Mux) {
 
 				err := state.Pool.QueryRow(ctx, "SELECT bot_id FROM bots WHERE (lower(vanity) = $1 OR bot_id = $1)", r.URL.Query().Get("bot_id")).Scan(&botId)
 
-				if err != nil || botId.Status != pgtype.Present || botId.String == "" {
+				if err != nil || !botId.Valid || botId.String == "" {
 					state.Logger.Error("Error deleting reminder: ", err)
 					resp <- utils.ApiDefaultReturn(http.StatusNotFound)
 					return
@@ -937,7 +937,7 @@ func (b Router) Routes(r *chi.Mux) {
 
 				err := state.Pool.QueryRow(ctx, "SELECT bot_id FROM bots WHERE (lower(vanity) = $1 OR bot_id = $1)", r.URL.Query().Get("bot_id")).Scan(&botId)
 
-				if err != nil || botId.Status != pgtype.Present || botId.String == "" {
+				if err != nil || !botId.Valid || botId.String == "" {
 					state.Logger.Error("Error adding reminder: ", err)
 					resp <- utils.ApiDefaultReturn(http.StatusNotFound)
 					return
@@ -1226,6 +1226,8 @@ func (b Router) Routes(r *chi.Mux) {
 					resp <- utils.ApiDefaultReturn(http.StatusNotFound)
 					return
 				}
+
+				user.ParseJSONB()
 
 				err = utils.ParseUser(ctx, state.Pool, &user, state.Discord, state.Redis)
 

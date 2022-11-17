@@ -17,11 +17,11 @@ import (
 	"popplio/types"
 
 	"github.com/bwmarrin/discordgo"
-	"github.com/georgysavva/scany/pgxscan"
+	"github.com/georgysavva/scany/v2/pgxscan"
 	"github.com/go-redis/redis/v8"
-	"github.com/jackc/pgtype"
-	"github.com/jackc/pgx/v4"
-	"github.com/jackc/pgx/v4/pgxpool"
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/jackc/pgx/v5/pgxpool"
 	jsoniter "github.com/json-iterator/go"
 	"go.uber.org/zap"
 )
@@ -43,11 +43,13 @@ func IsNone(s string) bool {
 
 func ParseBot(ctx context.Context, pool *pgxpool.Pool, bot *types.Bot, s *discordgo.Session, redisCache *redis.Client) error {
 	if IsNone(bot.Banner.String) || !strings.HasPrefix(bot.Banner.String, "https://") {
-		bot.Banner.Status = pgtype.Null
+		bot.Banner.Valid = false
+		bot.Banner.String = ""
 	}
 
 	if IsNone(bot.Invite.String) || !strings.HasPrefix(bot.Invite.String, "https://") {
-		bot.Invite.Status = pgtype.Null
+		bot.Invite.Valid = false
+		bot.Invite.String = ""
 	}
 
 	ownerUser, err := GetDiscordUser(bot.Owner)
@@ -125,8 +127,47 @@ func ResolveIndexBot(ib []types.IndexBot) ([]types.IndexBot, error) {
 	return ib, nil
 }
 
+func ResolvePackVotes(ctx context.Context, url string) ([]types.PackVote, error) {
+	rows, err := state.Pool.Query(ctx, "SELECT user_id, upvote, date FROM pack_votes WHERE url = $1", url)
+
+	if err != nil {
+		return []types.PackVote{}, err
+	}
+
+	defer rows.Close()
+
+	votes := []types.PackVote{}
+
+	for rows.Next() {
+		// Fetch votes for the pack
+		var userId string
+		var upvote bool
+		var date time.Time
+
+		err := rows.Scan(&userId, &upvote, &date)
+
+		if err != nil {
+			return nil, err
+		}
+
+		votes = append(votes, types.PackVote{
+			UserID: userId,
+			Upvote: upvote,
+			Date:   date,
+		})
+	}
+
+	return votes, nil
+}
+
 func ResolveBotPack(ctx context.Context, pool *pgxpool.Pool, pack *types.BotPack) error {
 	ownerUser, err := GetDiscordUser(pack.Owner)
+
+	if err != nil {
+		return err
+	}
+
+	pack.Votes, err = ResolvePackVotes(ctx, pack.URL)
 
 	if err != nil {
 		return err
@@ -184,20 +225,14 @@ func ResolveBotPack(ctx context.Context, pool *pgxpool.Pool, pack *types.BotPack
 }
 
 func ParseUser(ctx context.Context, pool *pgxpool.Pool, user *types.User, s *discordgo.Session, redisCache *redis.Client) error {
-	if IsNone(user.Website.String) {
-		user.Website.Status = pgtype.Null
-	}
-
-	if IsNone(user.Github.String) {
-		user.Github.Status = pgtype.Null
-	}
-
 	if IsNone(user.About.String) {
-		user.About.Status = pgtype.Null
+		user.About.Valid = false
+		user.About.String = ""
 	}
 
 	if IsNone(user.Nickname.String) {
-		user.Nickname.Status = pgtype.Null
+		user.Nickname.Valid = false
+		user.Nickname.String = ""
 	}
 
 	userObj, err := GetDiscordUser(user.ID)
@@ -443,7 +478,7 @@ func GetVoteData(ctx context.Context, userID, botID string) (*types.UserVote, er
 	err = pgxscan.ScanAll(&voteDates, rows)
 
 	for _, vote := range voteDates {
-		if vote.Date.Status != pgtype.Null {
+		if vote.Date.Valid {
 			votes = append(votes, vote.Date.Time.UnixMilli())
 		}
 	}
@@ -552,7 +587,7 @@ func AuthCheck(token string, bot bool) *string {
 			state.Logger.Error(err)
 			return nil
 		} else {
-			if id.Status == pgtype.Null {
+			if !id.Valid {
 				return nil
 			}
 			return &id.String
@@ -565,7 +600,7 @@ func AuthCheck(token string, bot bool) *string {
 			state.Logger.Error(err)
 			return nil
 		} else {
-			if id.Status == pgtype.Null {
+			if !id.Valid {
 				return nil
 			}
 			return &id.String

@@ -8,56 +8,70 @@ import (
 	"reflect"
 
 	"github.com/bwmarrin/discordgo"
-	"github.com/jackc/pgtype"
+	"github.com/jackc/pgx/v5/pgtype"
+	jsoniter "github.com/json-iterator/go"
 )
 
-// A bot is a Discord bot that is on the infinity botlist.
+var json = jsoniter.ConfigCompatibleWithStandardLibrary
+
+// A bot is a Discord bot that is on the infinitybotlist.
 type Bot struct {
-	ITag                     pgtype.UUID        `db:"itag" json:"itag"`
-	BotID                    string             `db:"bot_id" json:"bot_id"`
-	ExtraLinks               pgtype.JSONB       `db:"extra_links" json:"extra_links"`
-	Tags                     []string           `db:"tags" json:"tags"`
-	Prefix                   pgtype.Text        `db:"prefix" json:"prefix"`
-	User                     *DiscordUser       `json:"user"` // Must be parsed internally
-	Owner                    string             `db:"owner" json:"-"`
-	MainOwner                *DiscordUser       `json:"owner"` // Must be parsed internally
-	AdditionalOwners         []string           `db:"additional_owners" json:"-"`
-	ResolvedAdditionalOwners []*DiscordUser     `json:"additional_owners"` // Must be parsed internally
-	StaffBot                 bool               `db:"staff_bot" json:"staff_bot"`
-	Short                    string             `db:"short" json:"short"`
-	Long                     string             `db:"long" json:"long"`
-	LongDescIsURL            bool               `json:"long_desc_is_url"`
-	Library                  pgtype.Text        `db:"library" json:"library"`
-	NSFW                     bool               `db:"nsfw" json:"nsfw"`
-	Premium                  bool               `db:"premium" json:"premium"`
-	Certified                bool               `db:"certified" json:"certified"`
-	PendingCert              bool               `db:"pending_cert" json:"pending_cert"`
-	Servers                  int                `db:"servers" json:"servers"`
-	Shards                   int                `db:"shards" json:"shards"`
-	Users                    int                `db:"users" json:"users"`
-	Votes                    int                `db:"votes" json:"votes"`
-	Views                    int                `db:"clicks" json:"clicks"`
-	UniqueClicks             int64              `json:"unique_clicks"` // Must be parsed internally
-	InviteClicks             int                `db:"invite_clicks" json:"invites"`
-	Banner                   pgtype.Text        `db:"banner" json:"banner"`
-	Invite                   pgtype.Text        `db:"invite" json:"invite"`
-	Type                     string             `db:"type" json:"type"` // For auditing reasons, we do not filter out denied/banned bots in API
-	Vanity                   pgtype.Text        `db:"vanity" json:"vanity"`
-	ExternalSource           pgtype.Text        `db:"external_source" json:"external_source"`
-	ListSource               pgtype.UUID        `db:"list_source" json:"list_source"`
-	VoteBanned               bool               `db:"vote_banned" json:"vote_banned"`
-	CrossAdd                 bool               `db:"cross_add" json:"cross_add"`
-	StartPeriod              int                `db:"start_premium_period" json:"start_premium_period"`
-	SubPeriod                int                `db:"premium_period_length" json:"premium_period_length"`
-	CertReason               pgtype.Text        `db:"cert_reason" json:"cert_reason"`
-	Announce                 pgtype.Text        `db:"announce" json:"announce"`
-	AnnounceMessage          pgtype.Text        `db:"announce_message" json:"announce_message"`
-	Uptime                   int                `db:"uptime" json:"uptime"`
-	TotalUptime              int                `db:"total_uptime" json:"total_uptime"`
-	Claimed                  bool               `db:"claimed" json:"claimed"`
-	ClaimedBy                pgtype.Text        `db:"claimed_by" json:"claimed_by"`
-	Note                     pgtype.Text        `db:"approval_note" json:"approval_note"`
-	Date                     pgtype.Timestamptz `db:"date" json:"date"`
+	ITag                     pgtype.UUID       `db:"itag" json:"itag"`
+	BotID                    string            `db:"bot_id" json:"bot_id"`
+	ExtraLinks               []byte            `db:"extra_links" json:"-"`
+	ExtraLinksParsed         map[string]string `db:"-" json:"extra_links"`
+	Tags                     []string          `db:"tags" json:"tags"`
+	Prefix                   pgtype.Text       `db:"prefix" json:"prefix"`
+	User                     *DiscordUser      `json:"user"` // Must be parsed internally
+	Owner                    string            `db:"owner" json:"-"`
+	MainOwner                *DiscordUser      `json:"owner"` // Must be parsed internally
+	AdditionalOwners         []string          `db:"additional_owners" json:"-"`
+	ResolvedAdditionalOwners []*DiscordUser    `json:"additional_owners"` // Must be parsed internally
+	StaffBot                 bool              `db:"staff_bot" json:"staff_bot"`
+	Short                    string            `db:"short" json:"short"`
+	Long                     string            `db:"long" json:"long"`
+	LongDescIsURL            bool              `json:"long_desc_is_url"`
+	Library                  string            `db:"library" json:"library"`
+	NSFW                     pgtype.Bool       `db:"nsfw" json:"nsfw"`
+	Premium                  pgtype.Bool       `db:"premium" json:"premium"`
+	Certified                pgtype.Bool       `db:"certified" json:"certified"`
+	PendingCert              pgtype.Bool       `db:"pending_cert" json:"pending_cert"`
+	Servers                  int               `db:"servers" json:"servers"`
+	Shards                   int               `db:"shards" json:"shards"`
+	Users                    int               `db:"users" json:"users"`
+	Votes                    int               `db:"votes" json:"votes"`
+	Views                    int               `db:"clicks" json:"clicks"`
+	UniqueClicks             int64             `json:"unique_clicks"` // Must be parsed internally
+	InviteClicks             int               `db:"invite_clicks" json:"invites"`
+	Banner                   pgtype.Text       `db:"banner" json:"banner"`
+	Invite                   pgtype.Text       `db:"invite" json:"invite"`
+	Type                     string            `db:"type" json:"type"` // For auditing reasons, we do not filter out denied/banned bots in API
+	Vanity                   string            `db:"vanity" json:"vanity"`
+	ExternalSource           pgtype.Text       `db:"external_source" json:"external_source"`
+	ListSource               pgtype.UUID       `db:"list_source" json:"list_source"`
+	VoteBanned               bool              `db:"vote_banned" json:"vote_banned"`
+	CrossAdd                 bool              `db:"cross_add" json:"cross_add"`
+	StartPeriod              int               `db:"start_premium_period" json:"start_premium_period"`
+	SubPeriod                int               `db:"premium_period_length" json:"premium_period_length"`
+	CertReason               pgtype.Text       `db:"cert_reason" json:"cert_reason"`
+	Announce                 bool              `db:"announce" json:"announce"`
+	//AnnounceMessage pgtype.Text `db:"announce_message" json:"announce_message"`
+	Uptime      int `db:"uptime" json:"uptime"`
+	TotalUptime int `db:"total_uptime" json:"total_uptime"`
+	//Claimed         pgtype.Bool        `db:"claimed" json:"claimed"`
+	ClaimedBy pgtype.Text        `db:"claimed_by" json:"claimed_by"`
+	Note      pgtype.Text        `db:"approval_note" json:"approval_note"`
+	Date      pgtype.Timestamptz `db:"date" json:"date"`
+}
+
+func (b *Bot) ParseJSONB() {
+	if b.ExtraLinks != nil {
+		b.ExtraLinksParsed = make(map[string]string)
+		err := json.Unmarshal(b.ExtraLinks, &b.ExtraLinksParsed)
+		if err != nil {
+			b.ExtraLinksParsed = nil
+		}
+	}
 }
 
 // SEO Bot (minified bot for seo purposes
@@ -92,12 +106,19 @@ type ResolvedPackBot struct {
 	Tags         []string     `json:"tags"`
 }
 
+type PackVote struct {
+	UserID string    `json:"user_id"`
+	URL    string    `json:"url"`
+	Upvote bool      `json:"upvote"`
+	Date   time.Time `json:"date"`
+}
+
 type BotPack struct {
 	Owner         string            `db:"owner" json:"owner_id"`
 	ResolvedOwner *DiscordUser      `db:"-" json:"owner"`
 	Name          string            `db:"name" json:"name"`
 	Short         string            `db:"short" json:"short"`
-	Votes         int64             `db:"votes" json:"votes"`
+	Votes         []PackVote        `db:"-" json:"votes"`
 	Tags          []string          `db:"tags" json:"tags"`
 	URL           string            `db:"url" json:"url"`
 	Date          time.Time         `db:"date" json:"date"`
@@ -106,22 +127,22 @@ type BotPack struct {
 }
 
 type IndexBotPack struct {
-	Owner string    `db:"owner" json:"owner_id"`
-	Name  string    `db:"name" json:"name"`
-	Short string    `db:"short" json:"short"`
-	Votes int64     `db:"votes" json:"votes"`
-	Tags  []string  `db:"tags" json:"tags"`
-	URL   string    `db:"url" json:"url"`
-	Date  time.Time `db:"date" json:"date"`
-	Bots  []string  `db:"bots" json:"bot_ids"`
+	Owner string     `db:"owner" json:"owner_id"`
+	Name  string     `db:"name" json:"name"`
+	Short string     `db:"short" json:"short"`
+	Votes []PackVote `db:"-" json:"votes"`
+	Tags  []string   `db:"tags" json:"tags"`
+	URL   string     `db:"url" json:"url"`
+	Date  time.Time  `db:"date" json:"date"`
+	Bots  []string   `db:"bots" json:"bot_ids"`
 }
 
 type AllPacks struct {
-	Count    uint64          `json:"count"`
-	PerPage  uint64          `json:"per_page"`
-	Next     string          `json:"next"`
-	Previous string          `json:"previous"`
-	Results  []*IndexBotPack `json:"packs"`
+	Count    uint64         `json:"count"`
+	PerPage  uint64         `json:"per_page"`
+	Next     string         `json:"next"`
+	Previous string         `json:"previous"`
+	Results  []IndexBotPack `json:"packs"`
 }
 
 // A review is a review on ibl
@@ -184,26 +205,22 @@ type IndexBot struct {
 }
 
 type ListIndex struct {
-	Certified     []IndexBot      `json:"certified"`
-	MostViewed    []IndexBot      `json:"most_viewed"`
-	Packs         []*IndexBotPack `json:"packs"`
-	RecentlyAdded []IndexBot      `json:"recently_added"`
-	TopVoted      []IndexBot      `json:"top_voted"`
+	Certified     []IndexBot     `json:"certified"`
+	MostViewed    []IndexBot     `json:"most_viewed"`
+	Packs         []IndexBotPack `json:"packs"`
+	RecentlyAdded []IndexBot     `json:"recently_added"`
+	TopVoted      []IndexBot     `json:"top_voted"`
 }
 
 type User struct {
-	ITag      pgtype.UUID    `db:"itag" json:"itag"`
-	ID        string         `db:"user_id" json:"user_id"`
-	User      *DiscordUser   `db:"-" json:"user"`  // Must be handled internally
-	Votes     map[string]any `db:"votes" json:"-"` // Not sent due to privacy reasons
-	PackVotes map[string]any `db:"pack_votes" json:"pack_votes"`
-	Staff     bool           `db:"staff" json:"staff"`
-	Certified bool           `db:"certified" json:"certified"`
-	Developer bool           `db:"developer" json:"developer"`
-	About     pgtype.Text    `db:"about" json:"about"`
-	Github    pgtype.Text    `db:"github" json:"github"`
-	Nickname  pgtype.Text    `db:"nickname" json:"nickname"`
-	Website   pgtype.Text    `db:"website" json:"website"`
+	ITag      pgtype.UUID  `db:"itag" json:"itag"`
+	ID        string       `db:"user_id" json:"user_id"`
+	User      *DiscordUser `db:"-" json:"user"` // Must be handled internally
+	Staff     bool         `db:"staff" json:"staff"`
+	Certified bool         `db:"certified" json:"certified"`
+	Developer bool         `db:"developer" json:"developer"`
+	About     pgtype.Text  `db:"about" json:"about"`
+	Nickname  pgtype.Text  `db:"nickname" json:"nickname"`
 
 	StaffStats    map[string]int `db:"staff_stats" json:"staff_stats"`
 	NewStaffStats map[string]int `db:"new_staff_stats" json:"new_staff_stats"`
@@ -212,6 +229,19 @@ type User struct {
 	Admin      bool `db:"admin" json:"admin"`
 
 	UserBots []UserBot `json:"user_bots"` // Must be handled internally
+
+	ExtraLinks       []byte            `db:"extra_links" json:"-"`
+	ExtraLinksParsed map[string]string `db:"-" json:"extra_links"`
+}
+
+func (u *User) ParseJSONB() {
+	if u.ExtraLinks != nil {
+		u.ExtraLinksParsed = make(map[string]string)
+		err := json.Unmarshal(u.ExtraLinks, &u.ExtraLinksParsed)
+		if err != nil {
+			u.ExtraLinksParsed = nil
+		}
+	}
 }
 
 type VoteInfo struct {
@@ -591,10 +621,10 @@ type AuthInfo struct {
 }
 
 type Transcript struct {
-	ID       int          `json:"id"`
-	Data     pgtype.JSONB `json:"data"`
-	ClosedBy pgtype.JSONB `json:"closed_by"`
-	OpenedBy pgtype.JSONB `json:"opened_by"`
+	ID       int            `json:"id"`
+	Data     map[string]any `json:"data"`
+	ClosedBy map[string]any `json:"closed_by"`
+	OpenedBy map[string]any `json:"opened_by"`
 }
 
 type UserSubscription struct {

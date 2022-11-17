@@ -9,7 +9,7 @@ import (
 	"popplio/utils"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/jackc/pgtype"
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 const tagName = "Legacy"

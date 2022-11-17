@@ -8,7 +8,7 @@ import (
 	"popplio/utils"
 	"strings"
 
-	"github.com/georgysavva/scany/pgxscan"
+	"github.com/georgysavva/scany/v2/pgxscan"
 	"github.com/go-chi/chi/v5"
 	jsoniter "github.com/json-iterator/go"
 )
