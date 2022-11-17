@@ -621,10 +621,10 @@ type AuthInfo struct {
 }
 
 type Transcript struct {
-	ID       int            `json:"id"`
-	Data     map[string]any `json:"data"`
-	ClosedBy map[string]any `json:"closed_by"`
-	OpenedBy map[string]any `json:"opened_by"`
+	ID       int              `json:"id"`
+	Data     []map[string]any `json:"data"`
+	ClosedBy map[string]any   `json:"closed_by"`
+	OpenedBy map[string]any   `json:"opened_by"`
 }
 
 type UserSubscription struct {

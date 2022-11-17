@@ -160,8 +160,8 @@ func (b Router) Routes(r *chi.Mux) {
 					return
 				}
 
-				for _, pack := range packs {
-					pack.Votes, err = utils.ResolvePackVotes(ctx, pack.URL)
+				for i := range packs {
+					packs[i].Votes, err = utils.ResolvePackVotes(ctx, packs[i].URL)
 
 					if err != nil {
 						state.Logger.Error(err)

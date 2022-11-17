@@ -74,7 +74,7 @@ func (b Router) Routes(r *chi.Mux) {
 					return
 				}
 
-				var dataParsed map[string]any
+				var dataParsed []map[string]any
 
 				err = json.Unmarshal(data, &dataParsed)
 
