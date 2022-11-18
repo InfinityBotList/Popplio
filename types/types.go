@@ -14,47 +14,53 @@ import (
 
 var json = jsoniter.ConfigCompatibleWithStandardLibrary
 
+// A link is any extra link
+type Link struct {
+	Name  string `json:"name"`
+	Value string `json:"value"`
+}
+
 // A bot is a Discord bot that is on the infinitybotlist.
 type Bot struct {
-	ITag                     pgtype.UUID       `db:"itag" json:"itag"`
-	BotID                    string            `db:"bot_id" json:"bot_id"`
-	ExtraLinks               []byte            `db:"extra_links" json:"-"`
-	ExtraLinksParsed         map[string]string `db:"-" json:"extra_links"`
-	Tags                     []string          `db:"tags" json:"tags"`
-	Prefix                   pgtype.Text       `db:"prefix" json:"prefix"`
-	User                     *DiscordUser      `json:"user"` // Must be parsed internally
-	Owner                    string            `db:"owner" json:"-"`
-	MainOwner                *DiscordUser      `json:"owner"` // Must be parsed internally
-	AdditionalOwners         []string          `db:"additional_owners" json:"-"`
-	ResolvedAdditionalOwners []*DiscordUser    `json:"additional_owners"` // Must be parsed internally
-	StaffBot                 bool              `db:"staff_bot" json:"staff_bot"`
-	Short                    string            `db:"short" json:"short"`
-	Long                     string            `db:"long" json:"long"`
-	LongDescIsURL            bool              `json:"long_desc_is_url"`
-	Library                  string            `db:"library" json:"library"`
-	NSFW                     pgtype.Bool       `db:"nsfw" json:"nsfw"`
-	Premium                  pgtype.Bool       `db:"premium" json:"premium"`
-	Certified                pgtype.Bool       `db:"certified" json:"certified"`
-	PendingCert              pgtype.Bool       `db:"pending_cert" json:"pending_cert"`
-	Servers                  int               `db:"servers" json:"servers"`
-	Shards                   int               `db:"shards" json:"shards"`
-	Users                    int               `db:"users" json:"users"`
-	Votes                    int               `db:"votes" json:"votes"`
-	Views                    int               `db:"clicks" json:"clicks"`
-	UniqueClicks             int64             `json:"unique_clicks"` // Must be parsed internally
-	InviteClicks             int               `db:"invite_clicks" json:"invites"`
-	Banner                   pgtype.Text       `db:"banner" json:"banner"`
-	Invite                   pgtype.Text       `db:"invite" json:"invite"`
-	Type                     string            `db:"type" json:"type"` // For auditing reasons, we do not filter out denied/banned bots in API
-	Vanity                   string            `db:"vanity" json:"vanity"`
-	ExternalSource           pgtype.Text       `db:"external_source" json:"external_source"`
-	ListSource               pgtype.UUID       `db:"list_source" json:"list_source"`
-	VoteBanned               bool              `db:"vote_banned" json:"vote_banned"`
-	CrossAdd                 bool              `db:"cross_add" json:"cross_add"`
-	StartPeriod              int               `db:"start_premium_period" json:"start_premium_period"`
-	SubPeriod                int               `db:"premium_period_length" json:"premium_period_length"`
-	CertReason               pgtype.Text       `db:"cert_reason" json:"cert_reason"`
-	Announce                 bool              `db:"announce" json:"announce"`
+	ITag                     pgtype.UUID    `db:"itag" json:"itag"`
+	BotID                    string         `db:"bot_id" json:"bot_id"`
+	ExtraLinks               []byte         `db:"extra_links" json:"-"`
+	ExtraLinksParsed         []Link         `db:"-" json:"extra_links"`
+	Tags                     []string       `db:"tags" json:"tags"`
+	Prefix                   pgtype.Text    `db:"prefix" json:"prefix"`
+	User                     *DiscordUser   `json:"user"` // Must be parsed internally
+	Owner                    string         `db:"owner" json:"-"`
+	MainOwner                *DiscordUser   `json:"owner"` // Must be parsed internally
+	AdditionalOwners         []string       `db:"additional_owners" json:"-"`
+	ResolvedAdditionalOwners []*DiscordUser `json:"additional_owners"` // Must be parsed internally
+	StaffBot                 bool           `db:"staff_bot" json:"staff_bot"`
+	Short                    string         `db:"short" json:"short"`
+	Long                     string         `db:"long" json:"long"`
+	LongDescIsURL            bool           `json:"long_desc_is_url"`
+	Library                  string         `db:"library" json:"library"`
+	NSFW                     pgtype.Bool    `db:"nsfw" json:"nsfw"`
+	Premium                  pgtype.Bool    `db:"premium" json:"premium"`
+	Certified                pgtype.Bool    `db:"certified" json:"certified"`
+	PendingCert              pgtype.Bool    `db:"pending_cert" json:"pending_cert"`
+	Servers                  int            `db:"servers" json:"servers"`
+	Shards                   int            `db:"shards" json:"shards"`
+	Users                    int            `db:"users" json:"users"`
+	Votes                    int            `db:"votes" json:"votes"`
+	Views                    int            `db:"clicks" json:"clicks"`
+	UniqueClicks             int64          `json:"unique_clicks"` // Must be parsed internally
+	InviteClicks             int            `db:"invite_clicks" json:"invites"`
+	Banner                   pgtype.Text    `db:"banner" json:"banner"`
+	Invite                   pgtype.Text    `db:"invite" json:"invite"`
+	Type                     string         `db:"type" json:"type"` // For auditing reasons, we do not filter out denied/banned bots in API
+	Vanity                   string         `db:"vanity" json:"vanity"`
+	ExternalSource           pgtype.Text    `db:"external_source" json:"external_source"`
+	ListSource               pgtype.UUID    `db:"list_source" json:"list_source"`
+	VoteBanned               bool           `db:"vote_banned" json:"vote_banned"`
+	CrossAdd                 bool           `db:"cross_add" json:"cross_add"`
+	StartPeriod              int            `db:"start_premium_period" json:"start_premium_period"`
+	SubPeriod                int            `db:"premium_period_length" json:"premium_period_length"`
+	CertReason               pgtype.Text    `db:"cert_reason" json:"cert_reason"`
+	Announce                 bool           `db:"announce" json:"announce"`
 	//AnnounceMessage pgtype.Text `db:"announce_message" json:"announce_message"`
 	Uptime      int `db:"uptime" json:"uptime"`
 	TotalUptime int `db:"total_uptime" json:"total_uptime"`
@@ -66,7 +72,6 @@ type Bot struct {
 
 func (b *Bot) ParseJSONB() {
 	if b.ExtraLinks != nil {
-		b.ExtraLinksParsed = make(map[string]string)
 		err := json.Unmarshal(b.ExtraLinks, &b.ExtraLinksParsed)
 		if err != nil {
 			b.ExtraLinksParsed = nil
@@ -230,13 +235,12 @@ type User struct {
 
 	UserBots []UserBot `json:"user_bots"` // Must be handled internally
 
-	ExtraLinks       []byte            `db:"extra_links" json:"-"`
-	ExtraLinksParsed map[string]string `db:"-" json:"extra_links"`
+	ExtraLinks       []byte `db:"extra_links" json:"-"`
+	ExtraLinksParsed []Link `db:"-" json:"extra_links"`
 }
 
 func (u *User) ParseJSONB() {
 	if u.ExtraLinks != nil {
-		u.ExtraLinksParsed = make(map[string]string)
 		err := json.Unmarshal(u.ExtraLinks, &u.ExtraLinksParsed)
 		if err != nil {
 			u.ExtraLinksParsed = nil
