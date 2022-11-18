@@ -64,9 +64,9 @@ func addBot(bot *types.Bot) (pgconn.CommandTag, error) {
 		ctx,
 		`INSERT INTO bots (bot_id, name, vanity, approval_note, date, prefix, website, github, donate, nsfw, library, 
 			cross_add, list_source, external_source, short, long, tags, invite, owner, additional_owners,
-			web_auth, custom_webhook, webhook, token, type) VALUES (
+			web_auth, webhook, token, type) VALUES (
 				$1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, 
-				$18, $19, $20, $21, $22, $23, $24, $25
+				$18, $19, $20, $21, $22, $23, $24
 			)`,
 		bot.BotID,
 		bot.Username,

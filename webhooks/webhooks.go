@@ -42,18 +42,21 @@ func Send(webhook types.WebhookPost) error {
 
 	isDiscordIntegration := isDiscord(url)
 
+	if isDiscordIntegration {
+		return errors.New("webhook is not a discord webhook")
+	}
+
 	if !webhook.Test && (utils.IsNone(url) || utils.IsNone(token)) {
 		// Fetch URL from postgres
 
 		var bot struct {
-			Discord    pgtype.Text `db:"webhook"`
-			CustomURL  pgtype.Text `db:"custom_webhook"`
+			WebhookURL pgtype.Text `db:"webhook"`
 			CustomAuth pgtype.Text `db:"web_auth"`
 			APIToken   pgtype.Text `db:"token"`
 			HMACAuth   pgtype.Bool `db:"hmac"`
 		}
 
-		err := pgxscan.Get(state.Context, state.Pool, &bot, "SELECT webhook, custom_webhook, web_auth, token, hmac FROM bots WHERE bot_id = $1", webhook.BotID)
+		err := pgxscan.Get(state.Context, state.Pool, &bot, "SELECT webhook, web_auth, token, hmac FROM bots WHERE bot_id = $1", webhook.BotID)
 
 		if err != nil {
 			state.Logger.Error("Failed to fetch webhook: ", err.Error())
@@ -84,100 +87,17 @@ func Send(webhook types.WebhookPost) error {
 
 		state.Logger.Info("Using hmac: ", webhook.HMACAuth)
 
-		// For each url, make a new sendWebhook
-		if !utils.IsNone(bot.CustomURL.String) {
-			webhook.URL = bot.CustomURL.String
-			err := Send(webhook)
-
-			if err != nil {
-				state.Logger.Error("Custom URL send error", err)
-			}
-		}
-
-		if !utils.IsNone(bot.Discord.String) {
-			webhook.URL = bot.Discord.String
-			err := Send(webhook)
-
-			if err != nil {
-				state.Logger.Error("Discord send error", err)
-			}
-		}
+		url = bot.WebhookURL.String
 	}
 
 	if utils.IsNone(url) {
 		return errors.New("refusing to continue as no webhook")
 	}
 
-	if isDiscordIntegration && !isDiscord(url) {
-		return errors.New("webhook is not a discord webhook")
-	}
-
 	if isDiscordIntegration || isDiscord(url) {
 		state.Logger.Info("Sending discord webhook has been disabled:", url)
 		return nil
 	}
-
-	/*if isDiscordIntegration {
-		parts := strings.Split(url, "/")
-		if len(parts) < 7 {
-			state.Logger.With(
-				zap.String("url", url),
-			).Warn("Could not parse webhook URL")
-			return errors.New("invalid discord webhook URL. Could not parse")
-		}
-
-		webhookId := parts[5]
-		webhookToken := parts[6]
-		userObj, err := utils.GetDiscordUser(webhook.UserID)
-
-		if err != nil {
-			userObj = &types.DiscordUser{
-				ID:            "510065483693817867",
-				Username:      "Toxic Dev (test webhook)",
-				Avatar:        "https://cdn.discordapp.com/avatars/510065483693817867/a_96c9cea3c656deac48f1d8fdfdae5007.gif?size=1024",
-				Discriminator: "0000",
-			}
-		}
-
-		state.Logger.With(
-			zap.String("user", webhook.UserID),
-			zap.String("webhookId", webhookId),
-		).Info("Got here in parsing webhook for discord")
-
-		botObj, err := utils.GetDiscordUser(webhook.BotID)
-		if err != nil {
-			state.Logger.With(
-				zap.String("bot", webhook.BotID),
-				zap.Error(err),
-			).Warn("Could not get bot user")
-			return err
-		}
-		userWithDisc := userObj.Username + "#" + userObj.Discriminator // Create the user object
-
-		var embeds []*discordgo.MessageEmbed = []*discordgo.MessageEmbed{
-			{
-				Title: "Congrats! " + botObj.Username + " got a new vote!!!",
-				Description: "**" + userWithDisc + "** just voted for **" + botObj.Username + "**!\n\n" +
-					"**" + botObj.Username + "** now has **" + strconv.Itoa(webhook.Votes) + "** votes!",
-				Color: 0x00ff00,
-				URL:   "https://botlist.site/bots/" + webhook.BotID,
-			},
-		}
-
-		_, err = state.Discord.WebhookExecute(webhookId, webhookToken, true, &discordgo.WebhookParams{
-			Embeds:    embeds,
-			Username:  userObj.Username,
-			AvatarURL: userObj.Avatar,
-		})
-
-		if err != nil {
-			state.Logger.With(
-				zap.String("webhookId", webhookId),
-				zap.Error(err),
-			).Warn("Could not execute webhook")
-			return err
-		}
-	}*/
 
 	tries := 0
 
