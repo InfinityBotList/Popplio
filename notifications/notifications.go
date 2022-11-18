@@ -199,7 +199,7 @@ func init() {
 
 					// Loop over all user poppypaw subscriptions and push to goro
 					go func(id string, bId string) {
-						rows, err := state.Pool.Query(state.Context, "SELECT notif_id, endpoint FROM poppypaw WHERE id = $1", id)
+						rows, err := state.Pool.Query(state.Context, "SELECT notif_id, endpoint FROM poppypaw WHERE user_id = $1", id)
 
 						if err != nil {
 							state.Logger.Error("Error finding subscriptions:", err)

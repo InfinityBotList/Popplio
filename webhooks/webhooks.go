@@ -11,15 +11,12 @@ import (
 	"popplio/state"
 	"popplio/types"
 	"popplio/utils"
-	"strconv"
 	"strings"
 	"time"
 
-	"github.com/bwmarrin/discordgo"
 	"github.com/georgysavva/scany/v2/pgxscan"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
-	"go.uber.org/zap"
 )
 
 func isDiscord(url string) bool {
@@ -91,26 +88,36 @@ func Send(webhook types.WebhookPost) error {
 		if !utils.IsNone(bot.CustomURL.String) {
 			webhook.URL = bot.CustomURL.String
 			err := Send(webhook)
-			state.Logger.Error("Custom URL send error", err)
+
+			if err != nil {
+				state.Logger.Error("Custom URL send error", err)
+			}
 		}
 
 		if !utils.IsNone(bot.Discord.String) {
 			webhook.URL = bot.Discord.String
 			err := Send(webhook)
-			state.Logger.Error("Discord send error", err)
+
+			if err != nil {
+				state.Logger.Error("Discord send error", err)
+			}
 		}
 	}
 
 	if utils.IsNone(url) {
-		state.Logger.Error("Refusing to continue as no webhook")
-		return nil
+		return errors.New("refusing to continue as no webhook")
 	}
 
 	if isDiscordIntegration && !isDiscord(url) {
 		return errors.New("webhook is not a discord webhook")
 	}
 
-	if isDiscordIntegration {
+	if isDiscordIntegration || isDiscord(url) {
+		state.Logger.Info("Sending discord webhook has been disabled:", url)
+		return nil
+	}
+
+	/*if isDiscordIntegration {
 		parts := strings.Split(url, "/")
 		if len(parts) < 7 {
 			state.Logger.With(
@@ -170,76 +177,76 @@ func Send(webhook types.WebhookPost) error {
 			).Warn("Could not execute webhook")
 			return err
 		}
-	} else {
-		tries := 0
+	}*/
 
-		for tries < 3 {
-			if webhook.Test {
-				webhook.UserID = "510065483693817867"
-			}
+	tries := 0
 
-			var dUser, err = utils.GetDiscordUser(webhook.UserID)
-
-			if err != nil {
-				state.Logger.Error(err)
-			}
-
-			// Create response body
-			body := types.WebhookData{
-				Votes:        webhook.Votes,
-				UserID:       webhook.UserID,
-				UserObj:      dUser,
-				BotID:        webhook.BotID,
-				UserIDLegacy: webhook.UserID,
-				BotIDLegacy:  webhook.BotID,
-				Test:         webhook.Test,
-				Time:         time.Now().Unix(),
-			}
-
-			data, err := json.Marshal(body)
-
-			if err != nil {
-				state.Logger.Error("Failed to encode data")
-				return err
-			}
-
-			if webhook.HMACAuth {
-				// Generate HMAC token using token and request body
-				h := hmac.New(sha512.New, []byte(token))
-				h.Write(data)
-				token = hex.EncodeToString(h.Sum(nil))
-			}
-
-			// Create request
-			responseBody := bytes.NewBuffer(data)
-			req, err := http.NewRequest("POST", url, responseBody)
-
-			if err != nil {
-				state.Logger.Error("Failed to create request")
-				return err
-			}
-
-			req.Header.Set("Content-Type", "application/json")
-			req.Header.Set("User-Agent", "Popplio/v5.0")
-			req.Header.Set("Authorization", token)
-
-			// Send request
-			client := &http.Client{Timeout: time.Second * 5}
-			resp, err := client.Do(req)
-
-			if err != nil {
-				state.Logger.Error("Failed to send request")
-				return err
-			}
-
-			if resp.StatusCode >= 400 && resp.StatusCode < 500 {
-				state.Logger.Info("Retrying webhook again. Got status code of ", resp.StatusCode)
-				tries++
-				continue
-			}
-
-			break
+	for tries < 3 {
+		if webhook.Test {
+			webhook.UserID = "510065483693817867"
 		}
+
+		var dUser, err = utils.GetDiscordUser(webhook.UserID)
+
+		if err != nil {
+			state.Logger.Error(err)
+		}
+
+		// Create response body
+		body := types.WebhookData{
+			Votes:        webhook.Votes,
+			UserID:       webhook.UserID,
+			UserObj:      dUser,
+			BotID:        webhook.BotID,
+			UserIDLegacy: webhook.UserID,
+			BotIDLegacy:  webhook.BotID,
+			Test:         webhook.Test,
+			Time:         time.Now().Unix(),
+		}
+
+		data, err := json.Marshal(body)
+
+		if err != nil {
+			state.Logger.Error("Failed to encode data")
+			return err
+		}
+
+		if webhook.HMACAuth {
+			// Generate HMAC token using token and request body
+			h := hmac.New(sha512.New, []byte(token))
+			h.Write(data)
+			token = hex.EncodeToString(h.Sum(nil))
+		}
+
+		// Create request
+		responseBody := bytes.NewBuffer(data)
+		req, err := http.NewRequest("POST", url, responseBody)
+
+		if err != nil {
+			state.Logger.Error("Failed to create request")
+			return err
+		}
+
+		req.Header.Set("Content-Type", "application/json")
+		req.Header.Set("User-Agent", "Popplio/v5.0")
+		req.Header.Set("Authorization", token)
+
+		// Send request
+		client := &http.Client{Timeout: time.Second * 5}
+		resp, err := client.Do(req)
+
+		if err != nil {
+			state.Logger.Error("Failed to send request")
+			return err
+		}
+
+		if resp.StatusCode >= 400 && resp.StatusCode < 500 {
+			state.Logger.Info("Retrying webhook again. Got status code of ", resp.StatusCode)
+			tries++
+			continue
+		}
+
+		break
 	}
 
 	return nil

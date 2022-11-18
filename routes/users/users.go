@@ -414,7 +414,7 @@ func (b Router) Routes(r *chi.Mux) {
 						)
 						msg = types.Message{
 							Title:   "Whoa There!",
-							Message: "Whoa there! We've failed to notify " + botObj.Username + " about this vote. The error was: " + err.Error() + ".",
+							Message: "Whoa there! We couldn't send " + botObj.Username + " this vote. The error was: " + err.Error() + ". Vote rewards may not work",
 							Icon:    botObj.Avatar,
 						}
 					} else {
@@ -432,7 +432,7 @@ func (b Router) Routes(r *chi.Mux) {
 						}
 					}
 
-					notifIds, err := state.Pool.Query(ctx, "SELECT notif_id FROM poppypaw WHERE user_id = $1", vars["uid"])
+					notifIds, err := state.Pool.Query(state.Context, "SELECT notif_id FROM poppypaw WHERE user_id = $1", vars["uid"])
 
 					if err != nil {
 						state.Logger.Error(err)
@@ -627,7 +627,7 @@ func (b Router) Routes(r *chi.Mux) {
 					UA        string    `db:"ua"`
 				}
 
-				rows, err := state.Pool.Query(ctx, "SELECT endpoint, notif_id, created_at, ua FROM poppypaw WHERE id = $1", id)
+				rows, err := state.Pool.Query(ctx, "SELECT endpoint, notif_id, created_at, ua FROM poppypaw WHERE user_id = $1", id)
 
 				if err != nil {
 					state.Logger.Error(err)
@@ -741,7 +741,7 @@ func (b Router) Routes(r *chi.Mux) {
 					}
 				}
 
-				_, err := state.Pool.Exec(ctx, "DELETE FROM poppypaw WHERE id = $1 AND notif_id = $2", id, r.URL.Query().Get("notif_id"))
+				_, err := state.Pool.Exec(ctx, "DELETE FROM poppypaw WHERE user_id = $1 AND notif_id = $2", id, r.URL.Query().Get("notif_id"))
 
 				if err != nil {
 					state.Logger.Error(err)
@@ -1087,11 +1087,11 @@ func (b Router) Routes(r *chi.Mux) {
 					ua = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/80.0.3987.149 Safari/537.36"
 				}
 
-				state.Pool.Exec(ctx, "DELETE FROM poppypaw WHERE id = $1 AND endpoint = $2", id, subscription.Endpoint)
+				state.Pool.Exec(ctx, "DELETE FROM poppypaw WHERE user_id = $1 AND endpoint = $2", id, subscription.Endpoint)
 
 				state.Pool.Exec(
 					ctx,
-					"INSERT INTO poppypaw (id, notif_id, auth, p256dh,  endpoint, ua) VALUES ($1, $2, $3, $4, $5, $6)",
+					"INSERT INTO poppypaw (user_id, notif_id, auth, p256dh, endpoint, ua) VALUES ($1, $2, $3, $4, $5, $6)",
 					id,
 					notifId,
 					subscription.Auth,
