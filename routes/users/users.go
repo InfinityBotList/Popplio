@@ -401,23 +401,67 @@ func (b Router) Routes(r *chi.Mux) {
 						Votes:  int(votes),
 					})
 
+					var msg types.Message
+
 					if err != nil {
 						state.Pool.Exec(
 							ctx,
-							"INSERT INTO notifications (user_id, url, message, type) VALUES ($1, $2, $3, $4)",
+							"INSERT INTO alerts (user_id, url, message, type) VALUES ($1, $2, $3, $4)",
 							vars["uid"],
 							"https://infinitybots.gg/bots/"+vars["bid"],
 							"Whoa there! We've failed to notify this bot about this vote. The error was: "+err.Error()+".",
-							"error")
+							"error",
+						)
+						msg = types.Message{
+							Title:   "Whoa There!",
+							Message: "Whoa there! We've failed to notify " + botObj.Username + " about this vote. The error was: " + err.Error() + ".",
+							Icon:    botObj.Avatar,
+						}
 					} else {
 						state.Pool.Exec(
 							ctx,
-							"INSERT INTO notifications (user_id, url, message, type) VALUES ($1, $2, $3, $4)",
+							"INSERT INTO alerts (user_id, url, message, type) VALUES ($1, $2, $3, $4)",
 							vars["uid"],
 							"https://infinitybots.gg/bots/"+vars["bid"],
-							"state.Successfully voted for bot with ID of "+vars["bid"],
+							"state.Successfully alerted this bot to your vote with ID of "+vars["bid"]+"("+botObj.Username+")",
 							"info",
 						)
+						msg = types.Message{
+							Title:   "Vote Count Updated!",
+							Message: "Successfully alerted " + botObj.Username + " to your vote with ID of " + vars["bid"] + ".",
+						}
+					}
+
+					notifIds, err := state.Pool.Query(ctx, "SELECT notif_id FROM poppypaw WHERE user_id = $1", vars["uid"])
+
+					if err != nil {
+						state.Logger.Error(err)
+						return
+					}
+
+					defer notifIds.Close()
+
+					for notifIds.Next() {
+						var notifId string
+
+						err = notifIds.Scan(&notifId)
+
+						if err != nil {
+							state.Logger.Error(err)
+							continue
+						}
+
+						bytes, err := json.Marshal(msg)
+
+						if err != nil {
+							state.Logger.Error(err)
+							continue
+						}
+
+						notifications.NotifChannel <- types.Notification{
+							NotifID: notifId,
+							Message: bytes,
+						}
 					}
 				}()
 
