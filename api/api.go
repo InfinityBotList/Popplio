@@ -3,9 +3,11 @@ package api
 
 import (
 	"context"
+	"encoding/json"
 	"net/http"
+	"popplio/constants"
+	"popplio/state"
 	"popplio/types"
-	"popplio/utils"
 )
 
 // Stores the current tag
@@ -26,6 +28,7 @@ type Route struct {
 	Method  Method
 	Pattern string
 	Handler func(d RouteData, r *http.Request)
+	Setup   func()
 	Docs    func()
 }
 
@@ -60,6 +63,10 @@ func (r Route) Route(ro Router) {
 		panic("CurrentTag is empty")
 	}
 
+	if r.Setup != nil {
+		r.Setup()
+	}
+
 	r.Docs()
 
 	handle := func(w http.ResponseWriter, req *http.Request) {
@@ -73,7 +80,7 @@ func (r Route) Route(ro Router) {
 			}, req)
 		}()
 
-		utils.Respond(ctx, w, resp)
+		respond(ctx, w, resp)
 	}
 
 	switch r.Method {
@@ -91,5 +98,79 @@ func (r Route) Route(ro Router) {
 		ro.Head(r.Pattern, handle)
 	default:
 		panic("Unknown method")
+	}
+}
+
+func respond(ctx context.Context, w http.ResponseWriter, data chan types.HttpResponse) {
+	select {
+	case <-ctx.Done():
+		return
+	case msg, ok := <-data:
+		if !ok {
+			w.WriteHeader(http.StatusInternalServerError)
+			w.Write([]byte(constants.InternalError))
+		}
+
+		if msg.Stub {
+			return // Already handled
+		}
+
+		if msg.Redirect != "" {
+			msg.Headers = map[string]string{
+				"Location":     msg.Redirect,
+				"Content-Type": "text/html; charset=utf-8",
+			}
+			msg.Data = "<a href=\"" + msg.Redirect + "\">Found</a>.\n"
+			msg.Status = http.StatusFound
+		}
+
+		if len(msg.Headers) > 0 {
+			for k, v := range msg.Headers {
+				w.Header().Set(k, v)
+			}
+		}
+
+		if msg.Json != nil {
+			bytes, err := json.Marshal(msg.Json)
+
+			if err != nil {
+				state.Logger.Error(err)
+				w.WriteHeader(http.StatusInternalServerError)
+				w.Write([]byte(constants.InternalError))
+				return
+			}
+
+			// JSON needs this explicitly to avoid calling WriteHeader twice
+			if msg.Status == 0 {
+				w.WriteHeader(http.StatusOK)
+			} else {
+				w.WriteHeader(msg.Status)
+			}
+
+			w.Write(bytes)
+
+			if msg.CacheKey != "" {
+				go func() {
+					err := state.Redis.Set(state.Context, msg.CacheKey, bytes, msg.CacheTime).Err()
+
+					if err != nil {
+						state.Logger.Error(err)
+					}
+				}()
+			}
+		}
+
+		if msg.Status == 0 {
+			w.WriteHeader(http.StatusOK)
+		} else {
+			w.WriteHeader(msg.Status)
+		}
+
+		if len(msg.Bytes) > 0 {
+			w.Write(msg.Bytes)
+		}
+
+		w.Write([]byte(msg.Data))
+		return
 	}
 }
