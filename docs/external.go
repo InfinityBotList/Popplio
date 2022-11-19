@@ -61,7 +61,8 @@ func DocumentMicroservices() {
 			continue
 		}
 
-		for key, path := range doc.Paths {
+		for pair := doc.Paths.Oldest(); pair != nil; pair = pair.Next() {
+			key, path := pair.Key, pair.Value
 			for _, v := range []*operation{
 				path.Get,
 				path.Post,
@@ -75,7 +76,7 @@ func DocumentMicroservices() {
 				}
 			}
 
-			api.Paths[key] = path
+			api.Paths.Set(key, path)
 		}
 
 		for key, schema := range doc.Components.Schemas {

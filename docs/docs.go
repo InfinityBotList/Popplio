@@ -163,12 +163,12 @@ type Tag struct {
 }
 
 type Openapi struct {
-	OpenAPI    string          `json:"openapi"`
-	Info       info            `json:"info"`
-	Servers    []server        `json:"servers"`
-	Components component       `json:"components"`
-	Paths      map[string]path `json:"paths"`
-	Tags       []Tag           `json:"tags,omitempty"`
+	OpenAPI    string                    `json:"openapi"`
+	Info       info                      `json:"info"`
+	Servers    []server                  `json:"servers"`
+	Components component                 `json:"components"`
+	Paths      *OrderedMap[string, path] `json:"paths"`
+	Tags       []Tag                     `json:"tags,omitempty"`
 }
 
 var api = Openapi{
@@ -203,11 +203,11 @@ Welcome to the Infinity Bot List API documentation!
 		Security:      make(map[string]security),
 		RequestBodies: make(map[string]reqBody),
 	},
-	Paths: make(map[string]path),
 }
 
 func init() {
 	api.Info.Description += docsMd
+	api.Paths = New[string, path]()
 }
 
 var badRequestSchema *openapi3.SchemaRef
@@ -357,8 +357,8 @@ func Route(doc *Doc) {
 			},
 		}
 
-		if _, ok := api.Paths[doc.Path]; !ok {
-			api.Paths[doc.Path] = path{}
+		if _, ok := api.Paths.Get(doc.Path); !ok {
+			api.Paths.Set(doc.Path, path{})
 		}
 
 		reqBodyRef = &schema{Ref: "#/components/requestBodies/" + doc.Method + "_" + reqSchemaName}
@@ -407,29 +407,29 @@ func Route(doc *Doc) {
 		})
 	}
 
-	op := api.Paths[doc.Path]
+	op, _ := api.Paths.Get(doc.Path)
 
 	switch strings.ToLower(doc.Method) {
 	case "get":
 		op.Get = operationData
 
-		api.Paths[doc.Path] = op
+		api.Paths.Set(doc.Path, op)
 	case "post":
 		op.Post = operationData
 
-		api.Paths[doc.Path] = op
+		api.Paths.Set(doc.Path, op)
 	case "put":
 		op.Put = operationData
 
-		api.Paths[doc.Path] = op
+		api.Paths.Set(doc.Path, op)
 	case "patch":
 		op.Patch = operationData
 
-		api.Paths[doc.Path] = op
+		api.Paths.Set(doc.Path, op)
 	case "delete":
 		op.Delete = operationData
 
-		api.Paths[doc.Path] = op
+		api.Paths.Set(doc.Path, op)
 
 	}
 }

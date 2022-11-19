@@ -36,6 +36,13 @@ func (b Router) Routes(r *chi.Mux) {
 		}.Route(r)
 
 		api.Route{
+			Pattern: "/{id}",
+			Method:  api.PATCH,
+			Docs:    patch_user_profile.Docs,
+			Handler: patch_user_profile.Route,
+		}.Route(r)
+
+		api.Route{
 			Pattern: "/{uid}/bots/{bid}/votes",
 			Method:  api.GET,
 			Docs:    get_user_votes.Docs,
@@ -85,13 +92,6 @@ func (b Router) Routes(r *chi.Mux) {
 		}.Route(r)
 
 		api.Route{
-			Pattern: "/{id}/reminder",
-			Method:  api.DELETE,
-			Docs:    delete_user_reminders.Docs,
-			Handler: delete_user_reminders.Route,
-		}.Route(r)
-
-		api.Route{
 			Pattern: "/{id}/reminders",
 			Method:  api.PUT,
 			Docs:    put_user_reminders.Docs,
@@ -99,17 +99,17 @@ func (b Router) Routes(r *chi.Mux) {
 		}.Route(r)
 
 		api.Route{
+			Pattern: "/{id}/reminder",
+			Method:  api.DELETE,
+			Docs:    delete_user_reminders.Docs,
+			Handler: delete_user_reminders.Route,
+		}.Route(r)
+
+		api.Route{
 			Pattern: "/{id}/sub",
 			Method:  api.POST,
 			Docs:    post_user_subscription.Docs,
 			Handler: post_user_subscription.Route,
-		}.Route(r)
-
-		api.Route{
-			Pattern: "/{id}",
-			Method:  api.PATCH,
-			Docs:    patch_user_profile.Docs,
-			Handler: patch_user_profile.Route,
 		}.Route(r)
 	})
 }
