@@ -33,7 +33,6 @@ func (b Router) Routes(r *chi.Mux) {
 			Method:  api.GET,
 			Docs:    get_user.Docs,
 			Handler: get_user.Route,
-			TagName: tagName,
 		}.Route(r)
 
 		api.Route{
@@ -41,7 +40,6 @@ func (b Router) Routes(r *chi.Mux) {
 			Method:  api.GET,
 			Docs:    get_user_votes.Docs,
 			Handler: get_user_votes.Route,
-			TagName: tagName,
 		}.Route(r)
 
 		api.Route{
@@ -49,7 +47,6 @@ func (b Router) Routes(r *chi.Mux) {
 			Method:  api.PUT,
 			Docs:    put_user_votes.Docs,
 			Handler: put_user_votes.Route,
-			TagName: tagName,
 		}.Route(r)
 
 		api.Route{
@@ -57,7 +54,6 @@ func (b Router) Routes(r *chi.Mux) {
 			Method:  api.GET,
 			Docs:    get_user_seo.Docs,
 			Handler: get_user_seo.Route,
-			TagName: tagName,
 		}.Route(r)
 
 		api.Route{
@@ -65,7 +61,6 @@ func (b Router) Routes(r *chi.Mux) {
 			Method:  api.GET,
 			Docs:    get_notification_info.Docs,
 			Handler: get_notification_info.Route,
-			TagName: tagName,
 		}.Route(r)
 
 		api.Route{
@@ -73,7 +68,6 @@ func (b Router) Routes(r *chi.Mux) {
 			Method:  api.GET,
 			Docs:    get_user_notifications.Docs,
 			Handler: get_user_notifications.Route,
-			TagName: tagName,
 		}.Route(r)
 
 		api.Route{
@@ -81,7 +75,6 @@ func (b Router) Routes(r *chi.Mux) {
 			Method:  api.DELETE,
 			Docs:    delete_user_notifications.Docs,
 			Handler: delete_user_notifications.Route,
-			TagName: tagName,
 		}.Route(r)
 
 		api.Route{
@@ -89,7 +82,6 @@ func (b Router) Routes(r *chi.Mux) {
 			Method:  api.GET,
 			Docs:    get_user_reminders.Docs,
 			Handler: get_user_reminders.Route,
-			TagName: tagName,
 		}.Route(r)
 
 		api.Route{
@@ -97,7 +89,6 @@ func (b Router) Routes(r *chi.Mux) {
 			Method:  api.DELETE,
 			Docs:    delete_user_reminders.Docs,
 			Handler: delete_user_reminders.Route,
-			TagName: tagName,
 		}.Route(r)
 
 		api.Route{
@@ -105,7 +96,6 @@ func (b Router) Routes(r *chi.Mux) {
 			Method:  api.PUT,
 			Docs:    put_user_reminders.Docs,
 			Handler: put_user_reminders.Route,
-			TagName: tagName,
 		}.Route(r)
 
 		api.Route{
@@ -113,7 +103,6 @@ func (b Router) Routes(r *chi.Mux) {
 			Method:  api.POST,
 			Docs:    post_user_subscription.Docs,
 			Handler: post_user_subscription.Route,
-			TagName: tagName,
 		}.Route(r)
 
 		api.Route{
@@ -121,7 +110,6 @@ func (b Router) Routes(r *chi.Mux) {
 			Method:  api.PATCH,
 			Docs:    patch_user_profile.Docs,
 			Handler: patch_user_profile.Route,
-			TagName: tagName,
 		}.Route(r)
 	})
 }

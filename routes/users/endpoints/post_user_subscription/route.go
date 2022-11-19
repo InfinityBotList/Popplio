@@ -15,7 +15,7 @@ import (
 	"github.com/go-chi/chi/v5"
 )
 
-func Docs(tagName string) {
+func Docs() {
 	docs.Route(&docs.Doc{
 		Method:      "POST",
 		Path:        "/users/{id}/sub",
@@ -33,7 +33,7 @@ func Docs(tagName string) {
 		},
 		Req:      types.UserSubscription{},
 		Resp:     types.ApiError{},
-		Tags:     []string{tagName},
+		Tags:     []string{api.CurrentTag},
 		AuthType: []string{"User"},
 	})
 }

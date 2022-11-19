@@ -18,7 +18,7 @@ var (
 	silverpeltCols    = strings.Join(silverpeltColsArr, ",")
 )
 
-func Docs(tagName string) {
+func Docs() {
 	docs.Route(&docs.Doc{
 		Method:      "GET",
 		Path:        "/users/{id}/reminders",
@@ -35,7 +35,7 @@ func Docs(tagName string) {
 			},
 		},
 		Resp:     types.ReminderList{},
-		Tags:     []string{tagName},
+		Tags:     []string{api.CurrentTag},
 		AuthType: []string{"User"},
 	})
 }

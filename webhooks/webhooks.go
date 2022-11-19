@@ -7,6 +7,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"io"
 	"net/http"
 	"popplio/state"
 	"popplio/types"
@@ -14,8 +15,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/georgysavva/scany/v2/pgxscan"
-	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
@@ -49,46 +48,31 @@ func Send(webhook types.WebhookPost) error {
 	if !webhook.Test && (utils.IsNone(url) || utils.IsNone(token)) {
 		// Fetch URL from postgres
 
-		var bot struct {
-			WebhookURL pgtype.Text `db:"webhook"`
-			CustomAuth pgtype.Text `db:"web_auth"`
-			APIToken   pgtype.Text `db:"token"`
-			HMACAuth   pgtype.Bool `db:"hmac"`
-		}
+		var webhookURL pgtype.Text
+		var webhookSecret pgtype.Text
+		var apiToken string
+		var hmacAuth bool
 
-		err := pgxscan.Get(state.Context, state.Pool, &bot, "SELECT webhook, web_auth, token, hmac FROM bots WHERE bot_id = $1", webhook.BotID)
+		err := state.Pool.QueryRow(state.Context, "SELECT webhook, web_auth, token, hmac FROM bots WHERE bot_id = $1", webhook.BotID).Scan(&webhookURL, &webhookSecret, &apiToken, &hmacAuth)
 
 		if err != nil {
 			state.Logger.Error("Failed to fetch webhook: ", err.Error())
 			return err
 		}
 
-		// Check custom auth viability
-		if !bot.CustomAuth.Valid || utils.IsNone(bot.CustomAuth.String) {
-			if bot.APIToken.String != "" {
-				token = bot.APIToken.String
-			} else {
-				// We set the token to the a random string in DB in this case
-				token = utils.RandString(256)
-
-				_, err := state.Pool.Exec(state.Context, "UPDATE bots SET web_auth = $1 WHERE bot_id = $2", token, webhook.BotID)
-
-				if err != pgx.ErrNoRows && err != nil {
-					state.Logger.Error("Failed to update webhook: ", err.Error())
-					return err
-				}
-			}
-
-			bot.CustomAuth = pgtype.Text{String: token, Valid: true}
+		if webhookSecret.Valid && !utils.IsNone(webhookSecret.String) {
+			token = webhookSecret.String
+		} else {
+			token = apiToken
 		}
 
-		webhook.HMACAuth = bot.HMACAuth.Bool
-		webhook.Token = bot.CustomAuth.String
+		webhook.HMACAuth = hmacAuth
+		webhook.Token = token
 
-		state.Logger.Info("Using hmac: ", webhook.HMACAuth)
-
-		url = bot.WebhookURL.String
+		url = webhookURL.String
 	}
+
+	state.Logger.Info("Using hmac: ", webhook.HMACAuth)
 
 	if utils.IsNone(url) {
 		return errors.New("refusing to continue as no webhook")
@@ -99,19 +83,20 @@ func Send(webhook types.WebhookPost) error {
 		return nil
 	}
 
-	tries := 0
+	if webhook.Test {
+		webhook.UserID = "510065483693817867"
+	}
+
+	var dUser, err = utils.GetDiscordUser(webhook.UserID)
+
+	if err != nil {
+		state.Logger.Error(err)
+		return err
+	}
+
+	var tries = 0
 
 	for tries < 3 {
-		if webhook.Test {
-			webhook.UserID = "510065483693817867"
-		}
-
-		var dUser, err = utils.GetDiscordUser(webhook.UserID)
-
-		if err != nil {
-			state.Logger.Error(err)
-		}
-
 		// Create response body
 		body := types.WebhookData{
 			Votes:        webhook.Votes,
@@ -131,11 +116,12 @@ func Send(webhook types.WebhookPost) error {
 			return err
 		}
 
+		var finalToken string = webhook.Token
 		if webhook.HMACAuth {
 			// Generate HMAC token using token and request body
-			h := hmac.New(sha512.New, []byte(token))
+			h := hmac.New(sha512.New, []byte(webhook.Token))
 			h.Write(data)
-			token = hex.EncodeToString(h.Sum(nil))
+			finalToken = hex.EncodeToString(h.Sum(nil))
 		}
 
 		// Create request
@@ -148,8 +134,8 @@ func Send(webhook types.WebhookPost) error {
 		}
 
 		req.Header.Set("Content-Type", "application/json")
-		req.Header.Set("User-Agent", "Popplio/v5.0")
-		req.Header.Set("Authorization", token)
+		req.Header.Set("User-Agent", "Popplio/v6.0")
+		req.Header.Set("Authorization", finalToken)
 
 		// Send request
 		client := &http.Client{Timeout: time.Second * 5}
@@ -158,6 +144,21 @@ func Send(webhook types.WebhookPost) error {
 		if err != nil {
 			state.Logger.Error("Failed to send request")
 			return err
+		}
+
+		if resp.StatusCode == 401 || resp.StatusCode == 403 {
+			state.Logger.Error("Failed to send request: invalid token")
+
+			// get response body
+			body, err := io.ReadAll(resp.Body)
+
+			if err != nil {
+				state.Logger.Error("Failed to read response body")
+			}
+
+			state.Logger.Info("Response body: ", string(body))
+
+			return errors.New("webhook is broken")
 		}
 
 		if resp.StatusCode >= 400 && resp.StatusCode < 500 {

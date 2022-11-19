@@ -13,15 +13,13 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-func Docs(tagName string) {
-
+func Docs() {
 	docs.Route(&docs.Doc{
 		Method:      "GET",
 		Path:        "/users/{uid}/bots/{bid}/votes",
 		OpId:        "get_user_votes",
 		Summary:     "Get User Votes",
 		Description: "Gets the users votes. **Requires authentication**",
-		Tags:        []string{tagName},
 		Params: []docs.Parameter{
 			{
 				Name:        "uid",
@@ -44,6 +42,7 @@ func Docs(tagName string) {
 			HasVoted:   true,
 		},
 		AuthType: []string{"User", "Bot"},
+		Tags:     []string{api.CurrentTag},
 	})
 }
 

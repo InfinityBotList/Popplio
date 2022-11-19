@@ -8,7 +8,7 @@ import (
 	"popplio/types"
 )
 
-func Docs(tagName string) {
+func Docs() {
 	docs.Route(&docs.Doc{
 		Method:      "GET",
 		Path:        "/users/notifications/info",
@@ -16,7 +16,7 @@ func Docs(tagName string) {
 		Summary:     "Get User Notifications",
 		Description: "Gets a users notifications",
 		Resp:        types.NotificationInfo{},
-		Tags:        []string{tagName},
+		Tags:        []string{api.CurrentTag},
 	})
 }
 

@@ -22,14 +22,14 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-func Docs(tagName string) {
+func Docs() {
 	docs.Route(&docs.Doc{
 		Method:      "PUT",
 		Path:        "/users/{uid}/bots/{bid}/votes",
 		OpId:        "put_user_votes",
 		Summary:     "Create User Vote",
 		Description: "Creates a vote for a bot. **For internal use only**",
-		Tags:        []string{tagName},
+		Tags:        []string{api.CurrentTag},
 		Params: []docs.Parameter{
 			{
 				Name:        "uid",

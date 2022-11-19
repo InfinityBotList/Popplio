@@ -1,4 +1,4 @@
-package get_user_seo
+package get_bot_seo
 
 import (
 	"net/http"
@@ -7,6 +7,7 @@ import (
 	"popplio/state"
 	"popplio/types"
 	"popplio/utils"
+	"strings"
 	"time"
 
 	"github.com/go-chi/chi/v5"
@@ -15,20 +16,20 @@ import (
 func Docs() {
 	docs.Route(&docs.Doc{
 		Method:      "GET",
-		Path:        "/users/{id}/seo",
-		OpId:        "get_user_seo",
-		Summary:     "Get User SEO Info",
-		Description: "Gets a users SEO data by id or username",
+		Path:        "/bots/{id}/seo",
+		OpId:        "get_bot_seo",
+		Summary:     "Get Bot SEO Info",
+		Description: "Gets the minimal SEO information about a bot for embed/search purposes. Used by v4 website for meta tags",
+		Resp:        types.SEO{},
 		Params: []docs.Parameter{
 			{
 				Name:        "id",
-				Description: "User ID",
+				Description: "The bots ID, name or vanity",
 				Required:    true,
 				In:          "path",
 				Schema:      docs.IdSchema,
 			},
 		},
-		Resp: types.SEO{},
 		Tags: []string{api.CurrentTag},
 	})
 }
@@ -36,12 +37,14 @@ func Docs() {
 func Route(d api.RouteData, r *http.Request) {
 	name := chi.URLParam(r, "id")
 
+	name = strings.ToLower(name)
+
 	if name == "" {
 		d.Resp <- utils.ApiDefaultReturn(http.StatusBadRequest)
 		return
 	}
 
-	cache := state.Redis.Get(d.Context, "seou:"+name).Val()
+	cache := state.Redis.Get(d.Context, "seob:"+name).Val()
 	if cache != "" {
 		d.Resp <- types.HttpResponse{
 			Data: cache,
@@ -52,9 +55,9 @@ func Route(d api.RouteData, r *http.Request) {
 		return
 	}
 
-	var about string
-	var userId string
-	err := state.Pool.QueryRow(d.Context, "SELECT about, user_id FROM users WHERE user_id = $1 OR username = $1", name).Scan(&about, &userId)
+	var botId string
+	var short string
+	err := state.Pool.QueryRow(d.Context, "SELECT bot_id, short FROM bots WHERE (lower(vanity) = $1 OR bot_id = $1)", name).Scan(&botId, &short)
 
 	if err != nil {
 		state.Logger.Error(err)
@@ -62,7 +65,7 @@ func Route(d api.RouteData, r *http.Request) {
 		return
 	}
 
-	user, err := utils.GetDiscordUser(userId)
+	bot, err := utils.GetDiscordUser(botId)
 
 	if err != nil {
 		state.Logger.Error(err)
@@ -70,16 +73,16 @@ func Route(d api.RouteData, r *http.Request) {
 		return
 	}
 
-	seo := types.SEO{
-		ID:       user.ID,
-		Username: user.Username,
-		Avatar:   user.Avatar,
-		Short:    about,
+	seoData := types.SEO{
+		ID:       bot.ID,
+		Username: bot.Username,
+		Avatar:   bot.Avatar,
+		Short:    short,
 	}
 
 	d.Resp <- types.HttpResponse{
-		Json:      seo,
-		CacheKey:  "seou:" + name,
+		Json:      seoData,
+		CacheKey:  "seob:" + name,
 		CacheTime: 30 * time.Minute,
 	}
 }

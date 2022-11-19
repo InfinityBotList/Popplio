@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"popplio/api"
 	"popplio/constants"
 	"popplio/docs"
 	"popplio/routes/announcements"
@@ -147,6 +148,9 @@ func main() {
 		name, desc := router.Tag()
 		if name != "" {
 			docs.AddTag(name, desc)
+			api.CurrentTag = name
+		} else {
+			panic("Router tag name cannot be empty")
 		}
 
 		router.Routes(r)

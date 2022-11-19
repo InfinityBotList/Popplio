@@ -15,7 +15,7 @@ import (
 	"go.uber.org/zap"
 )
 
-func Docs(tagName string) {
+func Docs() {
 	docs.Route(&docs.Doc{
 		Method:      "GET",
 		Path:        "/users/{id}/notifications",
@@ -32,7 +32,7 @@ func Docs(tagName string) {
 			},
 		},
 		Resp:     types.NotifGetList{},
-		Tags:     []string{tagName},
+		Tags:     []string{api.CurrentTag},
 		AuthType: []string{"User"},
 	})
 }

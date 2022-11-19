@@ -11,7 +11,7 @@ import (
 	"github.com/go-chi/chi/v5"
 )
 
-func Docs(tagName string) {
+func Docs() {
 	docs.Route(&docs.Doc{
 		Method:      "DELETE",
 		Path:        "/users/{id}/notification",
@@ -35,7 +35,7 @@ func Docs(tagName string) {
 			},
 		},
 		Resp:     types.ApiError{},
-		Tags:     []string{tagName},
+		Tags:     []string{api.CurrentTag},
 		AuthType: []string{"User"},
 	})
 }
@@ -78,5 +78,4 @@ func Route(d api.RouteData, r *http.Request) {
 	d.Resp <- types.HttpResponse{
 		Status: http.StatusNoContent,
 	}
-
 }

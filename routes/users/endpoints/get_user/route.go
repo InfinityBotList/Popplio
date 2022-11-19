@@ -19,7 +19,7 @@ var (
 	userCols    = strings.Join(userColsArr, ",")
 )
 
-func Docs(tagName string) {
+func Docs() {
 	docs.Route(&docs.Doc{
 		Method:      "GET",
 		Path:        "/users/{id}",
@@ -36,7 +36,7 @@ func Docs(tagName string) {
 			},
 		},
 		Resp: types.User{},
-		Tags: []string{tagName},
+		Tags: []string{api.CurrentTag},
 	})
 }
 

@@ -13,7 +13,7 @@ import (
 	"github.com/go-chi/chi/v5"
 )
 
-func Docs(tagName string) {
+func Docs() {
 	docs.Route(&docs.Doc{
 		Method:      "PATCH",
 		Path:        "/users/{id}",
@@ -31,7 +31,7 @@ func Docs(tagName string) {
 		},
 		Req:  types.ProfileUpdate{},
 		Resp: types.ApiError{},
-		Tags: []string{tagName},
+		Tags: []string{api.CurrentTag},
 	})
 }
 

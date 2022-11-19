@@ -12,7 +12,7 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-func Docs(tagName string) {
+func Docs() {
 	docs.Route(&docs.Doc{
 		Method:      "DELETE",
 		Path:        "/users/{id}/reminder",
@@ -36,7 +36,7 @@ func Docs(tagName string) {
 			},
 		},
 		Resp:     types.ReminderList{},
-		Tags:     []string{tagName},
+		Tags:     []string{api.CurrentTag},
 		AuthType: []string{"User"},
 	})
 }

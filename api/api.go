@@ -8,6 +8,9 @@ import (
 	"popplio/utils"
 )
 
+// Stores the current tag
+var CurrentTag string
+
 type Method = int
 
 const (
@@ -21,10 +24,9 @@ const (
 
 type Route struct {
 	Method  Method
-	TagName string
 	Pattern string
 	Handler func(d RouteData, r *http.Request)
-	Docs    func(tagName string)
+	Docs    func()
 }
 
 type RouteData struct {
@@ -54,11 +56,11 @@ func (r Route) Route(ro Router) {
 		panic("Pattern is empty")
 	}
 
-	if r.TagName == "" {
-		panic("TagName is empty")
+	if CurrentTag == "" {
+		panic("CurrentTag is empty")
 	}
 
-	r.Docs(r.TagName)
+	r.Docs()
 
 	handle := func(w http.ResponseWriter, req *http.Request) {
 		ctx := req.Context()
