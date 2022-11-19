@@ -21,6 +21,7 @@ type Link struct {
 type Bot struct {
 	ITag                     pgtype.UUID    `db:"itag" json:"itag"`
 	BotID                    string         `db:"bot_id" json:"bot_id"`
+	QueueName                string         `db:"queue_name" json:"queue_name"` // Used purely by the queue system
 	ExtraLinks               []Link         `db:"extra_links" json:"extra_links"`
 	Tags                     []string       `db:"tags" json:"tags"`
 	Prefix                   pgtype.Text    `db:"prefix" json:"prefix"`
@@ -100,7 +101,6 @@ type ResolvedPackBot struct {
 
 type PackVote struct {
 	UserID string    `json:"user_id"`
-	URL    string    `json:"url"`
 	Upvote bool      `json:"upvote"`
 	Date   time.Time `json:"date"`
 }
