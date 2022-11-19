@@ -1,6 +1,7 @@
 package transcripts
 
 import (
+	"encoding/json"
 	"net/http"
 	"popplio/docs"
 	"popplio/state"
@@ -9,12 +10,9 @@ import (
 	"strconv"
 
 	"github.com/go-chi/chi/v5"
-	jsoniter "github.com/json-iterator/go"
 )
 
 const tagName = "Tickets + Transcripts"
-
-var json = jsoniter.ConfigCompatibleWithStandardLibrary
 
 type Router struct{}
 

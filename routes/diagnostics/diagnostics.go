@@ -1,13 +1,13 @@
 package diagnostics
 
 import (
+	"encoding/json"
 	"net/http"
 	"popplio/docs"
 	"popplio/types"
 	"popplio/utils"
 
 	"github.com/go-chi/chi/v5"
-	jsoniter "github.com/json-iterator/go"
 )
 
 const (
@@ -16,10 +16,6 @@ const (
 	mainSite   = "https://infinitybotlist.com"
 	statusPage = "https://status.botlist.site"
 	apiBot     = "https://discord.com/api/oauth2/authorize?client_id=818419115068751892&permissions=140898593856&scope=bot%20applications.commands"
-)
-
-var (
-	json = jsoniter.ConfigCompatibleWithStandardLibrary
 )
 
 type Hello struct {

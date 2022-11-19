@@ -10,14 +10,11 @@ import (
 
 	"github.com/georgysavva/scany/v2/pgxscan"
 	"github.com/go-chi/chi/v5"
-	jsoniter "github.com/json-iterator/go"
 )
 
 const tagName = "Announcements"
 
 var (
-	json = jsoniter.ConfigCompatibleWithStandardLibrary
-
 	announcementColsArr = utils.GetCols(types.Announcement{})
 	announcementCols    = strings.Join(announcementColsArr, ",")
 )

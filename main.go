@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"net/http"
 	"strings"
 	"time"
@@ -22,7 +23,6 @@ import (
 	"popplio/state"
 
 	integrase "github.com/MetroReviews/metro-integrase/lib"
-	jsoniter "github.com/json-iterator/go"
 
 	_ "embed"
 
@@ -58,8 +58,6 @@ func init() {
 
 	docsHTML = strings.Replace(docsHTML, "[JS]", docsJs, 1)
 }
-
-var json = jsoniter.ConfigCompatibleWithStandardLibrary
 
 var (
 	ctx context.Context

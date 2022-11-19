@@ -1,6 +1,7 @@
 package list
 
 import (
+	"encoding/json"
 	"io"
 	"net/http"
 	"popplio/docs"
@@ -13,14 +14,11 @@ import (
 
 	"github.com/georgysavva/scany/v2/pgxscan"
 	"github.com/go-chi/chi/v5"
-	jsoniter "github.com/json-iterator/go"
 )
 
 const tagName = "List Stats"
 
 var (
-	json = jsoniter.ConfigCompatibleWithStandardLibrary
-
 	indexBotColsArr = utils.GetCols(types.IndexBot{})
 	indexBotCols    = strings.Join(indexBotColsArr, ",")
 

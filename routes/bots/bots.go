@@ -1,6 +1,7 @@
 package bots
 
 import (
+	"encoding/json"
 	"io"
 	"math"
 	"net/http"
@@ -16,7 +17,6 @@ import (
 
 	"github.com/georgysavva/scany/v2/pgxscan"
 	"github.com/go-chi/chi/v5"
-	jsoniter "github.com/json-iterator/go"
 )
 
 const (
@@ -33,8 +33,6 @@ var (
 
 	indexBotColsArr = utils.GetCols(types.IndexBot{})
 	indexBotCols    = strings.Join(indexBotColsArr, ",")
-
-	json = jsoniter.ConfigCompatibleWithStandardLibrary
 )
 
 type Router struct{}
@@ -232,9 +230,6 @@ Gets a bot by id or name
 					resp <- utils.ApiDefaultReturn(http.StatusNotFound)
 					return
 				}
-
-				// Parse JSON data
-				bot.ParseJSONB()
 
 				err = utils.ParseBot(ctx, state.Pool, &bot, state.Discord, state.Redis)
 

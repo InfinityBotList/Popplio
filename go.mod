@@ -7,7 +7,6 @@ require (
 	github.com/bwmarrin/discordgo v0.26.1
 	github.com/georgysavva/scany/v2 v2.0.0
 	github.com/getkin/kin-openapi v0.103.0
-	github.com/go-chi/chi v4.1.1+incompatible
 	github.com/go-chi/chi/v5 v5.0.7
 	github.com/go-redis/redis/v8 v8.11.5
 	github.com/mileusna/useragent v1.2.0
@@ -30,8 +29,6 @@ require (
 	github.com/josharian/intern v1.0.0 // indirect
 	github.com/lib/pq v1.10.2 // indirect
 	github.com/mailru/easyjson v0.7.7 // indirect
-	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
-	github.com/modern-go/reflect2 v1.0.2 // indirect
 	github.com/tdewolff/parse/v2 v2.6.4 // indirect
 	go.uber.org/atomic v1.8.0 // indirect
 	go.uber.org/multierr v1.7.0 // indirect
@@ -43,7 +40,6 @@ require (
 	github.com/SherClockHolmes/webpush-go v1.2.0
 	github.com/jackc/pgx/v5 v5.0.1
 	github.com/joho/godotenv v1.4.0 // direct
-	github.com/json-iterator/go v1.1.12
 	github.com/tdewolff/minify/v2 v2.12.4
 	go.uber.org/zap v1.23.0
 	golang.org/x/exp v0.0.0-20220921164117-439092de6870

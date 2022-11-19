@@ -2,16 +2,13 @@
 package docs
 
 import (
+	"encoding/json"
 	"io"
 	"net/http"
 	"popplio/state"
 	"strconv"
 	"time"
-
-	jsoniter "github.com/json-iterator/go"
 )
-
-var json = jsoniter.ConfigCompatibleWithStandardLibrary
 
 // Arcadia documentor, returns the openapi schema URL and adds the arcadia tags to the openapi schema
 func arcadia() (string, string) {

@@ -2,6 +2,7 @@ package utils
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"math/rand"
 	"net/http"
@@ -22,7 +23,6 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
-	jsoniter "github.com/json-iterator/go"
 	"go.uber.org/zap"
 )
 
@@ -30,8 +30,6 @@ var (
 	userBotColsArr = GetCols(types.UserBot{})
 	// These are the columns of a userbot object
 	userBotCols = strings.Join(userBotColsArr, ",")
-
-	json = jsoniter.ConfigCompatibleWithStandardLibrary
 )
 
 func IsNone(s string) bool {
@@ -228,11 +226,6 @@ func ParseUser(ctx context.Context, pool *pgxpool.Pool, user *types.User, s *dis
 	if IsNone(user.About.String) {
 		user.About.Valid = false
 		user.About.String = ""
-	}
-
-	if IsNone(user.Nickname.String) {
-		user.Nickname.Valid = false
-		user.Nickname.String = ""
 	}
 
 	userObj, err := GetDiscordUser(user.ID)
@@ -680,4 +673,58 @@ func Respond(ctx context.Context, w http.ResponseWriter, data chan types.HttpRes
 		w.Write([]byte(msg.Data))
 		return
 	}
+}
+
+func ValidateExtraLinks(links []types.Link) error {
+	var public, private int
+
+	if len(links) > 20 {
+		return errors.New("you have too many links")
+	}
+
+	for _, link := range links {
+		if strings.HasPrefix(link.Name, "_") {
+			private++
+
+			if len(link.Name) > 512 || len(link.Value) > 8192 {
+				return errors.New("one of your private links has a name/value that is too long")
+			}
+
+			if strings.ReplaceAll(link.Name, " ", "") == "" || strings.ReplaceAll(link.Value, " ", "") == "" {
+				return errors.New("one of your private links has a name/value that is empty")
+			}
+		} else {
+			public++
+
+			if len(link.Name) > 64 || len(link.Value) > 512 {
+				return errors.New("one of your public links has a name/value that is too long")
+			}
+
+			if strings.ReplaceAll(link.Name, " ", "") == "" || strings.ReplaceAll(link.Value, " ", "") == "" {
+				return errors.New("one of your public links has a name/value that is empty")
+			}
+
+			if !strings.HasPrefix(link.Value, "https://") {
+				return errors.New("extra link '" + link.Name + "' must be HTTPS")
+			}
+		}
+
+		for _, ch := range link.Name {
+			allowedChars := "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_ "
+
+			if !strings.ContainsRune(allowedChars, ch) {
+				return errors.New("extra link '" + link.Name + "' has an invalid character: " + string(ch))
+			}
+		}
+	}
+
+	if public > 10 {
+		return errors.New("you have too many public links")
+	}
+
+	if private > 10 {
+		return errors.New("you have too many private links")
+	}
+
+	return nil
 }

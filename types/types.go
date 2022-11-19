@@ -9,10 +9,7 @@ import (
 
 	"github.com/bwmarrin/discordgo"
 	"github.com/jackc/pgx/v5/pgtype"
-	jsoniter "github.com/json-iterator/go"
 )
-
-var json = jsoniter.ConfigCompatibleWithStandardLibrary
 
 // A link is any extra link
 type Link struct {
@@ -24,8 +21,7 @@ type Link struct {
 type Bot struct {
 	ITag                     pgtype.UUID    `db:"itag" json:"itag"`
 	BotID                    string         `db:"bot_id" json:"bot_id"`
-	ExtraLinks               []byte         `db:"extra_links" json:"-"`
-	ExtraLinksParsed         []Link         `db:"-" json:"extra_links"`
+	ExtraLinks               []Link         `db:"extra_links" json:"extra_links"`
 	Tags                     []string       `db:"tags" json:"tags"`
 	Prefix                   pgtype.Text    `db:"prefix" json:"prefix"`
 	User                     *DiscordUser   `json:"user"` // Must be parsed internally
@@ -68,15 +64,6 @@ type Bot struct {
 	ClaimedBy pgtype.Text        `db:"claimed_by" json:"claimed_by"`
 	Note      pgtype.Text        `db:"approval_note" json:"approval_note"`
 	Date      pgtype.Timestamptz `db:"date" json:"date"`
-}
-
-func (b *Bot) ParseJSONB() {
-	if b.ExtraLinks != nil {
-		err := json.Unmarshal(b.ExtraLinks, &b.ExtraLinksParsed)
-		if err != nil {
-			b.ExtraLinksParsed = nil
-		}
-	}
 }
 
 // SEO Bot (minified bot for seo purposes
@@ -218,15 +205,13 @@ type ListIndex struct {
 }
 
 type User struct {
-	ITag      pgtype.UUID  `db:"itag" json:"itag"`
-	ID        string       `db:"user_id" json:"user_id"`
-	User      *DiscordUser `db:"-" json:"user"` // Must be handled internally
-	Staff     bool         `db:"staff" json:"staff"`
-	Certified bool         `db:"certified" json:"certified"`
-	Developer bool         `db:"developer" json:"developer"`
-	About     pgtype.Text  `db:"about" json:"about"`
-	Nickname  pgtype.Text  `db:"nickname" json:"nickname"`
-
+	ITag          pgtype.UUID    `db:"itag" json:"itag"`
+	ID            string         `db:"user_id" json:"user_id"`
+	User          *DiscordUser   `db:"-" json:"user"` // Must be handled internally
+	Staff         bool           `db:"staff" json:"staff"`
+	Certified     bool           `db:"certified" json:"certified"`
+	Developer     bool           `db:"developer" json:"developer"`
+	About         pgtype.Text    `db:"about" json:"about"`
 	StaffStats    map[string]int `db:"staff_stats" json:"staff_stats"`
 	NewStaffStats map[string]int `db:"new_staff_stats" json:"new_staff_stats"`
 
@@ -235,17 +220,7 @@ type User struct {
 
 	UserBots []UserBot `json:"user_bots"` // Must be handled internally
 
-	ExtraLinks       []byte `db:"extra_links" json:"-"`
-	ExtraLinksParsed []Link `db:"-" json:"extra_links"`
-}
-
-func (u *User) ParseJSONB() {
-	if u.ExtraLinks != nil {
-		err := json.Unmarshal(u.ExtraLinks, &u.ExtraLinksParsed)
-		if err != nil {
-			u.ExtraLinksParsed = nil
-		}
-	}
+	ExtraLinks []Link `db:"extra_links" json:"extra_links"`
 }
 
 type VoteInfo struct {
@@ -588,7 +563,8 @@ type DiscordLog struct {
 }
 
 type ProfileUpdate struct {
-	About string `json:"bio"`
+	About      string `json:"bio"`
+	ExtraLinks []Link `json:"extra_links"`
 }
 
 type ListStatsBot struct {
