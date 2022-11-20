@@ -7,6 +7,7 @@ import (
 	"popplio/routes/bots/endpoints/get_bot_reviews"
 	"popplio/routes/bots/endpoints/get_bot_seo"
 	"popplio/routes/bots/endpoints/post_stats"
+	"popplio/types"
 
 	"github.com/go-chi/chi/v5"
 )
@@ -49,6 +50,11 @@ func (b Router) Routes(r *chi.Mux) {
 			Method:  api.POST,
 			Docs:    post_stats.Docs,
 			Handler: post_stats.Route,
+			Auth: []api.AuthType{
+				{
+					Type: types.TargetTypeBot,
+				},
+			},
 		}.Route(r)
 
 		api.Route{

@@ -567,40 +567,6 @@ func GetCols(s any) []string {
 	return cols
 }
 
-func AuthCheck(token string, bot bool) *string {
-	if token == "" {
-		return nil
-	}
-
-	if bot {
-		var id pgtype.Text
-		err := state.Pool.QueryRow(state.Context, "SELECT bot_id FROM bots WHERE token = $1", strings.Replace(token, "Bot ", "", 1)).Scan(&id)
-
-		if err != nil {
-			state.Logger.Error(err)
-			return nil
-		} else {
-			if !id.Valid {
-				return nil
-			}
-			return &id.String
-		}
-	} else {
-		var id pgtype.Text
-		err := state.Pool.QueryRow(state.Context, "SELECT user_id FROM users WHERE api_token = $1", strings.Replace(token, "User ", "", 1)).Scan(&id)
-
-		if err != nil {
-			state.Logger.Error(err)
-			return nil
-		} else {
-			if !id.Valid {
-				return nil
-			}
-			return &id.String
-		}
-	}
-}
-
 func ValidateExtraLinks(links []types.Link) error {
 	var public, private int
 

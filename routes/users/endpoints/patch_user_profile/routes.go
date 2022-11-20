@@ -38,19 +38,6 @@ func Docs() {
 func Route(d api.RouteData, r *http.Request) {
 	id := chi.URLParam(r, "id")
 
-	// Fetch auth from postgresdb
-	if r.Header.Get("Authorization") == "" {
-		d.Resp <- utils.ApiDefaultReturn(http.StatusUnauthorized)
-		return
-	} else {
-		authId := utils.AuthCheck(r.Header.Get("Authorization"), false)
-
-		if authId == nil || *authId != id {
-			d.Resp <- utils.ApiDefaultReturn(http.StatusUnauthorized)
-			return
-		}
-	}
-
 	// Fetch profile update from body
 	var profile types.ProfileUpdate
 

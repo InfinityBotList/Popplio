@@ -14,7 +14,6 @@ import (
 	"popplio/utils"
 	"popplio/webhooks"
 	"strconv"
-	"strings"
 	"time"
 
 	"github.com/bwmarrin/discordgo"
@@ -47,7 +46,7 @@ func Docs() {
 			},
 		},
 		Resp:     types.ApiError{},
-		AuthType: []string{"User"},
+		AuthType: []types.TargetType{types.TargetTypeUser},
 	})
 }
 
@@ -57,29 +56,12 @@ func Route(d api.RouteData, r *http.Request) {
 		"bid": chi.URLParam(r, "bid"),
 	}
 
-	if !strings.HasPrefix(r.Header.Get("Authorization"), "User ") {
-		d.Resp <- utils.ApiDefaultReturn(http.StatusNotFound)
-		return
-	}
-
 	var botId pgtype.Text
 	var botType pgtype.Text
 
-	if r.Header.Get("Authorization") == "" {
-		d.Resp <- utils.ApiDefaultReturn(http.StatusUnauthorized)
-		return
-	}
-
-	uid := utils.AuthCheck(r.Header.Get("Authorization"), false)
-
-	if uid == nil || *uid != vars["uid"] {
-		d.Resp <- utils.ApiDefaultReturn(http.StatusUnauthorized)
-		return
-	}
-
 	var voteBannedState bool
 
-	err := state.Pool.QueryRow(d.Context, "SELECT vote_banned FROM users WHERE user_id = $1", uid).Scan(&voteBannedState)
+	err := state.Pool.QueryRow(d.Context, "SELECT vote_banned FROM users WHERE user_id = $1", vars["uid"]).Scan(&voteBannedState)
 
 	if err != nil {
 		state.Logger.Error(err)

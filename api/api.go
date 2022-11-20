@@ -8,6 +8,12 @@ import (
 	"popplio/constants"
 	"popplio/state"
 	"popplio/types"
+	"popplio/utils"
+	"strings"
+
+	"github.com/go-chi/chi/v5"
+	"github.com/jackc/pgx/v5/pgtype"
+	"go.uber.org/zap"
 )
 
 // Stores the current tag
@@ -24,17 +30,31 @@ const (
 	HEAD
 )
 
+type AuthType struct {
+	URLVar string
+	Type   types.TargetType
+}
+
+type AuthData struct {
+	TargetType types.TargetType
+	ID         string
+	Authorized bool
+}
+
 type Route struct {
-	Method  Method
-	Pattern string
-	Handler func(d RouteData, r *http.Request)
-	Setup   func()
-	Docs    func()
+	Method       Method
+	Pattern      string
+	Handler      func(d RouteData, r *http.Request)
+	Setup        func()
+	Docs         func()
+	Auth         []AuthType
+	AuthOptional bool
 }
 
 type RouteData struct {
 	Context context.Context
 	Resp    chan types.HttpResponse
+	Auth    AuthData
 }
 
 type Router interface {
@@ -74,9 +94,130 @@ func (r Route) Route(ro Router) {
 		resp := make(chan types.HttpResponse)
 
 		go func() {
+			// Handle auth checks here
+			authHeader := req.Header.Get("Authorization")
+
+			if len(r.Auth) > 0 && authHeader == "" && !r.AuthOptional {
+				resp <- utils.ApiDefaultReturn(http.StatusUnauthorized)
+			}
+
+			authData := AuthData{}
+
+			for _, auth := range r.Auth {
+				// There are two cases, one with a URLVar (such as /bots/stats) and one without
+
+				if authData.Authorized {
+					break
+				}
+
+				if authHeader == "" {
+					continue
+				}
+
+				if auth.Type == types.TargetTypeServer {
+					// Server auth
+					resp <- types.HttpResponse{
+						Status: http.StatusNotImplemented,
+						Data:   "Server auth is not implemented yet",
+					}
+					return
+				}
+
+				if auth.URLVar != "" {
+					targetId := chi.URLParam(req, auth.URLVar)
+
+					if targetId == "" {
+						state.Logger.With(
+							zap.String("endpoint", r.Pattern),
+							zap.String("urlVar", auth.URLVar),
+						).Error("Target ID is empty")
+						continue
+					}
+
+					switch auth.Type {
+					case types.TargetTypeUser:
+						// Check if the user exists with said ID and API token
+						var id pgtype.Text
+						err := state.Pool.QueryRow(state.Context, "SELECT user_id FROM users WHERE user_id = $1 AND api_token = $2", targetId, strings.Replace(authHeader, "User ", "", 1)).Scan(&id)
+
+						if err != nil {
+							continue
+						}
+
+						if !id.Valid || id.String != targetId {
+							continue
+						}
+
+						authData = AuthData{
+							TargetType: types.TargetTypeUser,
+							ID:         targetId,
+							Authorized: true,
+						}
+					case types.TargetTypeBot:
+						// Check if the bot exists with said ID and API token
+						var id pgtype.Text
+						err := state.Pool.QueryRow(state.Context, "SELECT bot_id FROM bots WHERE (lower(vanity) = $1 OR bot_id = $1) AND api_token = $2", targetId, strings.Replace(targetId, "Bot ", "", 1)).Scan(&id)
+
+						if err != nil {
+							continue
+						}
+
+						if !id.Valid || id.String != targetId {
+							continue
+						}
+
+						authData = AuthData{
+							TargetType: types.TargetTypeBot,
+							ID:         targetId,
+							Authorized: true,
+						}
+					}
+				} else {
+					// Case #2: No URLVar, only token
+					switch auth.Type {
+					case types.TargetTypeUser:
+						// Check if the user exists with said API token only
+						var id pgtype.Text
+						err := state.Pool.QueryRow(state.Context, "SELECT user_id FROM users WHERE api_token = $1", strings.Replace(authHeader, "User ", "", 1)).Scan(&id)
+
+						if err != nil {
+							continue
+						}
+
+						if !id.Valid {
+							continue
+						}
+
+						authData = AuthData{
+							TargetType: types.TargetTypeUser,
+							ID:         id.String,
+							Authorized: true,
+						}
+					case types.TargetTypeBot:
+						// Check if the bot exists with said token only
+						var id pgtype.Text
+						err := state.Pool.QueryRow(state.Context, "SELECT bot_id FROM bots WHERE token = $1", strings.Replace(authHeader, "Bot ", "", 1)).Scan(&id)
+
+						if err != nil {
+							continue
+						}
+
+						if !id.Valid {
+							continue
+						}
+					}
+				}
+			}
+
+			if len(r.Auth) > 0 && !authData.Authorized && !r.AuthOptional {
+				resp <- utils.ApiDefaultReturn(http.StatusUnauthorized)
+				return
+			}
+
 			r.Handler(RouteData{
 				Context: ctx,
 				Resp:    resp,
+				Auth:    authData,
 			}, req)
 		}()
 

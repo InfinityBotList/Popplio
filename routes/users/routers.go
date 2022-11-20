@@ -14,6 +14,7 @@ import (
 	"popplio/routes/users/endpoints/post_user_subscription"
 	"popplio/routes/users/endpoints/put_user_reminders"
 	"popplio/routes/users/endpoints/put_user_votes"
+	"popplio/types"
 
 	"github.com/go-chi/chi/v5"
 )
@@ -40,6 +41,12 @@ func (b Router) Routes(r *chi.Mux) {
 			Method:  api.PATCH,
 			Docs:    patch_user_profile.Docs,
 			Handler: patch_user_profile.Route,
+			Auth: []api.AuthType{
+				{
+					URLVar: "id",
+					Type:   types.TargetTypeUser,
+				},
+			},
 		}.Route(r)
 
 		api.Route{
@@ -47,6 +54,16 @@ func (b Router) Routes(r *chi.Mux) {
 			Method:  api.GET,
 			Docs:    get_user_votes.Docs,
 			Handler: get_user_votes.Route,
+			Auth: []api.AuthType{
+				{
+					URLVar: "uid",
+					Type:   types.TargetTypeUser,
+				},
+				{
+					URLVar: "bid",
+					Type:   types.TargetTypeBot,
+				},
+			},
 		}.Route(r)
 
 		api.Route{
@@ -54,6 +71,12 @@ func (b Router) Routes(r *chi.Mux) {
 			Method:  api.PUT,
 			Docs:    put_user_votes.Docs,
 			Handler: put_user_votes.Route,
+			Auth: []api.AuthType{
+				{
+					URLVar: "uid",
+					Type:   types.TargetTypeUser,
+				},
+			},
 		}.Route(r)
 
 		api.Route{
@@ -75,6 +98,12 @@ func (b Router) Routes(r *chi.Mux) {
 			Method:  api.GET,
 			Docs:    get_user_notifications.Docs,
 			Handler: get_user_notifications.Route,
+			Auth: []api.AuthType{
+				{
+					URLVar: "id",
+					Type:   types.TargetTypeUser,
+				},
+			},
 		}.Route(r)
 
 		api.Route{
@@ -82,6 +111,12 @@ func (b Router) Routes(r *chi.Mux) {
 			Method:  api.DELETE,
 			Docs:    delete_user_notifications.Docs,
 			Handler: delete_user_notifications.Route,
+			Auth: []api.AuthType{
+				{
+					URLVar: "id",
+					Type:   types.TargetTypeUser,
+				},
+			},
 		}.Route(r)
 
 		api.Route{
@@ -89,6 +124,12 @@ func (b Router) Routes(r *chi.Mux) {
 			Method:  api.GET,
 			Docs:    get_user_reminders.Docs,
 			Handler: get_user_reminders.Route,
+			Auth: []api.AuthType{
+				{
+					URLVar: "id",
+					Type:   types.TargetTypeUser,
+				},
+			},
 		}.Route(r)
 
 		api.Route{
@@ -96,6 +137,12 @@ func (b Router) Routes(r *chi.Mux) {
 			Method:  api.PUT,
 			Docs:    put_user_reminders.Docs,
 			Handler: put_user_reminders.Route,
+			Auth: []api.AuthType{
+				{
+					URLVar: "id",
+					Type:   types.TargetTypeUser,
+				},
+			},
 		}.Route(r)
 
 		api.Route{
@@ -103,6 +150,12 @@ func (b Router) Routes(r *chi.Mux) {
 			Method:  api.DELETE,
 			Docs:    delete_user_reminders.Docs,
 			Handler: delete_user_reminders.Route,
+			Auth: []api.AuthType{
+				{
+					URLVar: "id",
+					Type:   types.TargetTypeUser,
+				},
+			},
 		}.Route(r)
 
 		api.Route{
@@ -110,6 +163,12 @@ func (b Router) Routes(r *chi.Mux) {
 			Method:  api.POST,
 			Docs:    post_user_subscription.Docs,
 			Handler: post_user_subscription.Route,
+			Auth: []api.AuthType{
+				{
+					URLVar: "id",
+					Type:   types.TargetTypeUser,
+				},
+			},
 		}.Route(r)
 	})
 }

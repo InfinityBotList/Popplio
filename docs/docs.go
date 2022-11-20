@@ -265,10 +265,10 @@ type Doc struct {
 	Tags        []string
 	Req         any
 	Resp        any
-	AuthType    []string
+	AuthType    []types.TargetType
 }
 
-func Route(doc *Doc) {
+func Route(doc *Doc) *Doc {
 	// Generate schemaName, taking out bad things
 
 	// Basic checks
@@ -277,7 +277,7 @@ func Route(doc *Doc) {
 	}
 
 	if len(doc.AuthType) == 0 {
-		doc.AuthType = []string{}
+		doc.AuthType = []types.TargetType{}
 	}
 
 	if len(doc.Tags) == 0 {
@@ -396,14 +396,27 @@ func Route(doc *Doc) {
 	}
 
 	if len(doc.AuthType) == 0 {
-		doc.AuthType = []string{}
+		doc.AuthType = []types.TargetType{}
 	}
 
 	operationData.Security = []map[string][]string{}
 
 	for _, auth := range doc.AuthType {
+		var authSchema string
+
+		switch auth {
+		case types.TargetTypeUser:
+			authSchema = "User"
+		case types.TargetTypeBot:
+			authSchema = "Bot"
+		case types.TargetTypeServer:
+			authSchema = "Server"
+		default:
+			panic("unknown auth type: " + fmt.Sprint(auth))
+		}
+
 		operationData.Security = append(operationData.Security, map[string][]string{
-			auth: {},
+			authSchema: {},
 		})
 	}
 
@@ -430,8 +443,9 @@ func Route(doc *Doc) {
 		op.Delete = operationData
 
 		api.Paths.Set(doc.Path, op)
-
 	}
+
+	return doc
 }
 
 func GetSchema() any {

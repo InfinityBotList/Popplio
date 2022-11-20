@@ -26,7 +26,7 @@ func Docs() {
 		Description: "This endpoint will return a list of announcements. User authentication is optional and using it will show user targetted announcements.",
 		Tags:        []string{api.CurrentTag},
 		Resp:        types.AnnouncementList{},
-		AuthType:    []string{"User"},
+		AuthType:    []types.TargetType{types.TargetTypeUser},
 	})
 }
 
@@ -50,20 +50,13 @@ func Route(d api.RouteData, r *http.Request) {
 	}
 
 	// Auth header check
-	auth := r.Header.Get("Authorization")
 
 	var target types.UserID
 
-	if auth != "" {
-		targetId := utils.AuthCheck(auth, false)
-
-		if targetId != nil {
-			state.Logger.Error(err)
-			d.Resp <- utils.ApiDefaultReturn(http.StatusUnauthorized)
-			return
+	if d.Auth.Authorized {
+		target = types.UserID{
+			UserID: d.Auth.ID,
 		}
-
-		target = types.UserID{UserID: *targetId}
 	} else {
 		target = types.UserID{}
 	}

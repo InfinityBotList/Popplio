@@ -7,7 +7,6 @@ import (
 	"popplio/state"
 	"popplio/types"
 	"popplio/utils"
-	"strings"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -41,7 +40,7 @@ func Docs() {
 			VoteTime:   12,
 			HasVoted:   true,
 		},
-		AuthType: []string{"User", "Bot"},
+		AuthType: []types.TargetType{types.TargetTypeUser, types.TargetTypeBot},
 		Tags:     []string{api.CurrentTag},
 	})
 }
@@ -52,55 +51,17 @@ func Route(d api.RouteData, r *http.Request) {
 		"bid": chi.URLParam(r, "bid"),
 	}
 
-	userAuth := strings.HasPrefix(r.Header.Get("Authorization"), "User ")
-
 	var botId pgtype.Text
-	var botType pgtype.Text
 
-	if r.Header.Get("Authorization") == "" {
-		d.Resp <- utils.ApiDefaultReturn(http.StatusUnauthorized)
+	err := state.Pool.QueryRow(d.Context, "SELECT bot_id FROM bots WHERE (lower(vanity) = $1 OR bot_id = $1)", vars["bid"]).Scan(&botId)
+
+	if err != nil {
+		state.Logger.Error(err)
+		d.Resp <- utils.ApiDefaultReturn(http.StatusNotFound)
 		return
 	}
 
-	var err error
-
-	if userAuth {
-		uid := utils.AuthCheck(r.Header.Get("Authorization"), false)
-
-		if uid == nil || *uid != vars["uid"] {
-			d.Resp <- utils.ApiDefaultReturn(http.StatusUnauthorized)
-			return
-		}
-
-		err = state.Pool.QueryRow(d.Context, "SELECT bot_id FROM bots WHERE (lower(vanity) = $1 OR bot_id = $1)", vars["bid"]).Scan(&botId)
-
-		if err != nil || !botId.Valid {
-			state.Logger.Error(err)
-			d.Resp <- utils.ApiDefaultReturn(http.StatusNotFound)
-			return
-		}
-
-		vars["bid"] = botId.String
-	} else {
-		err = state.Pool.QueryRow(d.Context, "SELECT bot_id, type FROM bots WHERE (lower(vanity) = $1 OR bot_id = $1)", vars["bid"]).Scan(&botId, &botType)
-
-		if err != nil || !botId.Valid || !botType.Valid {
-			state.Logger.Error(err)
-			d.Resp <- utils.ApiDefaultReturn(http.StatusNotFound)
-			return
-		}
-
-		id := utils.AuthCheck(r.Header.Get("Authorization"), true)
-
-		if id == nil || *id != vars["bid"] {
-			d.Resp <- utils.ApiDefaultReturn(http.StatusUnauthorized)
-			return
-		}
-
-		vars["bid"] = botId.String
-	}
-
-	voteParsed, err := utils.GetVoteData(d.Context, vars["uid"], vars["bid"])
+	voteParsed, err := utils.GetVoteData(d.Context, vars["uid"], botId.String)
 
 	if err != nil {
 		state.Logger.Error(err)

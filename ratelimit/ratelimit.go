@@ -1,13 +1,6 @@
 package ratelimit
 
 import (
-	"crypto/sha512"
-	"fmt"
-	"net/http"
-	"popplio/state"
-	"popplio/utils"
-	"strconv"
-	"strings"
 	"time"
 )
 
@@ -32,7 +25,7 @@ type ModeratedBucket struct {
 // Default global ratelimit handler
 var DefaultGlobalBucket = ModeratedBucket{BucketName: "global", Requests: 500, Time: 2 * time.Minute}
 
-func bucketHandle(bucket ModeratedBucket, id string, w http.ResponseWriter, r *http.Request) bool {
+/* func bucketHandle(bucket ModeratedBucket, id string, w http.ResponseWriter, r *http.Request) bool {
 	rlKey := "rl:" + id + "-" + bucket.BucketName
 
 	v := state.Redis.Get(r.Context(), rlKey).Val()
@@ -94,10 +87,11 @@ func bucketHandle(bucket ModeratedBucket, id string, w http.ResponseWriter, r *h
 		w.Header().Set("X-Ratelimit-Req-Made", strconv.Itoa(vInt))
 	}
 	return true
-}
+} */
 
-// Public ratelimit handler
-func Ratelimit(reqs int, t time.Duration, bucket ModeratedBucket, w http.ResponseWriter, r *http.Request) bool {
+// Public ratelimit handler (NOT YET WORKING)
+
+/*func Ratelimit(reqs int, t time.Duration, bucket ModeratedBucket, w http.ResponseWriter, r *http.Request) bool {
 	// Get ratelimit from redis
 	var id string
 
@@ -142,3 +136,4 @@ func Ratelimit(reqs int, t time.Duration, bucket ModeratedBucket, w http.Respons
 
 	return true
 }
+*/

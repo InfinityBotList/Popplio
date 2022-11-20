@@ -30,6 +30,12 @@ func (b Router) Routes(r *chi.Mux) {
 			Method:  api.GET,
 			Docs:    get_announcements.Docs,
 			Handler: get_announcements.Route,
+			Auth: []api.AuthType{
+				{
+					Type: types.TargetTypeUser,
+				},
+			},
+			AuthOptional: true,
 		}.Route(r)
 	})
 }

@@ -33,30 +33,12 @@ func Docs() {
 		},
 		Resp:     types.NotifGetList{},
 		Tags:     []string{api.CurrentTag},
-		AuthType: []string{"User"},
+		AuthType: []types.TargetType{types.TargetTypeUser},
 	})
 }
 
 func Route(d api.RouteData, r *http.Request) {
 	var id = chi.URLParam(r, "id")
-
-	if id == "" {
-		d.Resp <- utils.ApiDefaultReturn(http.StatusBadRequest)
-		return
-	}
-
-	// Fetch auth from postgresdb
-	if r.Header.Get("Authorization") == "" {
-		d.Resp <- utils.ApiDefaultReturn(http.StatusUnauthorized)
-		return
-	} else {
-		authId := utils.AuthCheck(r.Header.Get("Authorization"), false)
-
-		if authId == nil || *authId != id {
-			d.Resp <- utils.ApiDefaultReturn(http.StatusUnauthorized)
-			return
-		}
-	}
 
 	var subscription []types.NotifGet
 

@@ -36,7 +36,7 @@ print(req.json())
 		Tags:     []string{api.CurrentTag},
 		Req:      types.BotStatsDocs{},
 		Resp:     types.ApiError{},
-		AuthType: []string{"Bot"},
+		AuthType: []types.TargetType{types.TargetTypeBot},
 	})
 }
 
@@ -46,20 +46,7 @@ func Route(d api.RouteData, r *http.Request) {
 		return
 	}
 
-	var id *string
-
-	// Check token
-	if r.Header.Get("Authorization") == "" {
-		d.Resp <- utils.ApiDefaultReturn(http.StatusUnauthorized)
-		return
-	} else {
-		id = utils.AuthCheck(r.Header.Get("Authorization"), true)
-
-		if id == nil {
-			d.Resp <- utils.ApiDefaultReturn(http.StatusUnauthorized)
-			return
-		}
-	}
+	id := d.Auth.ID
 
 	defer r.Body.Close()
 
@@ -141,7 +128,7 @@ func Route(d api.RouteData, r *http.Request) {
 
 	// Delete from cache
 	state.Redis.Del(d.Context, "bc-"+vanity)
-	state.Redis.Del(d.Context, "bc-"+*id)
+	state.Redis.Del(d.Context, "bc-"+id)
 
 	d.Resp <- types.HttpResponse{
 		Data: constants.Success,

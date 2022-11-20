@@ -644,3 +644,11 @@ type HttpResponse struct {
 	// Stub response, just exit
 	Stub bool
 }
+
+type TargetType int
+
+const (
+	TargetTypeUser TargetType = iota
+	TargetTypeBot
+	TargetTypeServer
+)
