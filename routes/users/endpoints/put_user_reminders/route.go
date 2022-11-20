@@ -12,8 +12,8 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-func Docs() {
-	docs.Route(&docs.Doc{
+func Docs() *docs.Doc {
+	return docs.Route(&docs.Doc{
 		Method:      "PUT",
 		Path:        "/users/{id}/reminders",
 		OpId:        "put_user_reminders",

@@ -13,8 +13,8 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-func Docs() {
-	docs.Route(&docs.Doc{
+func Docs() *docs.Doc {
+	return docs.Route(&docs.Doc{
 		Method:      "GET",
 		Path:        "/votes/{bot_id}/{user_id}",
 		OpId:        "legacy_votes",

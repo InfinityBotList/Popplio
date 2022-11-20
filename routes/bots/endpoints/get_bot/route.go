@@ -20,8 +20,8 @@ var (
 	botCols    = strings.Join(botColsArr, ",")
 )
 
-func Docs() {
-	docs.Route(&docs.Doc{
+func Docs() *docs.Doc {
+	return docs.Route(&docs.Doc{
 		Method:  "GET",
 		Path:    "/bots/{id}",
 		OpId:    "get_bot",

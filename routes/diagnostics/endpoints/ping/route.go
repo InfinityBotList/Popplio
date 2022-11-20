@@ -44,8 +44,8 @@ func Setup() {
 	}
 }
 
-func Docs() {
-	docs.Route(&docs.Doc{
+func Docs() *docs.Doc {
+	return docs.Route(&docs.Doc{
 		Method:      "GET",
 		Path:        "/",
 		OpId:        "ping",

@@ -13,8 +13,8 @@ import (
 	"github.com/go-chi/chi/v5"
 )
 
-func Docs() {
-	docs.Route(&docs.Doc{
+func Docs() *docs.Doc {
+	return docs.Route(&docs.Doc{
 		Method:      "GET",
 		Path:        "/transcripts/{id}",
 		OpId:        "get_transcript",

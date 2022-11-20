@@ -12,8 +12,8 @@ import (
 	"popplio/webhooks"
 )
 
-func Docs() {
-	docs.Route(&docs.Doc{
+func Docs() *docs.Doc {
+	return docs.Route(&docs.Doc{
 		Method:      "POST",
 		Path:        "/list/webhook-test",
 		OpId:        "webhook_test",

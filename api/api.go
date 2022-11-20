@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"popplio/constants"
+	"popplio/docs"
 	"popplio/state"
 	"popplio/types"
 	"popplio/utils"
@@ -46,7 +47,7 @@ type Route struct {
 	Pattern      string
 	Handler      func(d RouteData, r *http.Request)
 	Setup        func()
-	Docs         func()
+	Docs         func() *docs.Doc
 	Auth         []AuthType
 	AuthOptional bool
 }

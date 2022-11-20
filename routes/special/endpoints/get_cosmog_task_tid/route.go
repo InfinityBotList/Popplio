@@ -11,8 +11,8 @@ import (
 	"github.com/go-redis/redis/v8"
 )
 
-func Docs() {
-	docs.Route(&docs.Doc{
+func Docs() *docs.Doc {
+	return docs.Route(&docs.Doc{
 		Method:      "GET",
 		Path:        "/cosmog/tasks/{tid}.arceus",
 		OpId:        "get_cosmog_task_tid",

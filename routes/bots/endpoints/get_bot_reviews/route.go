@@ -18,8 +18,8 @@ var (
 	reviewCols    = strings.Join(reviewColsArr, ",")
 )
 
-func Docs() {
-	docs.Route(&docs.Doc{
+func Docs() *docs.Doc {
+	return docs.Route(&docs.Doc{
 		Method:      "GET",
 		Path:        "/bots/{id}/reviews",
 		OpId:        "get_bot_reviews",

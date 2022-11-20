@@ -8,8 +8,8 @@ import (
 	"popplio/types"
 )
 
-func Docs() {
-	docs.Route(&docs.Doc{
+func Docs() *docs.Doc {
+	return docs.Route(&docs.Doc{
 		Method:      "GET",
 		Path:        "/users/notifications/info",
 		OpId:        "get_user_notifications",

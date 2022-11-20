@@ -19,8 +19,8 @@ var (
 	userCols    = strings.Join(userColsArr, ",")
 )
 
-func Docs() {
-	docs.Route(&docs.Doc{
+func Docs() *docs.Doc {
+	return docs.Route(&docs.Doc{
 		Method:      "GET",
 		Path:        "/users/{id}",
 		OpId:        "get_user",

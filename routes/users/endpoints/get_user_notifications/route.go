@@ -15,8 +15,8 @@ import (
 	"go.uber.org/zap"
 )
 
-func Docs() {
-	docs.Route(&docs.Doc{
+func Docs() *docs.Doc {
+	return docs.Route(&docs.Doc{
 		Method:      "GET",
 		Path:        "/users/{id}/notifications",
 		OpId:        "get_user_notifications",

@@ -18,8 +18,8 @@ var (
 	silverpeltCols    = strings.Join(silverpeltColsArr, ",")
 )
 
-func Docs() {
-	docs.Route(&docs.Doc{
+func Docs() *docs.Doc {
+	return docs.Route(&docs.Doc{
 		Method:      "GET",
 		Path:        "/users/{id}/reminders",
 		OpId:        "get_user_reminders",

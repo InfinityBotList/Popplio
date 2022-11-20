@@ -15,8 +15,8 @@ import (
 	"github.com/go-chi/chi/v5"
 )
 
-func Docs() {
-	docs.Route(&docs.Doc{
+func Docs() *docs.Doc {
+	return docs.Route(&docs.Doc{
 		Method:      "GET",
 		Path:        "/login/{act}",
 		OpId:        "get_special_login",

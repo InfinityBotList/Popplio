@@ -13,8 +13,8 @@ import (
 	"strconv"
 )
 
-func Docs() {
-	docs.Route(&docs.Doc{
+func Docs() *docs.Doc {
+	return docs.Route(&docs.Doc{
 		Method:  "POST",
 		Path:    "/bots/stats",
 		OpId:    "post_stats",

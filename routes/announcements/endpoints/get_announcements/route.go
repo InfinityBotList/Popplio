@@ -17,8 +17,8 @@ var (
 	announcementCols    = strings.Join(announcementColsArr, ",")
 )
 
-func Docs() {
-	docs.Route(&docs.Doc{
+func Docs() *docs.Doc {
+	return docs.Route(&docs.Doc{
 		Method:      "GET",
 		Path:        "/announcements",
 		OpId:        "get_announcements",

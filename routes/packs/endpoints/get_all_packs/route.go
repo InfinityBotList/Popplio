@@ -23,8 +23,8 @@ var (
 	indexPackCols   = strings.Join(indexPackColArr, ",")
 )
 
-func Docs() {
-	docs.Route(&docs.Doc{
+func Docs() *docs.Doc {
+	return docs.Route(&docs.Doc{
 		Method:      "GET",
 		Path:        "/packs/all",
 		OpId:        "get_all_packs",

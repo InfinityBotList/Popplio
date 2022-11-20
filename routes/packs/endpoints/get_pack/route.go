@@ -18,8 +18,8 @@ var (
 	packCols   = strings.Join(packColArr, ",")
 )
 
-func Docs() {
-	docs.Route(&docs.Doc{
+func Docs() *docs.Doc {
+	return docs.Route(&docs.Doc{
 		Method:      "GET",
 		Path:        "/packs/{id}",
 		OpId:        "get_pack",

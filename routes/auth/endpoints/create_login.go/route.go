@@ -28,8 +28,8 @@ type OauthUser struct {
 	Disc     string `json:"discriminator"`
 }
 
-func Docs() {
-	docs.Route(&docs.Doc{
+func Docs() *docs.Doc {
+	return docs.Route(&docs.Doc{
 		Method: "GET",
 		Path:   "/authorize",
 		Params: []docs.Parameter{

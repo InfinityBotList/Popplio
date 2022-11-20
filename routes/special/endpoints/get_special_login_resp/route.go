@@ -21,8 +21,8 @@ import (
 	"time"
 )
 
-func Docs() {
-	docs.Route(&docs.Doc{
+func Docs() *docs.Doc {
+	return docs.Route(&docs.Doc{
 		Method:      "GET",
 		Path:        "/cosmog",
 		OpId:        "get_special_login_resp",
