@@ -2,7 +2,6 @@ package special
 
 import (
 	"popplio/api"
-	"popplio/routes/special/endpoints/get_cosmog_task_status"
 	"popplio/routes/special/endpoints/get_cosmog_task_tid"
 	"popplio/routes/special/endpoints/get_special_login"
 	"popplio/routes/special/endpoints/get_special_login_resp"
@@ -37,13 +36,6 @@ func (b Router) Routes(r *chi.Mux) {
 
 	api.Route{
 		Pattern: "/cosmog/tasks/{tid}",
-		Method:  api.GET,
-		Docs:    get_cosmog_task_status.Docs,
-		Handler: get_cosmog_task_status.Route,
-	}.Route(r)
-
-	api.Route{
-		Pattern: "/cosmog/tasks/{tid}.arceus",
 		Method:  api.GET,
 		Docs:    get_cosmog_task_tid.Docs,
 		Handler: get_cosmog_task_tid.Route,

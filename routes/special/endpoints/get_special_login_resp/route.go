@@ -231,7 +231,7 @@ func Route(d api.RouteData, r *http.Request) {
 	}
 
 	d.Resp <- types.HttpResponse{
-		Redirect: "/cosmog/tasks/" + taskId + "?n=" + base64.URLEncoding.EncodeToString(body),
+		Redirect: os.Getenv("BOTLIST_APP") + "/data/confirm?tid=" + taskId + "&user=" + base64.URLEncoding.EncodeToString(body) + "&act=" + act,
 	}
 
 }
