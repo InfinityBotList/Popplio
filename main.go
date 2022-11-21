@@ -166,8 +166,6 @@ func main() {
 	})
 
 	// Load openapi here to avoid large marshalling in every request
-	docs.DocumentMicroservices()
-
 	var err error
 	openapi, err = json.Marshal(docs.GetSchema())
 
