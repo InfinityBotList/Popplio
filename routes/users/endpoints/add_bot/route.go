@@ -25,12 +25,12 @@ type CreateBot struct {
 	Short            string       `json:"short" validate:"required,min=50,max=100" msg:"Short description must be between 50 and 100 characters"`
 	Long             string       `json:"long" validate:"required,min=500" msg:"Long description must be at least 500 characters"`
 	Prefix           string       `json:"prefix" validate:"required,min=1,max=10,alphanum" msg:"Prefix must be between 1 and 10 characters"`
-	AdditionalOwners []string     `json:"additional_owners" validate:"required,max=7,dive,numeric" msg:"Additional owners must be numeric"`
+	AdditionalOwners []string     `json:"additional_owners" validate:"required,max=7,dive,numeric" msg:"Additional owners must be numeric" amsg:"Each additional owner must be a valid snowflake"`
 	Invite           string       `json:"invite" validate:"required,url" msg:"Invite is required and must be a valid URL"`
 	Background       *string      `json:"background" validate:"omitempty,url" msg:"Background must be a valid URL"`
 	Library          string       `json:"library" validate:"required,min=1,max=50,alpha" msg:"Library must be between 1 and 50 characters"`
 	ExtraLinks       []types.Link `json:"extra_links" validate:"required" msg:"Extra links must be sent"`
-	Tags             []string     `json:"tags" validate:"required,min=1,max=5,dive,min=3,max=20,alpha" msg:"There must be between 1 and 5 tags" amsg:"Each tag must be between 3 and 20 characters"`
+	Tags             []string     `json:"tags" validate:"required,unique,min=1,max=5,dive,min=3,max=20,alpha" msg:"There must be between 1 and 5 tags without duplicates" amsg:"Each tag must be between 3 and 20 characters and alphabetic"`
 	NSFW             bool         `json:"nsfw" validate:"required" msg:"NSFW must be sent"`
 	CrossAdd         bool         `json:"cross_add" validate:"required" msg:"Cross add must be sent"`
 	StaffNote        *string      `json:"staff_note" validate:"required,max=1000" msg:"Staff note must be sent and must be less than 1000 characters"`
