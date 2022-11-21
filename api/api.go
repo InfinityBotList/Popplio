@@ -9,8 +9,8 @@ import (
 	"popplio/docs"
 	"popplio/state"
 	"popplio/types"
-	"popplio/utils"
 	"strings"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -54,7 +54,7 @@ type Route struct {
 
 type RouteData struct {
 	Context context.Context
-	Resp    chan types.HttpResponse
+	Resp    chan HttpResponse
 	Auth    AuthData
 }
 
@@ -92,14 +92,14 @@ func (r Route) Route(ro Router) {
 
 	handle := func(w http.ResponseWriter, req *http.Request) {
 		ctx := req.Context()
-		resp := make(chan types.HttpResponse)
+		resp := make(chan HttpResponse)
 
 		go func() {
 			// Handle auth checks here
 			authHeader := req.Header.Get("Authorization")
 
 			if len(r.Auth) > 0 && authHeader == "" && !r.AuthOptional {
-				resp <- utils.ApiDefaultReturn(http.StatusUnauthorized)
+				resp <- DefaultResponse(http.StatusUnauthorized)
 			}
 
 			authData := AuthData{}
@@ -117,7 +117,7 @@ func (r Route) Route(ro Router) {
 
 				if auth.Type == types.TargetTypeServer {
 					// Server auth
-					resp <- types.HttpResponse{
+					resp <- HttpResponse{
 						Status: http.StatusNotImplemented,
 						Data:   "Server auth is not implemented yet",
 					}
@@ -211,7 +211,7 @@ func (r Route) Route(ro Router) {
 			}
 
 			if len(r.Auth) > 0 && !authData.Authorized && !r.AuthOptional {
-				resp <- utils.ApiDefaultReturn(http.StatusUnauthorized)
+				resp <- DefaultResponse(http.StatusUnauthorized)
 				return
 			}
 
@@ -243,7 +243,7 @@ func (r Route) Route(ro Router) {
 	}
 }
 
-func respond(ctx context.Context, w http.ResponseWriter, data chan types.HttpResponse) {
+func respond(ctx context.Context, w http.ResponseWriter, data chan HttpResponse) {
 	select {
 	case <-ctx.Done():
 		return
@@ -314,5 +314,66 @@ func respond(ctx context.Context, w http.ResponseWriter, data chan types.HttpRes
 
 		w.Write([]byte(msg.Data))
 		return
+	}
+}
+
+type HttpResponse struct {
+	// Data is the data to be sent to the client
+	Data string
+	// Optional, can be used in place of Data
+	Bytes []byte
+	// Json body to be sent to the client
+	Json any
+	// Headers to set
+	Headers map[string]string
+	// Status is the HTTP status code to send
+	Status int
+	// Cache the JSON to redis
+	CacheKey  string
+	CacheTime time.Duration
+	// Redirect to a URL
+	Redirect string
+	// Stub response, just exit
+	Stub bool
+}
+
+// Creates a default HTTP response based on the status code
+func DefaultResponse(statusCode int) HttpResponse {
+	switch statusCode {
+	case http.StatusUnauthorized:
+		return HttpResponse{
+			Status: statusCode,
+			Data:   constants.Unauthorized,
+		}
+	case http.StatusNotFound:
+		return HttpResponse{
+			Status: statusCode,
+			Data:   constants.NotFound,
+		}
+	case http.StatusBadRequest:
+		return HttpResponse{
+			Status: statusCode,
+			Data:   constants.BadRequest,
+		}
+	case http.StatusInternalServerError:
+		return HttpResponse{
+			Status: statusCode,
+			Data:   constants.InternalError,
+		}
+	case http.StatusMethodNotAllowed:
+		return HttpResponse{
+			Status: statusCode,
+			Data:   constants.MethodNotAllowed,
+		}
+	case http.StatusOK:
+		return HttpResponse{
+			Status: statusCode,
+			Data:   constants.Success,
+		}
+	}
+
+	return HttpResponse{
+		Status: statusCode,
+		Data:   constants.InternalError,
 	}
 }

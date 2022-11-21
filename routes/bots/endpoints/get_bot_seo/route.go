@@ -40,13 +40,13 @@ func Route(d api.RouteData, r *http.Request) {
 	name = strings.ToLower(name)
 
 	if name == "" {
-		d.Resp <- utils.ApiDefaultReturn(http.StatusBadRequest)
+		d.Resp <- api.DefaultResponse(http.StatusBadRequest)
 		return
 	}
 
 	cache := state.Redis.Get(d.Context, "seob:"+name).Val()
 	if cache != "" {
-		d.Resp <- types.HttpResponse{
+		d.Resp <- api.HttpResponse{
 			Data: cache,
 			Headers: map[string]string{
 				"X-Popplio-Cached": "true",
@@ -61,7 +61,7 @@ func Route(d api.RouteData, r *http.Request) {
 
 	if err != nil {
 		state.Logger.Error(err)
-		d.Resp <- utils.ApiDefaultReturn(http.StatusNotFound)
+		d.Resp <- api.DefaultResponse(http.StatusNotFound)
 		return
 	}
 
@@ -69,7 +69,7 @@ func Route(d api.RouteData, r *http.Request) {
 
 	if err != nil {
 		state.Logger.Error(err)
-		d.Resp <- utils.ApiDefaultReturn(http.StatusInternalServerError)
+		d.Resp <- api.DefaultResponse(http.StatusInternalServerError)
 		return
 	}
 
@@ -80,7 +80,7 @@ func Route(d api.RouteData, r *http.Request) {
 		Short:    short,
 	}
 
-	d.Resp <- types.HttpResponse{
+	d.Resp <- api.HttpResponse{
 		Json:      seoData,
 		CacheKey:  "seob:" + name,
 		CacheTime: 30 * time.Minute,

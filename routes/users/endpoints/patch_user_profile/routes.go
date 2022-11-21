@@ -45,7 +45,7 @@ func Route(d api.RouteData, r *http.Request) {
 
 	if err != nil {
 		state.Logger.Error(err)
-		d.Resp <- utils.ApiDefaultReturn(http.StatusInternalServerError)
+		d.Resp <- api.DefaultResponse(http.StatusInternalServerError)
 		return
 	}
 
@@ -53,14 +53,14 @@ func Route(d api.RouteData, r *http.Request) {
 
 	if err != nil {
 		state.Logger.Error(err)
-		d.Resp <- utils.ApiDefaultReturn(http.StatusInternalServerError)
+		d.Resp <- api.DefaultResponse(http.StatusInternalServerError)
 		return
 	}
 
 	err = utils.ValidateExtraLinks(profile.ExtraLinks)
 
 	if err != nil {
-		d.Resp <- types.HttpResponse{
+		d.Resp <- api.HttpResponse{
 			Status: http.StatusBadRequest,
 			Json: types.ApiError{
 				Error:   true,
@@ -75,13 +75,13 @@ func Route(d api.RouteData, r *http.Request) {
 
 	if err != nil {
 		state.Logger.Error(err)
-		d.Resp <- utils.ApiDefaultReturn(http.StatusInternalServerError)
+		d.Resp <- api.DefaultResponse(http.StatusInternalServerError)
 		return
 	}
 
 	if profile.About != "" {
 		if len(profile.About) > 1000 {
-			d.Resp <- types.HttpResponse{
+			d.Resp <- api.HttpResponse{
 				Status: http.StatusBadRequest,
 				Data:   `{"error":true,"message":"About me is over 1000 characters!"}`,
 			}
@@ -93,14 +93,14 @@ func Route(d api.RouteData, r *http.Request) {
 
 		if err != nil {
 			state.Logger.Error(err)
-			d.Resp <- utils.ApiDefaultReturn(http.StatusInternalServerError)
+			d.Resp <- api.DefaultResponse(http.StatusInternalServerError)
 			return
 		}
 	}
 
 	state.Redis.Del(d.Context, "uc-"+id)
 
-	d.Resp <- types.HttpResponse{
+	d.Resp <- api.HttpResponse{
 		Status: http.StatusNoContent,
 	}
 }

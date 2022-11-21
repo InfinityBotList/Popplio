@@ -5,7 +5,6 @@ import (
 	"popplio/api"
 	"popplio/docs"
 	"popplio/state"
-	"popplio/types"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-redis/redis/v8"
@@ -27,7 +26,7 @@ func Route(d api.RouteData, r *http.Request) {
 	tid := chi.URLParam(r, "tid")
 
 	if tid == "" {
-		d.Resp <- types.HttpResponse{
+		d.Resp <- api.HttpResponse{
 			Status: http.StatusBadRequest,
 			Data:   "Invalid task id",
 		}
@@ -37,7 +36,7 @@ func Route(d api.RouteData, r *http.Request) {
 	task, err := state.Redis.Get(d.Context, tid).Result()
 
 	if err == redis.Nil {
-		d.Resp <- types.HttpResponse{
+		d.Resp <- api.HttpResponse{
 			Status: http.StatusNotFound,
 			Data:   "Task not found",
 		}
@@ -45,14 +44,14 @@ func Route(d api.RouteData, r *http.Request) {
 	}
 
 	if err != nil {
-		d.Resp <- types.HttpResponse{
+		d.Resp <- api.HttpResponse{
 			Status: http.StatusInternalServerError,
 			Data:   err.Error(),
 		}
 		return
 	}
 
-	d.Resp <- types.HttpResponse{
+	d.Resp <- api.HttpResponse{
 		Data: task,
 	}
 

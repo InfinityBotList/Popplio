@@ -28,7 +28,7 @@ type OrderedMap[K comparable, V any] struct {
 }
 
 // New creates a new OrderedMap.
-func New[K comparable, V any]() *OrderedMap[K, V] {
+func NewMap[K comparable, V any]() *OrderedMap[K, V] {
 	return &OrderedMap[K, V]{
 		pairs: make(map[K]*Pair[K, V]),
 		list:  list.New[*Pair[K, V]](),
@@ -126,7 +126,7 @@ func (om *OrderedMap[K, V]) UnmarshalJSON(b []byte) error {
 		return fmt.Errorf("expected JSON object, got %v", v.Type())
 	}
 
-	omObj := New[K, V]()
+	omObj := NewMap[K, V]()
 
 	// We cant use visit as K and V are not known at compile time
 

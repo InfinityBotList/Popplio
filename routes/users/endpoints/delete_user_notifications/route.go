@@ -6,7 +6,6 @@ import (
 	"popplio/docs"
 	"popplio/state"
 	"popplio/types"
-	"popplio/utils"
 
 	"github.com/go-chi/chi/v5"
 )
@@ -45,7 +44,7 @@ func Route(d api.RouteData, r *http.Request) {
 
 	// Check for notif_id
 	if r.URL.Query().Get("notif_id") == "" {
-		d.Resp <- utils.ApiDefaultReturn(http.StatusBadRequest)
+		d.Resp <- api.DefaultResponse(http.StatusBadRequest)
 		return
 	}
 
@@ -53,11 +52,11 @@ func Route(d api.RouteData, r *http.Request) {
 
 	if err != nil {
 		state.Logger.Error(err)
-		d.Resp <- utils.ApiDefaultReturn(http.StatusInternalServerError)
+		d.Resp <- api.DefaultResponse(http.StatusInternalServerError)
 		return
 	}
 
-	d.Resp <- types.HttpResponse{
+	d.Resp <- api.HttpResponse{
 		Status: http.StatusNoContent,
 	}
 }

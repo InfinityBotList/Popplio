@@ -9,7 +9,6 @@ import (
 	"popplio/docs"
 	"popplio/state"
 	"popplio/types"
-	"popplio/utils"
 	"strconv"
 )
 
@@ -42,7 +41,7 @@ print(req.json())
 
 func Route(d api.RouteData, r *http.Request) {
 	if r.Body == nil {
-		d.Resp <- utils.ApiDefaultReturn(http.StatusBadRequest)
+		d.Resp <- api.DefaultResponse(http.StatusBadRequest)
 		return
 	}
 
@@ -56,7 +55,7 @@ func Route(d api.RouteData, r *http.Request) {
 
 	if err != nil {
 		state.Logger.Error(err)
-		d.Resp <- utils.ApiDefaultReturn(http.StatusInternalServerError)
+		d.Resp <- api.DefaultResponse(http.StatusInternalServerError)
 		return
 	}
 
@@ -67,7 +66,7 @@ func Route(d api.RouteData, r *http.Request) {
 			payload = types.BotStats{}
 		} else {
 			state.Logger.Error(err)
-			d.Resp <- types.HttpResponse{
+			d.Resp <- api.HttpResponse{
 				Data:   constants.BadRequestStats,
 				Status: http.StatusBadRequest,
 			}
@@ -80,7 +79,7 @@ func Route(d api.RouteData, r *http.Request) {
 
 		if err != nil {
 			state.Logger.Error(err)
-			d.Resp <- utils.ApiDefaultReturn(http.StatusBadRequest)
+			d.Resp <- api.DefaultResponse(http.StatusBadRequest)
 			return
 		}
 
@@ -96,7 +95,7 @@ func Route(d api.RouteData, r *http.Request) {
 
 		if err != nil {
 			state.Logger.Error(err)
-			d.Resp <- utils.ApiDefaultReturn(http.StatusInternalServerError)
+			d.Resp <- api.DefaultResponse(http.StatusInternalServerError)
 			return
 		}
 	}
@@ -106,7 +105,7 @@ func Route(d api.RouteData, r *http.Request) {
 
 		if err != nil {
 			state.Logger.Error(err)
-			d.Resp <- utils.ApiDefaultReturn(http.StatusInternalServerError)
+			d.Resp <- api.DefaultResponse(http.StatusInternalServerError)
 			return
 		}
 	}
@@ -116,7 +115,7 @@ func Route(d api.RouteData, r *http.Request) {
 
 		if err != nil {
 			state.Logger.Error(err)
-			d.Resp <- utils.ApiDefaultReturn(http.StatusInternalServerError)
+			d.Resp <- api.DefaultResponse(http.StatusInternalServerError)
 			return
 		}
 	}
@@ -130,7 +129,7 @@ func Route(d api.RouteData, r *http.Request) {
 	state.Redis.Del(d.Context, "bc-"+vanity)
 	state.Redis.Del(d.Context, "bc-"+id)
 
-	d.Resp <- types.HttpResponse{
+	d.Resp <- api.HttpResponse{
 		Data: constants.Success,
 	}
 }

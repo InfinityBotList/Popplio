@@ -43,7 +43,7 @@ func Route(d api.RouteData, r *http.Request) {
 	var id = chi.URLParam(r, "id")
 
 	if id == "" {
-		d.Resp <- utils.ApiDefaultReturn(http.StatusBadRequest)
+		d.Resp <- api.DefaultResponse(http.StatusBadRequest)
 		return
 	}
 
@@ -52,7 +52,7 @@ func Route(d api.RouteData, r *http.Request) {
 	row, err := state.Pool.Query(d.Context, "SELECT "+packCols+" FROM packs WHERE url = $1 OR name = $1", id)
 
 	if err != nil {
-		d.Resp <- utils.ApiDefaultReturn(http.StatusNotFound)
+		d.Resp <- api.DefaultResponse(http.StatusNotFound)
 		return
 	}
 
@@ -60,7 +60,7 @@ func Route(d api.RouteData, r *http.Request) {
 
 	if err != nil {
 		state.Logger.Error(err)
-		d.Resp <- utils.ApiDefaultReturn(http.StatusInternalServerError)
+		d.Resp <- api.DefaultResponse(http.StatusInternalServerError)
 		return
 	}
 
@@ -68,11 +68,11 @@ func Route(d api.RouteData, r *http.Request) {
 
 	if err != nil {
 		state.Logger.Error(err)
-		d.Resp <- utils.ApiDefaultReturn(http.StatusInternalServerError)
+		d.Resp <- api.DefaultResponse(http.StatusInternalServerError)
 		return
 	}
 
-	d.Resp <- types.HttpResponse{
+	d.Resp <- api.HttpResponse{
 		Json: pack,
 	}
 }

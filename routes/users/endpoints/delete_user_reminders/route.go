@@ -6,7 +6,6 @@ import (
 	"popplio/docs"
 	"popplio/state"
 	"popplio/types"
-	"popplio/utils"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -50,14 +49,14 @@ func Route(d api.RouteData, r *http.Request) {
 
 	if err != nil || !botId.Valid || botId.String == "" {
 		state.Logger.Error("Error deleting reminder: ", err)
-		d.Resp <- utils.ApiDefaultReturn(http.StatusNotFound)
+		d.Resp <- api.DefaultResponse(http.StatusNotFound)
 		return
 	}
 
 	// Delete old
 	state.Pool.Exec(d.Context, "DELETE FROM silverpelt WHERE user_id = $1 AND bot_id = $2", id, botId.String)
 
-	d.Resp <- types.HttpResponse{
+	d.Resp <- api.HttpResponse{
 		Status: http.StatusNoContent,
 	}
 }

@@ -35,7 +35,7 @@ func Docs() *docs.Doc {
 func Route(d api.RouteData, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	state.Redis.Del(d.Context, "uobj:"+id)
-	d.Resp <- types.HttpResponse{
+	d.Resp <- api.HttpResponse{
 		Status: http.StatusOK,
 		Data:   constants.Success,
 	}

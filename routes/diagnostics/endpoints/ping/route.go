@@ -5,7 +5,6 @@ import (
 	"net/http"
 	"popplio/api"
 	"popplio/docs"
-	"popplio/types"
 )
 
 type Hello struct {
@@ -57,7 +56,7 @@ func Docs() *docs.Doc {
 }
 
 func Route(d api.RouteData, r *http.Request) {
-	d.Resp <- types.HttpResponse{
+	d.Resp <- api.HttpResponse{
 		Bytes: helloWorld,
 	}
 }

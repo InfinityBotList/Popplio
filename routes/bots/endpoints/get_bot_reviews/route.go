@@ -45,7 +45,7 @@ func Route(d api.RouteData, r *http.Request) {
 	name = strings.ToLower(name)
 
 	if name == "" {
-		d.Resp <- utils.ApiDefaultReturn(http.StatusNotFound)
+		d.Resp <- api.DefaultResponse(http.StatusNotFound)
 		return
 	}
 
@@ -53,7 +53,7 @@ func Route(d api.RouteData, r *http.Request) {
 
 	if err != nil {
 		state.Logger.Error(err)
-		d.Resp <- utils.ApiDefaultReturn(http.StatusNotFound)
+		d.Resp <- api.DefaultResponse(http.StatusNotFound)
 		return
 	}
 
@@ -63,7 +63,7 @@ func Route(d api.RouteData, r *http.Request) {
 
 	if err != nil {
 		state.Logger.Error(err)
-		d.Resp <- utils.ApiDefaultReturn(http.StatusInternalServerError)
+		d.Resp <- api.DefaultResponse(http.StatusInternalServerError)
 		return
 	}
 
@@ -71,7 +71,7 @@ func Route(d api.RouteData, r *http.Request) {
 		Reviews: reviews,
 	}
 
-	d.Resp <- types.HttpResponse{
+	d.Resp <- api.HttpResponse{
 		Json: allReviews,
 	}
 }

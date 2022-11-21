@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"math/rand"
-	"net/http"
 	"os"
 	"reflect"
 	"strconv"
@@ -13,7 +12,6 @@ import (
 	"time"
 	"unsafe"
 
-	"popplio/constants"
 	"popplio/state"
 	"popplio/types"
 
@@ -506,46 +504,6 @@ func GetVoteData(ctx context.Context, userID, botID string) (*types.UserVote, er
 		voteParsed.LastVoteTime = votes[0]
 	}
 	return &voteParsed, nil
-}
-
-func ApiDefaultReturn(statusCode int) types.HttpResponse {
-	switch statusCode {
-	case http.StatusUnauthorized:
-		return types.HttpResponse{
-			Status: statusCode,
-			Data:   constants.Unauthorized,
-		}
-	case http.StatusNotFound:
-		return types.HttpResponse{
-			Status: statusCode,
-			Data:   constants.NotFound,
-		}
-	case http.StatusBadRequest:
-		return types.HttpResponse{
-			Status: statusCode,
-			Data:   constants.BadRequest,
-		}
-	case http.StatusInternalServerError:
-		return types.HttpResponse{
-			Status: statusCode,
-			Data:   constants.InternalError,
-		}
-	case http.StatusMethodNotAllowed:
-		return types.HttpResponse{
-			Status: statusCode,
-			Data:   constants.MethodNotAllowed,
-		}
-	case http.StatusOK:
-		return types.HttpResponse{
-			Status: statusCode,
-			Data:   constants.Success,
-		}
-	}
-
-	return types.HttpResponse{
-		Status: statusCode,
-		Data:   constants.InternalError,
-	}
 }
 
 func GetCols(s any) []string {

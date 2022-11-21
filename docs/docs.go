@@ -60,120 +60,9 @@ func init() {
 	}
 }
 
-type server struct {
-	URL         string         `json:"url"`
-	Description string         `json:"description"`
-	Variables   map[string]any `json:"variables"`
-}
-
-type contact struct {
-	Name  string `json:"name"`
-	URL   string `json:"url"`
-	Email string `json:"email"`
-}
-
-type license struct {
-	Name string `json:"name"`
-	URL  string `json:"url"`
-}
-
-type info struct {
-	Title          string  `json:"title"`
-	Description    string  `json:"description"`
-	TermsOfService string  `json:"termsOfService"`
-	Version        string  `json:"version"`
-	Contact        contact `json:"contact"`
-	License        license `json:"license"`
-}
-
-type content struct {
-	Schema any `json:"schema"`
-}
-
-type reqBody struct {
-	Description string             `json:"description,omitempty"`
-	Required    bool               `json:"required,omitempty"`
-	Content     map[string]content `json:"content"`
-}
-
-type security struct {
-	Type        string `json:"type"`
-	Name        string `json:"name"`
-	Description string `json:"description"`
-	In          string `json:"in"` // must be apiKey for Popplio
-}
-
-type component struct {
-	Schemas       map[string]any      `json:"schemas"`
-	Security      map[string]security `json:"securitySchemes"`
-	RequestBodies map[string]reqBody  `json:"requestBodies"`
-}
-
-type schema struct {
-	Ref        string         `json:"$ref,omitempty"`
-	Type       string         `json:"type,omitempty"`
-	Required   []string       `json:"required,omitempty"`
-	Properties map[string]any `json:"properties,omitempty"`
-}
-
-type schemaResp struct {
-	Schema schema `json:"schema"`
-}
-
-// Represents a openAPI response
-type response struct {
-	Description string                `json:"description"`
-	Content     map[string]schemaResp `json:"content"`
-}
-
-// Parameter defines a openAPI parameter
-type Parameter struct {
-	Name        string `json:"name"`
-	In          string `json:"in"`
-	Description string `json:"description"`
-	Required    bool   `json:"required"`
-	Schema      any    `json:"schema"`
-}
-
-type operation struct {
-	Summary     string                `json:"summary"`
-	Tags        []string              `json:"tags,omitempty"`
-	Description string                `json:"description"`
-	ID          string                `json:"operationId"`
-	RequestBody any                   `json:"requestBody,omitempty"`
-	Parameters  []Parameter           `json:"parameters"`
-	Responses   map[string]response   `json:"responses"`
-	Security    []map[string][]string `json:"security,omitempty"`
-	Servers     []server              `json:"servers,omitempty"`
-}
-
-type path struct {
-	Summary     string     `json:"summary"` // Danger do not use this
-	Description string     `json:"description"`
-	Get         *operation `json:"get,omitempty"`
-	Post        *operation `json:"post,omitempty"`
-	Put         *operation `json:"put,omitempty"`
-	Patch       *operation `json:"patch,omitempty"`
-	Delete      *operation `json:"delete,omitempty"`
-}
-
-type Tag struct {
-	Name        string `json:"name"`
-	Description string `json:"description"`
-}
-
-type Openapi struct {
-	OpenAPI    string                    `json:"openapi"`
-	Info       info                      `json:"info"`
-	Servers    []server                  `json:"servers"`
-	Components component                 `json:"components"`
-	Paths      *OrderedMap[string, path] `json:"paths"`
-	Tags       []Tag                     `json:"tags,omitempty"`
-}
-
 var api = Openapi{
 	OpenAPI: "3.0.3",
-	Info: info{
+	Info: Info{
 		Title: "Infinity Bot List API",
 		Description: `
 Welcome to the Infinity Bot List API documentation!
@@ -181,33 +70,33 @@ Welcome to the Infinity Bot List API documentation!
 `,
 		TermsOfService: "https://infinitybotlist.com/terms",
 		Version:        "6.0",
-		Contact: contact{
+		Contact: Contact{
 			Name:  "Infinity Bot List",
 			URL:   "https://infinitybotlist.com",
 			Email: "support@infinitybots.gg",
 		},
-		License: license{
+		License: License{
 			Name: "MIT",
 			URL:  "https://opensource.org/licenses/MIT",
 		},
 	},
-	Servers: []server{
+	Servers: []Server{
 		{
 			URL:         "https://spider.infinitybotlist.com",
 			Description: "Popplio (v6)",
 			Variables:   map[string]any{},
 		},
 	},
-	Components: component{
+	Components: Component{
 		Schemas:       make(map[string]any),
-		Security:      make(map[string]security),
-		RequestBodies: make(map[string]reqBody),
+		Security:      make(map[string]Security),
+		RequestBodies: make(map[string]ReqBody),
 	},
 }
 
 func init() {
 	api.Info.Description += docsMd
-	api.Paths = New[string, path]()
+	api.Paths = NewMap[string, Path]()
 }
 
 var badRequestSchema *openapi3.SchemaRef
@@ -247,25 +136,12 @@ func AddTag(name, description string) {
 }
 
 func AddSecuritySchema(id, header, description string) {
-	api.Components.Security[id] = security{
+	api.Components.Security[id] = Security{
 		Type:        "apiKey",
 		Name:        header,
 		In:          "header",
 		Description: description,
 	}
-}
-
-type Doc struct {
-	Method      string
-	Path        string
-	OpId        string
-	Summary     string
-	Description string
-	Params      []Parameter
-	Tags        []string
-	Req         any
-	Resp        any
-	AuthType    []types.TargetType
 }
 
 func Route(doc *Doc) *Doc {
@@ -333,7 +209,7 @@ func Route(doc *Doc) *Doc {
 	}
 
 	// Add in requests
-	var reqBodyRef *schema
+	var reqBodyRef *Schema
 	if doc.Req != nil {
 		schemaRef, err := openapi3gen.NewSchemaRefForValue(doc.Req, nil)
 
@@ -347,10 +223,10 @@ func Route(doc *Doc) *Doc {
 			fmt.Println("REQUEST:", reqSchemaName)
 		}
 
-		api.Components.RequestBodies[doc.Method+"_"+reqSchemaName] = reqBody{
+		api.Components.RequestBodies[doc.Method+"_"+reqSchemaName] = ReqBody{
 			Description: "Request body: " + reflect.TypeOf(doc.Req).String(),
 			Required:    true,
-			Content: map[string]content{
+			Content: map[string]Content{
 				"application/json": {
 					Schema: schemaRef,
 				},
@@ -358,25 +234,25 @@ func Route(doc *Doc) *Doc {
 		}
 
 		if _, ok := api.Paths.Get(doc.Path); !ok {
-			api.Paths.Set(doc.Path, path{})
+			api.Paths.Set(doc.Path, Path{})
 		}
 
-		reqBodyRef = &schema{Ref: "#/components/requestBodies/" + doc.Method + "_" + reqSchemaName}
+		reqBodyRef = &Schema{Ref: "#/components/requestBodies/" + doc.Method + "_" + reqSchemaName}
 	}
 
-	operationData := &operation{
+	operationData := &Operation{
 		Tags:        doc.Tags,
 		Summary:     doc.Summary,
 		Description: doc.Description,
 		ID:          doc.OpId,
 		Parameters:  doc.Params,
 		RequestBody: reqBodyRef,
-		Responses: map[string]response{
+		Responses: map[string]Response{
 			"200": {
 				Description: "Success",
-				Content: map[string]schemaResp{
+				Content: map[string]SchemaResp{
 					"application/json": {
-						Schema: schema{
+						Schema: Schema{
 							Ref: "#/components/schemas/" + schemaName,
 						},
 					},
@@ -384,9 +260,9 @@ func Route(doc *Doc) *Doc {
 			},
 			"400": {
 				Description: "Bad Request",
-				Content: map[string]schemaResp{
+				Content: map[string]SchemaResp{
 					"application/json": {
-						Schema: schema{
+						Schema: Schema{
 							Ref: "#/components/schemas/types.ApiError",
 						},
 					},

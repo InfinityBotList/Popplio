@@ -45,14 +45,14 @@ func Route(d api.RouteData, r *http.Request) {
 	pageNum, err := strconv.ParseUint(page, 10, 32)
 
 	if err != nil {
-		d.Resp <- utils.ApiDefaultReturn(http.StatusBadRequest)
+		d.Resp <- api.DefaultResponse(http.StatusBadRequest)
 		return
 	}
 
 	// Check cache, this is how we can avoid hefty ratelimits
 	cache := state.Redis.Get(d.Context, "pca-"+strconv.FormatUint(pageNum, 10)).Val()
 	if cache != "" {
-		d.Resp <- types.HttpResponse{
+		d.Resp <- api.HttpResponse{
 			Data: cache,
 			Headers: map[string]string{
 				"X-Popplio-Cached": "true",
@@ -68,7 +68,7 @@ func Route(d api.RouteData, r *http.Request) {
 
 	if err != nil {
 		state.Logger.Error(err)
-		d.Resp <- utils.ApiDefaultReturn(http.StatusInternalServerError)
+		d.Resp <- api.DefaultResponse(http.StatusInternalServerError)
 		return
 	}
 
@@ -78,7 +78,7 @@ func Route(d api.RouteData, r *http.Request) {
 
 	if err != nil {
 		state.Logger.Error(err)
-		d.Resp <- utils.ApiDefaultReturn(http.StatusInternalServerError)
+		d.Resp <- api.DefaultResponse(http.StatusInternalServerError)
 		return
 	}
 
@@ -87,7 +87,7 @@ func Route(d api.RouteData, r *http.Request) {
 
 		if err != nil {
 			state.Logger.Error(err)
-			d.Resp <- utils.ApiDefaultReturn(http.StatusInternalServerError)
+			d.Resp <- api.DefaultResponse(http.StatusInternalServerError)
 			return
 		}
 	}
@@ -109,7 +109,7 @@ func Route(d api.RouteData, r *http.Request) {
 
 	if err != nil {
 		state.Logger.Error(err)
-		d.Resp <- utils.ApiDefaultReturn(http.StatusInternalServerError)
+		d.Resp <- api.DefaultResponse(http.StatusInternalServerError)
 		return
 	}
 
@@ -131,7 +131,7 @@ func Route(d api.RouteData, r *http.Request) {
 		Next:     next.String(),
 	}
 
-	d.Resp <- types.HttpResponse{
+	d.Resp <- api.HttpResponse{
 		Json:      data,
 		CacheKey:  "pca-" + strconv.FormatUint(pageNum, 10),
 		CacheTime: 2 * time.Minute,

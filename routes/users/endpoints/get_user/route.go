@@ -44,12 +44,12 @@ func Route(d api.RouteData, r *http.Request) {
 	name := chi.URLParam(r, "id")
 
 	if name == "" {
-		d.Resp <- utils.ApiDefaultReturn(http.StatusBadRequest)
+		d.Resp <- api.DefaultResponse(http.StatusBadRequest)
 		return
 	}
 
 	if name == "undefined" {
-		d.Resp <- types.HttpResponse{
+		d.Resp <- api.HttpResponse{
 			Status: http.StatusOK,
 			Data:   `{"error":"false","message":"Handling known issue"}`,
 		}
@@ -59,7 +59,7 @@ func Route(d api.RouteData, r *http.Request) {
 	// Check cache, this is how we can avoid hefty ratelimits
 	cache := state.Redis.Get(d.Context, "uc-"+name).Val()
 	if cache != "" {
-		d.Resp <- types.HttpResponse{
+		d.Resp <- api.HttpResponse{
 			Data: cache,
 			Headers: map[string]string{
 				"X-Popplio-Cached": "true",
@@ -76,7 +76,7 @@ func Route(d api.RouteData, r *http.Request) {
 
 	if err != nil {
 		state.Logger.Error(err)
-		d.Resp <- utils.ApiDefaultReturn(http.StatusNotFound)
+		d.Resp <- api.DefaultResponse(http.StatusNotFound)
 		return
 	}
 
@@ -84,7 +84,7 @@ func Route(d api.RouteData, r *http.Request) {
 
 	if err != nil {
 		state.Logger.Error(err)
-		d.Resp <- utils.ApiDefaultReturn(http.StatusNotFound)
+		d.Resp <- api.DefaultResponse(http.StatusNotFound)
 		return
 	}
 
@@ -92,7 +92,7 @@ func Route(d api.RouteData, r *http.Request) {
 
 	if err != nil {
 		state.Logger.Error(err)
-		d.Resp <- utils.ApiDefaultReturn(http.StatusInternalServerError)
+		d.Resp <- api.DefaultResponse(http.StatusInternalServerError)
 		return
 	}
 
@@ -102,7 +102,7 @@ func Route(d api.RouteData, r *http.Request) {
 	 * blocking IPs is a better idea to this
 	 */
 
-	d.Resp <- types.HttpResponse{
+	d.Resp <- api.HttpResponse{
 		Json:      user,
 		CacheKey:  "uc-" + name,
 		CacheTime: 3 * time.Minute,

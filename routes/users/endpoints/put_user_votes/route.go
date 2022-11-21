@@ -65,12 +65,12 @@ func Route(d api.RouteData, r *http.Request) {
 
 	if err != nil {
 		state.Logger.Error(err)
-		d.Resp <- utils.ApiDefaultReturn(http.StatusInternalServerError)
+		d.Resp <- api.DefaultResponse(http.StatusInternalServerError)
 		return
 	}
 
 	if voteBannedState {
-		d.Resp <- types.HttpResponse{
+		d.Resp <- api.HttpResponse{
 			Status: http.StatusForbidden,
 			Data:   constants.VoteBanned,
 		}
@@ -83,12 +83,12 @@ func Route(d api.RouteData, r *http.Request) {
 
 	if err != nil {
 		state.Logger.Error(err)
-		d.Resp <- utils.ApiDefaultReturn(http.StatusInternalServerError)
+		d.Resp <- api.DefaultResponse(http.StatusInternalServerError)
 		return
 	}
 
 	if voteBannedBotsState {
-		d.Resp <- types.HttpResponse{
+		d.Resp <- api.HttpResponse{
 			Status: http.StatusForbidden,
 			Data:   constants.VoteBanned,
 		}
@@ -98,7 +98,7 @@ func Route(d api.RouteData, r *http.Request) {
 	vars["bid"] = botId.String
 
 	if botType.String != "approved" {
-		d.Resp <- types.HttpResponse{
+		d.Resp <- api.HttpResponse{
 			Status: http.StatusBadRequest,
 			Data:   constants.NotApproved,
 		}
@@ -109,7 +109,7 @@ func Route(d api.RouteData, r *http.Request) {
 
 	if err != nil {
 		state.Logger.Error(err)
-		d.Resp <- utils.ApiDefaultReturn(http.StatusInternalServerError)
+		d.Resp <- api.DefaultResponse(http.StatusInternalServerError)
 		return
 	}
 
@@ -132,7 +132,7 @@ func Route(d api.RouteData, r *http.Request) {
 			Error:   true,
 		}
 
-		d.Resp <- types.HttpResponse{
+		d.Resp <- api.HttpResponse{
 			Status: http.StatusBadRequest,
 			Json:   alreadyVotedMsg,
 		}
@@ -148,7 +148,7 @@ func Route(d api.RouteData, r *http.Request) {
 		// Revert vote
 		_, err := state.Pool.Exec(d.Context, "DELETE FROM votes WHERE itag = $1", itag)
 		state.Logger.Error(err)
-		d.Resp <- utils.ApiDefaultReturn(http.StatusInternalServerError)
+		d.Resp <- api.DefaultResponse(http.StatusInternalServerError)
 		return
 	}
 
@@ -161,7 +161,7 @@ func Route(d api.RouteData, r *http.Request) {
 		_, err := state.Pool.Exec(d.Context, "DELETE FROM votes WHERE itag = $1", itag)
 
 		state.Logger.Error(err)
-		d.Resp <- utils.ApiDefaultReturn(http.StatusInternalServerError)
+		d.Resp <- api.DefaultResponse(http.StatusInternalServerError)
 		return
 	}
 
@@ -182,7 +182,7 @@ func Route(d api.RouteData, r *http.Request) {
 		_, err := state.Pool.Exec(d.Context, "DELETE FROM votes WHERE itag = $1", itag)
 
 		state.Logger.Error(err)
-		d.Resp <- utils.ApiDefaultReturn(http.StatusInternalServerError)
+		d.Resp <- api.DefaultResponse(http.StatusInternalServerError)
 		return
 	}
 
@@ -193,7 +193,7 @@ func Route(d api.RouteData, r *http.Request) {
 		_, err := state.Pool.Exec(d.Context, "DELETE FROM votes WHERE itag = $1", itag)
 
 		state.Logger.Error(err)
-		d.Resp <- utils.ApiDefaultReturn(http.StatusInternalServerError)
+		d.Resp <- api.DefaultResponse(http.StatusInternalServerError)
 		return
 	}
 
@@ -204,7 +204,7 @@ func Route(d api.RouteData, r *http.Request) {
 		_, err := state.Pool.Exec(d.Context, "DELETE FROM votes WHERE itag = $1", itag)
 
 		state.Logger.Error(err)
-		d.Resp <- utils.ApiDefaultReturn(http.StatusInternalServerError)
+		d.Resp <- api.DefaultResponse(http.StatusInternalServerError)
 		return
 	}
 
@@ -318,7 +318,7 @@ func Route(d api.RouteData, r *http.Request) {
 		}
 	}()
 
-	d.Resp <- types.HttpResponse{
+	d.Resp <- api.HttpResponse{
 		Status: http.StatusNoContent,
 	}
 }

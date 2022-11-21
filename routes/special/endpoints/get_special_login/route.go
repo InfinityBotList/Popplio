@@ -8,7 +8,6 @@ import (
 	"os"
 	"popplio/api"
 	"popplio/docs"
-	"popplio/types"
 	"strconv"
 	"time"
 
@@ -42,7 +41,7 @@ func Route(d api.RouteData, r *http.Request) {
 
 	hmacData := hex.EncodeToString(h.Sum(nil))
 
-	d.Resp <- types.HttpResponse{
+	d.Resp <- api.HttpResponse{
 		Redirect: "https://discord.com/api/oauth2/authorize?client_id=" + cliId + "&scope=identify&response_type=code&redirect_uri=" + redirectUrl + "&state=" + ctime + "." + hmacData + "." + act,
 	}
 }

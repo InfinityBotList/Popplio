@@ -25,7 +25,7 @@ func Route(d api.RouteData, r *http.Request) {
 		PublicKey: os.Getenv("VAPID_PUBLIC_KEY"),
 	}
 
-	d.Resp <- types.HttpResponse{
+	d.Resp <- api.HttpResponse{
 		Json: data,
 	}
 }

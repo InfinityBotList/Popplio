@@ -14,7 +14,6 @@ import (
 	"popplio/docs"
 	"popplio/routes/special/assets"
 	"popplio/state"
-	"popplio/types"
 	"popplio/utils"
 	"strconv"
 	"strings"
@@ -40,7 +39,7 @@ func Route(d api.RouteData, r *http.Request) {
 	actSplit := strings.Split(act, ".")
 
 	if len(actSplit) != 3 {
-		d.Resp <- types.HttpResponse{
+		d.Resp <- api.HttpResponse{
 			Status: http.StatusBadRequest,
 			Data:   "Invalid state",
 		}
@@ -55,7 +54,7 @@ func Route(d api.RouteData, r *http.Request) {
 	hmacData := hex.EncodeToString(h.Sum(nil))
 
 	if hmacData != actSplit[1] {
-		d.Resp <- types.HttpResponse{
+		d.Resp <- api.HttpResponse{
 			Status: http.StatusBadRequest,
 			Data:   "Invalid state",
 		}
@@ -66,7 +65,7 @@ func Route(d api.RouteData, r *http.Request) {
 	ctime, err := strconv.ParseInt(actSplit[0], 10, 64)
 
 	if err != nil {
-		d.Resp <- types.HttpResponse{
+		d.Resp <- api.HttpResponse{
 			Status: http.StatusBadRequest,
 			Data:   "Invalid state",
 		}
@@ -74,7 +73,7 @@ func Route(d api.RouteData, r *http.Request) {
 	}
 
 	if time.Now().Unix()-ctime > 300 {
-		d.Resp <- types.HttpResponse{
+		d.Resp <- api.HttpResponse{
 			Status: http.StatusBadRequest,
 			Data:   "Invalid state, HMAC is too old",
 		}
@@ -96,7 +95,7 @@ func Route(d api.RouteData, r *http.Request) {
 	response, err := http.PostForm("https://discord.com/api/oauth2/token", data)
 
 	if err != nil {
-		d.Resp <- types.HttpResponse{
+		d.Resp <- api.HttpResponse{
 			Status: http.StatusInternalServerError,
 			Data:   err.Error(),
 		}
@@ -108,7 +107,7 @@ func Route(d api.RouteData, r *http.Request) {
 	body, err := io.ReadAll(response.Body)
 
 	if err != nil {
-		d.Resp <- types.HttpResponse{
+		d.Resp <- api.HttpResponse{
 			Status: http.StatusInternalServerError,
 			Data:   err.Error(),
 		}
@@ -123,7 +122,7 @@ func Route(d api.RouteData, r *http.Request) {
 	err = json.Unmarshal(body, &token)
 
 	if err != nil {
-		d.Resp <- types.HttpResponse{
+		d.Resp <- api.HttpResponse{
 			Status: http.StatusInternalServerError,
 			Data:   err.Error(),
 		}
@@ -133,7 +132,7 @@ func Route(d api.RouteData, r *http.Request) {
 	state.Logger.Info(token)
 
 	if !strings.Contains(token.Scope, "identify") {
-		d.Resp <- types.HttpResponse{
+		d.Resp <- api.HttpResponse{
 			Status: http.StatusBadRequest,
 			Data:   "Invalid scope: scope contain identify, is currently " + token.Scope,
 		}
@@ -144,7 +143,7 @@ func Route(d api.RouteData, r *http.Request) {
 	req, err := http.NewRequest("GET", "https://discord.com/api/users/@me", nil)
 
 	if err != nil {
-		d.Resp <- types.HttpResponse{
+		d.Resp <- api.HttpResponse{
 			Status: http.StatusInternalServerError,
 			Data:   err.Error(),
 		}
@@ -158,7 +157,7 @@ func Route(d api.RouteData, r *http.Request) {
 	response, err = client.Do(req)
 
 	if err != nil {
-		d.Resp <- types.HttpResponse{
+		d.Resp <- api.HttpResponse{
 			Status: http.StatusInternalServerError,
 			Data:   err.Error(),
 		}
@@ -170,7 +169,7 @@ func Route(d api.RouteData, r *http.Request) {
 	body, err = io.ReadAll(response.Body)
 
 	if err != nil {
-		d.Resp <- types.HttpResponse{
+		d.Resp <- api.HttpResponse{
 			Status: http.StatusInternalServerError,
 			Data:   err.Error(),
 		}
@@ -182,7 +181,7 @@ func Route(d api.RouteData, r *http.Request) {
 	err = json.Unmarshal(body, &user)
 
 	if err != nil {
-		d.Resp <- types.HttpResponse{
+		d.Resp <- api.HttpResponse{
 			Status: http.StatusInternalServerError,
 			Data:   err.Error(),
 		}
@@ -194,7 +193,7 @@ func Route(d api.RouteData, r *http.Request) {
 	err = state.Redis.Set(d.Context, taskId, "WAITING", time.Hour*8).Err()
 
 	if err != nil {
-		d.Resp <- types.HttpResponse{
+		d.Resp <- api.HttpResponse{
 			Status: http.StatusInternalServerError,
 			Data:   err.Error(),
 		}
@@ -213,24 +212,24 @@ func Route(d api.RouteData, r *http.Request) {
 		_, err := state.Pool.Exec(d.Context, "UPDATE users SET api_token = $1 WHERE user_id = $2", token, user.ID)
 
 		if err != nil {
-			d.Resp <- types.HttpResponse{
+			d.Resp <- api.HttpResponse{
 				Status: http.StatusInternalServerError,
 				Data:   err.Error(),
 			}
 			return
 		}
 
-		d.Resp <- types.HttpResponse{
+		d.Resp <- api.HttpResponse{
 			Data: token,
 		}
 		return
 
 	} else {
-		d.Resp <- utils.ApiDefaultReturn(http.StatusNotFound)
+		d.Resp <- api.DefaultResponse(http.StatusNotFound)
 		return
 	}
 
-	d.Resp <- types.HttpResponse{
+	d.Resp <- api.HttpResponse{
 		Redirect: os.Getenv("BOTLIST_APP") + "/data/confirm?tid=" + taskId + "&user=" + base64.URLEncoding.EncodeToString(body) + "&act=" + act,
 	}
 

@@ -59,7 +59,7 @@ func Docs() *docs.Doc {
 func Route(d api.RouteData, r *http.Request) {
 	redirectUri := r.URL.Query().Get("redirect_uri")
 	if !slices.Contains(allowedRedirectURLs, redirectUri) {
-		d.Resp <- types.HttpResponse{
+		d.Resp <- api.HttpResponse{
 			Data:   `{"error":true,"message":"Malformed redirect_uri"}`,
 			Status: http.StatusBadRequest,
 		}
@@ -68,7 +68,7 @@ func Route(d api.RouteData, r *http.Request) {
 
 	if redirectUri == allowedRedirectURLs[0] {
 		if r.Header.Get("Wistala-Server") != os.Getenv("DEV_WISTALA_SERVER_SECRET") {
-			d.Resp <- types.HttpResponse{
+			d.Resp <- api.HttpResponse{
 				Data:   `{"error":true,"message":"This endpoint is not meant to be used by you"}`,
 				Status: http.StatusForbidden,
 			}
@@ -76,7 +76,7 @@ func Route(d api.RouteData, r *http.Request) {
 		}
 	} else {
 		if r.Header.Get("Wistala-Server") != os.Getenv("WISTALA_SERVER_SECRET") {
-			d.Resp <- types.HttpResponse{
+			d.Resp <- api.HttpResponse{
 				Data:   `{"error":true,"message":"This endpoint is not meant to be used by you"}`,
 				Status: http.StatusForbidden,
 			}
@@ -87,7 +87,7 @@ func Route(d api.RouteData, r *http.Request) {
 	code := r.URL.Query().Get("code")
 
 	if code == "" {
-		d.Resp <- types.HttpResponse{
+		d.Resp <- api.HttpResponse{
 			Data:   `{"error":true,"message":"No code provided"}`,
 			Status: http.StatusBadRequest,
 		}
@@ -95,7 +95,7 @@ func Route(d api.RouteData, r *http.Request) {
 	}
 
 	if state.Redis.Exists(d.Context, "codecache:"+code).Val() == 1 {
-		d.Resp <- types.HttpResponse{
+		d.Resp <- api.HttpResponse{
 			Data:   `{"error":true,"message":"Code has been used before and is as such invalid"}`,
 			Status: http.StatusBadRequest,
 		}
@@ -115,7 +115,7 @@ func Route(d api.RouteData, r *http.Request) {
 
 	if err != nil {
 		state.Logger.Error(err)
-		d.Resp <- types.HttpResponse{
+		d.Resp <- api.HttpResponse{
 			Data:   `{"error":true,"message":"Failed to get token from Discord"}`,
 			Status: http.StatusInternalServerError,
 		}
@@ -128,7 +128,7 @@ func Route(d api.RouteData, r *http.Request) {
 
 	if err != nil {
 		state.Logger.Error(err)
-		d.Resp <- types.HttpResponse{
+		d.Resp <- api.HttpResponse{
 			Data:   `{"error":true,"message":"Failed to read token response from Discord"}`,
 			Status: http.StatusInternalServerError,
 		}
@@ -143,7 +143,7 @@ func Route(d api.RouteData, r *http.Request) {
 
 	if err != nil {
 		state.Logger.Error(err)
-		d.Resp <- types.HttpResponse{
+		d.Resp <- api.HttpResponse{
 			Data:   `{"error":true,"message":"Failed to parse token response from Discord"}`,
 			Status: http.StatusBadRequest,
 		}
@@ -152,7 +152,7 @@ func Route(d api.RouteData, r *http.Request) {
 
 	if token.AccessToken == "" {
 		state.Logger.Error(err)
-		d.Resp <- types.HttpResponse{
+		d.Resp <- api.HttpResponse{
 			Data:   `{"error":true,"message":"No access token provided by Discord"}`,
 			Status: http.StatusBadRequest,
 		}
@@ -165,7 +165,7 @@ func Route(d api.RouteData, r *http.Request) {
 
 	if err != nil {
 		state.Logger.Error(err)
-		d.Resp <- types.HttpResponse{
+		d.Resp <- api.HttpResponse{
 			Data:   `{"error":true,"message":"Failed to create request to Discord to fetch user info"}`,
 			Status: http.StatusInternalServerError,
 		}
@@ -178,7 +178,7 @@ func Route(d api.RouteData, r *http.Request) {
 
 	if err != nil {
 		state.Logger.Error(err)
-		d.Resp <- types.HttpResponse{
+		d.Resp <- api.HttpResponse{
 			Data:   `{"error":true,"message":"Failed to get user info from Discord"}`,
 			Status: http.StatusInternalServerError,
 		}
@@ -191,7 +191,7 @@ func Route(d api.RouteData, r *http.Request) {
 
 	if err != nil {
 		state.Logger.Error(err)
-		d.Resp <- types.HttpResponse{
+		d.Resp <- api.HttpResponse{
 			Data:   `{"error":true,"message":"Failed to read user info response from Discord"}`,
 			Status: http.StatusInternalServerError,
 		}
@@ -204,7 +204,7 @@ func Route(d api.RouteData, r *http.Request) {
 
 	if err != nil {
 		state.Logger.Error(err)
-		d.Resp <- types.HttpResponse{
+		d.Resp <- api.HttpResponse{
 			Data:   `{"error":true,"message":"Failed to parse user info response from Discord"}`,
 			Status: http.StatusInternalServerError,
 		}
@@ -213,7 +213,7 @@ func Route(d api.RouteData, r *http.Request) {
 
 	if user.ID == "" {
 		state.Logger.Error(err)
-		d.Resp <- types.HttpResponse{
+		d.Resp <- api.HttpResponse{
 			Data:   `{"error":true,"message":"No user ID provided by Discord. Invalid token?"}`,
 			Status: http.StatusBadRequest,
 		}
@@ -227,7 +227,7 @@ func Route(d api.RouteData, r *http.Request) {
 
 	if err != nil {
 		state.Logger.Error(err)
-		d.Resp <- types.HttpResponse{
+		d.Resp <- api.HttpResponse{
 			Data:   `{"error":true,"message":"Failed to check if user exists on database"}`,
 			Status: http.StatusInternalServerError,
 		}
@@ -238,7 +238,7 @@ func Route(d api.RouteData, r *http.Request) {
 
 	if err != nil {
 		state.Logger.Error(err)
-		d.Resp <- types.HttpResponse{
+		d.Resp <- api.HttpResponse{
 			Data:   `{"error":true,"message":"Failed to get user info from Discord"}`,
 			Status: http.StatusInternalServerError,
 		}
@@ -259,7 +259,7 @@ func Route(d api.RouteData, r *http.Request) {
 
 		if err != nil {
 			state.Logger.Error(err)
-			d.Resp <- types.HttpResponse{
+			d.Resp <- api.HttpResponse{
 				Data:   `{"error":true,"message":"Failed to create user on database"}`,
 				Status: http.StatusInternalServerError,
 			}
@@ -276,7 +276,7 @@ func Route(d api.RouteData, r *http.Request) {
 
 		if err != nil {
 			state.Logger.Error(err)
-			d.Resp <- types.HttpResponse{
+			d.Resp <- api.HttpResponse{
 				Data:   `{"error":true,"message":"Failed to update user on database"}`,
 				Status: http.StatusInternalServerError,
 			}
@@ -290,7 +290,7 @@ func Route(d api.RouteData, r *http.Request) {
 
 		if err != nil {
 			state.Logger.Error(err)
-			d.Resp <- types.HttpResponse{
+			d.Resp <- api.HttpResponse{
 				Data:   `{"error":true,"message":"Failed to get API token from database"}`,
 				Status: http.StatusInternalServerError,
 			}
@@ -309,7 +309,7 @@ func Route(d api.RouteData, r *http.Request) {
 		Token:       apiToken,
 	}
 
-	d.Resp <- types.HttpResponse{
+	d.Resp <- api.HttpResponse{
 		Json: authUser,
 	}
 }

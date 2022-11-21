@@ -27,7 +27,7 @@ func Docs() *docs.Doc {
 }
 
 func Route(d api.RouteData, r *http.Request) {
-	d.Resp <- types.HttpResponse{
+	d.Resp <- api.HttpResponse{
 		Data: clientInfo,
 	}
 }

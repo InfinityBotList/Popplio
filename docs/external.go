@@ -63,7 +63,7 @@ func DocumentMicroservices() {
 
 		for pair := doc.Paths.Oldest(); pair != nil; pair = pair.Next() {
 			key, path := pair.Key, pair.Value
-			for _, v := range []*operation{
+			for _, v := range []*Operation{
 				path.Get,
 				path.Post,
 				path.Put,

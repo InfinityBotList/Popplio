@@ -25,7 +25,7 @@ func Route(d api.RouteData, r *http.Request) {
 		Weekend: utils.GetDoubleVote(),
 	}
 
-	d.Resp <- types.HttpResponse{
+	d.Resp <- api.HttpResponse{
 		Json: payload,
 	}
 }
