@@ -9,10 +9,12 @@ import (
 	"popplio/docs"
 	"popplio/state"
 	"popplio/types"
+	"reflect"
 	"strings"
 	"time"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/go-playground/validator/v10"
 	"github.com/jackc/pgx/v5/pgtype"
 	"go.uber.org/zap"
 )
@@ -335,6 +337,61 @@ type HttpResponse struct {
 	Redirect string
 	// Stub response, just exit
 	Stub bool
+}
+
+func CompileValidationErrors(payload any) map[string]string {
+	var errors = make(map[string]string)
+
+	structType := reflect.TypeOf(payload)
+
+	for _, f := range reflect.VisibleFields(structType) {
+		errors[f.Name] = f.Tag.Get("msg")
+
+		arrayMsg := f.Tag.Get("amsg")
+
+		if arrayMsg != "" {
+			errors[f.Name+"$arr"] = arrayMsg
+		}
+	}
+
+	return errors
+}
+
+func ValidatorErrorResponse(compiled map[string]string, v validator.ValidationErrors) HttpResponse {
+	var errors = make(map[string]string)
+
+	firstError := ""
+
+	for i, err := range v {
+		fname := err.StructField()
+		if strings.Contains(err.Field(), "[") {
+			// We have a array response, so we need to get the array name
+			fname = strings.Split(err.Field(), "[")[0] + "$arr"
+		}
+
+		field := compiled[fname]
+
+		var errorMsg string
+		if field != "" {
+			errorMsg = field
+		} else {
+			errorMsg = err.Error()
+		}
+
+		if i == 0 {
+			firstError = errorMsg
+		}
+
+		errors[err.StructField()] = errorMsg
+	}
+
+	return HttpResponse{
+		Json: types.ApiError{
+			Context: errors,
+			Error:   true,
+			Message: firstError,
+		},
+	}
 }
 
 // Creates a default HTTP response based on the status code

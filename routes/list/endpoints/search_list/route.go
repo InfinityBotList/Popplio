@@ -93,6 +93,17 @@ func Route(d api.RouteData, r *http.Request) {
 		return
 	}
 
+	if len(bodyBytes) == 0 {
+		d.Resp <- api.HttpResponse{
+			Status: http.StatusBadRequest,
+			Json: types.ApiError{
+				Message: "A body is required for this endpoint",
+				Error:   true,
+			},
+		}
+		return
+	}
+
 	err = json.Unmarshal(bodyBytes, &payload)
 
 	if err != nil {

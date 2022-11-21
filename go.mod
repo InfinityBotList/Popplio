@@ -13,6 +13,12 @@ require (
 	gopkg.in/yaml.v3 v3.0.1
 )
 
+require (
+	github.com/go-playground/locales v0.14.0 // indirect
+	github.com/go-playground/universal-translator v0.18.0 // indirect
+	github.com/leodido/go-urn v1.2.1 // indirect
+)
+
 require github.com/valyala/fastjson v1.6.3 // direct
 
 require (
@@ -41,6 +47,7 @@ require (
 
 require (
 	github.com/SherClockHolmes/webpush-go v1.2.0
+	github.com/go-playground/validator/v10 v10.11.1
 	github.com/jackc/pgx/v5 v5.0.1
 	github.com/joho/godotenv v1.4.0 // direct
 	github.com/tdewolff/minify/v2 v2.12.4

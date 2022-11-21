@@ -2,6 +2,7 @@ package users
 
 import (
 	"popplio/api"
+	"popplio/routes/users/endpoints/add_bot"
 	"popplio/routes/users/endpoints/delete_user_notifications"
 	"popplio/routes/users/endpoints/delete_user_reminders"
 	"popplio/routes/users/endpoints/get_notification_info"
@@ -41,6 +42,19 @@ func (b Router) Routes(r *chi.Mux) {
 			Method:  api.PATCH,
 			Docs:    patch_user_profile.Docs,
 			Handler: patch_user_profile.Route,
+			Auth: []api.AuthType{
+				{
+					URLVar: "id",
+					Type:   types.TargetTypeUser,
+				},
+			},
+		}.Route(r)
+
+		api.Route{
+			Pattern: "/{id}/bots",
+			Method:  api.PUT,
+			Docs:    add_bot.Docs,
+			Handler: add_bot.Route,
 			Auth: []api.AuthType{
 				{
 					URLVar: "id",
