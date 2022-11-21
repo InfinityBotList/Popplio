@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/go-playground/validator/v10"
+	"github.com/go-playground/validator/v10/non-standard/validators"
 	"go.uber.org/zap"
 	"golang.org/x/exp/slices"
 )
@@ -30,10 +31,10 @@ type CreateBot struct {
 	Background       *string      `json:"background" validate:"omitempty,url" msg:"Background must be a valid URL"`
 	Library          string       `json:"library" validate:"required,min=1,max=50,alpha" msg:"Library must be between 1 and 50 characters"`
 	ExtraLinks       []types.Link `json:"extra_links" validate:"required" msg:"Extra links must be sent"`
-	Tags             []string     `json:"tags" validate:"required,unique,min=1,max=5,dive,min=3,max=20,alpha" msg:"There must be between 1 and 5 tags without duplicates" amsg:"Each tag must be between 3 and 20 characters and alphabetic"`
+	Tags             []string     `json:"tags" validate:"required,unique,min=1,max=5,dive,min=3,max=20,alpha,notblank" msg:"There must be between 1 and 5 tags without duplicates" amsg:"Each tag must be between 3 and 20 characters and alphabetic"`
 	NSFW             bool         `json:"nsfw" validate:"required" msg:"NSFW must be sent"`
 	CrossAdd         bool         `json:"cross_add" validate:"required" msg:"Cross add must be sent"`
-	StaffNote        *string      `json:"staff_note" validate:"required,max=1000" msg:"Staff note must be sent and must be less than 1000 characters"`
+	StaffNote        *string      `json:"staff_note" validate:"omitempty,max=1000" msg:"Staff note must be less than 1000 characters if sent"`
 }
 
 var compiledMessages = api.CompileValidationErrors(CreateBot{})
@@ -176,6 +177,7 @@ func Route(d api.RouteData, r *http.Request) {
 
 	// Validate the payload
 	validate := validator.New()
+	validate.RegisterValidation("notblank", validators.NotBlank)
 
 	err = validate.Struct(payload)
 
