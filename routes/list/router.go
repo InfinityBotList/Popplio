@@ -5,6 +5,7 @@ import (
 	"popplio/routes/list/endpoints/get_list_index"
 	"popplio/routes/list/endpoints/get_list_stats"
 	"popplio/routes/list/endpoints/get_vote_info"
+	"popplio/routes/list/endpoints/search_list"
 	"popplio/routes/list/endpoints/test_webhook"
 
 	"github.com/go-chi/chi/v5"
@@ -25,6 +26,13 @@ func (b Router) Routes(r *chi.Mux) {
 			Method:  api.GET,
 			Docs:    get_list_index.Docs,
 			Handler: get_list_index.Route,
+		}.Route(r)
+
+		api.Route{
+			Pattern: "/search",
+			Method:  api.POST,
+			Docs:    search_list.Docs,
+			Handler: search_list.Route,
 		}.Route(r)
 
 		api.Route{
