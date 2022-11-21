@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"strings"
 	"time"
@@ -182,5 +183,9 @@ func main() {
 
 	integrase.Prepare(adp, chiWrap{Router: r})
 
-	http.ListenAndServe(":8081", r)
+	err = http.ListenAndServe(":8081", r)
+
+	if err != nil {
+		fmt.Println(err)
+	}
 }
