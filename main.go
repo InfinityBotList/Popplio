@@ -36,10 +36,10 @@ import (
 	"github.com/tdewolff/minify/v2/js"
 )
 
-//go:embed html/ext.js
+//go:embed docs/assets/ext.js
 var extUnminified string
 
-//go:embed html/docs.html
+//go:embed docs/assets/docs.html
 var docsHTML string
 
 func init() {
