@@ -21,23 +21,59 @@ import (
 )
 
 type CreateBot struct {
-	BotID            string       `json:"bot_id" validate:"required,numeric" msg:"Bot ID must be numeric"`
-	ClientID         string       `json:"client_id" validate:"required,numeric" msg:"Client ID must be numeric"`
-	Short            string       `json:"short" validate:"required,min=50,max=100" msg:"Short description must be between 50 and 100 characters"`
-	Long             string       `json:"long" validate:"required,min=500" msg:"Long description must be at least 500 characters"`
-	Prefix           string       `json:"prefix" validate:"required,min=1,max=10,alphanum" msg:"Prefix must be between 1 and 10 characters"`
-	AdditionalOwners []string     `json:"additional_owners" validate:"required,max=7,dive,numeric" msg:"Additional owners must be numeric" amsg:"Each additional owner must be a valid snowflake"`
-	Invite           string       `json:"invite" validate:"required,url" msg:"Invite is required and must be a valid URL"`
-	Background       *string      `json:"background" validate:"omitempty,url" msg:"Background must be a valid URL"`
-	Library          string       `json:"library" validate:"required,min=1,max=50,alpha" msg:"Library must be between 1 and 50 characters"`
-	ExtraLinks       []types.Link `json:"extra_links" validate:"required" msg:"Extra links must be sent"`
-	Tags             []string     `json:"tags" validate:"required,unique,min=1,max=5,dive,min=3,max=20,alpha,notblank" msg:"There must be between 1 and 5 tags without duplicates" amsg:"Each tag must be between 3 and 20 characters and alphabetic"`
-	NSFW             bool         `json:"nsfw" validate:"required" msg:"NSFW must be sent"`
-	CrossAdd         bool         `json:"cross_add" validate:"required" msg:"Cross add must be sent"`
-	StaffNote        *string      `json:"staff_note" validate:"omitempty,max=1000" msg:"Staff note must be less than 1000 characters if sent"`
+	BotID            string       `db:"bot_id" json:"bot_id" validate:"required,numeric" msg:"Bot ID must be numeric"`
+	ClientID         string       `db:"client_id" json:"client_id" validate:"required,numeric" msg:"Client ID must be numeric"`
+	Short            string       `db:"short" json:"short" validate:"required,min=50,max=100" msg:"Short description must be between 50 and 100 characters"`
+	Long             string       `db:"long" json:"long" validate:"required,min=500" msg:"Long description must be at least 500 characters"`
+	Prefix           string       `db:"prefix" json:"prefix" validate:"required,min=1,max=10,alphanum" msg:"Prefix must be between 1 and 10 characters"`
+	AdditionalOwners []string     `db:"additional_owners" json:"additional_owners" validate:"required,max=7,dive,numeric" msg:"Additional owners must be numeric" amsg:"Each additional owner must be a valid snowflake"`
+	Invite           string       `db:"invite" json:"invite" validate:"required,url" msg:"Invite is required and must be a valid URL"`
+	Background       *string      `db:"background" json:"background" validate:"omitempty,url" msg:"Background must be a valid URL"`
+	Library          string       `db:"library" json:"library" validate:"required,min=1,max=50,alpha" msg:"Library must be between 1 and 50 characters"`
+	ExtraLinks       []types.Link `db:"extra_links" json:"extra_links" validate:"required" msg:"Extra links must be sent"`
+	Tags             []string     `db:"tags" json:"tags" validate:"required,unique,min=1,max=5,dive,min=3,max=20,alpha,notblank" msg:"There must be between 1 and 5 tags without duplicates" amsg:"Each tag must be between 3 and 20 characters and alphabetic"`
+	NSFW             bool         `db:"nsfw" json:"nsfw" validate:"required" msg:"NSFW must be sent"`
+	CrossAdd         bool         `db:"cross_add" json:"cross_add" validate:"required" msg:"Cross add must be sent"`
+	StaffNote        *string      `db:"staff_note" json:"staff_note" validate:"omitempty,max=1000" msg:"Staff note must be less than 1000 characters if sent"`
 }
 
-var compiledMessages = api.CompileValidationErrors(CreateBot{})
+func createBotsArgs(bot CreateBot) []interface{} {
+	return []interface{}{
+		bot.BotID,
+		bot.ClientID,
+		bot.Short,
+		bot.Long,
+		bot.Prefix,
+		bot.AdditionalOwners,
+		bot.Invite,
+		bot.Background,
+		bot.Library,
+		bot.ExtraLinks,
+		bot.Tags,
+		bot.NSFW,
+		bot.CrossAdd,
+		bot.StaffNote,
+	}
+}
+
+var (
+	compiledMessages = api.CompileValidationErrors(CreateBot{})
+	validate         = validator.New()
+
+	createBotsColsArr = utils.GetCols(CreateBot{})
+	createBotsCols    = strings.Join(createBotsColsArr, ", ")
+
+	// $1, $2, $3, etc, using the length of the array
+	createBotsParams string
+)
+
+func init() {
+	for i := 1; i <= len(createBotsColsArr); i++ {
+		createBotsParams += fmt.Sprintf("$%d, ", i)
+	}
+
+	validate.RegisterValidation("notblank", validators.NotBlank)
+}
 
 func Docs() *docs.Doc {
 	return docs.Route(&docs.Doc{
@@ -176,8 +212,6 @@ func Route(d api.RouteData, r *http.Request) {
 	}
 
 	// Validate the payload
-	validate := validator.New()
-	validate.RegisterValidation("notblank", validators.NotBlank)
 
 	err = validate.Struct(payload)
 
@@ -245,6 +279,94 @@ func Route(d api.RouteData, r *http.Request) {
 		return
 	}
 
+	// Check if the bot is already in the database
+	var count int
+
+	err = state.Pool.QueryRow(d.Context, "SELECT COUNT(*) FROM bots WHERE bot_id = $1", payload.BotID).Scan(&count)
+
+	if err != nil {
+		state.Logger.Error(err)
+		d.Resp <- api.DefaultResponse(http.StatusInternalServerError)
+		return
+	}
+
+	if count > 0 {
+		d.Resp <- api.HttpResponse{
+			Status: http.StatusBadRequest,
+			Json: types.ApiError{
+				Message: "This bot is already in the database",
+				Error:   true,
+			},
+		}
+		return
+	}
+
+	// Ensure the bot actually exists right now
+	bot, err := utils.GetDiscordUser(payload.BotID)
+
+	if err != nil {
+		d.Resp <- api.HttpResponse{
+			Status: http.StatusBadRequest,
+			Json: types.ApiError{
+				Message: "This bot does not exist: " + err.Error(),
+				Error:   true,
+			},
+		}
+		return
+	}
+
+	if !bot.Bot {
+		d.Resp <- api.HttpResponse{
+			Status: http.StatusBadRequest,
+			Json: types.ApiError{
+				Message: "This user is not a bot",
+				Error:   true,
+			},
+		}
+		return
+	}
+
+	// Ensure the main owner exists
+	_, err = utils.GetDiscordUser(d.Auth.ID)
+
+	if err != nil {
+		d.Resp <- api.HttpResponse{
+			Status: http.StatusBadRequest,
+			Json: types.ApiError{
+				Message: "The main owner of this bot somehow does not exist: " + err.Error(),
+				Error:   true,
+			},
+		}
+		return
+	}
+
+	// Ensure the additional owners exist
+	for _, owner := range payload.AdditionalOwners {
+		ownerObj, err := utils.GetDiscordUser(owner)
+
+		if err != nil {
+			d.Resp <- api.HttpResponse{
+				Status: http.StatusBadRequest,
+				Json: types.ApiError{
+					Message: "One of the additional owners of this bot does not exist [" + owner + "]: " + err.Error(),
+					Error:   true,
+				},
+			}
+			return
+		}
+
+		if ownerObj.Bot {
+			d.Resp <- api.HttpResponse{
+				Status: http.StatusBadRequest,
+				Json: types.ApiError{
+					Message: "One of the additional owners of this bot is actually a bot [" + owner + "]",
+					Error:   true,
+				},
+			}
+			return
+		}
+	}
+
 	_, err = payload.checkBotClientId()
 
 	if err != nil {
@@ -257,4 +379,7 @@ func Route(d api.RouteData, r *http.Request) {
 		}
 		return
 	}
+
+	// Save the bot to the database
+	state.Pool.Exec(d.Context, "INSERT INTO bots ("+createBotsCols+") VALUES ("+createBotsParams+")", createBotsArgs(payload)...)
 }
