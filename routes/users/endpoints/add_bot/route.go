@@ -1,6 +1,7 @@
 package add_bot
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -106,12 +107,12 @@ type checkBotClientIdResp struct {
 	guildCount int
 }
 
-func (bot *CreateBot) checkBotClientId() (*checkBotClientIdResp, error) {
+func (bot *CreateBot) checkBotClientId(ctx context.Context) (*checkBotClientIdResp, error) {
 	cli := http.Client{
 		Timeout: 5 * time.Second,
 	}
 
-	req, err := http.NewRequest("GET", "https://japi.rest/discord/v1/application/"+bot.ClientID, nil)
+	req, err := http.NewRequestWithContext(ctx, "GET", "https://japi.rest/discord/v1/application/"+bot.ClientID, nil)
 
 	if err != nil {
 		return nil, err
@@ -367,7 +368,7 @@ func Route(d api.RouteData, r *http.Request) {
 		}
 	}
 
-	_, err = payload.checkBotClientId()
+	_, err = payload.checkBotClientId(d.Context)
 
 	if err != nil {
 		d.Resp <- api.HttpResponse{

@@ -255,10 +255,6 @@ func respond(ctx context.Context, w http.ResponseWriter, data chan HttpResponse)
 			w.Write([]byte(constants.InternalError))
 		}
 
-		if msg.Stub {
-			return // Already handled
-		}
-
 		if msg.Redirect != "" {
 			msg.Headers = map[string]string{
 				"Location":     msg.Redirect,
@@ -335,8 +331,6 @@ type HttpResponse struct {
 	CacheTime time.Duration
 	// Redirect to a URL
 	Redirect string
-	// Stub response, just exit
-	Stub bool
 }
 
 func CompileValidationErrors(payload any) map[string]string {
