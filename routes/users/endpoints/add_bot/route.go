@@ -21,16 +21,16 @@ import (
 )
 
 type CreateBot struct {
-	BotID            string       `db:"bot_id" json:"bot_id" validate:"required,numeric" msg:"Bot ID must be numeric"`
-	ClientID         string       `db:"client_id" json:"client_id" validate:"required,numeric" msg:"Client ID must be numeric"`
-	Short            string       `db:"short" json:"short" validate:"required,min=50,max=100" msg:"Short description must be between 50 and 100 characters"`
-	Long             string       `db:"long" json:"long" validate:"required,min=500" msg:"Long description must be at least 500 characters"`
-	Prefix           string       `db:"prefix" json:"prefix" validate:"required,min=1,max=10,alphanum" msg:"Prefix must be between 1 and 10 characters"`
-	AdditionalOwners []string     `db:"additional_owners" json:"additional_owners" validate:"required,max=7,dive,numeric" msg:"Additional owners must be numeric" amsg:"Each additional owner must be a valid snowflake"`
-	Invite           string       `db:"invite" json:"invite" validate:"required,url" msg:"Invite is required and must be a valid URL"`
+	BotID            string       `db:"bot_id" json:"bot_id" validate:"required,numeric" msg:"Bot ID must be numeric"`                                                                                                    // impld
+	ClientID         string       `db:"client_id" json:"client_id" validate:"required,numeric" msg:"Client ID must be numeric"`                                                                                           // impld
+	Short            string       `db:"short" json:"short" validate:"required,min=50,max=100" msg:"Short description must be between 50 and 100 characters"`                                                              // impld
+	Long             string       `db:"long" json:"long" validate:"required,min=500" msg:"Long description must be at least 500 characters"`                                                                              // impld
+	Prefix           string       `db:"prefix" json:"prefix" validate:"required,min=1,max=10,alphanum" msg:"Prefix must be between 1 and 10 characters"`                                                                  // impld
+	AdditionalOwners []string     `db:"additional_owners" json:"additional_owners" validate:"required,max=7,dive,numeric" msg:"Additional owners must be numeric" amsg:"Each additional owner must be a valid snowflake"` // impld
+	Invite           string       `db:"invite" json:"invite" validate:"required,url" msg:"Invite is required and must be a valid URL"`                                                                                    // impld
 	Background       *string      `db:"background" json:"background" validate:"omitempty,url" msg:"Background must be a valid URL"`
 	Library          string       `db:"library" json:"library" validate:"required,min=1,max=50,alpha" msg:"Library must be between 1 and 50 characters"`
-	ExtraLinks       []types.Link `db:"extra_links" json:"extra_links" validate:"required" msg:"Extra links must be sent"`
+	ExtraLinks       []types.Link `db:"extra_links" json:"extra_links" validate:"required" msg:"Extra links must be sent"` // Impld
 	Tags             []string     `db:"tags" json:"tags" validate:"required,unique,min=1,max=5,dive,min=3,max=20,alpha,notblank" msg:"There must be between 1 and 5 tags without duplicates" amsg:"Each tag must be between 3 and 20 characters and alphabetic"`
 	NSFW             bool         `db:"nsfw" json:"nsfw" validate:"required" msg:"NSFW must be sent"`
 	CrossAdd         bool         `db:"cross_add" json:"cross_add" validate:"required" msg:"Cross add must be sent"`
