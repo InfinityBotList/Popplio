@@ -18,8 +18,8 @@ import (
 )
 
 var allowedRedirectURLs = []string{
-	"http://localhost:3000/api/login",               // DEV
-	"https://reedwhisker.infinitybots.gg/api/login", // PROD
+	"http://localhost:3000/sauron",               // DEV
+	"https://reedwhisker.infinitybots.gg/sauron", // PROD
 }
 
 type OauthUser struct {
@@ -66,29 +66,19 @@ func Route(d api.RouteData, r *http.Request) {
 		return
 	}
 
-	if redirectUri == allowedRedirectURLs[0] {
-		if r.Header.Get("Wistala-Server") != os.Getenv("DEV_WISTALA_SERVER_SECRET") {
-			d.Resp <- api.HttpResponse{
-				Data:   `{"error":true,"message":"This endpoint is not meant to be used by you"}`,
-				Status: http.StatusForbidden,
-			}
-			return
-		}
-	} else {
-		if r.Header.Get("Wistala-Server") != os.Getenv("WISTALA_SERVER_SECRET") {
-			d.Resp <- api.HttpResponse{
-				Data:   `{"error":true,"message":"This endpoint is not meant to be used by you"}`,
-				Status: http.StatusForbidden,
-			}
-			return
-		}
-	}
-
 	code := r.URL.Query().Get("code")
 
 	if code == "" {
 		d.Resp <- api.HttpResponse{
 			Data:   `{"error":true,"message":"No code provided"}`,
+			Status: http.StatusBadRequest,
+		}
+		return
+	}
+
+	if len(code) < 5 {
+		d.Resp <- api.HttpResponse{
+			Data:   `{"error":true,"message":"Code too short. Retry login?"}`,
 			Status: http.StatusBadRequest,
 		}
 		return
