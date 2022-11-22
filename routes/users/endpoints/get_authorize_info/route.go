@@ -17,7 +17,7 @@ func init() {
 func Docs() *docs.Doc {
 	return docs.Route(&docs.Doc{
 		Method:      "GET",
-		Path:        "/authorize/info",
+		Path:        "/users/authorize",
 		OpId:        "get_authorize_info",
 		Summary:     "Get Login Info",
 		Description: "Gets the login info such as the client ID to use for the login.",

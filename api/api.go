@@ -379,7 +379,7 @@ func ValidatorErrorResponse(compiled map[string]string, v validator.ValidationEr
 
 		var errorMsg string
 		if field != "" {
-			errorMsg = field
+			errorMsg = field + " [" + err.Tag() + "]"
 		} else {
 			errorMsg = err.Error()
 		}
@@ -392,6 +392,7 @@ func ValidatorErrorResponse(compiled map[string]string, v validator.ValidationEr
 	}
 
 	return HttpResponse{
+		Status: http.StatusBadRequest,
 		Json: types.ApiError{
 			Context: errors,
 			Error:   true,

@@ -6,6 +6,7 @@ import (
 	"popplio/routes/users/endpoints/create_login"
 	"popplio/routes/users/endpoints/delete_user_notifications"
 	"popplio/routes/users/endpoints/delete_user_reminders"
+	"popplio/routes/users/endpoints/get_authorize_info"
 	"popplio/routes/users/endpoints/get_notification_info"
 	"popplio/routes/users/endpoints/get_user"
 	"popplio/routes/users/endpoints/get_user_notifications"
@@ -32,13 +33,6 @@ func (b Router) Tag() (string, string) {
 func (b Router) Routes(r *chi.Mux) {
 	r.Route("/users", func(r chi.Router) {
 		api.Route{
-			Pattern: "/",
-			Method:  api.PUT,
-			Docs:    create_login.Docs,
-			Handler: create_login.Route,
-		}.Route(r)
-
-		api.Route{
 			Pattern: "/{id}",
 			Method:  api.GET,
 			Docs:    get_user.Docs,
@@ -56,6 +50,20 @@ func (b Router) Routes(r *chi.Mux) {
 					Type:   types.TargetTypeUser,
 				},
 			},
+		}.Route(r)
+
+		api.Route{
+			Pattern: "/authorize",
+			Method:  api.GET,
+			Docs:    get_authorize_info.Docs,
+			Handler: get_authorize_info.Route,
+		}.Route(r)
+
+		api.Route{
+			Pattern: "/",
+			Method:  api.PUT,
+			Docs:    create_login.Docs,
+			Handler: create_login.Route,
 		}.Route(r)
 
 		api.Route{

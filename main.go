@@ -12,7 +12,6 @@ import (
 	"popplio/constants"
 	"popplio/docs"
 	"popplio/routes/announcements"
-	"popplio/routes/auth"
 	"popplio/routes/bots"
 	"popplio/routes/compat"
 	"popplio/routes/diagnostics"
@@ -133,7 +132,6 @@ func main() {
 	routers := []Router{
 		// Use same order as routes folder
 		announcements.Router{},
-		auth.Router{},
 		bots.Router{},
 		compat.Router{},
 		duser.Router{},
