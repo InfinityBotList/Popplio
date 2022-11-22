@@ -3,6 +3,7 @@ package users
 import (
 	"popplio/api"
 	"popplio/routes/users/endpoints/add_bot"
+	"popplio/routes/users/endpoints/create_login"
 	"popplio/routes/users/endpoints/delete_user_notifications"
 	"popplio/routes/users/endpoints/delete_user_reminders"
 	"popplio/routes/users/endpoints/get_notification_info"
@@ -30,6 +31,13 @@ func (b Router) Tag() (string, string) {
 
 func (b Router) Routes(r *chi.Mux) {
 	r.Route("/users", func(r chi.Router) {
+		api.Route{
+			Pattern: "/",
+			Method:  api.PUT,
+			Docs:    create_login.Docs,
+			Handler: create_login.Route,
+		}.Route(r)
+
 		api.Route{
 			Pattern: "/{id}",
 			Method:  api.GET,

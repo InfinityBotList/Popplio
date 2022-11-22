@@ -30,8 +30,8 @@ type OauthUser struct {
 
 func Docs() *docs.Doc {
 	return docs.Route(&docs.Doc{
-		Method: "GET",
-		Path:   "/authorize",
+		Method: "PUT",
+		Path:   "/users",
 		Params: []docs.Parameter{
 			{
 				Name:        "code",
@@ -56,9 +56,24 @@ func Docs() *docs.Doc {
 	})
 }
 
+type AuthorizeRequest struct {
+	Code        string `json:"code"`
+	RedirectURI string `json:"redirect_uri"`
+	Nonce       string `json:"nonce"` // Just to identify and block older clients from vulns
+}
+
 func Route(d api.RouteData, r *http.Request) {
-	redirectUri := r.URL.Query().Get("redirect_uri")
-	if !slices.Contains(allowedRedirectURLs, redirectUri) {
+	var req AuthorizeRequest
+
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		d.Resp <- api.HttpResponse{
+			Data:   `{"error":true,"message":"Malformed authorization request"}`,
+			Status: http.StatusBadRequest,
+		}
+		return
+	}
+
+	if !slices.Contains(allowedRedirectURLs, req.RedirectURI) {
 		d.Resp <- api.HttpResponse{
 			Data:   `{"error":true,"message":"Malformed redirect_uri"}`,
 			Status: http.StatusBadRequest,
@@ -66,9 +81,15 @@ func Route(d api.RouteData, r *http.Request) {
 		return
 	}
 
-	code := r.URL.Query().Get("code")
+	if req.Nonce != "sauron" {
+		d.Resp <- api.HttpResponse{
+			Data:   `{"error":true,"message":"Your client is outdated and is not supported. Please update your client."}`,
+			Status: http.StatusBadRequest,
+		}
+		return
+	}
 
-	if code == "" {
+	if req.Code == "" {
 		d.Resp <- api.HttpResponse{
 			Data:   `{"error":true,"message":"No code provided"}`,
 			Status: http.StatusBadRequest,
@@ -76,7 +97,7 @@ func Route(d api.RouteData, r *http.Request) {
 		return
 	}
 
-	if len(code) < 5 {
+	if len(req.Code) < 5 {
 		d.Resp <- api.HttpResponse{
 			Data:   `{"error":true,"message":"Code too short. Retry login?"}`,
 			Status: http.StatusBadRequest,
@@ -84,7 +105,7 @@ func Route(d api.RouteData, r *http.Request) {
 		return
 	}
 
-	if state.Redis.Exists(d.Context, "codecache:"+code).Val() == 1 {
+	if state.Redis.Exists(d.Context, "codecache:"+req.Code).Val() == 1 {
 		d.Resp <- api.HttpResponse{
 			Data:   `{"error":true,"message":"Code has been used before and is as such invalid"}`,
 			Status: http.StatusBadRequest,
@@ -92,14 +113,14 @@ func Route(d api.RouteData, r *http.Request) {
 		return
 	}
 
-	state.Redis.Set(d.Context, "codecache:"+code, "0", 5*time.Minute)
+	state.Redis.Set(d.Context, "codecache:"+req.Code, "0", 5*time.Minute)
 
 	httpResp, err := http.PostForm("https://discord.com/api/v10/oauth2/token", url.Values{
 		"client_id":     {os.Getenv("CLIENT_ID")},
 		"client_secret": {os.Getenv("CLIENT_SECRET")},
 		"grant_type":    {"authorization_code"},
-		"code":          {code},
-		"redirect_uri":  {redirectUri},
+		"code":          {req.Code},
+		"redirect_uri":  {req.RedirectURI},
 		"scope":         {"identify"},
 	})
 
@@ -151,7 +172,8 @@ func Route(d api.RouteData, r *http.Request) {
 
 	cli := &http.Client{}
 
-	req, err := http.NewRequest("GET", "https://discord.com/api/v10/users/@me", nil)
+	var httpReq *http.Request
+	httpReq, err = http.NewRequest("GET", "https://discord.com/api/v10/users/@me", nil)
 
 	if err != nil {
 		state.Logger.Error(err)
@@ -162,9 +184,9 @@ func Route(d api.RouteData, r *http.Request) {
 		return
 	}
 
-	req.Header.Set("Authorization", "Bearer "+token.AccessToken)
+	httpReq.Header.Set("Authorization", "Bearer "+token.AccessToken)
 
-	httpResp, err = cli.Do(req)
+	httpResp, err = cli.Do(httpReq)
 
 	if err != nil {
 		state.Logger.Error(err)

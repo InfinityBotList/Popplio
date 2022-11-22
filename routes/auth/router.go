@@ -2,7 +2,6 @@ package auth
 
 import (
 	"popplio/api"
-	"popplio/routes/auth/endpoints/create_login.go"
 	"popplio/routes/auth/endpoints/get_authorize_info"
 
 	"github.com/go-chi/chi/v5"
@@ -17,19 +16,10 @@ func (b Router) Tag() (string, string) {
 }
 
 func (b Router) Routes(r *chi.Mux) {
-	r.Route("/authorize", func(r chi.Router) {
-		api.Route{
-			Pattern: "/info",
-			Method:  api.GET,
-			Docs:    get_authorize_info.Docs,
-			Handler: get_authorize_info.Route,
-		}.Route(r)
-
-		api.Route{
-			Pattern: "/",
-			Method:  api.GET,
-			Docs:    create_login.Docs,
-			Handler: create_login.Route,
-		}.Route(r)
-	})
+	api.Route{
+		Pattern: "/authorize/info",
+		Method:  api.GET,
+		Docs:    get_authorize_info.Docs,
+		Handler: get_authorize_info.Route,
+	}.Route(r)
 }

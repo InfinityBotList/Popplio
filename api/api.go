@@ -252,7 +252,7 @@ func (r Route) Route(ro Router) {
 	case HEAD:
 		ro.Head(r.Pattern, handle)
 	default:
-		panic("Unknown method")
+		panic("Unknown method...")
 	}
 }
 
