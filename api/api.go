@@ -90,7 +90,18 @@ func (r Route) Route(ro Router) {
 		r.Setup()
 	}
 
-	r.Docs()
+	docs := r.Docs()
+
+	// Ensure auth types matches auth types given
+	if len(r.Auth) != len(docs.AuthType) {
+		panic("Auth types does not match docs auth types: " + r.Pattern)
+	}
+
+	for i, auth := range r.Auth {
+		if auth.Type != docs.AuthType[i] {
+			panic("Auth types does not match docs auth types (mismatched type): " + r.Pattern)
+		}
+	}
 
 	handle := func(w http.ResponseWriter, req *http.Request) {
 		ctx := req.Context()
@@ -289,7 +300,7 @@ func respond(ctx context.Context, w http.ResponseWriter, data chan HttpResponse)
 
 			w.Write(bytes)
 
-			if msg.CacheKey != "" {
+			if msg.CacheKey != "" && msg.CacheTime.Seconds() > 0 {
 				go func() {
 					err := state.Redis.Set(state.Context, msg.CacheKey, bytes, msg.CacheTime).Err()
 
@@ -327,7 +338,8 @@ type HttpResponse struct {
 	// Status is the HTTP status code to send
 	Status int
 	// Cache the JSON to redis
-	CacheKey  string
+	CacheKey string
+	// Duration to cache the JSON for
 	CacheTime time.Duration
 	// Redirect to a URL
 	Redirect string

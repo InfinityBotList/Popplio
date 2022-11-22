@@ -38,7 +38,7 @@ func Docs() *docs.Doc {
 			},
 		},
 		Resp:     types.UserVoteCompat{},
-		AuthType: []types.TargetType{types.TargetTypeUser},
+		AuthType: []types.TargetType{types.TargetTypeBot},
 	})
 }
 

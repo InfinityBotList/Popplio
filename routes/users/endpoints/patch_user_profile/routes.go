@@ -29,9 +29,10 @@ func Docs() *docs.Doc {
 				Schema:      docs.IdSchema,
 			},
 		},
-		Req:  types.ProfileUpdate{},
-		Resp: types.ApiError{},
-		Tags: []string{api.CurrentTag},
+		Req:      types.ProfileUpdate{},
+		Resp:     types.ApiError{},
+		Tags:     []string{api.CurrentTag},
+		AuthType: []types.TargetType{types.TargetTypeUser},
 	})
 }
 
