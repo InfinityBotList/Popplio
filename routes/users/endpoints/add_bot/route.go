@@ -397,6 +397,11 @@ func Route(d api.RouteData, r *http.Request) {
 	payload.QueueName = &resp.botName
 	payload.Owner = &d.Auth.ID
 
+	if payload.StaffNote == nil {
+		defNote := "No note!"
+		payload.StaffNote = &defNote
+	}
+
 	// Create initial vanity URL by removing all unicode characters and replacing spaces with dashes
 	vanity := strings.ReplaceAll(strings.ToLower(resp.botName), " ", "-")
 	vanity = regexp.MustCompile("[^a-zA-Z0-9-]").ReplaceAllString(vanity, "")
