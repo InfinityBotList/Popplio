@@ -38,8 +38,8 @@ type CreateBot struct {
 	StaffNote        *string      `db:"staff_note" json:"staff_note" validate:"omitempty,max=1000" msg:"Staff note must be less than 1000 characters if sent"`
 }
 
-func createBotsArgs(bot CreateBot) []interface{} {
-	return []interface{}{
+func createBotsArgs(bot CreateBot) []any {
+	return []any{
 		bot.BotID,
 		bot.ClientID,
 		bot.Short,
@@ -370,7 +370,7 @@ func Route(d api.RouteData, r *http.Request) {
 		}
 	}
 
-	_, err = payload.checkBotClientId(d.Context)
+	resp, err := payload.checkBotClientId(d.Context)
 
 	if err != nil {
 		d.Resp <- api.HttpResponse{
@@ -383,8 +383,22 @@ func Route(d api.RouteData, r *http.Request) {
 		return
 	}
 
+	// Get the arguments to pass when adding the bot
+	botArgs := createBotsArgs(payload)
+
+	if len(createBotsColsArr) != len(botArgs) {
+		d.Resp <- api.HttpResponse{
+			Status: http.StatusInternalServerError,
+			Json: types.ApiError{
+				Message: "Internal Error: The number of columns and arguments do not match",
+				Error:   true,
+			},
+		}
+		return
+	}
+
 	// Save the bot to the database
-	_, err = state.Pool.Exec(d.Context, "INSERT INTO bots ("+createBotsCols+") VALUES ("+createBotsParams+")", createBotsArgs(payload)...)
+	_, err = state.Pool.Exec(d.Context, "INSERT INTO bots ("+createBotsCols+") VALUES ("+createBotsParams+")", botArgs...)
 
 	if err != nil {
 		state.Logger.Error(err)
@@ -392,8 +406,9 @@ func Route(d api.RouteData, r *http.Request) {
 		return
 	}
 
+	state.Pool.Exec(d.Context, "UPDATE bots SET servers = $1 WHERE bot_id = $2", resp.guildCount, payload.BotID)
+
 	d.Resp <- api.HttpResponse{
 		Status: http.StatusNoContent,
 	}
-
 }
