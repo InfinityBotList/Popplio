@@ -4,8 +4,12 @@ import (
 	"context"
 	"flag"
 	"os"
+	"reflect"
+	"strings"
 
 	"github.com/bwmarrin/discordgo"
+	"github.com/go-playground/validator/v10"
+	"github.com/go-playground/validator/v10/non-standard/validators"
 	"github.com/go-redis/redis/v8"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/joho/godotenv"
@@ -21,9 +25,34 @@ var (
 	Discord     *discordgo.Session
 	Logger      *zap.SugaredLogger
 	Context     = context.Background()
+	Validator   = validator.New()
 
 	Migration = false
 )
+
+var vulgarList = []string{
+	"fuck",
+	"shit",
+	"suck",
+	"kill",
+}
+
+func nonVulgar(fl validator.FieldLevel) bool {
+	// get the field value
+	switch fl.Field().Kind() {
+	case reflect.String:
+		value := fl.Field().String()
+
+		for _, v := range vulgarList {
+			if strings.Contains(value, v) {
+				return false
+			}
+		}
+		return true
+	default:
+		panic("not a string")
+	}
+}
 
 // This should be the only init function, sets global state
 func init() {
@@ -88,4 +117,7 @@ func init() {
 	)
 
 	Logger = zap.New(core).Sugar()
+
+	Validator.RegisterValidation("nonvulgar", nonVulgar)
+	Validator.RegisterValidation("notblank", validators.NotBlank)
 }

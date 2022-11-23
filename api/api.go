@@ -108,6 +108,18 @@ func (r Route) Route(ro Router) {
 		resp := make(chan HttpResponse)
 
 		go func() {
+			defer func() {
+				err := recover()
+
+				if err != nil {
+					state.Logger.Error(err)
+					resp <- HttpResponse{
+						Status: http.StatusInternalServerError,
+						Data:   constants.InternalError,
+					}
+				}
+			}()
+
 			// Handle auth checks here
 			authHeader := req.Header.Get("Authorization")
 
