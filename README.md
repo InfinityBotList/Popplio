@@ -8,7 +8,7 @@ It is open source for transparency but we do not support self-hosting of this wh
 
 ## User Tokens
 
-Some APIs on Popplio require a user token. To get one, go to https://spider.infinitybotlist.com/login/gettoken
+Some APIs on Popplio require a user token. To get one, go to {apiUrl}/login/gettoken
 
 ## Endpoints
 

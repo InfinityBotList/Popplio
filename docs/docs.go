@@ -56,7 +56,7 @@ func init() {
 			panic(err)
 		}
 
-		docsMd += string(docsFile) + "\n\n"
+		docsMd += strings.ReplaceAll(string(docsFile), "{apiUrl}", os.Getenv("SITE_URL")) + "\n\n"
 	}
 }
 
@@ -82,7 +82,6 @@ Welcome to the Infinity Bot List API documentation!
 	},
 	Servers: []Server{
 		{
-			URL:         "https://spider.infinitybotlist.com",
 			Description: "Popplio (v6)",
 			Variables:   map[string]any{},
 		},
@@ -96,6 +95,7 @@ Welcome to the Infinity Bot List API documentation!
 
 func init() {
 	api.Info.Description += docsMd
+	api.Servers[0].URL = os.Getenv("SITE_URL")
 	api.Paths = NewMap[string, Path]()
 }
 

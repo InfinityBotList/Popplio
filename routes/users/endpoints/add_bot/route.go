@@ -423,7 +423,6 @@ func Route(d api.RouteData, r *http.Request) {
 	}
 
 	// Save the bot to the database
-	fmt.Println("INSERT INTO bots (" + createBotsCols + ") VALUES (" + createBotsParams + ")")
 	_, err = state.Pool.Exec(d.Context, "INSERT INTO bots ("+createBotsCols+") VALUES ("+createBotsParams+")", botArgs...)
 
 	if err != nil {

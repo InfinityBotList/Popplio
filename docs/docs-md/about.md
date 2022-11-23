@@ -27,15 +27,15 @@ Infinity uses a REST API for general operations such as sending and receiving `P
 
 [api.infinitybotlist.com](https://api.infinitybotlist.com) (latest stable API)
 
-[spider.infinitybotlist.com](https://spider.infinitybotlist.com) (beta API)
+[spider.infinitybots.gg](https://spider.infinitybots.gg) (beta API)
 
 #### Beta API Note
 
-[spider.infinitybotlist.com](https://spider.infinitybotlist.com) is the beta API and will always point to the current latest API version. 
+[spider.infinitybots.gg](https://spider.infinitybots.gg) is the beta API and will always point to the current latest API version. 
 
-The current latest beta API version is ``v5``. The current stable API version is ``v5`` (which is what currently runs on https://api.infinitybotlist.com)
+The current latest beta API version is ``v6``. The current stable API version is ``v5`` (which is what currently runs on https://api.infinitybots.gg)
 
-**Note that in most cases, ``spider.infinitybotlist.com`` and ``api.infinitybotlist.com`` will be in sync and will point to the same server**
+**Note that in most cases, ``spider.infinitybotlist.com`` and ``api.infinitybots.gg`` will be in sync and will point to the same server**
 
 **There are several breaking changes in ``v5``. Your library should be taking care of these differences (such as 'flatter'/simpler to use API responses)
 

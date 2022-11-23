@@ -3,6 +3,7 @@ package ping
 import (
 	"encoding/json"
 	"net/http"
+	"os"
 	"popplio/api"
 	"popplio/docs"
 )
@@ -16,11 +17,16 @@ type Hello struct {
 }
 
 const (
-	docsSite   = "https://spider.infinitybotlist.com/docs"
 	mainSite   = "https://infinitybotlist.com"
 	statusPage = "https://status.botlist.site"
 	apiBot     = "https://discord.com/api/oauth2/authorize?client_id=818419115068751892&permissions=140898593856&scope=bot%20applications.commands"
 )
+
+var docsSite string
+
+func init() {
+	docsSite = os.Getenv("SITE_URL") + "/docs"
+}
 
 var helloWorld []byte
 var helloWorldB Hello

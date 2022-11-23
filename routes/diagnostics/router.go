@@ -7,13 +7,7 @@ import (
 	"github.com/go-chi/chi/v5"
 )
 
-const (
-	tagName    = "Diagnostics"
-	docsSite   = "https://spider.infinitybotlist.com/docs"
-	mainSite   = "https://infinitybotlist.com"
-	statusPage = "https://status.botlist.site"
-	apiBot     = "https://discord.com/api/oauth2/authorize?client_id=818419115068751892&permissions=140898593856&scope=bot%20applications.commands"
-)
+const tagName = "Diagnostics"
 
 type Router struct{}
 

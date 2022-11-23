@@ -13,7 +13,7 @@ get you started xD
 
 ```js
 const fetch = require("node-fetch")
-fetch(`https://spider.infinitybotlist.com/bots/stats`, {
+fetch(`{apiUrl}/bots/stats`, {
     method: "POST",
     headers: {
         "authorization": "api-key-here",
@@ -31,7 +31,7 @@ fetch(`https://spider.infinitybotlist.com/bots/stats`, {
 
 ```js
 const fetch = require("node-fetch")
-fetch(`https://spider.infinitybotlist.com/bots/:botID`, {
+fetch(`{apiUrl}/bots/:botID`, {
     method: "GET",
     headers: {
         "Content-Type": "application/json"
@@ -56,7 +56,7 @@ async def post_stats():
             "servers": len(bot.guilds) or 0, # Change this if you use custom clustering
             "shards": bot.shard_count or 0   # Change this if you use custom clustering
         }
-        async with sess.post(f"https://spider.infinitybotlist.com/bots/stats", headers=headers, json=payload) as res:
+        async with sess.post("{apiUrl}/bots/stats", headers=headers, json=payload) as res:
             # Do something with the response. EX
             # if res.status == 200:
             # ...
