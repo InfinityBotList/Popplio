@@ -54,6 +54,36 @@ func nonVulgar(fl validator.FieldLevel) bool {
 	}
 }
 
+func noSpaces(fl validator.FieldLevel) bool {
+	// get the field value
+	switch fl.Field().Kind() {
+	case reflect.String:
+		value := fl.Field().String()
+
+		if strings.Contains(value, " ") {
+			return false
+		}
+		return true
+	default:
+		panic("not a string")
+	}
+}
+
+func notpresent(fl validator.FieldLevel) bool {
+	// get the field value
+	switch fl.Field().Kind() {
+	case reflect.String:
+		value := fl.Field().String()
+
+		if value == "" {
+			return false
+		}
+		return true
+	default:
+		panic("not a string")
+	}
+}
+
 // This should be the only init function, sets global state
 func init() {
 	godotenv.Load()
@@ -120,4 +150,6 @@ func init() {
 
 	Validator.RegisterValidation("nonvulgar", nonVulgar)
 	Validator.RegisterValidation("notblank", validators.NotBlank)
+	Validator.RegisterValidation("nospaces", noSpaces)
+	Validator.RegisterValidation("notpresent", notpresent)
 }

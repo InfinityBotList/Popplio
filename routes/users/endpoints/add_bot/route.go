@@ -12,6 +12,7 @@ import (
 	"popplio/state"
 	"popplio/types"
 	"popplio/utils"
+	"regexp"
 	"strings"
 	"time"
 
@@ -28,13 +29,18 @@ type CreateBot struct {
 	Prefix           string       `db:"prefix" json:"prefix" validate:"required,min=1,max=10" msg:"Prefix must be between 1 and 10 characters"`                                                                                            // impld
 	AdditionalOwners []string     `db:"additional_owners" json:"additional_owners" validate:"required,max=7,dive,numeric" msg:"You can only have a maximum of 7 additional owners" amsg:"Each additional owner must be a valid snowflake"` // impld
 	Invite           string       `db:"invite" json:"invite" validate:"required,url" msg:"Invite is required and must be a valid URL"`                                                                                                     // impld
-	Background       *string      `db:"background" json:"background" validate:"omitempty,url" msg:"Background must be a valid URL"`                                                                                                        // impld
+	Background       *string      `db:"banner" json:"background" validate:"omitempty,url" msg:"Background must be a valid URL"`                                                                                                            // impld
 	Library          string       `db:"library" json:"library" validate:"required,min=1,max=50" msg:"Library must be between 1 and 50 characters"`                                                                                         // impld
 	ExtraLinks       []types.Link `db:"extra_links" json:"extra_links" validate:"required" msg:"Extra links must be sent"`                                                                                                                 // Impld
-	Tags             []string     `db:"tags" json:"tags" validate:"required,unique,min=1,max=5,dive,min=3,max=20,alpha,notblank,nonvulgar" msg:"There must be between 1 and 5 tags without duplicates" amsg:"Each tag must be between 3 and 20 characters and alphabetic"`
+	Tags             []string     `db:"tags" json:"tags" validate:"required,unique,min=1,max=5,dive,min=3,max=20,alpha,notblank,nonvulgar,nospaces" msg:"There must be between 1 and 5 tags without duplicates" amsg:"Each tag must be between 3 and 20 characters and alphabetic"`
 	NSFW             bool         `db:"nsfw" json:"nsfw"`
 	CrossAdd         bool         `db:"cross_add" json:"cross_add"`
-	StaffNote        *string      `db:"staff_note" json:"staff_note" validate:"omitempty,max=512" msg:"Staff note must be less than 512 characters if sent"` // impld
+	StaffNote        *string      `db:"approval_note" json:"staff_note" validate:"omitempty,max=512" msg:"Staff note must be less than 512 characters if sent"` // impld
+
+	// Internal fields
+	QueueName *string `db:"queue_name" json:"queue_name" validate:"omitempty,notpresent"`
+	Owner     *string `db:"owner" json:"owner" validate:"omitempty,notpresent"`
+	Vanity    *string `db:"vanity" json:"vanity" validate:"omitempty,notpresent"`
 }
 
 func createBotsArgs(bot CreateBot) []any {
@@ -53,6 +59,9 @@ func createBotsArgs(bot CreateBot) []any {
 		bot.NSFW,
 		bot.CrossAdd,
 		bot.StaffNote,
+		bot.QueueName,
+		bot.Owner,
+		bot.Vanity,
 	}
 }
 
@@ -67,9 +76,12 @@ var (
 )
 
 func init() {
-	for i := 1; i <= len(createBotsColsArr); i++ {
-		createBotsParams += fmt.Sprintf("$%d, ", i)
+	var paramsList []string = make([]string, len(createBotsColsArr))
+	for i := 0; i < len(createBotsColsArr); i++ {
+		paramsList[i] = fmt.Sprintf("$%d", i+1)
 	}
+
+	createBotsParams = strings.Join(paramsList, ",")
 }
 
 func Docs() *docs.Doc {
@@ -96,6 +108,7 @@ type Japidata struct {
 		Bot struct {
 			ID                    string `json:"id"`
 			ApproximateGuildCount int    `json:"approximate_guild_count"`
+			Username              string `json:"username"`
 		} `json:"bot"`
 	} `json:"data"`
 }
@@ -103,6 +116,7 @@ type Japidata struct {
 // Represents a response from checkBotClientId
 type checkBotClientIdResp struct {
 	guildCount int
+	botName    string
 }
 
 func (bot *CreateBot) checkBotClientId(ctx context.Context) (*checkBotClientIdResp, error) {
@@ -169,6 +183,7 @@ func (bot *CreateBot) checkBotClientId(ctx context.Context) (*checkBotClientIdRe
 
 	return &checkBotClientIdResp{
 		guildCount: data.Data.Bot.ApproximateGuildCount,
+		botName:    data.Data.Bot.Username,
 	}, nil
 }
 
@@ -379,6 +394,15 @@ func Route(d api.RouteData, r *http.Request) {
 		return
 	}
 
+	payload.QueueName = &resp.botName
+	payload.Owner = &d.Auth.ID
+
+	// Create initial vanity URL by removing all unicode characters and replacing spaces with dashes
+	vanity := strings.ReplaceAll(strings.ToLower(resp.botName), " ", "-")
+	vanity = regexp.MustCompile("[^a-zA-Z0-9-]").ReplaceAllString(vanity, "")
+
+	payload.Vanity = &vanity
+
 	// Get the arguments to pass when adding the bot
 	botArgs := createBotsArgs(payload)
 
@@ -394,6 +418,7 @@ func Route(d api.RouteData, r *http.Request) {
 	}
 
 	// Save the bot to the database
+	fmt.Println("INSERT INTO bots (" + createBotsCols + ") VALUES (" + createBotsParams + ")")
 	_, err = state.Pool.Exec(d.Context, "INSERT INTO bots ("+createBotsCols+") VALUES ("+createBotsParams+")", botArgs...)
 
 	if err != nil {
