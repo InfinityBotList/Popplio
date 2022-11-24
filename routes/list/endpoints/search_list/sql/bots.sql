@@ -7,7 +7,7 @@ AND (($X+1 = -1) OR (servers <= $X+1))
 */
 
 SELECT DISTINCT {cols} FROM bots
-WHERE type = 'approved' 
+WHERE type = 'approved' OR type = 'certified'
 AND (queue_name ILIKE $2 OR vanity ILIKE $2 OR owner @@ $1 OR short @@ $1) 
 
 -- Guild count filter (3-4)

@@ -37,7 +37,6 @@ type Bot struct {
 	Library                  string         `db:"library" json:"library"`
 	NSFW                     pgtype.Bool    `db:"nsfw" json:"nsfw"`
 	Premium                  pgtype.Bool    `db:"premium" json:"premium"`
-	Certified                pgtype.Bool    `db:"certified" json:"certified"`
 	PendingCert              pgtype.Bool    `db:"pending_cert" json:"pending_cert"`
 	Servers                  int            `db:"servers" json:"servers"`
 	Shards                   int            `db:"shards" json:"shards"`
@@ -91,7 +90,6 @@ type ResolvedPackBot struct {
 	Banner       pgtype.Text  `json:"banner"`
 	NSFW         bool         `json:"nsfw"`
 	Premium      bool         `json:"premium"`
-	Certified    bool         `json:"certified"`
 	Shards       int          `json:"shards"`
 	Votes        int          `json:"votes"`
 	InviteClicks int          `json:"invites"`
@@ -173,7 +171,6 @@ type UserBot struct {
 	Tags               []string     `db:"tags" json:"tags"`
 	OwnerID            string       `db:"owner" json:"owner_id"`
 	Premium            bool         `db:"premium" json:"premium"`
-	Certified          bool         `db:"certified" json:"certified"`
 	AdditionalOwnerIDS []string     `db:"additional_owners" json:"additional_owner_ids"`
 }
 
@@ -191,7 +188,6 @@ type IndexBot struct {
 	NSFW        bool         `db:"nsfw" json:"nsfw"`
 	Tags        []string     `db:"tags" json:"tags"`
 	Premium     bool         `db:"premium" json:"premium"`
-	Certified   bool         `db:"certified" json:"certified"`
 	Views       int          `db:"clicks" json:"clicks"`
 	Banner      pgtype.Text  `db:"banner" json:"banner"`
 }
@@ -205,18 +201,15 @@ type ListIndex struct {
 }
 
 type User struct {
-	ITag          pgtype.UUID    `db:"itag" json:"itag"`
-	ID            string         `db:"user_id" json:"user_id"`
-	User          *DiscordUser   `db:"-" json:"user"` // Must be handled internally
-	Staff         bool           `db:"staff" json:"staff"`
-	Certified     bool           `db:"certified" json:"certified"`
-	Developer     bool           `db:"developer" json:"developer"`
-	About         pgtype.Text    `db:"about" json:"about"`
-	StaffStats    map[string]int `db:"staff_stats" json:"staff_stats"`
-	NewStaffStats map[string]int `db:"new_staff_stats" json:"new_staff_stats"`
+	ITag  pgtype.UUID  `db:"itag" json:"itag"`
+	ID    string       `db:"user_id" json:"user_id"`
+	User  *DiscordUser `db:"-" json:"user"` // Must be handled internally
+	Staff bool         `db:"staff" json:"staff"`
+	About pgtype.Text  `db:"about" json:"about"`
 
 	VoteBanned bool `db:"vote_banned" json:"vote_banned"`
 	Admin      bool `db:"admin" json:"admin"`
+	HAdmin     bool `db:"hadmin" json:"hadmin"`
 
 	UserBots []UserBot `json:"user_bots"` // Must be handled internally
 
@@ -573,7 +566,6 @@ type ListStatsBot struct {
 	Vanity             string   `json:"vanity"`
 	Short              string   `json:"short"`
 	Type               string   `json:"type"`
-	Certified          bool     `json:"certified"`
 	Claimed            bool     `json:"claimed"`
 	MainOwnerID        string   `json:"main_owner_id"`
 	AdditionalOwnerIDS []string `json:"additional_owners_ids"`

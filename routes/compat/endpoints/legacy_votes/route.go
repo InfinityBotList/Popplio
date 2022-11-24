@@ -61,7 +61,7 @@ func Route(d api.RouteData, r *http.Request) {
 
 	state.Pool.QueryRow(d.Context, "SELECT type FROM bots WHERE bot_id = $1", botId).Scan(&botType)
 
-	if botType.String != "approved" {
+	if botType.String != "approved" || botType.String != "certified" {
 		d.Resp <- api.HttpResponse{
 			Status: http.StatusBadRequest,
 			Data:   constants.NotApproved,

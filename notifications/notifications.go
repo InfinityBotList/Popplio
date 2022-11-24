@@ -1,7 +1,7 @@
 package notifications
 
 import (
-	"io/ioutil"
+	"io"
 	"os"
 	"popplio/state"
 	"popplio/types"
@@ -128,7 +128,7 @@ func init() {
 				continue
 			}
 
-			msg, _ := ioutil.ReadAll(resp.Body)
+			msg, _ := io.ReadAll(resp.Body)
 			state.Logger.Info(resp.StatusCode, msg)
 			resp.Body.Close()
 		}
@@ -302,7 +302,7 @@ func init() {
 					continue
 				}
 
-				if typeStr != "approved" {
+				if typeStr != "approved" && typeStr != "certified" {
 					// This bot isnt approved, so we should remove premium
 					state.Logger.Info("Removing premium from bot: ", botId)
 					PremiumChannel <- botId

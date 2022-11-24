@@ -48,7 +48,7 @@ func Route(d api.RouteData, r *http.Request) {
 
 	listIndex := types.ListIndex{}
 
-	certRow, err := state.Pool.Query(d.Context, "SELECT "+indexBotCols+" FROM bots WHERE certified = true AND type = 'approved' ORDER BY votes DESC LIMIT 9")
+	certRow, err := state.Pool.Query(d.Context, "SELECT "+indexBotCols+" FROM bots WHERE type = 'certified' ORDER BY votes DESC LIMIT 9")
 	if err != nil {
 		state.Logger.Error(err)
 		d.Resp <- api.DefaultResponse(http.StatusInternalServerError)
@@ -73,7 +73,7 @@ func Route(d api.RouteData, r *http.Request) {
 
 	listIndex.Certified = certDat
 
-	mostViewedRow, err := state.Pool.Query(d.Context, "SELECT "+indexBotCols+" FROM bots WHERE type = 'approved' ORDER BY clicks DESC LIMIT 9")
+	mostViewedRow, err := state.Pool.Query(d.Context, "SELECT "+indexBotCols+" FROM bots WHERE type = 'approved' OR type = 'certified' ORDER BY clicks DESC LIMIT 9")
 	if err != nil {
 		state.Logger.Error(err)
 		d.Resp <- api.DefaultResponse(http.StatusInternalServerError)
@@ -121,7 +121,7 @@ func Route(d api.RouteData, r *http.Request) {
 
 	listIndex.RecentlyAdded = recentlyAddedDat
 
-	topVotedRow, err := state.Pool.Query(d.Context, "SELECT "+indexBotCols+" FROM bots WHERE type = 'approved' ORDER BY votes DESC LIMIT 9")
+	topVotedRow, err := state.Pool.Query(d.Context, "SELECT "+indexBotCols+" FROM bots WHERE type = 'approved' OR type = 'certified' ORDER BY votes DESC LIMIT 9")
 	if err != nil {
 		state.Logger.Error(err)
 		d.Resp <- api.DefaultResponse(http.StatusInternalServerError)

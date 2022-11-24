@@ -180,13 +180,12 @@ func ResolveBotPack(ctx context.Context, pool *pgxpool.Pool, pack *types.BotPack
 		var banner pgtype.Text
 		var nsfw bool
 		var premium bool
-		var certified bool
 		var shards int
 		var votes int
 		var inviteClicks int
 		var servers int
 		var tags []string
-		err := pool.QueryRow(ctx, "SELECT short, type, vanity, banner, nsfw, premium, certified, shards, votes, invite_clicks, servers, tags FROM bots WHERE bot_id = $1", botId).Scan(&short, &bot_type, &vanity, &banner, &nsfw, &premium, &certified, &shards, &votes, &inviteClicks, &servers, &tags)
+		err := pool.QueryRow(ctx, "SELECT short, type, vanity, banner, nsfw, premium, shards, votes, invite_clicks, servers, tags FROM bots WHERE bot_id = $1", botId).Scan(&short, &bot_type, &vanity, &banner, &nsfw, &premium, &shards, &votes, &inviteClicks, &servers, &tags)
 
 		if err == pgx.ErrNoRows {
 			continue
@@ -210,7 +209,6 @@ func ResolveBotPack(ctx context.Context, pool *pgxpool.Pool, pack *types.BotPack
 			Banner:       banner,
 			NSFW:         nsfw,
 			Premium:      premium,
-			Certified:    certified,
 			Shards:       shards,
 			Votes:        votes,
 			InviteClicks: inviteClicks,

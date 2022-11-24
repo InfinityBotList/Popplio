@@ -234,7 +234,7 @@ func Route(d api.RouteData, r *http.Request) {
 
 			token := utils.RandString(128)
 
-			_, err := state.Pool.Exec(d.Context, "UPDATE bots SET token = $1 WHERE bot_id = $2", token, action.TID)
+			_, err := state.Pool.Exec(d.Context, "UPDATE bots SET api_token = $1 WHERE bot_id = $2", token, action.TID)
 
 			if err != nil {
 				d.Resp <- api.HttpResponse{

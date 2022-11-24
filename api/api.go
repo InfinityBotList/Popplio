@@ -225,7 +225,7 @@ func (r Route) Route(ro Router) {
 					case types.TargetTypeBot:
 						// Check if the bot exists with said token only
 						var id pgtype.Text
-						err := state.Pool.QueryRow(state.Context, "SELECT bot_id FROM bots WHERE token = $1", strings.Replace(authHeader, "Bot ", "", 1)).Scan(&id)
+						err := state.Pool.QueryRow(state.Context, "SELECT bot_id FROM bots WHERE api_token = $1", strings.Replace(authHeader, "Bot ", "", 1)).Scan(&id)
 
 						if err != nil {
 							continue

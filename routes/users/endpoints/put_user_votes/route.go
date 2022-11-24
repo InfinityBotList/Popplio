@@ -99,7 +99,7 @@ func Route(d api.RouteData, r *http.Request) {
 
 	vars["bid"] = botId.String
 
-	if botType.String != "approved" {
+	if botType.String != "approved" || botType.String != "certified" {
 		d.Resp <- api.HttpResponse{
 			Status: http.StatusBadRequest,
 			Data:   constants.NotApproved,

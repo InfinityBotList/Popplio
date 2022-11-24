@@ -25,7 +25,7 @@ func Docs() *docs.Doc {
 func Route(d api.RouteData, r *http.Request) {
 	listStats := types.ListStats{}
 
-	bots, err := state.Pool.Query(d.Context, "SELECT bot_id, vanity, short, type, owner, additional_owners, certified, claimed FROM bots")
+	bots, err := state.Pool.Query(d.Context, "SELECT bot_id, vanity, short, type, owner, additional_owners, claimed FROM bots")
 
 	if err != nil {
 		state.Logger.Error(err)
@@ -42,10 +42,9 @@ func Route(d api.RouteData, r *http.Request) {
 		var typeStr string
 		var owner string
 		var additionalOwners []string
-		var certified bool
 		var claimed bool
 
-		err := bots.Scan(&botId, &vanity, &short, &typeStr, &owner, &additionalOwners, &certified, &claimed)
+		err := bots.Scan(&botId, &vanity, &short, &typeStr, &owner, &additionalOwners, &claimed)
 
 		if err != nil {
 			state.Logger.Error(err)
@@ -60,7 +59,6 @@ func Route(d api.RouteData, r *http.Request) {
 			Type:               typeStr,
 			MainOwnerID:        owner,
 			AdditionalOwnerIDS: additionalOwners,
-			Certified:          certified,
 			Claimed:            claimed,
 		})
 	}
