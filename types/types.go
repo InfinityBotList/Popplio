@@ -145,7 +145,18 @@ type Review struct {
 	Content   string      `db:"content" json:"content"`
 	StarRate  pgtype.Int4 `db:"stars" json:"stars"`
 	CreatedAt time.Time   `db:"created_at" json:"created_at"`
-	Parent    pgtype.UUID `db:"parent" json:"parent"` // Not yet implemented on API
+	Replies   []Reply     `db:"-" json:"replies"`
+}
+
+// TODO: Implement replies
+type Reply struct {
+	ITag      pgtype.UUID `db:"itag" json:"itag"`
+	ID        pgtype.UUID `db:"id" json:"id"`
+	Author    string      `db:"author" json:"author"`
+	Content   string      `db:"content" json:"content"`
+	StarRate  pgtype.Int4 `db:"stars" json:"stars"`
+	CreatedAt time.Time   `db:"created_at" json:"created_at"`
+	Parent    pgtype.UUID `db:"parent" json:"parent"`
 }
 
 type ReviewList struct {
