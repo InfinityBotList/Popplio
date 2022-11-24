@@ -111,20 +111,20 @@ type BotPack struct {
 	Votes         []PackVote        `db:"-" json:"votes"`
 	Tags          []string          `db:"tags" json:"tags"`
 	URL           string            `db:"url" json:"url"`
-	Date          time.Time         `db:"date" json:"date"`
+	CreatedAt     time.Time         `db:"created_at" json:"created_at"`
 	Bots          []string          `db:"bots" json:"bot_ids"`
 	ResolvedBots  []ResolvedPackBot `db:"-" json:"bots"`
 }
 
 type IndexBotPack struct {
-	Owner string     `db:"owner" json:"owner_id"`
-	Name  string     `db:"name" json:"name"`
-	Short string     `db:"short" json:"short"`
-	Votes []PackVote `db:"-" json:"votes"`
-	Tags  []string   `db:"tags" json:"tags"`
-	URL   string     `db:"url" json:"url"`
-	Date  time.Time  `db:"date" json:"date"`
-	Bots  []string   `db:"bots" json:"bot_ids"`
+	Owner     string     `db:"owner" json:"owner_id"`
+	Name      string     `db:"name" json:"name"`
+	Short     string     `db:"short" json:"short"`
+	Votes     []PackVote `db:"-" json:"votes"`
+	Tags      []string   `db:"tags" json:"tags"`
+	URL       string     `db:"url" json:"url"`
+	CreatedAt time.Time  `db:"created_at" json:"created_at"`
+	Bots      []string   `db:"bots" json:"bot_ids"`
 }
 
 type AllPacks struct {
@@ -136,19 +136,16 @@ type AllPacks struct {
 }
 
 // A review is a review on ibl
+// TODO: Make a review_votes table for holding votes
 type Review struct {
-	ITag        pgtype.UUID    `db:"itag" json:"itag"`
-	BotID       string         `db:"bot_id" json:"bot_id"`
-	Author      string         `db:"author" json:"author"`
-	Content     string         `db:"content" json:"content"`
-	Rate        bool           `db:"rate" json:"rate"`
-	StarRate    pgtype.Int4    `db:"stars" json:"stars"`
-	LikesRaw    map[string]any `db:"likes" json:"likes"`
-	DislikesRaw map[string]any `db:"dislikes" json:"dislikes"`
-	Date        pgtype.Int8    `db:"date" json:"date"`
-	Replies     map[string]any `db:"replies" json:"replies"`
-	Editted     bool           `db:"editted" json:"editted"`
-	Flagged     bool           `db:"flagged" json:"flagged"`
+	ITag      pgtype.UUID `db:"itag" json:"itag"`
+	ID        pgtype.UUID `db:"id" json:"id"`
+	BotID     string      `db:"bot_id" json:"bot_id"`
+	Author    string      `db:"author" json:"author"`
+	Content   string      `db:"content" json:"content"`
+	StarRate  pgtype.Int4 `db:"stars" json:"stars"`
+	CreatedAt time.Time   `db:"created_at" json:"created_at"`
+	Parent    pgtype.UUID `db:"parent" json:"parent"` // Not yet implemented on API
 }
 
 type ReviewList struct {
