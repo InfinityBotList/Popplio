@@ -5,7 +5,6 @@ import (
 	"crypto/hmac"
 	"crypto/sha512"
 	"encoding/hex"
-	"encoding/json"
 	"errors"
 	"io"
 	"net/http"
@@ -16,7 +15,10 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5/pgtype"
+	jsoniter "github.com/json-iterator/go"
 )
+
+var json = jsoniter.ConfigCompatibleWithStandardLibrary
 
 func isDiscord(url string) bool {
 	validPrefixes := []string{

@@ -1,13 +1,14 @@
 package get_special_login
 
 import (
-	"crypto/hmac"
-	"crypto/sha512"
-	"encoding/hex"
+	"bytes"
+	"encoding/base64"
+	"encoding/gob"
 	"net/http"
 	"os"
 	"popplio/api"
 	"popplio/docs"
+	"popplio/routes/special/assets"
 	"strconv"
 	"time"
 
@@ -20,7 +21,7 @@ func Docs() *docs.Doc {
 		Path:        "/login/{act}",
 		OpId:        "get_special_login",
 		Summary:     "Special Login",
-		Description: "This endpoint is used for special login actions. For example, data requests.",
+		Description: "This endpoint is used for special login actions. For example, data requests/deletions and regenerating tokens",
 		Tags:        []string{api.CurrentTag},
 		Resp:        "[Redirect]",
 	})
@@ -30,18 +31,45 @@ func Route(d api.RouteData, r *http.Request) {
 	cliId := os.Getenv("CLIENT_ID")
 	redirectUrl := os.Getenv("REDIRECT_URL")
 
-	// Create HMAC of current time in seconds to protect against fucked up redirects
-	h := hmac.New(sha512.New, []byte(os.Getenv("CLIENT_SECRET")))
+	tid := r.URL.Query().Get("tid")
+	var tidInt int64
+	var err error
+	if tid != "" {
+		tidInt, err = strconv.ParseInt(tid, 10, 64)
 
-	ctime := strconv.FormatInt(time.Now().Unix(), 10)
+		if err != nil {
+			d.Resp <- api.HttpResponse{
+				Status: http.StatusBadRequest,
+				Data:   "Invalid tid",
+			}
+			return
+		}
+	}
 
-	var act = chi.URLParam(r, "act")
+	var act = assets.Action{
+		Action: chi.URLParam(r, "act"),
+		Ctx:    r.URL.Query().Get("ctx"),
+		Time:   time.Now(),
+		TID:    tidInt,
+	}
 
-	h.Write([]byte(ctime + "@" + act))
+	// Encode act using gob
+	var b bytes.Buffer
+	e := gob.NewEncoder(&b)
 
-	hmacData := hex.EncodeToString(h.Sum(nil))
+	err = e.Encode(act)
+
+	if err != nil {
+		d.Resp <- api.HttpResponse{
+			Status: http.StatusInternalServerError,
+			Data:   "Internal Server Error",
+		}
+		return
+	}
+
+	encPayload := base64.URLEncoding.EncodeToString(b.Bytes())
 
 	d.Resp <- api.HttpResponse{
-		Redirect: "https://discord.com/api/oauth2/authorize?client_id=" + cliId + "&scope=identify&response_type=code&redirect_uri=" + redirectUrl + "&state=" + ctime + "." + hmacData + "." + act,
+		Redirect: "https://discord.com/api/oauth2/authorize?client_id=" + cliId + "&scope=identify&response_type=code&redirect_uri=" + redirectUrl + "&state=" + encPayload,
 	}
 }

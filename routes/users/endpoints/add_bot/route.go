@@ -2,7 +2,6 @@ package add_bot
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
@@ -17,9 +16,12 @@ import (
 	"time"
 
 	"github.com/go-playground/validator/v10"
+	jsoniter "github.com/json-iterator/go"
 	"go.uber.org/zap"
 	"golang.org/x/exp/slices"
 )
+
+var json = jsoniter.ConfigCompatibleWithStandardLibrary
 
 type CreateBot struct {
 	BotID            string       `db:"bot_id" json:"bot_id" validate:"required,numeric" msg:"Bot ID must be numeric"`                                                                                                                     // impld

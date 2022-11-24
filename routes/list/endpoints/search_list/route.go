@@ -2,7 +2,6 @@ package search_list
 
 import (
 	_ "embed"
-	"encoding/json"
 	"io"
 	"net/http"
 	"popplio/api"
@@ -13,7 +12,11 @@ import (
 	"strings"
 
 	"github.com/georgysavva/scany/v2/pgxscan"
+
+	jsoniter "github.com/json-iterator/go"
 )
+
+var json = jsoniter.ConfigCompatibleWithStandardLibrary
 
 var (
 	indexBotColsArr = utils.GetCols(types.IndexBot{})

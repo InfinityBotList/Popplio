@@ -8,12 +8,15 @@ package docs
 
 import (
 	"encoding"
-	"encoding/json"
 	"fmt"
 
 	list "github.com/bahlo/generic-list-go"
 	"github.com/valyala/fastjson"
+
+	jsoniter "github.com/json-iterator/go"
 )
+
+var json = jsoniter.ConfigCompatibleWithStandardLibrary
 
 type Pair[K comparable, V any] struct {
 	Key   K

@@ -1,7 +1,6 @@
 package notifications
 
 import (
-	"encoding/json"
 	"io/ioutil"
 	"os"
 	"popplio/state"
@@ -15,7 +14,11 @@ import (
 	"github.com/georgysavva/scany/v2/pgxscan"
 	"github.com/jackc/pgx/v5/pgtype"
 	"golang.org/x/exp/slices"
+
+	jsoniter "github.com/json-iterator/go"
 )
+
+var json = jsoniter.ConfigCompatibleWithStandardLibrary
 
 var (
 	NotifChannel         = make(chan types.Notification)

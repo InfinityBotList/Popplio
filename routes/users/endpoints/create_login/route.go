@@ -1,7 +1,6 @@
 package create_login
 
 import (
-	"encoding/json"
 	"io"
 	"net/http"
 	"net/url"
@@ -14,8 +13,11 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5/pgtype"
+	jsoniter "github.com/json-iterator/go"
 	"golang.org/x/exp/slices"
 )
+
+var json = jsoniter.ConfigCompatibleWithStandardLibrary
 
 var allowedRedirectURLs = []string{
 	"http://localhost:3000/sauron",               // DEV

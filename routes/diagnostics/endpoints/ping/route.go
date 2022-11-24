@@ -1,12 +1,15 @@
 package ping
 
 import (
-	"encoding/json"
 	"net/http"
 	"os"
 	"popplio/api"
 	"popplio/docs"
+
+	jsoniter "github.com/json-iterator/go"
 )
+
+var json = jsoniter.ConfigCompatibleWithStandardLibrary
 
 type Hello struct {
 	Message   string `json:"message"`

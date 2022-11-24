@@ -2,7 +2,6 @@ package utils
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"math/rand"
 	"os"
@@ -21,8 +20,11 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
+	jsoniter "github.com/json-iterator/go"
 	"go.uber.org/zap"
 )
+
+var json = jsoniter.ConfigCompatibleWithStandardLibrary
 
 var (
 	userBotColsArr = GetCols(types.UserBot{})

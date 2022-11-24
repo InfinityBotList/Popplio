@@ -1,7 +1,6 @@
 package post_stats
 
 import (
-	"encoding/json"
 	"io"
 	"net/http"
 	"popplio/api"
@@ -10,7 +9,11 @@ import (
 	"popplio/state"
 	"popplio/types"
 	"strconv"
+
+	jsoniter "github.com/json-iterator/go"
 )
+
+var json = jsoniter.ConfigCompatibleWithStandardLibrary
 
 func Docs() *docs.Doc {
 	return docs.Route(&docs.Doc{

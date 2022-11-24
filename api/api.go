@@ -3,7 +3,6 @@ package api
 
 import (
 	"context"
-	"encoding/json"
 	"net/http"
 	"popplio/constants"
 	"popplio/docs"
@@ -17,7 +16,11 @@ import (
 	"github.com/go-playground/validator/v10"
 	"github.com/jackc/pgx/v5/pgtype"
 	"go.uber.org/zap"
+
+	jsoniter "github.com/json-iterator/go"
 )
+
+var json = jsoniter.ConfigCompatibleWithStandardLibrary
 
 // Stores the current tag
 var CurrentTag string

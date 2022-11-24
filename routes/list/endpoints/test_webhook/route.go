@@ -1,7 +1,6 @@
 package test_webhook
 
 import (
-	"encoding/json"
 	"io"
 	"net/http"
 	"popplio/api"
@@ -10,7 +9,11 @@ import (
 	"popplio/types"
 	"popplio/utils"
 	"popplio/webhooks"
+
+	jsoniter "github.com/json-iterator/go"
 )
+
+var json = jsoniter.ConfigCompatibleWithStandardLibrary
 
 func Docs() *docs.Doc {
 	return docs.Route(&docs.Doc{

@@ -1,7 +1,6 @@
 package get_transcript
 
 import (
-	"encoding/json"
 	"net/http"
 	"popplio/api"
 	"popplio/docs"
@@ -10,7 +9,10 @@ import (
 	"strconv"
 
 	"github.com/go-chi/chi/v5"
+	jsoniter "github.com/json-iterator/go"
 )
+
+var json = jsoniter.ConfigCompatibleWithStandardLibrary
 
 func Docs() *docs.Doc {
 	return docs.Route(&docs.Doc{

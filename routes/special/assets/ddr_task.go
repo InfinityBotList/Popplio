@@ -1,19 +1,21 @@
 package assets
 
 import (
-	"encoding/json"
 	"fmt"
 	"popplio/state"
 
 	"github.com/georgysavva/scany/v2/pgxscan"
 	"github.com/go-redis/redis/v8"
 	"github.com/jackc/pgx/v5/pgtype"
+	jsoniter "github.com/json-iterator/go"
 )
 
 type kvPair struct {
 	Key   string
 	Value any
 }
+
+var json = jsoniter.ConfigCompatibleWithStandardLibrary
 
 const ddrStr = `
 SELECT 

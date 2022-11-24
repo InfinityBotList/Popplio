@@ -1,11 +1,9 @@
 package get_special_login_resp
 
 import (
-	"crypto/hmac"
-	"crypto/sha512"
+	"bytes"
 	"encoding/base64"
-	"encoding/hex"
-	"encoding/json"
+	"encoding/gob"
 	"io"
 	"net/http"
 	"net/url"
@@ -15,10 +13,13 @@ import (
 	"popplio/routes/special/assets"
 	"popplio/state"
 	"popplio/utils"
-	"strconv"
 	"strings"
 	"time"
+
+	jsoniter "github.com/json-iterator/go"
 )
+
+var json = jsoniter.ConfigCompatibleWithStandardLibrary
 
 func Docs() *docs.Doc {
 	return docs.Route(&docs.Doc{
@@ -33,36 +34,10 @@ func Docs() *docs.Doc {
 }
 
 func Route(d api.RouteData, r *http.Request) {
-	act := r.URL.Query().Get("state")
+	stateQuery := r.URL.Query().Get("state")
 
-	// Split act and hmac
-	actSplit := strings.Split(act, ".")
-
-	if len(actSplit) != 3 {
-		d.Resp <- api.HttpResponse{
-			Status: http.StatusBadRequest,
-			Data:   "Invalid state",
-		}
-		return
-	}
-
-	// Check hmac
-	h := hmac.New(sha512.New, []byte(os.Getenv("CLIENT_SECRET")))
-
-	h.Write([]byte(actSplit[0] + "@" + actSplit[2]))
-
-	hmacData := hex.EncodeToString(h.Sum(nil))
-
-	if hmacData != actSplit[1] {
-		d.Resp <- api.HttpResponse{
-			Status: http.StatusBadRequest,
-			Data:   "Invalid state",
-		}
-		return
-	}
-
-	// Check time
-	ctime, err := strconv.ParseInt(actSplit[0], 10, 64)
+	// Hex decode act
+	hexedAct, err := base64.URLEncoding.DecodeString(stateQuery)
 
 	if err != nil {
 		d.Resp <- api.HttpResponse{
@@ -72,16 +47,32 @@ func Route(d api.RouteData, r *http.Request) {
 		return
 	}
 
-	if time.Now().Unix()-ctime > 300 {
+	// Decode act using gob
+	var b bytes.Buffer
+	b.Write(hexedAct)
+
+	action := assets.Action{}
+
+	dg := gob.NewDecoder(&b)
+
+	err = dg.Decode(&action)
+
+	if err != nil {
 		d.Resp <- api.HttpResponse{
 			Status: http.StatusBadRequest,
-			Data:   "Invalid state, HMAC is too old",
+			Data:   "Invalid state",
 		}
 		return
 	}
 
-	// Remove out the actual action
-	act = actSplit[2]
+	// Check time
+	if time.Since(action.Time) > 3*time.Minute {
+		d.Resp <- api.HttpResponse{
+			Status: http.StatusBadRequest,
+			Data:   "Invalid state (too old)",
+		}
+		return
+	}
 
 	// Check code with discords api
 	data := url.Values{}
@@ -202,35 +193,64 @@ func Route(d api.RouteData, r *http.Request) {
 
 	remoteIp := strings.Split(strings.ReplaceAll(r.Header.Get("X-Forwarded-For"), " ", ""), ",")
 
-	if act == "dr" {
+	if action.Action == "dr" {
 		go assets.DataTask(taskId, user.ID, remoteIp[0], false)
-	} else if act == "ddr" {
+	} else if action.Action == "ddr" {
 		go assets.DataTask(taskId, user.ID, remoteIp[0], true)
-	} else if act == "gettoken" {
-		token := utils.RandString(128)
-
-		_, err := state.Pool.Exec(d.Context, "UPDATE users SET api_token = $1 WHERE user_id = $2", token, user.ID)
-
-		if err != nil {
+	} else if action.Action == "rt" {
+		if action.Ctx == "" {
 			d.Resp <- api.HttpResponse{
-				Status: http.StatusInternalServerError,
-				Data:   err.Error(),
+				Status: http.StatusBadRequest,
+				Data:   "No action context found",
 			}
 			return
 		}
 
-		d.Resp <- api.HttpResponse{
-			Data: token,
-		}
-		return
+		if action.Ctx == "@me" {
+			token := utils.RandString(128)
 
+			_, err := state.Pool.Exec(d.Context, "UPDATE users SET api_token = $1 WHERE user_id = $2", token, user.ID)
+
+			if err != nil {
+				d.Resp <- api.HttpResponse{
+					Status: http.StatusInternalServerError,
+					Data:   err.Error(),
+				}
+				return
+			}
+
+			d.Resp <- api.HttpResponse{
+				Data: "Your new API token is: " + token + "\n\nThank you and have a nice day ;)",
+			}
+			return
+		} else {
+			if action.TID == 0 {
+				d.Resp <- api.HttpResponse{
+					Status: http.StatusBadRequest,
+					Data:   "No target id set",
+				}
+				return
+			}
+
+			token := utils.RandString(128)
+
+			_, err := state.Pool.Exec(d.Context, "UPDATE bots SET token = $1 WHERE bot_id = $2", token, action.TID)
+
+			if err != nil {
+				d.Resp <- api.HttpResponse{
+					Status: http.StatusInternalServerError,
+					Data:   err.Error(),
+				}
+				return
+			}
+		}
 	} else {
 		d.Resp <- api.DefaultResponse(http.StatusNotFound)
 		return
 	}
 
 	d.Resp <- api.HttpResponse{
-		Redirect: os.Getenv("BOTLIST_APP") + "/data/confirm?tid=" + taskId + "&user=" + base64.URLEncoding.EncodeToString(body) + "&act=" + act,
+		Redirect: os.Getenv("BOTLIST_APP") + "/data/confirm?tid=" + taskId + "&user=" + base64.URLEncoding.EncodeToString(body) + "&act=" + action.Action,
 	}
 
 }

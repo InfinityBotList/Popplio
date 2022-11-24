@@ -1,7 +1,6 @@
 package put_user_votes
 
 import (
-	"encoding/json"
 	"fmt"
 	"net/http"
 	"os"
@@ -19,7 +18,10 @@ import (
 	"github.com/bwmarrin/discordgo"
 	"github.com/go-chi/chi/v5"
 	"github.com/jackc/pgx/v5/pgtype"
+	jsoniter "github.com/json-iterator/go"
 )
+
+var json = jsoniter.ConfigCompatibleWithStandardLibrary
 
 func Docs() *docs.Doc {
 	return docs.Route(&docs.Doc{
