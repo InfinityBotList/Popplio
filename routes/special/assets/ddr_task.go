@@ -1,19 +1,12 @@
 package assets
 
 import (
-	"fmt"
 	"popplio/state"
 
 	"github.com/georgysavva/scany/v2/pgxscan"
 	"github.com/go-redis/redis/v8"
-	"github.com/jackc/pgx/v5/pgtype"
 	jsoniter "github.com/json-iterator/go"
 )
-
-type kvPair struct {
-	Key   string
-	Value any
-}
 
 var json = jsoniter.ConfigCompatibleWithStandardLibrary
 
@@ -114,94 +107,6 @@ func DataTask(taskId string, id string, ip string, del bool) {
 		}
 	}
 
-	state.Redis.SetArgs(ctx, taskId, "Fetching postgres backups on this user", redis.SetArgs{
-		KeepTTL: true,
-	})
-
-	rows, err := state.BackupsPool.Query(ctx, "SELECT col, data, ts, id FROM backups")
-
-	if err != nil {
-		state.Logger.Error("Failed to get backups")
-		state.Redis.SetArgs(ctx, taskId, "Failed to fetch backup data: "+err.Error(), redis.SetArgs{
-			KeepTTL: true,
-		})
-		return
-	}
-
-	defer rows.Close()
-
-	var backups []any
-
-	var foundBackup bool
-
-	for rows.Next() {
-		var col pgtype.Text
-		var data []byte
-		var ts pgtype.Timestamptz
-		var uid pgtype.UUID
-
-		err = rows.Scan(&col, &data, &ts, &uid)
-
-		if err != nil {
-			state.Logger.Error("Failed to scan backup")
-			state.Redis.SetArgs(ctx, taskId, "Failed to fetch backup data: "+err.Error()+". Ignoring", redis.SetArgs{
-				KeepTTL: true,
-			})
-			continue
-		}
-
-		var dataPacket []kvPair
-
-		err = json.Unmarshal(data, &dataPacket)
-
-		if err != nil {
-			state.Logger.Error("Failed to decode backup")
-			state.Redis.SetArgs(ctx, taskId, "Failed to fetch backup data: "+err.Error()+". Ignoring", redis.SetArgs{
-				KeepTTL: true,
-			})
-			continue
-		}
-
-		var backupDat = make(map[string]any)
-
-		for _, kvpair := range dataPacket {
-			if kvpair.Key == "userID" || kvpair.Key == "author" || kvpair.Key == "main_owner" {
-				val, ok := kvpair.Value.(string)
-				if !ok {
-					continue
-				}
-
-				if val == id {
-					foundBackup = true
-					break
-				}
-			}
-		}
-
-		if foundBackup {
-			backupDat["col"] = col.String
-			backupDat["data"] = dataPacket
-			backupDat["ts"] = ts.Time
-			backupDat["id"] = toString(uid)
-			backups = append(backups, backupDat)
-
-			if del {
-				_, err := state.BackupsPool.Exec(ctx, "DELETE FROM backups WHERE id=$1", toString(uid))
-				if err != nil {
-					state.Logger.Error("Failed to delete backup")
-					state.Redis.SetArgs(ctx, taskId, "Failed to delete backup: "+err.Error(), redis.SetArgs{
-						KeepTTL: true,
-					})
-					return
-				}
-			}
-		}
-
-		foundBackup = false
-	}
-
-	finalDump["backups"] = backups
-
 	bytes, err := json.Marshal(finalDump)
 
 	if err != nil {
@@ -215,9 +120,4 @@ func DataTask(taskId string, id string, ip string, del bool) {
 	state.Redis.SetArgs(ctx, taskId, string(bytes), redis.SetArgs{
 		KeepTTL: false,
 	})
-}
-
-// Given a UUID, returns a string representation of it
-func toString(myUUID pgtype.UUID) string {
-	return fmt.Sprintf("%x-%x-%x-%x-%x", myUUID.Bytes[0:4], myUUID.Bytes[4:6], myUUID.Bytes[6:8], myUUID.Bytes[8:10], myUUID.Bytes[10:16])
 }
