@@ -64,7 +64,7 @@ func Route(d api.RouteData, r *http.Request) {
 	limit := perPage
 	offset := (pageNum - 1) * perPage
 
-	rows, err := state.Pool.Query(d.Context, "SELECT "+indexBotCols+" FROM bots ORDER BY date DESC LIMIT $1 OFFSET $2", limit, offset)
+	rows, err := state.Pool.Query(d.Context, "SELECT "+indexBotCols+" FROM bots ORDER BY created_at DESC LIMIT $1 OFFSET $2", limit, offset)
 
 	if err != nil {
 		state.Logger.Error(err)

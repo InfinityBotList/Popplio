@@ -97,7 +97,7 @@ func Route(d api.RouteData, r *http.Request) {
 
 	listIndex.MostViewed = mostViewedDat
 
-	recentlyAddedRow, err := state.Pool.Query(d.Context, "SELECT "+indexBotCols+" FROM bots WHERE type = 'approved' ORDER BY date DESC LIMIT 9")
+	recentlyAddedRow, err := state.Pool.Query(d.Context, "SELECT "+indexBotCols+" FROM bots WHERE type = 'approved' ORDER BY created_at DESC LIMIT 9")
 	if err != nil {
 		state.Logger.Error(err)
 		d.Resp <- api.DefaultResponse(http.StatusInternalServerError)
@@ -144,7 +144,7 @@ func Route(d api.RouteData, r *http.Request) {
 
 	listIndex.TopVoted = topVotedDat
 
-	rows, err := state.Pool.Query(d.Context, "SELECT "+indexPackCols+" FROM packs ORDER BY date DESC")
+	rows, err := state.Pool.Query(d.Context, "SELECT "+indexPackCols+" FROM packs ORDER BY created_at DESC")
 
 	if err != nil {
 		state.Logger.Error(err)
