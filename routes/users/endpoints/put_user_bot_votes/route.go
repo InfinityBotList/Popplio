@@ -29,7 +29,7 @@ func Docs() *docs.Doc {
 		Path:        "/users/{uid}/bots/{bid}/votes",
 		OpId:        "put_user_bot_votes",
 		Summary:     "Create User Bot Vote",
-		Description: "Creates a vote for a bot. **For internal use only**",
+		Description: "Creates a vote for a bot. **For internal use only**. Returns 204 on success",
 		Tags:        []string{api.CurrentTag},
 		Params: []docs.Parameter{
 			{

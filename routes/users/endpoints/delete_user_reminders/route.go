@@ -17,7 +17,7 @@ func Docs() *docs.Doc {
 		Path:        "/users/{id}/reminder",
 		OpId:        "delete_user_reminders",
 		Summary:     "Delete User Reminders",
-		Description: "Deletes a users reminders",
+		Description: "Deletes a users reminders. Returns 204 on success",
 		Params: []docs.Parameter{
 			{
 				Name:        "id",

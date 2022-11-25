@@ -16,7 +16,7 @@ func Docs() *docs.Doc {
 		Path:        "/users/{id}/notification",
 		OpId:        "delete_user_notifications",
 		Summary:     "Delete User Notifications",
-		Description: "Deletes a users notification",
+		Description: "Deletes a users notification. Returns 204 on success",
 		Params: []docs.Parameter{
 			{
 				Name:        "id",

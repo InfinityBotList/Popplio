@@ -92,7 +92,7 @@ func Docs() *docs.Doc {
 		Path:        "/bots",
 		OpId:        "add_bot",
 		Summary:     "Create Bot",
-		Description: "Adds a bot to the database. The main owner will be the user who created the bot.",
+		Description: "Adds a bot to the database. The main owner will be the user who created the bot. Returns 204 on success",
 		Tags:        []string{api.CurrentTag},
 		Req:         CreateBot{},
 		Resp:        types.ApiError{},

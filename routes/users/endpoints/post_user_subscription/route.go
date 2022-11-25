@@ -23,7 +23,7 @@ func Docs() *docs.Doc {
 		Path:        "/users/{id}/sub",
 		OpId:        "post_user_subscription",
 		Summary:     "Create User Subscription",
-		Description: "Creates a user subscription for a push notification",
+		Description: "Creates a user subscription for a push notification. Returns 204 on success",
 		Params: []docs.Parameter{
 			{
 				Name:        "id",

@@ -22,7 +22,7 @@ func Docs() *docs.Doc {
 		Path:        "/users/{uid}/packs/{url}/votes",
 		OpId:        "put_user_pack_votes",
 		Summary:     "Create User Pack Vote",
-		Description: "Vote on a pack. Updates an existing vote or creates a new one. Does NOT error if the same vote is sent twice but will merely have no effect.",
+		Description: "Vote on a pack. Updates an existing vote or creates a new one. Does NOT error if the same vote is sent twice but will merely have no effect. Returns 204 on success",
 		Tags:        []string{api.CurrentTag},
 		Params: []docs.Parameter{
 			{

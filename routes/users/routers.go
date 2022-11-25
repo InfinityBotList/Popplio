@@ -99,13 +99,6 @@ func (b Router) Routes(r *chi.Mux) {
 		}.Route(r)
 
 		api.Route{
-			Pattern: "/{uid}/packs/{url}/votes",
-			Method:  api.GET,
-			Docs:    get_user_pack_votes.Docs,
-			Handler: get_user_pack_votes.Route,
-		}.Route(r)
-
-		api.Route{
 			Pattern: "/{uid}/bots/{bid}/votes",
 			Method:  api.PUT,
 			Docs:    put_user_bot_votes.Docs,
@@ -129,6 +122,13 @@ func (b Router) Routes(r *chi.Mux) {
 					Type:   types.TargetTypeUser,
 				},
 			},
+		}.Route(r)
+
+		api.Route{
+			Pattern: "/{uid}/packs/{url}/votes",
+			Method:  api.GET,
+			Docs:    get_user_pack_votes.Docs,
+			Handler: get_user_pack_votes.Route,
 		}.Route(r)
 
 		api.Route{

@@ -12,8 +12,8 @@ func Docs() *docs.Doc {
 	return docs.Route(&docs.Doc{
 		Method:      "GET",
 		Path:        "/users/notifications/info",
-		OpId:        "get_user_notifications",
-		Summary:     "Get User Notifications",
+		OpId:        "get_notifications",
+		Summary:     "Get Notifications Info",
 		Description: "Gets a users notifications",
 		Resp:        types.NotificationInfo{},
 		Tags:        []string{api.CurrentTag},

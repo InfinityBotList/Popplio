@@ -89,6 +89,7 @@ func corsMiddleware(next http.Handler) http.Handler {
 			return
 		}
 
+		// Needed for docs
 		if r.Header.Get("User-Auth") != "" {
 			if strings.HasPrefix(r.Header.Get("User-Auth"), "User ") {
 				r.Header.Set("Authorization", r.Header.Get("User-Auth"))

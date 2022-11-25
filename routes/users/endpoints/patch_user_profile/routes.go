@@ -21,7 +21,7 @@ func Docs() *docs.Doc {
 		Path:        "/users/{id}",
 		OpId:        "patch_user_profile",
 		Summary:     "Update User Profile",
-		Description: "Updates a users profile",
+		Description: "Updates a users profile. Returns 204 on success",
 		Params: []docs.Parameter{
 			{
 				Name:        "id",
