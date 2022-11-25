@@ -7,6 +7,7 @@ import (
 	"popplio/api"
 	"popplio/docs"
 	"popplio/state"
+	"popplio/types"
 
 	"github.com/go-chi/chi/v5"
 )
@@ -32,7 +33,8 @@ func Docs() *docs.Doc {
 				Schema:      docs.IdSchema,
 			},
 		},
-		Req: CreatePackVote{},
+		Req:  CreatePackVote{},
+		Resp: types.ApiError{},
 	})
 }
 
@@ -102,5 +104,9 @@ func Route(d api.RouteData, r *http.Request) {
 			d.Resp <- api.DefaultResponse(http.StatusInternalServerError)
 			return
 		}
+	}
+
+	d.Resp <- api.HttpResponse{
+		Status: http.StatusNoContent,
 	}
 }
