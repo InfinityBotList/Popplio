@@ -128,7 +128,7 @@ func ResolveIndexBot(ib []types.IndexBot) ([]types.IndexBot, error) {
 }
 
 func ResolvePackVotes(ctx context.Context, url string) ([]types.PackVote, error) {
-	rows, err := state.Pool.Query(ctx, "SELECT user_id, upvote, date FROM pack_votes WHERE url = $1", url)
+	rows, err := state.Pool.Query(ctx, "SELECT user_id, upvote, created_at FROM pack_votes WHERE url = $1", url)
 
 	if err != nil {
 		return []types.PackVote{}, err
@@ -142,18 +142,18 @@ func ResolvePackVotes(ctx context.Context, url string) ([]types.PackVote, error)
 		// Fetch votes for the pack
 		var userId string
 		var upvote bool
-		var date time.Time
+		var createdAt time.Time
 
-		err := rows.Scan(&userId, &upvote, &date)
+		err := rows.Scan(&userId, &upvote, &createdAt)
 
 		if err != nil {
 			return nil, err
 		}
 
 		votes = append(votes, types.PackVote{
-			UserID: userId,
-			Upvote: upvote,
-			Date:   date,
+			UserID:    userId,
+			Upvote:    upvote,
+			CreatedAt: createdAt,
 		})
 	}
 
@@ -459,10 +459,10 @@ func GetVoteData(ctx context.Context, userID, botID string) (*types.UserVote, er
 	var votes []int64
 
 	var voteDates []*struct {
-		Date pgtype.Timestamptz `db:"date"`
+		Date pgtype.Timestamptz `db:"created_at"`
 	}
 
-	rows, err := state.Pool.Query(ctx, "SELECT date FROM votes WHERE user_id = $1 AND bot_id = $2 ORDER BY date DESC", userID, botID)
+	rows, err := state.Pool.Query(ctx, "SELECT created_at FROM votes WHERE user_id = $1 AND bot_id = $2 ORDER BY created_at DESC", userID, botID)
 
 	if err != nil {
 		return nil, err

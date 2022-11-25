@@ -117,9 +117,9 @@ type ResolvedPackBot struct {
 }
 
 type PackVote struct {
-	UserID string    `json:"user_id"`
-	Upvote bool      `json:"upvote"`
-	Date   time.Time `json:"date"`
+	UserID    string    `json:"user_id"`
+	Upvote    bool      `json:"upvote"`
+	CreatedAt time.Time `json:"created_at"`
 }
 
 type BotPack struct {
