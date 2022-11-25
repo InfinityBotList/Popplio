@@ -95,6 +95,10 @@ func (r Route) Route(ro Router) {
 
 	docs := r.Docs()
 
+	if docs.OpId == "" {
+		panic("OpId is empty")
+	}
+
 	// Ensure auth types matches auth types given
 	if len(r.Auth) != len(docs.AuthType) {
 		panic("Auth types does not match docs auth types: " + r.Pattern)

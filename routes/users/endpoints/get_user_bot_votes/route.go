@@ -1,4 +1,4 @@
-package get_user_votes
+package get_user_bot_votes
 
 import (
 	"net/http"
@@ -16,8 +16,8 @@ func Docs() *docs.Doc {
 	return docs.Route(&docs.Doc{
 		Method:      "GET",
 		Path:        "/users/{uid}/bots/{bid}/votes",
-		OpId:        "get_user_votes",
-		Summary:     "Get User Votes",
+		OpId:        "get_user_bot_votes",
+		Summary:     "Get User Bot Votes",
 		Description: "Gets the users votes. **Requires authentication**",
 		Params: []docs.Parameter{
 			{

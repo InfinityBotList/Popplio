@@ -9,10 +9,11 @@ import (
 	"popplio/routes/users/endpoints/get_authorize_info"
 	"popplio/routes/users/endpoints/get_notification_info"
 	"popplio/routes/users/endpoints/get_user"
+	"popplio/routes/users/endpoints/get_user_bot_votes"
 	"popplio/routes/users/endpoints/get_user_notifications"
+	"popplio/routes/users/endpoints/get_user_pack_votes"
 	"popplio/routes/users/endpoints/get_user_reminders"
 	"popplio/routes/users/endpoints/get_user_seo"
-	"popplio/routes/users/endpoints/get_user_votes"
 	"popplio/routes/users/endpoints/patch_user_profile"
 	"popplio/routes/users/endpoints/post_user_subscription"
 	"popplio/routes/users/endpoints/put_user_bot_votes"
@@ -83,8 +84,8 @@ func (b Router) Routes(r *chi.Mux) {
 		api.Route{
 			Pattern: "/{uid}/bots/{bid}/votes",
 			Method:  api.GET,
-			Docs:    get_user_votes.Docs,
-			Handler: get_user_votes.Route,
+			Docs:    get_user_bot_votes.Docs,
+			Handler: get_user_bot_votes.Route,
 			Auth: []api.AuthType{
 				{
 					URLVar: "uid",
@@ -95,6 +96,13 @@ func (b Router) Routes(r *chi.Mux) {
 					Type:   types.TargetTypeBot,
 				},
 			},
+		}.Route(r)
+
+		api.Route{
+			Pattern: "/{uid}/packs/{url}/votes",
+			Method:  api.GET,
+			Docs:    get_user_pack_votes.Docs,
+			Handler: get_user_pack_votes.Route,
 		}.Route(r)
 
 		api.Route{

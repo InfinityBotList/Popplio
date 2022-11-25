@@ -20,21 +20,29 @@ func Docs() *docs.Doc {
 	return docs.Route(&docs.Doc{
 		Method:      "PUT",
 		Path:        "/users/{uid}/packs/{url}/votes",
-		OpId:        "put_pack_vote",
-		Summary:     "Create Pack Vote",
-		Description: "Vote on a pack. You can vote for a pack only once but can change between upvote and downvote or use ``De;ete Pack Vote`` to delete their vote.",
+		OpId:        "put_user_pack_votes",
+		Summary:     "Create User Pack Vote",
+		Description: "Vote on a pack. Updates an existing vote or creates a new one. Does NOT error if the same vote is sent twice but will merely have no effect.",
 		Tags:        []string{api.CurrentTag},
 		Params: []docs.Parameter{
 			{
-				Name:        "id",
-				Description: "The ID of the pack.",
+				Name:        "uid",
+				Description: "The user ID",
+				Required:    true,
+				In:          "path",
+				Schema:      docs.IdSchema,
+			},
+			{
+				Name:        "url",
+				Description: "The pack URL",
 				Required:    true,
 				In:          "path",
 				Schema:      docs.IdSchema,
 			},
 		},
-		Req:  CreatePackVote{},
-		Resp: types.ApiError{},
+		AuthType: []types.TargetType{types.TargetTypeUser},
+		Req:      CreatePackVote{},
+		Resp:     types.ApiError{},
 	})
 }
 
@@ -97,7 +105,7 @@ func Route(d api.RouteData, r *http.Request) {
 		}
 	} else {
 		// Update the vote
-		_, err = state.Pool.Exec(d.Context, "UPDATE pack_votes SET upvote = $1 WHERE user_id = $2 AND url = $3", vote.Upvote, userId, packUrl)
+		_, err = state.Pool.Exec(d.Context, "UPDATE pack_votes SET upvote = $1, created_at = NOW() WHERE user_id = $2 AND url = $3", vote.Upvote, userId, packUrl)
 
 		if err != nil {
 			state.Logger.Error(err)
