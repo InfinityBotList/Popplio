@@ -17,6 +17,24 @@ type Link struct {
 	Value string `json:"value"`
 }
 
+type Interval struct {
+	Hours        float64 `json:"hr"`
+	Minutes      float64 `json:"min"`
+	Seconds      float64 `json:"sec"`
+	Milliseconds int64   `json:"ms"`
+	Microseconds int64   `json:"us"`
+}
+
+func NewInterval(d time.Duration) Interval {
+	return Interval{
+		Hours:        d.Hours(),
+		Minutes:      d.Minutes(),
+		Seconds:      d.Seconds(),
+		Milliseconds: d.Milliseconds(),
+		Microseconds: d.Microseconds(),
+	}
+}
+
 // A bot is a Discord bot that is on the infinitybotlist.
 type Bot struct {
 	ITag                     pgtype.UUID        `db:"itag" json:"itag"`
@@ -54,8 +72,9 @@ type Bot struct {
 	ListSource               pgtype.UUID        `db:"list_source" json:"list_source"`
 	VoteBanned               bool               `db:"vote_banned" json:"vote_banned"`
 	CrossAdd                 bool               `db:"cross_add" json:"cross_add"`
-	StartPeriod              int                `db:"start_premium_period" json:"start_premium_period"`
-	SubPeriod                int                `db:"premium_period_length" json:"premium_period_length"`
+	StartPeriod              pgtype.Timestamptz `db:"start_premium_period" json:"start_premium_period"`
+	SubPeriod                time.Duration      `db:"premium_period_length" json:"-"`
+	SubPeriodParsed          Interval           `db:"-" json:"premium_period_length"` // Must be parsed internally
 	CertReason               pgtype.Text        `db:"cert_reason" json:"cert_reason"`
 	Announce                 bool               `db:"announce" json:"announce"`
 	AnnounceMessage          pgtype.Text        `db:"announce_message" json:"announce_message"`

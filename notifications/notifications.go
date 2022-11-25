@@ -67,7 +67,7 @@ func init() {
 			}
 
 			state.Discord.ChannelMessageSendComplex(os.Getenv("CHANNEL_ID"), &discordgo.MessageSend{
-				Content: botObj.Mention + "(" + botObj.Username + ") by " + userObj.Mention + " has been removed from the premium list as their subscription has expired.",
+				Content: botObj.Mention + "(" + botObj.Username + ") by " + userObj.Mention + " has been removed from the premium list as their subscription has expired [v4].",
 			})
 
 			dmChannel, err := state.Discord.UserChannelCreate(owner.String)
@@ -78,7 +78,7 @@ func init() {
 			}
 
 			state.Discord.ChannelMessageSendComplex(dmChannel.ID, &discordgo.MessageSend{
-				Content: "Your bot " + botObj.Mention + "(" + botObj.Username + ") has been removed from the premium list as their subscription has expired.",
+				Content: "Your bot " + botObj.Mention + "(" + botObj.Username + ") has been removed from the premium list as your subscription has expired [v4].",
 			})
 		}
 	}()
@@ -291,8 +291,8 @@ func init() {
 			for rows.Next() {
 				// Check bot
 				var botId string
-				var startPremiumPeriod int64
-				var premiumPeriodLength int64
+				var startPremiumPeriod time.Time
+				var premiumPeriodLength time.Duration
 				var typeStr string
 
 				err := rows.Scan(&botId, &startPremiumPeriod, &premiumPeriodLength, &typeStr)
@@ -309,8 +309,7 @@ func init() {
 				}
 
 				// Check start and sub period
-				if int64(premiumPeriodLength)-(time.Now().UnixMilli()-int64(startPremiumPeriod)) < 0 {
-					// This bot isnt premium, so we should remove premium
+				if time.Now().After(startPremiumPeriod.Add(premiumPeriodLength)) {
 					state.Logger.Info("Removing premium from bot: ", botId)
 					PremiumChannel <- botId
 				}

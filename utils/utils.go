@@ -56,6 +56,8 @@ func ParseBot(ctx context.Context, pool *pgxpool.Pool, bot *types.Bot, s *discor
 		return err
 	}
 
+	bot.SubPeriodParsed = types.NewInterval(bot.SubPeriod)
+
 	bot.MainOwner = ownerUser
 
 	botUser, err := GetDiscordUser(bot.BotID)
