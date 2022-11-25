@@ -40,9 +40,9 @@ type CreateBot struct {
 	StaffNote        *string      `db:"approval_note" json:"staff_note" validate:"omitempty,max=512" msg:"Staff note must be less than 512 characters if sent"` // impld
 
 	// Internal fields
-	QueueName *string `db:"queue_name" json:"queue_name" validate:"omitempty,notpresent"`
-	Owner     *string `db:"owner" json:"owner" validate:"omitempty,notpresent"`
-	Vanity    *string `db:"vanity" json:"vanity" validate:"omitempty,notpresent"`
+	QueueName *string `db:"queue_name" json:"-" validate:"omitempty,notpresent"`
+	Owner     *string `db:"owner" json:"-" validate:"omitempty,notpresent"`
+	Vanity    *string `db:"vanity" json:"-" validate:"omitempty,notpresent"`
 }
 
 func createBotsArgs(bot CreateBot) []any {
