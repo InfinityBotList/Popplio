@@ -1,4 +1,4 @@
-package put_user_votes
+package put_user_bot_votes
 
 import (
 	"fmt"

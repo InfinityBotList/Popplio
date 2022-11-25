@@ -15,8 +15,9 @@ import (
 	"popplio/routes/users/endpoints/get_user_votes"
 	"popplio/routes/users/endpoints/patch_user_profile"
 	"popplio/routes/users/endpoints/post_user_subscription"
+	"popplio/routes/users/endpoints/put_user_bot_votes"
+	"popplio/routes/users/endpoints/put_user_pack_votes"
 	"popplio/routes/users/endpoints/put_user_reminders"
-	"popplio/routes/users/endpoints/put_user_votes"
 	"popplio/types"
 
 	"github.com/go-chi/chi/v5"
@@ -99,8 +100,21 @@ func (b Router) Routes(r *chi.Mux) {
 		api.Route{
 			Pattern: "/{uid}/bots/{bid}/votes",
 			Method:  api.PUT,
-			Docs:    put_user_votes.Docs,
-			Handler: put_user_votes.Route,
+			Docs:    put_user_bot_votes.Docs,
+			Handler: put_user_bot_votes.Route,
+			Auth: []api.AuthType{
+				{
+					URLVar: "uid",
+					Type:   types.TargetTypeUser,
+				},
+			},
+		}.Route(r)
+
+		api.Route{
+			Pattern: "/{uid}/packs/{url}/votes",
+			Method:  api.PUT,
+			Docs:    put_user_pack_votes.Docs,
+			Handler: put_user_pack_votes.Route,
 			Auth: []api.AuthType{
 				{
 					URLVar: "uid",
