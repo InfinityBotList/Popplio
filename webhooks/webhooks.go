@@ -55,7 +55,7 @@ func Send(webhook types.WebhookPost) error {
 		var apiToken string
 		var hmacAuth bool
 
-		err := state.Pool.QueryRow(state.Context, "SELECT webhook, web_auth, token, hmac FROM bots WHERE bot_id = $1", webhook.BotID).Scan(&webhookURL, &webhookSecret, &apiToken, &hmacAuth)
+		err := state.Pool.QueryRow(state.Context, "SELECT webhook, web_auth, api_token, hmac FROM bots WHERE bot_id = $1", webhook.BotID).Scan(&webhookURL, &webhookSecret, &apiToken, &hmacAuth)
 
 		if err != nil {
 			state.Logger.Error("Failed to fetch webhook: ", err.Error())
