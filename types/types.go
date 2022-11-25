@@ -574,7 +574,6 @@ type ListStatsBot struct {
 	Vanity             string   `json:"vanity"`
 	Short              string   `json:"short"`
 	Type               string   `json:"type"`
-	Claimed            bool     `json:"claimed"`
 	MainOwnerID        string   `json:"main_owner_id"`
 	AdditionalOwnerIDS []string `json:"additional_owners_ids"`
 }
