@@ -1,5 +1,7 @@
 package main
 
+// IN NEED OF A FULL REWRITE
+
 import (
 	"errors"
 	"net/http"

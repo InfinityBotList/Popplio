@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"popplio/api"
+	"popplio/bot"
 	"popplio/constants"
 	"popplio/docs"
 	"popplio/routes/announcements"
@@ -187,6 +188,8 @@ func main() {
 	})
 
 	integrase.Prepare(adp, chiWrap{Router: r})
+
+	bot.LoadBot()
 
 	err = http.ListenAndServe(":8081", r)
 
