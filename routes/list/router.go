@@ -5,6 +5,7 @@ import (
 	"popplio/routes/list/endpoints/get_list_index"
 	"popplio/routes/list/endpoints/get_list_stats"
 	"popplio/routes/list/endpoints/get_vote_info"
+	"popplio/routes/list/endpoints/parse_html"
 	"popplio/routes/list/endpoints/search_list"
 	"popplio/routes/list/endpoints/test_webhook"
 
@@ -54,6 +55,13 @@ func (b Router) Routes(r *chi.Mux) {
 			Method:  api.POST,
 			Docs:    test_webhook.Docs,
 			Handler: test_webhook.Route,
+		}.Route(r)
+
+		api.Route{
+			Pattern: "/parse-html",
+			Method:  api.POST,
+			Docs:    parse_html.Docs,
+			Handler: parse_html.Route,
 		}.Route(r)
 	})
 }

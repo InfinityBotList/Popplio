@@ -14,11 +14,14 @@ require (
 )
 
 require (
+	github.com/aymerick/douceur v0.2.0 // indirect
 	github.com/go-playground/locales v0.14.0 // indirect
 	github.com/go-playground/universal-translator v0.18.0 // indirect
+	github.com/gorilla/css v1.0.0 // indirect
 	github.com/leodido/go-urn v1.2.1 // indirect
 	github.com/modern-go/concurrent v0.0.0-20180228061459-e0a39a4cb421 // indirect
 	github.com/modern-go/reflect2 v1.0.2 // indirect
+	golang.org/x/net v0.0.0-20221002022538-bcab6841153b // indirect
 )
 
 require github.com/valyala/fastjson v1.6.3 // direct
@@ -53,9 +56,12 @@ require (
 	github.com/jackc/pgx/v5 v5.0.1
 	github.com/joho/godotenv v1.4.0 // direct
 	github.com/json-iterator/go v1.1.12
+	github.com/microcosm-cc/bluemonday v1.0.21
 	github.com/tdewolff/minify/v2 v2.12.4
+	github.com/yuin/goldmark v1.5.3
 	go.uber.org/zap v1.23.0
 	golang.org/x/exp v0.0.0-20220921164117-439092de6870
 	golang.org/x/sys v0.0.0-20220919091848-fb04ddd9f9c8 // indirect
 	gopkg.in/natefinch/lumberjack.v2 v2.0.0
+	mvdan.cc/xurls/v2 v2.4.0
 )
