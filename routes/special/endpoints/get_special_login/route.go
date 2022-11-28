@@ -53,8 +53,8 @@ func Route(d api.RouteData, r *http.Request) {
 
 	action.Time = time.Now()
 
-	cliId := os.Getenv("CLIENT_ID")
-	redirectUrl := os.Getenv("REDIRECT_URL")
+	cliId := os.Getenv("KEY_ESCROW_CLIENT_ID")
+	redirectUrl := os.Getenv("KEY_ESCROW_REDIRECT_URL")
 
 	tid := r.URL.Query().Get("tid")
 	if action.TID != "" {

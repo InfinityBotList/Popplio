@@ -70,11 +70,11 @@ func Route(d api.RouteData, r *http.Request) {
 	// Check code with discords api
 	data := url.Values{}
 
-	data.Set("client_id", os.Getenv("CLIENT_ID"))
-	data.Set("client_secret", os.Getenv("CLIENT_SECRET"))
+	data.Set("client_id", os.Getenv("KEY_ESCROW_CLIENT_ID"))
+	data.Set("client_secret", os.Getenv("KEY_ESCROW_CLIENT_SECRET"))
 	data.Set("grant_type", "authorization_code")
 	data.Set("code", r.URL.Query().Get("code"))
-	data.Set("redirect_uri", os.Getenv("REDIRECT_URL"))
+	data.Set("redirect_uri", os.Getenv("KEY_ESCROW_REDIRECT_URL"))
 
 	response, err := http.PostForm("https://discord.com/api/oauth2/token", data)
 
@@ -305,10 +305,24 @@ func Route(d api.RouteData, r *http.Request) {
 			}
 
 			d.Resp <- api.HttpResponse{
-				Status: http.StatusBadRequest,
+				Status: http.StatusOK,
 				Data:   "Successfully unset webhook secret",
 			}
 			return
+		} else {
+			_, err := state.Pool.Exec(d.Context, "UPDATE bots SET webhook_secret = $1 WHERE bot_id = $2", action.Ctx, action.TID)
+
+			if err != nil {
+				d.Resp <- api.HttpResponse{
+					Status: http.StatusInternalServerError,
+					Data:   err.Error(),
+				}
+			}
+
+			d.Resp <- api.HttpResponse{
+				Status: http.StatusOK,
+				Data:   "Successfully set webhook secret",
+			}
 		}
 	default:
 		d.Resp <- api.DefaultResponse(http.StatusNotFound)
