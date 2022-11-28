@@ -12,11 +12,60 @@ import (
 
 	"github.com/georgysavva/scany/v2/pgxscan"
 	"github.com/go-chi/chi/v5"
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
+type User struct {
+	ITag  pgtype.UUID        `db:"itag" json:"itag"`
+	ID    string             `db:"user_id" json:"user_id"`
+	User  *types.DiscordUser `db:"-" json:"user"` // Must be handled internally
+	Staff bool               `db:"staff" json:"staff"`
+	About pgtype.Text        `db:"about" json:"about"`
+
+	VoteBanned                bool               `db:"vote_banned" json:"vote_banned"`
+	Admin                     bool               `db:"admin" json:"admin"`
+	HAdmin                    bool               `db:"hadmin" json:"hadmin"`
+	Dev                       bool               `db:"ibldev" json:"ibldev"`
+	HDev                      bool               `db:"iblhdev" json:"iblhdev"`
+	StaffOnboarded            bool               `db:"staff_onboarded" json:"staff_onboarded"`
+	StaffOnboardState         string             `db:"staff_onboard_state" json:"staff_onboard_state"`
+	StaffOnboardLastStartTime pgtype.Timestamptz `db:"staff_onboard_last_start_time" json:"staff_onboard_last_start_time"`
+	StaffOnboardMacroTime     pgtype.Timestamptz `db:"staff_onboard_macro_time" json:"staff_onboard_macro_time"`
+	StaffOnboardGuild         pgtype.Text        `db:"staff_onboard_guild" json:"staff_onboard_guild"`
+	Certified                 bool               `db:"certified" json:"certified"`
+	Developer                 bool               `db:"developer" json:"developer"`
+	UserBots                  []UserBot          `json:"user_bots"` // Must be handled internally
+
+	ExtraLinks []types.Link `db:"extra_links" json:"extra_links"`
+}
+
+type UserBot struct {
+	BotID              string             `db:"bot_id" json:"bot_id"`
+	User               *types.DiscordUser `db:"-" json:"user"`
+	Short              string             `db:"short" json:"short"`
+	Type               string             `db:"type" json:"type"`
+	Vanity             string             `db:"vanity" json:"vanity"`
+	Votes              int                `db:"votes" json:"votes"`
+	Shards             int                `db:"shards" json:"shards"`
+	Library            string             `db:"library" json:"library"`
+	InviteClick        int                `db:"invite_clicks" json:"invite_clicks"`
+	Views              int                `db:"clicks" json:"clicks"`
+	Servers            int                `db:"servers" json:"servers"`
+	NSFW               bool               `db:"nsfw" json:"nsfw"`
+	Tags               []string           `db:"tags" json:"tags"`
+	OwnerID            string             `db:"owner" json:"owner_id"`
+	Certified          bool               `db:"certified" json:"certified"`
+	Premium            bool               `db:"premium" json:"premium"`
+	AdditionalOwnerIDS []string           `db:"additional_owners" json:"additional_owner_ids"`
+}
+
 var (
-	userColsArr = utils.GetCols(types.User{})
+	userColsArr = utils.GetCols(User{})
 	userCols    = strings.Join(userColsArr, ",")
+
+	userBotColsArr = utils.GetCols(UserBot{})
+	// These are the columns of a userbot object
+	userBotCols = strings.Join(userBotColsArr, ",")
 )
 
 func Docs() *docs.Doc {
@@ -35,7 +84,7 @@ func Docs() *docs.Doc {
 				Schema:      docs.IdSchema,
 			},
 		},
-		Resp: types.User{},
+		Resp: User{},
 		Tags: []string{api.CurrentTag},
 	})
 }
@@ -68,7 +117,7 @@ func Route(d api.RouteData, r *http.Request) {
 		return
 	}
 
-	var user types.User
+	var user User
 
 	var err error
 
@@ -88,7 +137,12 @@ func Route(d api.RouteData, r *http.Request) {
 		return
 	}
 
-	err = utils.ParseUser(d.Context, state.Pool, &user, state.Discord, state.Redis)
+	if utils.IsNone(user.About.String) {
+		user.About.Valid = false
+		user.About.String = ""
+	}
+
+	userObj, err := utils.GetDiscordUser(user.ID)
 
 	if err != nil {
 		state.Logger.Error(err)
@@ -96,11 +150,40 @@ func Route(d api.RouteData, r *http.Request) {
 		return
 	}
 
-	/* Removing or modifying fields directly in API is very dangerous as scrapers will
-	 * just ignore owner checks anyways or cross-reference via another list. Also we
-	 * want to respect the permissions of the owner if they're the one giving permission,
-	 * blocking IPs is a better idea to this
-	 */
+	user.User = userObj
+
+	userBotsRows, err := state.Pool.Query(d.Context, "SELECT "+userBotCols+" FROM bots WHERE owner = $1 OR additional_owners && $2", user.ID, []string{user.ID})
+
+	if err != nil {
+		state.Logger.Error(err)
+		d.Resp <- api.DefaultResponse(http.StatusInternalServerError)
+		return
+	}
+
+	var userBots []UserBot = []UserBot{}
+
+	err = pgxscan.ScanAll(&userBots, userBotsRows)
+
+	if err != nil {
+		state.Logger.Error(err)
+		d.Resp <- api.DefaultResponse(http.StatusInternalServerError)
+		return
+	}
+
+	parsedUserBots := []UserBot{}
+	for _, bot := range userBots {
+		userObj, err := utils.GetDiscordUser(bot.BotID)
+
+		if err != nil {
+			state.Logger.Error(err)
+			continue
+		}
+
+		bot.User = userObj
+		parsedUserBots = append(parsedUserBots, bot)
+	}
+
+	user.UserBots = parsedUserBots
 
 	d.Resp <- api.HttpResponse{
 		Json:      user,

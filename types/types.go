@@ -124,25 +124,6 @@ type ReviewList struct {
 	Reviews []Review `json:"reviews"`
 }
 
-type UserBot struct {
-	BotID              string       `db:"bot_id" json:"bot_id"`
-	User               *DiscordUser `db:"-" json:"user"`
-	Short              string       `db:"short" json:"short"`
-	Type               string       `db:"type" json:"type"`
-	Vanity             string       `db:"vanity" json:"vanity"`
-	Votes              int          `db:"votes" json:"votes"`
-	Shards             int          `db:"shards" json:"shards"`
-	Library            string       `db:"library" json:"library"`
-	InviteClick        int          `db:"invite_clicks" json:"invite_clicks"`
-	Views              int          `db:"clicks" json:"clicks"`
-	Servers            int          `db:"servers" json:"servers"`
-	NSFW               bool         `db:"nsfw" json:"nsfw"`
-	Tags               []string     `db:"tags" json:"tags"`
-	OwnerID            string       `db:"owner" json:"owner_id"`
-	Premium            bool         `db:"premium" json:"premium"`
-	AdditionalOwnerIDS []string     `db:"additional_owners" json:"additional_owner_ids"`
-}
-
 type IndexBot struct {
 	BotID       string       `db:"bot_id" json:"bot_id"`
 	User        *DiscordUser `db:"-" json:"user"`
@@ -167,22 +148,6 @@ type ListIndex struct {
 	Packs         []IndexBotPack `json:"packs"`
 	RecentlyAdded []IndexBot     `json:"recently_added"`
 	TopVoted      []IndexBot     `json:"top_voted"`
-}
-
-type User struct {
-	ITag  pgtype.UUID  `db:"itag" json:"itag"`
-	ID    string       `db:"user_id" json:"user_id"`
-	User  *DiscordUser `db:"-" json:"user"` // Must be handled internally
-	Staff bool         `db:"staff" json:"staff"`
-	About pgtype.Text  `db:"about" json:"about"`
-
-	VoteBanned bool `db:"vote_banned" json:"vote_banned"`
-	Admin      bool `db:"admin" json:"admin"`
-	HAdmin     bool `db:"hadmin" json:"hadmin"`
-
-	UserBots []UserBot `json:"user_bots"` // Must be handled internally
-
-	ExtraLinks []Link `db:"extra_links" json:"extra_links"`
 }
 
 type VoteInfo struct {

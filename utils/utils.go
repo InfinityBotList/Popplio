@@ -16,7 +16,6 @@ import (
 
 	"github.com/bwmarrin/discordgo"
 	"github.com/georgysavva/scany/v2/pgxscan"
-	"github.com/go-redis/redis/v8"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -25,12 +24,6 @@ import (
 )
 
 var json = jsoniter.ConfigCompatibleWithStandardLibrary
-
-var (
-	userBotColsArr = GetCols(types.UserBot{})
-	// These are the columns of a userbot object
-	userBotCols = strings.Join(userBotColsArr, ",")
-)
 
 func IsNone(s string) bool {
 	if s == "None" || s == "none" || s == "" || s == "null" {
@@ -144,52 +137,6 @@ func ResolveBotPack(ctx context.Context, pool *pgxpool.Pool, pack *types.BotPack
 			Tags:         tags,
 		})
 	}
-
-	return nil
-}
-
-func ParseUser(ctx context.Context, pool *pgxpool.Pool, user *types.User, s *discordgo.Session, redisCache *redis.Client) error {
-	if IsNone(user.About.String) {
-		user.About.Valid = false
-		user.About.String = ""
-	}
-
-	userObj, err := GetDiscordUser(user.ID)
-
-	if err != nil {
-		return err
-	}
-
-	user.User = userObj
-
-	userBotsRows, err := pool.Query(ctx, "SELECT "+userBotCols+" FROM bots WHERE owner = $1 OR additional_owners && $2", user.ID, []string{user.ID})
-
-	if err != nil {
-		return err
-	}
-
-	var userBots []types.UserBot = []types.UserBot{}
-
-	err = pgxscan.ScanAll(&userBots, userBotsRows)
-
-	if err != nil {
-		return err
-	}
-
-	parsedUserBots := []types.UserBot{}
-	for _, bot := range userBots {
-		userObj, err := GetDiscordUser(bot.BotID)
-
-		if err != nil {
-			state.Logger.Error(err)
-			continue
-		}
-
-		bot.User = userObj
-		parsedUserBots = append(parsedUserBots, bot)
-	}
-
-	user.UserBots = parsedUserBots
 
 	return nil
 }
@@ -350,7 +297,7 @@ func GetDiscordUser(id string) (*types.DiscordUser, error) {
 		Avatar:        user.AvatarURL(""),
 		Discriminator: user.Discriminator,
 		Bot:           user.Bot,
-		Nickname:      "Member not found",
+		Nickname:      "",
 		Guild:         "",
 		Mention:       user.Mention(),
 		Status:        discordgo.StatusOffline,
