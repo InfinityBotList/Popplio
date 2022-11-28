@@ -3,7 +3,6 @@ package get_special_login_resp
 import (
 	"bytes"
 	"encoding/base64"
-	"encoding/gob"
 	"io"
 	"net/http"
 	"net/url"
@@ -53,7 +52,7 @@ func Route(d api.RouteData, r *http.Request) {
 
 	action := assets.Action{}
 
-	dg := gob.NewDecoder(&b)
+	dg := json.NewDecoder(&b)
 
 	err = dg.Decode(&action)
 

@@ -3,7 +3,6 @@ package get_special_login
 import (
 	"bytes"
 	"encoding/base64"
-	"encoding/gob"
 	"net/http"
 	"os"
 	"popplio/api"
@@ -13,7 +12,10 @@ import (
 	"time"
 
 	"github.com/go-chi/chi/v5"
+	jsoniter "github.com/json-iterator/go"
 )
+
+var json = jsoniter.ConfigCompatibleWithStandardLibrary
 
 func Docs() *docs.Doc {
 	return docs.Route(&docs.Doc{
@@ -55,7 +57,7 @@ func Route(d api.RouteData, r *http.Request) {
 
 	// Encode act using gob
 	var b bytes.Buffer
-	e := gob.NewEncoder(&b)
+	e := json.NewEncoder(&b)
 
 	err = e.Encode(act)
 
