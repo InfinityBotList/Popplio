@@ -394,6 +394,11 @@ func GetCols(s any) []string {
 			continue
 		}
 
+		// Do not allow even accidental fetches of tokens
+		if db == "api_token" || db == "webhook_secret" {
+			continue
+		}
+
 		cols = append(cols, db)
 	}
 
