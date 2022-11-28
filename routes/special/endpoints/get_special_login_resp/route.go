@@ -175,7 +175,7 @@ func Route(d api.RouteData, r *http.Request) {
 	if action.TID != "" {
 		// Validate that they actually own this bot
 		var count int64
-		err := state.Pool.QueryRow(d.Context, "SELECT COUNT(*) FROM bots WHERE owner = $1 OR additional_owners && $2", user.ID, []string{user.ID}).Scan(&count)
+		err := state.Pool.QueryRow(d.Context, "SELECT COUNT(*) FROM bots WHERE owner = $1 OR additional_owners && $2 AND bot_id = $3", user.ID, []string{user.ID}, action.TID).Scan(&count)
 
 		if err != nil {
 			d.Resp <- api.HttpResponse{
