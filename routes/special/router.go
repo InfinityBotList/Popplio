@@ -21,8 +21,8 @@ func (b Router) Tag() (string, string) {
 
 func (b Router) Routes(r *chi.Mux) {
 	api.Route{
-		Pattern: "/login/{act}",
-		Method:  api.GET,
+		Pattern: "/login-cosmog",
+		Method:  api.POST,
 		Docs:    get_special_login.Docs,
 		Handler: get_special_login.Route,
 	}.Route(r)

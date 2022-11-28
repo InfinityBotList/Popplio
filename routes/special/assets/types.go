@@ -10,8 +10,12 @@ type InternalOauthUser struct {
 }
 
 type Action struct {
-	Action string
-	Ctx    string
-	TID    int64 // In the case of gettoken, this is the bot ID to reset the token of
-	Time   time.Time
+	Action string    `json:"action"`
+	Ctx    string    `json:"ctx"` // For extra context
+	TID    string    `json:"tid"` // In the case of rtb/bwebsec, this is the ID to target
+	Time   time.Time `json:"time"`
+}
+
+type Redirect struct {
+	Redirect string `json:"redirect"`
 }

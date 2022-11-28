@@ -1,7 +1,6 @@
 package get_special_login_resp
 
 import (
-	"bytes"
 	"encoding/base64"
 	"io"
 	"net/http"
@@ -35,8 +34,8 @@ func Docs() *docs.Doc {
 func Route(d api.RouteData, r *http.Request) {
 	stateQuery := r.URL.Query().Get("state")
 
-	// Hex decode act
-	hexedAct, err := base64.URLEncoding.DecodeString(stateQuery)
+	// Get act from redis
+	act, err := state.Redis.Get(d.Context, "spec:"+stateQuery).Result()
 
 	if err != nil {
 		d.Resp <- api.HttpResponse{
@@ -46,15 +45,10 @@ func Route(d api.RouteData, r *http.Request) {
 		return
 	}
 
-	// Decode act using gob
-	var b bytes.Buffer
-	b.Write(hexedAct)
+	// Decode act using json
+	var action assets.Action
 
-	action := assets.Action{}
-
-	dg := json.NewDecoder(&b)
-
-	err = dg.Decode(&action)
+	err = json.Unmarshal([]byte(act), &action)
 
 	if err != nil {
 		d.Resp <- api.HttpResponse{
@@ -178,78 +172,146 @@ func Route(d api.RouteData, r *http.Request) {
 		return
 	}
 
-	taskId := utils.RandString(196)
+	if action.TID != "" {
+		// Validate that they actually own this bot
+		var count int64
+		err := state.Pool.QueryRow(d.Context, "SELECT COUNT(*) FROM bots WHERE owner = $1 OR additional_owners && $2", user.ID, []string{user.ID}).Scan(&count)
 
-	err = state.Redis.Set(d.Context, taskId, "WAITING", time.Hour*8).Err()
-
-	if err != nil {
-		d.Resp <- api.HttpResponse{
-			Status: http.StatusInternalServerError,
-			Data:   err.Error(),
+		if err != nil {
+			d.Resp <- api.HttpResponse{
+				Status: http.StatusInternalServerError,
+				Data:   err.Error(),
+			}
+			return
 		}
-		return
-	}
 
-	remoteIp := strings.Split(strings.ReplaceAll(r.Header.Get("X-Forwarded-For"), " ", ""), ",")
-
-	if action.Action == "dr" {
-		go assets.DataTask(taskId, user.ID, remoteIp[0], false)
-	} else if action.Action == "ddr" {
-		go assets.DataTask(taskId, user.ID, remoteIp[0], true)
-	} else if action.Action == "rt" {
-		if action.Ctx == "" {
+		if count == 0 {
 			d.Resp <- api.HttpResponse{
 				Status: http.StatusBadRequest,
-				Data:   "No action context found",
+				Data:   "You do not own the bot you are trying to manage",
+			}
+			return
+		}
+	}
+
+	switch action.Action {
+	// Data request
+	case "dr":
+		taskId := utils.RandString(196)
+
+		err = state.Redis.Set(d.Context, taskId, "WAITING", time.Hour*8).Err()
+
+		if err != nil {
+			d.Resp <- api.HttpResponse{
+				Status: http.StatusInternalServerError,
+				Data:   err.Error(),
 			}
 			return
 		}
 
-		if action.Ctx == "@me" {
-			token := utils.RandString(128)
+		remoteIp := strings.Split(strings.ReplaceAll(r.Header.Get("X-Forwarded-For"), " ", ""), ",")
 
-			_, err := state.Pool.Exec(d.Context, "UPDATE users SET api_token = $1 WHERE user_id = $2", token, user.ID)
+		go assets.DataTask(taskId, user.ID, remoteIp[0], false)
+
+		d.Resp <- api.HttpResponse{
+			Redirect: os.Getenv("BOTLIST_APP") + "/data/confirm?tid=" + taskId + "&user=" + base64.URLEncoding.EncodeToString(body) + "&act=" + action.Action,
+		}
+		return
+	// Data deletion request
+	case "ddr":
+		taskId := utils.RandString(196)
+
+		err = state.Redis.Set(d.Context, taskId, "WAITING", time.Hour*8).Err()
+
+		if err != nil {
+			d.Resp <- api.HttpResponse{
+				Status: http.StatusInternalServerError,
+				Data:   err.Error(),
+			}
+			return
+		}
+
+		remoteIp := strings.Split(strings.ReplaceAll(r.Header.Get("X-Forwarded-For"), " ", ""), ",")
+
+		go assets.DataTask(taskId, user.ID, remoteIp[0], true)
+		d.Resp <- api.HttpResponse{
+			Redirect: os.Getenv("BOTLIST_APP") + "/data/confirm?tid=" + taskId + "&user=" + base64.URLEncoding.EncodeToString(body) + "&act=" + action.Action,
+		}
+		return
+	// Reset token for users
+	case "rtu":
+		var token string
+		token = utils.RandString(128)
+
+		_, err := state.Pool.Exec(d.Context, "UPDATE users SET api_token = $1 WHERE user_id = $2", token, user.ID)
+
+		if err != nil {
+			d.Resp <- api.HttpResponse{
+				Status: http.StatusInternalServerError,
+				Data:   err.Error(),
+			}
+			return
+		}
+
+		d.Resp <- api.HttpResponse{
+			Data: "Your new API token is: " + token + "\n\nThank you and have a nice day ;)",
+		}
+		return
+
+	case "rtb":
+		if action.TID == "" {
+			d.Resp <- api.HttpResponse{
+				Status: http.StatusBadRequest,
+				Data:   "No target id set",
+			}
+			return
+		}
+
+		token := utils.RandString(128)
+
+		_, err := state.Pool.Exec(d.Context, "UPDATE bots SET api_token = $1 WHERE bot_id = $2", token, action.TID)
+
+		if err != nil {
+			d.Resp <- api.HttpResponse{
+				Status: http.StatusInternalServerError,
+				Data:   err.Error(),
+			}
+			return
+		}
+
+		d.Resp <- api.HttpResponse{
+			Data: "Your new API token is: " + token + "\n\nThank you and have a nice day ;)",
+		}
+		return
+	// Bot webhook secret
+	case "bwebsec":
+		if action.TID == "" {
+			d.Resp <- api.HttpResponse{
+				Status: http.StatusBadRequest,
+				Data:   "No target id set",
+			}
+			return
+		}
+
+		if action.Ctx == "" {
+			// We want to unset webhook secret
+			_, err := state.Pool.Exec(d.Context, "UPDATE bots SET webhook_secret = NULL WHERE bot_id = $1", action.TID)
 
 			if err != nil {
 				d.Resp <- api.HttpResponse{
 					Status: http.StatusInternalServerError,
 					Data:   err.Error(),
 				}
-				return
 			}
 
 			d.Resp <- api.HttpResponse{
-				Data: "Your new API token is: " + token + "\n\nThank you and have a nice day ;)",
+				Status: http.StatusBadRequest,
+				Data:   "Successfully unset webhook secret",
 			}
 			return
-		} else {
-			if action.TID == 0 {
-				d.Resp <- api.HttpResponse{
-					Status: http.StatusBadRequest,
-					Data:   "No target id set",
-				}
-				return
-			}
-
-			token := utils.RandString(128)
-
-			_, err := state.Pool.Exec(d.Context, "UPDATE bots SET api_token = $1 WHERE bot_id = $2", token, action.TID)
-
-			if err != nil {
-				d.Resp <- api.HttpResponse{
-					Status: http.StatusInternalServerError,
-					Data:   err.Error(),
-				}
-				return
-			}
 		}
-	} else {
+	default:
 		d.Resp <- api.DefaultResponse(http.StatusNotFound)
 		return
 	}
-
-	d.Resp <- api.HttpResponse{
-		Redirect: os.Getenv("BOTLIST_APP") + "/data/confirm?tid=" + taskId + "&user=" + base64.URLEncoding.EncodeToString(body) + "&act=" + action.Action,
-	}
-
 }
