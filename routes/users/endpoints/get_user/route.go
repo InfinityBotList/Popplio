@@ -54,7 +54,6 @@ type UserBot struct {
 	NSFW               bool               `db:"nsfw" json:"nsfw"`
 	Tags               []string           `db:"tags" json:"tags"`
 	OwnerID            string             `db:"owner" json:"owner_id"`
-	Certified          bool               `db:"certified" json:"certified"`
 	Premium            bool               `db:"premium" json:"premium"`
 	AdditionalOwnerIDS []string           `db:"additional_owners" json:"additional_owner_ids"`
 }
