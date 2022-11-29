@@ -412,6 +412,7 @@ func Route(d api.RouteData, r *http.Request) {
 	// Create initial vanity URL by removing all unicode characters and replacing spaces with dashes
 	vanity := strings.ReplaceAll(strings.ToLower(resp.botName), " ", "-")
 	vanity = regexp.MustCompile("[^a-zA-Z0-9-]").ReplaceAllString(vanity, "")
+	vanity = strings.TrimSuffix(vanity, "-")
 
 	payload.Vanity = &vanity
 
@@ -444,6 +445,7 @@ func Route(d api.RouteData, r *http.Request) {
 			Content: "",
 			Embeds: []*discordgo.MessageEmbed{
 				{
+					URL:   os.Getenv("FRONTEND_URL") + "/bots/" + payload.BotID,
 					Title: "New Bot Added",
 					Fields: []*discordgo.MessageEmbedField{
 						{
