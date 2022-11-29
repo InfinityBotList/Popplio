@@ -92,7 +92,7 @@ func init() {
 
 func Docs() *docs.Doc {
 	return docs.Route(&docs.Doc{
-		Method:      "GET",
+		Method:      "POST",
 		Path:        "/list/parse-html",
 		OpId:        "parse_html",
 		Summary:     "Parse HTML",

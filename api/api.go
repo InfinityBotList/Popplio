@@ -25,7 +25,7 @@ var json = jsoniter.ConfigCompatibleWithStandardLibrary
 // Stores the current tag
 var CurrentTag string
 
-type Method = int
+type Method int
 
 const (
 	GET Method = iota
@@ -35,6 +35,26 @@ const (
 	DELETE
 	HEAD
 )
+
+// Returns the method as a string
+func (m Method) String() string {
+	switch m {
+	case GET:
+		return "GET"
+	case POST:
+		return "POST"
+	case PATCH:
+		return "PATCH"
+	case PUT:
+		return "PUT"
+	case DELETE:
+		return "DELETE"
+	case HEAD:
+		return "HEAD"
+	}
+
+	panic("Invalid method")
+}
 
 type AuthType struct {
 	URLVar string
@@ -47,6 +67,7 @@ type AuthData struct {
 	Authorized bool
 }
 
+// Represents a route on the API
 type Route struct {
 	Method       Method
 	Pattern      string
@@ -106,6 +127,11 @@ func (r Route) Route(ro Router) {
 	// Ensure auth types matches auth types given
 	if len(r.Auth) != len(docs.AuthType) {
 		panic("Auth types does not match docs auth types: " + r.Pattern)
+	}
+
+	// Ensure method matches method given
+	if r.Method.String() != docs.Method {
+		panic("Method does not match docs method: " + r.Pattern)
 	}
 
 	for i, auth := range r.Auth {
