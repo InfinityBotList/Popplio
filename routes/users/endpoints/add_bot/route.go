@@ -45,7 +45,7 @@ type CreateBot struct {
 	QueueName  *string `db:"queue_name" json:"-" validate:"omitempty,notpresent"`
 	Owner      *string `db:"owner" json:"-" validate:"omitempty,notpresent"`
 	Vanity     *string `db:"vanity" json:"-" validate:"omitempty,notpresent"`
-	GuildCount *int    `db:"guild_count" json:"-" validate:"omitempty,notpresent"`
+	GuildCount *int    `db:"servers" json:"-" validate:"omitempty,notpresent"`
 }
 
 func createBotsArgs(bot CreateBot) []any {
