@@ -22,10 +22,9 @@ import (
 	"github.com/go-redis/redis/v8"
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
-	"github.com/jackc/pgx/v4/pgxpool"
+
 	"github.com/joho/godotenv"
 	jsoniter "github.com/json-iterator/go"
-	ua "github.com/mileusna/useragent"
 	log "github.com/sirupsen/logrus"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -40,7 +39,6 @@ const (
 	mainSite   = "https://infinitybotlist.com"
 	statusPage = "https://status.botlist.site"
 	apiBot     = "https://discord.com/api/oauth2/authorize?client_id=818419115068751892&permissions=140898593856&scope=bot%20applications.commands"
-	pgConn     = "postgresql://127.0.0.1:5432/backups?user=root&password=iblpublic"
 
 	notFound         = "{\"message\":\"Slow down, bucko! We couldn't find this resource *anywhere*!\",\"error\":true}"
 	notFoundPage     = "{\"message\":\"Slow down, bucko! You got the path wrong or something but this endpoint doesn't exist!\",\"error\":true}"
@@ -74,9 +72,7 @@ type moderatedBucket struct {
 var (
 	redisCache *redis.Client
 	mongoDb    *mongo.Database
-	pool       *pgxpool.Pool
 	ctx        context.Context
-	pgCtx      context.Context
 	r          *mux.Router
 
 	// This is used when we need to moderate whether or not to ratelimit a request (such as on a combined endpoint like gvotes)
@@ -330,21 +326,13 @@ func main() {
 	r = mux.NewRouter()
 
 	// Init redisCache
-	rOptions, err := redis.ParseURL("redis://localhost:6379")
+	rOptions, err := redis.ParseURL("redis://localhost:6379/1")
 
 	if err != nil {
 		panic(err)
 	}
 
 	redisCache = redis.NewClient(rOptions)
-
-	pgCtx = context.Background()
-
-	pool, err = pgxpool.Connect(pgCtx, pgConn)
-
-	if err != nil {
-		panic(err)
-	}
 
 	// Create base payloads before startup
 	// Index
@@ -537,7 +525,7 @@ func main() {
 	statsFn := func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 
-		if r.Method == "GET" || r.Method == "DELETE" {
+		if r.Method == "DELETE" {
 			w.WriteHeader(http.StatusMethodNotAllowed)
 			w.Write([]byte(methodNotAllowed))
 			return
@@ -1571,9 +1559,9 @@ print(req.json())
 		var errD = types.ApiError{}
 
 		if err1 != nil {
-			log.Error(err)
+			log.Error(err1)
 
-			errD.Message = err.Error()
+			errD.Message = err1.Error()
 			errD.Error = true
 		}
 
@@ -1593,467 +1581,10 @@ print(req.json())
 			return
 		}
 
-		w.WriteHeader(http.StatusBadRequest)
+		if errD.Error {
+			w.WriteHeader(http.StatusBadRequest)
+		}
 		w.Write(bytes)
-	}))
-
-	// Internal APIs
-	r.HandleFunc("/_protozoa/profile/{id}", rateLimitWrap(7, 1*time.Minute, "profile_update", func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != "PATCH" {
-			w.WriteHeader(http.StatusMethodNotAllowed)
-			w.Write([]byte(methodNotAllowed))
-			return
-		}
-
-		id := mux.Vars(r)["id"]
-
-		// Fetch auth from mongodb
-		col := mongoDb.Collection("users")
-
-		if r.Header.Get("Authorization") == "" {
-			w.WriteHeader(http.StatusUnauthorized)
-			w.Write([]byte(unauthorized))
-			return
-		} else {
-			options := options.FindOne().SetProjection(bson.M{"userID": 1})
-
-			err := col.FindOne(ctx, bson.M{"apiToken": strings.Replace(r.Header.Get("Authorization"), "User ", "", 1), "userID": id}, options).Err()
-
-			if err != nil {
-				log.Error(err)
-				w.WriteHeader(http.StatusUnauthorized)
-				w.Write([]byte(unauthorized))
-				return
-			}
-		}
-
-		// Fetch profile update from body
-		var profile types.ProfileUpdate
-
-		bodyBytes, err := io.ReadAll(r.Body)
-
-		if err != nil {
-			log.Error(err)
-			w.WriteHeader(http.StatusInternalServerError)
-			w.Write([]byte(internalError))
-			return
-		}
-
-		err = json.Unmarshal(bodyBytes, &profile)
-
-		if err != nil {
-			log.Error(err)
-			w.WriteHeader(http.StatusInternalServerError)
-			w.Write([]byte(internalError))
-			return
-		}
-
-		if profile.About != "" {
-			// Update about
-			mongoDb.Collection("users").UpdateOne(ctx, bson.M{"userID": id}, bson.M{"$set": bson.M{"about": profile.About}})
-		}
-	}))
-
-	r.HandleFunc("/_protozoa/notifications/info", rateLimitWrap(10, 1*time.Minute, "notif_info", func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-
-		data := map[string]any{
-			"public_key": os.Getenv("VAPID_PUBLIC_KEY"),
-		}
-
-		bytes, err := json.Marshal(data)
-
-		if err != nil {
-			log.Error(err)
-			w.WriteHeader(http.StatusInternalServerError)
-			w.Write([]byte(internalError))
-			return
-		}
-
-		w.Write(bytes)
-	}))
-
-	r.HandleFunc("/_protozoa/notifications/{id}", rateLimitWrap(40, 1*time.Minute, "get_notifs", func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != "GET" && r.Method != "DELETE" {
-			w.WriteHeader(http.StatusMethodNotAllowed)
-			w.Write([]byte(methodNotAllowed))
-			return
-		}
-
-		id := mux.Vars(r)["id"]
-
-		if id == "" {
-			w.WriteHeader(http.StatusBadRequest)
-			w.Write([]byte(badRequest))
-			return
-		}
-
-		// Fetch auth from mongodb
-		col := mongoDb.Collection("users")
-
-		if r.Header.Get("Authorization") == "" {
-			w.WriteHeader(http.StatusUnauthorized)
-			w.Write([]byte(unauthorized))
-			return
-		} else {
-			options := options.FindOne().SetProjection(bson.M{"userID": 1})
-
-			err := col.FindOne(ctx, bson.M{"apiToken": strings.Replace(r.Header.Get("Authorization"), "User ", "", 1), "userID": id}, options).Err()
-
-			if err != nil {
-				log.Error(err)
-				w.WriteHeader(http.StatusUnauthorized)
-				w.Write([]byte(unauthorized))
-				return
-			}
-		}
-
-		if r.Method == "GET" {
-			var subscription []struct {
-				Endpoint    string                 `bson:"endpoint" json:"endpoint"`
-				NotifID     string                 `bson:"notifId" json:"notif_id"`
-				CreatedAt   time.Time              `bson:"createdAt" json:"created_at"`
-				UA          string                 `bson:"ua" json:"-"`
-				BrowserInfo types.NotifBrowserInfo `bson:"-" json:"browser_info"`
-			}
-
-			cur, err := mongoDb.Collection("poppypaw").Find(ctx, bson.M{"id": id})
-
-			if err != nil {
-				log.Error(err)
-				w.WriteHeader(http.StatusInternalServerError)
-				w.Write([]byte(internalError))
-				return
-			}
-
-			err = cur.All(ctx, &subscription)
-
-			if err != nil {
-				log.Error(err)
-				w.WriteHeader(http.StatusInternalServerError)
-				w.Write([]byte(internalError))
-				return
-			}
-
-			if len(subscription) == 0 {
-				w.WriteHeader(http.StatusNotFound)
-				w.Write([]byte(notFound))
-				return
-			}
-
-			for i, val := range subscription {
-				// Parse UA
-				uaD := ua.Parse(val.UA)
-				fmt.Println("Parsing UA:", val.UA, uaD)
-
-				subscription[i].BrowserInfo = types.NotifBrowserInfo{
-					OS:         uaD.OS,
-					Browser:    uaD.Name,
-					BrowserVer: uaD.Version,
-					Mobile:     uaD.Mobile,
-				}
-			}
-
-			bytes, err := json.Marshal(subscription)
-
-			if err != nil {
-				log.Error(err)
-				w.WriteHeader(http.StatusInternalServerError)
-				w.Write([]byte(internalError))
-				return
-			}
-
-			w.Write(bytes)
-		} else {
-			// Delete the notif
-			if r.URL.Query().Get("notif_id") == "" {
-				w.WriteHeader(http.StatusBadRequest)
-				w.Write([]byte(badRequest))
-				return
-			}
-			_, err := mongoDb.Collection("poppypaw").DeleteOne(ctx, bson.M{"notifId": r.URL.Query().Get("notif_id")})
-
-			if err != nil {
-				log.Error(err)
-				w.WriteHeader(http.StatusInternalServerError)
-				w.Write([]byte(internalError))
-				return
-			}
-
-			w.WriteHeader(http.StatusOK)
-		}
-	}))
-
-	r.HandleFunc("/_protozoa/notifications/{id}/sub", rateLimitWrap(10, 1*time.Minute, "notif_info", func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != "POST" {
-			w.WriteHeader(http.StatusMethodNotAllowed)
-			w.Write([]byte(methodNotAllowed))
-			return
-		}
-
-		var subscription struct {
-			Auth     string `json:"auth"`
-			P256dh   string `json:"p256dh"`
-			Endpoint string `json:"endpoint"`
-		}
-
-		vars := mux.Vars(r)
-
-		id := vars["id"]
-
-		if id == "" {
-			w.WriteHeader(http.StatusBadRequest)
-			w.Write([]byte(badRequest))
-			return
-		}
-
-		defer r.Body.Close()
-
-		bodyBytes, err := io.ReadAll(r.Body)
-
-		if err != nil {
-			log.Error(err)
-			w.WriteHeader(http.StatusInternalServerError)
-			w.Write([]byte(internalError))
-			return
-		}
-
-		err = json.Unmarshal(bodyBytes, &subscription)
-
-		if err != nil {
-			log.Error(err)
-			w.WriteHeader(http.StatusInternalServerError)
-			w.Write([]byte(internalError))
-			return
-		}
-
-		if subscription.Auth == "" || subscription.P256dh == "" {
-			w.WriteHeader(http.StatusBadRequest)
-			w.Write([]byte(badRequest))
-			return
-		}
-
-		// Fetch auth from mongodb
-		col := mongoDb.Collection("users")
-
-		if r.Header.Get("Authorization") == "" {
-			w.WriteHeader(http.StatusUnauthorized)
-			w.Write([]byte(unauthorized))
-			return
-		} else {
-			options := options.FindOne().SetProjection(bson.M{"userID": 1})
-
-			err := col.FindOne(ctx, bson.M{"apiToken": strings.Replace(r.Header.Get("Authorization"), "User ", "", 1), "userID": id}, options).Err()
-
-			if err != nil {
-				log.Error(err)
-				w.WriteHeader(http.StatusUnauthorized)
-				w.Write([]byte(unauthorized))
-				return
-			}
-		}
-
-		// Store new subscription
-
-		notifId := utils.RandString(512)
-
-		col = mongoDb.Collection("poppypaw")
-
-		ua := r.UserAgent()
-
-		if ua == "" {
-			ua = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/80.0.3987.149 Safari/537.36"
-		}
-
-		col.DeleteMany(ctx, bson.M{"id": id, "endpoint": subscription.Endpoint})
-
-		col.InsertOne(ctx, bson.M{
-			"id":        id,
-			"notifId":   notifId,
-			"auth":      subscription.Auth,
-			"p256dh":    subscription.P256dh,
-			"endpoint":  subscription.Endpoint,
-			"createdAt": time.Now(),
-			"ua":        r.UserAgent(),
-		})
-
-		// Fan out test notification
-		notifChannel <- types.Notification{
-			NotifID: notifId,
-			Message: []byte(testNotif),
-		}
-
-		w.Write([]byte(success))
-	}))
-
-	r.HandleFunc("/_protozoa/reminders/{id}", rateLimitWrap(40, 1*time.Minute, "greminder", func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != "PUT" && r.Method != "GET" && r.Method != "DELETE" {
-			w.WriteHeader(http.StatusMethodNotAllowed)
-			w.Write([]byte(methodNotAllowed))
-			return
-		}
-
-		vars := mux.Vars(r)
-
-		id := vars["id"]
-
-		if id == "" {
-			w.WriteHeader(http.StatusBadRequest)
-			w.Write([]byte(badRequest))
-			return
-		}
-
-		// Fetch auth from mongodb
-		col := mongoDb.Collection("users")
-
-		if r.Header.Get("Authorization") == "" {
-			w.WriteHeader(http.StatusUnauthorized)
-			w.Write([]byte(unauthorized))
-			return
-		} else {
-			options := options.FindOne().SetProjection(bson.M{"userID": 1})
-
-			err := col.FindOne(ctx, bson.M{"apiToken": strings.Replace(r.Header.Get("Authorization"), "User ", "", 1), "userID": id}, options).Err()
-
-			if err != nil {
-				log.Error(err)
-				w.WriteHeader(http.StatusUnauthorized)
-				w.Write([]byte(unauthorized))
-				return
-			}
-		}
-
-		if r.Method == "GET" {
-			// Fetch reminder from mongodb
-			col = mongoDb.Collection("silverpelt")
-
-			var reminder []types.Reminder
-
-			cur, err := col.Find(ctx, bson.M{"userID": id})
-
-			if err != nil {
-				log.Error(err)
-				w.WriteHeader(http.StatusInternalServerError)
-				w.Write([]byte(internalError))
-				return
-			}
-
-			defer cur.Close(ctx)
-
-			for cur.Next(ctx) {
-				var r types.Reminder
-
-				err := cur.Decode(&r)
-
-				if err != nil {
-					log.Error(err)
-					w.WriteHeader(http.StatusInternalServerError)
-					w.Write([]byte(internalError))
-					return
-				}
-
-				// Try resolving the bot from discord API
-				var resolvedBot types.ResolvedReminderBot
-				bot, err := utils.GetDiscordUser(metro, redisCache, ctx, r.BotID)
-
-				if err != nil {
-					resolvedBot = types.ResolvedReminderBot{
-						Name:   "Unknown",
-						Avatar: "https://cdn.discordapp.com/embed/avatars/0.png",
-					}
-				} else {
-					resolvedBot = types.ResolvedReminderBot{
-						Name:   bot.Username,
-						Avatar: bot.Avatar,
-					}
-				}
-
-				r.ResolvedBot = resolvedBot
-
-				reminder = append(reminder, r)
-			}
-
-			bytes, err := json.Marshal(reminder)
-
-			if err != nil {
-				log.Error(err)
-				w.WriteHeader(http.StatusInternalServerError)
-				w.Write([]byte(internalError))
-				return
-			}
-
-			w.Write(bytes)
-		} else if r.Method == "PUT" {
-			// Add subscription to collection
-			bid := r.URL.Query().Get("bot_id")
-
-			var bot struct {
-				ID string `bson:"botID"`
-			}
-
-			options := options.FindOne().SetProjection(bson.M{"botID": 1})
-
-			err = mongoDb.Collection("bots").FindOne(
-				ctx,
-				bson.M{
-					"$or": []bson.M{
-						{
-							"botName": bid,
-						},
-						{
-							"vanity": bid,
-						},
-						{
-							"botID": bid,
-						},
-					},
-				},
-				options,
-			).Decode(&bot)
-
-			if err != nil {
-				log.Error("Error adding reminder: ", err)
-				w.WriteHeader(http.StatusNotFound)
-				w.Write([]byte(notFound))
-				return
-			}
-
-			if bot.ID == "" {
-				log.Error("No bot id found?")
-				w.WriteHeader(http.StatusBadRequest)
-				w.Write([]byte(badRequest))
-				return
-			}
-
-			err := mongoDb.Collection("silverpelt").FindOne(ctx, bson.M{"userID": id, "botID": bot.ID}).Err()
-
-			// If reminder already exists, delete them all first to protect against db spam
-			if err == nil {
-				mongoDb.Collection("silverpelt").DeleteMany(ctx, bson.M{"userID": id, "botID": bot.ID})
-			}
-
-			mongoDb.Collection("silverpelt").InsertOne(ctx, bson.M{
-				"userID":    id,
-				"botID":     bot.ID,
-				"createdAt": time.Now().Unix(),
-				"lastAcked": 0,
-			})
-
-			w.Write([]byte(success))
-		} else {
-			botId := r.URL.Query().Get("bot_id")
-
-			if botId == "" {
-				w.WriteHeader(http.StatusBadRequest)
-				w.Write([]byte(badRequest))
-				return
-			}
-
-			// Delete reminder from mongodb
-			mongoDb.Collection("silverpelt").DeleteMany(ctx, bson.M{"userID": id, "botID": botId})
-
-			w.WriteHeader(http.StatusOK)
-		}
 	}))
 
 	adp := DummyAdapter{}

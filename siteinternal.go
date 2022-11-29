@@ -20,7 +20,6 @@ import (
 	b64 "encoding/base64"
 	"encoding/hex"
 
-	"github.com/bwmarrin/discordgo"
 	"github.com/go-redis/redis/v8"
 	"github.com/gorilla/mux"
 	"github.com/jackc/pgtype"
@@ -646,90 +645,6 @@ func dataRequestTask(taskId string, id string, ip string, del bool) {
 		KeepTTL: true,
 	}).Err()
 
-	rows, err := pool.Query(pgCtx, "SELECT col, data, ts, id FROM backups")
-
-	if err != nil {
-		log.Error("Failed to get backups")
-		redisCache.SetArgs(ctx, taskId, "Failed to fetch backup data: "+err.Error(), redis.SetArgs{
-			KeepTTL: true,
-		})
-		return
-	}
-
-	defer rows.Close()
-
-	var backups []any
-
-	var foundBackup bool
-
-	for rows.Next() {
-		var col pgtype.Text
-		var data pgtype.JSONB
-		var ts pgtype.Timestamptz
-		var uid pgtype.UUID
-
-		err = rows.Scan(&col, &data, &ts, &uid)
-
-		if err != nil {
-			log.Error("Failed to scan backup")
-			redisCache.SetArgs(ctx, taskId, "Failed to fetch backup data: "+err.Error()+". Ignoring", redis.SetArgs{
-				KeepTTL: true,
-			})
-			continue
-		}
-
-		var dataPacket []KVPair
-
-		err = json.Unmarshal([]byte(data.Bytes), &dataPacket)
-
-		if err != nil {
-			log.Error("Failed to decode backup")
-			redisCache.SetArgs(ctx, taskId, "Failed to fetch backup data: "+err.Error()+". Ignoring", redis.SetArgs{
-				KeepTTL: true,
-			})
-			continue
-		}
-
-		var backupDat = make(map[string]any)
-
-		for _, kvpair := range dataPacket {
-			if kvpair.Key == "userID" || kvpair.Key == "author" || kvpair.Key == "main_owner" {
-				val, ok := kvpair.Value.(string)
-				if !ok {
-					continue
-				}
-
-				if val == id {
-					foundBackup = true
-					break
-				}
-			}
-		}
-
-		if foundBackup {
-			backupDat["col"] = col.String
-			backupDat["data"] = dataPacket
-			backupDat["ts"] = ts.Time
-			backupDat["id"] = toString(uid)
-			backups = append(backups, backupDat)
-
-			if del {
-				_, err := pool.Exec(pgCtx, "DELETE FROM backups WHERE id=$1", toString(uid))
-				if err != nil {
-					log.Error("Failed to delete backup")
-					redisCache.SetArgs(ctx, taskId, "Failed to delete backup: "+err.Error(), redis.SetArgs{
-						KeepTTL: true,
-					})
-					return
-				}
-			}
-		}
-
-		foundBackup = false
-	}
-
-	finalDump.Backups = backups
-
 	// Handle sessions
 	redisCache.SetArgs(ctx, taskId, "Fetching sessions of this user", redis.SetArgs{
 		KeepTTL: true,
@@ -917,75 +832,76 @@ func sendWebhook(webhook types.WebhookPost) error {
 	}
 
 	if isDiscordIntegration {
-		parts := strings.Split(url, "/")
-		if len(parts) < 7 {
-			log.WithFields(log.Fields{
-				"url": url,
-			}).Warning("Invalid webhook URL")
-			return errors.New("invalid discord webhook URL. Could not parse")
-		}
-
-		webhookId := parts[5]
-		webhookToken := parts[6]
-		userObj, err := utils.GetDiscordUser(metro, redisCache, ctx, webhook.UserID)
-
-		if err != nil {
-			userObj = &types.DiscordUser{
-				ID:            "510065483693817867",
-				Username:      "Toxic Dev (test webhook)",
-				Avatar:        "https://cdn.discordapp.com/avatars/510065483693817867/a_96c9cea3c656deac48f1d8fdfdae5007.gif?size=1024",
-				Discriminator: "0000",
-			}
-		}
-
-		log.WithFields(log.Fields{
-			"user":      webhook.UserID,
-			"webhookId": webhookId,
-			"token":     webhookToken,
-		}).Warning("Got here in parsing webhook for discord")
-
-		botObj, err := utils.GetDiscordUser(metro, redisCache, ctx, webhook.BotID)
-		if err != nil {
-			log.WithFields(log.Fields{
-				"user": webhook.BotID,
-			}).Warning(err)
-			return err
-		}
-		userWithDisc := userObj.Username + "#" + userObj.Discriminator // Create the user object
-
-		var embeds []*discordgo.MessageEmbed = []*discordgo.MessageEmbed{
-			{
-				Title: "Congrats! " + botObj.Username + " got a new vote!!!",
-				Description: "**" + userWithDisc + "** just voted for **" + botObj.Username + "**!\n\n" +
-					"**" + botObj.Username + "** now has **" + strconv.Itoa(webhook.Votes) + "** votes!",
-				Color: 0x00ff00,
-				URL:   "https://botlist.site/bots/" + webhook.BotID,
-			},
-		}
-
-		_, err = metro.WebhookExecute(webhookId, webhookToken, true, &discordgo.WebhookParams{
-			Embeds:    embeds,
-			Username:  userObj.Username,
-			AvatarURL: userObj.Avatar,
-		})
-
-		if err != nil {
-			log.WithFields(log.Fields{
-				"webhook": webhookId,
-			}).Warning("Failed to execute webhook", err)
-
-			// Remove webhook from db as the webhook is invalid
-			col := mongoDb.Collection("bots")
-			_, err2 := col.UpdateOne(ctx, bson.M{"botID": webhook.BotID}, bson.M{"$set": bson.M{"webhook": "", "webURL": ""}})
-
-			if err2 != nil {
+		return errors.New("discord webhooks are not supported at this time")
+		/*	parts := strings.Split(url, "/")
+			if len(parts) < 7 {
 				log.WithFields(log.Fields{
-					"webhook": webhookId,
-				}).Warning("Failed to remove dead webhook(s)", err2)
+					"url": url,
+				}).Warning("Invalid webhook URL")
+				return errors.New("invalid discord webhook URL. Could not parse")
 			}
 
-			return err
-		}
+			webhookId := parts[5]
+			webhookToken := parts[6]
+			userObj, err := utils.GetDiscordUser(metro, redisCache, ctx, webhook.UserID)
+
+			if err != nil {
+				userObj = &types.DiscordUser{
+					ID:            "510065483693817867",
+					Username:      "Toxic Dev (test webhook)",
+					Avatar:        "https://cdn.discordapp.com/avatars/510065483693817867/a_96c9cea3c656deac48f1d8fdfdae5007.gif?size=1024",
+					Discriminator: "0000",
+				}
+			}
+
+			log.WithFields(log.Fields{
+				"user":      webhook.UserID,
+				"webhookId": webhookId,
+				"token":     webhookToken,
+			}).Warning("Got here in parsing webhook for discord")
+
+			botObj, err := utils.GetDiscordUser(metro, redisCache, ctx, webhook.BotID)
+			if err != nil {
+				log.WithFields(log.Fields{
+					"user": webhook.BotID,
+				}).Warning(err)
+				return err
+			}
+			userWithDisc := userObj.Username + "#" + userObj.Discriminator // Create the user object
+
+			var embeds []*discordgo.MessageEmbed = []*discordgo.MessageEmbed{
+				{
+					Title: "Congrats! " + botObj.Username + " got a new vote!!!",
+					Description: "**" + userWithDisc + "** just voted for **" + botObj.Username + "**!\n\n" +
+						"**" + botObj.Username + "** now has **" + strconv.Itoa(webhook.Votes) + "** votes!",
+					Color: 0x00ff00,
+					URL:   "https://botlist.site/bots/" + webhook.BotID,
+				},
+			}
+
+				_, err = metro.WebhookExecute(webhookId, webhookToken, true, &discordgo.WebhookParams{
+					Embeds:    embeds,
+					Username:  userObj.Username,
+					AvatarURL: userObj.Avatar,
+				})
+
+				if err != nil {
+					log.WithFields(log.Fields{
+						"webhook": webhookId,
+					}).Warning("Failed to execute webhook", err)
+
+					// Remove webhook from db as the webhook is invalid
+					col := mongoDb.Collection("bots")
+					_, err2 := col.UpdateOne(ctx, bson.M{"botID": webhook.BotID}, bson.M{"$set": bson.M{"webhook": "", "webURL": ""}})
+
+					if err2 != nil {
+						log.WithFields(log.Fields{
+							"webhook": webhookId,
+						}).Warning("Failed to remove dead webhook(s)", err2)
+					}
+
+					return err
+				}*/
 	} else {
 		tries := 0
 
@@ -1040,7 +956,7 @@ func sendWebhook(webhook types.WebhookPost) error {
 			req.Header.Set("Authorization", token)
 
 			// Send request
-			client := &http.Client{Timeout: time.Second * 5}
+			client := &http.Client{Timeout: time.Second * 10}
 			resp, err := client.Do(req)
 
 			if err != nil {
