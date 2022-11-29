@@ -66,7 +66,7 @@ func init() {
 				continue
 			}
 
-			state.Discord.ChannelMessageSendComplex(os.Getenv("CHANNEL_ID"), &discordgo.MessageSend{
+			state.Discord.ChannelMessageSendComplex(os.Getenv("BOT_LOGS_CHANNEL"), &discordgo.MessageSend{
 				Content: botObj.Mention + "(" + botObj.Username + ") by " + userObj.Mention + " has been removed from the premium list as their subscription has expired [v4].",
 			})
 

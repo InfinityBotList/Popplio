@@ -8,6 +8,7 @@ import (
 	"os"
 	"popplio/api"
 	"popplio/docs"
+	"popplio/notifications"
 	"popplio/state"
 	"popplio/types"
 	"popplio/utils"
@@ -15,6 +16,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/bwmarrin/discordgo"
 	"github.com/go-playground/validator/v10"
 	jsoniter "github.com/json-iterator/go"
 	"go.uber.org/zap"
@@ -40,9 +42,10 @@ type CreateBot struct {
 	StaffNote        *string      `db:"approval_note" json:"staff_note" validate:"omitempty,max=512" msg:"Staff note must be less than 512 characters if sent"` // impld
 
 	// Internal fields
-	QueueName *string `db:"queue_name" json:"-" validate:"omitempty,notpresent"`
-	Owner     *string `db:"owner" json:"-" validate:"omitempty,notpresent"`
-	Vanity    *string `db:"vanity" json:"-" validate:"omitempty,notpresent"`
+	QueueName  *string `db:"queue_name" json:"-" validate:"omitempty,notpresent"`
+	Owner      *string `db:"owner" json:"-" validate:"omitempty,notpresent"`
+	Vanity     *string `db:"vanity" json:"-" validate:"omitempty,notpresent"`
+	GuildCount *int    `db:"guild_count" json:"-" validate:"omitempty,notpresent"`
 }
 
 func createBotsArgs(bot CreateBot) []any {
@@ -64,6 +67,7 @@ func createBotsArgs(bot CreateBot) []any {
 		bot.QueueName,
 		bot.Owner,
 		bot.Vanity,
+		bot.GuildCount,
 	}
 }
 
@@ -398,6 +402,7 @@ func Route(d api.RouteData, r *http.Request) {
 
 	payload.QueueName = &resp.botName
 	payload.Owner = &d.Auth.ID
+	payload.GuildCount = &resp.guildCount
 
 	if payload.StaffNote == nil {
 		defNote := "No note!"
@@ -433,7 +438,43 @@ func Route(d api.RouteData, r *http.Request) {
 		return
 	}
 
-	state.Pool.Exec(d.Context, "UPDATE bots SET servers = $1 WHERE bot_id = $2", resp.guildCount, payload.BotID)
+	notifications.MessageNotifyChannel <- types.DiscordLog{
+		ChannelID: os.Getenv("BOT_LOGS_CHANNEL"),
+		Message: &discordgo.MessageSend{
+			Content: "",
+			Embeds: []*discordgo.MessageEmbed{
+				{
+					Title: "New Bot Added",
+					Fields: []*discordgo.MessageEmbedField{
+						{
+							Name:   "Name",
+							Value:  resp.botName,
+							Inline: true,
+						},
+						{
+							Name:   "Bot ID",
+							Value:  payload.BotID,
+							Inline: true,
+						},
+						{
+							Name:  "Main Owner",
+							Value: fmt.Sprintf("<@%s>", d.Auth.ID),
+						},
+						{
+							Name: "Additional Owners",
+							Value: func() string {
+								var owners []string
+								for _, owner := range payload.AdditionalOwners {
+									owners = append(owners, fmt.Sprintf("<@%s>", owner))
+								}
+								return strings.Join(owners, ", ")
+							}(),
+						},
+					},
+				},
+			},
+		},
+	}
 
 	d.Resp <- api.HttpResponse{
 		Status: http.StatusNoContent,

@@ -490,11 +490,6 @@ type DiscordLog struct {
 	ChannelID string
 }
 
-type ProfileUpdate struct {
-	About      string `json:"bio"`
-	ExtraLinks []Link `json:"extra_links"`
-}
-
 type ListStatsBot struct {
 	BotID              string   `json:"bot_id"`
 	Vanity             string   `json:"vanity"`

@@ -203,7 +203,7 @@ func (adp DummyAdapter) ApproveBot(bot *types.Bot) error {
 	state.Logger.Info("Updated ", res.RowsAffected(), " bots")
 
 	notifications.MessageNotifyChannel <- popltypes.DiscordLog{
-		ChannelID: os.Getenv("CHANNEL_ID"),
+		ChannelID: os.Getenv("BOT_LOGS_CHANNEL"),
 		Message: &discordgo.MessageSend{
 			Embeds: []*discordgo.MessageEmbed{
 				{
@@ -282,7 +282,7 @@ func (adp DummyAdapter) DenyBot(bot *types.Bot) error {
 	state.Logger.Info("Updated ", res.RowsAffected(), " bots")
 
 	notifications.MessageNotifyChannel <- popltypes.DiscordLog{
-		ChannelID: os.Getenv("CHANNEL_ID"),
+		ChannelID: os.Getenv("BOT_LOGS_CHANNEL"),
 		Message: &discordgo.MessageSend{
 			Embeds: []*discordgo.MessageEmbed{
 				{

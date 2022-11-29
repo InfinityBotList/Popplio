@@ -1,4 +1,4 @@
-package patch_user_profile
+package patch_bot_vanity
 
 import (
 	"io"
@@ -7,7 +7,8 @@ import (
 	"popplio/docs"
 	"popplio/state"
 	"popplio/types"
-	"popplio/utils"
+	"strings"
+	"unicode"
 
 	"github.com/go-chi/chi/v5"
 	jsoniter "github.com/json-iterator/go"
@@ -15,15 +16,14 @@ import (
 
 var json = jsoniter.ConfigCompatibleWithStandardLibrary
 
-type ProfileUpdate struct {
-	About      string       `json:"bio"`
-	ExtraLinks []types.Link `json:"extra_links"`
+type VanityUpdate struct {
+	Vanity string `json:"vanity"`
 }
 
 func Docs() *docs.Doc {
 	return docs.Route(&docs.Doc{
 		Method:      "PATCH",
-		Path:        "/users/{id}",
+		Path:        "/users/{uid}/bots/{bid}/vanity",
 		OpId:        "patch_user_profile",
 		Summary:     "Update User Profile",
 		Description: "Updates a users profile. Returns 204 on success",
@@ -36,7 +36,7 @@ func Docs() *docs.Doc {
 				Schema:      docs.IdSchema,
 			},
 		},
-		Req:      ProfileUpdate{},
+		Req:      VanityUpdate{},
 		Resp:     types.ApiError{},
 		Tags:     []string{api.CurrentTag},
 		AuthType: []types.TargetType{types.TargetTypeUser},
@@ -44,10 +44,9 @@ func Docs() *docs.Doc {
 }
 
 func Route(d api.RouteData, r *http.Request) {
-	id := chi.URLParam(r, "id")
-
-	// Fetch profile update from body
-	var profile ProfileUpdate
+	botId := chi.URLParam(r, "bid")
+	// Read vanity from body
+	var vanity VanityUpdate
 
 	bodyBytes, err := io.ReadAll(r.Body)
 
@@ -57,7 +56,7 @@ func Route(d api.RouteData, r *http.Request) {
 		return
 	}
 
-	err = json.Unmarshal(bodyBytes, &profile)
+	err = json.Unmarshal(bodyBytes, &vanity)
 
 	if err != nil {
 		state.Logger.Error(err)
@@ -65,21 +64,30 @@ func Route(d api.RouteData, r *http.Request) {
 		return
 	}
 
-	err = utils.ValidateExtraLinks(profile.ExtraLinks)
+	// Strip out unicode characters
+	vanity.Vanity = strings.Map(func(r rune) rune {
+		if r > unicode.MaxASCII {
+			return -1
+		}
+		return r
+	}, vanity.Vanity)
 
-	if err != nil {
+	if vanity.Vanity == "" {
 		d.Resp <- api.HttpResponse{
 			Status: http.StatusBadRequest,
-			Json: types.ApiError{
-				Error:   true,
-				Message: "Hmmm... " + err.Error(),
-			},
+			Json:   types.ApiError{Message: "Vanity cannot be empty"},
 		}
 		return
 	}
 
-	// Update extra links
-	_, err = state.Pool.Exec(d.Context, "UPDATE users SET extra_links = $1 WHERE user_id = $2", profile.ExtraLinks, id)
+	vanity.Vanity = strings.TrimSuffix(vanity.Vanity, "-")
+
+	vanity.Vanity = strings.ToLower(vanity.Vanity)
+
+	// Ensure vanity doesn't already exist
+	var count int64
+
+	err = state.Pool.QueryRow(d.Context, "SELECT COUNT(*) FROM bots WHERE lower(vanity) = $1", vanity.Vanity).Scan(&count)
 
 	if err != nil {
 		state.Logger.Error(err)
@@ -87,28 +95,22 @@ func Route(d api.RouteData, r *http.Request) {
 		return
 	}
 
-	if profile.About != "" {
-		if len(profile.About) > 1000 {
-			d.Resp <- api.HttpResponse{
-				Status: http.StatusBadRequest,
-				Data:   `{"error":true,"message":"About me is over 1000 characters!"}`,
-			}
-			return
+	if count > 0 {
+		d.Resp <- api.HttpResponse{
+			Status: http.StatusBadRequest,
+			Json:   types.ApiError{Message: "Vanity is already taken"},
 		}
-
-		// Update about
-		_, err = state.Pool.Exec(d.Context, "UPDATE users SET about = $1 WHERE user_id = $2", profile.About, id)
-
-		if err != nil {
-			state.Logger.Error(err)
-			d.Resp <- api.DefaultResponse(http.StatusInternalServerError)
-			return
-		}
+		return
 	}
 
-	state.Redis.Del(d.Context, "uc-"+id)
+	// Update vanity
+	_, err = state.Pool.Exec(d.Context, "UPDATE bots SET vanity = $1 WHERE bot_id = $2", vanity.Vanity, botId)
 
-	d.Resp <- api.HttpResponse{
-		Status: http.StatusNoContent,
+	if err != nil {
+		state.Logger.Error(err)
+		d.Resp <- api.DefaultResponse(http.StatusInternalServerError)
+		return
 	}
+
+	d.Resp <- api.DefaultResponse(http.StatusNoContent)
 }
