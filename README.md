@@ -10,4 +10,4 @@ https://spider.infinitybots.gg/docs
 
 ## Developer Docs
 
-Coming soon
+There is a tool coming soon (``ibl newroute``) to assist in creating new endpoints on Popplio
