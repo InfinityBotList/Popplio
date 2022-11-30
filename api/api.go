@@ -116,6 +116,10 @@ func (r Route) Route(ro Router) {
 
 	docs := r.Docs()
 
+	if !docs.Added() {
+		panic("added not set to true, docs.Route not called")
+	}
+
 	if docs.OpId == "" {
 		panic("OpId is empty")
 	}

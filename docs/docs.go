@@ -321,6 +321,7 @@ func Route(doc *Doc) *Doc {
 		api.Paths.Set(doc.Path, op)
 	}
 
+	doc.added = true
 	return doc
 }
 
