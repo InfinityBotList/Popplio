@@ -490,24 +490,6 @@ type DiscordLog struct {
 	ChannelID string
 }
 
-type ListStatsBot struct {
-	BotID              string   `json:"bot_id"`
-	Vanity             string   `json:"vanity"`
-	Short              string   `json:"short"`
-	Type               string   `json:"type"`
-	MainOwnerID        string   `json:"main_owner_id"`
-	AdditionalOwnerIDS []string `json:"additional_owners_ids"`
-}
-
-type ListStats struct {
-	Bots         []ListStatsBot `json:"bots"`
-	TotalStaff   int64          `json:"total_staff"`
-	TotalUsers   int64          `json:"total_users"`
-	TotalVotes   int64          `json:"total_votes"`
-	TotalPacks   int64          `json:"total_packs"`
-	TotalTickets int64          `json:"total_tickets"`
-}
-
 // For documentation
 type OpenAPI struct{}
 

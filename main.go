@@ -27,7 +27,7 @@ import (
 
 	_ "embed"
 
-	"popplio/zapchi"
+	"github.com/infinitybotlist/eureka/zapchi"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"

@@ -5,8 +5,26 @@ import (
 	"popplio/api"
 	"popplio/docs"
 	"popplio/state"
-	"popplio/types"
 )
+
+type ListStatsBot struct {
+	BotID              string   `json:"bot_id"`
+	Vanity             string   `json:"vanity"`
+	Short              string   `json:"short"`
+	Type               string   `json:"type"`
+	MainOwnerID        string   `json:"main_owner_id"`
+	AdditionalOwnerIDS []string `json:"additional_owners_ids"`
+	QueueName          string   `json:"queue_name"`
+}
+
+type ListStats struct {
+	Bots         []ListStatsBot `json:"bots"`
+	TotalStaff   int64          `json:"total_staff"`
+	TotalUsers   int64          `json:"total_users"`
+	TotalVotes   int64          `json:"total_votes"`
+	TotalPacks   int64          `json:"total_packs"`
+	TotalTickets int64          `json:"total_tickets"`
+}
 
 func Docs() *docs.Doc {
 	return docs.Route(&docs.Doc{
@@ -16,16 +34,16 @@ func Docs() *docs.Doc {
 		Summary:     "Get List Statistics",
 		Description: "Gets the statistics of the list",
 		Tags:        []string{api.CurrentTag},
-		Resp: types.ListStats{
-			Bots: []types.ListStatsBot{},
+		Resp: ListStats{
+			Bots: []ListStatsBot{},
 		},
 	})
 }
 
 func Route(d api.RouteData, r *http.Request) {
-	listStats := types.ListStats{}
+	listStats := ListStats{}
 
-	bots, err := state.Pool.Query(d.Context, "SELECT bot_id, vanity, short, type, owner, additional_owners FROM bots")
+	bots, err := state.Pool.Query(d.Context, "SELECT bot_id, vanity, short, type, owner, additional_owners, queue_name FROM bots")
 
 	if err != nil {
 		state.Logger.Error(err)
@@ -42,8 +60,9 @@ func Route(d api.RouteData, r *http.Request) {
 		var typeStr string
 		var owner string
 		var additionalOwners []string
+		var queueName string
 
-		err := bots.Scan(&botId, &vanity, &short, &typeStr, &owner, &additionalOwners)
+		err := bots.Scan(&botId, &vanity, &short, &typeStr, &owner, &additionalOwners, &queueName)
 
 		if err != nil {
 			state.Logger.Error(err)
@@ -51,13 +70,14 @@ func Route(d api.RouteData, r *http.Request) {
 			return
 		}
 
-		listStats.Bots = append(listStats.Bots, types.ListStatsBot{
+		listStats.Bots = append(listStats.Bots, ListStatsBot{
 			BotID:              botId,
 			Vanity:             vanity,
 			Short:              short,
 			Type:               typeStr,
 			MainOwnerID:        owner,
 			AdditionalOwnerIDS: additionalOwners,
+			QueueName:          queueName,
 		})
 	}
 

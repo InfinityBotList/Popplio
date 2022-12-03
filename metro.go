@@ -8,7 +8,6 @@ import (
 	"os"
 	"popplio/notifications"
 	"popplio/state"
-	"popplio/utils"
 	"regexp"
 	"strings"
 	"time"
@@ -17,6 +16,7 @@ import (
 
 	"github.com/MetroReviews/metro-integrase/types"
 	"github.com/go-chi/chi/v5"
+	"github.com/infinitybotlist/eureka/crypto"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgtype"
 
@@ -93,7 +93,7 @@ func addBot(bot *types.Bot) (pgconn.CommandTag, error) {
 		"",
 		"",
 		"",
-		utils.RandString(128),
+		crypto.RandString(128),
 		"pending",
 	)
 }

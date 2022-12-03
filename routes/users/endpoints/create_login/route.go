@@ -12,6 +12,7 @@ import (
 	"popplio/utils"
 	"time"
 
+	"github.com/infinitybotlist/eureka/crypto"
 	"github.com/jackc/pgx/v5/pgtype"
 	jsoniter "github.com/json-iterator/go"
 	"golang.org/x/exp/slices"
@@ -262,7 +263,7 @@ func Route(d api.RouteData, r *http.Request) {
 	var apiToken string
 	if !exists {
 		// Create user
-		apiToken = utils.RandString(128)
+		apiToken = crypto.RandString(128)
 		_, err = state.Pool.Exec(
 			d.Context,
 			"INSERT INTO users (user_id, api_token, username, staff, developer, certified) VALUES ($1, $2, $3, false, false, false)",

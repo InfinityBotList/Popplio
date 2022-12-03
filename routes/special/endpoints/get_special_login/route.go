@@ -8,10 +8,10 @@ import (
 	"popplio/docs"
 	"popplio/routes/special/assets"
 	"popplio/state"
-	"popplio/utils"
 	"strconv"
 	"time"
 
+	"github.com/infinitybotlist/eureka/crypto"
 	jsoniter "github.com/json-iterator/go"
 )
 
@@ -84,7 +84,7 @@ func Route(d api.RouteData, r *http.Request) {
 	}
 
 	// Store in redis
-	stateTok := utils.RandString(64)
+	stateTok := crypto.RandString(64)
 	err = state.Redis.Set(d.Context, "spec:"+stateTok, b.Bytes(), 5*time.Minute).Err()
 
 	if err != nil {

@@ -9,9 +9,9 @@ import (
 	"popplio/notifications"
 	"popplio/state"
 	"popplio/types"
-	"popplio/utils"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/infinitybotlist/eureka/crypto"
 	jsoniter "github.com/json-iterator/go"
 )
 
@@ -69,7 +69,7 @@ func Route(d api.RouteData, r *http.Request) {
 	}
 
 	// Store new subscription
-	notifId := utils.RandString(512)
+	notifId := crypto.RandString(512)
 
 	ua := r.UserAgent()
 

@@ -10,10 +10,10 @@ import (
 	"popplio/docs"
 	"popplio/routes/special/assets"
 	"popplio/state"
-	"popplio/utils"
 	"strings"
 	"time"
 
+	"github.com/infinitybotlist/eureka/crypto"
 	jsoniter "github.com/json-iterator/go"
 )
 
@@ -197,7 +197,7 @@ func Route(d api.RouteData, r *http.Request) {
 	switch action.Action {
 	// Data request
 	case "dr":
-		taskId := utils.RandString(196)
+		taskId := crypto.RandString(196)
 
 		err = state.Redis.Set(d.Context, taskId, "WAITING", time.Hour*8).Err()
 
@@ -219,7 +219,7 @@ func Route(d api.RouteData, r *http.Request) {
 		return
 	// Data deletion request
 	case "ddr":
-		taskId := utils.RandString(196)
+		taskId := crypto.RandString(196)
 
 		err = state.Redis.Set(d.Context, taskId, "WAITING", time.Hour*8).Err()
 
@@ -241,7 +241,7 @@ func Route(d api.RouteData, r *http.Request) {
 	// Reset token for users
 	case "rtu":
 		var token string
-		token = utils.RandString(128)
+		token = crypto.RandString(128)
 
 		_, err := state.Pool.Exec(d.Context, "UPDATE users SET api_token = $1 WHERE user_id = $2", token, user.ID)
 
@@ -267,7 +267,7 @@ func Route(d api.RouteData, r *http.Request) {
 			return
 		}
 
-		token := utils.RandString(128)
+		token := crypto.RandString(128)
 
 		_, err := state.Pool.Exec(d.Context, "UPDATE bots SET api_token = $1 WHERE bot_id = $2", token, action.TID)
 

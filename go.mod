@@ -9,6 +9,7 @@ require (
 	github.com/getkin/kin-openapi v0.109.0
 	github.com/go-chi/chi/v5 v5.0.7
 	github.com/go-redis/redis/v8 v8.11.5
+	github.com/infinitybotlist/eureka v0.0.0-20221203142608-7547b65265c4
 	github.com/mileusna/useragent v1.2.1
 	gopkg.in/yaml.v3 v3.0.1
 )
@@ -61,7 +62,7 @@ require (
 	github.com/microcosm-cc/bluemonday v1.0.21
 	github.com/tdewolff/minify/v2 v2.12.4
 	github.com/yuin/goldmark v1.5.3
-	go.uber.org/zap v1.23.0
+	go.uber.org/zap v1.24.0
 	golang.org/x/exp v0.0.0-20221126150942-6ab00d035af9
 	golang.org/x/sys v0.2.0 // indirect
 	gopkg.in/natefinch/lumberjack.v2 v2.0.0
