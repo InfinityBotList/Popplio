@@ -56,9 +56,8 @@ func Route(d api.RouteData, r *http.Request) {
 	cliId := os.Getenv("KEY_ESCROW_CLIENT_ID")
 	redirectUrl := os.Getenv("KEY_ESCROW_REDIRECT_URL")
 
-	tid := r.URL.Query().Get("tid")
 	if action.TID != "" {
-		_, err := strconv.ParseInt(tid, 10, 64)
+		_, err := strconv.ParseInt(action.TID, 10, 64)
 
 		if err != nil {
 			d.Resp <- api.HttpResponse{
