@@ -150,10 +150,6 @@ type ListIndex struct {
 	TopVoted      []IndexBot     `json:"top_voted"`
 }
 
-type VoteInfo struct {
-	Weekend bool `json:"is_weekend"`
-}
-
 type UserVote struct {
 	Timestamps   []int64 `json:"ts"`
 	VoteTime     uint16  `json:"vote_time"`
