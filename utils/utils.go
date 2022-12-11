@@ -379,7 +379,7 @@ func GetCols(s any) []string {
 func IsBotOwner(ctx context.Context, userID string, botID string) (bool, error) {
 	// Validate that they actually own this bot
 	var count int64
-	err := state.Pool.QueryRow(ctx, "SELECT COUNT(*) FROM bots WHERE bot_id = $3 AND (owner = $1 OR additional_owners && $2)", userID, []string{userID}, botID).Scan(&count)
+	err := state.Pool.QueryRow(ctx, "SELECT COUNT(*) FROM bots WHERE bot_id = $1 AND (owner = $2 OR additional_owners && $3)", botID, userID, []string{userID}).Scan(&count)
 
 	if err != nil {
 		return false, err
