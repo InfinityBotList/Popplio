@@ -60,7 +60,7 @@ func Route(d api.RouteData, r *http.Request) {
 	if err != nil {
 		d.Resp <- api.HttpResponse{
 			Status: http.StatusInternalServerError,
-			Data:   err.Error(),
+			Json:   types.ApiError{Message: err.Error()},
 		}
 		return
 	}
@@ -68,7 +68,7 @@ func Route(d api.RouteData, r *http.Request) {
 	if !isOwner {
 		d.Resp <- api.HttpResponse{
 			Status: http.StatusBadRequest,
-			Data:   "You do not own the bot you are trying to manage",
+			Json:   types.ApiError{Message: "You do not own the bot you are trying to manage"},
 		}
 		return
 	}
