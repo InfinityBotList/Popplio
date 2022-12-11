@@ -15,15 +15,14 @@ import (
 
 	"github.com/bwmarrin/discordgo"
 	"github.com/georgysavva/scany/v2/pgxscan"
-	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
-	"github.com/jackc/pgx/v5/pgxpool"
 	jsoniter "github.com/json-iterator/go"
 	"go.uber.org/zap"
 )
 
 var json = jsoniter.ConfigCompatibleWithStandardLibrary
 
+// Returns if a string is empty/null or not. Used throughout the codebase
 func IsNone(s string) bool {
 	if s == "None" || s == "none" || s == "" || s == "null" {
 		return true
@@ -45,6 +44,7 @@ func ResolveIndexBot(ib []types.IndexBot) ([]types.IndexBot, error) {
 	return ib, nil
 }
 
+// Returns the votes of a pack, Used throughout the codebase
 func ResolvePackVotes(ctx context.Context, url string) ([]types.PackVote, error) {
 	rows, err := state.Pool.Query(ctx, "SELECT user_id, upvote, created_at FROM pack_votes WHERE url = $1", url)
 
@@ -76,68 +76,6 @@ func ResolvePackVotes(ctx context.Context, url string) ([]types.PackVote, error)
 	}
 
 	return votes, nil
-}
-
-func ResolveBotPack(ctx context.Context, pool *pgxpool.Pool, pack *types.BotPack) error {
-	ownerUser, err := GetDiscordUser(pack.Owner)
-
-	if err != nil {
-		return err
-	}
-
-	pack.Votes, err = ResolvePackVotes(ctx, pack.URL)
-
-	if err != nil {
-		return err
-	}
-
-	pack.ResolvedOwner = ownerUser
-
-	for _, botId := range pack.Bots {
-		var short string
-		var bot_type pgtype.Text
-		var vanity pgtype.Text
-		var banner pgtype.Text
-		var nsfw bool
-		var premium bool
-		var shards int
-		var votes int
-		var inviteClicks int
-		var servers int
-		var tags []string
-		err := pool.QueryRow(ctx, "SELECT short, type, vanity, banner, nsfw, premium, shards, votes, invite_clicks, servers, tags FROM bots WHERE bot_id = $1", botId).Scan(&short, &bot_type, &vanity, &banner, &nsfw, &premium, &shards, &votes, &inviteClicks, &servers, &tags)
-
-		if err == pgx.ErrNoRows {
-			continue
-		}
-
-		if err != nil {
-			return err
-		}
-
-		botUser, err := GetDiscordUser(botId)
-
-		if err != nil {
-			return err
-		}
-
-		pack.ResolvedBots = append(pack.ResolvedBots, types.ResolvedPackBot{
-			Short:        short,
-			User:         botUser,
-			Type:         bot_type,
-			Vanity:       vanity,
-			Banner:       banner,
-			NSFW:         nsfw,
-			Premium:      premium,
-			Shards:       shards,
-			Votes:        votes,
-			InviteClicks: inviteClicks,
-			Servers:      servers,
-			Tags:         tags,
-		})
-	}
-
-	return nil
 }
 
 func GetDiscordUser(id string) (*types.DiscordUser, error) {
