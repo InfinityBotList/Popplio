@@ -222,11 +222,7 @@ func GetDiscordUser(id string) (*types.DiscordUser, error) {
 }
 
 func GetDoubleVote() bool {
-	if time.Now().Weekday() == time.Friday || time.Now().Weekday() == time.Saturday || time.Now().Weekday() == time.Sunday {
-		return true
-	} else {
-		return false
-	}
+	return time.Now().Weekday() == time.Friday || time.Now().Weekday() == time.Saturday || time.Now().Weekday() == time.Sunday
 }
 
 func GetVoteTime() uint16 {
