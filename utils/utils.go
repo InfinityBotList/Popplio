@@ -3,6 +3,7 @@ package utils
 import (
 	"context"
 	"errors"
+	"fmt"
 	"os"
 	"reflect"
 	"strconv"
@@ -382,7 +383,7 @@ func IsBotOwner(ctx context.Context, userID string, botID string) (bool, error) 
 	err := state.Pool.QueryRow(ctx, "SELECT COUNT(*) FROM bots WHERE bot_id = $1 AND (owner = $2 OR additional_owners && $3)", botID, userID, []string{userID}).Scan(&count)
 
 	if err != nil {
-		return false, err
+		return false, fmt.Errorf("error getting ownership info: %v", err)
 	}
 
 	if count == 0 {
