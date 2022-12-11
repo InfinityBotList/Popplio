@@ -139,13 +139,6 @@ func ResolveBotPack(ctx context.Context, pool *pgxpool.Pool, pack *types.BotPack
 	return nil
 }
 
-const letterBytes = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
-const (
-	letterIdxBits = 6                    // 6 bits to represent a letter index
-	letterIdxMask = 1<<letterIdxBits - 1 // All 1-bits, as many as letterIdxBits
-	letterIdxMax  = 63 / letterIdxBits   // # of letter indices fitting in 63 bits
-)
-
 func GetDiscordUser(id string) (*types.DiscordUser, error) {
 	// Check if in discordgo session first
 
@@ -380,6 +373,23 @@ func GetCols(s any) []string {
 	}
 
 	return cols
+}
+
+// Returns true if the user is a owner of the bot
+func IsBotOwner(ctx context.Context, userID string, botID string) (bool, error) {
+	// Validate that they actually own this bot
+	var count int64
+	err := state.Pool.QueryRow(ctx, "SELECT COUNT(*) FROM bots WHERE bot_id = $3 AND (owner = $1 OR additional_owners && $2)", userID, []string{userID}, botID).Scan(&count)
+
+	if err != nil {
+		return false, err
+	}
+
+	if count == 0 {
+		return false, nil
+	}
+
+	return true, nil
 }
 
 func ValidateExtraLinks(links []types.Link) error {

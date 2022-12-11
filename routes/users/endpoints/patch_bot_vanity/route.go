@@ -7,6 +7,7 @@ import (
 	"popplio/docs"
 	"popplio/state"
 	"popplio/types"
+	"popplio/utils"
 	"strings"
 	"unicode"
 
@@ -29,8 +30,15 @@ func Docs() *docs.Doc {
 		Description: "Updates a users profile. Returns 204 on success",
 		Params: []docs.Parameter{
 			{
-				Name:        "id",
+				Name:        "uid",
 				Description: "User ID",
+				Required:    true,
+				In:          "path",
+				Schema:      docs.IdSchema,
+			},
+			{
+				Name:        "bid",
+				Description: "Bot ID",
 				Required:    true,
 				In:          "path",
 				Schema:      docs.IdSchema,
@@ -45,6 +53,26 @@ func Docs() *docs.Doc {
 
 func Route(d api.RouteData, r *http.Request) {
 	botId := chi.URLParam(r, "bid")
+
+	// Validate that they actually own this bot
+	isOwner, err := utils.IsBotOwner(d.Context, d.Auth.ID, botId)
+
+	if err != nil {
+		d.Resp <- api.HttpResponse{
+			Status: http.StatusInternalServerError,
+			Data:   err.Error(),
+		}
+		return
+	}
+
+	if !isOwner {
+		d.Resp <- api.HttpResponse{
+			Status: http.StatusBadRequest,
+			Data:   "You do not own the bot you are trying to manage",
+		}
+		return
+	}
+
 	// Read vanity from body
 	var vanity VanityUpdate
 
