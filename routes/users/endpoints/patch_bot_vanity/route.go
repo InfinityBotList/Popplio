@@ -1,7 +1,6 @@
 package patch_bot_vanity
 
 import (
-	"io"
 	"net/http"
 	"popplio/api"
 	"popplio/docs"
@@ -12,10 +11,7 @@ import (
 	"unicode"
 
 	"github.com/go-chi/chi/v5"
-	jsoniter "github.com/json-iterator/go"
 )
-
-var json = jsoniter.ConfigCompatibleWithStandardLibrary
 
 type VanityUpdate struct {
 	Vanity string `json:"vanity"`
@@ -51,45 +47,33 @@ func Docs() *docs.Doc {
 	})
 }
 
-func Route(d api.RouteData, r *http.Request) {
+func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 	botId := chi.URLParam(r, "bid")
 
 	// Validate that they actually own this bot
 	isOwner, err := utils.IsBotOwner(d.Context, d.Auth.ID, botId)
 
 	if err != nil {
-		d.Resp <- api.HttpResponse{
+		return api.HttpResponse{
 			Status: http.StatusInternalServerError,
 			Json:   types.ApiError{Message: err.Error()},
 		}
-		return
 	}
 
 	if !isOwner {
-		d.Resp <- api.HttpResponse{
+		return api.HttpResponse{
 			Status: http.StatusBadRequest,
 			Json:   types.ApiError{Message: "You do not own the bot you are trying to manage"},
 		}
-		return
 	}
 
 	// Read vanity from body
 	var vanity VanityUpdate
 
-	bodyBytes, err := io.ReadAll(r.Body)
+	hresp, ok := api.MarshalReq(r, &vanity)
 
-	if err != nil {
-		state.Logger.Error(err)
-		d.Resp <- api.DefaultResponse(http.StatusInternalServerError)
-		return
-	}
-
-	err = json.Unmarshal(bodyBytes, &vanity)
-
-	if err != nil {
-		state.Logger.Error(err)
-		d.Resp <- api.DefaultResponse(http.StatusInternalServerError)
-		return
+	if !ok {
+		return hresp
 	}
 
 	// Strip out unicode characters
@@ -101,11 +85,10 @@ func Route(d api.RouteData, r *http.Request) {
 	}, vanity.Vanity)
 
 	if vanity.Vanity == "" {
-		d.Resp <- api.HttpResponse{
+		return api.HttpResponse{
 			Status: http.StatusBadRequest,
 			Json:   types.ApiError{Message: "Vanity cannot be empty"},
 		}
-		return
 	}
 
 	vanity.Vanity = strings.TrimSuffix(vanity.Vanity, "-")
@@ -119,16 +102,14 @@ func Route(d api.RouteData, r *http.Request) {
 
 	if err != nil {
 		state.Logger.Error(err)
-		d.Resp <- api.DefaultResponse(http.StatusInternalServerError)
-		return
+		return api.DefaultResponse(http.StatusInternalServerError)
 	}
 
 	if count > 0 {
-		d.Resp <- api.HttpResponse{
+		return api.HttpResponse{
 			Status: http.StatusBadRequest,
 			Json:   types.ApiError{Message: "Vanity is already taken"},
 		}
-		return
 	}
 
 	// Update vanity
@@ -136,9 +117,8 @@ func Route(d api.RouteData, r *http.Request) {
 
 	if err != nil {
 		state.Logger.Error(err)
-		d.Resp <- api.DefaultResponse(http.StatusInternalServerError)
-		return
+		return api.DefaultResponse(http.StatusInternalServerError)
 	}
 
-	d.Resp <- api.DefaultResponse(http.StatusNoContent)
+	return api.DefaultResponse(http.StatusNoContent)
 }

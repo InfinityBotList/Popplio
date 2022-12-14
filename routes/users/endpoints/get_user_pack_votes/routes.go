@@ -39,7 +39,7 @@ func Docs() *docs.Doc {
 	})
 }
 
-func Route(d api.RouteData, r *http.Request) {
+func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 	userId := chi.URLParam(r, "uid")
 	packUrl := chi.URLParam(r, "url")
 
@@ -49,13 +49,11 @@ func Route(d api.RouteData, r *http.Request) {
 
 	if err != nil {
 		state.Logger.Error(err)
-		d.Resp <- api.DefaultResponse(http.StatusInternalServerError)
-		return
+		return api.DefaultResponse(http.StatusInternalServerError)
 	}
 
 	if count == 0 {
-		d.Resp <- api.DefaultResponse(http.StatusNotFound)
-		return
+		return api.DefaultResponse(http.StatusNotFound)
 	}
 
 	var upvote bool
@@ -65,11 +63,10 @@ func Route(d api.RouteData, r *http.Request) {
 
 	if err != nil {
 		state.Logger.Error(err)
-		d.Resp <- api.DefaultResponse(http.StatusInternalServerError)
-		return
+		return api.DefaultResponse(http.StatusInternalServerError)
 	}
 
-	d.Resp <- api.HttpResponse{
+	return api.HttpResponse{
 		Json: types.PackVote{
 			UserID:    userId,
 			Upvote:    upvote,

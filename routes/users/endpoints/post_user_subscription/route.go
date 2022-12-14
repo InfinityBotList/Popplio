@@ -40,7 +40,7 @@ func Docs() *docs.Doc {
 	})
 }
 
-func Route(d api.RouteData, r *http.Request) {
+func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 	var subscription types.UserSubscription
 
 	var id = chi.URLParam(r, "id")
@@ -51,21 +51,18 @@ func Route(d api.RouteData, r *http.Request) {
 
 	if err != nil {
 		state.Logger.Error(err)
-		d.Resp <- api.DefaultResponse(http.StatusInternalServerError)
-		return
+		return api.DefaultResponse(http.StatusInternalServerError)
 	}
 
 	err = json.Unmarshal(bodyBytes, &subscription)
 
 	if err != nil {
 		state.Logger.Error(err)
-		d.Resp <- api.DefaultResponse(http.StatusInternalServerError)
-		return
+		return api.DefaultResponse(http.StatusInternalServerError)
 	}
 
 	if subscription.Auth == "" || subscription.P256dh == "" {
-		d.Resp <- api.DefaultResponse(http.StatusBadRequest)
-		return
+		return api.DefaultResponse(http.StatusBadRequest)
 	}
 
 	// Store new subscription
@@ -96,7 +93,7 @@ func Route(d api.RouteData, r *http.Request) {
 		Message: []byte(constants.TestNotif),
 	}
 
-	d.Resp <- api.HttpResponse{
+	return api.HttpResponse{
 		Status: http.StatusNoContent,
 	}
 }

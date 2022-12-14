@@ -22,37 +22,33 @@ func Docs() *docs.Doc {
 	})
 }
 
-func Route(d api.RouteData, r *http.Request) {
+func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 	tid := chi.URLParam(r, "tid")
 
 	if tid == "" {
-		d.Resp <- api.HttpResponse{
+		return api.HttpResponse{
 			Status: http.StatusBadRequest,
 			Data:   "Invalid task id",
 		}
-		return
 	}
 
 	task, err := state.Redis.Get(d.Context, tid).Result()
 
 	if err == redis.Nil {
-		d.Resp <- api.HttpResponse{
+		return api.HttpResponse{
 			Status: http.StatusNotFound,
 			Data:   "Task not found",
 		}
-		return
 	}
 
 	if err != nil {
-		d.Resp <- api.HttpResponse{
+		return api.HttpResponse{
 			Status: http.StatusInternalServerError,
 			Data:   err.Error(),
 		}
-		return
 	}
 
-	d.Resp <- api.HttpResponse{
+	return api.HttpResponse{
 		Data: task,
 	}
-
 }

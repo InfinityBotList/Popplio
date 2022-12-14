@@ -64,8 +64,8 @@ func Docs() *docs.Doc {
 	})
 }
 
-func Route(d api.RouteData, r *http.Request) {
-	d.Resp <- api.HttpResponse{
+func Route(d api.RouteData, r *http.Request) api.HttpResponse {
+	return api.HttpResponse{
 		Bytes: helloWorld,
 	}
 }

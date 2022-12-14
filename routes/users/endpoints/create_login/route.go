@@ -65,55 +65,48 @@ type AuthorizeRequest struct {
 	Nonce       string `json:"nonce"` // Just to identify and block older clients from vulns
 }
 
-func Route(d api.RouteData, r *http.Request) {
+func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 	var req AuthorizeRequest
 
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		d.Resp <- api.HttpResponse{
-			Data:   `{"error":true,"message":"Malformed authorization request"}`,
-			Status: http.StatusBadRequest,
-		}
-		return
+	hresp, ok := api.MarshalReq(r, &req)
+
+	if !ok {
+		return hresp
 	}
 
 	if !slices.Contains(allowedRedirectURLs, req.RedirectURI) {
-		d.Resp <- api.HttpResponse{
+		return api.HttpResponse{
 			Data:   `{"error":true,"message":"Malformed redirect_uri"}`,
 			Status: http.StatusBadRequest,
 		}
-		return
 	}
 
 	if req.Nonce != "sauron" {
-		d.Resp <- api.HttpResponse{
+		return api.HttpResponse{
 			Data:   `{"error":true,"message":"Your client is outdated and is not supported. Please update your client."}`,
 			Status: http.StatusBadRequest,
 		}
-		return
 	}
 
 	if req.Code == "" {
-		d.Resp <- api.HttpResponse{
+		return api.HttpResponse{
 			Data:   `{"error":true,"message":"No code provided"}`,
 			Status: http.StatusBadRequest,
 		}
-		return
 	}
 
 	if len(req.Code) < 5 {
-		d.Resp <- api.HttpResponse{
+		return api.HttpResponse{
 			Data:   `{"error":true,"message":"Code too short. Retry login?"}`,
 			Status: http.StatusBadRequest,
 		}
-		return
 	}
 
 	if state.Redis.Exists(d.Context, "codecache:"+req.Code).Val() == 1 {
-		d.Resp <- api.HttpResponse{
+		return api.HttpResponse{
 			Data:   `{"error":true,"message":"Code has been used before and is as such invalid"}`,
 			Status: http.StatusBadRequest,
 		}
-		return
 	}
 
 	state.Redis.Set(d.Context, "codecache:"+req.Code, "0", 5*time.Minute)
@@ -129,11 +122,10 @@ func Route(d api.RouteData, r *http.Request) {
 
 	if err != nil {
 		state.Logger.Error(err)
-		d.Resp <- api.HttpResponse{
+		return api.HttpResponse{
 			Data:   `{"error":true,"message":"Failed to get token from Discord"}`,
 			Status: http.StatusInternalServerError,
 		}
-		return
 	}
 
 	defer httpResp.Body.Close()
@@ -142,11 +134,10 @@ func Route(d api.RouteData, r *http.Request) {
 
 	if err != nil {
 		state.Logger.Error(err)
-		d.Resp <- api.HttpResponse{
+		return api.HttpResponse{
 			Data:   `{"error":true,"message":"Failed to read token response from Discord"}`,
 			Status: http.StatusInternalServerError,
 		}
-		return
 	}
 
 	var token struct {
@@ -157,20 +148,18 @@ func Route(d api.RouteData, r *http.Request) {
 
 	if err != nil {
 		state.Logger.Error(err)
-		d.Resp <- api.HttpResponse{
+		return api.HttpResponse{
 			Data:   `{"error":true,"message":"Failed to parse token response from Discord"}`,
 			Status: http.StatusBadRequest,
 		}
-		return
 	}
 
 	if token.AccessToken == "" {
 		state.Logger.Error(err)
-		d.Resp <- api.HttpResponse{
+		return api.HttpResponse{
 			Data:   `{"error":true,"message":"No access token provided by Discord"}`,
 			Status: http.StatusBadRequest,
 		}
-		return
 	}
 
 	cli := &http.Client{}
@@ -180,11 +169,10 @@ func Route(d api.RouteData, r *http.Request) {
 
 	if err != nil {
 		state.Logger.Error(err)
-		d.Resp <- api.HttpResponse{
+		return api.HttpResponse{
 			Data:   `{"error":true,"message":"Failed to create request to Discord to fetch user info"}`,
 			Status: http.StatusInternalServerError,
 		}
-		return
 	}
 
 	httpReq.Header.Set("Authorization", "Bearer "+token.AccessToken)
@@ -193,11 +181,10 @@ func Route(d api.RouteData, r *http.Request) {
 
 	if err != nil {
 		state.Logger.Error(err)
-		d.Resp <- api.HttpResponse{
+		return api.HttpResponse{
 			Data:   `{"error":true,"message":"Failed to get user info from Discord"}`,
 			Status: http.StatusInternalServerError,
 		}
-		return
 	}
 
 	defer httpResp.Body.Close()
@@ -206,11 +193,10 @@ func Route(d api.RouteData, r *http.Request) {
 
 	if err != nil {
 		state.Logger.Error(err)
-		d.Resp <- api.HttpResponse{
+		return api.HttpResponse{
 			Data:   `{"error":true,"message":"Failed to read user info response from Discord"}`,
 			Status: http.StatusInternalServerError,
 		}
-		return
 	}
 
 	var user OauthUser
@@ -219,20 +205,18 @@ func Route(d api.RouteData, r *http.Request) {
 
 	if err != nil {
 		state.Logger.Error(err)
-		d.Resp <- api.HttpResponse{
+		return api.HttpResponse{
 			Data:   `{"error":true,"message":"Failed to parse user info response from Discord"}`,
 			Status: http.StatusInternalServerError,
 		}
-		return
 	}
 
 	if user.ID == "" {
 		state.Logger.Error(err)
-		d.Resp <- api.HttpResponse{
+		return api.HttpResponse{
 			Data:   `{"error":true,"message":"No user ID provided by Discord. Invalid token?"}`,
 			Status: http.StatusBadRequest,
 		}
-		return
 	}
 
 	// Check if user exists on database
@@ -242,22 +226,20 @@ func Route(d api.RouteData, r *http.Request) {
 
 	if err != nil {
 		state.Logger.Error(err)
-		d.Resp <- api.HttpResponse{
+		return api.HttpResponse{
 			Data:   `{"error":true,"message":"Failed to check if user exists on database"}`,
 			Status: http.StatusInternalServerError,
 		}
-		return
 	}
 
 	discordUser, err := utils.GetDiscordUser(user.ID)
 
 	if err != nil {
 		state.Logger.Error(err)
-		d.Resp <- api.HttpResponse{
+		return api.HttpResponse{
 			Data:   `{"error":true,"message":"Failed to get user info from Discord"}`,
 			Status: http.StatusInternalServerError,
 		}
-		return
 	}
 
 	var apiToken string
@@ -274,11 +256,10 @@ func Route(d api.RouteData, r *http.Request) {
 
 		if err != nil {
 			state.Logger.Error(err)
-			d.Resp <- api.HttpResponse{
+			return api.HttpResponse{
 				Data:   `{"error":true,"message":"Failed to create user on database"}`,
 				Status: http.StatusInternalServerError,
 			}
-			return
 		}
 	} else {
 		// Update user
@@ -291,11 +272,10 @@ func Route(d api.RouteData, r *http.Request) {
 
 		if err != nil {
 			state.Logger.Error(err)
-			d.Resp <- api.HttpResponse{
+			return api.HttpResponse{
 				Data:   `{"error":true,"message":"Failed to update user on database"}`,
 				Status: http.StatusInternalServerError,
 			}
-			return
 		}
 
 		// Get API token
@@ -305,11 +285,10 @@ func Route(d api.RouteData, r *http.Request) {
 
 		if err != nil {
 			state.Logger.Error(err)
-			d.Resp <- api.HttpResponse{
+			return api.HttpResponse{
 				Data:   `{"error":true,"message":"Failed to get API token from database"}`,
 				Status: http.StatusInternalServerError,
 			}
-			return
 		}
 
 		apiToken = tokenStr.String
@@ -324,7 +303,7 @@ func Route(d api.RouteData, r *http.Request) {
 		Token:       apiToken,
 	}
 
-	d.Resp <- api.HttpResponse{
+	return api.HttpResponse{
 		Json: authUser,
 	}
 }

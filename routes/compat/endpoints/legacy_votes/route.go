@@ -42,7 +42,7 @@ func Docs() *docs.Doc {
 	})
 }
 
-func Route(d api.RouteData, r *http.Request) {
+func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 	var botId = chi.URLParam(r, "bot_id")
 	var userId = chi.URLParam(r, "user_id")
 
@@ -53,35 +53,32 @@ func Route(d api.RouteData, r *http.Request) {
 
 	if err != nil {
 		state.Logger.Error(err)
-		d.Resp <- api.DefaultResponse(http.StatusUnauthorized)
-		return
+		return api.DefaultResponse(http.StatusUnauthorized)
 	}
 
 	var botType pgtype.Text
 
 	state.Pool.QueryRow(d.Context, "SELECT type FROM bots WHERE bot_id = $1", botId).Scan(&botType)
 
-	if botType.String != "approved" || botType.String != "certified" {
-		d.Resp <- api.HttpResponse{
+	if botType.String != "approved" && botType.String != "certified" {
+		return api.HttpResponse{
 			Status: http.StatusBadRequest,
 			Data:   constants.NotApproved,
 		}
-		return
 	}
 
 	voteParsed, err := utils.GetVoteData(d.Context, userId, botId)
 
 	if err != nil {
 		state.Logger.Error(err)
-		d.Resp <- api.DefaultResponse(http.StatusInternalServerError)
-		return
+		return api.DefaultResponse(http.StatusInternalServerError)
 	}
 
 	var compatData = types.UserVoteCompat{
 		HasVoted: voteParsed.HasVoted,
 	}
 
-	d.Resp <- api.HttpResponse{
+	return api.HttpResponse{
 		Status: http.StatusOK,
 		Json:   compatData,
 	}

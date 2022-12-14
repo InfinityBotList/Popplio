@@ -32,10 +32,10 @@ func Docs() *docs.Doc {
 	})
 }
 
-func Route(d api.RouteData, r *http.Request) {
+func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 	id := chi.URLParam(r, "id")
 	state.Redis.Del(d.Context, "uobj:"+id)
-	d.Resp <- api.HttpResponse{
+	return api.HttpResponse{
 		Status: http.StatusOK,
 		Data:   constants.Success,
 	}

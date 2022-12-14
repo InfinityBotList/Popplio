@@ -79,23 +79,20 @@ func Docs() *docs.Doc {
 	})
 }
 
-func Route(d api.RouteData, r *http.Request) {
+func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 	var payload SearchQuery
 
 	hresp, ok := api.MarshalReq(r, &payload)
 
 	if !ok {
-		d.Resp <- hresp
-		return
+		return hresp
 	}
 
 	err := state.Validator.Struct(payload)
 
 	if err != nil {
 		errors := err.(validator.ValidationErrors)
-		d.Resp <- api.ValidatorErrorResponse(map[string]string{}, errors)
-
-		return
+		return api.ValidatorErrorResponse(map[string]string{}, errors)
 	}
 
 	if payload.TagFilter == nil {
@@ -106,14 +103,13 @@ func Route(d api.RouteData, r *http.Request) {
 	}
 
 	if payload.TagFilter.TagMode != TagModeAll && payload.TagFilter.TagMode != TagModeAny {
-		d.Resp <- api.HttpResponse{
+		return api.HttpResponse{
 			Status: http.StatusBadRequest,
 			Json: types.ApiError{
 				Message: "Invalid tag mode",
 				Error:   true,
 			},
 		}
-		return
 	}
 
 	var indexBots = []types.IndexBot{}
@@ -138,27 +134,24 @@ func Route(d api.RouteData, r *http.Request) {
 
 	if err != nil {
 		state.Logger.Error(err)
-		d.Resp <- api.DefaultResponse(http.StatusInternalServerError)
-		return
+		return api.DefaultResponse(http.StatusInternalServerError)
 	}
 
 	err = pgxscan.ScanAll(&indexBots, rows)
 
 	if err != nil {
 		state.Logger.Error(err)
-		d.Resp <- api.DefaultResponse(http.StatusInternalServerError)
-		return
+		return api.DefaultResponse(http.StatusInternalServerError)
 	}
 
 	indexBots, err = utils.ResolveIndexBot(indexBots)
 
 	if err != nil {
 		state.Logger.Error(err)
-		d.Resp <- api.DefaultResponse(http.StatusInternalServerError)
-		return
+		return api.DefaultResponse(http.StatusInternalServerError)
 	}
 
-	d.Resp <- api.HttpResponse{
+	return api.HttpResponse{
 		Json: SearchResponse{
 			Bots: indexBots,
 		},

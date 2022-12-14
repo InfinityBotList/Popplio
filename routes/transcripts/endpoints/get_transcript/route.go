@@ -35,19 +35,17 @@ func Docs() *docs.Doc {
 	})
 }
 
-func Route(d api.RouteData, r *http.Request) {
+func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 	transcriptNum := chi.URLParam(r, "id")
 
 	if transcriptNum == "" {
-		d.Resp <- api.DefaultResponse(http.StatusNotFound)
-		return
+		return api.DefaultResponse(http.StatusNotFound)
 	}
 
 	transcriptNumInt, err := strconv.Atoi(transcriptNum)
 
 	if err != nil {
-		d.Resp <- api.DefaultResponse(http.StatusNotFound)
-		return
+		return api.DefaultResponse(http.StatusNotFound)
 	}
 
 	// Get transcript
@@ -59,8 +57,7 @@ func Route(d api.RouteData, r *http.Request) {
 
 	if err != nil {
 		state.Logger.Error(err)
-		d.Resp <- api.DefaultResponse(http.StatusNotFound)
-		return
+		return api.DefaultResponse(http.StatusNotFound)
 	}
 
 	var dataParsed []map[string]any
@@ -69,8 +66,7 @@ func Route(d api.RouteData, r *http.Request) {
 
 	if err != nil {
 		state.Logger.Error(err)
-		d.Resp <- api.DefaultResponse(http.StatusInternalServerError)
-		return
+		return api.DefaultResponse(http.StatusInternalServerError)
 	}
 
 	var closedByParsed map[string]any
@@ -79,8 +75,7 @@ func Route(d api.RouteData, r *http.Request) {
 
 	if err != nil {
 		state.Logger.Error(err)
-		d.Resp <- api.DefaultResponse(http.StatusInternalServerError)
-		return
+		return api.DefaultResponse(http.StatusInternalServerError)
 	}
 
 	var openedByParsed map[string]any
@@ -89,8 +84,7 @@ func Route(d api.RouteData, r *http.Request) {
 
 	if err != nil {
 		state.Logger.Error(err)
-		d.Resp <- api.DefaultResponse(http.StatusInternalServerError)
-		return
+		return api.DefaultResponse(http.StatusInternalServerError)
 	}
 
 	var transcript = types.Transcript{
@@ -100,7 +94,7 @@ func Route(d api.RouteData, r *http.Request) {
 		OpenedBy: openedByParsed,
 	}
 
-	d.Resp <- api.HttpResponse{
+	return api.HttpResponse{
 		Json: transcript,
 	}
 }

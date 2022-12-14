@@ -34,25 +34,23 @@ func Docs() *docs.Doc {
 	})
 }
 
-func Route(d api.RouteData, r *http.Request) {
+func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 	name := chi.URLParam(r, "id")
 
 	name = strings.ToLower(name)
 
 	if name == "" {
-		d.Resp <- api.DefaultResponse(http.StatusBadRequest)
-		return
+		return api.DefaultResponse(http.StatusBadRequest)
 	}
 
 	cache := state.Redis.Get(d.Context, "seob:"+name).Val()
 	if cache != "" {
-		d.Resp <- api.HttpResponse{
+		return api.HttpResponse{
 			Data: cache,
 			Headers: map[string]string{
 				"X-Popplio-Cached": "true",
 			},
 		}
-		return
 	}
 
 	var botId string
@@ -61,16 +59,14 @@ func Route(d api.RouteData, r *http.Request) {
 
 	if err != nil {
 		state.Logger.Error(err)
-		d.Resp <- api.DefaultResponse(http.StatusNotFound)
-		return
+		return api.DefaultResponse(http.StatusNotFound)
 	}
 
 	bot, err := utils.GetDiscordUser(botId)
 
 	if err != nil {
 		state.Logger.Error(err)
-		d.Resp <- api.DefaultResponse(http.StatusInternalServerError)
-		return
+		return api.DefaultResponse(http.StatusInternalServerError)
 	}
 
 	seoData := types.SEO{
@@ -80,7 +76,7 @@ func Route(d api.RouteData, r *http.Request) {
 		Short:    short,
 	}
 
-	d.Resp <- api.HttpResponse{
+	return api.HttpResponse{
 		Json:      seoData,
 		CacheKey:  "seob:" + name,
 		CacheTime: 30 * time.Minute,

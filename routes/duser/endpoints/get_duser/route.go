@@ -32,18 +32,17 @@ func Docs() *docs.Doc {
 	})
 }
 
-func Route(d api.RouteData, r *http.Request) {
+func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 	var id = chi.URLParam(r, "id")
 
 	user, err := utils.GetDiscordUser(id)
 
 	if err != nil {
 		state.Logger.Error(err)
-		d.Resp <- api.DefaultResponse(http.StatusNotFound)
-		return
+		return api.DefaultResponse(http.StatusNotFound)
 	}
 
-	d.Resp <- api.HttpResponse{
+	return api.HttpResponse{
 		Status: http.StatusOK,
 		Json:   user,
 	}

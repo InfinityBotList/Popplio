@@ -33,17 +33,16 @@ func Docs() *docs.Doc {
 	})
 }
 
-func Route(d api.RouteData, r *http.Request) {
+func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 	// Check cache, this is how we can avoid hefty ratelimits
 	cache := state.Redis.Get(d.Context, "indexcache").Val()
 	if cache != "" {
-		d.Resp <- api.HttpResponse{
+		return api.HttpResponse{
 			Data: cache,
 			Headers: map[string]string{
 				"X-Popplio-Cached": "true",
 			},
 		}
-		return
 	}
 
 	listIndex := types.ListIndex{}
@@ -51,24 +50,21 @@ func Route(d api.RouteData, r *http.Request) {
 	certRow, err := state.Pool.Query(d.Context, "SELECT "+indexBotCols+" FROM bots WHERE type = 'certified' ORDER BY votes DESC LIMIT 9")
 	if err != nil {
 		state.Logger.Error(err)
-		d.Resp <- api.DefaultResponse(http.StatusInternalServerError)
-		return
+		return api.DefaultResponse(http.StatusInternalServerError)
 	}
 
 	certDat := []types.IndexBot{}
 	err = pgxscan.ScanAll(&certDat, certRow)
 	if err != nil {
 		state.Logger.Error(err)
-		d.Resp <- api.DefaultResponse(http.StatusInternalServerError)
-		return
+		return api.DefaultResponse(http.StatusInternalServerError)
 	}
 
 	certDat, err = utils.ResolveIndexBot(certDat)
 
 	if err != nil {
 		state.Logger.Error(err)
-		d.Resp <- api.DefaultResponse(http.StatusInternalServerError)
-		return
+		return api.DefaultResponse(http.StatusInternalServerError)
 	}
 
 	listIndex.Certified = certDat
@@ -76,23 +72,20 @@ func Route(d api.RouteData, r *http.Request) {
 	mostViewedRow, err := state.Pool.Query(d.Context, "SELECT "+indexBotCols+" FROM bots WHERE type = 'approved' OR type = 'certified' ORDER BY clicks DESC LIMIT 9")
 	if err != nil {
 		state.Logger.Error(err)
-		d.Resp <- api.DefaultResponse(http.StatusInternalServerError)
-		return
+		return api.DefaultResponse(http.StatusInternalServerError)
 	}
 	mostViewedDat := []types.IndexBot{}
 	err = pgxscan.ScanAll(&mostViewedDat, mostViewedRow)
 	if err != nil {
 		state.Logger.Error(err)
-		d.Resp <- api.DefaultResponse(http.StatusInternalServerError)
-		return
+		return api.DefaultResponse(http.StatusInternalServerError)
 	}
 
 	mostViewedDat, err = utils.ResolveIndexBot(mostViewedDat)
 
 	if err != nil {
 		state.Logger.Error(err)
-		d.Resp <- api.DefaultResponse(http.StatusInternalServerError)
-		return
+		return api.DefaultResponse(http.StatusInternalServerError)
 	}
 
 	listIndex.MostViewed = mostViewedDat
@@ -100,23 +93,20 @@ func Route(d api.RouteData, r *http.Request) {
 	recentlyAddedRow, err := state.Pool.Query(d.Context, "SELECT "+indexBotCols+" FROM bots WHERE type = 'approved' ORDER BY created_at DESC LIMIT 9")
 	if err != nil {
 		state.Logger.Error(err)
-		d.Resp <- api.DefaultResponse(http.StatusInternalServerError)
-		return
+		return api.DefaultResponse(http.StatusInternalServerError)
 	}
 	recentlyAddedDat := []types.IndexBot{}
 	err = pgxscan.ScanAll(&recentlyAddedDat, recentlyAddedRow)
 	if err != nil {
 		state.Logger.Error(err)
-		d.Resp <- api.DefaultResponse(http.StatusInternalServerError)
-		return
+		return api.DefaultResponse(http.StatusInternalServerError)
 	}
 
 	recentlyAddedDat, err = utils.ResolveIndexBot(recentlyAddedDat)
 
 	if err != nil {
 		state.Logger.Error(err)
-		d.Resp <- api.DefaultResponse(http.StatusInternalServerError)
-		return
+		return api.DefaultResponse(http.StatusInternalServerError)
 	}
 
 	listIndex.RecentlyAdded = recentlyAddedDat
@@ -124,22 +114,19 @@ func Route(d api.RouteData, r *http.Request) {
 	topVotedRow, err := state.Pool.Query(d.Context, "SELECT "+indexBotCols+" FROM bots WHERE type = 'approved' OR type = 'certified' ORDER BY votes DESC LIMIT 9")
 	if err != nil {
 		state.Logger.Error(err)
-		d.Resp <- api.DefaultResponse(http.StatusInternalServerError)
-		return
+		return api.DefaultResponse(http.StatusInternalServerError)
 	}
 	topVotedDat := []types.IndexBot{}
 	err = pgxscan.ScanAll(&topVotedDat, topVotedRow)
 	if err != nil {
 		state.Logger.Error(err)
-		d.Resp <- api.DefaultResponse(http.StatusInternalServerError)
-		return
+		return api.DefaultResponse(http.StatusInternalServerError)
 	}
 	topVotedDat, err = utils.ResolveIndexBot(topVotedDat)
 
 	if err != nil {
 		state.Logger.Error(err)
-		d.Resp <- api.DefaultResponse(http.StatusInternalServerError)
-		return
+		return api.DefaultResponse(http.StatusInternalServerError)
 	}
 
 	listIndex.TopVoted = topVotedDat
@@ -148,8 +135,7 @@ func Route(d api.RouteData, r *http.Request) {
 
 	if err != nil {
 		state.Logger.Error(err)
-		d.Resp <- api.DefaultResponse(http.StatusInternalServerError)
-		return
+		return api.DefaultResponse(http.StatusInternalServerError)
 	}
 
 	packs := []types.IndexBotPack{}
@@ -158,8 +144,7 @@ func Route(d api.RouteData, r *http.Request) {
 
 	if err != nil {
 		state.Logger.Error(err)
-		d.Resp <- api.DefaultResponse(http.StatusInternalServerError)
-		return
+		return api.DefaultResponse(http.StatusInternalServerError)
 	}
 
 	for i := range packs {
@@ -167,14 +152,13 @@ func Route(d api.RouteData, r *http.Request) {
 
 		if err != nil {
 			state.Logger.Error(err)
-			d.Resp <- api.DefaultResponse(http.StatusInternalServerError)
-			return
+			return api.DefaultResponse(http.StatusInternalServerError)
 		}
 	}
 
 	listIndex.Packs = packs
 
-	d.Resp <- api.HttpResponse{
+	return api.HttpResponse{
 		Json:      listIndex,
 		CacheKey:  "indexcache",
 		CacheTime: 15 * time.Minute,

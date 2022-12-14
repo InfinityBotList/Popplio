@@ -46,7 +46,7 @@ func Docs() *docs.Doc {
 	})
 }
 
-func Route(d api.RouteData, r *http.Request) {
+func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 	var userId = d.Auth.ID
 	var packUrl = chi.URLParam(r, "url")
 
@@ -56,16 +56,14 @@ func Route(d api.RouteData, r *http.Request) {
 
 	if err != nil {
 		state.Logger.Error(err)
-		d.Resp <- api.DefaultResponse(http.StatusInternalServerError)
-		return
+		return api.DefaultResponse(http.StatusInternalServerError)
 	}
 
 	err = json.Unmarshal(bodyBytes, &vote)
 
 	if err != nil {
 		state.Logger.Error(err)
-		d.Resp <- api.DefaultResponse(http.StatusInternalServerError)
-		return
+		return api.DefaultResponse(http.StatusInternalServerError)
 	}
 
 	var count int64
@@ -74,13 +72,11 @@ func Route(d api.RouteData, r *http.Request) {
 
 	if err != nil {
 		state.Logger.Error(err)
-		d.Resp <- api.DefaultResponse(http.StatusInternalServerError)
-		return
+		return api.DefaultResponse(http.StatusInternalServerError)
 	}
 
 	if count == 0 {
-		d.Resp <- api.DefaultResponse(http.StatusNotFound)
-		return
+		return api.DefaultResponse(http.StatusNotFound)
 	}
 
 	// Check if the user has already voted and if so update the vote
@@ -90,8 +86,7 @@ func Route(d api.RouteData, r *http.Request) {
 
 	if err != nil {
 		state.Logger.Error(err)
-		d.Resp <- api.DefaultResponse(http.StatusInternalServerError)
-		return
+		return api.DefaultResponse(http.StatusInternalServerError)
 	}
 
 	if packVotes == 0 {
@@ -100,8 +95,7 @@ func Route(d api.RouteData, r *http.Request) {
 
 		if err != nil {
 			state.Logger.Error(err)
-			d.Resp <- api.DefaultResponse(http.StatusInternalServerError)
-			return
+			return api.DefaultResponse(http.StatusInternalServerError)
 		}
 	} else {
 		// Update the vote
@@ -109,12 +103,11 @@ func Route(d api.RouteData, r *http.Request) {
 
 		if err != nil {
 			state.Logger.Error(err)
-			d.Resp <- api.DefaultResponse(http.StatusInternalServerError)
-			return
+			return api.DefaultResponse(http.StatusInternalServerError)
 		}
 	}
 
-	d.Resp <- api.HttpResponse{
+	return api.HttpResponse{
 		Status: http.StatusNoContent,
 	}
 }

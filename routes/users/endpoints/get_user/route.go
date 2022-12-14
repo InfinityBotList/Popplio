@@ -88,32 +88,29 @@ func Docs() *docs.Doc {
 	})
 }
 
-func Route(d api.RouteData, r *http.Request) {
+func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 	name := chi.URLParam(r, "id")
 
 	if name == "" {
-		d.Resp <- api.DefaultResponse(http.StatusBadRequest)
-		return
+		return api.DefaultResponse(http.StatusBadRequest)
 	}
 
 	if name == "undefined" {
-		d.Resp <- api.HttpResponse{
+		return api.HttpResponse{
 			Status: http.StatusOK,
 			Data:   `{"error":"false","message":"Handling known issue"}`,
 		}
-		return
 	}
 
 	// Check cache, this is how we can avoid hefty ratelimits
 	cache := state.Redis.Get(d.Context, "uc-"+name).Val()
 	if cache != "" {
-		d.Resp <- api.HttpResponse{
+		return api.HttpResponse{
 			Data: cache,
 			Headers: map[string]string{
 				"X-Popplio-Cached": "true",
 			},
 		}
-		return
 	}
 
 	var user User
@@ -124,16 +121,14 @@ func Route(d api.RouteData, r *http.Request) {
 
 	if err != nil {
 		state.Logger.Error(err)
-		d.Resp <- api.DefaultResponse(http.StatusNotFound)
-		return
+		return api.DefaultResponse(http.StatusNotFound)
 	}
 
 	err = pgxscan.ScanOne(&user, row)
 
 	if err != nil {
 		state.Logger.Error(err)
-		d.Resp <- api.DefaultResponse(http.StatusNotFound)
-		return
+		return api.DefaultResponse(http.StatusNotFound)
 	}
 
 	if utils.IsNone(user.About.String) {
@@ -145,8 +140,7 @@ func Route(d api.RouteData, r *http.Request) {
 
 	if err != nil {
 		state.Logger.Error(err)
-		d.Resp <- api.DefaultResponse(http.StatusInternalServerError)
-		return
+		return api.DefaultResponse(http.StatusInternalServerError)
 	}
 
 	user.User = userObj
@@ -155,8 +149,7 @@ func Route(d api.RouteData, r *http.Request) {
 
 	if err != nil {
 		state.Logger.Error(err)
-		d.Resp <- api.DefaultResponse(http.StatusInternalServerError)
-		return
+		return api.DefaultResponse(http.StatusInternalServerError)
 	}
 
 	var userBots []UserBot = []UserBot{}
@@ -165,8 +158,7 @@ func Route(d api.RouteData, r *http.Request) {
 
 	if err != nil {
 		state.Logger.Error(err)
-		d.Resp <- api.DefaultResponse(http.StatusInternalServerError)
-		return
+		return api.DefaultResponse(http.StatusInternalServerError)
 	}
 
 	parsedUserBots := []UserBot{}
@@ -184,7 +176,7 @@ func Route(d api.RouteData, r *http.Request) {
 
 	user.UserBots = parsedUserBots
 
-	d.Resp <- api.HttpResponse{
+	return api.HttpResponse{
 		Json:      user,
 		CacheKey:  "uc-" + name,
 		CacheTime: 3 * time.Minute,

@@ -40,7 +40,7 @@ func Docs() *docs.Doc {
 	})
 }
 
-func Route(d api.RouteData, r *http.Request) {
+func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 	var id = chi.URLParam(r, "id")
 
 	var botId pgtype.Text
@@ -48,15 +48,13 @@ func Route(d api.RouteData, r *http.Request) {
 	err := state.Pool.QueryRow(d.Context, "SELECT bot_id FROM bots WHERE (lower(vanity) = $1 OR bot_id = $1)", r.URL.Query().Get("bot_id")).Scan(&botId)
 
 	if err != nil || !botId.Valid || botId.String == "" {
-		state.Logger.Error("Error deleting reminder: ", err)
-		d.Resp <- api.DefaultResponse(http.StatusNotFound)
-		return
+		return api.DefaultResponse(http.StatusNotFound)
 	}
 
 	// Delete old
 	state.Pool.Exec(d.Context, "DELETE FROM silverpelt WHERE user_id = $1 AND bot_id = $2", id, botId.String)
 
-	d.Resp <- api.HttpResponse{
+	return api.HttpResponse{
 		Status: http.StatusNoContent,
 	}
 }

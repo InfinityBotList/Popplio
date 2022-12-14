@@ -37,7 +37,7 @@ print(req.json())
 	})
 }
 
-func Route(d api.RouteData, r *http.Request) {
+func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 	id := d.Auth.ID
 
 	var payload types.BotStats
@@ -48,11 +48,10 @@ func Route(d api.RouteData, r *http.Request) {
 		if r.URL.Query().Get("count") != "" {
 			payload = types.BotStats{}
 		} else {
-			d.Resp <- api.HttpResponse{
+			return api.HttpResponse{
 				Data:   constants.BadRequestStats,
 				Status: http.StatusBadRequest,
 			}
-			return
 		}
 	}
 
@@ -61,8 +60,7 @@ func Route(d api.RouteData, r *http.Request) {
 
 		if err != nil {
 			state.Logger.Error(err)
-			d.Resp <- api.DefaultResponse(http.StatusBadRequest)
-			return
+			return api.DefaultResponse(http.StatusBadRequest)
 		}
 
 		var countAny any = count
@@ -79,8 +77,7 @@ func Route(d api.RouteData, r *http.Request) {
 
 		if err != nil {
 			state.Logger.Error(err)
-			d.Resp <- api.DefaultResponse(http.StatusInternalServerError)
-			return
+			return api.DefaultResponse(http.StatusInternalServerError)
 		}
 	}
 
@@ -89,8 +86,7 @@ func Route(d api.RouteData, r *http.Request) {
 
 		if err != nil {
 			state.Logger.Error(err)
-			d.Resp <- api.DefaultResponse(http.StatusInternalServerError)
-			return
+			return api.DefaultResponse(http.StatusInternalServerError)
 		}
 	}
 
@@ -99,8 +95,7 @@ func Route(d api.RouteData, r *http.Request) {
 
 		if err != nil {
 			state.Logger.Error(err)
-			d.Resp <- api.DefaultResponse(http.StatusInternalServerError)
-			return
+			return api.DefaultResponse(http.StatusInternalServerError)
 		}
 	}
 
@@ -113,7 +108,7 @@ func Route(d api.RouteData, r *http.Request) {
 	state.Redis.Del(d.Context, "bc-"+vanity)
 	state.Redis.Del(d.Context, "bc-"+id)
 
-	d.Resp <- api.HttpResponse{
+	return api.HttpResponse{
 		Data: constants.Success,
 	}
 }

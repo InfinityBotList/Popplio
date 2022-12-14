@@ -43,7 +43,7 @@ func Docs() *docs.Doc {
 	})
 }
 
-func Route(d api.RouteData, r *http.Request) {
+func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 	page := r.URL.Query().Get("page")
 
 	if page == "" {
@@ -53,20 +53,18 @@ func Route(d api.RouteData, r *http.Request) {
 	pageNum, err := strconv.ParseUint(page, 10, 32)
 
 	if err != nil {
-		d.Resp <- api.DefaultResponse(http.StatusBadRequest)
-		return
+		return api.DefaultResponse(http.StatusBadRequest)
 	}
 
 	// Check cache, this is how we can avoid hefty ratelimits
 	cache := state.Redis.Get(d.Context, "allbots-"+strconv.FormatUint(pageNum, 10)).Val()
 	if cache != "" {
-		d.Resp <- api.HttpResponse{
+		return api.HttpResponse{
 			Data: cache,
 			Headers: map[string]string{
 				"X-Popplio-Cached": "true",
 			},
 		}
-		return
 	}
 
 	limit := perPage
@@ -76,8 +74,7 @@ func Route(d api.RouteData, r *http.Request) {
 
 	if err != nil {
 		state.Logger.Error(err)
-		d.Resp <- api.DefaultResponse(http.StatusInternalServerError)
-		return
+		return api.DefaultResponse(http.StatusInternalServerError)
 	}
 
 	var bots []types.IndexBot
@@ -86,16 +83,14 @@ func Route(d api.RouteData, r *http.Request) {
 
 	if err != nil {
 		state.Logger.Error(err)
-		d.Resp <- api.DefaultResponse(http.StatusInternalServerError)
-		return
+		return api.DefaultResponse(http.StatusInternalServerError)
 	}
 
 	bots, err = utils.ResolveIndexBot(bots)
 
 	if err != nil {
 		state.Logger.Error(err)
-		d.Resp <- api.DefaultResponse(http.StatusInternalServerError)
-		return
+		return api.DefaultResponse(http.StatusInternalServerError)
 	}
 
 	var previous strings.Builder
@@ -115,8 +110,7 @@ func Route(d api.RouteData, r *http.Request) {
 
 	if err != nil {
 		state.Logger.Error(err)
-		d.Resp <- api.DefaultResponse(http.StatusInternalServerError)
-		return
+		return api.DefaultResponse(http.StatusInternalServerError)
 	}
 
 	var next strings.Builder
@@ -137,7 +131,7 @@ func Route(d api.RouteData, r *http.Request) {
 		Next:     next.String(),
 	}
 
-	d.Resp <- api.HttpResponse{
+	return api.HttpResponse{
 		Json:      data,
 		CacheKey:  "allbots-" + strconv.FormatUint(pageNum, 10),
 		CacheTime: 10 * time.Minute,

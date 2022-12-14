@@ -42,22 +42,20 @@ func Docs() *docs.Doc {
 	})
 }
 
-func Route(d api.RouteData, r *http.Request) {
+func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 	name := chi.URLParam(r, "id")
 
 	name = strings.ToLower(name)
 
 	if name == "" {
-		d.Resp <- api.DefaultResponse(http.StatusNotFound)
-		return
+		return api.DefaultResponse(http.StatusNotFound)
 	}
 
 	rows, err := state.Pool.Query(d.Context, "SELECT "+reviewCols+" FROM reviews WHERE (lower(vanity) = $1 OR bot_id = $1)", name)
 
 	if err != nil {
 		state.Logger.Error(err)
-		d.Resp <- api.DefaultResponse(http.StatusNotFound)
-		return
+		return api.DefaultResponse(http.StatusNotFound)
 	}
 
 	var reviews []types.Review = []types.Review{}
@@ -66,8 +64,7 @@ func Route(d api.RouteData, r *http.Request) {
 
 	if err != nil {
 		state.Logger.Error(err)
-		d.Resp <- api.DefaultResponse(http.StatusInternalServerError)
-		return
+		return api.DefaultResponse(http.StatusInternalServerError)
 	}
 
 	for i, review := range reviews {
@@ -92,7 +89,7 @@ func Route(d api.RouteData, r *http.Request) {
 		Reviews: reviews,
 	}
 
-	d.Resp <- api.HttpResponse{
+	return api.HttpResponse{
 		Json: allReviews,
 	}
 }

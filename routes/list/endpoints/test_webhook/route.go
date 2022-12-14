@@ -28,7 +28,7 @@ func Docs() *docs.Doc {
 	})
 }
 
-func Route(d api.RouteData, r *http.Request) {
+func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 	defer r.Body.Close()
 
 	var payload types.WebhookPost
@@ -37,21 +37,18 @@ func Route(d api.RouteData, r *http.Request) {
 
 	if err != nil {
 		state.Logger.Error(err)
-		d.Resp <- api.DefaultResponse(http.StatusInternalServerError)
-		return
+		return api.DefaultResponse(http.StatusInternalServerError)
 	}
 
 	err = json.Unmarshal(bodyBytes, &payload)
 
 	if err != nil {
 		state.Logger.Error(err)
-		d.Resp <- api.DefaultResponse(http.StatusInternalServerError)
-		return
+		return api.DefaultResponse(http.StatusInternalServerError)
 	}
 
 	if utils.IsNone(payload.URL) && utils.IsNone(payload.URL2) {
-		d.Resp <- api.DefaultResponse(http.StatusBadRequest)
-		return
+		return api.DefaultResponse(http.StatusBadRequest)
 	}
 
 	payload.Test = true // Always true
@@ -85,9 +82,8 @@ func Route(d api.RouteData, r *http.Request) {
 		errD.Error = true
 	}
 
-	d.Resp <- api.HttpResponse{
+	return api.HttpResponse{
 		Status: http.StatusBadRequest,
 		Json:   errD,
 	}
-
 }

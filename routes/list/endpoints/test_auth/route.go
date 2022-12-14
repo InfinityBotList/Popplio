@@ -26,14 +26,13 @@ func Docs() *docs.Doc {
 	})
 }
 
-func Route(d api.RouteData, r *http.Request) {
+func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 	var payload TestAuth
 
 	hresp, ok := api.MarshalReq(r, &payload)
 
 	if !ok {
-		d.Resp <- hresp
-		return
+		return hresp
 	}
 
 	// Create []AuthType
@@ -52,29 +51,26 @@ func Route(d api.RouteData, r *http.Request) {
 	}.Authorize(r)
 
 	if !ok {
-		d.Resp <- hr
-		return
+		return hr
 	}
 
 	// Check if the auth type is correct
 	if authData.TargetType != payload.AuthType {
-		d.Resp <- api.HttpResponse{
+		return api.HttpResponse{
 			Status: http.StatusUnauthorized,
 			Json:   types.ApiError{Message: "Invalid auth type"},
 		}
-		return
 	}
 
 	// Check if the auth target id is correct
 	if payload.TargetID != "" && authData.ID != payload.TargetID {
-		d.Resp <- api.HttpResponse{
+		return api.HttpResponse{
 			Status: http.StatusUnauthorized,
 			Json:   types.ApiError{Message: "Invalid auth target id"},
 		}
-		return
 	}
 
-	d.Resp <- api.HttpResponse{
+	return api.HttpResponse{
 		Json: authData,
 	}
 }

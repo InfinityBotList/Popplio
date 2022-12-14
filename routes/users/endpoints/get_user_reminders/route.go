@@ -40,7 +40,7 @@ func Docs() *docs.Doc {
 	})
 }
 
-func Route(d api.RouteData, r *http.Request) {
+func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 	var id = chi.URLParam(r, "id")
 
 	// Fetch reminder from postgres
@@ -48,8 +48,7 @@ func Route(d api.RouteData, r *http.Request) {
 
 	if err != nil {
 		state.Logger.Error(err)
-		d.Resp <- api.DefaultResponse(http.StatusInternalServerError)
-		return
+		return api.DefaultResponse(http.StatusInternalServerError)
 	}
 
 	var reminders []types.Reminder
@@ -58,13 +57,11 @@ func Route(d api.RouteData, r *http.Request) {
 
 	if err != nil {
 		state.Logger.Error(err)
-		d.Resp <- api.DefaultResponse(http.StatusInternalServerError)
-		return
+		return api.DefaultResponse(http.StatusInternalServerError)
 	}
 
 	if len(reminders) == 0 {
-		d.Resp <- api.DefaultResponse(http.StatusNotFound)
-		return
+		return api.DefaultResponse(http.StatusNotFound)
 	}
 
 	for i, reminder := range reminders {
@@ -91,7 +88,7 @@ func Route(d api.RouteData, r *http.Request) {
 		Reminders: reminders,
 	}
 
-	d.Resp <- api.HttpResponse{
+	return api.HttpResponse{
 		Json: reminderList,
 	}
 }

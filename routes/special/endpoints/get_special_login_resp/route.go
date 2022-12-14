@@ -32,18 +32,17 @@ func Docs() *docs.Doc {
 	})
 }
 
-func Route(d api.RouteData, r *http.Request) {
+func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 	stateQuery := r.URL.Query().Get("state")
 
 	// Get act from redis
 	act, err := state.Redis.Get(d.Context, "spec:"+stateQuery).Result()
 
 	if err != nil {
-		d.Resp <- api.HttpResponse{
+		return api.HttpResponse{
 			Status: http.StatusBadRequest,
 			Data:   "Invalid state",
 		}
-		return
 	}
 
 	// Decode act using json
@@ -52,20 +51,18 @@ func Route(d api.RouteData, r *http.Request) {
 	err = json.Unmarshal([]byte(act), &action)
 
 	if err != nil {
-		d.Resp <- api.HttpResponse{
+		return api.HttpResponse{
 			Status: http.StatusBadRequest,
 			Data:   "Invalid state",
 		}
-		return
 	}
 
 	// Check time
 	if time.Since(action.Time) > 3*time.Minute {
-		d.Resp <- api.HttpResponse{
+		return api.HttpResponse{
 			Status: http.StatusBadRequest,
 			Data:   "Invalid state (too old)",
 		}
-		return
 	}
 
 	// Check code with discords api
@@ -80,11 +77,10 @@ func Route(d api.RouteData, r *http.Request) {
 	response, err := http.PostForm("https://discord.com/api/oauth2/token", data)
 
 	if err != nil {
-		d.Resp <- api.HttpResponse{
+		return api.HttpResponse{
 			Status: http.StatusInternalServerError,
 			Data:   err.Error(),
 		}
-		return
 	}
 
 	defer response.Body.Close()
@@ -92,11 +88,10 @@ func Route(d api.RouteData, r *http.Request) {
 	body, err := io.ReadAll(response.Body)
 
 	if err != nil {
-		d.Resp <- api.HttpResponse{
+		return api.HttpResponse{
 			Status: http.StatusInternalServerError,
 			Data:   err.Error(),
 		}
-		return
 	}
 
 	var token struct {
@@ -107,32 +102,29 @@ func Route(d api.RouteData, r *http.Request) {
 	err = json.Unmarshal(body, &token)
 
 	if err != nil {
-		d.Resp <- api.HttpResponse{
+		return api.HttpResponse{
 			Status: http.StatusInternalServerError,
 			Data:   err.Error(),
 		}
-		return
 	}
 
 	state.Logger.Info(token)
 
 	if !strings.Contains(token.Scope, "identify") {
-		d.Resp <- api.HttpResponse{
+		return api.HttpResponse{
 			Status: http.StatusBadRequest,
 			Data:   "Invalid scope: scope contain identify, is currently " + token.Scope,
 		}
-		return
 	}
 
 	// Get user info
 	req, err := http.NewRequest("GET", "https://discord.com/api/users/@me", nil)
 
 	if err != nil {
-		d.Resp <- api.HttpResponse{
+		return api.HttpResponse{
 			Status: http.StatusInternalServerError,
 			Data:   err.Error(),
 		}
-		return
 	}
 
 	req.Header.Set("Authorization", "Bearer "+token.AccessToken)
@@ -142,11 +134,10 @@ func Route(d api.RouteData, r *http.Request) {
 	response, err = client.Do(req)
 
 	if err != nil {
-		d.Resp <- api.HttpResponse{
+		return api.HttpResponse{
 			Status: http.StatusInternalServerError,
 			Data:   err.Error(),
 		}
-		return
 	}
 
 	defer response.Body.Close()
@@ -154,11 +145,10 @@ func Route(d api.RouteData, r *http.Request) {
 	body, err = io.ReadAll(response.Body)
 
 	if err != nil {
-		d.Resp <- api.HttpResponse{
+		return api.HttpResponse{
 			Status: http.StatusInternalServerError,
 			Data:   err.Error(),
 		}
-		return
 	}
 
 	var user assets.InternalOauthUser
@@ -166,11 +156,10 @@ func Route(d api.RouteData, r *http.Request) {
 	err = json.Unmarshal(body, &user)
 
 	if err != nil {
-		d.Resp <- api.HttpResponse{
+		return api.HttpResponse{
 			Status: http.StatusInternalServerError,
 			Data:   err.Error(),
 		}
-		return
 	}
 
 	if action.TID != "" {
@@ -178,19 +167,17 @@ func Route(d api.RouteData, r *http.Request) {
 		isOwner, err := utils.IsBotOwner(d.Context, user.ID, action.TID)
 
 		if err != nil {
-			d.Resp <- api.HttpResponse{
+			return api.HttpResponse{
 				Status: http.StatusInternalServerError,
 				Data:   err.Error(),
 			}
-			return
 		}
 
 		if !isOwner {
-			d.Resp <- api.HttpResponse{
+			return api.HttpResponse{
 				Status: http.StatusBadRequest,
 				Data:   "You do not own the bot you are trying to manage",
 			}
-			return
 		}
 	}
 
@@ -202,21 +189,19 @@ func Route(d api.RouteData, r *http.Request) {
 		err = state.Redis.Set(d.Context, taskId, "WAITING", time.Hour*8).Err()
 
 		if err != nil {
-			d.Resp <- api.HttpResponse{
+			return api.HttpResponse{
 				Status: http.StatusInternalServerError,
 				Data:   err.Error(),
 			}
-			return
 		}
 
 		remoteIp := strings.Split(strings.ReplaceAll(r.Header.Get("X-Forwarded-For"), " ", ""), ",")
 
 		go assets.DataTask(taskId, user.ID, remoteIp[0], false)
 
-		d.Resp <- api.HttpResponse{
+		return api.HttpResponse{
 			Redirect: os.Getenv("BOTLIST_APP") + "/data/confirm?tid=" + taskId + "&user=" + base64.URLEncoding.EncodeToString(body) + "&act=" + action.Action,
 		}
-		return
 	// Data deletion request
 	case "ddr":
 		taskId := crypto.RandString(196)
@@ -224,20 +209,18 @@ func Route(d api.RouteData, r *http.Request) {
 		err = state.Redis.Set(d.Context, taskId, "WAITING", time.Hour*8).Err()
 
 		if err != nil {
-			d.Resp <- api.HttpResponse{
+			return api.HttpResponse{
 				Status: http.StatusInternalServerError,
 				Data:   err.Error(),
 			}
-			return
 		}
 
 		remoteIp := strings.Split(strings.ReplaceAll(r.Header.Get("X-Forwarded-For"), " ", ""), ",")
 
 		go assets.DataTask(taskId, user.ID, remoteIp[0], true)
-		d.Resp <- api.HttpResponse{
+		return api.HttpResponse{
 			Redirect: os.Getenv("BOTLIST_APP") + "/data/confirm?tid=" + taskId + "&user=" + base64.URLEncoding.EncodeToString(body) + "&act=" + action.Action,
 		}
-		return
 	// Reset token for users
 	case "rtu":
 		var token string
@@ -246,25 +229,22 @@ func Route(d api.RouteData, r *http.Request) {
 		_, err := state.Pool.Exec(d.Context, "UPDATE users SET api_token = $1 WHERE user_id = $2", token, user.ID)
 
 		if err != nil {
-			d.Resp <- api.HttpResponse{
+			return api.HttpResponse{
 				Status: http.StatusInternalServerError,
 				Data:   err.Error(),
 			}
-			return
 		}
 
-		d.Resp <- api.HttpResponse{
+		return api.HttpResponse{
 			Data: "Your new API token is: " + token + "\n\nThank you and have a nice day ;)",
 		}
-		return
 
 	case "rtb":
 		if action.TID == "" {
-			d.Resp <- api.HttpResponse{
+			return api.HttpResponse{
 				Status: http.StatusBadRequest,
 				Data:   "No target id set",
 			}
-			return
 		}
 
 		token := crypto.RandString(128)
@@ -272,25 +252,22 @@ func Route(d api.RouteData, r *http.Request) {
 		_, err := state.Pool.Exec(d.Context, "UPDATE bots SET api_token = $1 WHERE bot_id = $2", token, action.TID)
 
 		if err != nil {
-			d.Resp <- api.HttpResponse{
+			return api.HttpResponse{
 				Status: http.StatusInternalServerError,
 				Data:   err.Error(),
 			}
-			return
 		}
 
-		d.Resp <- api.HttpResponse{
+		return api.HttpResponse{
 			Data: "Your new API token is: " + token + "\n\nThank you and have a nice day ;)",
 		}
-		return
 	// Bot webhook secret
 	case "bwebsec":
 		if action.TID == "" {
-			d.Resp <- api.HttpResponse{
+			return api.HttpResponse{
 				Status: http.StatusBadRequest,
 				Data:   "No target id set",
 			}
-			return
 		}
 
 		if action.Ctx == "" {
@@ -298,34 +275,35 @@ func Route(d api.RouteData, r *http.Request) {
 			_, err := state.Pool.Exec(d.Context, "UPDATE bots SET webhook_secret = NULL WHERE bot_id = $1", action.TID)
 
 			if err != nil {
-				d.Resp <- api.HttpResponse{
+				return api.HttpResponse{
 					Status: http.StatusInternalServerError,
 					Data:   err.Error(),
 				}
 			}
 
-			d.Resp <- api.HttpResponse{
+			return api.HttpResponse{
 				Status: http.StatusOK,
 				Data:   "Successfully unset webhook secret",
 			}
-			return
 		} else {
 			_, err := state.Pool.Exec(d.Context, "UPDATE bots SET webhook_secret = $1 WHERE bot_id = $2", action.Ctx, action.TID)
 
 			if err != nil {
-				d.Resp <- api.HttpResponse{
+				return api.HttpResponse{
 					Status: http.StatusInternalServerError,
 					Data:   err.Error(),
 				}
 			}
 
-			d.Resp <- api.HttpResponse{
+			return api.HttpResponse{
 				Status: http.StatusOK,
 				Data:   "Successfully set webhook secret",
 			}
 		}
 	default:
-		d.Resp <- api.DefaultResponse(http.StatusNotFound)
-		return
+		return api.HttpResponse{
+			Status: http.StatusBadRequest,
+			Data:   "Invalid action",
+		}
 	}
 }

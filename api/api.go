@@ -72,7 +72,7 @@ type AuthData struct {
 type Route struct {
 	Method       Method
 	Pattern      string
-	Handler      func(d RouteData, r *http.Request)
+	Handler      func(d RouteData, r *http.Request) HttpResponse
 	Setup        func()
 	Docs         func() *docs.Doc
 	Auth         []AuthType
@@ -297,7 +297,7 @@ func (r Route) Route(ro Router) {
 				return
 			}
 
-			r.Handler(RouteData{
+			resp <- r.Handler(RouteData{
 				Context: ctx,
 				Resp:    resp,
 				Auth:    authData,

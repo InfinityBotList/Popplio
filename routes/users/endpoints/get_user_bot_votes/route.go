@@ -45,7 +45,7 @@ func Docs() *docs.Doc {
 	})
 }
 
-func Route(d api.RouteData, r *http.Request) {
+func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 	var vars = map[string]string{
 		"uid": chi.URLParam(r, "uid"),
 		"bid": chi.URLParam(r, "bid"),
@@ -57,19 +57,17 @@ func Route(d api.RouteData, r *http.Request) {
 
 	if err != nil {
 		state.Logger.Error(err)
-		d.Resp <- api.DefaultResponse(http.StatusNotFound)
-		return
+		return api.DefaultResponse(http.StatusNotFound)
 	}
 
 	voteParsed, err := utils.GetVoteData(d.Context, vars["uid"], botId.String)
 
 	if err != nil {
 		state.Logger.Error(err)
-		d.Resp <- api.DefaultResponse(http.StatusInternalServerError)
-		return
+		return api.DefaultResponse(http.StatusInternalServerError)
 	}
 
-	d.Resp <- api.HttpResponse{
+	return api.HttpResponse{
 		Json: voteParsed,
 	}
 }

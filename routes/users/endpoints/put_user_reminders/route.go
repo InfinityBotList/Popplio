@@ -40,7 +40,7 @@ func Docs() *docs.Doc {
 	})
 }
 
-func Route(d api.RouteData, r *http.Request) {
+func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 	var id = chi.URLParam(r, "id")
 
 	var botId pgtype.Text
@@ -49,8 +49,7 @@ func Route(d api.RouteData, r *http.Request) {
 
 	if err != nil || !botId.Valid || botId.String == "" {
 		state.Logger.Error("Error adding reminder: ", err)
-		d.Resp <- api.DefaultResponse(http.StatusNotFound)
-		return
+		return api.DefaultResponse(http.StatusNotFound)
 	}
 
 	// Delete old
@@ -61,11 +60,10 @@ func Route(d api.RouteData, r *http.Request) {
 
 	if err != nil {
 		state.Logger.Error("Error adding reminder: ", err)
-		d.Resp <- api.DefaultResponse(http.StatusNotFound)
-		return
+		return api.DefaultResponse(http.StatusBadRequest)
 	}
 
-	d.Resp <- api.HttpResponse{
+	return api.HttpResponse{
 		Status: http.StatusNoContent,
 	}
 }

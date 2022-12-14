@@ -192,14 +192,13 @@ func (bot *CreateBot) checkBotClientId(ctx context.Context) (*checkBotClientIdRe
 	}, nil
 }
 
-func Route(d api.RouteData, r *http.Request) {
+func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 	var payload CreateBot
 
 	hresp, ok := api.MarshalReq(r, &payload)
 
 	if !ok {
-		d.Resp <- hresp
-		return
+		return hresp
 	}
 
 	// Validate the payload
@@ -208,66 +207,59 @@ func Route(d api.RouteData, r *http.Request) {
 
 	if err != nil {
 		errors := err.(validator.ValidationErrors)
-		d.Resp <- api.ValidatorErrorResponse(compiledMessages, errors)
-
-		return
+		return api.ValidatorErrorResponse(compiledMessages, errors)
 	}
 
 	if !strings.HasPrefix(payload.Invite, "https://") {
-		d.Resp <- api.HttpResponse{
+		return api.HttpResponse{
 			Status: http.StatusBadRequest,
 			Json: types.ApiError{
 				Message: "Invite must start with https://",
 				Error:   true,
 			},
 		}
-		return
 	}
 
 	if payload.Background != nil && !strings.HasPrefix(*payload.Background, "https://") {
-		d.Resp <- api.HttpResponse{
+		return api.HttpResponse{
 			Status: http.StatusBadRequest,
 			Json: types.ApiError{
 				Message: "Background must start with https://",
 				Error:   true,
 			},
 		}
-		return
 	}
 
 	if slices.Contains(payload.AdditionalOwners, d.Auth.ID) {
-		d.Resp <- api.HttpResponse{
+		return api.HttpResponse{
 			Status: http.StatusBadRequest,
 			Json: types.ApiError{
 				Message: "You cannot be an additional owner",
 				Error:   true,
 			},
 		}
-		return
 	}
 
 	if slices.Contains(payload.Tags, "nsfw") && !payload.NSFW {
-		d.Resp <- api.HttpResponse{
+		return api.HttpResponse{
 			Status: http.StatusBadRequest,
 			Json: types.ApiError{
 				Message: "You cannot add the nsfw tag without setting nsfw to true",
 				Error:   true,
 			},
 		}
-		return
 	}
 
 	err = utils.ValidateExtraLinks(payload.ExtraLinks)
 
 	if err != nil {
-		d.Resp <- api.HttpResponse{
+		return api.HttpResponse{
 			Status: http.StatusBadRequest,
 			Json: types.ApiError{
 				Message: err.Error(),
 				Error:   true,
 			},
 		}
-		return
 	}
 
 	// Check if the bot is already in the database
@@ -277,58 +269,53 @@ func Route(d api.RouteData, r *http.Request) {
 
 	if err != nil {
 		state.Logger.Error(err)
-		d.Resp <- api.DefaultResponse(http.StatusInternalServerError)
-		return
+		return api.DefaultResponse(http.StatusInternalServerError)
 	}
 
 	if count > 0 {
-		d.Resp <- api.HttpResponse{
+		return api.HttpResponse{
 			Status: http.StatusBadRequest,
 			Json: types.ApiError{
 				Message: "This bot is already in the database",
 				Error:   true,
 			},
 		}
-		return
 	}
 
 	// Ensure the bot actually exists right now
 	bot, err := utils.GetDiscordUser(payload.BotID)
 
 	if err != nil {
-		d.Resp <- api.HttpResponse{
+		return api.HttpResponse{
 			Status: http.StatusBadRequest,
 			Json: types.ApiError{
 				Message: "This bot does not exist: " + err.Error(),
 				Error:   true,
 			},
 		}
-		return
 	}
 
 	if !bot.Bot {
-		d.Resp <- api.HttpResponse{
+		return api.HttpResponse{
 			Status: http.StatusBadRequest,
 			Json: types.ApiError{
 				Message: "This user is not a bot",
 				Error:   true,
 			},
 		}
-		return
 	}
 
 	// Ensure the main owner exists
 	_, err = utils.GetDiscordUser(d.Auth.ID)
 
 	if err != nil {
-		d.Resp <- api.HttpResponse{
+		return api.HttpResponse{
 			Status: http.StatusBadRequest,
 			Json: types.ApiError{
 				Message: "The main owner of this bot somehow does not exist: " + err.Error(),
 				Error:   true,
 			},
 		}
-		return
 	}
 
 	// Ensure the additional owners exist
@@ -336,39 +323,36 @@ func Route(d api.RouteData, r *http.Request) {
 		ownerObj, err := utils.GetDiscordUser(owner)
 
 		if err != nil {
-			d.Resp <- api.HttpResponse{
+			return api.HttpResponse{
 				Status: http.StatusBadRequest,
 				Json: types.ApiError{
 					Message: "One of the additional owners of this bot does not exist [" + owner + "]: " + err.Error(),
 					Error:   true,
 				},
 			}
-			return
 		}
 
 		if ownerObj.Bot {
-			d.Resp <- api.HttpResponse{
+			return api.HttpResponse{
 				Status: http.StatusBadRequest,
 				Json: types.ApiError{
 					Message: "One of the additional owners of this bot is actually a bot [" + owner + "]",
 					Error:   true,
 				},
 			}
-			return
 		}
 	}
 
 	resp, err := payload.checkBotClientId(d.Context)
 
 	if err != nil {
-		d.Resp <- api.HttpResponse{
+		return api.HttpResponse{
 			Status: http.StatusBadRequest,
 			Json: types.ApiError{
 				Message: "Hmmm..." + err.Error(),
 				Error:   true,
 			},
 		}
-		return
 	}
 
 	payload.QueueName = &resp.botName
@@ -391,14 +375,13 @@ func Route(d api.RouteData, r *http.Request) {
 	botArgs := createBotsArgs(payload)
 
 	if len(createBotsColsArr) != len(botArgs) {
-		d.Resp <- api.HttpResponse{
+		return api.HttpResponse{
 			Status: http.StatusInternalServerError,
 			Json: types.ApiError{
 				Message: "Internal Error: The number of columns and arguments do not match",
 				Error:   true,
 			},
 		}
-		return
 	}
 
 	// Save the bot to the database
@@ -406,8 +389,7 @@ func Route(d api.RouteData, r *http.Request) {
 
 	if err != nil {
 		state.Logger.Error(err)
-		d.Resp <- api.DefaultResponse(http.StatusInternalServerError)
-		return
+		return api.DefaultResponse(http.StatusInternalServerError)
 	}
 
 	notifications.MessageNotifyChannel <- types.DiscordLog{
@@ -449,7 +431,7 @@ func Route(d api.RouteData, r *http.Request) {
 		},
 	}
 
-	d.Resp <- api.HttpResponse{
+	return api.HttpResponse{
 		Status: http.StatusNoContent,
 	}
 }

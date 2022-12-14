@@ -24,13 +24,13 @@ func Docs() *docs.Doc {
 	})
 }
 
-func Route(d api.RouteData, r *http.Request) {
+func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 	var payload = VoteInfo{
 		Weekend:  utils.GetDoubleVote(),
 		VoteTime: utils.GetVoteTime(),
 	}
 
-	d.Resp <- api.HttpResponse{
+	return api.HttpResponse{
 		Json: payload,
 	}
 }

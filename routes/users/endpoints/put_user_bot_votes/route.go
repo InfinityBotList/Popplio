@@ -52,7 +52,7 @@ func Docs() *docs.Doc {
 	})
 }
 
-func Route(d api.RouteData, r *http.Request) {
+func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 	var vars = map[string]string{
 		"uid": chi.URLParam(r, "uid"),
 		"bid": chi.URLParam(r, "bid"),
@@ -67,16 +67,14 @@ func Route(d api.RouteData, r *http.Request) {
 
 	if err != nil {
 		state.Logger.Error(err)
-		d.Resp <- api.DefaultResponse(http.StatusInternalServerError)
-		return
+		return api.DefaultResponse(http.StatusInternalServerError)
 	}
 
 	if voteBannedState {
-		d.Resp <- api.HttpResponse{
+		return api.HttpResponse{
 			Status: http.StatusForbidden,
 			Data:   constants.VoteBanned,
 		}
-		return
 	}
 
 	var voteBannedBotsState bool
@@ -85,34 +83,30 @@ func Route(d api.RouteData, r *http.Request) {
 
 	if err != nil {
 		state.Logger.Error(err)
-		d.Resp <- api.DefaultResponse(http.StatusInternalServerError)
-		return
+		return api.DefaultResponse(http.StatusInternalServerError)
 	}
 
 	if voteBannedBotsState {
-		d.Resp <- api.HttpResponse{
+		return api.HttpResponse{
 			Status: http.StatusForbidden,
 			Data:   constants.VoteBanned,
 		}
-		return
 	}
 
 	vars["bid"] = botId.String
 
 	if botType.String != "approved" && botType.String != "certified" {
-		d.Resp <- api.HttpResponse{
+		return api.HttpResponse{
 			Status: http.StatusBadRequest,
 			Data:   constants.NotApproved,
 		}
-		return
 	}
 
 	voteParsed, err := utils.GetVoteData(d.Context, vars["uid"], vars["bid"])
 
 	if err != nil {
 		state.Logger.Error(err)
-		d.Resp <- api.DefaultResponse(http.StatusInternalServerError)
-		return
+		return api.DefaultResponse(http.StatusInternalServerError)
 	}
 
 	if voteParsed.HasVoted {
@@ -134,12 +128,10 @@ func Route(d api.RouteData, r *http.Request) {
 			Error:   true,
 		}
 
-		d.Resp <- api.HttpResponse{
+		return api.HttpResponse{
 			Status: http.StatusBadRequest,
 			Json:   alreadyVotedMsg,
 		}
-
-		return
 	}
 
 	// Record new vote
@@ -150,8 +142,7 @@ func Route(d api.RouteData, r *http.Request) {
 		// Revert vote
 		_, err := state.Pool.Exec(d.Context, "DELETE FROM votes WHERE itag = $1", itag)
 		state.Logger.Error(err)
-		d.Resp <- api.DefaultResponse(http.StatusInternalServerError)
-		return
+		return api.DefaultResponse(http.StatusInternalServerError)
 	}
 
 	var oldVotes pgtype.Int4
@@ -163,8 +154,7 @@ func Route(d api.RouteData, r *http.Request) {
 		_, err := state.Pool.Exec(d.Context, "DELETE FROM votes WHERE itag = $1", itag)
 
 		state.Logger.Error(err)
-		d.Resp <- api.DefaultResponse(http.StatusInternalServerError)
-		return
+		return api.DefaultResponse(http.StatusInternalServerError)
 	}
 
 	var incr = 1
@@ -184,8 +174,7 @@ func Route(d api.RouteData, r *http.Request) {
 		_, err := state.Pool.Exec(d.Context, "DELETE FROM votes WHERE itag = $1", itag)
 
 		state.Logger.Error(err)
-		d.Resp <- api.DefaultResponse(http.StatusInternalServerError)
-		return
+		return api.DefaultResponse(http.StatusInternalServerError)
 	}
 
 	userObj, err := utils.GetDiscordUser(vars["uid"])
@@ -195,8 +184,7 @@ func Route(d api.RouteData, r *http.Request) {
 		_, err := state.Pool.Exec(d.Context, "DELETE FROM votes WHERE itag = $1", itag)
 
 		state.Logger.Error(err)
-		d.Resp <- api.DefaultResponse(http.StatusInternalServerError)
-		return
+		return api.DefaultResponse(http.StatusInternalServerError)
 	}
 
 	botObj, err := utils.GetDiscordUser(vars["bid"])
@@ -206,8 +194,7 @@ func Route(d api.RouteData, r *http.Request) {
 		_, err := state.Pool.Exec(d.Context, "DELETE FROM votes WHERE itag = $1", itag)
 
 		state.Logger.Error(err)
-		d.Resp <- api.DefaultResponse(http.StatusInternalServerError)
-		return
+		return api.DefaultResponse(http.StatusInternalServerError)
 	}
 
 	channel := os.Getenv("VOTE_LOGS_CHANNEL")
@@ -320,7 +307,7 @@ func Route(d api.RouteData, r *http.Request) {
 		}
 	}()
 
-	d.Resp <- api.HttpResponse{
+	return api.HttpResponse{
 		Status: http.StatusNoContent,
 	}
 }

@@ -40,15 +40,14 @@ func Docs() *docs.Doc {
 	})
 }
 
-func Route(d api.RouteData, r *http.Request) {
+func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 	listStats := ListStats{}
 
 	bots, err := state.Pool.Query(d.Context, "SELECT bot_id, vanity, short, type, owner, additional_owners, queue_name FROM bots")
 
 	if err != nil {
 		state.Logger.Error(err)
-		d.Resp <- api.DefaultResponse(http.StatusInternalServerError)
-		return
+		return api.DefaultResponse(http.StatusInternalServerError)
 	}
 
 	defer bots.Close()
@@ -66,8 +65,7 @@ func Route(d api.RouteData, r *http.Request) {
 
 		if err != nil {
 			state.Logger.Error(err)
-			d.Resp <- api.DefaultResponse(http.StatusInternalServerError)
-			return
+			return api.DefaultResponse(http.StatusInternalServerError)
 		}
 
 		listStats.Bots = append(listStats.Bots, ListStatsBot{
@@ -86,8 +84,7 @@ func Route(d api.RouteData, r *http.Request) {
 
 	if err != nil {
 		state.Logger.Error(err)
-		d.Resp <- api.DefaultResponse(http.StatusInternalServerError)
-		return
+		return api.DefaultResponse(http.StatusInternalServerError)
 	}
 
 	listStats.TotalStaff = activeStaff
@@ -97,8 +94,7 @@ func Route(d api.RouteData, r *http.Request) {
 
 	if err != nil {
 		state.Logger.Error(err)
-		d.Resp <- api.DefaultResponse(http.StatusInternalServerError)
-		return
+		return api.DefaultResponse(http.StatusInternalServerError)
 	}
 
 	listStats.TotalUsers = totalUsers
@@ -108,8 +104,7 @@ func Route(d api.RouteData, r *http.Request) {
 
 	if err != nil {
 		state.Logger.Error(err)
-		d.Resp <- api.DefaultResponse(http.StatusInternalServerError)
-		return
+		return api.DefaultResponse(http.StatusInternalServerError)
 	}
 
 	listStats.TotalVotes = totalVotes
@@ -119,8 +114,7 @@ func Route(d api.RouteData, r *http.Request) {
 
 	if err != nil {
 		state.Logger.Error(err)
-		d.Resp <- api.DefaultResponse(http.StatusInternalServerError)
-		return
+		return api.DefaultResponse(http.StatusInternalServerError)
 	}
 
 	listStats.TotalPacks = totalPacks
@@ -130,13 +124,12 @@ func Route(d api.RouteData, r *http.Request) {
 
 	if err != nil {
 		state.Logger.Error(err)
-		d.Resp <- api.DefaultResponse(http.StatusInternalServerError)
-		return
+		return api.DefaultResponse(http.StatusInternalServerError)
 	}
 
 	listStats.TotalTickets = totalTickets
 
-	d.Resp <- api.HttpResponse{
+	return api.HttpResponse{
 		Json: listStats,
 	}
 }

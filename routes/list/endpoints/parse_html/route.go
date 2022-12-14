@@ -102,14 +102,13 @@ func Docs() *docs.Doc {
 	})
 }
 
-func Route(d api.RouteData, r *http.Request) {
+func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 	// Read body
 	var bodyBytes, err = io.ReadAll(r.Body)
 
 	if err != nil {
 		state.Logger.Error(err)
-		d.Resp <- api.DefaultResponse(http.StatusInternalServerError)
-		return
+		return api.DefaultResponse(http.StatusInternalServerError)
 	}
 
 	var buf bytes.Buffer
@@ -118,8 +117,7 @@ func Route(d api.RouteData, r *http.Request) {
 
 	if err != nil {
 		state.Logger.Error(err)
-		d.Resp <- api.DefaultResponse(http.StatusInternalServerError)
-		return
+		return api.DefaultResponse(http.StatusInternalServerError)
 	}
 
 	bytes := buf.Bytes()
@@ -127,7 +125,7 @@ func Route(d api.RouteData, r *http.Request) {
 	// Now sanitize the HTML with bluemonday
 	var sanitized = p.SanitizeBytes(bytes)
 
-	d.Resp <- api.HttpResponse{
+	return api.HttpResponse{
 		Bytes: sanitized,
 	}
 }

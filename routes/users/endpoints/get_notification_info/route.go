@@ -20,12 +20,12 @@ func Docs() *docs.Doc {
 	})
 }
 
-func Route(d api.RouteData, r *http.Request) {
+func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 	data := types.NotificationInfo{
 		PublicKey: os.Getenv("VAPID_PUBLIC_KEY"),
 	}
 
-	d.Resp <- api.HttpResponse{
+	return api.HttpResponse{
 		Json: data,
 	}
 }

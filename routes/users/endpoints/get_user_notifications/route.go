@@ -36,7 +36,7 @@ func Docs() *docs.Doc {
 	})
 }
 
-func Route(d api.RouteData, r *http.Request) {
+func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 	var id = chi.URLParam(r, "id")
 
 	var subscription []types.NotifGet
@@ -52,21 +52,18 @@ func Route(d api.RouteData, r *http.Request) {
 
 	if err != nil {
 		state.Logger.Error(err)
-		d.Resp <- api.DefaultResponse(http.StatusInternalServerError)
-		return
+		return api.DefaultResponse(http.StatusInternalServerError)
 	}
 
 	err = pgxscan.ScanAll(&subscriptionDb, rows)
 
 	if err != nil {
 		state.Logger.Error(err)
-		d.Resp <- api.DefaultResponse(http.StatusInternalServerError)
-		return
+		return api.DefaultResponse(http.StatusInternalServerError)
 	}
 
 	if len(subscriptionDb) == 0 {
-		d.Resp <- api.DefaultResponse(http.StatusNotFound)
-		return
+		return api.DefaultResponse(http.StatusNotFound)
 	}
 
 	for _, sub := range subscriptionDb {
@@ -98,7 +95,7 @@ func Route(d api.RouteData, r *http.Request) {
 		Notifications: subscription,
 	}
 
-	d.Resp <- api.HttpResponse{
+	return api.HttpResponse{
 		Json: sublist,
 	}
 }

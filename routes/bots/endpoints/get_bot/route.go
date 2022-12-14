@@ -99,26 +99,24 @@ Gets a bot by id or name
 	})
 }
 
-func Route(d api.RouteData, r *http.Request) {
+func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 	name := chi.URLParam(r, "id")
 
 	name = strings.ToLower(name)
 
 	if name == "" {
-		d.Resp <- api.DefaultResponse(http.StatusBadRequest)
-		return
+		return api.DefaultResponse(http.StatusBadRequest)
 	}
 
 	// Check cache, this is how we can avoid hefty ratelimits
 	cache := state.Redis.Get(d.Context, "bc-"+name).Val()
 	if cache != "" {
-		d.Resp <- api.HttpResponse{
+		return api.HttpResponse{
 			Data: cache,
 			Headers: map[string]string{
 				"X-Popplio-Cached": "true",
 			},
 		}
-		return
 	}
 
 	// First check count so we can avoid expensive DB calls
@@ -127,13 +125,11 @@ func Route(d api.RouteData, r *http.Request) {
 	err := state.Pool.QueryRow(d.Context, "SELECT COUNT(*) FROM bots WHERE (lower(vanity) = $1 OR bot_id = $1)", name).Scan(&count)
 
 	if err != nil {
-		d.Resp <- api.DefaultResponse(http.StatusInternalServerError)
-		return
+		return api.DefaultResponse(http.StatusInternalServerError)
 	}
 
 	if count == 0 {
-		d.Resp <- api.DefaultResponse(http.StatusNotFound)
-		return
+		return api.DefaultResponse(http.StatusNotFound)
 	}
 
 	var bot Bot
@@ -142,16 +138,14 @@ func Route(d api.RouteData, r *http.Request) {
 
 	if err != nil {
 		state.Logger.Error(err)
-		d.Resp <- api.DefaultResponse(http.StatusInternalServerError)
-		return
+		return api.DefaultResponse(http.StatusInternalServerError)
 	}
 
 	err = pgxscan.ScanOne(&bot, row)
 
 	if err != nil {
 		state.Logger.Error(err)
-		d.Resp <- api.DefaultResponse(http.StatusNotFound)
-		return
+		return api.DefaultResponse(http.StatusNotFound)
 	}
 
 	if utils.IsNone(bot.Banner.String) || !strings.HasPrefix(bot.Banner.String, "https://") {
@@ -168,8 +162,7 @@ func Route(d api.RouteData, r *http.Request) {
 
 	if err != nil {
 		state.Logger.Error(err)
-		d.Resp <- api.DefaultResponse(http.StatusNotFound)
-		return
+		return api.DefaultResponse(http.StatusNotFound)
 	}
 
 	bot.SubPeriodParsed = types.NewInterval(bot.SubPeriod)
@@ -180,8 +173,7 @@ func Route(d api.RouteData, r *http.Request) {
 
 	if err != nil {
 		state.Logger.Error(err)
-		d.Resp <- api.DefaultResponse(http.StatusNotFound)
-		return
+		return api.DefaultResponse(http.StatusNotFound)
 	}
 
 	bot.User = botUser
@@ -204,13 +196,12 @@ func Route(d api.RouteData, r *http.Request) {
 
 	if err != nil {
 		state.Logger.Error(err)
-		d.Resp <- api.DefaultResponse(http.StatusNotFound)
-		return
+		return api.DefaultResponse(http.StatusNotFound)
 	}
 
 	bot.UniqueClicks = uniqueClicks
 
-	d.Resp <- api.HttpResponse{
+	return api.HttpResponse{
 		Json:      bot,
 		CacheKey:  "bc-" + name,
 		CacheTime: time.Minute * 3,

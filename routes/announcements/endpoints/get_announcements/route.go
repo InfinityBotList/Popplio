@@ -30,13 +30,12 @@ func Docs() *docs.Doc {
 	})
 }
 
-func Route(d api.RouteData, r *http.Request) {
+func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 	rows, err := state.Pool.Query(d.Context, "SELECT "+announcementCols+" FROM announcements ORDER BY id DESC")
 
 	if err != nil {
 		state.Logger.Error("Could not", err)
-		d.Resp <- api.DefaultResponse(http.StatusNotFound)
-		return
+		return api.DefaultResponse(http.StatusNotFound)
 	}
 
 	var announcements []types.Announcement
@@ -45,8 +44,7 @@ func Route(d api.RouteData, r *http.Request) {
 
 	if err != nil {
 		state.Logger.Error(err)
-		d.Resp <- api.DefaultResponse(http.StatusNotFound)
-		return
+		return api.DefaultResponse(http.StatusNotFound)
 	}
 
 	// Auth header check
@@ -83,7 +81,7 @@ func Route(d api.RouteData, r *http.Request) {
 		Announcements: annList,
 	}
 
-	d.Resp <- api.HttpResponse{
+	return api.HttpResponse{
 		Json: annListObj,
 	}
 }

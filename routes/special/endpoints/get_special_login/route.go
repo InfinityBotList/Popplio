@@ -29,26 +29,24 @@ func Docs() *docs.Doc {
 	})
 }
 
-func Route(d api.RouteData, r *http.Request) {
+func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 	// Read assets.Action to get the action
 	var action assets.Action
 
 	err := json.NewDecoder(r.Body).Decode(&action)
 
 	if err != nil {
-		d.Resp <- api.HttpResponse{
+		return api.HttpResponse{
 			Status: http.StatusBadRequest,
 			Data:   "Invalid request body",
 		}
-		return
 	}
 
 	if action.Action == "" {
-		d.Resp <- api.HttpResponse{
+		return api.HttpResponse{
 			Status: http.StatusBadRequest,
 			Data:   "Invalid action",
 		}
-		return
 	}
 
 	action.Time = time.Now()
@@ -60,11 +58,10 @@ func Route(d api.RouteData, r *http.Request) {
 		_, err := strconv.ParseInt(action.TID, 10, 64)
 
 		if err != nil {
-			d.Resp <- api.HttpResponse{
+			return api.HttpResponse{
 				Status: http.StatusBadRequest,
 				Data:   "Invalid tid",
 			}
-			return
 		}
 	}
 
@@ -75,11 +72,10 @@ func Route(d api.RouteData, r *http.Request) {
 	err = e.Encode(action)
 
 	if err != nil {
-		d.Resp <- api.HttpResponse{
+		return api.HttpResponse{
 			Status: http.StatusInternalServerError,
 			Data:   "Internal Server Error",
 		}
-		return
 	}
 
 	// Store in redis
@@ -87,14 +83,13 @@ func Route(d api.RouteData, r *http.Request) {
 	err = state.Redis.Set(d.Context, "spec:"+stateTok, b.Bytes(), 5*time.Minute).Err()
 
 	if err != nil {
-		d.Resp <- api.HttpResponse{
+		return api.HttpResponse{
 			Status: http.StatusInternalServerError,
 			Data:   "Internal Server Error",
 		}
-		return
 	}
 
-	d.Resp <- api.HttpResponse{
+	return api.HttpResponse{
 		Json: assets.Redirect{
 			Redirect: "https://discord.com/api/oauth2/authorize?client_id=" + cliId + "&scope=identify&response_type=code&redirect_uri=" + redirectUrl + "&state=" + stateTok,
 		},
