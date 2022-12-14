@@ -1,7 +1,0 @@
-[
-	{
-		"name": "Popplio",
-		"script": "unbuffer ./popplio",
-		"cwd": "/root/Popplio-V2/"
-	}
-]
