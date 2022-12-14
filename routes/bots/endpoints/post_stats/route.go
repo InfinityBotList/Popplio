@@ -1,7 +1,6 @@
 package post_stats
 
 import (
-	"io"
 	"net/http"
 	"popplio/api"
 	"popplio/constants"
@@ -9,11 +8,7 @@ import (
 	"popplio/state"
 	"popplio/types"
 	"strconv"
-
-	jsoniter "github.com/json-iterator/go"
 )
-
-var json = jsoniter.ConfigCompatibleWithStandardLibrary
 
 func Docs() *docs.Doc {
 	return docs.Route(&docs.Doc{
@@ -43,32 +38,16 @@ print(req.json())
 }
 
 func Route(d api.RouteData, r *http.Request) {
-	if r.Body == nil {
-		d.Resp <- api.DefaultResponse(http.StatusBadRequest)
-		return
-	}
-
 	id := d.Auth.ID
-
-	defer r.Body.Close()
 
 	var payload types.BotStats
 
-	bodyBytes, err := io.ReadAll(r.Body)
+	_, ok := api.MarshalReq(r, &payload)
 
-	if err != nil {
-		state.Logger.Error(err)
-		d.Resp <- api.DefaultResponse(http.StatusInternalServerError)
-		return
-	}
-
-	err = json.Unmarshal(bodyBytes, &payload)
-
-	if err != nil {
+	if !ok {
 		if r.URL.Query().Get("count") != "" {
 			payload = types.BotStats{}
 		} else {
-			state.Logger.Error(err)
 			d.Resp <- api.HttpResponse{
 				Data:   constants.BadRequestStats,
 				Status: http.StatusBadRequest,
@@ -90,6 +69,8 @@ func Route(d api.RouteData, r *http.Request) {
 
 		payload.Count = &countAny
 	}
+
+	var err error
 
 	servers, shards, users := payload.GetStats()
 

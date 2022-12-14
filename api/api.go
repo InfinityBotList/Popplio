@@ -3,6 +3,7 @@ package api
 
 import (
 	"context"
+	"io"
 	"net/http"
 	"popplio/constants"
 	"popplio/docs"
@@ -62,9 +63,9 @@ type AuthType struct {
 }
 
 type AuthData struct {
-	TargetType types.TargetType
-	ID         string
-	Authorized bool
+	TargetType types.TargetType `json:"target_type"`
+	ID         string           `json:"id"`
+	Authorized bool             `json:"authorized"`
 }
 
 // Represents a route on the API
@@ -91,6 +92,134 @@ type Router interface {
 	Put(pattern string, h http.HandlerFunc)
 	Delete(pattern string, h http.HandlerFunc)
 	Head(pattern string, h http.HandlerFunc)
+}
+
+// Authorizes a request
+func (r Route) Authorize(req *http.Request) (AuthData, HttpResponse, bool) {
+	authHeader := req.Header.Get("Authorization")
+
+	if len(r.Auth) > 0 && authHeader == "" && !r.AuthOptional {
+		return AuthData{}, DefaultResponse(http.StatusUnauthorized), false
+	}
+
+	authData := AuthData{}
+
+	for _, auth := range r.Auth {
+		// There are two cases, one with a URLVar (such as /bots/stats) and one without
+
+		if authData.Authorized {
+			break
+		}
+
+		if authHeader == "" {
+			continue
+		}
+
+		if auth.Type == types.TargetTypeServer {
+			// Server auth
+			return AuthData{}, HttpResponse{
+				Status: http.StatusNotImplemented,
+				Data:   "Server auth is not implemented yet",
+			}, false
+		}
+
+		if auth.URLVar != "" {
+			targetId := chi.URLParam(req, auth.URLVar)
+
+			if targetId == "" {
+				state.Logger.With(
+					zap.String("endpoint", r.Pattern),
+					zap.String("urlVar", auth.URLVar),
+				).Error("Target ID is empty")
+				continue
+			}
+
+			switch auth.Type {
+			case types.TargetTypeUser:
+				// Check if the user exists with said ID and API token
+				var id pgtype.Text
+				err := state.Pool.QueryRow(state.Context, "SELECT user_id FROM users WHERE user_id = $1 AND api_token = $2", targetId, strings.Replace(authHeader, "User ", "", 1)).Scan(&id)
+
+				if err != nil {
+					continue
+				}
+
+				if !id.Valid || id.String != targetId {
+					continue
+				}
+
+				authData = AuthData{
+					TargetType: types.TargetTypeUser,
+					ID:         targetId,
+					Authorized: true,
+				}
+			case types.TargetTypeBot:
+				// Check if the bot exists with said ID and API token
+				var id pgtype.Text
+				err := state.Pool.QueryRow(state.Context, "SELECT bot_id FROM bots WHERE (lower(vanity) = $1 OR bot_id = $1) AND api_token = $2", targetId, strings.Replace(targetId, "Bot ", "", 1)).Scan(&id)
+
+				if err != nil {
+					continue
+				}
+
+				if !id.Valid || id.String != targetId {
+					continue
+				}
+
+				authData = AuthData{
+					TargetType: types.TargetTypeBot,
+					ID:         targetId,
+					Authorized: true,
+				}
+			}
+		} else {
+			// Case #2: No URLVar, only token
+			switch auth.Type {
+			case types.TargetTypeUser:
+				// Check if the user exists with said API token only
+				var id pgtype.Text
+				err := state.Pool.QueryRow(state.Context, "SELECT user_id FROM users WHERE api_token = $1", strings.Replace(authHeader, "User ", "", 1)).Scan(&id)
+
+				if err != nil {
+					continue
+				}
+
+				if !id.Valid {
+					continue
+				}
+
+				authData = AuthData{
+					TargetType: types.TargetTypeUser,
+					ID:         id.String,
+					Authorized: true,
+				}
+			case types.TargetTypeBot:
+				// Check if the bot exists with said token only
+				var id pgtype.Text
+				err := state.Pool.QueryRow(state.Context, "SELECT bot_id FROM bots WHERE api_token = $1", strings.Replace(authHeader, "Bot ", "", 1)).Scan(&id)
+
+				if err != nil {
+					continue
+				}
+
+				if !id.Valid {
+					continue
+				}
+
+				authData = AuthData{
+					TargetType: types.TargetTypeBot,
+					ID:         id.String,
+					Authorized: true,
+				}
+			}
+		}
+	}
+
+	if len(r.Auth) > 0 && !authData.Authorized && !r.AuthOptional {
+		return AuthData{}, DefaultResponse(http.StatusUnauthorized), false
+	}
+
+	return authData, HttpResponse{}, true
 }
 
 func (r Route) Route(ro Router) {
@@ -161,123 +290,10 @@ func (r Route) Route(ro Router) {
 				}
 			}()
 
-			// Handle auth checks here
-			authHeader := req.Header.Get("Authorization")
+			authData, httpResp, ok := r.Authorize(req)
 
-			if len(r.Auth) > 0 && authHeader == "" && !r.AuthOptional {
-				resp <- DefaultResponse(http.StatusUnauthorized)
-			}
-
-			authData := AuthData{}
-
-			for _, auth := range r.Auth {
-				// There are two cases, one with a URLVar (such as /bots/stats) and one without
-
-				if authData.Authorized {
-					break
-				}
-
-				if authHeader == "" {
-					continue
-				}
-
-				if auth.Type == types.TargetTypeServer {
-					// Server auth
-					resp <- HttpResponse{
-						Status: http.StatusNotImplemented,
-						Data:   "Server auth is not implemented yet",
-					}
-					return
-				}
-
-				if auth.URLVar != "" {
-					targetId := chi.URLParam(req, auth.URLVar)
-
-					if targetId == "" {
-						state.Logger.With(
-							zap.String("endpoint", r.Pattern),
-							zap.String("urlVar", auth.URLVar),
-						).Error("Target ID is empty")
-						continue
-					}
-
-					switch auth.Type {
-					case types.TargetTypeUser:
-						// Check if the user exists with said ID and API token
-						var id pgtype.Text
-						err := state.Pool.QueryRow(state.Context, "SELECT user_id FROM users WHERE user_id = $1 AND api_token = $2", targetId, strings.Replace(authHeader, "User ", "", 1)).Scan(&id)
-
-						if err != nil {
-							continue
-						}
-
-						if !id.Valid || id.String != targetId {
-							continue
-						}
-
-						authData = AuthData{
-							TargetType: types.TargetTypeUser,
-							ID:         targetId,
-							Authorized: true,
-						}
-					case types.TargetTypeBot:
-						// Check if the bot exists with said ID and API token
-						var id pgtype.Text
-						err := state.Pool.QueryRow(state.Context, "SELECT bot_id FROM bots WHERE (lower(vanity) = $1 OR bot_id = $1) AND api_token = $2", targetId, strings.Replace(targetId, "Bot ", "", 1)).Scan(&id)
-
-						if err != nil {
-							continue
-						}
-
-						if !id.Valid || id.String != targetId {
-							continue
-						}
-
-						authData = AuthData{
-							TargetType: types.TargetTypeBot,
-							ID:         targetId,
-							Authorized: true,
-						}
-					}
-				} else {
-					// Case #2: No URLVar, only token
-					switch auth.Type {
-					case types.TargetTypeUser:
-						// Check if the user exists with said API token only
-						var id pgtype.Text
-						err := state.Pool.QueryRow(state.Context, "SELECT user_id FROM users WHERE api_token = $1", strings.Replace(authHeader, "User ", "", 1)).Scan(&id)
-
-						if err != nil {
-							continue
-						}
-
-						if !id.Valid {
-							continue
-						}
-
-						authData = AuthData{
-							TargetType: types.TargetTypeUser,
-							ID:         id.String,
-							Authorized: true,
-						}
-					case types.TargetTypeBot:
-						// Check if the bot exists with said token only
-						var id pgtype.Text
-						err := state.Pool.QueryRow(state.Context, "SELECT bot_id FROM bots WHERE api_token = $1", strings.Replace(authHeader, "Bot ", "", 1)).Scan(&id)
-
-						if err != nil {
-							continue
-						}
-
-						if !id.Valid {
-							continue
-						}
-					}
-				}
-			}
-
-			if len(r.Auth) > 0 && !authData.Authorized && !r.AuthOptional {
-				resp <- DefaultResponse(http.StatusUnauthorized)
+			if !ok {
+				resp <- httpResp
 				return
 			}
 
@@ -493,4 +509,41 @@ func DefaultResponse(statusCode int) HttpResponse {
 		Status: statusCode,
 		Data:   constants.InternalError,
 	}
+}
+
+// Read body
+func MarshalReq(r *http.Request, dst interface{}) (resp HttpResponse, ok bool) {
+	defer r.Body.Close()
+
+	bodyBytes, err := io.ReadAll(r.Body)
+
+	if err != nil {
+		state.Logger.Error(err)
+		return DefaultResponse(http.StatusInternalServerError), false
+	}
+
+	if len(bodyBytes) == 0 {
+		return HttpResponse{
+			Status: http.StatusBadRequest,
+			Json: types.ApiError{
+				Message: "A body is required for this endpoint",
+				Error:   true,
+			},
+		}, false
+	}
+
+	err = json.Unmarshal(bodyBytes, &dst)
+
+	if err != nil {
+		state.Logger.Error(err)
+		return HttpResponse{
+			Status: http.StatusBadRequest,
+			Json: types.ApiError{
+				Message: "Invalid JSON: " + err.Error(),
+				Error:   true,
+			},
+		}, false
+	}
+
+	return HttpResponse{}, true
 }

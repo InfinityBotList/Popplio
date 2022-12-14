@@ -2,7 +2,6 @@ package search_list
 
 import (
 	_ "embed"
-	"io"
 	"net/http"
 	"popplio/api"
 	"popplio/docs"
@@ -12,11 +11,8 @@ import (
 	"strings"
 
 	"github.com/georgysavva/scany/v2/pgxscan"
-
-	jsoniter "github.com/json-iterator/go"
+	"github.com/go-playground/validator/v10"
 )
-
-var json = jsoniter.ConfigCompatibleWithStandardLibrary
 
 var (
 	indexBotColsArr = utils.GetCols(types.IndexBot{})
@@ -27,8 +23,8 @@ var (
 )
 
 type SearchFilter struct {
-	From int `json:"from"`
-	To   int `json:"to"`
+	From int `json:"from" validate:"required"`
+	To   int `json:"to" validate:"required"`
 }
 
 func (f SearchFilter) from() int {
@@ -53,16 +49,16 @@ const (
 )
 
 type TagFilter struct {
-	Tags    []string `json:"tags"`
-	TagMode TagMode  `json:"tag_mode"`
+	Tags    []string `json:"tags" validate:"required"`
+	TagMode TagMode  `json:"tag_mode" validate:"required"`
 }
 
 type SearchQuery struct {
-	Query     string        `json:"query"`
-	Servers   *SearchFilter `json:"servers"`
-	Votes     *SearchFilter `json:"votes"`
-	Shards    *SearchFilter `json:"shards"`
-	TagFilter *TagFilter    `json:"tags"`
+	Query     string        `json:"query" validate:"required"`
+	Servers   *SearchFilter `json:"servers" validate:"required"`
+	Votes     *SearchFilter `json:"votes" validate:"required"`
+	Shards    *SearchFilter `json:"shards" validate:"required"`
+	TagFilter *TagFilter    `json:"tags"` // Optional for now, as main frontend doesn't support it yet
 }
 
 // Only bots are supported at this time
@@ -84,62 +80,22 @@ func Docs() *docs.Doc {
 }
 
 func Route(d api.RouteData, r *http.Request) {
-	defer r.Body.Close()
-
 	var payload SearchQuery
 
-	bodyBytes, err := io.ReadAll(r.Body)
+	hresp, ok := api.MarshalReq(r, &payload)
+
+	if !ok {
+		d.Resp <- hresp
+		return
+	}
+
+	err := state.Validator.Struct(payload)
 
 	if err != nil {
-		state.Logger.Error(err)
-		d.Resp <- api.DefaultResponse(http.StatusInternalServerError)
+		errors := err.(validator.ValidationErrors)
+		d.Resp <- api.ValidatorErrorResponse(map[string]string{}, errors)
+
 		return
-	}
-
-	if len(bodyBytes) == 0 {
-		d.Resp <- api.HttpResponse{
-			Status: http.StatusBadRequest,
-			Json: types.ApiError{
-				Message: "A body is required for this endpoint",
-				Error:   true,
-			},
-		}
-		return
-	}
-
-	err = json.Unmarshal(bodyBytes, &payload)
-
-	if err != nil {
-		state.Logger.Error(err)
-		d.Resp <- api.HttpResponse{
-			Status: http.StatusBadRequest,
-			Json: types.ApiError{
-				Message: "Invalid JSON:" + err.Error(),
-				Error:   true,
-			},
-		}
-		return
-	}
-
-	if payload.Servers == nil {
-		payload.Servers = &SearchFilter{
-			From: -1,
-			To:   -1,
-		}
-	}
-
-	if payload.Votes == nil {
-		payload.Votes = &SearchFilter{
-			From: -1,
-			To:   -1,
-		}
-	}
-
-	if payload.Shards == nil {
-		payload.Shards = &SearchFilter{
-			From: -1,
-			To:   -1,
-		}
 	}
 
 	if payload.TagFilter == nil {

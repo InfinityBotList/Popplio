@@ -3,7 +3,6 @@ package add_bot
 import (
 	"context"
 	"fmt"
-	"io"
 	"net/http"
 	"os"
 	"popplio/api"
@@ -194,46 +193,18 @@ func (bot *CreateBot) checkBotClientId(ctx context.Context) (*checkBotClientIdRe
 }
 
 func Route(d api.RouteData, r *http.Request) {
-	defer r.Body.Close()
-
 	var payload CreateBot
 
-	bodyBytes, err := io.ReadAll(r.Body)
+	hresp, ok := api.MarshalReq(r, &payload)
 
-	if err != nil {
-		state.Logger.Error(err)
-		d.Resp <- api.DefaultResponse(http.StatusInternalServerError)
-		return
-	}
-
-	if len(bodyBytes) == 0 {
-		d.Resp <- api.HttpResponse{
-			Status: http.StatusBadRequest,
-			Json: types.ApiError{
-				Message: "A body is required for this endpoint",
-				Error:   true,
-			},
-		}
-		return
-	}
-
-	err = json.Unmarshal(bodyBytes, &payload)
-
-	if err != nil {
-		state.Logger.Error(err)
-		d.Resp <- api.HttpResponse{
-			Status: http.StatusBadRequest,
-			Json: types.ApiError{
-				Message: "Invalid JSON: " + err.Error(),
-				Error:   true,
-			},
-		}
+	if !ok {
+		d.Resp <- hresp
 		return
 	}
 
 	// Validate the payload
 
-	err = state.Validator.Struct(payload)
+	err := state.Validator.Struct(payload)
 
 	if err != nil {
 		errors := err.(validator.ValidationErrors)
