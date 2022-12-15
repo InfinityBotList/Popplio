@@ -30,6 +30,12 @@ var BlankMap = make(map[string]string)
 // Stores the current tag
 var CurrentTag string
 
+// A API Router, not to be confused with Router which routes the actual routes
+type APIRouter interface {
+	Routes(r *chi.Mux)
+	Tag() (string, string)
+}
+
 type Method int
 
 const (

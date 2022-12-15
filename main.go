@@ -106,11 +106,6 @@ func corsMiddleware(next http.Handler) http.Handler {
 	})
 }
 
-type Router interface {
-	Routes(r *chi.Mux)
-	Tag() (string, string)
-}
-
 func main() {
 	state.Logger.Info("Test\n\n")
 
@@ -136,7 +131,7 @@ func main() {
 	// processing should be stopped.
 	r.Use()
 
-	routers := []Router{
+	routers := []api.APIRouter{
 		// Use same order as routes folder
 		announcements.Router{},
 		bots.Router{},
