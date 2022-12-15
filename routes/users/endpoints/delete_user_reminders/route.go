@@ -2,10 +2,11 @@ package delete_user_reminders
 
 import (
 	"net/http"
-	"popplio/api"
-	"popplio/docs"
-	"popplio/state"
-	"popplio/types"
+
+	"github.com/infinitybotlist/popplio/api"
+	"github.com/infinitybotlist/popplio/docs"
+	"github.com/infinitybotlist/popplio/state"
+	"github.com/infinitybotlist/popplio/types"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/jackc/pgx/v5/pgtype"

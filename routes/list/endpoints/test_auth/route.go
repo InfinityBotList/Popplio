@@ -2,9 +2,10 @@ package test_auth
 
 import (
 	"net/http"
-	"popplio/api"
-	"popplio/docs"
-	"popplio/types"
+
+	"github.com/infinitybotlist/popplio/api"
+	"github.com/infinitybotlist/popplio/docs"
+	"github.com/infinitybotlist/popplio/types"
 )
 
 type TestAuth struct {

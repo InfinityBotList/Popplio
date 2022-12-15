@@ -4,16 +4,17 @@ import (
 	"fmt"
 	"net/http"
 	"os"
-	"popplio/api"
-	"popplio/constants"
-	"popplio/docs"
-	"popplio/notifications"
-	"popplio/state"
-	"popplio/types"
-	"popplio/utils"
-	"popplio/webhooks"
 	"strconv"
 	"time"
+
+	"github.com/infinitybotlist/popplio/api"
+	"github.com/infinitybotlist/popplio/constants"
+	"github.com/infinitybotlist/popplio/docs"
+	"github.com/infinitybotlist/popplio/notifications"
+	"github.com/infinitybotlist/popplio/state"
+	"github.com/infinitybotlist/popplio/types"
+	"github.com/infinitybotlist/popplio/utils"
+	"github.com/infinitybotlist/popplio/webhooks"
 
 	"github.com/bwmarrin/discordgo"
 	"github.com/go-chi/chi/v5"
@@ -243,7 +244,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 			Votes:  int(votes),
 		})
 
-		var msg types.Message
+		var msg notifications.Message
 
 		if err != nil {
 			state.Pool.Exec(
@@ -254,7 +255,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 				"Whoa there! We've failed to notify this bot about this vote. The error was: "+err.Error()+".",
 				"error",
 			)
-			msg = types.Message{
+			msg = notifications.Message{
 				Title:   "Whoa There!",
 				Message: "Whoa there! We couldn't send " + botObj.Username + " this vote. The error was: " + err.Error() + ". Vote rewards may not work",
 				Icon:    botObj.Avatar,
@@ -268,7 +269,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 				"state.Successfully alerted this bot to your vote with ID of "+vars["bid"]+"("+botObj.Username+")",
 				"info",
 			)
-			msg = types.Message{
+			msg = notifications.Message{
 				Title:   "Vote Count Updated!",
 				Message: "Successfully alerted " + botObj.Username + " to your vote with ID of " + vars["bid"] + ".",
 			}
@@ -300,7 +301,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 				continue
 			}
 
-			notifications.NotifChannel <- types.Notification{
+			notifications.NotifChannel <- notifications.Notification{
 				NotifID: notifId,
 				Message: bytes,
 			}

@@ -2,11 +2,12 @@ package get_transcript
 
 import (
 	"net/http"
-	"popplio/api"
-	"popplio/docs"
-	"popplio/state"
-	"popplio/types"
 	"strconv"
+
+	"github.com/infinitybotlist/popplio/api"
+	"github.com/infinitybotlist/popplio/docs"
+	"github.com/infinitybotlist/popplio/state"
+	"github.com/infinitybotlist/popplio/types"
 
 	"github.com/go-chi/chi/v5"
 	jsoniter "github.com/json-iterator/go"

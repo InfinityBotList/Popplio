@@ -1,6 +1,6 @@
 package docs
 
-import "popplio/types"
+import "github.com/infinitybotlist/popplio/types"
 
 type Server struct {
 	URL         string         `json:"url"`

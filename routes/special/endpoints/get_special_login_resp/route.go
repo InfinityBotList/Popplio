@@ -6,13 +6,15 @@ import (
 	"net/http"
 	"net/url"
 	"os"
-	"popplio/api"
-	"popplio/docs"
-	"popplio/routes/special/assets"
-	"popplio/state"
-	"popplio/utils"
 	"strings"
 	"time"
+
+	"github.com/infinitybotlist/popplio/api"
+	"github.com/infinitybotlist/popplio/docs"
+	"github.com/infinitybotlist/popplio/routes/special/assets"
+	"github.com/infinitybotlist/popplio/state"
+	"github.com/infinitybotlist/popplio/types"
+	"github.com/infinitybotlist/popplio/utils"
 
 	"github.com/infinitybotlist/eureka/crypto"
 	jsoniter "github.com/json-iterator/go"
@@ -151,7 +153,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 		}
 	}
 
-	var user assets.InternalOauthUser
+	var user types.OauthUser
 
 	err = json.Unmarshal(body, &user)
 

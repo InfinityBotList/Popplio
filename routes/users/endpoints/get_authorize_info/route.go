@@ -3,9 +3,10 @@ package get_authorize_info
 import (
 	"net/http"
 	"os"
-	"popplio/api"
-	"popplio/docs"
-	"popplio/types"
+
+	"github.com/infinitybotlist/popplio/api"
+	"github.com/infinitybotlist/popplio/docs"
+	"github.com/infinitybotlist/popplio/types"
 )
 
 var clientInfo string

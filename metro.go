@@ -6,13 +6,12 @@ import (
 	"errors"
 	"net/http"
 	"os"
-	"popplio/notifications"
-	"popplio/state"
 	"regexp"
 	"strings"
 	"time"
 
-	popltypes "popplio/types"
+	"github.com/infinitybotlist/popplio/notifications"
+	"github.com/infinitybotlist/popplio/state"
 
 	"github.com/MetroReviews/metro-integrase/types"
 	"github.com/go-chi/chi/v5"
@@ -202,7 +201,7 @@ func (adp DummyAdapter) ApproveBot(bot *types.Bot) error {
 
 	state.Logger.Info("Updated ", res.RowsAffected(), " bots")
 
-	notifications.MessageNotifyChannel <- popltypes.DiscordLog{
+	notifications.MessageNotifyChannel <- notifications.DiscordLog{
 		ChannelID: os.Getenv("BOT_LOGS_CHANNEL"),
 		Message: &discordgo.MessageSend{
 			Embeds: []*discordgo.MessageEmbed{
@@ -281,7 +280,7 @@ func (adp DummyAdapter) DenyBot(bot *types.Bot) error {
 
 	state.Logger.Info("Updated ", res.RowsAffected(), " bots")
 
-	notifications.MessageNotifyChannel <- popltypes.DiscordLog{
+	notifications.MessageNotifyChannel <- notifications.DiscordLog{
 		ChannelID: os.Getenv("BOT_LOGS_CHANNEL"),
 		Message: &discordgo.MessageSend{
 			Embeds: []*discordgo.MessageEmbed{

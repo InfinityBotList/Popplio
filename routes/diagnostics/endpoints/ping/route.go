@@ -3,8 +3,9 @@ package ping
 import (
 	"net/http"
 	"os"
-	"popplio/api"
-	"popplio/docs"
+
+	"github.com/infinitybotlist/popplio/api"
+	"github.com/infinitybotlist/popplio/docs"
 
 	jsoniter "github.com/json-iterator/go"
 )

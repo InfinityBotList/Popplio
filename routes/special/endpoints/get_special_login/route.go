@@ -4,12 +4,13 @@ import (
 	"bytes"
 	"net/http"
 	"os"
-	"popplio/api"
-	"popplio/docs"
-	"popplio/routes/special/assets"
-	"popplio/state"
 	"strconv"
 	"time"
+
+	"github.com/infinitybotlist/popplio/api"
+	"github.com/infinitybotlist/popplio/docs"
+	"github.com/infinitybotlist/popplio/routes/special/assets"
+	"github.com/infinitybotlist/popplio/state"
 
 	"github.com/infinitybotlist/eureka/crypto"
 	jsoniter "github.com/json-iterator/go"

@@ -1,4 +1,4 @@
-module popplio
+module github.com/infinitybotlist/popplio
 
 go 1.18
 

@@ -1,9 +1,9 @@
 package duser
 
 import (
-	"popplio/api"
-	"popplio/routes/duser/endpoints/clear_duser"
-	"popplio/routes/duser/endpoints/get_duser"
+	"github.com/infinitybotlist/popplio/api"
+	"github.com/infinitybotlist/popplio/routes/duser/endpoints/clear_duser"
+	"github.com/infinitybotlist/popplio/routes/duser/endpoints/get_duser"
 
 	"github.com/go-chi/chi/v5"
 )

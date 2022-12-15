@@ -3,11 +3,12 @@ package notifications
 import (
 	"io"
 	"os"
-	"popplio/state"
-	"popplio/types"
-	"popplio/utils"
 	"strings"
 	"time"
+
+	"github.com/infinitybotlist/popplio/state"
+	"github.com/infinitybotlist/popplio/types"
+	"github.com/infinitybotlist/popplio/utils"
 
 	"github.com/SherClockHolmes/webpush-go"
 	"github.com/bwmarrin/discordgo"
@@ -20,10 +21,26 @@ import (
 
 var json = jsoniter.ConfigCompatibleWithStandardLibrary
 
+type Notification struct {
+	NotifID string
+	Message []byte
+}
+
+type Message struct {
+	Message string `json:"message"`
+	Title   string `json:"title"`
+	Icon    string `json:"icon"`
+}
+
+type DiscordLog struct {
+	Message   *discordgo.MessageSend
+	ChannelID string
+}
+
 var (
-	NotifChannel         = make(chan types.Notification)
+	NotifChannel         = make(chan Notification)
 	PremiumChannel       = make(chan string)
-	MessageNotifyChannel = make(chan types.DiscordLog)
+	MessageNotifyChannel = make(chan DiscordLog)
 
 	silverpeltColsArr = utils.GetCols(types.Reminder{})
 	silverpeltCols    = strings.Join(silverpeltColsArr, ",")
@@ -228,7 +245,7 @@ func init() {
 							return
 						}
 
-						message := types.Message{
+						message := Message{
 							Message: "You can vote for " + botInf.Username + " now!",
 							Title:   "Vote for " + botInf.Username + "!",
 							Icon:    botInf.Avatar,
@@ -259,7 +276,7 @@ func init() {
 							doneIds = append(doneIds, notif.Endpoint)
 							doneNotifs = append(doneNotifs, notif.NotifId)
 
-							NotifChannel <- types.Notification{
+							NotifChannel <- Notification{
 								NotifID: notif.NotifId,
 								Message: bytes,
 							}

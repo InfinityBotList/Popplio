@@ -1,13 +1,13 @@
 package bots
 
 import (
-	"popplio/api"
-	"popplio/routes/bots/endpoints/get_all_bots"
-	"popplio/routes/bots/endpoints/get_bot"
-	"popplio/routes/bots/endpoints/get_bot_reviews"
-	"popplio/routes/bots/endpoints/get_bot_seo"
-	"popplio/routes/bots/endpoints/post_stats"
-	"popplio/types"
+	"github.com/infinitybotlist/popplio/api"
+	"github.com/infinitybotlist/popplio/routes/bots/endpoints/get_all_bots"
+	"github.com/infinitybotlist/popplio/routes/bots/endpoints/get_bot"
+	"github.com/infinitybotlist/popplio/routes/bots/endpoints/get_bot_reviews"
+	"github.com/infinitybotlist/popplio/routes/bots/endpoints/get_bot_seo"
+	"github.com/infinitybotlist/popplio/routes/bots/endpoints/post_stats"
+	"github.com/infinitybotlist/popplio/types"
 
 	"github.com/go-chi/chi/v5"
 )

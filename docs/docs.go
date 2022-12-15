@@ -4,9 +4,10 @@ import (
 	"embed"
 	"fmt"
 	"os"
-	"popplio/types"
 	"reflect"
 	"strings"
+
+	"github.com/infinitybotlist/popplio/types"
 
 	"github.com/getkin/kin-openapi/openapi3"
 	"github.com/getkin/kin-openapi/openapi3gen"

@@ -2,12 +2,13 @@ package post_stats
 
 import (
 	"net/http"
-	"popplio/api"
-	"popplio/constants"
-	"popplio/docs"
-	"popplio/state"
-	"popplio/types"
 	"strconv"
+
+	"github.com/infinitybotlist/popplio/api"
+	"github.com/infinitybotlist/popplio/constants"
+	"github.com/infinitybotlist/popplio/docs"
+	"github.com/infinitybotlist/popplio/state"
+	"github.com/infinitybotlist/popplio/types"
 )
 
 func Docs() *docs.Doc {

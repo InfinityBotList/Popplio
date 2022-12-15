@@ -3,12 +3,13 @@ package test_webhook
 import (
 	"io"
 	"net/http"
-	"popplio/api"
-	"popplio/docs"
-	"popplio/state"
-	"popplio/types"
-	"popplio/utils"
-	"popplio/webhooks"
+
+	"github.com/infinitybotlist/popplio/api"
+	"github.com/infinitybotlist/popplio/docs"
+	"github.com/infinitybotlist/popplio/state"
+	"github.com/infinitybotlist/popplio/types"
+	"github.com/infinitybotlist/popplio/utils"
+	"github.com/infinitybotlist/popplio/webhooks"
 
 	jsoniter "github.com/json-iterator/go"
 )

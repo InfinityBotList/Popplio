@@ -5,13 +5,14 @@ import (
 	"context"
 	"io"
 	"net/http"
-	"popplio/constants"
-	"popplio/docs"
-	"popplio/state"
-	"popplio/types"
 	"reflect"
 	"strings"
 	"time"
+
+	"github.com/infinitybotlist/popplio/constants"
+	"github.com/infinitybotlist/popplio/docs"
+	"github.com/infinitybotlist/popplio/state"
+	"github.com/infinitybotlist/popplio/types"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-playground/validator/v10"

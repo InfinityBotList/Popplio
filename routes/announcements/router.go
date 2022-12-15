@@ -1,9 +1,9 @@
 package announcements
 
 import (
-	"popplio/api"
-	"popplio/routes/announcements/endpoints/get_announcements"
-	"popplio/types"
+	"github.com/infinitybotlist/popplio/api"
+	"github.com/infinitybotlist/popplio/routes/announcements/endpoints/get_announcements"
+	"github.com/infinitybotlist/popplio/types"
 
 	"github.com/go-chi/chi/v5"
 )

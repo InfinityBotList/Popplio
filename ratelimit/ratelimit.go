@@ -6,9 +6,10 @@ import (
 	"crypto/sha256"
 	"fmt"
 	"net/http"
-	"popplio/state"
 	"strconv"
 	"time"
+
+	"github.com/infinitybotlist/popplio/state"
 )
 
 type Ratelimit struct {

@@ -4,14 +4,15 @@ import (
 	"math"
 	"net/http"
 	"os"
-	"popplio/api"
-	"popplio/docs"
-	"popplio/state"
-	"popplio/types"
-	"popplio/utils"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/infinitybotlist/popplio/api"
+	"github.com/infinitybotlist/popplio/docs"
+	"github.com/infinitybotlist/popplio/state"
+	"github.com/infinitybotlist/popplio/types"
+	"github.com/infinitybotlist/popplio/utils"
 
 	"github.com/georgysavva/scany/v2/pgxscan"
 )

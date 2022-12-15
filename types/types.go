@@ -1,9 +1,10 @@
 package types
 
 import (
-	"popplio/state"
 	"strconv"
 	"time"
+
+	"github.com/infinitybotlist/popplio/state"
 
 	"reflect"
 
@@ -394,11 +395,6 @@ type DiscordUser struct {
 	IsServerMember bool             `json:"is_member"`
 }
 
-type Notification struct {
-	NotifID string
-	Message []byte
-}
-
 type ResolvedReminderBot struct {
 	Name   string `db:"-" json:"name"`
 	Avatar string `db:"-" json:"avatar"`
@@ -411,20 +407,6 @@ type Reminder struct {
 	CreatedAt   time.Time           `db:"created_at" json:"created_at"`
 	LastAcked   time.Time           `db:"last_acked" json:"last_acked"`
 }
-
-type Message struct {
-	Message string `json:"message"`
-	Title   string `json:"title"`
-	Icon    string `json:"icon"`
-}
-
-type DiscordLog struct {
-	Message   *discordgo.MessageSend
-	ChannelID string
-}
-
-// For documentation
-type OpenAPI struct{}
 
 type AuthUser struct {
 	Token       string       `json:"token"`
@@ -518,4 +500,40 @@ type ListStats struct {
 type VoteInfo struct {
 	Weekend  bool   `json:"is_weekend"`
 	VoteTime uint16 `json:"vote_time"`
+}
+
+// OauthInfo struct, internally used
+type OauthUser struct {
+	ID       string `json:"id"`
+	Username string `json:"username"`
+	Disc     string `json:"discriminator"`
+}
+
+// Bot Pack
+type BotPack struct {
+	Owner         string            `db:"owner" json:"owner_id"`
+	ResolvedOwner *DiscordUser      `db:"-" json:"owner"`
+	Name          string            `db:"name" json:"name"`
+	Short         string            `db:"short" json:"short"`
+	Votes         []PackVote        `db:"-" json:"votes"`
+	Tags          []string          `db:"tags" json:"tags"`
+	URL           string            `db:"url" json:"url"`
+	CreatedAt     time.Time         `db:"created_at" json:"created_at"`
+	Bots          []string          `db:"bots" json:"bot_ids"`
+	ResolvedBots  []ResolvedPackBot `db:"-" json:"bots"`
+}
+
+type ResolvedPackBot struct {
+	User         *DiscordUser `json:"user"`
+	Short        string       `json:"short"`
+	Type         pgtype.Text  `json:"type"`
+	Vanity       pgtype.Text  `json:"vanity"`
+	Banner       pgtype.Text  `json:"banner"`
+	NSFW         bool         `json:"nsfw"`
+	Premium      bool         `json:"premium"`
+	Shards       int          `json:"shards"`
+	Votes        int          `json:"votes"`
+	InviteClicks int          `json:"invites"`
+	Servers      int          `json:"servers"`
+	Tags         []string     `json:"tags"`
 }

@@ -5,13 +5,14 @@ import (
 	"net/http"
 	"net/url"
 	"os"
-	"popplio/api"
-	"popplio/docs"
-	"popplio/ratelimit"
-	"popplio/state"
-	"popplio/types"
-	"popplio/utils"
 	"time"
+
+	"github.com/infinitybotlist/popplio/api"
+	"github.com/infinitybotlist/popplio/docs"
+	"github.com/infinitybotlist/popplio/ratelimit"
+	"github.com/infinitybotlist/popplio/state"
+	"github.com/infinitybotlist/popplio/types"
+	"github.com/infinitybotlist/popplio/utils"
 
 	"github.com/go-playground/validator/v10"
 	"github.com/infinitybotlist/eureka/crypto"
@@ -25,12 +26,6 @@ var json = jsoniter.ConfigCompatibleWithStandardLibrary
 var allowedRedirectURLs = []string{
 	"http://localhost:3000/sauron",               // DEV
 	"https://reedwhisker.infinitybots.gg/sauron", // PROD
-}
-
-type OauthUser struct {
-	ID       string `json:"id"`
-	Username string `json:"username"`
-	Disc     string `json:"discriminator"`
 }
 
 func Docs() *docs.Doc {
@@ -229,7 +224,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 		}
 	}
 
-	var user OauthUser
+	var user types.OauthUser
 
 	err = json.Unmarshal(body, &user)
 

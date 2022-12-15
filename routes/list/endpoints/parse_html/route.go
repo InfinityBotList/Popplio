@@ -4,9 +4,10 @@ import (
 	"bytes"
 	"io"
 	"net/http"
-	"popplio/api"
-	"popplio/docs"
-	"popplio/state"
+
+	"github.com/infinitybotlist/popplio/api"
+	"github.com/infinitybotlist/popplio/docs"
+	"github.com/infinitybotlist/popplio/state"
 
 	"github.com/microcosm-cc/bluemonday"
 	"github.com/yuin/goldmark"

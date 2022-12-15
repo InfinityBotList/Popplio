@@ -8,11 +8,12 @@ import (
 	"errors"
 	"io"
 	"net/http"
-	"popplio/state"
-	"popplio/types"
-	"popplio/utils"
 	"strings"
 	"time"
+
+	"github.com/infinitybotlist/popplio/state"
+	"github.com/infinitybotlist/popplio/types"
+	"github.com/infinitybotlist/popplio/utils"
 
 	"github.com/jackc/pgx/v5/pgtype"
 	jsoniter "github.com/json-iterator/go"
@@ -136,7 +137,7 @@ func Send(webhook types.WebhookPost) error {
 		}
 
 		req.Header.Set("Content-Type", "application/json")
-		req.Header.Set("User-Agent", "Popplio/v6.0")
+		req.Header.Set("User-Agent", "github.com/infinitybotlist/popplio/v6.0")
 		req.Header.Set("Authorization", finalToken)
 
 		// Send request
