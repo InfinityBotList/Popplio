@@ -17,7 +17,7 @@ type TestAuth struct {
 func Docs() *docs.Doc {
 	return docs.Route(&docs.Doc{
 		Method:      "POST",
-		Path:        "/list/test-auth",
+		Path:        "/list/auth-test",
 		OpId:        "test_auth",
 		Summary:     "Test Auth",
 		Description: "Test your authentication",
