@@ -7,7 +7,7 @@ import (
 	"reflect"
 	"strings"
 
-	"github.com/infinitybotlist/popplio/types"
+	"popplio/types"
 
 	"github.com/getkin/kin-openapi/openapi3"
 	"github.com/getkin/kin-openapi/openapi3gen"

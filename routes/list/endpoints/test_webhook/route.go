@@ -4,12 +4,12 @@ import (
 	"io"
 	"net/http"
 
-	"github.com/infinitybotlist/popplio/api"
-	"github.com/infinitybotlist/popplio/docs"
-	"github.com/infinitybotlist/popplio/state"
-	"github.com/infinitybotlist/popplio/types"
-	"github.com/infinitybotlist/popplio/utils"
-	"github.com/infinitybotlist/popplio/webhooks"
+	"popplio/api"
+	"popplio/docs"
+	"popplio/state"
+	"popplio/types"
+	"popplio/utils"
+	"popplio/webhooks"
 
 	jsoniter "github.com/json-iterator/go"
 )

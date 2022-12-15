@@ -10,8 +10,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/infinitybotlist/popplio/notifications"
-	"github.com/infinitybotlist/popplio/state"
+	"popplio/notifications"
+	"popplio/state"
 
 	"github.com/MetroReviews/metro-integrase/types"
 	"github.com/go-chi/chi/v5"

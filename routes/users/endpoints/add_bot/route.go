@@ -9,12 +9,12 @@ import (
 	"strings"
 	"time"
 
-	"github.com/infinitybotlist/popplio/api"
-	"github.com/infinitybotlist/popplio/docs"
-	"github.com/infinitybotlist/popplio/notifications"
-	"github.com/infinitybotlist/popplio/state"
-	"github.com/infinitybotlist/popplio/types"
-	"github.com/infinitybotlist/popplio/utils"
+	"popplio/api"
+	"popplio/docs"
+	"popplio/notifications"
+	"popplio/state"
+	"popplio/types"
+	"popplio/utils"
 
 	"github.com/bwmarrin/discordgo"
 	"github.com/go-playground/validator/v10"

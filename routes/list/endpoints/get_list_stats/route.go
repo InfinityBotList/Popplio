@@ -3,10 +3,10 @@ package get_list_stats
 import (
 	"net/http"
 
-	"github.com/infinitybotlist/popplio/api"
-	"github.com/infinitybotlist/popplio/docs"
-	"github.com/infinitybotlist/popplio/state"
-	"github.com/infinitybotlist/popplio/types"
+	"popplio/api"
+	"popplio/docs"
+	"popplio/state"
+	"popplio/types"
 )
 
 func Docs() *docs.Doc {

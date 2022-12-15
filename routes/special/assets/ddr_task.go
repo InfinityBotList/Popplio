@@ -1,7 +1,7 @@
 package assets
 
 import (
-	"github.com/infinitybotlist/popplio/state"
+	"popplio/state"
 
 	"github.com/georgysavva/scany/v2/pgxscan"
 	"github.com/go-redis/redis/v8"

@@ -9,12 +9,12 @@ import (
 	"strings"
 	"time"
 
-	"github.com/infinitybotlist/popplio/api"
-	"github.com/infinitybotlist/popplio/docs"
-	"github.com/infinitybotlist/popplio/routes/special/assets"
-	"github.com/infinitybotlist/popplio/state"
-	"github.com/infinitybotlist/popplio/types"
-	"github.com/infinitybotlist/popplio/utils"
+	"popplio/api"
+	"popplio/docs"
+	"popplio/routes/special/assets"
+	"popplio/state"
+	"popplio/types"
+	"popplio/utils"
 
 	"github.com/infinitybotlist/eureka/crypto"
 	jsoniter "github.com/json-iterator/go"

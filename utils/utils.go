@@ -10,8 +10,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/infinitybotlist/popplio/state"
-	"github.com/infinitybotlist/popplio/types"
+	"popplio/state"
+	"popplio/types"
 
 	"github.com/bwmarrin/discordgo"
 	"github.com/georgysavva/scany/v2/pgxscan"

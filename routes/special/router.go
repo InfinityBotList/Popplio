@@ -1,10 +1,10 @@
 package special
 
 import (
-	"github.com/infinitybotlist/popplio/api"
-	"github.com/infinitybotlist/popplio/routes/special/endpoints/get_cosmog_task_tid"
-	"github.com/infinitybotlist/popplio/routes/special/endpoints/get_special_login"
-	"github.com/infinitybotlist/popplio/routes/special/endpoints/get_special_login_resp"
+	"popplio/api"
+	"popplio/routes/special/endpoints/get_cosmog_task_tid"
+	"popplio/routes/special/endpoints/get_special_login"
+	"popplio/routes/special/endpoints/get_special_login_resp"
 
 	"github.com/go-chi/chi/v5"
 )

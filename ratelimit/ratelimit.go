@@ -9,7 +9,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/infinitybotlist/popplio/state"
+	"popplio/state"
 )
 
 type Ratelimit struct {

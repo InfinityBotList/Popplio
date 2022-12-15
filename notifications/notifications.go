@@ -6,9 +6,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/infinitybotlist/popplio/state"
-	"github.com/infinitybotlist/popplio/types"
-	"github.com/infinitybotlist/popplio/utils"
+	"popplio/state"
+	"popplio/types"
+	"popplio/utils"
 
 	"github.com/SherClockHolmes/webpush-go"
 	"github.com/bwmarrin/discordgo"

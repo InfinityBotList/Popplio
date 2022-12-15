@@ -1,8 +1,8 @@
 package transcripts
 
 import (
-	"github.com/infinitybotlist/popplio/api"
-	"github.com/infinitybotlist/popplio/routes/transcripts/endpoints/get_transcript"
+	"popplio/api"
+	"popplio/routes/transcripts/endpoints/get_transcript"
 
 	"github.com/go-chi/chi/v5"
 )

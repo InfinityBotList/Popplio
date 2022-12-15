@@ -3,10 +3,10 @@ package get_vote_info
 import (
 	"net/http"
 
-	"github.com/infinitybotlist/popplio/api"
-	"github.com/infinitybotlist/popplio/docs"
-	"github.com/infinitybotlist/popplio/types"
-	"github.com/infinitybotlist/popplio/utils"
+	"popplio/api"
+	"popplio/docs"
+	"popplio/types"
+	"popplio/utils"
 )
 
 func Docs() *docs.Doc {

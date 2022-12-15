@@ -3,10 +3,10 @@ package delete_user_notifications
 import (
 	"net/http"
 
-	"github.com/infinitybotlist/popplio/api"
-	"github.com/infinitybotlist/popplio/docs"
-	"github.com/infinitybotlist/popplio/state"
-	"github.com/infinitybotlist/popplio/types"
+	"popplio/api"
+	"popplio/docs"
+	"popplio/state"
+	"popplio/types"
 
 	"github.com/go-chi/chi/v5"
 )

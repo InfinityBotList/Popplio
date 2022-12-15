@@ -13,4 +13,3 @@ https://spider.infinitybots.gg/docs
 There is a tool coming soon (``ibl newroute``) to assist in creating new endpoints on Popplio
 
 - Whenever you need to fetch a user from discord, always use ``utils.GetDiscordUser`` as that also handles caching (both gateway and redis and internal caches)
-- **You can also use Popplio as a API library/client. Use the ``client_api`` for making requests and you're all set!**

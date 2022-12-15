@@ -4,9 +4,9 @@ import (
 	"net/http"
 	"os"
 
-	"github.com/infinitybotlist/popplio/api"
-	"github.com/infinitybotlist/popplio/docs"
-	"github.com/infinitybotlist/popplio/types"
+	"popplio/api"
+	"popplio/docs"
+	"popplio/types"
 )
 
 func Docs() *docs.Doc {

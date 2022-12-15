@@ -9,10 +9,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/infinitybotlist/popplio/constants"
-	"github.com/infinitybotlist/popplio/docs"
-	"github.com/infinitybotlist/popplio/state"
-	"github.com/infinitybotlist/popplio/types"
+	"popplio/constants"
+	"popplio/docs"
+	"popplio/state"
+	"popplio/types"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-playground/validator/v10"

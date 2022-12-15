@@ -3,9 +3,9 @@ package get_cosmog_task_tid
 import (
 	"net/http"
 
-	"github.com/infinitybotlist/popplio/api"
-	"github.com/infinitybotlist/popplio/docs"
-	"github.com/infinitybotlist/popplio/state"
+	"popplio/api"
+	"popplio/docs"
+	"popplio/state"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-redis/redis/v8"

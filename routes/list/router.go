@@ -1,14 +1,14 @@
 package list
 
 import (
-	"github.com/infinitybotlist/popplio/api"
-	"github.com/infinitybotlist/popplio/routes/list/endpoints/get_list_index"
-	"github.com/infinitybotlist/popplio/routes/list/endpoints/get_list_stats"
-	"github.com/infinitybotlist/popplio/routes/list/endpoints/get_vote_info"
-	"github.com/infinitybotlist/popplio/routes/list/endpoints/parse_html"
-	"github.com/infinitybotlist/popplio/routes/list/endpoints/search_list"
-	"github.com/infinitybotlist/popplio/routes/list/endpoints/test_auth"
-	"github.com/infinitybotlist/popplio/routes/list/endpoints/test_webhook"
+	"popplio/api"
+	"popplio/routes/list/endpoints/get_list_index"
+	"popplio/routes/list/endpoints/get_list_stats"
+	"popplio/routes/list/endpoints/get_vote_info"
+	"popplio/routes/list/endpoints/parse_html"
+	"popplio/routes/list/endpoints/search_list"
+	"popplio/routes/list/endpoints/test_auth"
+	"popplio/routes/list/endpoints/test_webhook"
 
 	"github.com/go-chi/chi/v5"
 )

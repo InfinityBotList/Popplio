@@ -5,11 +5,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/infinitybotlist/popplio/api"
-	"github.com/infinitybotlist/popplio/docs"
-	"github.com/infinitybotlist/popplio/state"
-	"github.com/infinitybotlist/popplio/types"
-	"github.com/infinitybotlist/popplio/utils"
+	"popplio/api"
+	"popplio/docs"
+	"popplio/state"
+	"popplio/types"
+	"popplio/utils"
 
 	"github.com/georgysavva/scany/v2/pgxscan"
 )

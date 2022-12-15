@@ -7,12 +7,12 @@ import (
 	"os"
 	"time"
 
-	"github.com/infinitybotlist/popplio/api"
-	"github.com/infinitybotlist/popplio/docs"
-	"github.com/infinitybotlist/popplio/ratelimit"
-	"github.com/infinitybotlist/popplio/state"
-	"github.com/infinitybotlist/popplio/types"
-	"github.com/infinitybotlist/popplio/utils"
+	"popplio/api"
+	"popplio/docs"
+	"popplio/ratelimit"
+	"popplio/state"
+	"popplio/types"
+	"popplio/utils"
 
 	"github.com/go-playground/validator/v10"
 	"github.com/infinitybotlist/eureka/crypto"

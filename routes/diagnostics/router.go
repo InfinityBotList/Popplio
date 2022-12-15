@@ -1,8 +1,8 @@
 package diagnostics
 
 import (
-	"github.com/infinitybotlist/popplio/api"
-	"github.com/infinitybotlist/popplio/routes/diagnostics/endpoints/ping"
+	"popplio/api"
+	"popplio/routes/diagnostics/endpoints/ping"
 
 	"github.com/go-chi/chi/v5"
 )

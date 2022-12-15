@@ -1,9 +1,9 @@
 package packs
 
 import (
-	"github.com/infinitybotlist/popplio/api"
-	"github.com/infinitybotlist/popplio/routes/packs/endpoints/get_all_packs"
-	"github.com/infinitybotlist/popplio/routes/packs/endpoints/get_pack"
+	"popplio/api"
+	"popplio/routes/packs/endpoints/get_all_packs"
+	"popplio/routes/packs/endpoints/get_pack"
 
 	"github.com/go-chi/chi/v5"
 )

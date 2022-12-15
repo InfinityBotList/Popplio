@@ -1,9 +1,9 @@
 package compat
 
 import (
-	"github.com/infinitybotlist/popplio/api"
-	"github.com/infinitybotlist/popplio/routes/compat/endpoints/legacy_votes"
-	"github.com/infinitybotlist/popplio/types"
+	"popplio/api"
+	"popplio/routes/compat/endpoints/legacy_votes"
+	"popplio/types"
 
 	"github.com/go-chi/chi/v5"
 )
