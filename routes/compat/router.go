@@ -19,6 +19,7 @@ func (b Router) Tag() (string, string) {
 func (b Router) Routes(r *chi.Mux) {
 	api.Route{
 		Pattern: "/votes/{bot_id}/{user_id}",
+		OpId:    "legacy_votes",
 		Method:  api.GET,
 		Docs:    legacy_votes.Docs,
 		Handler: legacy_votes.Route,

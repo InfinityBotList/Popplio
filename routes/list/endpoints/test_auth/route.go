@@ -35,6 +35,13 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 		return hresp
 	}
 
+	if payload.TargetID == "" {
+		return api.HttpResponse{
+			Status: http.StatusBadRequest,
+			Json:   types.ApiError{Message: "Target ID is required"},
+		}
+	}
+
 	// Create []AuthType
 
 	authType := []api.AuthType{
@@ -63,7 +70,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 	}
 
 	// Check if the auth target id is correct
-	if payload.TargetID != "" && authData.ID != payload.TargetID {
+	if authData.ID != payload.TargetID {
 		return api.HttpResponse{
 			Status: http.StatusUnauthorized,
 			Json:   types.ApiError{Message: "Invalid auth target id"},

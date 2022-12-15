@@ -21,9 +21,9 @@ func Docs() *docs.Doc {
 	return docs.Route(&docs.Doc{
 		Method:      "PATCH",
 		Path:        "/users/{uid}/bots/{bid}/vanity",
-		OpId:        "patch_user_profile",
-		Summary:     "Update User Profile",
-		Description: "Updates a users profile. Returns 204 on success",
+		OpId:        "patch_bot_vanity",
+		Summary:     "Update User Vanity",
+		Description: "Updates a users vanity. Returns 204 on success",
 		Params: []docs.Parameter{
 			{
 				Name:        "uid",

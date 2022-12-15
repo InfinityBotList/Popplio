@@ -18,6 +18,7 @@ func (b Router) Tag() (string, string) {
 func (b Router) Routes(r *chi.Mux) {
 	api.Route{
 		Pattern: "/",
+		OpId:    "ping",
 		Method:  api.GET,
 		Docs:    ping.Docs,
 		Handler: ping.Route,

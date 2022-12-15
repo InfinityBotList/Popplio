@@ -19,6 +19,7 @@ func (b Router) Routes(r *chi.Mux) {
 	r.Route("/transcripts", func(r chi.Router) {
 		api.Route{
 			Pattern: "/{id}",
+			OpId:    "get_transcript",
 			Method:  api.GET,
 			Docs:    get_transcript.Docs,
 			Handler: get_transcript.Route,

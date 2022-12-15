@@ -1,139 +1,120 @@
+// Ratelimits are only used for login and other endpoints that can be heavily abused
 package ratelimit
 
 import (
+	"context"
+	"crypto/sha256"
+	"fmt"
+	"net/http"
+	"popplio/state"
+	"strconv"
 	"time"
 )
 
-// Represents a moderated bucket typically used in 'combined' endpoints like Get/Create Votes which are just branches off a common function
-// This is also the concept used in so-called global ratelimits
-type ModeratedBucket struct {
-	BucketName string
-
-	// Internally set, dont change
-	Global bool
-
-	// Whether or not to keep original rl
-	ChangeRL bool
-
-	Requests int
-	Time     time.Duration
-
-	// Whether or not to just bypass the ratelimit altogether
-	Bypass bool
+type Ratelimit struct {
+	// Expiry is the time for the ratelimit to expire
+	Expiry time.Duration
+	// MaxRequests is the maximum number of requests allowed in the interval specified by Expiry for the bucket
+	MaxRequests int
+	// Bucket is the bucket to use for the ratelimit
+	Bucket string
+	// Identifier is the identifier of the ratelimit, otherwise DefaultIdentifier is used
+	Identifier func(r *http.Request) string
 }
 
-// Default global ratelimit handler
-var DefaultGlobalBucket = ModeratedBucket{BucketName: "global", Requests: 500, Time: 2 * time.Minute}
+// Limit is used to check if the ratelimit has been exceeded
+type Limit struct {
+	// Exceeded is true if the ratelimit has been exceeded
+	Exceeded bool
+	// Made is the number of requests made in the ratelimit
+	Made int
+	// Remaining is the number of requests remaining in the ratelimit
+	Remaining int
+	// TimeToReset is the time remaining until the ratelimit resets
+	TimeToReset time.Duration
+	// GotIdentifier is the identifier of the ratelimit
+	GotIdentifier string
+	// MaxRequests is the maximum number of requests allowed in the interval specified by Expiry for the bucket
+	MaxRequests int
+	// Bucket is the bucket to use for the ratelimit
+	Bucket string
+}
 
-/* func bucketHandle(bucket ModeratedBucket, id string, w http.ResponseWriter, r *http.Request) bool {
-	rlKey := "rl:" + id + "-" + bucket.BucketName
+func (l Limit) Headers() map[string]string {
+	if l.Exceeded {
+		return map[string]string{
+			"Retry-After": l.TimeToReset.String(),
+			"Req-Made":    strconv.Itoa(l.Made),
+			"Req-Limit":   strconv.Itoa(l.MaxRequests),
+			"Bucket":      l.Bucket,
+		}
+	}
 
-	v := state.Redis.Get(r.Context(), rlKey).Val()
+	return map[string]string{
+		"Req-Made":  strconv.Itoa(l.Made),
+		"Req-Limit": strconv.Itoa(l.MaxRequests),
+		"Bucket":    l.Bucket,
+	}
+}
 
-	if v == "" {
-		v = "0"
+func (rl Ratelimit) Limit(ctx context.Context, r *http.Request) (Limit, error) {
+	if rl.Identifier == nil {
+		rl.Identifier = DefaultIdentifier
+	}
 
-		err := state.Redis.Set(state.Context, rlKey, "0", bucket.Time).Err()
+	// Hash the identifier for privacy
+	identifier := fmt.Sprintf("%x", sha256.Sum256([]byte(rl.Identifier(r))))
+
+	// Check if rate even exists
+	exists, err := state.Redis.Exists(ctx, rl.Bucket+"-"+identifier).Result()
+
+	if err != nil {
+		return Limit{GotIdentifier: identifier}, err
+	}
+
+	// If the rate doesn't exist, set it
+	if exists == 0 {
+		_, err = state.Redis.Set(ctx, rl.Bucket+"-"+identifier, 0, rl.Expiry).Result()
 
 		if err != nil {
-			state.Logger.Error(err)
-			return false
+			return Limit{GotIdentifier: identifier}, err
 		}
 	}
 
-	err := state.Redis.Incr(state.Context, rlKey).Err()
+	// Get the current rate from redis
+	currentRate, err := state.Redis.Get(ctx, rl.Bucket+"-"+identifier).Int()
 
 	if err != nil {
-		state.Logger.Error(err)
-		return false
+		return Limit{GotIdentifier: identifier}, err
 	}
 
-	vInt, err := strconv.Atoi(v)
+	// Check if the rate has been exceeded
+	exceeded := currentRate > rl.MaxRequests
+
+	// Increment the rate
+	_, err = state.Redis.Incr(ctx, rl.Bucket+"-"+identifier).Result()
 
 	if err != nil {
-		state.Logger.Error(err)
-		return false
+		return Limit{GotIdentifier: identifier}, err
 	}
 
-	if vInt < 0 {
-		state.Redis.Expire(state.Context, rlKey, 1*time.Second)
-		vInt = 0
+	// Get the time when the rate will reset
+	resetTime, err := state.Redis.TTL(ctx, rl.Bucket+"-"+identifier).Result()
+
+	if err != nil {
+		return Limit{GotIdentifier: identifier}, err
 	}
 
-	if vInt > bucket.Requests {
-		retryAfter := state.Redis.TTL(state.Context, rlKey).Val()
-
-		if bucket.Global {
-			w.Header().Set("X-Global-Ratelimit", "true")
-		}
-
-		w.Header().Set("Retry-After", strconv.FormatFloat(retryAfter.Seconds(), 'g', -1, 64))
-
-		w.WriteHeader(http.StatusTooManyRequests)
-
-		// Set ratelimit to expire in more time if not global
-		if !bucket.Global {
-			state.Redis.Expire(state.Context, rlKey, retryAfter+2*time.Second)
-		}
-
-		w.Write([]byte("{\"message\":\"You're being rate limited!\",\"error\":true}"))
-
-		return false
-	}
-
-	if bucket.Global {
-		w.Header().Set("X-Ratelimit-Global-Req-Made", strconv.Itoa(vInt))
-	} else {
-		w.Header().Set("X-Ratelimit-Req-Made", strconv.Itoa(vInt))
-	}
-	return true
-} */
-
-// Public ratelimit handler (NOT YET WORKING)
-
-/*func Ratelimit(reqs int, t time.Duration, bucket ModeratedBucket, w http.ResponseWriter, r *http.Request) bool {
-	// Get ratelimit from redis
-	var id string
-
-	auth := r.Header.Get("Authorization")
-
-	if auth != "" {
-		if strings.HasPrefix(auth, "User ") {
-			idCheck := utils.AuthCheck(auth, false)
-
-			if idCheck == nil {
-				// Bot does not exist, return
-				w.WriteHeader(http.StatusForbidden)
-				w.Write([]byte("{\"message\":\"Invalid API token\",\"error\":true}"))
-				return false
-			}
-
-			id = *idCheck
-		} else {
-			idCheck := utils.AuthCheck(auth, true)
-
-			if idCheck == nil {
-				// Bot does not exist, return
-				w.WriteHeader(http.StatusForbidden)
-				w.Write([]byte("{\"message\":\"Invalid API token\",\"error\":true}"))
-				return false
-			}
-
-			id = *idCheck
-		}
-	} else {
-		remoteIp := strings.Split(strings.ReplaceAll(r.Header.Get("X-Forwarded-For"), " ", ""), ",")
-
-		// For user privacy, hash the remote ip
-		hasher := sha512.New()
-		hasher.Write([]byte(remoteIp[0]))
-		id = fmt.Sprintf("%x", hasher.Sum(nil))
-	}
-
-	if ok := bucketHandle(bucket, id, w, r); !ok {
-		return false
-	}
-
-	return true
+	return Limit{
+		GotIdentifier: identifier,
+		Exceeded:      exceeded,
+		Made:          currentRate,
+		TimeToReset:   resetTime,
+		MaxRequests:   rl.MaxRequests,
+		Bucket:        rl.Bucket,
+	}, nil
 }
-*/
+
+func DefaultIdentifier(r *http.Request) string {
+	return r.RemoteAddr
+}

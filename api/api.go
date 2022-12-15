@@ -72,6 +72,7 @@ type AuthData struct {
 type Route struct {
 	Method       Method
 	Pattern      string
+	OpId         string
 	Handler      func(d RouteData, r *http.Request) HttpResponse
 	Setup        func()
 	Docs         func() *docs.Doc
@@ -81,7 +82,6 @@ type Route struct {
 
 type RouteData struct {
 	Context context.Context
-	Resp    chan HttpResponse
 	Auth    AuthData
 }
 
@@ -92,6 +92,10 @@ type Router interface {
 	Put(pattern string, h http.HandlerFunc)
 	Delete(pattern string, h http.HandlerFunc)
 	Head(pattern string, h http.HandlerFunc)
+}
+
+func (r Route) String() string {
+	return r.Method.String() + " " + r.Pattern + " (" + r.OpId + ")"
 }
 
 // Authorizes a request
@@ -223,20 +227,24 @@ func (r Route) Authorize(req *http.Request) (AuthData, HttpResponse, bool) {
 }
 
 func (r Route) Route(ro Router) {
+	if r.OpId == "" {
+		panic("OpId is empty: " + r.String())
+	}
+
 	if r.Handler == nil {
-		panic("Handler is nil")
+		panic("Handler is nil: " + r.String())
 	}
 
 	if r.Docs == nil {
-		panic("Docs is nil")
+		panic("Docs is nil: " + r.String())
 	}
 
 	if r.Pattern == "" {
-		panic("Pattern is empty")
+		panic("Pattern is empty: " + r.String())
 	}
 
 	if CurrentTag == "" {
-		panic("CurrentTag is empty")
+		panic("CurrentTag is empty: " + r.String())
 	}
 
 	if r.Setup != nil {
@@ -245,31 +253,35 @@ func (r Route) Route(ro Router) {
 
 	docs := r.Docs()
 
+	if docs.OpId != r.OpId {
+		panic("OpId requested by router does not match docs OpId: " + r.String())
+	}
+
 	if !docs.Added() {
-		panic("added not set to true, docs.Route not called")
+		panic("added not set to true, docs.Route not called: " + r.String())
 	}
 
 	if docs.OpId == "" {
-		panic("OpId is empty")
+		panic("OpId is empty. Did you forget to set it: " + r.String())
 	}
 
 	if docs.Method == "" {
-		panic("Method is empty")
+		panic("Method is empty:" + r.String())
 	}
 
 	// Ensure auth types matches auth types given
 	if len(r.Auth) != len(docs.AuthType) {
-		panic("Auth types does not match docs auth types: " + r.Pattern)
+		panic("Auth types does not match docs auth types: " + r.String())
 	}
 
 	// Ensure method matches method given
 	if r.Method.String() != docs.Method {
-		panic("Method does not match docs method: " + r.Pattern)
+		panic("Method does not match docs method: " + r.String())
 	}
 
 	for i, auth := range r.Auth {
 		if auth.Type != docs.AuthType[i] {
-			panic("Auth types does not match docs auth types (mismatched type): " + r.Pattern)
+			panic("Auth types does not match docs auth types (mismatched type): " + r.String())
 		}
 	}
 
@@ -299,7 +311,6 @@ func (r Route) Route(ro Router) {
 
 			resp <- r.Handler(RouteData{
 				Context: ctx,
-				Resp:    resp,
 				Auth:    authData,
 			}, req)
 		}()
@@ -321,7 +332,7 @@ func (r Route) Route(ro Router) {
 	case HEAD:
 		ro.Head(r.Pattern, handle)
 	default:
-		panic("Unknown method...")
+		panic("Unknown method for route: " + r.String())
 	}
 }
 
@@ -512,7 +523,7 @@ func DefaultResponse(statusCode int) HttpResponse {
 }
 
 // Read body
-func MarshalReq(r *http.Request, dst interface{}) (resp HttpResponse, ok bool) {
+func marshalReq(r *http.Request, dst interface{}, headers map[string]string) (resp HttpResponse, ok bool) {
 	defer r.Body.Close()
 
 	bodyBytes, err := io.ReadAll(r.Body)
@@ -529,6 +540,7 @@ func MarshalReq(r *http.Request, dst interface{}) (resp HttpResponse, ok bool) {
 				Message: "A body is required for this endpoint",
 				Error:   true,
 			},
+			Headers: headers,
 		}, false
 	}
 
@@ -542,8 +554,17 @@ func MarshalReq(r *http.Request, dst interface{}) (resp HttpResponse, ok bool) {
 				Message: "Invalid JSON: " + err.Error(),
 				Error:   true,
 			},
+			Headers: headers,
 		}, false
 	}
 
 	return HttpResponse{}, true
+}
+
+func MarshalReq(r *http.Request, dst interface{}) (resp HttpResponse, ok bool) {
+	return marshalReq(r, dst, map[string]string{})
+}
+
+func MarshalReqWithHeaders(r *http.Request, dst interface{}, headers map[string]string) (resp HttpResponse, ok bool) {
+	return marshalReq(r, dst, headers)
 }

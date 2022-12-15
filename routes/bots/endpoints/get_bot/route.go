@@ -122,7 +122,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 	// First check count so we can avoid expensive DB calls
 	var count int64
 
-	err := state.Pool.QueryRow(d.Context, "SELECT COUNT(*) FROM bots WHERE (lower(vanity) = $1 OR bot_id = $1)", name).Scan(&count)
+	err := state.Pool.QueryRow(d.Context, "SELECT COUNT(*) FROM bots WHERE (lower(vanity) = $1 OR bot_id = $1 OR client_id = $1)", name).Scan(&count)
 
 	if err != nil {
 		return api.DefaultResponse(http.StatusInternalServerError)
@@ -132,9 +132,19 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 		return api.DefaultResponse(http.StatusNotFound)
 	}
 
+	if count > 1 {
+		// Delete one of the bots
+		_, err := state.Pool.Exec(d.Context, "DELETE FROM bots WHERE (lower(vanity) = $1 OR bot_id = $1 OR client_id = $1) LIMIT 1", name)
+
+		if err != nil {
+			state.Logger.Error(err)
+			return api.DefaultResponse(http.StatusInternalServerError)
+		}
+	}
+
 	var bot Bot
 
-	row, err := state.Pool.Query(d.Context, "SELECT "+botCols+" FROM bots WHERE (lower(vanity) = $1 OR bot_id = $1)", name)
+	row, err := state.Pool.Query(d.Context, "SELECT "+botCols+" FROM bots WHERE (lower(vanity) = $1 OR bot_id = $1 OR client_id = $1)", name)
 
 	if err != nil {
 		state.Logger.Error(err)

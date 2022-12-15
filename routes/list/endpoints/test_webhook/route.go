@@ -19,7 +19,7 @@ func Docs() *docs.Doc {
 	return docs.Route(&docs.Doc{
 		Method:      "POST",
 		Path:        "/list/webhook-test",
-		OpId:        "webhook_test",
+		OpId:        "test_webhook",
 		Summary:     "Test Webhook",
 		Description: "Sends a test webhook to allow testing your vote system. **All fields are mandatory for this endpoint**",
 		Req:         types.WebhookPost{},

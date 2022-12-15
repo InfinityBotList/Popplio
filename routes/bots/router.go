@@ -26,6 +26,7 @@ func (b Router) Routes(r *chi.Mux) {
 	r.Route("/bots", func(r chi.Router) {
 		api.Route{
 			Pattern: "/all",
+			OpId:    "get_all_bots",
 			Method:  api.GET,
 			Docs:    get_all_bots.Docs,
 			Handler: get_all_bots.Route,
@@ -33,6 +34,7 @@ func (b Router) Routes(r *chi.Mux) {
 
 		api.Route{
 			Pattern: "/{id}",
+			OpId:    "get_bot",
 			Method:  api.GET,
 			Docs:    get_bot.Docs,
 			Handler: get_bot.Route,
@@ -40,6 +42,7 @@ func (b Router) Routes(r *chi.Mux) {
 
 		api.Route{
 			Pattern: "/{id}/seo",
+			OpId:    "get_bot_seo",
 			Method:  api.GET,
 			Docs:    get_bot_seo.Docs,
 			Handler: get_bot_seo.Route,
@@ -47,6 +50,7 @@ func (b Router) Routes(r *chi.Mux) {
 
 		api.Route{
 			Pattern: "/stats",
+			OpId:    "post_stats",
 			Method:  api.POST,
 			Docs:    post_stats.Docs,
 			Handler: post_stats.Route,
@@ -59,6 +63,7 @@ func (b Router) Routes(r *chi.Mux) {
 
 		api.Route{
 			Pattern: "/{id}/reviews",
+			OpId:    "get_bot_reviews",
 			Method:  api.GET,
 			Docs:    get_bot_reviews.Docs,
 			Handler: get_bot_reviews.Route,

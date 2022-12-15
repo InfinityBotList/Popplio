@@ -12,7 +12,7 @@ func Docs() *docs.Doc {
 	return docs.Route(&docs.Doc{
 		Method:      "GET",
 		Path:        "/users/notifications/info",
-		OpId:        "get_notifications",
+		OpId:        "get_notification_info",
 		Summary:     "Get Notifications Info",
 		Description: "Gets a users notifications",
 		Resp:        types.NotificationInfo{},

@@ -3,7 +3,6 @@ package users
 import (
 	"popplio/api"
 	"popplio/routes/users/endpoints/add_bot"
-	"popplio/routes/users/endpoints/create_login"
 	"popplio/routes/users/endpoints/delete_user_notifications"
 	"popplio/routes/users/endpoints/delete_user_reminders"
 	"popplio/routes/users/endpoints/get_authorize_info"
@@ -17,6 +16,7 @@ import (
 	"popplio/routes/users/endpoints/patch_bot_vanity"
 	"popplio/routes/users/endpoints/patch_user_profile"
 	"popplio/routes/users/endpoints/post_user_subscription"
+	"popplio/routes/users/endpoints/put_user"
 	"popplio/routes/users/endpoints/put_user_bot_votes"
 	"popplio/routes/users/endpoints/put_user_pack_votes"
 	"popplio/routes/users/endpoints/put_user_reminders"
@@ -37,6 +37,7 @@ func (b Router) Routes(r *chi.Mux) {
 	r.Route("/users", func(r chi.Router) {
 		api.Route{
 			Pattern: "/{id}",
+			OpId:    "get_user",
 			Method:  api.GET,
 			Docs:    get_user.Docs,
 			Handler: get_user.Route,
@@ -44,6 +45,7 @@ func (b Router) Routes(r *chi.Mux) {
 
 		api.Route{
 			Pattern: "/{id}",
+			OpId:    "patch_user_profile",
 			Method:  api.PATCH,
 			Docs:    patch_user_profile.Docs,
 			Handler: patch_user_profile.Route,
@@ -57,6 +59,7 @@ func (b Router) Routes(r *chi.Mux) {
 
 		api.Route{
 			Pattern: "/authorize",
+			OpId:    "get_authorize_info",
 			Method:  api.GET,
 			Docs:    get_authorize_info.Docs,
 			Handler: get_authorize_info.Route,
@@ -64,13 +67,15 @@ func (b Router) Routes(r *chi.Mux) {
 
 		api.Route{
 			Pattern: "/",
+			OpId:    "put_user",
 			Method:  api.PUT,
-			Docs:    create_login.Docs,
-			Handler: create_login.Route,
+			Docs:    put_user.Docs,
+			Handler: put_user.Route,
 		}.Route(r)
 
 		api.Route{
 			Pattern: "/{id}/bots",
+			OpId:    "add_bot",
 			Method:  api.PUT,
 			Docs:    add_bot.Docs,
 			Handler: add_bot.Route,
@@ -84,6 +89,7 @@ func (b Router) Routes(r *chi.Mux) {
 
 		api.Route{
 			Pattern: "/{uid}/bots/{bid}/votes",
+			OpId:    "get_user_bot_votes",
 			Method:  api.GET,
 			Docs:    get_user_bot_votes.Docs,
 			Handler: get_user_bot_votes.Route,
@@ -101,6 +107,7 @@ func (b Router) Routes(r *chi.Mux) {
 
 		api.Route{
 			Pattern: "/{uid}/bots/{bid}/votes",
+			OpId:    "put_user_bot_votes",
 			Method:  api.PUT,
 			Docs:    put_user_bot_votes.Docs,
 			Handler: put_user_bot_votes.Route,
@@ -114,6 +121,7 @@ func (b Router) Routes(r *chi.Mux) {
 
 		api.Route{
 			Pattern: "/{uid}/bots/{bid}/vanity",
+			OpId:    "patch_bot_vanity",
 			Method:  api.PATCH,
 			Docs:    patch_bot_vanity.Docs,
 			Handler: patch_bot_vanity.Route,
@@ -127,6 +135,15 @@ func (b Router) Routes(r *chi.Mux) {
 
 		api.Route{
 			Pattern: "/{uid}/packs/{url}/votes",
+			OpId:    "get_user_pack_votes",
+			Method:  api.GET,
+			Docs:    get_user_pack_votes.Docs,
+			Handler: get_user_pack_votes.Route,
+		}.Route(r)
+
+		api.Route{
+			Pattern: "/{uid}/packs/{url}/votes",
+			OpId:    "put_user_pack_votes",
 			Method:  api.PUT,
 			Docs:    put_user_pack_votes.Docs,
 			Handler: put_user_pack_votes.Route,
@@ -139,14 +156,8 @@ func (b Router) Routes(r *chi.Mux) {
 		}.Route(r)
 
 		api.Route{
-			Pattern: "/{uid}/packs/{url}/votes",
-			Method:  api.GET,
-			Docs:    get_user_pack_votes.Docs,
-			Handler: get_user_pack_votes.Route,
-		}.Route(r)
-
-		api.Route{
 			Pattern: "/{id}/seo",
+			OpId:    "get_user_seo",
 			Method:  api.GET,
 			Docs:    get_user_seo.Docs,
 			Handler: get_user_seo.Route,
@@ -154,6 +165,7 @@ func (b Router) Routes(r *chi.Mux) {
 
 		api.Route{
 			Pattern: "/notifications/info",
+			OpId:    "get_notification_info",
 			Method:  api.GET,
 			Docs:    get_notification_info.Docs,
 			Handler: get_notification_info.Route,
@@ -161,6 +173,7 @@ func (b Router) Routes(r *chi.Mux) {
 
 		api.Route{
 			Pattern: "/{id}/notifications",
+			OpId:    "get_user_notifications",
 			Method:  api.GET,
 			Docs:    get_user_notifications.Docs,
 			Handler: get_user_notifications.Route,
@@ -174,6 +187,7 @@ func (b Router) Routes(r *chi.Mux) {
 
 		api.Route{
 			Pattern: "/{id}/notification",
+			OpId:    "delete_user_notifications",
 			Method:  api.DELETE,
 			Docs:    delete_user_notifications.Docs,
 			Handler: delete_user_notifications.Route,
@@ -187,6 +201,7 @@ func (b Router) Routes(r *chi.Mux) {
 
 		api.Route{
 			Pattern: "/{id}/reminders",
+			OpId:    "get_user_reminders",
 			Method:  api.GET,
 			Docs:    get_user_reminders.Docs,
 			Handler: get_user_reminders.Route,
@@ -200,6 +215,7 @@ func (b Router) Routes(r *chi.Mux) {
 
 		api.Route{
 			Pattern: "/{id}/reminders",
+			OpId:    "put_user_reminders",
 			Method:  api.PUT,
 			Docs:    put_user_reminders.Docs,
 			Handler: put_user_reminders.Route,
@@ -213,6 +229,7 @@ func (b Router) Routes(r *chi.Mux) {
 
 		api.Route{
 			Pattern: "/{id}/reminder",
+			OpId:    "delete_user_reminders",
 			Method:  api.DELETE,
 			Docs:    delete_user_reminders.Docs,
 			Handler: delete_user_reminders.Route,
@@ -226,6 +243,7 @@ func (b Router) Routes(r *chi.Mux) {
 
 		api.Route{
 			Pattern: "/{id}/sub",
+			OpId:    "post_user_subscription",
 			Method:  api.POST,
 			Docs:    post_user_subscription.Docs,
 			Handler: post_user_subscription.Route,

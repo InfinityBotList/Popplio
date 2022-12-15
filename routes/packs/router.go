@@ -22,6 +22,7 @@ func (b Router) Routes(r *chi.Mux) {
 	r.Route("/packs", func(r chi.Router) {
 		api.Route{
 			Pattern: "/{id}",
+			OpId:    "get_pack",
 			Method:  api.GET,
 			Docs:    get_pack.Docs,
 			Handler: get_pack.Route,
@@ -29,6 +30,7 @@ func (b Router) Routes(r *chi.Mux) {
 
 		api.Route{
 			Pattern: "/all",
+			OpId:    "get_all_packs",
 			Method:  api.GET,
 			Docs:    get_all_packs.Docs,
 			Handler: get_all_packs.Route,

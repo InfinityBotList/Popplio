@@ -22,6 +22,7 @@ func (b Router) Tag() (string, string) {
 func (b Router) Routes(r *chi.Mux) {
 	api.Route{
 		Pattern: "/login-cosmog",
+		OpId:    "get_special_login",
 		Method:  api.POST,
 		Docs:    get_special_login.Docs,
 		Handler: get_special_login.Route,
@@ -29,6 +30,7 @@ func (b Router) Routes(r *chi.Mux) {
 
 	api.Route{
 		Pattern: "/cosmog",
+		OpId:    "get_special_login_resp",
 		Method:  api.GET,
 		Docs:    get_special_login_resp.Docs,
 		Handler: get_special_login_resp.Route,
@@ -36,6 +38,7 @@ func (b Router) Routes(r *chi.Mux) {
 
 	api.Route{
 		Pattern: "/cosmog/tasks/{tid}",
+		OpId:    "get_cosmog_task_tid",
 		Method:  api.GET,
 		Docs:    get_cosmog_task_tid.Docs,
 		Handler: get_cosmog_task_tid.Route,
