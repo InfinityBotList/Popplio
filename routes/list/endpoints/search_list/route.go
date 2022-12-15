@@ -92,7 +92,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 
 	if err != nil {
 		errors := err.(validator.ValidationErrors)
-		return api.ValidatorErrorResponse(map[string]string{}, errors)
+		return api.ValidatorErrorResponse(api.BlankMap, errors)
 	}
 
 	if payload.TagFilter == nil {

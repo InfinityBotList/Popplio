@@ -23,6 +23,9 @@ import (
 
 var json = jsoniter.ConfigCompatibleWithStandardLibrary
 
+// Simple blank map to avoid creating maps for every marshal etc.
+var BlankMap = make(map[string]string)
+
 // Stores the current tag
 var CurrentTag string
 
@@ -562,7 +565,7 @@ func marshalReq(r *http.Request, dst interface{}, headers map[string]string) (re
 }
 
 func MarshalReq(r *http.Request, dst interface{}) (resp HttpResponse, ok bool) {
-	return marshalReq(r, dst, map[string]string{})
+	return marshalReq(r, dst, BlankMap)
 }
 
 func MarshalReqWithHeaders(r *http.Request, dst interface{}, headers map[string]string) (resp HttpResponse, ok bool) {
