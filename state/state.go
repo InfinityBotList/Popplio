@@ -88,10 +88,6 @@ func notpresent(fl validator.FieldLevel) bool {
 func init() {
 	godotenv.Load()
 
-	if os.Getenv("IN_POPPLIO") != "true" {
-		return
-	}
-
 	var connUrl string
 	var backupsConnUrl string
 	var redisUrl string
