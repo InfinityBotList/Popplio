@@ -24,22 +24,8 @@ var (
 )
 
 type SearchFilter struct {
-	From int `json:"from" validate:"required"`
-	To   int `json:"to" validate:"required"`
-}
-
-func (f SearchFilter) from() int {
-	if f.From == 0 {
-		return -1
-	}
-	return f.From
-}
-
-func (f SearchFilter) to() int {
-	if f.To == 0 {
-		return -1
-	}
-	return f.To
+	From uint32 `json:"from"`
+	To   uint32 `json:"to"`
 }
 
 type TagMode string
@@ -59,7 +45,7 @@ type SearchQuery struct {
 	Servers   *SearchFilter `json:"servers" validate:"required"`
 	Votes     *SearchFilter `json:"votes" validate:"required"`
 	Shards    *SearchFilter `json:"shards" validate:"required"`
-	TagFilter *TagFilter    `json:"tags"` // Optional for now, as main frontend doesn't support it yet
+	TagFilter *TagFilter    `json:"tags" validate:"required"`
 }
 
 // Only bots are supported at this time
@@ -96,13 +82,6 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 		return api.ValidatorErrorResponse(api.BlankMap, errors)
 	}
 
-	if payload.TagFilter == nil {
-		payload.TagFilter = &TagFilter{
-			Tags:    []string{},
-			TagMode: TagModeAll,
-		}
-	}
-
 	if payload.TagFilter.TagMode != TagModeAll && payload.TagFilter.TagMode != TagModeAny {
 		return api.HttpResponse{
 			Status: http.StatusBadRequest,
@@ -115,21 +94,23 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 
 	var indexBots = []types.IndexBot{}
 
-	botsSql = strings.Replace(botsSql, "{cols}", indexBotCols, 1)
-	botsSql = strings.Replace(botsSql, "{op}", string(payload.TagFilter.TagMode), 1)
+	botsSqlReq := strings.Replace(botsSql, "{cols}", indexBotCols, 1)
+	botsSqlReq = strings.Replace(botsSqlReq, "{op}", string(payload.TagFilter.TagMode), 1)
+
+	state.Logger.Info(botsSql)
 
 	rows, err := state.Pool.Query(
 		d.Context,
-		botsSql,
+		botsSqlReq,
 		// Args
 		payload.Query,          // 1
 		"%"+payload.Query+"%",  // 2
-		payload.Servers.from(), // 3
-		payload.Servers.to(),   // 4
-		payload.Votes.from(),   // 5
-		payload.Votes.to(),     // 6
-		payload.Shards.from(),  // 7
-		payload.Shards.to(),    // 8
+		payload.Servers.From,   // 3
+		payload.Servers.To,     // 4
+		payload.Votes.From,     // 5
+		payload.Votes.To,       // 6
+		payload.Shards.From,    // 7
+		payload.Shards.To,      // 8
 		payload.TagFilter.Tags, // 9
 	)
 
