@@ -96,6 +96,42 @@ func (r ClientRequest) Method(method string) ClientRequest {
 	return r
 }
 
+func (r ClientRequest) Head(path string) ClientRequest {
+	r.method = "HEAD"
+	r.path = path
+	return r
+}
+
+func (r ClientRequest) Get(path string) ClientRequest {
+	r.method = "GET"
+	r.path = path
+	return r
+}
+
+func (r ClientRequest) Post(path string) ClientRequest {
+	r.method = "POST"
+	r.path = path
+	return r
+}
+
+func (r ClientRequest) Put(path string) ClientRequest {
+	r.method = "PUT"
+	r.path = path
+	return r
+}
+
+func (r ClientRequest) Patch(path string) ClientRequest {
+	r.method = "PATCH"
+	r.path = path
+	return r
+}
+
+func (r ClientRequest) Delete(path string) ClientRequest {
+	r.method = "DELETE"
+	r.path = path
+	return r
+}
+
 func (r ClientRequest) Path(path string) ClientRequest {
 	r.path = path
 	return r
