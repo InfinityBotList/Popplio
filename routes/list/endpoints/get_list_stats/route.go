@@ -5,26 +5,8 @@ import (
 	"popplio/api"
 	"popplio/docs"
 	"popplio/state"
+	"popplio/types"
 )
-
-type ListStatsBot struct {
-	BotID              string   `json:"bot_id"`
-	Vanity             string   `json:"vanity"`
-	Short              string   `json:"short"`
-	Type               string   `json:"type"`
-	MainOwnerID        string   `json:"main_owner_id"`
-	AdditionalOwnerIDS []string `json:"additional_owners_ids"`
-	QueueName          string   `json:"queue_name"`
-}
-
-type ListStats struct {
-	Bots         []ListStatsBot `json:"bots"`
-	TotalStaff   int64          `json:"total_staff"`
-	TotalUsers   int64          `json:"total_users"`
-	TotalVotes   int64          `json:"total_votes"`
-	TotalPacks   int64          `json:"total_packs"`
-	TotalTickets int64          `json:"total_tickets"`
-}
 
 func Docs() *docs.Doc {
 	return docs.Route(&docs.Doc{
@@ -34,14 +16,14 @@ func Docs() *docs.Doc {
 		Summary:     "Get List Statistics",
 		Description: "Gets the statistics of the list",
 		Tags:        []string{api.CurrentTag},
-		Resp: ListStats{
-			Bots: []ListStatsBot{},
+		Resp: types.ListStats{
+			Bots: []types.ListStatsBot{},
 		},
 	})
 }
 
 func Route(d api.RouteData, r *http.Request) api.HttpResponse {
-	listStats := ListStats{}
+	listStats := types.ListStats{}
 
 	bots, err := state.Pool.Query(d.Context, "SELECT bot_id, vanity, short, type, owner, additional_owners, queue_name FROM bots")
 
@@ -68,7 +50,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 			return api.DefaultResponse(http.StatusInternalServerError)
 		}
 
-		listStats.Bots = append(listStats.Bots, ListStatsBot{
+		listStats.Bots = append(listStats.Bots, types.ListStatsBot{
 			BotID:              botId,
 			Vanity:             vanity,
 			Short:              short,

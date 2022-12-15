@@ -43,38 +43,10 @@ type SEO struct {
 	Short    string `json:"short"`
 }
 
-type ResolvedPackBot struct {
-	User         *DiscordUser `json:"user"`
-	Short        string       `json:"short"`
-	Type         pgtype.Text  `json:"type"`
-	Vanity       pgtype.Text  `json:"vanity"`
-	Banner       pgtype.Text  `json:"banner"`
-	NSFW         bool         `json:"nsfw"`
-	Premium      bool         `json:"premium"`
-	Shards       int          `json:"shards"`
-	Votes        int          `json:"votes"`
-	InviteClicks int          `json:"invites"`
-	Servers      int          `json:"servers"`
-	Tags         []string     `json:"tags"`
-}
-
 type PackVote struct {
 	UserID    string    `json:"user_id"`
 	Upvote    bool      `json:"upvote"`
 	CreatedAt time.Time `json:"created_at"`
-}
-
-type BotPack struct {
-	Owner         string            `db:"owner" json:"owner_id"`
-	ResolvedOwner *DiscordUser      `db:"-" json:"owner"`
-	Name          string            `db:"name" json:"name"`
-	Short         string            `db:"short" json:"short"`
-	Votes         []PackVote        `db:"-" json:"votes"`
-	Tags          []string          `db:"tags" json:"tags"`
-	URL           string            `db:"url" json:"url"`
-	CreatedAt     time.Time         `db:"created_at" json:"created_at"`
-	Bots          []string          `db:"bots" json:"bot_ids"`
-	ResolvedBots  []ResolvedPackBot `db:"-" json:"bots"`
 }
 
 type IndexBotPack struct {
@@ -86,14 +58,6 @@ type IndexBotPack struct {
 	URL       string     `db:"url" json:"url"`
 	CreatedAt time.Time  `db:"created_at" json:"created_at"`
 	Bots      []string   `db:"bots" json:"bot_ids"`
-}
-
-type AllPacks struct {
-	Count    uint64         `json:"count"`
-	PerPage  uint64         `json:"per_page"`
-	Next     string         `json:"next"`
-	Previous string         `json:"previous"`
-	Results  []IndexBotPack `json:"packs"`
 }
 
 // A review is a review on ibl
@@ -142,30 +106,11 @@ type IndexBot struct {
 	Banner      pgtype.Text  `db:"banner" json:"banner"`
 }
 
-type ListIndex struct {
-	Certified     []IndexBot     `json:"certified"`
-	MostViewed    []IndexBot     `json:"most_viewed"`
-	Packs         []IndexBotPack `json:"packs"`
-	RecentlyAdded []IndexBot     `json:"recently_added"`
-	TopVoted      []IndexBot     `json:"top_voted"`
-}
-
 type UserVote struct {
 	Timestamps   []int64 `json:"ts"`
 	VoteTime     uint16  `json:"vote_time"`
 	HasVoted     bool    `json:"has_voted"`
 	LastVoteTime int64   `json:"last_vote_time"`
-}
-
-type UserVoteCompat struct {
-	HasVoted bool `json:"hasVoted"`
-}
-
-type NotifGet struct {
-	Endpoint    string           `json:"endpoint"`
-	NotifID     string           `json:"notif_id"`
-	CreatedAt   time.Time        `json:"created_at"`
-	BrowserInfo NotifBrowserInfo `json:"browser_info"`
 }
 
 // For documentation purposes
@@ -454,14 +399,6 @@ type Notification struct {
 	Message []byte
 }
 
-type NotifBrowserInfo struct {
-	// The OS of the browser
-	OS         string
-	Browser    string
-	BrowserVer string
-	Mobile     bool
-}
-
 type ResolvedReminderBot struct {
 	Name   string `db:"-" json:"name"`
 	Avatar string `db:"-" json:"avatar"`
@@ -512,10 +449,6 @@ type UserSubscription struct {
 	Endpoint string `json:"endpoint"`
 }
 
-type NotifGetList struct {
-	Notifications []NotifGet `json:"notifications"`
-}
-
 type ReminderList struct {
 	Reminders []Reminder `json:"reminders"`
 }
@@ -531,3 +464,58 @@ const (
 	TargetTypeBot
 	TargetTypeServer
 )
+
+// Notification
+type NotifGet struct {
+	Endpoint    string           `json:"endpoint"`
+	NotifID     string           `json:"notif_id"`
+	CreatedAt   time.Time        `json:"created_at"`
+	BrowserInfo NotifBrowserInfo `json:"browser_info"`
+}
+
+type NotifBrowserInfo struct {
+	// The OS of the browser
+	OS         string
+	Browser    string
+	BrowserVer string
+	Mobile     bool
+}
+
+type NotifGetList struct {
+	Notifications []NotifGet `json:"notifications"`
+}
+
+// List Index
+type ListIndex struct {
+	Certified     []IndexBot     `json:"certified"`
+	MostViewed    []IndexBot     `json:"most_viewed"`
+	Packs         []IndexBotPack `json:"packs"`
+	RecentlyAdded []IndexBot     `json:"recently_added"`
+	TopVoted      []IndexBot     `json:"top_voted"`
+}
+
+// List Stats
+type ListStatsBot struct {
+	BotID              string   `json:"bot_id"`
+	Vanity             string   `json:"vanity"`
+	Short              string   `json:"short"`
+	Type               string   `json:"type"`
+	MainOwnerID        string   `json:"main_owner_id"`
+	AdditionalOwnerIDS []string `json:"additional_owners_ids"`
+	QueueName          string   `json:"queue_name"`
+}
+
+type ListStats struct {
+	Bots         []ListStatsBot `json:"bots"`
+	TotalStaff   int64          `json:"total_staff"`
+	TotalUsers   int64          `json:"total_users"`
+	TotalVotes   int64          `json:"total_votes"`
+	TotalPacks   int64          `json:"total_packs"`
+	TotalTickets int64          `json:"total_tickets"`
+}
+
+// Vote Info
+type VoteInfo struct {
+	Weekend  bool   `json:"is_weekend"`
+	VoteTime uint16 `json:"vote_time"`
+}

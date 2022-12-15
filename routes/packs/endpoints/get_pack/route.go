@@ -9,6 +9,7 @@ import (
 	"popplio/types"
 	"popplio/utils"
 	"strings"
+	"time"
 
 	"github.com/georgysavva/scany/v2/pgxscan"
 	"github.com/go-chi/chi/v5"
@@ -16,8 +17,36 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+type BotPack struct {
+	Owner         string             `db:"owner" json:"owner_id"`
+	ResolvedOwner *types.DiscordUser `db:"-" json:"owner"`
+	Name          string             `db:"name" json:"name"`
+	Short         string             `db:"short" json:"short"`
+	Votes         []types.PackVote   `db:"-" json:"votes"`
+	Tags          []string           `db:"tags" json:"tags"`
+	URL           string             `db:"url" json:"url"`
+	CreatedAt     time.Time          `db:"created_at" json:"created_at"`
+	Bots          []string           `db:"bots" json:"bot_ids"`
+	ResolvedBots  []ResolvedPackBot  `db:"-" json:"bots"`
+}
+
+type ResolvedPackBot struct {
+	User         *types.DiscordUser `json:"user"`
+	Short        string             `json:"short"`
+	Type         pgtype.Text        `json:"type"`
+	Vanity       pgtype.Text        `json:"vanity"`
+	Banner       pgtype.Text        `json:"banner"`
+	NSFW         bool               `json:"nsfw"`
+	Premium      bool               `json:"premium"`
+	Shards       int                `json:"shards"`
+	Votes        int                `json:"votes"`
+	InviteClicks int                `json:"invites"`
+	Servers      int                `json:"servers"`
+	Tags         []string           `json:"tags"`
+}
+
 var (
-	packColArr = utils.GetCols(types.BotPack{})
+	packColArr = utils.GetCols(BotPack{})
 	packCols   = strings.Join(packColArr, ",")
 )
 
@@ -38,7 +67,7 @@ func Docs() *docs.Doc {
 				Schema:      docs.IdSchema,
 			},
 		},
-		Resp: types.BotPack{},
+		Resp: BotPack{},
 	})
 }
 
@@ -49,7 +78,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 		return api.DefaultResponse(http.StatusBadRequest)
 	}
 
-	var pack types.BotPack
+	var pack BotPack
 
 	row, err := state.Pool.Query(d.Context, "SELECT "+packCols+" FROM packs WHERE url = $1 OR name = $1", id)
 
@@ -76,7 +105,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 	}
 }
 
-func ResolveBotPack(ctx context.Context, pack *types.BotPack) error {
+func ResolveBotPack(ctx context.Context, pack *BotPack) error {
 	ownerUser, err := utils.GetDiscordUser(pack.Owner)
 
 	if err != nil {
@@ -119,7 +148,7 @@ func ResolveBotPack(ctx context.Context, pack *types.BotPack) error {
 			return err
 		}
 
-		pack.ResolvedBots = append(pack.ResolvedBots, types.ResolvedPackBot{
+		pack.ResolvedBots = append(pack.ResolvedBots, ResolvedPackBot{
 			Short:        short,
 			User:         botUser,
 			Type:         bot_type,

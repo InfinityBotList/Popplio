@@ -13,6 +13,10 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+type UserVoteCompat struct {
+	HasVoted bool `json:"hasVoted"`
+}
+
 func Docs() *docs.Doc {
 	return docs.Route(&docs.Doc{
 		Method:      "GET",
@@ -37,7 +41,7 @@ func Docs() *docs.Doc {
 				Schema:      docs.IdSchema,
 			},
 		},
-		Resp:     types.UserVoteCompat{},
+		Resp:     UserVoteCompat{},
 		AuthType: []types.TargetType{types.TargetTypeBot},
 	})
 }
@@ -74,7 +78,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 		return api.DefaultResponse(http.StatusInternalServerError)
 	}
 
-	var compatData = types.UserVoteCompat{
+	var compatData = UserVoteCompat{
 		HasVoted: voteParsed.HasVoted,
 	}
 
