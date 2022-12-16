@@ -25,4 +25,4 @@ AND (($6 = 0) OR (votes <= $6))
 AND (shards >= $7)
 AND (($8 = 0) OR (shards <= $8))
 
-ORDER BY votes DESC, type DESC LIMIT 6
+ORDER BY votes DESC, type DESC LIMIT 12

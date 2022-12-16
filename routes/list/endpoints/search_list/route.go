@@ -97,8 +97,6 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 	botsSqlReq := strings.Replace(botsSql, "{cols}", indexBotCols, 1)
 	botsSqlReq = strings.Replace(botsSqlReq, "{op}", string(payload.TagFilter.TagMode), 1)
 
-	state.Logger.Info(botsSql)
-
 	rows, err := state.Pool.Query(
 		d.Context,
 		botsSqlReq,
