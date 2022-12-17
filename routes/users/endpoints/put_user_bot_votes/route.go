@@ -198,9 +198,9 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 		return api.DefaultResponse(http.StatusInternalServerError)
 	}
 
-	channel := os.Getenv("VOTE_LOGS_CHANNEL")
+	channel := os.Getenv("VOTE_CHANNEL")
 
-	state.Discord.ChannelMessageSendComplex(channel, &discordgo.MessageSend{
+	_, err = state.Discord.ChannelMessageSendComplex(channel, &discordgo.MessageSend{
 		Embeds: []*discordgo.MessageEmbed{
 			{
 				URL: "https://botlist.site/" + vars["bid"],
@@ -235,6 +235,10 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 			},
 		},
 	})
+
+	if err != nil {
+		state.Logger.Warn(err)
+	}
 
 	// Send webhook in a goroutine refunding the vote if it failed
 	go func() {
