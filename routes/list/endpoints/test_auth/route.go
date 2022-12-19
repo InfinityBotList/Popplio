@@ -8,12 +8,6 @@ import (
 	"popplio/types"
 )
 
-type TestAuth struct {
-	AuthType types.TargetType `json:"auth_type"`
-	TargetID string           `json:"target_id"`
-	Token    string           `json:"token"`
-}
-
 func Docs() *docs.Doc {
 	return docs.Route(&docs.Doc{
 		Method:      "POST",
@@ -21,14 +15,14 @@ func Docs() *docs.Doc {
 		OpId:        "test_auth",
 		Summary:     "Test Auth",
 		Description: "Test your authentication",
-		Req:         TestAuth{},
+		Req:         types.TestAuth{},
 		Resp:        api.AuthData{},
 		Tags:        []string{api.CurrentTag},
 	})
 }
 
 func Route(d api.RouteData, r *http.Request) api.HttpResponse {
-	var payload TestAuth
+	var payload types.TestAuth
 
 	hresp, ok := api.MarshalReq(r, &payload)
 

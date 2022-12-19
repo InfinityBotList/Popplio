@@ -1,8 +1,8 @@
-package transcripts
+package tickets
 
 import (
 	"popplio/api"
-	"popplio/routes/transcripts/endpoints/get_transcript"
+	"popplio/routes/tickets/endpoints/get_ticket"
 
 	"github.com/go-chi/chi/v5"
 )
@@ -16,13 +16,13 @@ func (b Router) Tag() (string, string) {
 }
 
 func (b Router) Routes(r *chi.Mux) {
-	r.Route("/transcripts", func(r chi.Router) {
+	r.Route("/tickets", func(r chi.Router) {
 		api.Route{
 			Pattern: "/{id}",
-			OpId:    "get_transcript",
+			OpId:    "get_ticket",
 			Method:  api.GET,
-			Docs:    get_transcript.Docs,
-			Handler: get_transcript.Route,
+			Docs:    get_ticket.Docs,
+			Handler: get_ticket.Route,
 		}.Route(r)
 	})
 }

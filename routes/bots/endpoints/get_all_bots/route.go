@@ -24,14 +24,6 @@ var (
 	indexBotCols    = strings.Join(indexBotColsArr, ",")
 )
 
-type AllBots struct {
-	Count    uint64           `json:"count"`
-	PerPage  uint64           `json:"per_page"`
-	Next     string           `json:"next"`
-	Previous string           `json:"previous"`
-	Results  []types.IndexBot `json:"bots"`
-}
-
 func Docs() *docs.Doc {
 	return docs.Route(&docs.Doc{
 		Method:      "GET",
@@ -40,7 +32,7 @@ func Docs() *docs.Doc {
 		Summary:     "Get All Bots",
 		Description: "Gets all bots on the list. Returns a ``Index`` object",
 		Tags:        []string{api.CurrentTag},
-		Resp:        AllBots{},
+		Resp:        types.AllBots{},
 	})
 }
 
@@ -124,7 +116,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 		next.Reset()
 	}
 
-	data := AllBots{
+	data := types.AllBots{
 		Count:    count,
 		Results:  bots,
 		PerPage:  perPage,

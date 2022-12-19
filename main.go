@@ -18,7 +18,7 @@ import (
 	"popplio/routes/list"
 	"popplio/routes/packs"
 	"popplio/routes/special"
-	"popplio/routes/transcripts"
+	"popplio/routes/tickets"
 	"popplio/routes/users"
 	"popplio/state"
 
@@ -140,7 +140,7 @@ func main() {
 		list.Router{},
 		packs.Router{},
 		special.Router{},
-		transcripts.Router{},
+		tickets.Router{},
 		users.Router{},
 		diagnostics.Router{},
 	}

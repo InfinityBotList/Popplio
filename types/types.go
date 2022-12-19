@@ -418,11 +418,27 @@ type AuthInfo struct {
 	ClientID string `json:"client_id"`
 }
 
-type Transcript struct {
-	ID       int              `json:"id"`
-	Data     []map[string]any `json:"data"`
-	ClosedBy map[string]any   `json:"closed_by"`
-	OpenedBy map[string]any   `json:"opened_by"`
+type Message struct {
+	ID       string                    `json:"id"`
+	Content  string                    `json:"content"`
+	Embeds   []*discordgo.MessageEmbed `json:"embeds"`
+	AuthorID string                    `json:"author_id"`
+	Author   *DiscordUser              `json:"author"`
+}
+
+type Ticket struct {
+	ID            string            `db:"id" json:"id"`
+	ChannelID     string            `db:"channel_id" json:"channel_id"`
+	TopicID       string            `db:"topic_id" json:"topic_id"`
+	Issue         string            `db:"issue" json:"issue"`
+	TicketContext map[string]string `db:"ticket_context" json:"ticket_context"`
+	Messages      []Message         `db:"messages" json:"messages"`
+	UserID        string            `db:"user_id" json:"-"`
+	Author        *DiscordUser      `db:"-" json:"author"`
+	CloseUserID   pgtype.Text       `db:"close_user_id" json:"-"`
+	CloseUser     *DiscordUser      `db:"-" json:"close_user"`
+	Open          bool              `db:"open" json:"open"`
+	CreatedAt     time.Time         `db:"created_at" json:"created_at"`
 }
 
 type UserSubscription struct {
@@ -536,4 +552,156 @@ type ResolvedPackBot struct {
 	InviteClicks int          `json:"invites"`
 	Servers      int          `json:"servers"`
 	Tags         []string     `json:"tags"`
+}
+
+// All bots
+type AllBots struct {
+	Count    uint64     `json:"count"`
+	PerPage  uint64     `json:"per_page"`
+	Next     string     `json:"next"`
+	Previous string     `json:"previous"`
+	Results  []IndexBot `json:"bots"`
+}
+
+// All packs
+type AllPacks struct {
+	Count    uint64         `json:"count"`
+	PerPage  uint64         `json:"per_page"`
+	Next     string         `json:"next"`
+	Previous string         `json:"previous"`
+	Results  []IndexBotPack `json:"packs"`
+}
+
+// Bot represents a bot
+// A bot is a Discord bot that is on the infinitybotlist.
+type Bot struct {
+	ITag                     pgtype.UUID        `db:"itag" json:"itag"`
+	BotID                    string             `db:"bot_id" json:"bot_id"`
+	ClientID                 string             `db:"client_id" json:"client_id"`
+	QueueName                string             `db:"queue_name" json:"queue_name"` // Used purely by the queue system
+	ExtraLinks               []Link             `db:"extra_links" json:"extra_links"`
+	Tags                     []string           `db:"tags" json:"tags"`
+	Prefix                   pgtype.Text        `db:"prefix" json:"prefix"`
+	User                     *DiscordUser       `json:"user"` // Must be parsed internally
+	Owner                    string             `db:"owner" json:"-"`
+	MainOwner                *DiscordUser       `json:"owner"` // Must be parsed internally
+	AdditionalOwners         []string           `db:"additional_owners" json:"-"`
+	ResolvedAdditionalOwners []*DiscordUser     `json:"additional_owners"` // Must be parsed internally
+	StaffBot                 bool               `db:"staff_bot" json:"staff_bot"`
+	Short                    string             `db:"short" json:"short"`
+	Long                     string             `db:"long" json:"long"`
+	Library                  string             `db:"library" json:"library"`
+	NSFW                     pgtype.Bool        `db:"nsfw" json:"nsfw"`
+	Premium                  pgtype.Bool        `db:"premium" json:"premium"`
+	PendingCert              pgtype.Bool        `db:"pending_cert" json:"pending_cert"`
+	Servers                  int                `db:"servers" json:"servers"`
+	Shards                   int                `db:"shards" json:"shards"`
+	ShardList                []int              `db:"shard_list" json:"shard_list"`
+	Users                    int                `db:"users" json:"users"`
+	Votes                    int                `db:"votes" json:"votes"`
+	Views                    int                `db:"clicks" json:"clicks"`
+	UniqueClicks             int64              `json:"unique_clicks"` // Must be parsed internally
+	InviteClicks             int                `db:"invite_clicks" json:"invites"`
+	Banner                   pgtype.Text        `db:"banner" json:"banner"`
+	Invite                   pgtype.Text        `db:"invite" json:"invite"`
+	Type                     string             `db:"type" json:"type"` // For auditing reasons, we do not filter out denied/banned bots in API
+	Vanity                   string             `db:"vanity" json:"vanity"`
+	ExternalSource           pgtype.Text        `db:"external_source" json:"external_source"`
+	ListSource               pgtype.UUID        `db:"list_source" json:"list_source"`
+	VoteBanned               bool               `db:"vote_banned" json:"vote_banned"`
+	CrossAdd                 bool               `db:"cross_add" json:"cross_add"`
+	StartPeriod              pgtype.Timestamptz `db:"start_premium_period" json:"start_premium_period"`
+	SubPeriod                time.Duration      `db:"premium_period_length" json:"-"`
+	SubPeriodParsed          Interval           `db:"-" json:"premium_period_length"` // Must be parsed internally
+	CertReason               pgtype.Text        `db:"cert_reason" json:"cert_reason"`
+	Announce                 bool               `db:"announce" json:"announce"`
+	AnnounceMessage          pgtype.Text        `db:"announce_message" json:"announce_message"`
+	Uptime                   int                `db:"uptime" json:"uptime"`
+	TotalUptime              int                `db:"total_uptime" json:"total_uptime"`
+	ClaimedBy                pgtype.Text        `db:"claimed_by" json:"claimed_by"`
+	Note                     pgtype.Text        `db:"approval_note" json:"approval_note"`
+	CreatedAt                pgtype.Timestamptz `db:"created_at" json:"created_at"`
+	LastClaimed              pgtype.Timestamptz `db:"last_claimed" json:"last_claimed"`
+}
+
+type UserVoteCompat struct {
+	HasVoted bool `json:"hasVoted"`
+}
+
+type SearchFilter struct {
+	From uint32 `json:"from"`
+	To   uint32 `json:"to"`
+}
+
+type TagMode string
+
+const (
+	TagModeAll TagMode = "@>"
+	TagModeAny TagMode = "&&"
+)
+
+type TagFilter struct {
+	Tags    []string `json:"tags" validate:"required"`
+	TagMode TagMode  `json:"tag_mode" validate:"required"`
+}
+
+type SearchQuery struct {
+	Query     string        `json:"query" validate:"required"`
+	Servers   *SearchFilter `json:"servers" validate:"required"`
+	Votes     *SearchFilter `json:"votes" validate:"required"`
+	Shards    *SearchFilter `json:"shards" validate:"required"`
+	TagFilter *TagFilter    `json:"tags" validate:"required"`
+}
+
+type SearchResponse struct {
+	Bots []IndexBot `json:"bots"`
+}
+
+type TestAuth struct {
+	AuthType TargetType `json:"auth_type"`
+	TargetID string     `json:"target_id"`
+	Token    string     `json:"token"`
+}
+
+type User struct {
+	ITag  pgtype.UUID  `db:"itag" json:"itag"`
+	ID    string       `db:"user_id" json:"user_id"`
+	User  *DiscordUser `db:"-" json:"user"` // Must be handled internally
+	Staff bool         `db:"staff" json:"staff"`
+	About pgtype.Text  `db:"about" json:"about"`
+
+	VoteBanned                bool               `db:"vote_banned" json:"vote_banned"`
+	Admin                     bool               `db:"admin" json:"admin"`
+	HAdmin                    bool               `db:"hadmin" json:"hadmin"`
+	Dev                       bool               `db:"ibldev" json:"ibldev"`
+	HDev                      bool               `db:"iblhdev" json:"iblhdev"`
+	StaffOnboarded            bool               `db:"staff_onboarded" json:"staff_onboarded"`
+	StaffOnboardState         string             `db:"staff_onboard_state" json:"staff_onboard_state"`
+	StaffOnboardLastStartTime pgtype.Timestamptz `db:"staff_onboard_last_start_time" json:"staff_onboard_last_start_time"`
+	StaffOnboardMacroTime     pgtype.Timestamptz `db:"staff_onboard_macro_time" json:"staff_onboard_macro_time"`
+	StaffOnboardGuild         pgtype.Text        `db:"staff_onboard_guild" json:"staff_onboard_guild"`
+	Certified                 bool               `db:"certified" json:"certified"`
+	Developer                 bool               `db:"developer" json:"developer"`
+	UserBots                  []UserBot          `json:"user_bots"` // Must be handled internally
+
+	ExtraLinks []Link `db:"extra_links" json:"extra_links"`
+}
+
+type UserBot struct {
+	BotID              string       `db:"bot_id" json:"bot_id"`
+	User               *DiscordUser `db:"-" json:"user"`
+	Short              string       `db:"short" json:"short"`
+	Type               string       `db:"type" json:"type"`
+	Vanity             string       `db:"vanity" json:"vanity"`
+	Votes              int          `db:"votes" json:"votes"`
+	Shards             int          `db:"shards" json:"shards"`
+	Library            string       `db:"library" json:"library"`
+	InviteClick        int          `db:"invite_clicks" json:"invite_clicks"`
+	Views              int          `db:"clicks" json:"clicks"`
+	Servers            int          `db:"servers" json:"servers"`
+	NSFW               bool         `db:"nsfw" json:"nsfw"`
+	Tags               []string     `db:"tags" json:"tags"`
+	OwnerID            string       `db:"owner" json:"owner_id"`
+	Premium            bool         `db:"premium" json:"premium"`
+	AdditionalOwnerIDS []string     `db:"additional_owners" json:"additional_owner_ids"`
 }

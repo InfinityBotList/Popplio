@@ -125,7 +125,7 @@ type checkBotClientIdResp struct {
 	botName    string
 }
 
-func (bot *CreateBot) checkBotClientId(ctx context.Context) (*checkBotClientIdResp, error) {
+func checkBotClientId(ctx context.Context, bot *CreateBot) (*checkBotClientIdResp, error) {
 	cli := http.Client{
 		Timeout: 5 * time.Second,
 	}
@@ -344,7 +344,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 		}
 	}
 
-	resp, err := payload.checkBotClientId(d.Context)
+	resp, err := checkBotClientId(d.Context, &payload)
 
 	if err != nil {
 		return api.HttpResponse{

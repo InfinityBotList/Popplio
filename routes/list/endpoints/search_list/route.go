@@ -23,36 +23,6 @@ var (
 	botsSql string
 )
 
-type SearchFilter struct {
-	From uint32 `json:"from"`
-	To   uint32 `json:"to"`
-}
-
-type TagMode string
-
-const (
-	TagModeAll TagMode = "@>"
-	TagModeAny TagMode = "&&"
-)
-
-type TagFilter struct {
-	Tags    []string `json:"tags" validate:"required"`
-	TagMode TagMode  `json:"tag_mode" validate:"required"`
-}
-
-type SearchQuery struct {
-	Query     string        `json:"query" validate:"required"`
-	Servers   *SearchFilter `json:"servers" validate:"required"`
-	Votes     *SearchFilter `json:"votes" validate:"required"`
-	Shards    *SearchFilter `json:"shards" validate:"required"`
-	TagFilter *TagFilter    `json:"tags" validate:"required"`
-}
-
-// Only bots are supported at this time
-type SearchResponse struct {
-	Bots []types.IndexBot `json:"bots"`
-}
-
 func Docs() *docs.Doc {
 	return docs.Route(&docs.Doc{
 		Method:      "POST",
@@ -61,13 +31,13 @@ func Docs() *docs.Doc {
 		Summary:     "Search List",
 		Description: "Searches the list. This replaces arcadias tetanus API",
 		Tags:        []string{api.CurrentTag},
-		Req:         SearchQuery{},
-		Resp:        SearchResponse{},
+		Req:         types.SearchQuery{},
+		Resp:        types.SearchResponse{},
 	})
 }
 
 func Route(d api.RouteData, r *http.Request) api.HttpResponse {
-	var payload SearchQuery
+	var payload types.SearchQuery
 
 	hresp, ok := api.MarshalReq(r, &payload)
 
@@ -82,7 +52,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 		return api.ValidatorErrorResponse(api.BlankMap, errors)
 	}
 
-	if payload.TagFilter.TagMode != TagModeAll && payload.TagFilter.TagMode != TagModeAny {
+	if payload.TagFilter.TagMode != types.TagModeAll && payload.TagFilter.TagMode != types.TagModeAny {
 		return api.HttpResponse{
 			Status: http.StatusBadRequest,
 			Json: types.ApiError{
@@ -132,7 +102,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 	}
 
 	return api.HttpResponse{
-		Json: SearchResponse{
+		Json: types.SearchResponse{
 			Bots: indexBots,
 		},
 	}

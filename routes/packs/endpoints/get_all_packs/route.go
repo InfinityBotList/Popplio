@@ -19,14 +19,6 @@ import (
 
 const perPage = 12
 
-type AllPacks struct {
-	Count    uint64               `json:"count"`
-	PerPage  uint64               `json:"per_page"`
-	Next     string               `json:"next"`
-	Previous string               `json:"previous"`
-	Results  []types.IndexBotPack `json:"packs"`
-}
-
 var (
 	indexPackColArr = utils.GetCols(types.IndexBotPack{})
 	indexPackCols   = strings.Join(indexPackColArr, ",")
@@ -40,7 +32,7 @@ func Docs() *docs.Doc {
 		Summary:     "Get All Packs",
 		Description: "Gets all packs on the list. Returns a ``Index`` object",
 		Tags:        []string{api.CurrentTag},
-		Resp:        AllPacks{},
+		Resp:        types.AllPacks{},
 	})
 }
 
@@ -126,7 +118,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 		next.Reset()
 	}
 
-	data := AllPacks{
+	data := types.AllPacks{
 		Count:    count,
 		Results:  packs,
 		PerPage:  perPage,
