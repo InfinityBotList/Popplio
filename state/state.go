@@ -19,13 +19,12 @@ import (
 )
 
 var (
-	Pool        *pgxpool.Pool
-	BackupsPool *pgxpool.Pool
-	Redis       *redis.Client
-	Discord     *discordgo.Session
-	Logger      *zap.SugaredLogger
-	Context     = context.Background()
-	Validator   = validator.New()
+	Pool      *pgxpool.Pool
+	Redis     *redis.Client
+	Discord   *discordgo.Session
+	Logger    *zap.SugaredLogger
+	Context   = context.Background()
+	Validator = validator.New()
 
 	Migration = false
 )
@@ -89,22 +88,14 @@ func init() {
 	godotenv.Load()
 
 	var connUrl string
-	var backupsConnUrl string
 	var redisUrl string
 
 	flag.StringVar(&connUrl, "db", "postgresql:///infinity", "Database connection URL")
-	flag.StringVar(&backupsConnUrl, "backups-db", "postgresql:///backups", "Database connection URL for backups")
 	flag.StringVar(&redisUrl, "redis", "redis://localhost:6379", "Redis connection URL")
 	flag.Parse()
 
 	var err error
 	Pool, err = pgxpool.New(Context, connUrl)
-
-	if err != nil {
-		panic(err)
-	}
-
-	BackupsPool, err = pgxpool.New(Context, backupsConnUrl)
 
 	if err != nil {
 		panic(err)
