@@ -4,6 +4,7 @@ import (
 	_ "embed"
 	"net/http"
 	"strings"
+	"text/template"
 
 	"popplio/api"
 	"popplio/docs"
@@ -21,7 +22,48 @@ var (
 
 	//go:embed sql/bots.sql
 	botsSql string
+
+	botSqlTemplate *template.Template
 )
+
+type searchSqlTemplateCtx struct {
+	Query   string
+	TagMode TagMode
+	Cols    string
+}
+
+type SearchFilter struct {
+	From uint32 `json:"from"`
+	To   uint32 `json:"to"`
+}
+
+type TagMode string
+
+const (
+	TagModeAll TagMode = "@>"
+	TagModeAny TagMode = "&&"
+)
+
+type TagFilter struct {
+	Tags    []string `json:"tags" validate:"required"`
+	TagMode TagMode  `json:"tag_mode" validate:"required"`
+}
+
+type SearchQuery struct {
+	Query     string        `json:"query"`
+	Servers   *SearchFilter `json:"servers" validate:"required"`
+	Votes     *SearchFilter `json:"votes" validate:"required"`
+	Shards    *SearchFilter `json:"shards" validate:"required"`
+	TagFilter *TagFilter    `json:"tags" validate:"required"`
+}
+
+type SearchResponse struct {
+	Bots []types.IndexBot `json:"bots"`
+}
+
+func Setup() {
+	botSqlTemplate = template.Must(template.New("sql").Parse(botsSql))
+}
 
 func Docs() *docs.Doc {
 	return docs.Route(&docs.Doc{
@@ -31,13 +73,13 @@ func Docs() *docs.Doc {
 		Summary:     "Search List",
 		Description: "Searches the list. This replaces arcadias tetanus API",
 		Tags:        []string{api.CurrentTag},
-		Req:         types.SearchQuery{},
-		Resp:        types.SearchResponse{},
+		Req:         SearchQuery{},
+		Resp:        SearchResponse{},
 	})
 }
 
 func Route(d api.RouteData, r *http.Request) api.HttpResponse {
-	var payload types.SearchQuery
+	var payload SearchQuery
 
 	hresp, ok := api.MarshalReq(r, &payload)
 
@@ -52,7 +94,15 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 		return api.ValidatorErrorResponse(api.BlankMap, errors)
 	}
 
-	if payload.TagFilter.TagMode != types.TagModeAll && payload.TagFilter.TagMode != types.TagModeAny {
+	if payload.Query == "" && len(payload.TagFilter.Tags) == 0 {
+		return api.HttpResponse{
+			Json: SearchResponse{
+				Bots: []types.IndexBot{},
+			},
+		}
+	}
+
+	if payload.TagFilter.TagMode != TagModeAll && payload.TagFilter.TagMode != TagModeAny {
 		return api.HttpResponse{
 			Status: http.StatusBadRequest,
 			Json: types.ApiError{
@@ -64,22 +114,41 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 
 	var indexBots = []types.IndexBot{}
 
-	botsSqlReq := strings.Replace(botsSql, "{cols}", indexBotCols, 1)
-	botsSqlReq = strings.Replace(botsSqlReq, "{op}", string(payload.TagFilter.TagMode), 1)
+	sqlString := &strings.Builder{}
+
+	err = botSqlTemplate.Execute(sqlString, searchSqlTemplateCtx{
+		Query:   payload.Query,
+		TagMode: payload.TagFilter.TagMode,
+		Cols:    indexBotCols,
+	})
+
+	if err != nil {
+		state.Logger.Error(err)
+		return api.DefaultResponse(http.StatusInternalServerError)
+	}
+
+	args := []any{}
+
+	args = append(
+		args,
+		payload.Servers.From,   // 1
+		payload.Servers.To,     // 2
+		payload.Votes.From,     // 3
+		payload.Votes.To,       // 4
+		payload.Shards.From,    // 5
+		payload.Shards.To,      // 6
+		payload.TagFilter.Tags, // 7
+	)
+
+	if payload.Query != "" {
+		args = append(args, payload.Query, "%"+payload.Query+"%") // 8-9
+	}
 
 	rows, err := state.Pool.Query(
 		d.Context,
-		botsSqlReq,
+		sqlString.String(),
 		// Args
-		payload.Query,          // 1
-		"%"+payload.Query+"%",  // 2
-		payload.Servers.From,   // 3
-		payload.Servers.To,     // 4
-		payload.Votes.From,     // 5
-		payload.Votes.To,       // 6
-		payload.Shards.From,    // 7
-		payload.Shards.To,      // 8
-		payload.TagFilter.Tags, // 9
+		args...,
 	)
 
 	if err != nil {
@@ -102,7 +171,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 	}
 
 	return api.HttpResponse{
-		Json: types.SearchResponse{
+		Json: SearchResponse{
 			Bots: indexBots,
 		},
 	}

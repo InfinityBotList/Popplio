@@ -630,35 +630,6 @@ type UserVoteCompat struct {
 	HasVoted bool `json:"hasVoted"`
 }
 
-type SearchFilter struct {
-	From uint32 `json:"from"`
-	To   uint32 `json:"to"`
-}
-
-type TagMode string
-
-const (
-	TagModeAll TagMode = "@>"
-	TagModeAny TagMode = "&&"
-)
-
-type TagFilter struct {
-	Tags    []string `json:"tags" validate:"required"`
-	TagMode TagMode  `json:"tag_mode" validate:"required"`
-}
-
-type SearchQuery struct {
-	Query     string        `json:"query" validate:"required"`
-	Servers   *SearchFilter `json:"servers" validate:"required"`
-	Votes     *SearchFilter `json:"votes" validate:"required"`
-	Shards    *SearchFilter `json:"shards" validate:"required"`
-	TagFilter *TagFilter    `json:"tags" validate:"required"`
-}
-
-type SearchResponse struct {
-	Bots []IndexBot `json:"bots"`
-}
-
 type TestAuth struct {
 	AuthType TargetType `json:"auth_type"`
 	TargetID string     `json:"target_id"`

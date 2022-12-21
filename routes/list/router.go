@@ -37,6 +37,7 @@ func (b Router) Routes(r *chi.Mux) {
 			Method:  api.POST,
 			Docs:    search_list.Docs,
 			Handler: search_list.Route,
+			Setup: search_list.Setup,
 		}.Route(r)
 
 		api.Route{
