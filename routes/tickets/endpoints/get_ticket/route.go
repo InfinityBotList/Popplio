@@ -3,6 +3,7 @@ package get_ticket
 import (
 	"net/http"
 	"strings"
+	"time"
 
 	"popplio/api"
 	"popplio/docs"
@@ -45,6 +46,17 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 
 	if ticketId == "" {
 		return api.DefaultResponse(http.StatusNotFound)
+	}
+
+	// Check cache, this is how we can avoid hefty ratelimits
+	cache := state.Redis.Get(d.Context, "tik-"+ticketId).Val()
+	if cache != "" {
+		return api.HttpResponse{
+			Data: cache,
+			Headers: map[string]string{
+				"X-Popplio-Cached": "true",
+			},
+		}
 	}
 
 	// Get ticket
@@ -91,6 +103,8 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 	}
 
 	return api.HttpResponse{
-		Json: ticket,
+		Json:      ticket,
+		CacheKey:  "tik-" + ticketId,
+		CacheTime: time.Minute * 3,
 	}
 }
