@@ -419,11 +419,12 @@ type AuthInfo struct {
 }
 
 type Message struct {
-	ID       string                    `json:"id"`
-	Content  string                    `json:"content"`
-	Embeds   []*discordgo.MessageEmbed `json:"embeds"`
-	AuthorID string                    `json:"author_id"`
-	Author   *DiscordUser              `json:"author"`
+	ID          string                         `json:"id"`
+	Content     string                         `json:"content"`
+	Embeds      []*discordgo.MessageEmbed      `json:"embeds"`
+	AuthorID    string                         `json:"author_id"`
+	Author      *DiscordUser                   `json:"author"`
+	Attachments []*discordgo.MessageAttachment `json:"attachments"`
 }
 
 type Ticket struct {
