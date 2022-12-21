@@ -420,6 +420,7 @@ type AuthInfo struct {
 
 type Message struct {
 	ID          string                         `json:"id"`
+	Timestamp   time.Time                      `json:"timestamp"` // Not in DB, but generated from snowflake ID
 	Content     string                         `json:"content"`
 	Embeds      []*discordgo.MessageEmbed      `json:"embeds"`
 	AuthorID    string                         `json:"author_id"`

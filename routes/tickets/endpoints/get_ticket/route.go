@@ -11,6 +11,7 @@ import (
 	"popplio/types"
 	"popplio/utils"
 
+	"github.com/bwmarrin/discordgo"
 	"github.com/georgysavva/scany/v2/pgxscan"
 	"github.com/go-chi/chi/v5"
 )
@@ -95,6 +96,14 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 
 	for i := range ticket.Messages {
 		ticket.Messages[i].Author, err = utils.GetDiscordUser(ticket.Messages[i].AuthorID)
+
+		if err != nil {
+			state.Logger.Error(err)
+			return api.DefaultResponse(http.StatusInternalServerError)
+		}
+
+		// Convert snowflake ID to timestamp
+		ticket.Messages[i].Timestamp, err = discordgo.SnowflakeTimestamp(ticket.Messages[i].ID)
 
 		if err != nil {
 			state.Logger.Error(err)
