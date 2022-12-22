@@ -50,16 +50,6 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 
 	// Auth header check
 
-	var target types.UserID
-
-	if d.Auth.Authorized {
-		target = types.UserID{
-			UserID: d.Auth.ID,
-		}
-	} else {
-		target = types.UserID{}
-	}
-
 	annList := []types.Announcement{}
 
 	for _, announcement := range announcements {
@@ -70,7 +60,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 
 		if announcement.Targetted {
 			// Check auth header
-			if target.UserID != announcement.Target.String {
+			if !d.Auth.Authorized || d.Auth.ID != announcement.Target.String {
 				continue
 			}
 		}
