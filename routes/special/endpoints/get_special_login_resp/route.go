@@ -274,7 +274,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 
 		if action.Ctx == "" {
 			// We want to unset webhook secret
-			_, err := state.Pool.Exec(d.Context, "UPDATE bots SET webhook_secret = NULL WHERE bot_id = $1", action.TID)
+			_, err := state.Pool.Exec(d.Context, "UPDATE bots SET web_auth = NULL WHERE bot_id = $1", action.TID)
 
 			if err != nil {
 				return api.HttpResponse{
@@ -288,7 +288,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 				Data:   "Successfully unset webhook secret",
 			}
 		} else {
-			_, err := state.Pool.Exec(d.Context, "UPDATE bots SET webhook_secret = $1 WHERE bot_id = $2", action.Ctx, action.TID)
+			_, err := state.Pool.Exec(d.Context, "UPDATE bots SET web_auth = $1 WHERE bot_id = $2", action.Ctx, action.TID)
 
 			if err != nil {
 				return api.HttpResponse{
