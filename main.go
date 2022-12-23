@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	"fmt"
 	"net/http"
 	"strings"
@@ -21,8 +20,6 @@ import (
 	"popplio/routes/tickets"
 	"popplio/routes/users"
 	"popplio/state"
-
-	integrase "github.com/MetroReviews/metro-integrase/lib"
 
 	_ "embed"
 
@@ -64,8 +61,6 @@ func init() {
 }
 
 var (
-	ctx context.Context
-
 	docsJs  string
 	openapi []byte
 )
@@ -111,8 +106,6 @@ func main() {
 
 	docs.AddSecuritySchema("User", "User-Auth", "Requires a user token. Usually must be prefixed with `User `. Note that both ``User-Auth`` and ``Authorization`` headers are supported")
 	docs.AddSecuritySchema("Bot", "Bot-Auth", "Requires a bot token. Can be optionally prefixed. Note that both ``Bot-Auth`` and ``Authorization`` headers are supported")
-
-	ctx = context.Background()
 
 	r := chi.NewRouter()
 
@@ -174,14 +167,10 @@ func main() {
 		panic(err)
 	}
 
-	adp := DummyAdapter{}
-
 	r.NotFound(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusNotFound)
 		w.Write([]byte(constants.NotFoundPage))
 	})
-
-	integrase.Prepare(adp, chiWrap{Router: r})
 
 	err = http.ListenAndServe(":8081", r)
 
