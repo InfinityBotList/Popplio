@@ -263,6 +263,45 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 		return api.HttpResponse{
 			Data: "Your new API token is: " + token + "\n\nThank you and have a nice day ;)",
 		}
+	// Bot webhook url
+	case "bweburl":
+		if action.TID == "" {
+			return api.HttpResponse{
+				Status: http.StatusBadRequest,
+				Data:   "No target id set",
+			}
+		}
+
+		if action.Ctx == "" {
+			// We want to unset webhook secret
+			_, err := state.Pool.Exec(d.Context, "UPDATE bots SET webhook = NULL WHERE bot_id = $1", action.TID)
+
+			if err != nil {
+				return api.HttpResponse{
+					Status: http.StatusInternalServerError,
+					Data:   err.Error(),
+				}
+			}
+
+			return api.HttpResponse{
+				Status: http.StatusOK,
+				Data:   "Successfully unset webhook url",
+			}
+		} else {
+			_, err := state.Pool.Exec(d.Context, "UPDATE bots SET webhook = $1 WHERE bot_id = $2", action.Ctx, action.TID)
+
+			if err != nil {
+				return api.HttpResponse{
+					Status: http.StatusInternalServerError,
+					Data:   err.Error(),
+				}
+			}
+
+			return api.HttpResponse{
+				Status: http.StatusOK,
+				Data:   "Successfully set webhook url",
+			}
+		}
 	// Bot webhook secret
 	case "bwebsec":
 		if action.TID == "" {
