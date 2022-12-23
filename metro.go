@@ -2,6 +2,7 @@ package main
 
 import (
 	"errors"
+	"net/http"
 	"os"
 	"popplio/utils"
 	"regexp"
@@ -11,6 +12,7 @@ import (
 	popltypes "popplio/types"
 
 	"github.com/MetroReviews/metro-integrase/types"
+	"github.com/gorilla/mux"
 	log "github.com/sirupsen/logrus"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -95,7 +97,6 @@ func (adp DummyAdapter) GetConfig() types.ListConfig {
 	return types.ListConfig{
 		SecretKey:   os.Getenv("SECRET_KEY"),
 		ListID:      os.Getenv("LIST_ID"),
-		RequestLogs: true,
 		StartupLogs: true,
 		DomainName:  "https://api.infinitybots.gg",
 	}
@@ -341,4 +342,13 @@ func (adp DummyAdapter) DataRequest(id string) (map[string]interface{}, error) {
 	return map[string]interface{}{
 		"id": id,
 	}, nil
+}
+
+// Wrapper around mux to implement Router interface
+type MuxWrap struct {
+	Router *mux.Router
+}
+
+func (m MuxWrap) HandleFunc(path string, f func(http.ResponseWriter, *http.Request)) {
+	m.Router.HandleFunc(path, f)
 }

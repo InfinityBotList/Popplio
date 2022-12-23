@@ -1597,7 +1597,7 @@ print(req.json())
 
 	createBucketMods()
 
-	integrase.Prepare(adp, integrase.MuxWrap{Router: r})
+	integrase.Prepare(adp, MuxWrap{Router: r})
 
 	// Add any middleware here (ex: logging middleware)
 	log := handlers.LoggingHandler(os.Stdout, r)
