@@ -32,7 +32,7 @@ func init() {
 	}
 }
 
-func addBot(bot *types.Bot) (*mongo.InsertOneResult, error) {
+func addBot(bot *types.FullBot) (*mongo.InsertOneResult, error) {
 	col := mongoDb.Collection("bots")
 
 	prefix := bot.Prefix
@@ -66,7 +66,7 @@ func addBot(bot *types.Bot) (*mongo.InsertOneResult, error) {
 		"date":              time.Now().UnixMilli(),
 		"prefix":            prefix,
 		"website":           bot.Website,
-		"github":            bot.Github,
+		"github":            "",
 		"donate":            bot.Donate,
 		"nsfw":              bot.NSFW,
 		"library":           bot.Library,
@@ -102,13 +102,16 @@ func (adp DummyAdapter) GetConfig() types.ListConfig {
 	}
 }
 
-func (adp DummyAdapter) ClaimBot(bot *types.Bot) error {
+func (adp DummyAdapter) ClaimBot(b *types.Bot) error {
 	log.Info("Called ClaimBot")
-	if bot == nil {
-		return errors.New("bot is nil")
+
+	bot, err := b.Resolve()
+
+	if err != nil {
+		return err
 	}
 
-	_, err := addBot(bot)
+	_, err = addBot(bot)
 
 	if err != nil {
 		return err
@@ -118,7 +121,7 @@ func (adp DummyAdapter) ClaimBot(bot *types.Bot) error {
 
 	_, err = col.UpdateOne(ctx, bson.M{"botID": bot.BotID}, bson.M{"$set": bson.M{
 		"claimed":   true,
-		"claimedBY": bot.Reviewer,
+		"claimedBy": b.Reviewer,
 	}})
 
 	if err != nil {
@@ -128,13 +131,16 @@ func (adp DummyAdapter) ClaimBot(bot *types.Bot) error {
 	return nil
 }
 
-func (adp DummyAdapter) UnclaimBot(bot *types.Bot) error {
+func (adp DummyAdapter) UnclaimBot(b *types.Bot) error {
 	log.Info("Called UnclaimBot")
-	if bot == nil {
-		return errors.New("bot is nil")
+
+	bot, err := b.Resolve()
+
+	if err != nil {
+		return err
 	}
 
-	_, err := addBot(bot)
+	_, err = addBot(bot)
 
 	if err != nil {
 		return err
@@ -154,20 +160,23 @@ func (adp DummyAdapter) UnclaimBot(bot *types.Bot) error {
 	return nil
 }
 
-func (adp DummyAdapter) ApproveBot(bot *types.Bot) error {
+func (adp DummyAdapter) ApproveBot(b *types.Bot) error {
 	log.Info("Called ApproveBot")
-	if bot == nil {
-		return errors.New("bot is nil")
-	}
 
 	// Check if bot already exists on DB
 	col := mongoDb.Collection("bots")
 
-	mongoBot := col.FindOne(ctx, bson.M{"botID": bot.BotID})
+	mongoBot := col.FindOne(ctx, bson.M{"botID": b.BotID})
+
+	if mongoBot.Err() == mongo.ErrNoDocuments && !b.CanAdd {
+		return errors.New("cannot add this bot due to can_add being false")
+	}
 
 	if mongoBot.Err() == mongo.ErrNoDocuments {
-		if !bot.CrossAdd && bot.ListSource != os.Getenv("LIST_ID") {
-			return errors.New("bot is not from the correct source")
+		bot, err := b.Resolve()
+
+		if err != nil {
+			return err
 		}
 
 		res, err := addBot(bot)
@@ -193,7 +202,7 @@ func (adp DummyAdapter) ApproveBot(bot *types.Bot) error {
 		}
 	}
 
-	res, err := col.UpdateOne(ctx, bson.M{"botID": bot.BotID}, bson.M{"$set": bson.M{"type": "approved"}})
+	res, err := col.UpdateOne(ctx, bson.M{"botID": b.BotID}, bson.M{"$set": bson.M{"type": "approved"}})
 
 	if err != nil {
 		return err
@@ -214,22 +223,17 @@ func (adp DummyAdapter) ApproveBot(bot *types.Bot) error {
 					Fields: []*discordgo.MessageEmbedField{
 						{
 							Name:   "Bot:",
-							Value:  "<@" + bot.BotID + ">",
-							Inline: true,
-						},
-						{
-							Name:   "Owner:",
-							Value:  "<@" + bot.Owner + ">",
+							Value:  "<@" + b.BotID + ">",
 							Inline: true,
 						},
 						{
 							Name:   "Moderator:",
-							Value:  "<@" + bot.Reviewer + ">",
+							Value:  "<@" + b.Reviewer + ">",
 							Inline: true,
 						},
 						{
 							Name:  "Feedback:",
-							Value: bot.Reason,
+							Value: b.Reason,
 						},
 					},
 					Footer: &discordgo.MessageEmbedFooter{
@@ -244,20 +248,23 @@ func (adp DummyAdapter) ApproveBot(bot *types.Bot) error {
 	return nil
 }
 
-func (adp DummyAdapter) DenyBot(bot *types.Bot) error {
+func (adp DummyAdapter) DenyBot(b *types.Bot) error {
 	log.Info("Called DenyBot")
-	if bot == nil {
-		return errors.New("bot is nil")
-	}
 
 	// Check if bot already exists on DB
 	col := mongoDb.Collection("bots")
 
-	mongoBot := col.FindOne(ctx, bson.M{"botID": bot.BotID})
+	mongoBot := col.FindOne(ctx, bson.M{"botID": b.BotID})
+
+	if mongoBot.Err() == mongo.ErrNoDocuments && !b.CanAdd {
+		return errors.New("cannot add this bot due to can_add being false")
+	}
 
 	if mongoBot.Err() == mongo.ErrNoDocuments {
-		if !bot.CrossAdd && bot.ListSource != os.Getenv("LIST_ID") {
-			return errors.New("bot is not from the correct source")
+		bot, err := b.Resolve()
+
+		if err != nil {
+			return err
 		}
 
 		res, err := addBot(bot)
@@ -283,7 +290,7 @@ func (adp DummyAdapter) DenyBot(bot *types.Bot) error {
 		}
 	}
 
-	res, err := col.UpdateOne(ctx, bson.M{"botID": bot.BotID}, bson.M{"$set": bson.M{"type": "denied"}})
+	res, err := col.UpdateOne(ctx, bson.M{"botID": b.BotID}, bson.M{"$set": bson.M{"type": "denied"}})
 
 	if err != nil {
 		return err
@@ -304,22 +311,17 @@ func (adp DummyAdapter) DenyBot(bot *types.Bot) error {
 					Fields: []*discordgo.MessageEmbedField{
 						{
 							Name:   "Bot:",
-							Value:  "<@" + bot.BotID + ">",
-							Inline: true,
-						},
-						{
-							Name:   "Owner:",
-							Value:  "<@" + bot.Owner + ">",
+							Value:  "<@" + b.BotID + ">",
 							Inline: true,
 						},
 						{
 							Name:   "Moderator:",
-							Value:  "<@" + bot.Reviewer + ">",
+							Value:  "<@" + b.Reviewer + ">",
 							Inline: true,
 						},
 						{
 							Name:  "Reason:",
-							Value: bot.Reason,
+							Value: b.Reason,
 						},
 					},
 					Footer: &discordgo.MessageEmbedFooter{

@@ -4,6 +4,8 @@ github.com/MetroReviews/metro-integrase v0.0.0-20220925033716-821bc7eb70a3 h1:8P
 github.com/MetroReviews/metro-integrase v0.0.0-20220925033716-821bc7eb70a3/go.mod h1:Zp+BG3q4JswcFtKhdiXwJ0qVamPTTwPqyKo81qMte4A=
 github.com/MetroReviews/metro-integrase v0.0.0-20221223045316-0a150e1febf9 h1:at2zPg2MwP32Z/vVKBYNRALPg2LssqD8Sqpc6mslDNw=
 github.com/MetroReviews/metro-integrase v0.0.0-20221223045316-0a150e1febf9/go.mod h1:y32ON3SZdBCknUls9tqCYjgg+nfsKj5F4c7Aob7CD5w=
+github.com/MetroReviews/metro-integrase v0.0.0-20221223064641-284de4418ff9 h1:QpeXsDUX62kSv3zBRK/pLxo87aQtJX1LyAnRPDhijFg=
+github.com/MetroReviews/metro-integrase v0.0.0-20221223064641-284de4418ff9/go.mod h1:y32ON3SZdBCknUls9tqCYjgg+nfsKj5F4c7Aob7CD5w=
 github.com/bwmarrin/discordgo v0.26.1 h1:AIrM+g3cl+iYBr4yBxCBp9tD9jR3K7upEjl0d89FRkE=
 github.com/bwmarrin/discordgo v0.26.1/go.mod h1:NJZpH+1AfhIcyQsPeuBKsUtYrRnjkyu0kIVMCHkZtRY=
 github.com/cespare/xxhash/v2 v2.1.2 h1:YRXhKfTDauu4ajMg1TPgFO5jnlC2HCbmLXMcTG5cbYE=
