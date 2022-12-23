@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"io"
 	"net/http"
+	"strings"
 
 	"popplio/api"
 	"popplio/docs"
@@ -30,6 +31,7 @@ var gm = goldmark.New(
 				xurls.Strict(),
 			),
 		),
+		extension.Typographer,
 	),
 	goldmark.WithParserOptions(
 		parser.WithAutoHeadingID(),
@@ -43,6 +45,7 @@ var gm = goldmark.New(
 func init() {
 	allowedEls := []string{
 		"a",
+		"i",
 		"button",
 		"span",
 		"img",
@@ -84,7 +87,7 @@ func init() {
 	p.AllowTables()
 
 	p.AllowElements(allowedEls...)
-	p.AllowAttrs("style", "class", "src", "href", "code").Globally()
+	p.AllowAttrs("style", "class", "src", "href", "code", "id").Globally()
 
 	p.AllowAttrs("src", "height", "width").OnElements("iframe")
 	p.AllowAttrs("src", "alt", "width", "height", "crossorigin", "referrerpolicy", "sizes", "srcset").OnElements("img")
@@ -106,6 +109,17 @@ func Docs() *docs.Doc {
 func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 	// Read body
 	var bodyBytes, err = io.ReadAll(r.Body)
+
+	if strings.HasPrefix(string(bodyBytes), "<html>") {
+		bodyBytes = []byte(string(bodyBytes)[6:])
+
+		// Now sanitize the HTML with bluemonday
+		var sanitized = p.SanitizeBytes(bodyBytes)
+
+		return api.HttpResponse{
+			Bytes: sanitized,
+		}
+	}
 
 	if err != nil {
 		state.Logger.Error(err)
