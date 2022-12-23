@@ -79,14 +79,15 @@ func init() {
 
 	p.AllowStandardURLs()
 	p.AllowURLSchemes("https")
-	p.AllowAttrs("href").OnElements("a")
 	p.AddTargetBlankToFullyQualifiedLinks(true)
 	p.AllowStandardAttributes()
 	p.AllowLists()
+	p.AllowComments()
 	p.AllowImages()
 	p.AllowTables()
 
 	p.AllowElements(allowedEls...)
+	p.AllowAttrs("href").OnElements("a")
 	p.AllowAttrs("style", "class", "src", "href", "code", "id").Globally()
 
 	p.AllowAttrs("src", "height", "width").OnElements("iframe")
