@@ -47,6 +47,8 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 		}
 	}
 
+	state.Redis.Del(d.Context, "spec:"+stateQuery)
+
 	// Decode act using json
 	var action assets.Action
 
