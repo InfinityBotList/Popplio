@@ -109,6 +109,14 @@ func GetDiscordUser(id string) (*types.DiscordUser, error) {
 				}
 			}
 
+			if member.User.Bot {
+				_, err = state.Pool.Exec(state.Context, "UPDATE bots SET queue_name = $1, queue_avatar = $2 WHERE bot_id = $3", member.User.Username, member.User.AvatarURL(""), member.User.ID)
+
+				if err != nil {
+					state.Logger.Error("Failed to update bot queue name", zap.Error(err))
+				}
+			}
+
 			obj := &types.DiscordUser{
 				ID:             id,
 				Username:       member.User.Username,
@@ -148,6 +156,14 @@ func GetDiscordUser(id string) (*types.DiscordUser, error) {
 					p = &discordgo.Presence{
 						User:   member.User,
 						Status: discordgo.StatusOffline,
+					}
+				}
+
+				if member.User.Bot {
+					_, err = state.Pool.Exec(state.Context, "UPDATE bots SET queue_name = $1, queue_avatar = $2 WHERE bot_id = $3", member.User.Username, member.User.AvatarURL(""), member.User.ID)
+
+					if err != nil {
+						state.Logger.Error("Failed to update bot queue name", zap.Error(err))
 					}
 				}
 
@@ -198,6 +214,14 @@ func GetDiscordUser(id string) (*types.DiscordUser, error) {
 
 	if err != nil {
 		return nil, err
+	}
+
+	if user.Bot {
+		_, err = state.Pool.Exec(state.Context, "UPDATE bots SET queue_name = $1, queue_avatar = $2 WHERE bot_id = $3", user.Username, user.AvatarURL(""), user.ID)
+
+		if err != nil {
+			state.Logger.Error("Failed to update bot queue name", zap.Error(err))
+		}
 	}
 
 	obj := &types.DiscordUser{

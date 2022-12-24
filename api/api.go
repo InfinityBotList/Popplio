@@ -170,7 +170,7 @@ func (r Route) Authorize(req *http.Request) (AuthData, HttpResponse, bool) {
 			case types.TargetTypeBot:
 				// Check if the bot exists with said ID and API token
 				var id pgtype.Text
-				err := state.Pool.QueryRow(state.Context, "SELECT bot_id FROM bots WHERE (lower(vanity) = $1 OR bot_id = $1) AND api_token = $2", targetId, strings.Replace(targetId, "Bot ", "", 1)).Scan(&id)
+				err := state.Pool.QueryRow(state.Context, "SELECT bot_id FROM bots WHERE "+constants.ResolveBotSQL+" AND api_token = $2 LIMIT 1", targetId, strings.Replace(targetId, "Bot ", "", 1)).Scan(&id)
 
 				if err != nil {
 					continue

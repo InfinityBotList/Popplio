@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"popplio/api"
+	"popplio/constants"
 	"popplio/docs"
 	"popplio/state"
 	"popplio/types"
@@ -56,7 +57,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 
 	var botId string
 	var short string
-	err := state.Pool.QueryRow(d.Context, "SELECT bot_id, short FROM bots WHERE (lower(vanity) = $1 OR bot_id = $1)", name).Scan(&botId, &short)
+	err := state.Pool.QueryRow(d.Context, "SELECT bot_id, short FROM bots WHERE "+constants.ResolveBotSQL, name).Scan(&botId, &short)
 
 	if err != nil {
 		state.Logger.Error(err)

@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"popplio/api"
+	"popplio/constants"
 	"popplio/docs"
 	"popplio/state"
 	"popplio/types"
@@ -52,7 +53,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 		return api.DefaultResponse(http.StatusNotFound)
 	}
 
-	rows, err := state.Pool.Query(d.Context, "SELECT "+reviewCols+" FROM reviews WHERE (lower(vanity) = $1 OR bot_id = $1)", name)
+	rows, err := state.Pool.Query(d.Context, "SELECT "+reviewCols+" FROM reviews WHERE "+constants.ResolveBotSQL, name)
 
 	if err != nil {
 		state.Logger.Error(err)

@@ -13,4 +13,7 @@ const (
 	Success          = "{\"message\":\"Success!\",\"error\":false}"
 	BackTick         = "`"
 	TestNotif        = "{\"message\":\"Test notification!\",\"title\":\"Test notification!\",\"icon\":\"https://i.imgur.com/GRo0Zug.png\",\"error\":false}"
+
+	// Resolve Bot SQL
+	ResolveBotSQL = "(lower(vanity) = $1 OR bot_id = $1 OR client_id = $1)"
 )

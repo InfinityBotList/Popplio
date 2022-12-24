@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	"popplio/api"
+	"popplio/constants"
 	"popplio/docs"
 	"popplio/state"
 	"popplio/types"
@@ -46,7 +47,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 
 	var botId pgtype.Text
 
-	err := state.Pool.QueryRow(d.Context, "SELECT bot_id FROM bots WHERE (lower(vanity) = $1 OR bot_id = $1)", r.URL.Query().Get("bot_id")).Scan(&botId)
+	err := state.Pool.QueryRow(d.Context, "SELECT bot_id FROM bots WHERE "+constants.ResolveBotSQL, r.URL.Query().Get("bot_id")).Scan(&botId)
 
 	if err != nil || !botId.Valid || botId.String == "" {
 		state.Logger.Error("Error adding reminder: ", err)

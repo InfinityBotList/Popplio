@@ -6,6 +6,7 @@ import (
 	"unicode"
 
 	"popplio/api"
+	"popplio/constants"
 	"popplio/docs"
 	"popplio/state"
 	"popplio/types"
@@ -49,7 +50,16 @@ func Docs() *docs.Doc {
 }
 
 func Route(d api.RouteData, r *http.Request) api.HttpResponse {
-	botId := chi.URLParam(r, "bid")
+	botIdParam := chi.URLParam(r, "bid")
+
+	// Resolve id
+	var botId string
+
+	err := state.Pool.QueryRow(d.Context, "SELECT bot_id FROM bots WHERE "+constants.ResolveBotSQL, botIdParam).Scan(&botId)
+
+	if err != nil {
+		return api.DefaultResponse(http.StatusNotFound)
+	}
 
 	// Validate that they actually own this bot
 	isOwner, err := utils.IsBotOwner(d.Context, d.Auth.ID, botId)
@@ -64,7 +74,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 	if !isOwner {
 		return api.HttpResponse{
 			Status: http.StatusBadRequest,
-			Json:   types.ApiError{Message: "You do not own the bot you are trying to manage"},
+			Json:   types.ApiError{Message: "You do not own the bot you are trying to manage", Error: true},
 		}
 	}
 
@@ -88,7 +98,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 	if vanity.Vanity == "" {
 		return api.HttpResponse{
 			Status: http.StatusBadRequest,
-			Json:   types.ApiError{Message: "Vanity cannot be empty"},
+			Json:   types.ApiError{Message: "Vanity cannot be empty", Error: true},
 		}
 	}
 
@@ -109,7 +119,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 	if count > 0 {
 		return api.HttpResponse{
 			Status: http.StatusBadRequest,
-			Json:   types.ApiError{Message: "Vanity is already taken"},
+			Json:   types.ApiError{Message: "Vanity is already taken", Error: true},
 		}
 	}
 

@@ -54,17 +54,12 @@ func Docs() *docs.Doc {
 }
 
 func Route(d api.RouteData, r *http.Request) api.HttpResponse {
-	var vars = map[string]string{
-		"uid": chi.URLParam(r, "uid"),
-		"bid": chi.URLParam(r, "bid"),
-	}
-
-	var botId pgtype.Text
-	var botType pgtype.Text
+	userId := chi.URLParam(r, "uid")
+	name := chi.URLParam(r, "bid")
 
 	var voteBannedState bool
 
-	err := state.Pool.QueryRow(d.Context, "SELECT vote_banned FROM users WHERE user_id = $1", vars["uid"]).Scan(&voteBannedState)
+	err := state.Pool.QueryRow(d.Context, "SELECT vote_banned FROM users WHERE user_id = $1", userId).Scan(&voteBannedState)
 
 	if err != nil {
 		state.Logger.Error(err)
@@ -78,9 +73,11 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 		}
 	}
 
+	var botId pgtype.Text
+	var botType pgtype.Text
 	var voteBannedBotsState bool
 
-	err = state.Pool.QueryRow(d.Context, "SELECT bot_id, type, vote_banned FROM bots WHERE (lower(vanity) = $1 OR bot_id = $1)", vars["bid"]).Scan(&botId, &botType, &voteBannedBotsState)
+	err = state.Pool.QueryRow(d.Context, "SELECT bot_id, type, vote_banned FROM bots WHERE "+constants.ResolveBotSQL, name).Scan(&botId, &botType, &voteBannedBotsState)
 
 	if err != nil {
 		state.Logger.Error(err)
@@ -94,8 +91,6 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 		}
 	}
 
-	vars["bid"] = botId.String
-
 	if botType.String != "approved" && botType.String != "certified" {
 		return api.HttpResponse{
 			Status: http.StatusBadRequest,
@@ -103,7 +98,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 		}
 	}
 
-	voteParsed, err := utils.GetVoteData(d.Context, vars["uid"], vars["bid"])
+	voteParsed, err := utils.GetVoteData(d.Context, userId, botId.String)
 
 	if err != nil {
 		state.Logger.Error(err)
@@ -137,7 +132,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 
 	// Record new vote
 	var itag pgtype.UUID
-	err = state.Pool.QueryRow(d.Context, "INSERT INTO votes (user_id, bot_id) VALUES ($1, $2) RETURNING itag", vars["uid"], vars["bid"]).Scan(&itag)
+	err = state.Pool.QueryRow(d.Context, "INSERT INTO votes (user_id, bot_id) VALUES ($1, $2) RETURNING itag", userId, botId.String).Scan(&itag)
 
 	if err != nil {
 		// Revert vote
@@ -148,7 +143,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 
 	var oldVotes pgtype.Int4
 
-	err = state.Pool.QueryRow(d.Context, "SELECT votes FROM bots WHERE bot_id = $1", vars["bid"]).Scan(&oldVotes)
+	err = state.Pool.QueryRow(d.Context, "SELECT votes FROM bots WHERE bot_id = $1", botId.String).Scan(&oldVotes)
 
 	if err != nil {
 		// Revert vote
@@ -168,7 +163,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 		votes++
 	}
 
-	_, err = state.Pool.Exec(d.Context, "UPDATE bots SET votes = votes + $1 WHERE bot_id = $2", incr, vars["bid"])
+	_, err = state.Pool.Exec(d.Context, "UPDATE bots SET votes = votes + $1 WHERE bot_id = $2", incr, botId.String)
 
 	if err != nil {
 		// Revert vote
@@ -178,7 +173,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 		return api.DefaultResponse(http.StatusInternalServerError)
 	}
 
-	userObj, err := utils.GetDiscordUser(vars["uid"])
+	userObj, err := utils.GetDiscordUser(userId)
 
 	if err != nil {
 		// Revert vote
@@ -188,7 +183,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 		return api.DefaultResponse(http.StatusInternalServerError)
 	}
 
-	botObj, err := utils.GetDiscordUser(vars["bid"])
+	botObj, err := utils.GetDiscordUser(botId.String)
 
 	if err != nil {
 		// Revert vote
@@ -203,7 +198,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 	_, err = state.Discord.ChannelMessageSendComplex(channel, &discordgo.MessageSend{
 		Embeds: []*discordgo.MessageEmbed{
 			{
-				URL: "https://botlist.site/" + vars["bid"],
+				URL: "https://botlist.site/" + botId.String,
 				Thumbnail: &discordgo.MessageEmbedThumbnail{
 					URL: botObj.Avatar,
 				},
@@ -223,12 +218,12 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 					},
 					{
 						Name:   "Vote Page",
-						Value:  "[View " + botObj.Username + "](https://botlist.site/" + vars["bid"] + ")",
+						Value:  "[View " + botObj.Username + "](https://botlist.site/" + botId.String + ")",
 						Inline: true,
 					},
 					{
 						Name:   "Vote Page",
-						Value:  "[Vote for " + botObj.Username + "](https://botlist.site/" + vars["bid"] + "/vote)",
+						Value:  "[Vote for " + botObj.Username + "](https://botlist.site/" + botId.String + "/vote)",
 						Inline: true,
 					},
 				},
@@ -243,8 +238,8 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 	// Send webhook in a goroutine refunding the vote if it failed
 	go func() {
 		err = webhooks.Send(types.WebhookPost{
-			BotID:  vars["bid"],
-			UserID: vars["uid"],
+			BotID:  botId.String,
+			UserID: userId,
 			Votes:  int(votes),
 		})
 
@@ -254,8 +249,8 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 			state.Pool.Exec(
 				state.Context,
 				"INSERT INTO alerts (user_id, url, message, type) VALUES ($1, $2, $3, $4)",
-				vars["uid"],
-				"https://infinitybots.gg/bots/"+vars["bid"],
+				userId,
+				"https://infinitybots.gg/bots/"+botId.String,
 				"Whoa there! We've failed to notify this bot about this vote. The error was: "+err.Error()+".",
 				"error",
 			)
@@ -268,18 +263,18 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 			state.Pool.Exec(
 				state.Context,
 				"INSERT INTO alerts (user_id, url, message, type) VALUES ($1, $2, $3, $4)",
-				vars["uid"],
-				"https://infinitybots.gg/bots/"+vars["bid"],
-				"state.Successfully alerted this bot to your vote with ID of "+vars["bid"]+"("+botObj.Username+")",
+				userId,
+				"https://infinitybots.gg/bots/"+botId.String,
+				"state.Successfully alerted this bot to your vote with ID of "+botId.String+"("+botObj.Username+")",
 				"info",
 			)
 			msg = notifications.Message{
 				Title:   "Vote Count Updated!",
-				Message: "Successfully alerted " + botObj.Username + " to your vote with ID of " + vars["bid"] + ".",
+				Message: "Successfully alerted " + botObj.Username + " to your vote with ID of " + botId.String + ".",
 			}
 		}
 
-		notifIds, err := state.Pool.Query(state.Context, "SELECT notif_id FROM poppypaw WHERE user_id = $1", vars["uid"])
+		notifIds, err := state.Pool.Query(state.Context, "SELECT notif_id FROM poppypaw WHERE user_id = $1", userId)
 
 		if err != nil {
 			state.Logger.Error(err)

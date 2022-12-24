@@ -192,9 +192,7 @@ func Docs() *docs.Doc {
 		OpId:    "post_stats",
 		Summary: "Post Bot Stats",
 		Description: `
-This endpoint can be used to post the stats of a bot.
-
-The variation` + constants.BackTick + `/bots/{bot_id}/stats` + constants.BackTick + ` can also be used to post the stats of a bot. **Note that only the token is checked, not the bot ID at this time**
+This endpoint can be used to post the stats of a bot. This endpoint does not resolve the ID.
 
 **Example:**
 
@@ -243,7 +241,20 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 		payload.Count = &countAny
 	}
 
+	var rowcount int64
+
 	var err error
+
+	err = state.Pool.QueryRow(d.Context, "SELECT COUNT(*) FROM bots WHERE bot_id = $1", id).Scan(&rowcount)
+
+	if err != nil {
+		state.Logger.Error(err)
+		return api.DefaultResponse(http.StatusInternalServerError)
+	}
+
+	if rowcount == 0 || rowcount > 1 {
+		return api.DefaultResponse(http.StatusNotFound)
+	}
 
 	servers, shards, users := GetStats(payload)
 
@@ -276,12 +287,14 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 
 	// Get name and vanity, delete from cache
 	var vanity string
+	var clientId string
 
-	state.Pool.QueryRow(d.Context, "SELECT lower(vanity) FROM bots WHERE bot_id = $1", id).Scan(&vanity)
+	state.Pool.QueryRow(d.Context, "SELECT lower(vanity), client_id FROM bots WHERE bot_id = $1", id).Scan(&vanity, &clientId)
 
 	// Delete from cache
 	state.Redis.Del(d.Context, "bc-"+vanity)
 	state.Redis.Del(d.Context, "bc-"+id)
+	state.Redis.Del(d.Context, "bc-"+clientId)
 
 	return api.HttpResponse{
 		Data: constants.Success,
