@@ -6,7 +6,6 @@ import (
 	"popplio/routes/bots/endpoints/get_bot"
 	"popplio/routes/bots/endpoints/get_bot_reviews"
 	"popplio/routes/bots/endpoints/get_bot_seo"
-	"popplio/routes/bots/endpoints/get_bot_widget"
 	"popplio/routes/bots/endpoints/post_stats"
 	"popplio/types"
 
@@ -39,14 +38,6 @@ func (b Router) Routes(r *chi.Mux) {
 			Method:  api.GET,
 			Docs:    get_bot.Docs,
 			Handler: get_bot.Route,
-		}.Route(r)
-
-		api.Route{
-			Pattern: "/{id}/widget",
-			OpId:    "get_bot_widget",
-			Method:  api.GET,
-			Docs:    get_bot_widget.Docs,
-			Handler: get_bot_widget.Route,
 		}.Route(r)
 
 		api.Route{

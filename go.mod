@@ -14,6 +14,7 @@ require (
 )
 
 require (
+	github.com/BurntSushi/toml v0.3.1 // indirect
 	github.com/aymerick/douceur v0.2.0 // indirect
 	github.com/go-playground/locales v0.14.0 // indirect
 	github.com/go-playground/universal-translator v0.18.0 // indirect
@@ -52,7 +53,6 @@ require (
 
 require (
 	github.com/SherClockHolmes/webpush-go v1.2.0
-	github.com/ajstarks/svgo v0.0.0-20211024235047-1546f124cd8b
 	github.com/go-playground/validator/v10 v10.11.1
 	github.com/jackc/pgx/v5 v5.2.0
 	github.com/joho/godotenv v1.4.0 // direct
