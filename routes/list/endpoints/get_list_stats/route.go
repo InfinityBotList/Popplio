@@ -103,7 +103,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 	listStats.TotalPacks = totalPacks
 
 	var totalTickets int64
-	err = state.Pool.QueryRow(d.Context, "SELECT COUNT(*) FROM transcripts").Scan(&totalTickets)
+	err = state.Pool.QueryRow(d.Context, "SELECT COUNT(*) FROM tickets").Scan(&totalTickets)
 
 	if err != nil {
 		state.Logger.Error(err)
