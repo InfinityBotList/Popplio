@@ -6,6 +6,7 @@ import (
 	"net/http"
 
 	"popplio/api"
+	"popplio/constants"
 	"popplio/docs"
 	"popplio/state"
 	"popplio/types"
@@ -49,6 +50,23 @@ func Docs() *docs.Doc {
 
 func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 	var userId = d.Auth.ID
+
+	var voteBannedState bool
+
+	err := state.Pool.QueryRow(d.Context, "SELECT vote_banned FROM users WHERE user_id = $1", userId).Scan(&voteBannedState)
+
+	if err != nil {
+		state.Logger.Error(err)
+		return api.DefaultResponse(http.StatusInternalServerError)
+	}
+
+	if voteBannedState {
+		return api.HttpResponse{
+			Status: http.StatusForbidden,
+			Data:   constants.VoteBanned,
+		}
+	}
+
 	var packUrl = chi.URLParam(r, "url")
 
 	var vote CreatePackVote
