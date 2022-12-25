@@ -64,6 +64,7 @@ type Bot struct {
 	BotID                    string             `db:"bot_id" json:"bot_id"`
 	ClientID                 string             `db:"client_id" json:"client_id"`
 	QueueName                string             `db:"queue_name" json:"queue_name"` // Used purely by the queue system
+	QueueAvatar              string             `db:"queue_avatar" json:"queue_avatar"`
 	ExtraLinks               []Link             `db:"extra_links" json:"extra_links"`
 	Tags                     []string           `db:"tags" json:"tags"`
 	Prefix                   pgtype.Text        `db:"prefix" json:"prefix"`

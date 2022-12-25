@@ -42,10 +42,11 @@ type CreateBot struct {
 	StaffNote        *string      `db:"approval_note" json:"staff_note" validate:"omitempty,max=512" msg:"Staff note must be less than 512 characters if sent"` // impld
 
 	// Internal fields
-	QueueName  *string `db:"queue_name" json:"-" validate:"omitempty,notpresent"`
-	Owner      *string `db:"owner" json:"-" validate:"omitempty,notpresent"`
-	Vanity     *string `db:"vanity" json:"-" validate:"omitempty,notpresent"`
-	GuildCount *int    `db:"servers" json:"-" validate:"omitempty,notpresent"`
+	QueueName   *string `db:"queue_name" json:"-" validate:"omitempty,notpresent"`
+	QueueAvatar *string `db:"queue_avatar" json:"-" validate:"omitempty,notpresent"`
+	Owner       *string `db:"owner" json:"-" validate:"omitempty,notpresent"`
+	Vanity      *string `db:"vanity" json:"-" validate:"omitempty,notpresent"`
+	GuildCount  *int    `db:"servers" json:"-" validate:"omitempty,notpresent"`
 }
 
 func createBotsArgs(bot CreateBot) []any {
@@ -65,6 +66,7 @@ func createBotsArgs(bot CreateBot) []any {
 		bot.CrossAdd,
 		bot.StaffNote,
 		bot.QueueName,
+		bot.QueueAvatar,
 		bot.Owner,
 		bot.Vanity,
 		bot.GuildCount,
@@ -115,6 +117,8 @@ type Japidata struct {
 			ID                    string `json:"id"`
 			ApproximateGuildCount int    `json:"approximate_guild_count"`
 			Username              string `json:"username"`
+			AvatarURL             string `json:"avatarURL"`
+			AvatarHash            string `json:"avatarHash"`
 		} `json:"bot"`
 	} `json:"data"`
 }
@@ -123,6 +127,7 @@ type Japidata struct {
 type checkBotClientIdResp struct {
 	guildCount int
 	botName    string
+	botAvatar  string
 }
 
 func checkBotClientId(ctx context.Context, bot *CreateBot) (*checkBotClientIdResp, error) {
@@ -187,9 +192,14 @@ func checkBotClientId(ctx context.Context, bot *CreateBot) (*checkBotClientIdRes
 		return nil, fmt.Errorf("the bot ID provided does not match the bot ID found")
 	}
 
+	if data.Data.Bot.AvatarURL == "" {
+		data.Data.Bot.AvatarURL = "https://cdn.discordapp.com/avatars/" + data.Data.Bot.ID + "/" + data.Data.Bot.AvatarHash + ".png"
+	}
+
 	return &checkBotClientIdResp{
 		guildCount: data.Data.Bot.ApproximateGuildCount,
 		botName:    data.Data.Bot.Username,
+		botAvatar:  data.Data.Bot.AvatarURL,
 	}, nil
 }
 
@@ -357,6 +367,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 	}
 
 	payload.QueueName = &resp.botName
+	payload.QueueAvatar = &resp.botAvatar
 	payload.Owner = &d.Auth.ID
 	payload.GuildCount = &resp.guildCount
 
@@ -403,14 +414,12 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 					Title: "New Bot Added",
 					Fields: []*discordgo.MessageEmbedField{
 						{
-							Name:   "Name",
-							Value:  resp.botName,
-							Inline: true,
+							Name:  "Name",
+							Value: resp.botName,
 						},
 						{
-							Name:   "Bot ID",
-							Value:  payload.BotID,
-							Inline: true,
+							Name:  "Bot ID",
+							Value: payload.BotID,
 						},
 						{
 							Name:  "Main Owner",
@@ -419,6 +428,10 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 						{
 							Name: "Additional Owners",
 							Value: func() string {
+								if len(payload.AdditionalOwners) == 0 {
+									return "None"
+								}
+
 								var owners []string
 								for _, owner := range payload.AdditionalOwners {
 									owners = append(owners, fmt.Sprintf("<@%s>", owner))
