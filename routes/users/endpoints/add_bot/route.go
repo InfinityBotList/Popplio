@@ -33,7 +33,7 @@ type CreateBot struct {
 	Prefix           string       `db:"prefix" json:"prefix" validate:"required,min=1,max=10" msg:"Prefix must be between 1 and 10 characters"`                                                                                                              // impld
 	AdditionalOwners []string     `db:"additional_owners" json:"additional_owners" validate:"required,unique,max=7,dive,numeric" msg:"You can only have a maximum of 7 additional owners" amsg:"Each additional owner must be a valid snowflake and unique"` // impld
 	Invite           string       `db:"invite" json:"invite" validate:"required,url" msg:"Invite is required and must be a valid URL"`                                                                                                                       // impld
-	Background       *string      `db:"banner" json:"background" validate:"omitempty,url" msg:"Background must be a valid URL"`                                                                                                                              // impld
+	Banner           *string      `db:"banner" json:"banner" validate:"omitempty,url" msg:"Background must be a valid URL"`                                                                                                                                  // impld
 	Library          string       `db:"library" json:"library" validate:"required,min=1,max=50" msg:"Library must be between 1 and 50 characters"`                                                                                                           // impld
 	ExtraLinks       []types.Link `db:"extra_links" json:"extra_links" validate:"required" msg:"Extra links must be sent"`                                                                                                                                   // Impld
 	Tags             []string     `db:"tags" json:"tags" validate:"required,unique,min=1,max=5,dive,min=3,max=20,alpha,notblank,nonvulgar,nospaces" msg:"There must be between 1 and 5 tags without duplicates" amsg:"Each tag must be between 3 and 20 characters and alphabetic"`
@@ -57,7 +57,7 @@ func createBotsArgs(bot CreateBot) []any {
 		bot.Prefix,
 		bot.AdditionalOwners,
 		bot.Invite,
-		bot.Background,
+		bot.Banner,
 		bot.Library,
 		bot.ExtraLinks,
 		bot.Tags,
@@ -221,11 +221,11 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 		}
 	}
 
-	if payload.Background != nil && !strings.HasPrefix(*payload.Background, "https://") {
+	if payload.Banner != nil && !strings.HasPrefix(*payload.Banner, "https://") {
 		return api.HttpResponse{
 			Status: http.StatusBadRequest,
 			Json: types.ApiError{
-				Message: "Background must start with https://",
+				Message: "Background/Banner URL must start with https://",
 				Error:   true,
 			},
 		}
