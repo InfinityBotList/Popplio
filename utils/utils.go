@@ -351,6 +351,25 @@ func IsBotOwner(ctx context.Context, userID string, botID string) (bool, error) 
 	return true, nil
 }
 
+func ClearBotCache(ctx context.Context, botId string) error {
+	// Get name and vanity, delete from cache
+	var vanity string
+	var clientId string
+
+	err := state.Pool.QueryRow(ctx, "SELECT lower(vanity), client_id FROM bots WHERE bot_id = $1", botId).Scan(&vanity, &clientId)
+
+	if err != nil {
+		return err
+	}
+
+	// Delete from cache
+	state.Redis.Del(ctx, "bc-"+vanity)
+	state.Redis.Del(ctx, "bc-"+botId)
+	state.Redis.Del(ctx, "bc-"+clientId)
+
+	return nil
+}
+
 func ValidateExtraLinks(links []types.Link) error {
 	var public, private int
 

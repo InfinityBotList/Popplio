@@ -10,6 +10,7 @@ import (
 	"popplio/docs"
 	"popplio/state"
 	"popplio/types"
+	"popplio/utils"
 )
 
 func GetStats(s types.BotStats) (servers uint64, shards uint64, users uint64) {
@@ -285,16 +286,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 		}
 	}
 
-	// Get name and vanity, delete from cache
-	var vanity string
-	var clientId string
-
-	state.Pool.QueryRow(d.Context, "SELECT lower(vanity), client_id FROM bots WHERE bot_id = $1", id).Scan(&vanity, &clientId)
-
-	// Delete from cache
-	state.Redis.Del(d.Context, "bc-"+vanity)
-	state.Redis.Del(d.Context, "bc-"+id)
-	state.Redis.Del(d.Context, "bc-"+clientId)
+	utils.ClearBotCache(d.Context, id)
 
 	return api.HttpResponse{
 		Data: constants.Success,

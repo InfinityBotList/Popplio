@@ -13,6 +13,7 @@ import (
 	"popplio/routes/users/endpoints/get_user_pack_votes"
 	"popplio/routes/users/endpoints/get_user_reminders"
 	"popplio/routes/users/endpoints/get_user_seo"
+	"popplio/routes/users/endpoints/patch_bot_settings"
 	"popplio/routes/users/endpoints/patch_bot_vanity"
 	"popplio/routes/users/endpoints/patch_user_profile"
 	"popplio/routes/users/endpoints/post_user_subscription"
@@ -125,6 +126,21 @@ func (b Router) Routes(r *chi.Mux) {
 			Method:  api.PATCH,
 			Docs:    patch_bot_vanity.Docs,
 			Handler: patch_bot_vanity.Route,
+			Auth: []api.AuthType{
+				{
+					URLVar: "uid",
+					Type:   types.TargetTypeUser,
+				},
+			},
+		}.Route(r)
+
+		api.Route{
+			Pattern: "/{uid}/bots/{bid}/settings",
+			OpId:    "patch_bot_settings",
+			Method:  api.PATCH,
+			Docs:    patch_bot_settings.Docs,
+			Handler: patch_bot_settings.Route,
+			Setup:   patch_bot_settings.Setup,
 			Auth: []api.AuthType{
 				{
 					URLVar: "uid",

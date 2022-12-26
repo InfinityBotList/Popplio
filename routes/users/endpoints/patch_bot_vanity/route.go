@@ -24,8 +24,8 @@ func Docs() *docs.Doc {
 		Method:      "PATCH",
 		Path:        "/users/{uid}/bots/{bid}/vanity",
 		OpId:        "patch_bot_vanity",
-		Summary:     "Update User Vanity",
-		Description: "Updates a users vanity. Returns 204 on success",
+		Summary:     "Update Bot Vanity",
+		Description: "Updates a bots vanity. Returns 204 on success",
 		Params: []docs.Parameter{
 			{
 				Name:        "uid",
@@ -130,6 +130,8 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 		state.Logger.Error(err)
 		return api.DefaultResponse(http.StatusInternalServerError)
 	}
+
+	utils.ClearBotCache(d.Context, botId)
 
 	return api.DefaultResponse(http.StatusNoContent)
 }
