@@ -18,6 +18,7 @@ import (
 
 	"github.com/infinitybotlist/eureka/crypto"
 	jsoniter "github.com/json-iterator/go"
+	"golang.org/x/exp/slices"
 )
 
 var json = jsoniter.ConfigCompatibleWithStandardLibrary
@@ -344,7 +345,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 			}
 		}
 	// Delete the bot
-	case "delbot":
+	case "dbot":
 		if action.TID == "" {
 			return api.HttpResponse{
 				Status: http.StatusBadRequest,
@@ -386,6 +387,109 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 			Status: http.StatusOK,
 			Data:   "Successfully deleted bot :)",
 		}
+	// Transfer bot ownership
+	case "tbot":
+		if action.TID == "" {
+			return api.HttpResponse{
+				Status: http.StatusBadRequest,
+				Data:   "No target id set",
+			}
+		}
+
+		// Get main owner of bot
+		var owner string
+
+		err := state.Pool.QueryRow(d.Context, "SELECT owner FROM bots WHERE bot_id = $1", action.TID).Scan(&owner)
+
+		if err != nil {
+			return api.HttpResponse{
+				Status: http.StatusInternalServerError,
+				Data:   err.Error(),
+			}
+		}
+
+		// Check if user is main owner
+		if owner != user.ID {
+			return api.HttpResponse{
+				Status: http.StatusForbidden,
+				Data:   "You are not the main owner of this bot. Only main owners can transfer the ownership of bots",
+			}
+		}
+
+		// Ensure new owner is currently an additional owner
+		var additionalOwners []string
+
+		err = state.Pool.QueryRow(d.Context, "SELECT additional_owners FROM bots WHERE bot_id = $1", action.TID).Scan(&additionalOwners)
+
+		if err != nil {
+			return api.HttpResponse{
+				Status: http.StatusInternalServerError,
+				Data:   err.Error(),
+			}
+		}
+
+		if !slices.Contains(additionalOwners, action.Ctx) {
+			return api.HttpResponse{
+				Status: http.StatusBadRequest,
+				Data:   "New owner is not currently an additional owner!",
+			}
+		}
+
+		// Transfer ownership
+		tr, err := state.Pool.Begin(d.Context)
+
+		if err != nil {
+			return api.HttpResponse{
+				Status: http.StatusInternalServerError,
+				Data:   err.Error(),
+			}
+		}
+
+		defer tr.Rollback(d.Context)
+
+		_, err = tr.Exec(d.Context, "UPDATE bots SET owner = $1 WHERE bot_id = $2", action.Ctx, action.TID)
+
+		if err != nil {
+			return api.HttpResponse{
+				Status: http.StatusInternalServerError,
+				Data:   err.Error(),
+			}
+		}
+
+		// Remove new owner from additional owners
+		_, err = tr.Exec(d.Context, "UPDATE bots SET additional_owners = array_remove(additional_owners, $1) WHERE bot_id = $2", action.Ctx, action.TID)
+
+		if err != nil {
+			return api.HttpResponse{
+				Status: http.StatusInternalServerError,
+				Data:   err.Error(),
+			}
+		}
+
+		// Add old owner to additional owners
+		_, err = tr.Exec(d.Context, "UPDATE bots SET additional_owners = array_append(additional_owners, $1) WHERE bot_id = $2", owner, action.TID)
+
+		if err != nil {
+			return api.HttpResponse{
+				Status: http.StatusInternalServerError,
+				Data:   err.Error(),
+			}
+		}
+
+		err = tr.Commit(d.Context)
+
+		if err != nil {
+			return api.HttpResponse{
+				Status: http.StatusInternalServerError,
+				Data:   err.Error(),
+			}
+		}
+
+		return api.HttpResponse{
+			Status: http.StatusOK,
+			Data:   "Successfully transferred ownership of bot. The old owner (you!) is now an additional owner and the new owner is the main owner now.",
+		}
+
 	default:
 		return api.HttpResponse{
 			Status: http.StatusBadRequest,

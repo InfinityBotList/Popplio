@@ -4,6 +4,7 @@ import (
 	"popplio/api"
 	"popplio/routes/special/endpoints/get_cosmog_task_tid"
 	"popplio/routes/special/endpoints/get_special_login"
+
 	"popplio/routes/special/endpoints/get_special_login_resp"
 
 	"github.com/go-chi/chi/v5"
@@ -31,7 +32,7 @@ func (b Router) Routes(r *chi.Mux) {
 	api.Route{
 		Pattern: "/cosmog",
 		OpId:    "get_special_login_resp",
-		Method:  api.GET,
+		Method:  api.POST,
 		Docs:    get_special_login_resp.Docs,
 		Handler: get_special_login_resp.Route,
 	}.Route(r)
