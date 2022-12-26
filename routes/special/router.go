@@ -32,7 +32,7 @@ func (b Router) Routes(r *chi.Mux) {
 	api.Route{
 		Pattern: "/cosmog",
 		OpId:    "get_special_login_resp",
-		Method:  api.POST,
+		Method:  api.GET,
 		Docs:    get_special_login_resp.Docs,
 		Handler: get_special_login_resp.Route,
 	}.Route(r)
