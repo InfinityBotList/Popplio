@@ -1,7 +1,9 @@
 package get_special_login_resp
 
 import (
+	"bytes"
 	"encoding/base64"
+	"html/template"
 	"io"
 	"net/http"
 	"net/url"
@@ -16,12 +18,17 @@ import (
 	"popplio/types"
 	"popplio/utils"
 
+	_ "embed"
+
 	"github.com/infinitybotlist/eureka/crypto"
 	jsoniter "github.com/json-iterator/go"
 	"golang.org/x/exp/slices"
 )
 
 var json = jsoniter.ConfigCompatibleWithStandardLibrary
+
+//go:embed templates/confirm.html
+var confirmTemplate string
 
 func Docs() *docs.Doc {
 	return docs.Route(&docs.Doc{
@@ -48,8 +55,6 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 		}
 	}
 
-	state.Redis.Del(d.Context, "spec:"+stateQuery)
-
 	// Decode act using json
 	var action assets.Action
 
@@ -66,7 +71,52 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 	if time.Since(action.Time) > 3*time.Minute {
 		return api.HttpResponse{
 			Status: http.StatusBadRequest,
-			Data:   "Invalid state (too old)",
+			Data:   "Invalid state (too old). Please retry what you were doing!",
+		}
+	}
+
+	// Ask for confirmation from the user
+	if action.Nonce == "" || r.URL.Query().Get("n") == "" {
+		confirmNonce := crypto.RandString(96)
+
+		// Set confirm nonce in redis
+		action.Nonce = confirmNonce
+
+		// Set action in redis
+		rBytes, err := json.Marshal(action)
+
+		if err != nil {
+			return api.HttpResponse{
+				Status: http.StatusInternalServerError,
+				Data:   err.Error(),
+			}
+		}
+		state.Redis.Set(d.Context, "spec:"+stateQuery, rBytes, 3*time.Minute)
+
+		// Send confirmation page
+		templateResp := bytes.Buffer{}
+
+		err = template.Must(template.New("confirm").Parse(confirmTemplate)).Execute(&templateResp, assets.ConfirmTemplate{Action: action})
+
+		if err != nil {
+			return api.HttpResponse{
+				Status: http.StatusInternalServerError,
+				Data:   err.Error(),
+			}
+		}
+
+		return api.HttpResponse{
+			Status: http.StatusOK,
+			Bytes:  templateResp.Bytes(),
+		}
+	}
+
+	state.Redis.Del(d.Context, "spec:"+stateQuery)
+
+	if r.URL.Query().Get("n") != action.Nonce {
+		return api.HttpResponse{
+			Status: http.StatusBadRequest,
+			Data:   "Invalid nonce",
 		}
 	}
 
@@ -345,7 +395,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 			}
 		}
 	// Delete the bot
-	case "dbot":
+	case "db":
 		if action.TID == "" {
 			return api.HttpResponse{
 				Status: http.StatusBadRequest,
@@ -388,7 +438,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 			Data:   "Successfully deleted bot :)",
 		}
 	// Transfer bot ownership
-	case "tbot":
+	case "tb":
 		if action.TID == "" {
 			return api.HttpResponse{
 				Status: http.StatusBadRequest,
