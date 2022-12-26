@@ -8,21 +8,127 @@
         <link href="https://fonts.googleapis.com/css2?family=Lexend+Deca:wght@200;400;900&display=swap" rel="stylesheet">
         <script src="https://code.iconify.design/iconify-icon/1.0.2/iconify-icon.min.js"></script>
         <style>
-        html, body{
-            margin: 0;
-            width: 100%;
-            height: 100%;
-            font-weight: 300;
-        }
+            html, body{
+                margin: 0;
+                width: 100%;
+                height: 100%;
+                font-weight: 300;
+                background-color: black;
+                padding: 3px;
+                overflow: hidden;
+            }
 
-        h1, h2, h3, h4, a, p, small, ol, li, details, summary, button, div, span, * {
-            font-family: 'Lexend Deca', sans-serif;
-            font-weight: normal;
-            color: white;
-        }
+            h1, h2, h3, h4, a, p, small, ul, li, details, summary, button, div, span, * {
+                font-family: 'Lexend Deca', sans-serif;
+                font-weight: normal;
+                color: white;
+            }
+
+            code {
+                font-family: 'Roboto Mono', monospace;
+            }
+
+            .red {
+                color: red;
+            }
+
+            .no-copy {
+                user-select: none;
+            }
+
+            input {
+                width: 100%;
+                padding: 10px;
+                border: 1px solid white;
+                border-radius: 5px;
+                background-color: black;
+                color: white;
+                font-size: 1.2em;
+            }
+
+            button {
+                width: 100%;
+                padding: 10px;
+                margin-top: 5px;
+                border: 1px solid white;
+                border-radius: 5px;
+                background-color: black;
+                color: white;
+                font-size: 1.2em;
+                cursor: pointer;
+            }
+
+            button:disabled,
+            button[disabled]{
+                opacity: 0.5;
+                cursor: not-allowed;
+            }
         </style>
     </head>
     <body>
-        <h1>You</h1>
+        <h1 class="red">Danger Zone!</h1>
+        <p>
+            <strong>You are about to perform the following <em>critically</em> security-sensitive IRREVERSIBLE action! Be sure you really want to continue.</strong>
+        </p>
+        <ul>
+            <li>
+                <strong>Action:</strong> {{.PrettyAction}} ({{.Action.Action}})
+            </li>
+            <li>
+                <strong>Action Context/Value:</strong> {{.Action.Ctx}}
+            </li>
+            {{if .Action.TID}}
+            <li>
+                <strong>Action Target ID:</strong> {{.Action.TID}}
+            </li>
+            {{end}}
+        </ul>
+        <p class="red">
+            <strong>Be sure to read <em>and review</em> the above to ensure this is something you initiated and wanted.</strong>
+        </p>
+        <p>
+            <strong>If you are sure you want to continue, please enter <code class="no-copy">{{.RandPhrase}}</code> below:</strong>
+        </p>
+        <div style="width:80%">
+            <input type="text" id="confirm" placeholder="Enter the phrase above here" />
+            <div style="margin-top:3px;"></div>
+            <button id="confirm-btn" disabled tabindex="-1">Confirm</button>    
+        </div>
     </body>
+    <script>
+        // https://stackoverflow.com/questions/9899372/vanilla-javascript-equivalent-of-jquerys-ready-how-to-call-a-function-whe
+        function docReady(fn) {
+            // see if DOM is already available
+            if (document.readyState === "complete" || document.readyState === "interactive") {
+                // call on next available tick
+                setTimeout(fn, 1);
+            } else {
+                document.addEventListener("DOMContentLoaded", fn);
+            }
+        }
+
+        let rf = "{{.RandPhrase}}:{{.Action.Nonce}}".replaceAll('"', '')
+
+        docReady(() => {
+            document.getElementById("confirm").addEventListener("keyup", function(event) {
+                if(event.target.value == rf.split(":")[0]) {
+                    document.getElementById("confirm-btn").disabled = false;
+                    document.getElementById("confirm-btn").tabIndex = 0;
+                } else {
+                    document.getElementById("confirm-btn").disabled = true;
+                    document.getElementById("confirm-btn").tabIndex = -1;
+                }
+            });
+        })
+
+        docReady(() => {
+            document.getElementById("confirm-btn").addEventListener("click", function(event) {
+                if(document.getElementById("confirm").value != rf.split(":")[0]) {
+                    return
+                }
+
+                window.location.href = `${window.location.href}&n=${rf.split(":")[1]}`
+            });
+        })
+    </script>
 </html>

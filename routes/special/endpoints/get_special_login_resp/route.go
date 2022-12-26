@@ -96,7 +96,32 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 		// Send confirmation page
 		templateResp := bytes.Buffer{}
 
-		err = template.Must(template.New("confirm").Parse(confirmTemplate)).Execute(&templateResp, assets.ConfirmTemplate{Action: action})
+		var prettyName = "Unknown"
+
+		switch action.Action {
+		case "dr":
+			prettyName = "Data Request"
+		case "ddr":
+			prettyName = "Data Deletion Request"
+		case "rtu":
+			prettyName = "Reset User Token"
+		case "rtb":
+			prettyName = "Reset Bot Token"
+		case "bweburl":
+			prettyName = "Bot Webhook URL Update"
+		case "bwebsec":
+			prettyName = "Bot Webhook Secret Update"
+		case "db":
+			prettyName = "Delete Bot"
+		case "tb":
+			prettyName = "Transfer Bot Ownership"
+		}
+
+		err = template.Must(template.New("confirm").Parse(confirmTemplate)).Execute(&templateResp, assets.ConfirmTemplate{
+			Action:       action,
+			PrettyAction: prettyName,
+			RandPhrase:   crypto.RandString(8),
+		})
 
 		if err != nil {
 			return api.HttpResponse{
@@ -108,6 +133,9 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 		return api.HttpResponse{
 			Status: http.StatusOK,
 			Bytes:  templateResp.Bytes(),
+			Headers: map[string]string{
+				"Content-Type": "text/html; charset=utf-8",
+			},
 		}
 	}
 

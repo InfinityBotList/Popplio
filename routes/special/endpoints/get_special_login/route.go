@@ -50,6 +50,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 		}
 	}
 
+	action.Nonce = ""
 	action.Time = time.Now()
 
 	cliId := os.Getenv("KEY_ESCROW_CLIENT_ID")
