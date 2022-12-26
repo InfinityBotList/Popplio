@@ -1,8 +1,6 @@
 package put_user_pack_votes
 
 import (
-	"encoding/json"
-	"io"
 	"net/http"
 
 	"popplio/api"
@@ -16,16 +14,23 @@ import (
 
 type CreatePackVote struct {
 	Upvote bool `json:"upvote"`
+	Clear  bool `json:"clear,omitempty"`
 }
 
 func Docs() *docs.Doc {
 	return docs.Route(&docs.Doc{
-		Method:      "PUT",
-		Path:        "/users/{uid}/packs/{url}/votes",
-		OpId:        "put_user_pack_votes",
-		Summary:     "Create User Pack Vote",
-		Description: "Vote on a pack. Updates an existing vote or creates a new one. Does NOT error if the same vote is sent twice but will merely have no effect. Returns 204 on success",
-		Tags:        []string{api.CurrentTag},
+		Method:  "PUT",
+		Path:    "/users/{uid}/packs/{url}/votes",
+		OpId:    "put_user_pack_votes",
+		Summary: "Create User Pack Vote",
+		Description: `Creates a vote for a pack. 
+		
+This updates any existing vote or creates a new one if none exist. 
+
+Does NOT error if the same vote is sent twice but will merely have no effect. Use` + constants.DoubleBackTick + `clear` + constants.DoubleBackTick + ` to clear a vote (which overrides upvote if sent). 
+
+Returns 204 on success.`,
+		Tags: []string{api.CurrentTag},
 		Params: []docs.Parameter{
 			{
 				Name:        "uid",
@@ -71,18 +76,10 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 
 	var vote CreatePackVote
 
-	bodyBytes, err := io.ReadAll(r.Body)
+	var resp, ok = api.MarshalReq(r, &vote)
 
-	if err != nil {
-		state.Logger.Error(err)
-		return api.DefaultResponse(http.StatusInternalServerError)
-	}
-
-	err = json.Unmarshal(bodyBytes, &vote)
-
-	if err != nil {
-		state.Logger.Error(err)
-		return api.DefaultResponse(http.StatusInternalServerError)
+	if !ok {
+		return resp
 	}
 
 	var count int64
@@ -96,6 +93,17 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 
 	if count == 0 {
 		return api.DefaultResponse(http.StatusNotFound)
+	}
+
+	if vote.Clear {
+		_, err = state.Pool.Exec(d.Context, "DELETE FROM pack_votes WHERE user_id = $1 AND url = $2", userId, packUrl)
+
+		if err != nil {
+			state.Logger.Error(err)
+			return api.DefaultResponse(http.StatusInternalServerError)
+		}
+
+		return api.DefaultResponse(http.StatusNoContent)
 	}
 
 	// Check if the user has already voted and if so update the vote

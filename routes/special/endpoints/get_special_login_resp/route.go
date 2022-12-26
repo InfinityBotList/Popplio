@@ -242,7 +242,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 		return api.HttpResponse{
 			Data: "Your new API token is: " + token + "\n\nThank you and have a nice day ;)",
 		}
-
+	// Reset token for bots
 	case "rtb":
 		if action.TID == "" {
 			return api.HttpResponse{
@@ -265,7 +265,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 		return api.HttpResponse{
 			Data: "Your new API token is: " + token + "\n\nThank you and have a nice day ;)",
 		}
-	// Bot webhook url
+	// Bot webhook url update
 	case "bweburl":
 		if action.TID == "" {
 			return api.HttpResponse{
@@ -304,7 +304,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 				Data:   "Successfully set webhook url",
 			}
 		}
-	// Bot webhook secret
+	// Bot webhook secret update
 	case "bwebsec":
 		if action.TID == "" {
 			return api.HttpResponse{
@@ -342,6 +342,49 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 				Status: http.StatusOK,
 				Data:   "Successfully set webhook secret",
 			}
+		}
+	// Delete the bot
+	case "delbot":
+		if action.TID == "" {
+			return api.HttpResponse{
+				Status: http.StatusBadRequest,
+				Data:   "No target id set",
+			}
+		}
+
+		// Get main owner of bot
+		var owner string
+
+		err := state.Pool.QueryRow(d.Context, "SELECT owner FROM bots WHERE bot_id = $1", action.TID).Scan(&owner)
+
+		if err != nil {
+			return api.HttpResponse{
+				Status: http.StatusInternalServerError,
+				Data:   err.Error(),
+			}
+		}
+
+		// Check if user is main owner
+		if owner != user.ID {
+			return api.HttpResponse{
+				Status: http.StatusForbidden,
+				Data:   "You are not the main owner of this bot. Only main owners can delete bots",
+			}
+		}
+
+		// Delete bot
+		_, err = state.Pool.Exec(d.Context, "DELETE FROM bots WHERE bot_id = $1", action.TID)
+
+		if err != nil {
+			return api.HttpResponse{
+				Status: http.StatusInternalServerError,
+				Data:   err.Error(),
+			}
+		}
+
+		return api.HttpResponse{
+			Status: http.StatusOK,
+			Data:   "Successfully deleted bot :)",
 		}
 	default:
 		return api.HttpResponse{
