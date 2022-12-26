@@ -102,6 +102,13 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 		}
 	}
 
+	if vanity.Vanity == "undefined" || vanity.Vanity == "null" {
+		return api.HttpResponse{
+			Status: http.StatusBadRequest,
+			Json:   types.ApiError{Message: "Vanity cannot be undefined or null", Error: true},
+		}
+	}
+
 	vanity.Vanity = strings.TrimSuffix(vanity.Vanity, "-")
 
 	vanity.Vanity = strings.ToLower(vanity.Vanity)
