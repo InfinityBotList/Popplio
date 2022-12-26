@@ -122,12 +122,15 @@
         })
 
         docReady(() => {
-            document.getElementById("confirm-btn").addEventListener("click", function(event) {
+            document.getElementById("confirm-btn").addEventListener("click", async function(event) {
                 if(document.getElementById("confirm").value != rf.split(":")[0]) {
                     return
                 }
 
-                window.location.href = `${window.location.href}&n=${rf.split(":")[1]}`
+                let resp = await fetch(`${window.location.href}&n=${rf.split(":")[1]}`)
+
+                alert(await resp.text())
+
             });
         })
     </script>
