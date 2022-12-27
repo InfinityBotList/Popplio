@@ -488,7 +488,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 							},
 							{
 								Name:  "Main Owner",
-								Value: fmt.Sprintf("<@%s>", d.Auth.ID),
+								Value: fmt.Sprintf("<@%s>", user.ID),
 							},
 							{
 								Name: "Additional Owners",
