@@ -255,7 +255,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 		if err != nil {
 			return api.HttpResponse{
 				Status: http.StatusInternalServerError,
-				Data:   err.Error(),
+				Data:   "Bot ownership check failed:" + err.Error(),
 			}
 		}
 
@@ -443,7 +443,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 		if err != nil {
 			return api.HttpResponse{
 				Status: http.StatusInternalServerError,
-				Data:   err.Error(),
+				Data:   "Bot find error: " + err.Error(),
 			}
 		}
 
@@ -455,18 +455,11 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 			}
 		}
 
+		// Clear cache
+		utils.ClearBotCache(d.Context, action.TID)
+
 		// Delete bot
 		_, err = state.Pool.Exec(d.Context, "DELETE FROM bots WHERE bot_id = $1", action.TID)
-
-		if err != nil {
-			return api.HttpResponse{
-				Status: http.StatusInternalServerError,
-				Data:   err.Error(),
-			}
-		}
-
-		// Clear cache
-		err = utils.ClearBotCache(d.Context, action.TID)
 
 		if err != nil {
 			return api.HttpResponse{
