@@ -3,6 +3,7 @@ package get_special_login_resp
 import (
 	"bytes"
 	"encoding/base64"
+	"fmt"
 	"html/template"
 	"io"
 	"net/http"
@@ -13,6 +14,7 @@ import (
 
 	"popplio/api"
 	"popplio/docs"
+	"popplio/notifications"
 	"popplio/routes/special/assets"
 	"popplio/state"
 	"popplio/types"
@@ -20,6 +22,7 @@ import (
 
 	_ "embed"
 
+	"github.com/bwmarrin/discordgo"
 	"github.com/infinitybotlist/eureka/crypto"
 	jsoniter "github.com/json-iterator/go"
 	"golang.org/x/exp/slices"
@@ -76,7 +79,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 	}
 
 	// Ask for confirmation from the user
-	if action.Nonce == "" || r.URL.Query().Get("n") == "" {
+	if action.Nonce == "" || r.URL.Query().Get("n") == "" || r.Header.Get("X-High-Security-Mode") != "true" {
 		confirmNonce := crypto.RandString(96)
 
 		// Set confirm nonce in redis
@@ -433,8 +436,9 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 
 		// Get main owner of bot
 		var owner string
+		var additionalOwners []string
 
-		err := state.Pool.QueryRow(d.Context, "SELECT owner FROM bots WHERE bot_id = $1", action.TID).Scan(&owner)
+		err := state.Pool.QueryRow(d.Context, "SELECT owner, additional_owners FROM bots WHERE bot_id = $1", action.TID).Scan(&owner, &additionalOwners)
 
 		if err != nil {
 			return api.HttpResponse{
@@ -459,6 +463,54 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 				Status: http.StatusInternalServerError,
 				Data:   err.Error(),
 			}
+		}
+
+		// Clear cache
+		err = utils.ClearBotCache(d.Context, action.TID)
+
+		if err != nil {
+			return api.HttpResponse{
+				Status: http.StatusInternalServerError,
+				Data:   err.Error(),
+			}
+		}
+
+		// Send embed to bot log channel
+		notifications.MessageNotifyChannel <- notifications.DiscordLog{
+			ChannelID: os.Getenv("BOT_LOGS_CHANNEL"),
+			Message: &discordgo.MessageSend{
+				Content: "",
+				Embeds: []*discordgo.MessageEmbed{
+					{
+						URL:   os.Getenv("FRONTEND_URL") + "/bots/" + action.TID,
+						Title: "Bot Deleted",
+						Fields: []*discordgo.MessageEmbedField{
+							{
+								Name:  "Bot ID",
+								Value: action.TID,
+							},
+							{
+								Name:  "Main Owner",
+								Value: fmt.Sprintf("<@%s>", d.Auth.ID),
+							},
+							{
+								Name: "Additional Owners",
+								Value: func() string {
+									if len(additionalOwners) == 0 {
+										return "None"
+									}
+
+									var owners []string
+									for _, owner := range additionalOwners {
+										owners = append(owners, fmt.Sprintf("<@%s>", owner))
+									}
+									return strings.Join(owners, ", ")
+								}(),
+							},
+						},
+					},
+				},
+			},
 		}
 
 		return api.HttpResponse{
