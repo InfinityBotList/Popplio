@@ -18,6 +18,7 @@ import (
 	"popplio/routes/special"
 	"popplio/routes/tickets"
 	"popplio/routes/users"
+	"popplio/routes/votes"
 	"popplio/state"
 
 	_ "embed"
@@ -133,6 +134,7 @@ func main() {
 		special.Router{},
 		tickets.Router{},
 		users.Router{},
+		votes.Router{},
 		diagnostics.Router{},
 	}
 

@@ -279,7 +279,10 @@ func GetVoteData(ctx context.Context, userID, botID string) (*types.UserVote, er
 	}
 
 	voteParsed := types.UserVote{
-		VoteTime: GetVoteTime(),
+		VoteInfo: types.VoteInfo{
+			Weekend:  GetDoubleVote(),
+			VoteTime: GetVoteTime(),
+		},
 	}
 
 	state.Logger.With(

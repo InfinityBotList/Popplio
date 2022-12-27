@@ -85,10 +85,10 @@ type ReviewList struct {
 }
 
 type UserVote struct {
-	Timestamps   []int64 `json:"ts"`
-	VoteTime     uint16  `json:"vote_time"`
-	HasVoted     bool    `json:"has_voted"`
-	LastVoteTime int64   `json:"last_vote_time"`
+	Timestamps   []int64  `json:"ts"`
+	HasVoted     bool     `json:"has_voted"`
+	LastVoteTime int64    `json:"last_vote_time"`
+	VoteInfo     VoteInfo `json:"vote_info"`
 }
 
 type WebhookPost struct {

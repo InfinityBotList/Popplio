@@ -39,8 +39,11 @@ func Docs() *docs.Doc {
 		},
 		Resp: types.UserVote{
 			Timestamps: []int64{},
-			VoteTime:   12,
-			HasVoted:   true,
+			VoteInfo: types.VoteInfo{
+				Weekend:  utils.GetDoubleVote(),
+				VoteTime: utils.GetVoteTime(),
+			},
+			HasVoted: true,
 		},
 		AuthType: []types.TargetType{types.TargetTypeUser, types.TargetTypeBot},
 		Tags:     []string{api.CurrentTag},

@@ -4,7 +4,6 @@ import (
 	"popplio/api"
 	"popplio/routes/list/endpoints/get_list_index"
 	"popplio/routes/list/endpoints/get_list_stats"
-	"popplio/routes/list/endpoints/get_vote_info"
 	"popplio/routes/list/endpoints/parse_html"
 	"popplio/routes/list/endpoints/search_list"
 	"popplio/routes/list/endpoints/test_auth"
@@ -37,7 +36,7 @@ func (b Router) Routes(r *chi.Mux) {
 			Method:  api.POST,
 			Docs:    search_list.Docs,
 			Handler: search_list.Route,
-			Setup: search_list.Setup,
+			Setup:   search_list.Setup,
 		}.Route(r)
 
 		api.Route{
@@ -46,14 +45,6 @@ func (b Router) Routes(r *chi.Mux) {
 			Method:  api.GET,
 			Docs:    get_list_stats.Docs,
 			Handler: get_list_stats.Route,
-		}.Route(r)
-
-		api.Route{
-			Pattern: "/vote-info",
-			OpId:    "get_vote_info",
-			Method:  api.GET,
-			Docs:    get_vote_info.Docs,
-			Handler: get_vote_info.Route,
 		}.Route(r)
 
 		api.Route{
