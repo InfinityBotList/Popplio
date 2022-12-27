@@ -612,6 +612,8 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 			}
 		}
 
+		utils.ClearBotCache(d.Context, action.TID)
+
 		return api.HttpResponse{
 			Status: http.StatusOK,
 			Data:   "Successfully transferred ownership of bot. The old owner (you!) is now an additional owner and the new owner is the main owner now.",
