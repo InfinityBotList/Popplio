@@ -132,6 +132,10 @@
                     }
                 })
 
+                if(resp.headers.get("X-Loc")) {
+                    window.location.href = resp.headers.get("X-Loc")
+                }
+
                 document.querySelector("#out").innerHTML = await resp.text()
 
             });

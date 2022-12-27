@@ -286,7 +286,9 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 		go assets.DataTask(taskId, user.ID, remoteIp[0], false)
 
 		return api.HttpResponse{
-			Redirect: os.Getenv("BOTLIST_APP") + "/data/confirm?tid=" + taskId + "&user=" + base64.URLEncoding.EncodeToString(body) + "&act=" + action.Action,
+			Headers: map[string]string{
+				"X-Loc": os.Getenv("BOTLIST_APP") + "/data/confirm?tid=" + taskId + "&user=" + base64.URLEncoding.EncodeToString(body) + "&act=" + action.Action,
+			},
 		}
 	// Data deletion request
 	case "ddr":
@@ -305,7 +307,9 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 
 		go assets.DataTask(taskId, user.ID, remoteIp[0], true)
 		return api.HttpResponse{
-			Redirect: os.Getenv("BOTLIST_APP") + "/data/confirm?tid=" + taskId + "&user=" + base64.URLEncoding.EncodeToString(body) + "&act=" + action.Action,
+			Headers: map[string]string{
+				"X-Loc": os.Getenv("BOTLIST_APP") + "/data/confirm?tid=" + taskId + "&user=" + base64.URLEncoding.EncodeToString(body) + "&act=" + action.Action,
+			},
 		}
 	// Reset token for users
 	case "rtu":
