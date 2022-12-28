@@ -4,11 +4,11 @@ Popplio is the new rewrite of the Infinity Bot List API in golang
 
 **Open source under the AGPL3. We reserve all rights to the code**
 
-## API Docs
+## API Documentation
 
 https://spider.infinitybots.gg/docs
 
-## Developer Docs
+## Developer Documentation
 
 There is a tool coming very soon (``ibl newroute``) to assist in creating new endpoints on Popplio
 
