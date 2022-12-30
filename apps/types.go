@@ -28,14 +28,14 @@ type AppMeta struct {
 	Stable    bool                `json:"stable"` // Stable means that the list of apps is not pending big changes
 }
 
-type Response struct {
-	AppID     string            `json:"app_id"`
-	UserID    string            `json:"user_id"`
-	Answers   map[string]string `json:"answers"`
-	Interview map[string]string `json:"interview"`
-	State     string            `json:"state"`
-	CreatedAt time.Time         `json:"created_at"`
-	Likes     []string          `json:"likes"`
-	Dislikes  []string          `json:"dislikes"`
-	Position  string            `json:"position"`
+type AppResponse struct {
+	AppID            string         `db:"app_id" json:"app_id"`
+	UserID           string         `db:"user_id" json:"user_id"`
+	Answers          map[string]any `db:"answers" json:"answers"`
+	InterviewAnswers map[string]any `db:"interview_answers" json:"interview_answers"`
+	State            string         `db:"state" json:"state"`
+	CreatedAt        time.Time      `db:"created_at" json:"created_at"`
+	Likes            []string       `db:"likes" json:"likes"`
+	Dislikes         []string       `db:"dislikes" json:"dislikes"`
+	Position         string         `db:"position" json:"position"`
 }
