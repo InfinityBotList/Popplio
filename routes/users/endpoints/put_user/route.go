@@ -277,10 +277,11 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 		apiToken = crypto.RandString(128)
 		_, err = state.Pool.Exec(
 			d.Context,
-			"INSERT INTO users (user_id, api_token, username, staff, developer, certified) VALUES ($1, $2, $3, false, false, false)",
+			"INSERT INTO users (user_id, api_token, username, staff, developer, certified, extra_links) VALUES ($1, $2, $3, false, false, false, $4)",
 			user.ID,
 			apiToken,
 			user.Username,
+			[]types.Link{},
 		)
 
 		if err != nil {

@@ -1,0 +1,208 @@
+package create_app
+
+import (
+	"net/http"
+	"os"
+	"popplio/api"
+	"popplio/apps"
+	"popplio/docs"
+	"popplio/state"
+	"popplio/types"
+
+	"github.com/bwmarrin/discordgo"
+	"github.com/go-playground/validator/v10"
+	"github.com/infinitybotlist/eureka/crypto"
+)
+
+type CreateApp struct {
+	Position string            `json:"position" validate:"required"`
+	Answers  map[string]string `json:"answers" validate:"required,dive,required"`
+}
+
+var compiledMessages = api.CompileValidationErrors(CreateApp{})
+
+func Docs() *docs.Doc {
+	return docs.Route(&docs.Doc{
+		Method:      "POST",
+		Path:        "/users/{user_id}/apps",
+		OpId:        "create_app",
+		Summary:     "Create App For Position",
+		Description: "Creates an application for a position. Returns a 204 on success.",
+		Tags:        []string{api.CurrentTag},
+		Req:         CreateApp{},
+		Params: []docs.Parameter{
+			{
+				Name:        "user_id",
+				Description: "The ID of the user to create the application for.",
+				Required:    true,
+				In:          "path",
+				Schema:      docs.IdSchema,
+			},
+		},
+		Resp:     types.ApiError{},
+		AuthType: []types.TargetType{types.TargetTypeUser},
+	})
+}
+
+func Route(d api.RouteData, r *http.Request) api.HttpResponse {
+	var payload CreateApp
+
+	hresp, ok := api.MarshalReq(r, &payload)
+
+	if !ok {
+		return hresp
+	}
+
+	// Validate the payload
+
+	err := state.Validator.Struct(payload)
+
+	if err != nil {
+		errors := err.(validator.ValidationErrors)
+		return api.ValidatorErrorResponse(compiledMessages, errors)
+	}
+
+	position, ok := apps.Apps[payload.Position]
+
+	if !ok {
+		return api.HttpResponse{
+			Json: types.ApiError{
+				Error:   true,
+				Message: "Invalid position",
+			},
+			Status: http.StatusBadRequest,
+		}
+	}
+
+	if position.Closed {
+		return api.HttpResponse{
+			Json: types.ApiError{
+				Error:   true,
+				Message: "This position is currently closed. Please check back later.",
+			},
+			Status: http.StatusBadRequest,
+		}
+	}
+
+	var userApps int64
+
+	err = state.Pool.QueryRow(d.Context, "SELECT COUNT(1) FROM apps WHERE user_id = $1 AND position = $2 AND (state = 'pending' OR state = 'pending-interview' OR state = 'pending-approval')", d.Auth.ID, payload.Position).Scan(&userApps)
+
+	if err != nil {
+		state.Logger.Error(err)
+		return api.DefaultResponse(http.StatusInternalServerError)
+	}
+
+	if userApps > 0 {
+		return api.HttpResponse{
+			Json: types.ApiError{
+				Error:   true,
+				Message: "You already have a pending application for this position",
+			},
+			Status: http.StatusBadRequest,
+		}
+	}
+
+	var answerMap = map[string]string{}
+
+	for _, question := range position.Questions {
+		ans, ok := payload.Answers[question.ID]
+
+		if !ok {
+			return api.HttpResponse{
+				Json: types.ApiError{
+					Error:   true,
+					Message: "Missing answer for question " + question.ID,
+				},
+				Status: http.StatusBadRequest,
+			}
+		}
+
+		if ans == "" {
+			return api.HttpResponse{
+				Json: types.ApiError{
+					Error:   true,
+					Message: "Answer for question " + question.ID + " cannot be empty",
+				},
+				Status: http.StatusBadRequest,
+			}
+		}
+
+		if question.Short {
+			if len(ans) > 4096 {
+				return api.HttpResponse{
+					Json: types.ApiError{
+						Error:   true,
+						Message: "Answer for question " + question.ID + " is too long",
+					},
+					Status: http.StatusBadRequest,
+				}
+			}
+		} else {
+			if len(ans) < 50 {
+				return api.HttpResponse{
+					Json: types.ApiError{
+						Error:   true,
+						Message: "Answer for question " + question.ID + " is too short",
+					},
+					Status: http.StatusBadRequest,
+				}
+			}
+
+			if len(ans) > 10000 {
+				return api.HttpResponse{
+					Json: types.ApiError{
+						Error:   true,
+						Message: "Answer for question " + question.ID + " is too long",
+					},
+					Status: http.StatusBadRequest,
+				}
+			}
+		}
+
+		answerMap[question.ID] = ans
+	}
+
+	var appId = crypto.RandString(64)
+
+	_, err = state.Pool.Exec(d.Context, "INSERT INTO apps (app_id, user_id, position, answers) VALUES ($1, $2, $3, $4)", appId, d.Auth.ID, payload.Position, map[string]any{
+		"questions": position.Questions,
+		"answers":   answerMap,
+	})
+
+	if err != nil {
+		state.Logger.Error(err)
+		return api.DefaultResponse(http.StatusInternalServerError)
+	}
+
+	// Send a message to APPS channel
+	_, err = state.Discord.ChannelMessageSendEmbed(os.Getenv("APP_CHANNEL"), &discordgo.MessageEmbed{
+		Title:       "New " + payload.Position + " application!",
+		URL:         os.Getenv("BOTLIST_APP") + "/panel/apps/" + appId,
+		Description: "User <@" + d.Auth.ID + "> has applied for " + payload.Position + ".",
+		Color:       0x00ff00,
+		Fields: []*discordgo.MessageEmbedField{
+			{
+				Name:   "App ID",
+				Value:  appId,
+				Inline: true,
+			},
+			{
+				Name:  "User ID",
+				Value: d.Auth.ID,
+			},
+			{
+				Name:   "Position",
+				Value:  payload.Position,
+				Inline: true,
+			},
+		},
+	})
+
+	if err != nil {
+		state.Logger.Error(err)
+		return api.DefaultResponse(http.StatusInternalServerError)
+	}
+
+	return api.DefaultResponse(http.StatusNoContent)
+}
