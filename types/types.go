@@ -92,16 +92,13 @@ type UserVote struct {
 }
 
 type WebhookPost struct {
-	BotID  string `json:"bot_id"`
-	UserID string `json:"user_id"`
+	BotID  string `json:"bot_id" validate:"required"`
+	UserID string `json:"user_id" validate:"required"`
 	Test   bool   `json:"test"`
-	Votes  int    `json:"votes"`
+	Votes  int    `json:"votes" validate:"required"`
 
 	// Only present on test webhook API or during sends internally
 	URL string `json:"url"`
-
-	// Only present on test webhook API
-	URL2 string `json:"url2"`
 
 	// Only present on test webhook API
 	Token string `json:"token"`

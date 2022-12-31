@@ -48,43 +48,27 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 		return api.DefaultResponse(http.StatusInternalServerError)
 	}
 
-	if utils.IsNone(payload.URL) && utils.IsNone(payload.URL2) {
+	if utils.IsNone(payload.URL) {
 		return api.DefaultResponse(http.StatusBadRequest)
 	}
 
 	payload.Test = true // Always true
 
-	var err1 error
-
 	if !utils.IsNone(payload.URL) {
-		err1 = webhooks.Send(payload)
+		err = webhooks.Send(payload)
+
+		if err != nil {
+			state.Logger.Error(err)
+
+			return api.HttpResponse{
+				Status: http.StatusBadRequest,
+				Json: types.ApiError{
+					Error:   true,
+					Message: err.Error(),
+				},
+			}
+		}
 	}
 
-	var err2 error
-
-	if !utils.IsNone(payload.URL2) {
-		payload.URL = payload.URL2 // Test second enpdoint if it's not empty
-		err2 = webhooks.Send(payload)
-	}
-
-	var errD = types.ApiError{}
-
-	if err1 != nil {
-		state.Logger.Error(err1)
-
-		errD.Message = err1.Error()
-		errD.Error = true
-	}
-
-	if err2 != nil {
-		state.Logger.Error(err2)
-
-		errD.Message += "|" + err2.Error()
-		errD.Error = true
-	}
-
-	return api.HttpResponse{
-		Status: http.StatusBadRequest,
-		Json:   errD,
-	}
+	return api.DefaultResponse(http.StatusNoContent)
 }
