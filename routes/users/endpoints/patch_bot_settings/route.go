@@ -162,11 +162,20 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 		}
 	}
 
-	if slices.Contains(payload.AdditionalOwners, d.Auth.ID) {
+	// Get main owner
+	var mainOwner string
+
+	err = state.Pool.QueryRow(d.Context, "SELECT owner FROM bots WHERE bot_id = $1", botId).Scan(&mainOwner)
+
+	if err != nil {
+		return api.DefaultResponse(http.StatusInternalServerError)
+	}
+
+	if slices.Contains(payload.AdditionalOwners, mainOwner) {
 		return api.HttpResponse{
 			Status: http.StatusBadRequest,
 			Json: types.ApiError{
-				Message: "You cannot be an additional owner",
+				Message: "The main owner cannot be an additional owner",
 				Error:   true,
 			},
 		}
@@ -281,6 +290,10 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 						{
 							Name:  "User",
 							Value: fmt.Sprintf("<@%s>", d.Auth.ID),
+						},
+						{
+							Name:  "Main Owner",
+							Value: fmt.Sprintf("<@%s>", mainOwner),
 						},
 						{
 							Name: "Additional Owners",
