@@ -25,7 +25,7 @@ AND (($6 = 0) OR (shards <= $6))
 AND (cardinality($7::text[]) = 0 OR tags {{.TagMode}} $7) -- Where TagMode is one of @> = all, && = any
 
 {{if .Query}}
-AND (queue_name ILIKE $8 OR vanity ILIKE $8 OR owner @@ $9 OR short @@ $9) 
+AND (queue_name ILIKE $8 OR vanity ILIKE $8 OR owner @@ $9 OR short @@ $9 OR bot_id = $9 OR client_id = $9) 
 {{end}}
 
 ORDER BY votes DESC, type DESC LIMIT 12

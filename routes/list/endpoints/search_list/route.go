@@ -141,7 +141,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 	)
 
 	if payload.Query != "" {
-		args = append(args, payload.Query, "%"+payload.Query+"%") // 8-9
+		args = append(args, "%"+strings.ToLower(payload.Query)+"%", strings.ToLower(payload.Query)) // 8-9
 	}
 
 	rows, err := state.Pool.Query(
