@@ -42,12 +42,6 @@ func isDiscord(url string) bool {
 func Send(webhook types.WebhookPost) error {
 	url, token := webhook.URL, webhook.Token
 
-	isDiscordIntegration := isDiscord(url)
-
-	if isDiscordIntegration {
-		return errors.New("webhook is not a discord webhook")
-	}
-
 	if !webhook.Test && (utils.IsNone(url) || utils.IsNone(token)) {
 		// Fetch URL from postgres
 
@@ -75,15 +69,16 @@ func Send(webhook types.WebhookPost) error {
 		url = webhookURL.String
 	}
 
+	isDiscordIntegration := isDiscord(url)
+
+	if isDiscordIntegration {
+		return errors.New("webhook is not a discord webhook")
+	}
+
 	state.Logger.Info("Using hmac: ", webhook.HMACAuth)
 
 	if utils.IsNone(url) {
 		return errors.New("refusing to continue as no webhook")
-	}
-
-	if isDiscordIntegration || isDiscord(url) {
-		state.Logger.Info("Sending discord webhook has been disabled:", url)
-		return nil
 	}
 
 	if webhook.Test {
