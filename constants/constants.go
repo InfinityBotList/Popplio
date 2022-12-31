@@ -12,8 +12,8 @@ const (
 	VoteBanned       = "{\"message\":\"Slow down, bucko! Either you or this bot is banned from voting right now!\",\"error\":true}"
 	Success          = "{\"message\":\"Success!\",\"error\":false}"
 	BackTick         = "`"
-	DoubleBackTick  = "``"
-	TestNotif        = "{\"message\":\"Test notification!\",\"title\":\"Test notification!\",\"icon\":\"https://i.imgur.com/GRo0Zug.png\",\"error\":false}"
+	DoubleBackTick   = "``"
+	TestNotif        = "{\"message\":\"Test notification!\",\"title\":\"Test notification!\",\"icon\":\"https://cdn.infinitybots.xyz/images/webp/logo2.webp\",\"error\":false}"
 
 	// Resolve Bot SQL
 	ResolveBotSQL = "(lower(vanity) = $1 OR bot_id = $1 OR client_id = $1)"
