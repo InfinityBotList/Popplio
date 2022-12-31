@@ -1,7 +1,6 @@
 package test_webhook
 
 import (
-	"io"
 	"net/http"
 
 	"popplio/api"
@@ -10,11 +9,7 @@ import (
 	"popplio/types"
 	"popplio/utils"
 	"popplio/webhooks"
-
-	jsoniter "github.com/json-iterator/go"
 )
-
-var json = jsoniter.ConfigCompatibleWithStandardLibrary
 
 func Docs() *docs.Doc {
 	return docs.Route(&docs.Doc{
@@ -34,18 +29,10 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 
 	var payload types.WebhookPost
 
-	bodyBytes, err := io.ReadAll(r.Body)
+	resp, ok := api.MarshalReq(r, &payload)
 
-	if err != nil {
-		state.Logger.Error(err)
-		return api.DefaultResponse(http.StatusInternalServerError)
-	}
-
-	err = json.Unmarshal(bodyBytes, &payload)
-
-	if err != nil {
-		state.Logger.Error(err)
-		return api.DefaultResponse(http.StatusInternalServerError)
+	if !ok {
+		return resp
 	}
 
 	if utils.IsNone(payload.URL) {
@@ -55,7 +42,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 	payload.Test = true // Always true
 
 	if !utils.IsNone(payload.URL) {
-		err = webhooks.Send(payload)
+		err := webhooks.Send(payload)
 
 		if err != nil {
 			state.Logger.Error(err)
