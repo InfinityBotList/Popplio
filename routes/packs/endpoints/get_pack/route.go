@@ -50,6 +50,19 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 		return api.DefaultResponse(http.StatusBadRequest)
 	}
 
+	// First check count so we can avoid expensive DB calls
+	var count int64
+
+	err := state.Pool.QueryRow(d.Context, "SELECT COUNT(*) FROM packs WHERE url = $1 OR name = $1", id).Scan(&count)
+
+	if err != nil {
+		return api.DefaultResponse(http.StatusInternalServerError)
+	}
+
+	if count == 0 {
+		return api.DefaultResponse(http.StatusNotFound)
+	}
+
 	var pack types.BotPack
 
 	row, err := state.Pool.Query(d.Context, "SELECT "+packCols+" FROM packs WHERE url = $1 OR name = $1", id)
