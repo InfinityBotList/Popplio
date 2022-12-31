@@ -14,7 +14,6 @@ require (
 )
 
 require (
-	github.com/BurntSushi/toml v0.3.1 // indirect
 	github.com/aymerick/douceur v0.2.0 // indirect
 	github.com/go-playground/locales v0.14.0 // indirect
 	github.com/go-playground/universal-translator v0.18.0 // indirect
@@ -62,6 +61,5 @@ require (
 	go.uber.org/zap v1.24.0
 	golang.org/x/exp v0.0.0-20221217163422-3c43f8badb15
 	golang.org/x/sys v0.3.0 // indirect
-	gopkg.in/natefinch/lumberjack.v2 v2.0.0
 	mvdan.cc/xurls/v2 v2.4.0
 )

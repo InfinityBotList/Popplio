@@ -3,7 +3,6 @@ package state
 import (
 	"context"
 	"flag"
-	"io"
 	"os"
 	"reflect"
 	"strings"
@@ -18,7 +17,6 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
-	"gopkg.in/natefinch/lumberjack.v2"
 	"gopkg.in/yaml.v3"
 )
 
@@ -144,15 +142,7 @@ func Setup(cfg []byte) {
 
 	// lumberjack.Logger is already safe for concurrent use, so we don't need to
 	// lock it.
-	w := zapcore.AddSync(io.MultiWriter(
-		&lumberjack.Logger{
-			Filename:   "/var/log/popplio.log",
-			MaxSize:    10, // megabytes
-			MaxBackups: 3,
-			MaxAge:     28, // days
-		},
-		os.Stdout,
-	))
+	w := zapcore.AddSync(os.Stdout)
 
 	core := zapcore.NewCore(
 		zapcore.NewJSONEncoder(zap.NewProductionEncoderConfig()),
