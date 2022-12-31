@@ -3,7 +3,6 @@ package get_special_login
 import (
 	"bytes"
 	"net/http"
-	"os"
 	"strconv"
 	"time"
 
@@ -31,6 +30,13 @@ func Docs() *docs.Doc {
 }
 
 func Route(d api.RouteData, r *http.Request) api.HttpResponse {
+	if state.Config.HighSecurityCtx.Disabled {
+		return api.HttpResponse{
+			Status: http.StatusForbidden,
+			Data:   "High security mode is disabled right now. Please try again later.",
+		}
+	}
+
 	// Read assets.Action to get the action
 	var action assets.Action
 
@@ -52,9 +58,6 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 
 	action.Nonce = ""
 	action.Time = time.Now()
-
-	cliId := os.Getenv("KEY_ESCROW_CLIENT_ID")
-	redirectUrl := os.Getenv("KEY_ESCROW_REDIRECT_URL")
 
 	if action.TID != "" {
 		_, err := strconv.ParseInt(action.TID, 10, 64)
@@ -93,7 +96,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 
 	return api.HttpResponse{
 		Json: assets.Redirect{
-			Redirect: "https://discord.com/api/oauth2/authorize?client_id=" + cliId + "&scope=identify&response_type=code&redirect_uri=" + redirectUrl + "&state=" + stateTok,
+			Redirect: "https://discord.com/api/oauth2/authorize?client_id=" + state.Config.HighSecurityCtx.ClientID + "&scope=identify&response_type=code&redirect_uri=" + state.Config.HighSecurityCtx.RedirectURL + "&state=" + stateTok,
 		},
 	}
 }

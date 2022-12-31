@@ -3,19 +3,23 @@ package state
 import (
 	"context"
 	"flag"
+	"io"
 	"os"
 	"reflect"
 	"strings"
+
+	"popplio/cmd/genconfig"
+	"popplio/config"
 
 	"github.com/bwmarrin/discordgo"
 	"github.com/go-playground/validator/v10"
 	"github.com/go-playground/validator/v10/non-standard/validators"
 	"github.com/go-redis/redis/v8"
 	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/joho/godotenv"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 	"gopkg.in/natefinch/lumberjack.v2"
+	"gopkg.in/yaml.v3"
 )
 
 var (
@@ -27,14 +31,8 @@ var (
 	Validator = validator.New()
 
 	Migration = false
+	Config    *config.Config
 )
-
-var vulgarList = []string{
-	"fuck",
-	"shit",
-	"suck",
-	"kill",
-}
 
 func nonVulgar(fl validator.FieldLevel) bool {
 	// get the field value
@@ -42,7 +40,7 @@ func nonVulgar(fl validator.FieldLevel) bool {
 	case reflect.String:
 		value := fl.Field().String()
 
-		for _, v := range vulgarList {
+		for _, v := range Config.Meta.VulgarList {
 			if strings.Contains(value, v) {
 				return false
 			}
@@ -83,18 +81,40 @@ func notpresent(fl validator.FieldLevel) bool {
 	}
 }
 
-// This should be the only init function, sets global state
-func init() {
-	godotenv.Load()
+func Setup(cfg []byte) {
+	Validator.RegisterValidation("nonvulgar", nonVulgar)
+	Validator.RegisterValidation("notblank", validators.NotBlank)
+	Validator.RegisterValidation("nospaces", noSpaces)
+	Validator.RegisterValidation("notpresent", notpresent)
+
+	err := yaml.Unmarshal(cfg, &Config)
+
+	if err != nil {
+		panic(err)
+	}
+
+	err = Validator.Struct(Config)
+
+	if err != nil {
+		panic("configError: " + err.Error())
+	}
 
 	var connUrl string
 	var redisUrl string
+	var cmdStr string
 
 	flag.StringVar(&connUrl, "db", "postgresql:///infinity", "Database connection URL")
 	flag.StringVar(&redisUrl, "redis", "redis://localhost:6379", "Redis connection URL")
+	flag.StringVar(&cmdStr, "cmd", "", "Command to run")
 	flag.Parse()
 
-	var err error
+	if cmdStr != "" {
+		if cmdStr == "genconfig" {
+			genconfig.GenConfig()
+			os.Exit(0)
+		}
+	}
+
 	Pool, err = pgxpool.New(Context, connUrl)
 
 	if err != nil {
@@ -109,7 +129,7 @@ func init() {
 
 	Redis = redis.NewClient(rOptions)
 
-	Discord, err = discordgo.New("Bot " + os.Getenv("DISCORD_TOKEN"))
+	Discord, err = discordgo.New("Bot " + Config.DiscordAuth.Token)
 
 	if err != nil {
 		panic(err)
@@ -124,12 +144,15 @@ func init() {
 
 	// lumberjack.Logger is already safe for concurrent use, so we don't need to
 	// lock it.
-	w := zapcore.AddSync(&lumberjack.Logger{
-		Filename:   "/var/log/popplio.log",
-		MaxSize:    10, // megabytes
-		MaxBackups: 3,
-		MaxAge:     28, // days
-	})
+	w := zapcore.AddSync(io.MultiWriter(
+		&lumberjack.Logger{
+			Filename:   "/var/log/popplio.log",
+			MaxSize:    10, // megabytes
+			MaxBackups: 3,
+			MaxAge:     28, // days
+		},
+		os.Stdout,
+	))
 
 	core := zapcore.NewCore(
 		zapcore.NewJSONEncoder(zap.NewProductionEncoderConfig()),
@@ -138,9 +161,4 @@ func init() {
 	)
 
 	Logger = zap.New(core).Sugar()
-
-	Validator.RegisterValidation("nonvulgar", nonVulgar)
-	Validator.RegisterValidation("notblank", validators.NotBlank)
-	Validator.RegisterValidation("nospaces", noSpaces)
-	Validator.RegisterValidation("notpresent", notpresent)
 }

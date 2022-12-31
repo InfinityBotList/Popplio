@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"os"
 	"reflect"
 	"strconv"
 	"strings"
@@ -97,10 +96,10 @@ func GetDiscordUser(id string) (*types.DiscordUser, error) {
 		guilds := state.Discord.State.Guilds
 
 		// First try for main server
-		member, err := state.Discord.State.Member(os.Getenv("MAIN_SERVER"), id)
+		member, err := state.Discord.State.Member(state.Config.Servers.Main, id)
 
 		if err == nil {
-			p, pErr := state.Discord.State.Presence(os.Getenv("MAIN_SERVER"), id)
+			p, pErr := state.Discord.State.Presence(state.Config.Servers.Main, id)
 
 			if pErr != nil {
 				p = &discordgo.Presence{
@@ -124,7 +123,7 @@ func GetDiscordUser(id string) (*types.DiscordUser, error) {
 				Discriminator:  member.User.Discriminator,
 				Bot:            member.User.Bot,
 				Nickname:       member.Nick,
-				Guild:          os.Getenv("MAIN_SERVER"),
+				Guild:          state.Config.Servers.Main,
 				Mention:        member.User.Mention(),
 				Status:         p.Status,
 				System:         member.User.System,
@@ -143,7 +142,7 @@ func GetDiscordUser(id string) (*types.DiscordUser, error) {
 		}
 
 		for _, guild := range guilds {
-			if guild.ID == os.Getenv("MAIN_SERVER") {
+			if guild.ID == state.Config.Servers.Main {
 				continue // Already checked
 			}
 

@@ -42,34 +42,8 @@ var gm = goldmark.New(
 	),
 )
 
-func init() {
-	allowedEls := []string{
-		"a",
-		"i",
-		"button",
-		"span",
-		"img",
-		"video",
-		"iframe",
-		"style",
-		"span",
-		"p",
-		"br",
-		"center",
-		"div",
-		"h1",
-		"h2",
-		"h3",
-		"h4",
-		"h5",
-		"section",
-		"article",
-		"lang",
-		"code",
-		"pre",
-		"strong",
-		"em",
-	}
+func Setup() {
+	allowedEls := state.Config.Meta.AllowedHTMLTags
 
 	p = bluemonday.NewPolicy()
 

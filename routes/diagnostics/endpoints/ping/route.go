@@ -2,10 +2,10 @@ package ping
 
 import (
 	"net/http"
-	"os"
 
 	"popplio/api"
 	"popplio/docs"
+	"popplio/state"
 
 	jsoniter "github.com/json-iterator/go"
 )
@@ -26,16 +26,12 @@ const (
 	apiBot     = "https://discord.com/api/oauth2/authorize?client_id=818419115068751892&permissions=140898593856&scope=bot%20applications.commands"
 )
 
-var docsSite string
-
-func init() {
-	docsSite = os.Getenv("SITE_URL") + "/docs"
-}
-
 var helloWorld []byte
 var helloWorldB Hello
 
 func Setup() {
+	var docsSite string = state.Config.Sites.API + "/docs"
+
 	// This is done here to avoid constant remarshalling
 	helloWorldB = Hello{
 		Message:   "Hello world from IBL API v6!",

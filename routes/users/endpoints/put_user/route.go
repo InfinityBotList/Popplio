@@ -4,7 +4,6 @@ import (
 	"io"
 	"net/http"
 	"net/url"
-	"os"
 	"time"
 
 	"popplio/api"
@@ -130,8 +129,8 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 	state.Redis.Set(d.Context, "codecache:"+req.Code, "0", 5*time.Minute)
 
 	httpResp, err := http.PostForm("https://discord.com/api/v10/oauth2/token", url.Values{
-		"client_id":     {os.Getenv("CLIENT_ID")},
-		"client_secret": {os.Getenv("CLIENT_SECRET")},
+		"client_id":     {state.Config.DiscordAuth.ClientID},
+		"client_secret": {state.Config.DiscordAuth.ClientSecret},
 		"grant_type":    {"authorization_code"},
 		"code":          {req.Code},
 		"redirect_uri":  {req.RedirectURI},

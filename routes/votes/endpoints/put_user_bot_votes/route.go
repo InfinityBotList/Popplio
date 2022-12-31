@@ -3,7 +3,6 @@ package put_user_bot_votes
 import (
 	"fmt"
 	"net/http"
-	"os"
 	"strconv"
 	"time"
 
@@ -193,9 +192,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 		return api.DefaultResponse(http.StatusInternalServerError)
 	}
 
-	channel := os.Getenv("VOTE_CHANNEL")
-
-	_, err = state.Discord.ChannelMessageSendComplex(channel, &discordgo.MessageSend{
+	_, err = state.Discord.ChannelMessageSendComplex(state.Config.Channels.VoteLogs, &discordgo.MessageSend{
 		Embeds: []*discordgo.MessageEmbed{
 			{
 				URL: "https://botlist.site/" + botId.String,

@@ -9,6 +9,7 @@ import (
 	"popplio/api"
 	"popplio/constants"
 	"popplio/docs"
+	"popplio/notifications"
 	"popplio/routes/announcements"
 	"popplio/routes/apps"
 	"popplio/routes/bots"
@@ -43,23 +44,8 @@ var extUnminified string
 //go:embed docs/assets/docs.html
 var docsHTML string
 
-func init() {
-	m := minify.New()
-	m.AddFunc("application/javascript", js.Minify)
-	m.AddFunc("text/css", css.Minify)
-
-	strWriter := &strings.Builder{}
-
-	strReader := strings.NewReader(extUnminified)
-
-	if err := m.Minify("application/javascript", strWriter, strReader); err != nil {
-		panic(err)
-	}
-
-	docsJs = strWriter.String()
-
-	docsHTML = strings.Replace(docsHTML, "[JS]", docsJs, 1)
-}
+//go:embed config.yaml
+var configStr []byte
 
 var (
 	docsJs  string
@@ -103,7 +89,25 @@ func corsMiddleware(next http.Handler) http.Handler {
 }
 
 func main() {
-	state.Logger.Info("Test\n\n")
+	state.Setup(configStr)
+	docs.Setup()
+	notifications.Setup()
+
+	m := minify.New()
+	m.AddFunc("application/javascript", js.Minify)
+	m.AddFunc("text/css", css.Minify)
+
+	strWriter := &strings.Builder{}
+
+	strReader := strings.NewReader(extUnminified)
+
+	if err := m.Minify("application/javascript", strWriter, strReader); err != nil {
+		panic(err)
+	}
+
+	docsJs = strWriter.String()
+
+	docsHTML = strings.Replace(docsHTML, "[JS]", docsJs, 1)
 
 	docs.AddSecuritySchema("User", "User-Auth", "Requires a user token. Usually must be prefixed with `User `. Note that both ``User-Auth`` and ``Authorization`` headers are supported")
 	docs.AddSecuritySchema("Bot", "Bot-Auth", "Requires a bot token. Can be optionally prefixed. Note that both ``Bot-Auth`` and ``Authorization`` headers are supported")

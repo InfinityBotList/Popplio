@@ -2,10 +2,10 @@ package get_notification_info
 
 import (
 	"net/http"
-	"os"
 
 	"popplio/api"
 	"popplio/docs"
+	"popplio/state"
 	"popplio/types"
 )
 
@@ -23,7 +23,7 @@ func Docs() *docs.Doc {
 
 func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 	data := types.NotificationInfo{
-		PublicKey: os.Getenv("VAPID_PUBLIC_KEY"),
+		PublicKey: state.Config.Notifications.VapidPublicKey,
 	}
 
 	return api.HttpResponse{

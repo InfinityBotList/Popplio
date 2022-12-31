@@ -3,7 +3,6 @@ package patch_bot_settings
 import (
 	"fmt"
 	"net/http"
-	"os"
 	"popplio/api"
 	"popplio/constants"
 	"popplio/docs"
@@ -263,12 +262,12 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 	utils.ClearBotCache(d.Context, botId)
 
 	notifications.MessageNotifyChannel <- notifications.DiscordLog{
-		ChannelID: os.Getenv("BOT_LOGS_CHANNEL"),
+		ChannelID: state.Config.Channels.BotLogs,
 		Message: &discordgo.MessageSend{
 			Content: "",
 			Embeds: []*discordgo.MessageEmbed{
 				{
-					URL:   os.Getenv("FRONTEND_URL") + "/bots/" + botId,
+					URL:   state.Config.Sites.Frontend + "/bots/" + botId,
 					Title: "Bot Updated",
 					Fields: []*discordgo.MessageEmbedField{
 						{

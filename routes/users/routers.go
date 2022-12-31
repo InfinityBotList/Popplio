@@ -60,6 +60,7 @@ func (b Router) Routes(r *chi.Mux) {
 			Method:  api.GET,
 			Docs:    get_authorize_info.Docs,
 			Handler: get_authorize_info.Route,
+			Setup:   get_authorize_info.Setup,
 		}.Route(r)
 
 		api.Route{
@@ -82,6 +83,7 @@ func (b Router) Routes(r *chi.Mux) {
 					Type:   types.TargetTypeUser,
 				},
 			},
+			Setup: add_bot.Setup,
 		}.Route(r)
 
 		api.Route{

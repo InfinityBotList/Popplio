@@ -8,7 +8,7 @@ import (
 
 var Stable = true
 
-func init() {
+func Setup() {
 	// Validate the order of the apps
 	currOrder := []int{}
 	for _, app := range Apps {
@@ -35,6 +35,5 @@ func init() {
 		if appValidator != nil {
 			panic("App validation failed: " + appValidator.Error())
 		}
-
 	}
 }

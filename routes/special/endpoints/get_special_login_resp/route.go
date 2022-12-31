@@ -8,7 +8,6 @@ import (
 	"io"
 	"net/http"
 	"net/url"
-	"os"
 	"strings"
 	"time"
 
@@ -154,11 +153,11 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 	// Check code with discords api
 	data := url.Values{}
 
-	data.Set("client_id", os.Getenv("KEY_ESCROW_CLIENT_ID"))
-	data.Set("client_secret", os.Getenv("KEY_ESCROW_CLIENT_SECRET"))
+	data.Set("client_id", state.Config.HighSecurityCtx.ClientID)
+	data.Set("client_secret", state.Config.HighSecurityCtx.ClientSecret)
 	data.Set("grant_type", "authorization_code")
 	data.Set("code", r.URL.Query().Get("code"))
-	data.Set("redirect_uri", os.Getenv("KEY_ESCROW_REDIRECT_URL"))
+	data.Set("redirect_uri", state.Config.HighSecurityCtx.RedirectURL)
 
 	response, err := http.PostForm("https://discord.com/api/oauth2/token", data)
 
@@ -287,7 +286,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 
 		return api.HttpResponse{
 			Headers: map[string]string{
-				"X-Loc": os.Getenv("BOTLIST_APP") + "/data/confirm?tid=" + taskId + "&user=" + base64.URLEncoding.EncodeToString(body) + "&act=" + action.Action,
+				"X-Loc": state.Config.Sites.AppSite + "/data/confirm?tid=" + taskId + "&user=" + base64.URLEncoding.EncodeToString(body) + "&act=" + action.Action,
 			},
 		}
 	// Data deletion request
@@ -308,7 +307,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 		go assets.DataTask(taskId, user.ID, remoteIp[0], true)
 		return api.HttpResponse{
 			Headers: map[string]string{
-				"X-Loc": os.Getenv("BOTLIST_APP") + "/data/confirm?tid=" + taskId + "&user=" + base64.URLEncoding.EncodeToString(body) + "&act=" + action.Action,
+				"X-Loc": state.Config.Sites.AppSite + "/data/confirm?tid=" + taskId + "&user=" + base64.URLEncoding.EncodeToString(body) + "&act=" + action.Action,
 			},
 		}
 	// Reset token for users
@@ -474,12 +473,12 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 
 		// Send embed to bot log channel
 		notifications.MessageNotifyChannel <- notifications.DiscordLog{
-			ChannelID: os.Getenv("BOT_LOGS_CHANNEL"),
+			ChannelID: state.Config.Channels.BotLogs,
 			Message: &discordgo.MessageSend{
 				Content: "",
 				Embeds: []*discordgo.MessageEmbed{
 					{
-						URL:   os.Getenv("FRONTEND_URL") + "/bots/" + action.TID,
+						URL:   state.Config.Sites.Frontend + "/bots/" + action.TID,
 						Title: "Bot Deleted",
 						Fields: []*discordgo.MessageEmbedField{
 							{

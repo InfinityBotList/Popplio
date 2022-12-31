@@ -2,17 +2,17 @@ package get_authorize_info
 
 import (
 	"net/http"
-	"os"
 
 	"popplio/api"
 	"popplio/docs"
+	"popplio/state"
 	"popplio/types"
 )
 
 var clientInfo string
 
-func init() {
-	clientInfo = `{"client_id":"` + os.Getenv("CLIENT_ID") + `"}`
+func Setup() {
+	clientInfo = `{"client_id":"` + state.Config.DiscordAuth.ClientID + `"}`
 }
 
 func Docs() *docs.Doc {

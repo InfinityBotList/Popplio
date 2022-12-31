@@ -2,7 +2,6 @@ package notifications
 
 import (
 	"io"
-	"os"
 	"strings"
 	"time"
 
@@ -46,7 +45,7 @@ var (
 	silverpeltCols    = strings.Join(silverpeltColsArr, ",")
 )
 
-func init() {
+func Setup() {
 	/* This channel is used to fan out premium removals */
 	go func() {
 		for id := range PremiumChannel {
@@ -83,7 +82,7 @@ func init() {
 				continue
 			}
 
-			state.Discord.ChannelMessageSendComplex(os.Getenv("BOT_LOGS_CHANNEL"), &discordgo.MessageSend{
+			state.Discord.ChannelMessageSendComplex(state.Config.Channels.BotLogs, &discordgo.MessageSend{
 				Content: botObj.Mention + "(" + botObj.Username + ") by " + userObj.Mention + " has been removed from the premium list as their subscription has expired [v4].",
 			})
 
@@ -131,8 +130,8 @@ func init() {
 			// Send Notification
 			resp, err := webpush.SendNotification(msg.Message, &sub, &webpush.Options{
 				Subscriber:      "votereminders@infinitybots.gg",
-				VAPIDPublicKey:  os.Getenv("VAPID_PUBLIC_KEY"),
-				VAPIDPrivateKey: os.Getenv("VAPID_PRIVATE_KEY"),
+				VAPIDPublicKey:  state.Config.Notifications.VapidPublicKey,
+				VAPIDPrivateKey: state.Config.Notifications.VapidPrivateKey,
 				TTL:             30,
 			})
 			if err != nil {

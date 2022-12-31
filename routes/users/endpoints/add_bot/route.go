@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"net/http"
-	"os"
 	"regexp"
 	"strings"
 	"time"
@@ -83,7 +82,7 @@ var (
 	createBotsParams string
 )
 
-func init() {
+func Setup() {
 	var paramsList []string = make([]string, len(createBotsColsArr))
 	for i := 0; i < len(createBotsColsArr); i++ {
 		paramsList[i] = fmt.Sprintf("$%d", i+1)
@@ -141,9 +140,9 @@ func checkBotClientId(ctx context.Context, bot *CreateBot) (*checkBotClientIdRes
 		return nil, err
 	}
 
-	japiKey := os.Getenv("JAPI_KEY")
+	japiKey := state.Config.JAPI.Key
 	if japiKey != "" {
-		req.Header.Set("Authorization", os.Getenv("JAPI_KEY"))
+		req.Header.Set("Authorization", japiKey)
 	}
 
 	resp, err := cli.Do(req)
@@ -405,12 +404,12 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 	}
 
 	notifications.MessageNotifyChannel <- notifications.DiscordLog{
-		ChannelID: os.Getenv("BOT_LOGS_CHANNEL"),
+		ChannelID: state.Config.Channels.BotLogs,
 		Message: &discordgo.MessageSend{
 			Content: "",
 			Embeds: []*discordgo.MessageEmbed{
 				{
-					URL:   os.Getenv("FRONTEND_URL") + "/bots/" + payload.BotID,
+					URL:   state.Config.Sites.Frontend + "/bots/" + payload.BotID,
 					Title: "New Bot Added",
 					Fields: []*discordgo.MessageEmbedField{
 						{

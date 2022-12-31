@@ -55,7 +55,6 @@ require (
 	github.com/SherClockHolmes/webpush-go v1.2.0
 	github.com/go-playground/validator/v10 v10.11.1
 	github.com/jackc/pgx/v5 v5.2.0
-	github.com/joho/godotenv v1.4.0 // direct
 	github.com/json-iterator/go v1.1.12
 	github.com/microcosm-cc/bluemonday v1.0.21
 	github.com/tdewolff/minify/v2 v2.12.4

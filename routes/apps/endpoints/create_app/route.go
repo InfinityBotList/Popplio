@@ -2,7 +2,6 @@ package create_app
 
 import (
 	"net/http"
-	"os"
 	"popplio/api"
 	"popplio/apps"
 	"popplio/docs"
@@ -176,9 +175,9 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 	}
 
 	// Send a message to APPS channel
-	_, err = state.Discord.ChannelMessageSendEmbed(os.Getenv("APP_CHANNEL"), &discordgo.MessageEmbed{
+	_, err = state.Discord.ChannelMessageSendEmbed(state.Config.Channels.Apps, &discordgo.MessageEmbed{
 		Title:       "New " + payload.Position + " application!",
-		URL:         os.Getenv("BOTLIST_APP") + "/panel/apps/" + appId,
+		URL:         state.Config.Sites.AppSite + "/panel/apps/" + appId,
 		Description: "User <@" + d.Auth.ID + "> has applied for " + payload.Position + ".",
 		Color:       0x00ff00,
 		Fields: []*discordgo.MessageEmbedField{

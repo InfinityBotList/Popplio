@@ -7,6 +7,7 @@ import (
 	"reflect"
 	"strings"
 
+	"popplio/state"
 	"popplio/types"
 
 	"github.com/getkin/kin-openapi/openapi3"
@@ -20,7 +21,7 @@ var docsFiles embed.FS
 
 var docsMd string
 
-func init() {
+func Setup() {
 	ordersFile, err := docsFiles.ReadFile("docs-md/order.yaml")
 
 	if err != nil {
@@ -57,8 +58,12 @@ func init() {
 			panic(err)
 		}
 
-		docsMd += strings.ReplaceAll(string(docsFile), "{apiUrl}", os.Getenv("SITE_URL")) + "\n\n"
+		docsMd += strings.ReplaceAll(string(docsFile), "{apiUrl}", state.Config.Sites.API) + "\n\n"
 	}
+
+	api.Info.Description += docsMd
+	api.Servers[0].URL = state.Config.Sites.API
+	api.Paths = NewMap[string, Path]()
 }
 
 var api = Openapi{
@@ -92,12 +97,6 @@ Welcome to the Infinity Bot List API documentation!
 		Security:      make(map[string]Security),
 		RequestBodies: make(map[string]ReqBody),
 	},
-}
-
-func init() {
-	api.Info.Description += docsMd
-	api.Servers[0].URL = os.Getenv("SITE_URL")
-	api.Paths = NewMap[string, Path]()
 }
 
 var badRequestSchema *openapi3.SchemaRef

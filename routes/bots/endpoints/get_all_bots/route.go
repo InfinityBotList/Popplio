@@ -3,7 +3,6 @@ package get_all_bots
 import (
 	"math"
 	"net/http"
-	"os"
 	"strconv"
 	"strings"
 	"time"
@@ -89,7 +88,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 	var previous strings.Builder
 
 	// More optimized string concat
-	previous.WriteString(os.Getenv("SITE_URL"))
+	previous.WriteString(state.Config.Sites.API)
 	previous.WriteString("/bots/all?page=")
 	previous.WriteString(strconv.FormatUint(pageNum-1, 10))
 
@@ -108,7 +107,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 
 	var next strings.Builder
 
-	next.WriteString(os.Getenv("SITE_URL"))
+	next.WriteString(state.Config.Sites.API)
 	next.WriteString("/bots/all?page=")
 	next.WriteString(strconv.FormatUint(pageNum+1, 10))
 
