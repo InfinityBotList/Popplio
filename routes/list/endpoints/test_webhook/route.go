@@ -2,9 +2,11 @@ package test_webhook
 
 import (
 	"net/http"
+	"time"
 
 	"popplio/api"
 	"popplio/docs"
+	"popplio/ratelimit"
 	"popplio/state"
 	"popplio/types"
 	"popplio/utils"
@@ -29,7 +31,27 @@ func Docs() *docs.Doc {
 }
 
 func Route(d api.RouteData, r *http.Request) api.HttpResponse {
-	defer r.Body.Close()
+	limit, err := ratelimit.Ratelimit{
+		Expiry:      3 * time.Minute,
+		MaxRequests: 10,
+		Bucket:      "webh",
+	}.Limit(d.Context, r)
+
+	if err != nil {
+		state.Logger.Error(err)
+		return api.DefaultResponse(http.StatusInternalServerError)
+	}
+
+	if limit.Exceeded {
+		return api.HttpResponse{
+			Json: types.ApiError{
+				Error:   true,
+				Message: "You are being ratelimited. Please try again in " + limit.TimeToReset.String(),
+			},
+			Headers: limit.Headers(),
+			Status:  http.StatusTooManyRequests,
+		}
+	}
 
 	var payload types.WebhookPost
 
@@ -41,7 +63,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 
 	// Validate the payload
 
-	err := state.Validator.Struct(payload)
+	err = state.Validator.Struct(payload)
 
 	if err != nil {
 		errors := err.(validator.ValidationErrors)
