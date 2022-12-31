@@ -9,7 +9,11 @@ import (
 	"popplio/types"
 	"popplio/utils"
 	"popplio/webhooks"
+
+	"github.com/go-playground/validator/v10"
 )
+
+var compiledMessages = api.CompileValidationErrors(types.WebhookPost{})
 
 func Docs() *docs.Doc {
 	return docs.Route(&docs.Doc{
@@ -33,6 +37,15 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 
 	if !ok {
 		return resp
+	}
+
+	// Validate the payload
+
+	err := state.Validator.Struct(payload)
+
+	if err != nil {
+		errors := err.(validator.ValidationErrors)
+		return api.ValidatorErrorResponse(compiledMessages, errors)
 	}
 
 	if utils.IsNone(payload.URL) {

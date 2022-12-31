@@ -98,10 +98,10 @@ type WebhookPost struct {
 	Votes  int    `json:"votes" validate:"required"`
 
 	// Only present on test webhook API or during sends internally
-	URL string `json:"url"`
+	URL string `json:"url" validate:"required"`
 
 	// Only present on test webhook API
-	Token string `json:"token"`
+	Token string `json:"token" validate:"required"`
 
 	// Only present on test webhook API
 	HMACAuth bool `json:"hmac_auth"`
