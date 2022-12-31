@@ -135,10 +135,12 @@ func Setup(cfg []byte) {
 
 	Discord.Identify.Intents = discordgo.IntentsGuilds | discordgo.IntentGuildPresences | discordgo.IntentsGuildMembers
 
-	err = Discord.Open()
-	if err != nil {
-		panic(err)
-	}
+	go func() {
+		err = Discord.Open()
+		if err != nil {
+			panic(err)
+		}
+	}()
 
 	// lumberjack.Logger is already safe for concurrent use, so we don't need to
 	// lock it.
