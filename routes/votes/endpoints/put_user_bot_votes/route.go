@@ -248,12 +248,12 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 				"INSERT INTO alerts (user_id, url, message, type) VALUES ($1, $2, $3, $4)",
 				userId,
 				"https://infinitybots.gg/bots/"+botId.String,
-				"Whoa there! We've failed to notify this bot about this vote. The error was: "+err.Error()+".",
+				"Something went wrong when notifying this bot. The error was: "+err.Error()+".",
 				"error",
 			)
 			msg = notifications.Message{
 				Title:   "Whoa There!",
-				Message: "Whoa there! We couldn't send " + botObj.Username + " this vote. The error was: " + err.Error() + ". Vote rewards may not work",
+				Message: "We couldn't notify " + botObj.Username + ": " + err.Error() + ". Vote rewards may not work",
 				Icon:    botObj.Avatar,
 			}
 		} else {
@@ -262,7 +262,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 				"INSERT INTO alerts (user_id, url, message, type) VALUES ($1, $2, $3, $4)",
 				userId,
 				"https://infinitybots.gg/bots/"+botId.String,
-				"state.Successfully alerted this bot to your vote with ID of "+botId.String+"("+botObj.Username+")",
+				"Successfully alerted this bot to your vote with ID of "+botId.String+"("+botObj.Username+")",
 				"info",
 			)
 			msg = notifications.Message{
