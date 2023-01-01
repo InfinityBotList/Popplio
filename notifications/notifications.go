@@ -154,10 +154,6 @@ func Setup() {
 		d := 5 * time.Second
 		timer := time.NewTimer(d)
 		for x := range timer.C {
-			if state.Migration {
-				return
-			}
-
 			state.Logger.Debug("Tick at ", x, ", checking reminders")
 
 			rows, err := state.Pool.Query(state.Context, "SELECT "+silverpeltCols+" FROM silverpelt WHERE NOW() - last_acked > interval '4 hours'")

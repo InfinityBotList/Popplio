@@ -42,7 +42,7 @@ func isDiscord(url string) bool {
 func Send(webhook types.WebhookPost) error {
 	url, token := webhook.URL, webhook.Token
 
-	if !webhook.Test && (utils.IsNone(url) || utils.IsNone(token)) {
+	if utils.IsNone(url) || utils.IsNone(token) {
 		// Fetch URL from postgres
 
 		var webhookURL pgtype.Text
@@ -79,10 +79,6 @@ func Send(webhook types.WebhookPost) error {
 
 	if utils.IsNone(url) {
 		return errors.New("refusing to continue as no webhook")
-	}
-
-	if webhook.Test {
-		webhook.UserID = "510065483693817867"
 	}
 
 	var dUser, err = utils.GetDiscordUser(webhook.UserID)

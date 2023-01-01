@@ -7,7 +7,6 @@ import (
 	"popplio/routes/list/endpoints/parse_html"
 	"popplio/routes/list/endpoints/search_list"
 	"popplio/routes/list/endpoints/test_auth"
-	"popplio/routes/list/endpoints/test_webhook"
 
 	"github.com/go-chi/chi/v5"
 )
@@ -45,14 +44,6 @@ func (b Router) Routes(r *chi.Mux) {
 			Method:  api.GET,
 			Docs:    get_list_stats.Docs,
 			Handler: get_list_stats.Route,
-		}.Route(r)
-
-		api.Route{
-			Pattern: "/webhook-test",
-			OpId:    "test_webhook",
-			Method:  api.POST,
-			Docs:    test_webhook.Docs,
-			Handler: test_webhook.Route,
 		}.Route(r)
 
 		api.Route{
