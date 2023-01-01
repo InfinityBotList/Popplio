@@ -1,6 +1,8 @@
 package get_bot
 
 import (
+	"crypto/sha256"
+	"fmt"
 	"net/http"
 	"strings"
 	"time"
@@ -50,6 +52,60 @@ Gets a bot by id or name
 	})
 }
 
+func updateClicks(r *http.Request, name string) {
+	// Resolve bot ID
+	var id string
+
+	err := state.Pool.QueryRow(state.Context, "SELECT bot_id FROM bots WHERE "+constants.ResolveBotSQL, name).Scan(&id)
+
+	if err != nil {
+		state.Logger.Error(err)
+		return
+	}
+
+	// Get IP from request and hash it
+	hashedIp := fmt.Sprintf("%x", sha256.Sum256([]byte(r.RemoteAddr)))
+
+	// Create transaction
+	tx, err := state.Pool.Begin(state.Context)
+
+	if err != nil {
+		state.Logger.Error(err)
+		return
+	}
+
+	defer tx.Rollback(state.Context)
+
+	// Check if the IP has already clicked the bot by checking the unique_clicks row
+	var hasClicked bool
+
+	err = tx.QueryRow(state.Context, "SELECT $1 = ANY(unique_clicks) FROM bots WHERE bot_id = $2", hashedIp, id).Scan(&hasClicked)
+
+	if err != nil {
+		state.Logger.Error("Error checking", err)
+		return
+	}
+
+	if !hasClicked {
+		// If not, add it to the array
+		state.Logger.Info("Adding click for " + id)
+		_, err = tx.Exec(state.Context, "UPDATE bots SET unique_clicks = array_append(unique_clicks, $1) WHERE bot_id = $2", hashedIp, id)
+
+		if err != nil {
+			state.Logger.Error("Error adding:", err)
+			return
+		}
+	}
+
+	// Commit transaction
+	err = tx.Commit(state.Context)
+
+	if err != nil {
+		state.Logger.Error(err)
+		return
+	}
+}
+
 func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 	name := chi.URLParam(r, "id")
 
@@ -62,6 +118,10 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 	// Check cache, this is how we can avoid hefty ratelimits
 	cache := state.Redis.Get(d.Context, "bc-"+name).Val()
 	if cache != "" {
+		if d.IsClient {
+			go updateClicks(r, name)
+		}
+
 		return api.HttpResponse{
 			Data: cache,
 			Headers: map[string]string{
@@ -161,6 +221,10 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 	}
 
 	bot.UniqueClicks = uniqueClicks
+
+	if d.IsClient {
+		go updateClicks(r, name)
+	}
 
 	return api.HttpResponse{
 		Json:      bot,

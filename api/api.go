@@ -91,8 +91,9 @@ type Route struct {
 }
 
 type RouteData struct {
-	Context context.Context
-	Auth    AuthData
+	Context  context.Context
+	Auth     AuthData
+	IsClient bool
 }
 
 type Router interface {
@@ -312,6 +313,21 @@ func (r Route) Route(ro Router) {
 				}
 			}()
 
+			clientHeader := req.Header.Get("X-Client")
+
+			var isClient bool
+			if clientHeader != "" {
+				if clientHeader != state.Config.Meta.CliNonce {
+					resp <- HttpResponse{
+						Status: http.StatusUnprocessableEntity,
+						Data:   constants.InvalidClient,
+					}
+					return
+				}
+
+				isClient = true
+			}
+
 			authData, httpResp, ok := r.Authorize(req)
 
 			if !ok {
@@ -320,8 +336,9 @@ func (r Route) Route(ro Router) {
 			}
 
 			resp <- r.Handler(RouteData{
-				Context: ctx,
-				Auth:    authData,
+				Context:  ctx,
+				Auth:     authData,
+				IsClient: isClient,
 			}, req)
 		}()
 
