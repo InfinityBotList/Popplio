@@ -54,7 +54,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 	if err != nil {
 		return api.HttpResponse{
 			Status: http.StatusInternalServerError,
-			Json:   types.ApiError{Message: err.Error(), Error: true},
+			Json:   types.ApiError{Message: "Owner find error: " + err.Error(), Error: true},
 		}
 	}
 
@@ -83,7 +83,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 
 	webhPayload := types.WebhookPost{
 		UserID: d.Auth.ID,
-		BotID:  chi.URLParam(r, "bot_id"),
+		BotID:  botId,
 		Votes:  payload.Votes,
 		Test:   true,
 	}

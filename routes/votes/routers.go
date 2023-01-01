@@ -76,7 +76,7 @@ func (b Router) Routes(r *chi.Mux) {
 	}.Route(r)
 
 	api.Route{
-		Pattern: "/{uid}/bots/{bid}/test-webhook",
+		Pattern: "/users/{uid}/bots/{bid}/test-webhook",
 		OpId:    "test_webhook",
 		Method:  api.POST,
 		Docs:    test_webhook.Docs,
@@ -84,7 +84,7 @@ func (b Router) Routes(r *chi.Mux) {
 		Auth: []api.AuthType{
 			{
 				Type:   types.TargetTypeUser,
-				URLVar: "user_id",
+				URLVar: "uid",
 			},
 		},
 	}.Route(r)
