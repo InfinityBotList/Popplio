@@ -69,7 +69,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 		}
 	}
 
-	var botId int64
+	var botId string
 	var invite string
 	err = state.Pool.QueryRow(d.Context, "SELECT bot_id, invite FROM bots WHERE "+constants.ResolveBotSQL, name).Scan(&botId, &invite)
 
