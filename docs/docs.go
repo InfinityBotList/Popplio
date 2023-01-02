@@ -12,6 +12,7 @@ import (
 
 	"github.com/getkin/kin-openapi/openapi3"
 	"github.com/getkin/kin-openapi/openapi3gen"
+	orderedmap "github.com/wk8/go-ordered-map/v2"
 	"golang.org/x/exp/slices"
 	"gopkg.in/yaml.v3"
 )
@@ -63,7 +64,7 @@ func Setup() {
 
 	api.Info.Description += docsMd
 	api.Servers[0].URL = state.Config.Sites.API
-	api.Paths = NewMap[string, Path]()
+	api.Paths = orderedmap.New[string, Path]()
 }
 
 var api = Openapi{

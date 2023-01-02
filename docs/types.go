@@ -1,6 +1,10 @@
 package docs
 
-import "popplio/types"
+import (
+	"popplio/types"
+
+	orderedmap "github.com/wk8/go-ordered-map/v2"
+)
 
 type Server struct {
 	URL         string         `json:"url"`
@@ -105,12 +109,12 @@ type Tag struct {
 }
 
 type Openapi struct {
-	OpenAPI    string                    `json:"openapi"`
-	Info       Info                      `json:"info"`
-	Servers    []Server                  `json:"servers"`
-	Components Component                 `json:"components"`
-	Paths      *OrderedMap[string, Path] `json:"paths"`
-	Tags       []Tag                     `json:"tags,omitempty"`
+	OpenAPI    string                               `json:"openapi"`
+	Info       Info                                 `json:"info"`
+	Servers    []Server                             `json:"servers"`
+	Components Component                            `json:"components"`
+	Paths      *orderedmap.OrderedMap[string, Path] `json:"paths"`
+	Tags       []Tag                                `json:"tags,omitempty"`
 }
 
 type Doc struct {
