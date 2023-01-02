@@ -87,7 +87,7 @@ type Bot struct {
 	Votes                    int                `db:"votes" json:"votes"`
 	Views                    int                `db:"clicks" json:"clicks"`
 	UniqueClicks             int64              `json:"unique_clicks"` // Must be parsed internally
-	InviteClicks             int                `db:"invite_clicks" json:"invites"`
+	InviteClicks             int                `db:"invite_clicks" json:"invite_clicks"`
 	Banner                   pgtype.Text        `db:"banner" json:"banner"`
 	Invite                   pgtype.Text        `db:"invite" json:"invite"`
 	Type                     string             `db:"type" json:"type"` // For auditing reasons, we do not filter out denied/banned bots in API

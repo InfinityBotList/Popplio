@@ -298,7 +298,7 @@ type ResolvedPackBot struct {
 	Premium      bool         `json:"premium"`
 	Shards       int          `json:"shards"`
 	Votes        int          `json:"votes"`
-	InviteClicks int          `json:"invites"`
+	InviteClicks int          `json:"invite_clicks"`
 	Servers      int          `json:"servers"`
 	Tags         []string     `json:"tags"`
 }

@@ -34,7 +34,7 @@ type UserBot struct {
 	Votes              int          `db:"votes" json:"votes"`
 	Shards             int          `db:"shards" json:"shards"`
 	Library            string       `db:"library" json:"library"`
-	InviteClick        int          `db:"invite_clicks" json:"invite_clicks"`
+	InviteClicks       int          `db:"invite_clicks" json:"invite_clicks"`
 	Views              int          `db:"clicks" json:"clicks"`
 	Servers            int          `db:"servers" json:"servers"`
 	NSFW               bool         `db:"nsfw" json:"nsfw"`
