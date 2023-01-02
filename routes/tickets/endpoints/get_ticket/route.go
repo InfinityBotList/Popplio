@@ -22,13 +22,11 @@ var (
 )
 
 func Docs() *docs.Doc {
-	return docs.Route(&docs.Doc{
+	return &docs.Doc{
 		Method:      "GET",
 		Path:        "/tickets/{id}",
-		OpId:        "get_ticket",
 		Summary:     "Get Ticket",
 		Description: "Gets a support ticket. **Note that this endpoint is only documented to be useful for staff and the like. It is not useful for normal users**",
-		Tags:        []string{api.CurrentTag},
 		Params: []docs.Parameter{
 			{
 				Name:        "id",
@@ -39,7 +37,7 @@ func Docs() *docs.Doc {
 			},
 		},
 		Resp: types.Ticket{},
-	})
+	}
 }
 
 func Route(d api.RouteData, r *http.Request) api.HttpResponse {

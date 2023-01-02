@@ -92,17 +92,14 @@ func Setup() {
 }
 
 func Docs() *docs.Doc {
-	return docs.Route(&docs.Doc{
+	return &docs.Doc{
 		Method:      "PUT",
 		Path:        "/bots",
-		OpId:        "add_bot",
 		Summary:     "Create Bot",
 		Description: "Adds a bot to the database. The main owner will be the user who created the bot. Returns 204 on success",
-		Tags:        []string{api.CurrentTag},
 		Req:         CreateBot{},
 		Resp:        types.ApiError{},
-		AuthType:    []types.TargetType{types.TargetTypeUser},
-	})
+	}
 }
 
 type Japidata struct {

@@ -24,13 +24,11 @@ import (
 var json = jsoniter.ConfigCompatibleWithStandardLibrary
 
 func Docs() *docs.Doc {
-	return docs.Route(&docs.Doc{
+	return &docs.Doc{
 		Method:      "PUT",
 		Path:        "/users/{uid}/bots/{bid}/votes",
-		OpId:        "put_user_bot_votes",
 		Summary:     "Create User Bot Vote",
 		Description: "Creates a vote for a bot. **For internal use only**. Returns 204 on success",
-		Tags:        []string{api.CurrentTag},
 		Params: []docs.Parameter{
 			{
 				Name:        "uid",
@@ -47,9 +45,8 @@ func Docs() *docs.Doc {
 				Schema:      docs.IdSchema,
 			},
 		},
-		Resp:     types.ApiError{},
-		AuthType: []types.TargetType{types.TargetTypeUser},
-	})
+		Resp: types.ApiError{},
+	}
 }
 
 func Route(d api.RouteData, r *http.Request) api.HttpResponse {

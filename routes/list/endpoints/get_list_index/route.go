@@ -23,15 +23,13 @@ var (
 )
 
 func Docs() *docs.Doc {
-	return docs.Route(&docs.Doc{
+	return &docs.Doc{
 		Method:      "GET",
 		Path:        "/list/index",
-		OpId:        "get_list_index",
 		Summary:     "Get List Index",
 		Description: "Gets the index of the list. Returns a ``Index`` object",
-		Tags:        []string{api.CurrentTag},
 		Resp:        types.ListIndex{},
-	})
+	}
 }
 
 func Route(d api.RouteData, r *http.Request) api.HttpResponse {

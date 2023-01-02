@@ -12,15 +12,13 @@ import (
 )
 
 func Docs() *docs.Doc {
-	return docs.Route(&docs.Doc{
+	return &docs.Doc{
 		Method:      "GET",
 		Path:        "/cosmog/tasks/{tid}.arceus",
-		OpId:        "get_cosmog_task_tid",
 		Summary:     "Special Login Task View JSON",
 		Description: "Returns the status of a task as a arbitary json.",
-		Tags:        []string{api.CurrentTag},
 		Resp:        "[JSON]",
-	})
+	}
 }
 
 func Route(d api.RouteData, r *http.Request) api.HttpResponse {

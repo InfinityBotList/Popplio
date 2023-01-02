@@ -24,15 +24,13 @@ var (
 )
 
 func Docs() *docs.Doc {
-	return docs.Route(&docs.Doc{
+	return &docs.Doc{
 		Method:      "GET",
 		Path:        "/packs/all",
-		OpId:        "get_all_packs",
 		Summary:     "Get All Packs",
 		Description: "Gets all packs on the list. Returns a ``Index`` object",
-		Tags:        []string{api.CurrentTag},
 		Resp:        types.AllPacks{},
-	})
+	}
 }
 
 func Route(d api.RouteData, r *http.Request) api.HttpResponse {

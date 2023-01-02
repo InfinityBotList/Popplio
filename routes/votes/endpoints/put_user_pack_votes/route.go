@@ -18,10 +18,9 @@ type CreatePackVote struct {
 }
 
 func Docs() *docs.Doc {
-	return docs.Route(&docs.Doc{
+	return &docs.Doc{
 		Method:  "PUT",
 		Path:    "/users/{uid}/packs/{url}/votes",
-		OpId:    "put_user_pack_votes",
 		Summary: "Create User Pack Vote",
 		Description: `Creates a vote for a pack. 
 		
@@ -30,7 +29,7 @@ This updates any existing vote or creates a new one if none exist.
 Does NOT error if the same vote is sent twice but will merely have no effect. Use` + constants.DoubleBackTick + `clear` + constants.DoubleBackTick + ` to clear a vote (which overrides upvote if sent). 
 
 Returns 204 on success.`,
-		Tags: []string{api.CurrentTag},
+
 		Params: []docs.Parameter{
 			{
 				Name:        "uid",
@@ -47,10 +46,9 @@ Returns 204 on success.`,
 				Schema:      docs.IdSchema,
 			},
 		},
-		AuthType: []types.TargetType{types.TargetTypeUser},
-		Req:      CreatePackVote{},
-		Resp:     types.ApiError{},
-	})
+		Req:  CreatePackVote{},
+		Resp: types.ApiError{},
+	}
 }
 
 func Route(d api.RouteData, r *http.Request) api.HttpResponse {

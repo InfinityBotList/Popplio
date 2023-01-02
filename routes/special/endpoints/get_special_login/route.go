@@ -18,15 +18,13 @@ import (
 var json = jsoniter.ConfigCompatibleWithStandardLibrary
 
 func Docs() *docs.Doc {
-	return docs.Route(&docs.Doc{
+	return &docs.Doc{
 		Method:      "POST",
 		Path:        "/login-cosmog",
-		OpId:        "get_special_login",
 		Summary:     "Special Login",
 		Description: "This endpoint is used for special login actions. For example, data requests/deletions and regenerating tokens",
-		Tags:        []string{api.CurrentTag},
 		Resp:        assets.Redirect{},
-	})
+	}
 }
 
 func Route(d api.RouteData, r *http.Request) api.HttpResponse {

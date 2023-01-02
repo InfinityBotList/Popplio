@@ -16,15 +16,13 @@ func Setup() {
 }
 
 func Docs() *docs.Doc {
-	return docs.Route(&docs.Doc{
+	return &docs.Doc{
 		Method:      "GET",
 		Path:        "/users/authorize",
-		OpId:        "get_authorize_info",
 		Summary:     "Get Login Info",
 		Description: "Gets the login info such as the client ID to use for the login.",
-		Tags:        []string{api.CurrentTag},
 		Resp:        types.AuthInfo{},
-	})
+	}
 }
 
 func Route(d api.RouteData, r *http.Request) api.HttpResponse {

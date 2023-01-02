@@ -14,10 +14,9 @@ import (
 )
 
 func Docs() *docs.Doc {
-	return docs.Route(&docs.Doc{
+	return &docs.Doc{
 		Method:      "GET",
 		Path:        "/users/{id}/seo",
-		OpId:        "get_user_seo",
 		Summary:     "Get User SEO Info",
 		Description: "Gets a users SEO data by id or username",
 		Params: []docs.Parameter{
@@ -30,8 +29,7 @@ func Docs() *docs.Doc {
 			},
 		},
 		Resp: types.SEO{},
-		Tags: []string{api.CurrentTag},
-	})
+	}
 }
 
 func Route(d api.RouteData, r *http.Request) api.HttpResponse {

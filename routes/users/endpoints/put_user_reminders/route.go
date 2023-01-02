@@ -14,10 +14,9 @@ import (
 )
 
 func Docs() *docs.Doc {
-	return docs.Route(&docs.Doc{
+	return &docs.Doc{
 		Method:      "PUT",
 		Path:        "/users/{id}/reminders",
-		OpId:        "put_user_reminders",
 		Summary:     "Create User Reminder",
 		Description: "Creates a new user reminders of a bot deleting existing ones for the bot",
 		Params: []docs.Parameter{
@@ -36,10 +35,8 @@ func Docs() *docs.Doc {
 				Schema:      docs.IdSchema,
 			},
 		},
-		Resp:     types.ReminderList{},
-		Tags:     []string{api.CurrentTag},
-		AuthType: []types.TargetType{types.TargetTypeUser},
-	})
+		Resp: types.ReminderList{},
+	}
 }
 
 func Route(d api.RouteData, r *http.Request) api.HttpResponse {

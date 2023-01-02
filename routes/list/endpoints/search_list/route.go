@@ -66,16 +66,14 @@ func Setup() {
 }
 
 func Docs() *docs.Doc {
-	return docs.Route(&docs.Doc{
+	return &docs.Doc{
 		Method:      "POST",
 		Path:        "/list/search",
-		OpId:        "search_list",
 		Summary:     "Search List",
 		Description: "Searches the list. This replaces arcadias tetanus API",
-		Tags:        []string{api.CurrentTag},
 		Req:         SearchQuery{},
 		Resp:        SearchResponse{},
-	})
+	}
 }
 
 func Route(d api.RouteData, r *http.Request) api.HttpResponse {

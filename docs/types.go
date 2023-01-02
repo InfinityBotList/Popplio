@@ -128,11 +128,4 @@ type Doc struct {
 	Req         any
 	Resp        any
 	AuthType    []types.TargetType
-
-	// Intentionally private to ensure docs.Route has been called
-	added bool
-}
-
-func (d *Doc) Added() bool {
-	return d.added
 }

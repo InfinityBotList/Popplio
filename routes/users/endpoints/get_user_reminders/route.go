@@ -20,10 +20,9 @@ var (
 )
 
 func Docs() *docs.Doc {
-	return docs.Route(&docs.Doc{
+	return &docs.Doc{
 		Method:      "GET",
 		Path:        "/users/{id}/reminders",
-		OpId:        "get_user_reminders",
 		Summary:     "Get User Reminders",
 		Description: "Gets a users reminders",
 		Params: []docs.Parameter{
@@ -35,10 +34,8 @@ func Docs() *docs.Doc {
 				Schema:      docs.IdSchema,
 			},
 		},
-		Resp:     types.ReminderList{},
-		Tags:     []string{api.CurrentTag},
-		AuthType: []types.TargetType{types.TargetTypeUser},
-	})
+		Resp: types.ReminderList{},
+	}
 }
 
 func Route(d api.RouteData, r *http.Request) api.HttpResponse {

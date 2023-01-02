@@ -19,13 +19,11 @@ var (
 )
 
 func Docs() *docs.Doc {
-	return docs.Route(&docs.Doc{
+	return &docs.Doc{
 		Method:      "GET",
 		Path:        "/apps/{id}",
-		OpId:        "get_app",
 		Summary:     "Get Application",
 		Description: "Gets an application. **Does not require authentication.**",
-		Tags:        []string{api.CurrentTag},
 		Params: []docs.Parameter{
 			{
 				Name:        "id",
@@ -36,7 +34,7 @@ func Docs() *docs.Doc {
 			},
 		},
 		Resp: apps.AppResponse{},
-	})
+	}
 }
 
 func Route(d api.RouteData, r *http.Request) api.HttpResponse {

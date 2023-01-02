@@ -9,16 +9,14 @@ import (
 )
 
 func Docs() *docs.Doc {
-	return docs.Route(&docs.Doc{
+	return &docs.Doc{
 		Method:      "POST",
 		Path:        "/list/auth-test",
-		OpId:        "test_auth",
 		Summary:     "Test Auth",
 		Description: "Test your authentication",
 		Req:         types.TestAuth{},
 		Resp:        api.AuthData{},
-		Tags:        []string{api.CurrentTag},
-	})
+	}
 }
 
 func Route(d api.RouteData, r *http.Request) api.HttpResponse {

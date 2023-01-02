@@ -10,17 +10,15 @@ import (
 )
 
 func Docs() *docs.Doc {
-	return docs.Route(&docs.Doc{
+	return &docs.Doc{
 		Method:      "GET",
 		Path:        "/list/stats",
-		OpId:        "get_list_stats",
 		Summary:     "Get List Statistics",
 		Description: "Gets the statistics of the list",
-		Tags:        []string{api.CurrentTag},
 		Resp: types.ListStats{
 			Bots: []types.ListStatsBot{},
 		},
-	})
+	}
 }
 
 func Route(d api.RouteData, r *http.Request) api.HttpResponse {

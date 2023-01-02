@@ -23,13 +23,11 @@ var (
 )
 
 func Docs() *docs.Doc {
-	return docs.Route(&docs.Doc{
+	return &docs.Doc{
 		Method:      "GET",
 		Path:        "/packs/{id}",
-		OpId:        "get_pack",
 		Summary:     "Get Pack",
 		Description: "Gets a pack on the list based on either URL or Name.",
-		Tags:        []string{api.CurrentTag},
 		Params: []docs.Parameter{
 			{
 				Name:        "id",
@@ -40,7 +38,7 @@ func Docs() *docs.Doc {
 			},
 		},
 		Resp: types.BotPack{},
-	})
+	}
 }
 
 func Route(d api.RouteData, r *http.Request) api.HttpResponse {

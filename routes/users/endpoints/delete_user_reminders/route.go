@@ -14,10 +14,9 @@ import (
 )
 
 func Docs() *docs.Doc {
-	return docs.Route(&docs.Doc{
+	return &docs.Doc{
 		Method:      "DELETE",
 		Path:        "/users/{id}/reminder",
-		OpId:        "delete_user_reminders",
 		Summary:     "Delete User Reminders",
 		Description: "Deletes a users reminders. Returns 204 on success",
 		Params: []docs.Parameter{
@@ -36,10 +35,8 @@ func Docs() *docs.Doc {
 				Schema:      docs.IdSchema,
 			},
 		},
-		Resp:     types.ReminderList{},
-		Tags:     []string{api.CurrentTag},
-		AuthType: []types.TargetType{types.TargetTypeUser},
-	})
+		Resp: types.ReminderList{},
+	}
 }
 
 func Route(d api.RouteData, r *http.Request) api.HttpResponse {

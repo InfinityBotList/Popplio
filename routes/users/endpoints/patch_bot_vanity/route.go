@@ -20,10 +20,9 @@ type VanityUpdate struct {
 }
 
 func Docs() *docs.Doc {
-	return docs.Route(&docs.Doc{
+	return &docs.Doc{
 		Method:      "PATCH",
 		Path:        "/users/{uid}/bots/{bid}/vanity",
-		OpId:        "patch_bot_vanity",
 		Summary:     "Update Bot Vanity",
 		Description: "Updates a bots vanity. Returns 204 on success",
 		Params: []docs.Parameter{
@@ -42,11 +41,9 @@ func Docs() *docs.Doc {
 				Schema:      docs.IdSchema,
 			},
 		},
-		Req:      VanityUpdate{},
-		Resp:     types.ApiError{},
-		Tags:     []string{api.CurrentTag},
-		AuthType: []types.TargetType{types.TargetTypeUser},
-	})
+		Req:  VanityUpdate{},
+		Resp: types.ApiError{},
+	}
 }
 
 func Route(d api.RouteData, r *http.Request) api.HttpResponse {

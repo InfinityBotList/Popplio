@@ -13,10 +13,9 @@ import (
 )
 
 func Docs() *docs.Doc {
-	return docs.Route(&docs.Doc{
+	return &docs.Doc{
 		Method:      "GET",
 		Path:        "/users/{uid}/packs/{url}/votes",
-		OpId:        "get_user_pack_votes",
 		Summary:     "Get User Pack Votes",
 		Description: "Gets the users votes. **Does not require authentication**",
 		Params: []docs.Parameter{
@@ -36,8 +35,7 @@ func Docs() *docs.Doc {
 			},
 		},
 		Resp: types.PackVote{},
-		Tags: []string{api.CurrentTag},
-	})
+	}
 }
 
 func Route(d api.RouteData, r *http.Request) api.HttpResponse {

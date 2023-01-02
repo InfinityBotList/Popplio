@@ -70,15 +70,13 @@ func Setup() {
 }
 
 func Docs() *docs.Doc {
-	return docs.Route(&docs.Doc{
+	return &docs.Doc{
 		Method:      "POST",
 		Path:        "/list/parse-html",
-		OpId:        "parse_html",
 		Summary:     "Parse HTML",
 		Description: "Sanitizes a HTML string for use in previews or on long descriptions",
-		Tags:        []string{api.CurrentTag},
 		Resp:        "Sanitized HTML",
-	})
+	}
 }
 
 func Route(d api.RouteData, r *http.Request) api.HttpResponse {

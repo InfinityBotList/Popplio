@@ -33,15 +33,13 @@ var json = jsoniter.ConfigCompatibleWithStandardLibrary
 var confirmTemplate string
 
 func Docs() *docs.Doc {
-	return docs.Route(&docs.Doc{
+	return &docs.Doc{
 		Method:      "GET",
 		Path:        "/cosmog",
-		OpId:        "get_special_login_resp",
 		Summary:     "Special Login Handler",
 		Description: "This endpoint is used to respond to a special login. It then spawns the task such as data requests etc.",
-		Tags:        []string{api.CurrentTag},
 		Resp:        "[Redirect+Task Creation]",
-	})
+	}
 }
 
 func Route(d api.RouteData, r *http.Request) api.HttpResponse {

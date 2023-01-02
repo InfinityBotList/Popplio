@@ -22,10 +22,9 @@ type ProfileUpdate struct {
 }
 
 func Docs() *docs.Doc {
-	return docs.Route(&docs.Doc{
+	return &docs.Doc{
 		Method:      "PATCH",
 		Path:        "/users/{id}",
-		OpId:        "patch_user_profile",
 		Summary:     "Update User Profile",
 		Description: "Updates a users profile. Returns 204 on success",
 		Params: []docs.Parameter{
@@ -37,11 +36,9 @@ func Docs() *docs.Doc {
 				Schema:      docs.IdSchema,
 			},
 		},
-		Req:      ProfileUpdate{},
-		Resp:     types.ApiError{},
-		Tags:     []string{api.CurrentTag},
-		AuthType: []types.TargetType{types.TargetTypeUser},
-	})
+		Req:  ProfileUpdate{},
+		Resp: types.ApiError{},
+	}
 }
 
 func Route(d api.RouteData, r *http.Request) api.HttpResponse {

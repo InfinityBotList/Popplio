@@ -8,15 +8,13 @@ import (
 )
 
 func Docs() *docs.Doc {
-	return docs.Route(&docs.Doc{
+	return &docs.Doc{
 		Method:      "GET",
 		Path:        "/apps/meta",
-		OpId:        "get_apps_meta",
 		Summary:     "Get Apps Meta",
 		Description: "Gets the current applications metadata. Returns a ``AppMeta`` object. See schema for more info.",
-		Tags:        []string{api.CurrentTag},
 		Resp:        apps.AppMeta{},
-	})
+	}
 }
 
 func Route(d api.RouteData, r *http.Request) api.HttpResponse {

@@ -13,13 +13,11 @@ import (
 )
 
 func Docs() *docs.Doc {
-	return docs.Route(&docs.Doc{
+	return &docs.Doc{
 		Method:      "GET",
 		Path:        "/_duser/{id}/clear",
-		OpId:        "clear_duser",
 		Summary:     "Clear Discord User Cache",
 		Description: "This endpoint will clear the cache for a specific discord user. This is useful if you the user's data has changes",
-		Tags:        []string{api.CurrentTag},
 		Params: []docs.Parameter{
 			{
 				Name:        "id",
@@ -30,7 +28,7 @@ func Docs() *docs.Doc {
 			},
 		},
 		Resp: types.ApiError{},
-	})
+	}
 }
 
 func Route(d api.RouteData, r *http.Request) api.HttpResponse {

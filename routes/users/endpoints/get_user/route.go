@@ -25,10 +25,9 @@ var (
 )
 
 func Docs() *docs.Doc {
-	return docs.Route(&docs.Doc{
+	return &docs.Doc{
 		Method:      "GET",
 		Path:        "/users/{id}",
-		OpId:        "get_user",
 		Summary:     "Get User",
 		Description: "Gets a user by id or username",
 		Params: []docs.Parameter{
@@ -41,8 +40,7 @@ func Docs() *docs.Doc {
 			},
 		},
 		Resp: types.User{},
-		Tags: []string{api.CurrentTag},
-	})
+	}
 }
 
 func Route(d api.RouteData, r *http.Request) api.HttpResponse {

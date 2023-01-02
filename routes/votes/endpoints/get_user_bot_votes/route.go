@@ -15,10 +15,9 @@ import (
 )
 
 func Docs() *docs.Doc {
-	return docs.Route(&docs.Doc{
+	return &docs.Doc{
 		Method:      "GET",
 		Path:        "/users/{uid}/bots/{bid}/votes",
-		OpId:        "get_user_bot_votes",
 		Summary:     "Get User Bot Votes",
 		Description: "Gets the users votes. **Requires authentication**",
 		Params: []docs.Parameter{
@@ -45,9 +44,7 @@ func Docs() *docs.Doc {
 			},
 			HasVoted: true,
 		},
-		AuthType: []types.TargetType{types.TargetTypeUser, types.TargetTypeBot},
-		Tags:     []string{api.CurrentTag},
-	})
+	}
 }
 
 func Route(d api.RouteData, r *http.Request) api.HttpResponse {

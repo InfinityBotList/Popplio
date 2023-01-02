@@ -19,10 +19,9 @@ import (
 var json = jsoniter.ConfigCompatibleWithStandardLibrary
 
 func Docs() *docs.Doc {
-	return docs.Route(&docs.Doc{
+	return &docs.Doc{
 		Method:      "POST",
 		Path:        "/users/{id}/sub",
-		OpId:        "post_user_subscription",
 		Summary:     "Create User Subscription",
 		Description: "Creates a user subscription for a push notification. Returns 204 on success",
 		Params: []docs.Parameter{
@@ -34,11 +33,9 @@ func Docs() *docs.Doc {
 				Schema:      docs.IdSchema,
 			},
 		},
-		Req:      types.UserSubscription{},
-		Resp:     types.ApiError{},
-		Tags:     []string{api.CurrentTag},
-		AuthType: []types.TargetType{types.TargetTypeUser},
-	})
+		Req:  types.UserSubscription{},
+		Resp: types.ApiError{},
+	}
 }
 
 func Route(d api.RouteData, r *http.Request) api.HttpResponse {

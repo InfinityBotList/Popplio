@@ -12,10 +12,9 @@ import (
 )
 
 func Docs() *docs.Doc {
-	return docs.Route(&docs.Doc{
+	return &docs.Doc{
 		Method:      "DELETE",
 		Path:        "/users/{id}/notification",
-		OpId:        "delete_user_notifications",
 		Summary:     "Delete User Notifications",
 		Description: "Deletes a users notification. Returns 204 on success",
 		Params: []docs.Parameter{
@@ -34,10 +33,8 @@ func Docs() *docs.Doc {
 				Schema:      docs.IdSchema,
 			},
 		},
-		Resp:     types.ApiError{},
-		Tags:     []string{api.CurrentTag},
-		AuthType: []types.TargetType{types.TargetTypeUser},
-	})
+		Resp: types.ApiError{},
+	}
 }
 
 func Route(d api.RouteData, r *http.Request) api.HttpResponse {

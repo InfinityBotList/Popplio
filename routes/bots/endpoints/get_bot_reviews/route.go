@@ -24,10 +24,9 @@ var (
 )
 
 func Docs() *docs.Doc {
-	return docs.Route(&docs.Doc{
+	return &docs.Doc{
 		Method:      "GET",
 		Path:        "/bots/{id}/reviews",
-		OpId:        "get_bot_reviews",
 		Summary:     "Get Bot Reviews",
 		Description: "Gets the reviews of a bot by its ID or vanity",
 		Params: []docs.Parameter{
@@ -40,8 +39,7 @@ func Docs() *docs.Doc {
 			},
 		},
 		Resp: types.ReviewList{},
-		Tags: []string{api.CurrentTag},
-	})
+	}
 }
 
 func Route(d api.RouteData, r *http.Request) api.HttpResponse {

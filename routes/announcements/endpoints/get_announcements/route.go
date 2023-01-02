@@ -19,16 +19,13 @@ var (
 )
 
 func Docs() *docs.Doc {
-	return docs.Route(&docs.Doc{
+	return &docs.Doc{
 		Method:      "GET",
 		Path:        "/announcements",
-		OpId:        "get_announcements",
 		Summary:     "Get Announcements",
 		Description: "This endpoint will return a list of announcements. User authentication is optional and using it will show user targetted announcements.",
-		Tags:        []string{api.CurrentTag},
 		Resp:        types.AnnouncementList{},
-		AuthType:    []types.TargetType{types.TargetTypeUser},
-	})
+	}
 }
 
 func Route(d api.RouteData, r *http.Request) api.HttpResponse {

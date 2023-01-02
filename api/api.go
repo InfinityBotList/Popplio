@@ -262,39 +262,18 @@ func (r Route) Route(ro Router) {
 		r.Setup()
 	}
 
-	docs := r.Docs()
+	docsObj := r.Docs()
 
-	if docs.OpId != r.OpId {
-		panic("OpId requested by router does not match docs OpId: " + r.String())
+	docsObj.OpId = r.OpId
+	docsObj.Method = r.Method.String()
+	docsObj.Tags = []string{CurrentTag}
+	docsObj.AuthType = []types.TargetType{}
+
+	for _, auth := range r.Auth {
+		docsObj.AuthType = append(docsObj.AuthType, auth.Type)
 	}
 
-	if !docs.Added() {
-		panic("added not set to true, docs.Route not called: " + r.String())
-	}
-
-	if docs.OpId == "" {
-		panic("OpId is empty. Did you forget to set it: " + r.String())
-	}
-
-	if docs.Method == "" {
-		panic("Method is empty:" + r.String())
-	}
-
-	// Ensure auth types matches auth types given
-	if len(r.Auth) != len(docs.AuthType) {
-		panic("Auth types does not match docs auth types: " + r.String())
-	}
-
-	// Ensure method matches method given
-	if r.Method.String() != docs.Method {
-		panic("Method does not match docs method: " + r.String())
-	}
-
-	for i, auth := range r.Auth {
-		if auth.Type != docs.AuthType[i] {
-			panic("Auth types does not match docs auth types (mismatched type): " + r.String())
-		}
-	}
+	docs.Route(docsObj)
 
 	handle := func(w http.ResponseWriter, req *http.Request) {
 		ctx := req.Context()

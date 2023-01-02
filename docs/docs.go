@@ -145,7 +145,7 @@ func AddSecuritySchema(id, header, description string) {
 	}
 }
 
-func Route(doc *Doc) *Doc {
+func Route(doc *Doc) {
 	// Generate schemaName, taking out bad things
 
 	// Basic checks
@@ -321,9 +321,6 @@ func Route(doc *Doc) *Doc {
 
 		api.Paths.Set(doc.Path, op)
 	}
-
-	doc.added = true
-	return doc
 }
 
 func GetSchema() any {

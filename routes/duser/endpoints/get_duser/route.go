@@ -13,13 +13,11 @@ import (
 )
 
 func Docs() *docs.Doc {
-	return docs.Route(&docs.Doc{
+	return &docs.Doc{
 		Method:      "GET",
 		Path:        "/_duser/{id}",
-		OpId:        "get_duser",
 		Summary:     "Get Discord User",
 		Description: "This endpoint will return a discord user object. This is useful for getting a user's avatar, username or discriminator etc.",
-		Tags:        []string{api.CurrentTag},
 		Params: []docs.Parameter{
 			{
 				Name:        "id",
@@ -30,7 +28,7 @@ func Docs() *docs.Doc {
 			},
 		},
 		Resp: types.DiscordUser{},
-	})
+	}
 }
 
 func Route(d api.RouteData, r *http.Request) api.HttpResponse {

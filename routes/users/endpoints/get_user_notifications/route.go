@@ -16,10 +16,9 @@ import (
 )
 
 func Docs() *docs.Doc {
-	return docs.Route(&docs.Doc{
+	return &docs.Doc{
 		Method:      "GET",
 		Path:        "/users/{id}/notifications",
-		OpId:        "get_user_notifications",
 		Summary:     "Get User Notifications",
 		Description: "Gets a users notifications",
 		Params: []docs.Parameter{
@@ -31,10 +30,8 @@ func Docs() *docs.Doc {
 				Schema:      docs.IdSchema,
 			},
 		},
-		Resp:     types.NotifGetList{},
-		Tags:     []string{api.CurrentTag},
-		AuthType: []types.TargetType{types.TargetTypeUser},
-	})
+		Resp: types.NotifGetList{},
+	}
 }
 
 func Route(d api.RouteData, r *http.Request) api.HttpResponse {

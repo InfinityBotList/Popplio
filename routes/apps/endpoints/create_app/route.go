@@ -21,13 +21,11 @@ type CreateApp struct {
 var compiledMessages = api.CompileValidationErrors(CreateApp{})
 
 func Docs() *docs.Doc {
-	return docs.Route(&docs.Doc{
+	return &docs.Doc{
 		Method:      "POST",
 		Path:        "/users/{user_id}/apps",
-		OpId:        "create_app",
 		Summary:     "Create App For Position",
 		Description: "Creates an application for a position. Returns a 204 on success.",
-		Tags:        []string{api.CurrentTag},
 		Req:         CreateApp{},
 		Params: []docs.Parameter{
 			{
@@ -38,9 +36,8 @@ func Docs() *docs.Doc {
 				Schema:      docs.IdSchema,
 			},
 		},
-		Resp:     types.ApiError{},
-		AuthType: []types.TargetType{types.TargetTypeUser},
-	})
+		Resp: types.ApiError{},
+	}
 }
 
 func Route(d api.RouteData, r *http.Request) api.HttpResponse {

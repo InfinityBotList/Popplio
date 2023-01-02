@@ -1,4 +1,4 @@
-package get_bot
+package get_bot_invite
 
 import (
 	"crypto/sha256"
@@ -29,13 +29,10 @@ func Docs() *docs.Doc {
 	return &docs.Doc{
 		Method:  "GET",
 		Path:    "/bots/{id}",
-		Summary: "Get Bot",
+		Summary: "Get Bot Invite",
 		Description: `
-Gets a bot by id or name
+Gets a bot invite by id or name
 
-**Some things to note:**
-
--` + constants.BackTick + constants.BackTick + `external_source` + constants.BackTick + constants.BackTick + ` shows the source of where a bot came from (Metro Reviews etc etr.). If this is set to ` + constants.BackTick + constants.BackTick + `metro` + constants.BackTick + constants.BackTick + `, then ` + constants.BackTick + constants.BackTick + `list_source` + constants.BackTick + constants.BackTick + ` will be set to the metro list ID where it came from` + `
 `,
 		Params: []docs.Parameter{
 			{
