@@ -1,34 +1,24 @@
 package get_bot_invite
 
 import (
-	"crypto/sha256"
-	"fmt"
 	"net/http"
 	"strings"
-	"time"
 
 	"popplio/api"
 	"popplio/constants"
 	"popplio/docs"
 	"popplio/state"
 	"popplio/types"
-	"popplio/utils"
 
-	"github.com/georgysavva/scany/v2/pgxscan"
 	"github.com/go-chi/chi/v5"
 )
 
 // A bot is a Discord bot that is on the infinitybotlist.
 
-var (
-	botColsArr = utils.GetCols(types.Bot{})
-	botCols    = strings.Join(botColsArr, ",")
-)
-
 func Docs() *docs.Doc {
 	return &docs.Doc{
 		Method:  "GET",
-		Path:    "/bots/{id}",
+		Path:    "/bots/{id}/invite",
 		Summary: "Get Bot Invite",
 		Description: `
 Gets a bot invite by id or name
@@ -47,60 +37,6 @@ Gets a bot invite by id or name
 	}
 }
 
-func updateClicks(r *http.Request, name string) {
-	// Resolve bot ID
-	var id string
-
-	err := state.Pool.QueryRow(state.Context, "SELECT bot_id FROM bots WHERE "+constants.ResolveBotSQL, name).Scan(&id)
-
-	if err != nil {
-		state.Logger.Error(err)
-		return
-	}
-
-	// Get IP from request and hash it
-	hashedIp := fmt.Sprintf("%x", sha256.Sum256([]byte(r.RemoteAddr)))
-
-	// Create transaction
-	tx, err := state.Pool.Begin(state.Context)
-
-	if err != nil {
-		state.Logger.Error(err)
-		return
-	}
-
-	defer tx.Rollback(state.Context)
-
-	// Check if the IP has already clicked the bot by checking the unique_clicks row
-	var hasClicked bool
-
-	err = tx.QueryRow(state.Context, "SELECT $1 = ANY(unique_clicks) FROM bots WHERE bot_id = $2", hashedIp, id).Scan(&hasClicked)
-
-	if err != nil {
-		state.Logger.Error("Error checking", err)
-		return
-	}
-
-	if !hasClicked {
-		// If not, add it to the array
-		state.Logger.Info("Adding click for " + id)
-		_, err = tx.Exec(state.Context, "UPDATE bots SET unique_clicks = array_append(unique_clicks, $1) WHERE bot_id = $2", hashedIp, id)
-
-		if err != nil {
-			state.Logger.Error("Error adding:", err)
-			return
-		}
-	}
-
-	// Commit transaction
-	err = tx.Commit(state.Context)
-
-	if err != nil {
-		state.Logger.Error(err)
-		return
-	}
-}
-
 func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 	name := chi.URLParam(r, "id")
 
@@ -108,21 +44,6 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 
 	if name == "" {
 		return api.DefaultResponse(http.StatusBadRequest)
-	}
-
-	// Check cache, this is how we can avoid hefty ratelimits
-	cache := state.Redis.Get(d.Context, "bc-"+name).Val()
-	if cache != "" {
-		if d.IsClient {
-			go updateClicks(r, name)
-		}
-
-		return api.HttpResponse{
-			Data: cache,
-			Headers: map[string]string{
-				"X-Popplio-Cached": "true",
-			},
-		}
 	}
 
 	// First check count so we can avoid expensive DB calls
@@ -148,82 +69,34 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 		}
 	}
 
-	var bot types.Bot
-
-	row, err := state.Pool.Query(d.Context, "SELECT "+botCols+" FROM bots WHERE "+constants.ResolveBotSQL, name)
+	var botId int64
+	var invite string
+	err = state.Pool.QueryRow(d.Context, "SELECT bot_id, invite FROM bots WHERE "+constants.ResolveBotSQL, name).Scan(&botId, &invite)
 
 	if err != nil {
 		state.Logger.Error(err)
 		return api.DefaultResponse(http.StatusInternalServerError)
 	}
 
-	err = pgxscan.ScanOne(&bot, row)
-
-	if err != nil {
-		state.Logger.Error(err)
-		return api.DefaultResponse(http.StatusNotFound)
-	}
-
-	if utils.IsNone(bot.Banner.String) || !strings.HasPrefix(bot.Banner.String, "https://") {
-		bot.Banner.Valid = false
-		bot.Banner.String = ""
-	}
-
-	if utils.IsNone(bot.Invite.String) || !strings.HasPrefix(bot.Invite.String, "https://") {
-		bot.Invite.Valid = false
-		bot.Invite.String = ""
-	}
-
-	ownerUser, err := utils.GetDiscordUser(bot.Owner)
-
-	if err != nil {
-		state.Logger.Error(err)
-		return api.DefaultResponse(http.StatusNotFound)
-	}
-
-	bot.SubPeriodParsed = types.NewInterval(bot.SubPeriod)
-
-	bot.MainOwner = ownerUser
-
-	botUser, err := utils.GetDiscordUser(bot.BotID)
-
-	if err != nil {
-		state.Logger.Error(err)
-		return api.DefaultResponse(http.StatusNotFound)
-	}
-
-	bot.User = botUser
-
-	bot.ResolvedAdditionalOwners = []*types.DiscordUser{}
-
-	for _, owner := range bot.AdditionalOwners {
-		ownerUser, err := utils.GetDiscordUser(owner)
+	if d.IsClient {
+		// Update clicks
+		_, err = state.Pool.Exec(state.Context, "UPDATE bots SET invite_clicks = invite_clicks + 1 WHERE bot_id = $1", botId)
 
 		if err != nil {
 			state.Logger.Error(err)
-			continue
+			return api.HttpResponse{
+				Status: http.StatusInternalServerError,
+				Json: types.ApiError{
+					Message: "Failed to update invite clicks",
+					Error:   true,
+				},
+			}
 		}
-
-		bot.ResolvedAdditionalOwners = append(bot.ResolvedAdditionalOwners, ownerUser)
-	}
-
-	var uniqueClicks int64
-	err = state.Pool.QueryRow(d.Context, "SELECT cardinality(unique_clicks) AS unique_clicks FROM bots WHERE bot_id = $1", bot.BotID).Scan(&uniqueClicks)
-
-	if err != nil {
-		state.Logger.Error(err)
-		return api.DefaultResponse(http.StatusNotFound)
-	}
-
-	bot.UniqueClicks = uniqueClicks
-
-	if d.IsClient {
-		go updateClicks(r, name)
 	}
 
 	return api.HttpResponse{
-		Json:      bot,
-		CacheKey:  "bc-" + name,
-		CacheTime: time.Minute * 3,
+		Json: types.Invite{
+			Invite: invite,
+		},
 	}
 }

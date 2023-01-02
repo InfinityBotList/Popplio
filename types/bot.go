@@ -120,3 +120,7 @@ type AllBots struct {
 	Previous string     `json:"previous"`
 	Results  []IndexBot `json:"bots"`
 }
+
+type Invite struct {
+	Invite string `json:"invite"`
+}
