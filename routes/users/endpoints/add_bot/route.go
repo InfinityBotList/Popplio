@@ -403,7 +403,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 	notifications.MessageNotifyChannel <- notifications.DiscordLog{
 		ChannelID: state.Config.Channels.BotLogs,
 		Message: &discordgo.MessageSend{
-			Content: "",
+			Content: state.Config.Meta.UrgentMentions,
 			Embeds: []*discordgo.MessageEmbed{
 				{
 					URL:   state.Config.Sites.Frontend + "/bots/" + payload.BotID,

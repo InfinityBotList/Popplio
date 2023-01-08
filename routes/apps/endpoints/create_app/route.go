@@ -159,6 +159,23 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 		answerMap[question.ID] = ans
 	}
 
+	add, err := position.ExtraLogic(d, position, answerMap)
+
+	if err != nil {
+		state.Logger.Error(err)
+		return api.HttpResponse{
+			Json: types.ApiError{
+				Error:   true,
+				Message: "Error: " + err.Error(),
+			},
+			Status: http.StatusBadRequest,
+		}
+	}
+
+	if !add {
+		return api.DefaultResponse(http.StatusNoContent)
+	}
+
 	var appId = crypto.RandString(64)
 
 	_, err = state.Pool.Exec(d.Context, "INSERT INTO apps (app_id, user_id, position, answers) VALUES ($1, $2, $3, $4)", appId, d.Auth.ID, payload.Position, map[string]any{
@@ -172,25 +189,31 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 	}
 
 	// Send a message to APPS channel
-	_, err = state.Discord.ChannelMessageSendEmbed(state.Config.Channels.Apps, &discordgo.MessageEmbed{
-		Title:       "New " + payload.Position + " application!",
-		URL:         state.Config.Sites.AppSite + "/panel/apps/" + appId,
-		Description: "User <@" + d.Auth.ID + "> has applied for " + payload.Position + ".",
-		Color:       0x00ff00,
-		Fields: []*discordgo.MessageEmbedField{
+
+	_, err = state.Discord.ChannelMessageSendComplex(state.Config.Channels.Apps, &discordgo.MessageSend{
+		Content: state.Config.Meta.UrgentMentions,
+		Embeds: []*discordgo.MessageEmbed{
 			{
-				Name:   "App ID",
-				Value:  appId,
-				Inline: true,
-			},
-			{
-				Name:  "User ID",
-				Value: d.Auth.ID,
-			},
-			{
-				Name:   "Position",
-				Value:  payload.Position,
-				Inline: true,
+				Title:       "New " + payload.Position + " application!",
+				URL:         state.Config.Sites.AppSite + "/panel/apps/" + appId,
+				Description: "User <@" + d.Auth.ID + "> has applied for " + payload.Position + ".",
+				Color:       0x00ff00,
+				Fields: []*discordgo.MessageEmbedField{
+					{
+						Name:   "App ID",
+						Value:  appId,
+						Inline: true,
+					},
+					{
+						Name:  "User ID",
+						Value: d.Auth.ID,
+					},
+					{
+						Name:   "Position",
+						Value:  payload.Position,
+						Inline: true,
+					},
+				},
 			},
 		},
 	})

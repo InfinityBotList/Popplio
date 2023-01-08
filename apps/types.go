@@ -1,8 +1,11 @@
 package apps
 
-import "time"
+import (
+	"popplio/api"
+	"time"
+)
 
-type LogicFunc = func(p Position, answers map[string]string) error
+type LogicFunc = func(d api.RouteData, p Position, answers map[string]string) (add bool, err error)
 
 type Question struct {
 	ID          string `json:"id" validate:"required"`

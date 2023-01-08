@@ -59,4 +59,5 @@ type Meta struct {
 	VulgarList      []string `yaml:"vulgar_list" default:"fuck,suck,shit,kill" validate:"required"`
 	AllowedHTMLTags []string `yaml:"allowed_html_tags" default:"a,i,button,span,img,video,iframe,style,span,p,br,center,div,h1,h2,h3,h4,h5,section,article,lang,code,pre,strong,em" validate:"required"`
 	CliNonce        string   `yaml:"cli_nonce" default:"" comment:"CLI Nonce" validate:"required"`
+	UrgentMentions  string   `yaml:"urgent_mentions" default:"<@&1061643797315993701>" comment:"Urgent mentions" validate:"required"`
 }
