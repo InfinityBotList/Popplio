@@ -14,7 +14,7 @@ import (
 )
 
 var (
-	appColsArr = utils.GetCols(apps.AppResponse{})
+	appColsArr = utils.GetCols(apps.AppList{})
 	appCols    = strings.Join(appColsArr, ",")
 )
 
@@ -40,7 +40,7 @@ func Docs() *docs.Doc {
 				Schema:      docs.IdSchema,
 			},
 		},
-		Resp: apps.AppResponseList{},
+		Resp: apps.AppListResponse{},
 	}
 }
 
@@ -51,7 +51,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 		full = "false"
 	}
 
-	var app []apps.AppResponse
+	var app []apps.AppList
 
 	var row pgx.Rows
 	var err error
@@ -90,7 +90,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 	}
 
 	return api.HttpResponse{
-		Json: apps.AppResponseList{
+		Json: apps.AppListResponse{
 			Apps: app,
 		},
 	}
