@@ -5,6 +5,7 @@ import (
 	"popplio/apps"
 	"popplio/routes/apps/endpoints/create_app"
 	"popplio/routes/apps/endpoints/get_app"
+	"popplio/routes/apps/endpoints/get_apps_list"
 	"popplio/routes/apps/endpoints/get_apps_meta"
 	"popplio/types"
 
@@ -35,6 +36,19 @@ func (b Router) Routes(r *chi.Mux) {
 		Method:  api.GET,
 		Docs:    get_app.Docs,
 		Handler: get_app.Route,
+	}.Route(r)
+	api.Route{
+		Pattern: "/users/{user_id}/apps",
+		OpId:    "get_apps_list",
+		Method:  api.GET,
+		Docs:    get_apps_list.Docs,
+		Handler: get_apps_list.Route,
+		Auth: []api.AuthType{
+			{
+				URLVar: "user_id",
+				Type:   types.TargetTypeUser,
+			},
+		},
 	}.Route(r)
 	api.Route{
 		Pattern: "/users/{user_id}/apps",

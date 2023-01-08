@@ -39,3 +39,7 @@ type AppResponse struct {
 	Dislikes         []string       `db:"dislikes" json:"dislikes"`
 	Position         string         `db:"position" json:"position"`
 }
+
+type AppResponseList struct {
+	Apps []AppResponse `json:"apps"`
+}
