@@ -159,21 +159,23 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 		answerMap[question.ID] = ans
 	}
 
-	add, err := position.ExtraLogic(d, position, answerMap)
+	if position.ExtraLogic != nil {
+		add, err := position.ExtraLogic(d, position, answerMap)
 
-	if err != nil {
-		state.Logger.Error(err)
-		return api.HttpResponse{
-			Json: types.ApiError{
-				Error:   true,
-				Message: "Error: " + err.Error(),
-			},
-			Status: http.StatusBadRequest,
+		if err != nil {
+			state.Logger.Error(err)
+			return api.HttpResponse{
+				Json: types.ApiError{
+					Error:   true,
+					Message: "Error: " + err.Error(),
+				},
+				Status: http.StatusBadRequest,
+			}
 		}
-	}
 
-	if !add {
-		return api.DefaultResponse(http.StatusNoContent)
+		if !add {
+			return api.DefaultResponse(http.StatusNoContent)
+		}
 	}
 
 	var appId = crypto.RandString(64)
