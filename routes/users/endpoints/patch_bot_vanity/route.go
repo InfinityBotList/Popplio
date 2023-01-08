@@ -110,6 +110,8 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 
 	vanity.Vanity = strings.ToLower(vanity.Vanity)
 
+	vanity.Vanity = strings.ReplaceAll(vanity.Vanity, " ", "-")
+
 	// Ensure vanity doesn't already exist
 	var count int64
 
