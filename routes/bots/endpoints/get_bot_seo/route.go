@@ -2,11 +2,9 @@ package get_bot_seo
 
 import (
 	"net/http"
-	"strings"
 	"time"
 
 	"popplio/api"
-	"popplio/constants"
 	"popplio/docs"
 	"popplio/state"
 	"popplio/types"
@@ -37,12 +35,6 @@ func Docs() *docs.Doc {
 func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 	name := chi.URLParam(r, "id")
 
-	name = strings.ToLower(name)
-
-	if name == "" {
-		return api.DefaultResponse(http.StatusBadRequest)
-	}
-
 	cache := state.Redis.Get(d.Context, "seob:"+name).Val()
 	if cache != "" {
 		return api.HttpResponse{
@@ -53,16 +45,26 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 		}
 	}
 
-	var botId string
+	id, err := utils.ResolveBot(state.Context, name)
+
+	if err != nil {
+		state.Logger.Error(err)
+		return api.DefaultResponse(http.StatusInternalServerError)
+	}
+
+	if id == "" {
+		return api.DefaultResponse(http.StatusNotFound)
+	}
+
 	var short string
-	err := state.Pool.QueryRow(d.Context, "SELECT bot_id, short FROM bots WHERE "+constants.ResolveBotSQL, name).Scan(&botId, &short)
+	err = state.Pool.QueryRow(d.Context, "SELECT short FROM bots WHERE bot_id = $1", id).Scan(&short)
 
 	if err != nil {
 		state.Logger.Error(err)
 		return api.DefaultResponse(http.StatusNotFound)
 	}
 
-	bot, err := utils.GetDiscordUser(botId)
+	bot, err := utils.GetDiscordUser(id)
 
 	if err != nil {
 		state.Logger.Error(err)

@@ -5,7 +5,6 @@ import (
 	"strings"
 
 	"popplio/api"
-	"popplio/constants"
 	"popplio/docs"
 	"popplio/state"
 	"popplio/types"
@@ -40,15 +39,18 @@ func Docs() *docs.Doc {
 }
 
 func Route(d api.RouteData, r *http.Request) api.HttpResponse {
-	name := chi.URLParam(r, "id")
+	id, err := utils.ResolveBot(state.Context, chi.URLParam(r, "id"))
 
-	name = strings.ToLower(name)
+	if err != nil {
+		state.Logger.Error(err)
+		return api.DefaultResponse(http.StatusInternalServerError)
+	}
 
-	if name == "" {
+	if id == "" {
 		return api.DefaultResponse(http.StatusNotFound)
 	}
 
-	rows, err := state.Pool.Query(d.Context, "SELECT "+reviewCols+" FROM reviews WHERE "+constants.ResolveBotSQL, name)
+	rows, err := state.Pool.Query(d.Context, "SELECT "+reviewCols+" FROM reviews WHERE bot_id = $1", id)
 
 	if err != nil {
 		state.Logger.Error(err)

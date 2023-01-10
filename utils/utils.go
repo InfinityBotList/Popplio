@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"popplio/constants"
 	"popplio/state"
 	"popplio/types"
 
@@ -424,4 +425,37 @@ func ValidateExtraLinks(links []types.Link) error {
 	}
 
 	return nil
+}
+
+func ResolveBot(ctx context.Context, name string) (string, error) {
+	// First check count so we can avoid expensive DB calls
+	var count int64
+
+	err := state.Pool.QueryRow(ctx, "SELECT COUNT(*) FROM bots WHERE "+constants.ResolveBotSQL, name).Scan(&count)
+
+	if err != nil {
+		return "", err
+	}
+
+	if count == 0 {
+		return "", nil
+	}
+
+	if count > 1 {
+		// Delete one of the bots
+		_, err := state.Pool.Exec(ctx, "DELETE FROM bots WHERE "+constants.ResolveBotSQL+" LIMIT 1", name)
+
+		if err != nil {
+			return "", err
+		}
+	}
+
+	var id string
+	err = state.Pool.QueryRow(ctx, "SELECT bot_id FROM bots WHERE "+constants.ResolveBotSQL, name).Scan(&id)
+
+	if err != nil {
+		return "", err
+	}
+
+	return id, nil
 }

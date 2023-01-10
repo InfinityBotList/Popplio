@@ -4,14 +4,12 @@ import (
 	"net/http"
 
 	"popplio/api"
-	"popplio/constants"
 	"popplio/docs"
 	"popplio/state"
 	"popplio/types"
 	"popplio/utils"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/jackc/pgx/v5/pgtype"
 )
 
 func Docs() *docs.Doc {
@@ -48,21 +46,20 @@ func Docs() *docs.Doc {
 }
 
 func Route(d api.RouteData, r *http.Request) api.HttpResponse {
-	var vars = map[string]string{
-		"uid": chi.URLParam(r, "uid"),
-		"bid": chi.URLParam(r, "bid"),
-	}
-
-	var botId pgtype.Text
-
-	err := state.Pool.QueryRow(d.Context, "SELECT bot_id FROM bots WHERE "+constants.ResolveBotSQL, vars["bid"]).Scan(&botId)
+	id, err := utils.ResolveBot(state.Context, chi.URLParam(r, "bid"))
 
 	if err != nil {
 		state.Logger.Error(err)
+		return api.DefaultResponse(http.StatusInternalServerError)
+	}
+
+	if id == "" {
 		return api.DefaultResponse(http.StatusNotFound)
 	}
 
-	voteParsed, err := utils.GetVoteData(d.Context, vars["uid"], botId.String)
+	userId := chi.URLParam(r, "uid")
+
+	voteParsed, err := utils.GetVoteData(d.Context, userId, id)
 
 	if err != nil {
 		state.Logger.Error(err)

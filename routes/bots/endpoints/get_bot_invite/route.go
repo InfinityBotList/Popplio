@@ -2,13 +2,12 @@ package get_bot_invite
 
 import (
 	"net/http"
-	"strings"
 
 	"popplio/api"
-	"popplio/constants"
 	"popplio/docs"
 	"popplio/state"
 	"popplio/types"
+	"popplio/utils"
 
 	"github.com/go-chi/chi/v5"
 )
@@ -40,38 +39,19 @@ Gets a bot invite by id or name
 func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 	name := chi.URLParam(r, "id")
 
-	name = strings.ToLower(name)
-
-	if name == "" {
-		return api.DefaultResponse(http.StatusBadRequest)
-	}
-
-	// First check count so we can avoid expensive DB calls
-	var count int64
-
-	err := state.Pool.QueryRow(d.Context, "SELECT COUNT(*) FROM bots WHERE "+constants.ResolveBotSQL, name).Scan(&count)
+	id, err := utils.ResolveBot(state.Context, name)
 
 	if err != nil {
+		state.Logger.Error(err)
 		return api.DefaultResponse(http.StatusInternalServerError)
 	}
 
-	if count == 0 {
+	if id == "" {
 		return api.DefaultResponse(http.StatusNotFound)
 	}
 
-	if count > 1 {
-		// Delete one of the bots
-		_, err := state.Pool.Exec(d.Context, "DELETE FROM bots WHERE "+constants.ResolveBotSQL+" LIMIT 1", name)
-
-		if err != nil {
-			state.Logger.Error(err)
-			return api.DefaultResponse(http.StatusInternalServerError)
-		}
-	}
-
-	var botId string
 	var invite string
-	err = state.Pool.QueryRow(d.Context, "SELECT bot_id, invite FROM bots WHERE "+constants.ResolveBotSQL, name).Scan(&botId, &invite)
+	err = state.Pool.QueryRow(d.Context, "SELECT invite FROM bots WHERE bot_id = $1", id).Scan(&invite)
 
 	if err != nil {
 		state.Logger.Error(err)
@@ -80,7 +60,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 
 	if d.IsClient {
 		// Update clicks
-		_, err = state.Pool.Exec(state.Context, "UPDATE bots SET invite_clicks = invite_clicks + 1 WHERE bot_id = $1", botId)
+		_, err = state.Pool.Exec(state.Context, "UPDATE bots SET invite_clicks = invite_clicks + 1 WHERE bot_id = $1", id)
 
 		if err != nil {
 			state.Logger.Error(err)

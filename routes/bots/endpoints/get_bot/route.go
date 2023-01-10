@@ -52,9 +52,7 @@ Gets a bot by id or name
 
 func updateClicks(r *http.Request, name string) {
 	// Resolve bot ID
-	var id string
-
-	err := state.Pool.QueryRow(state.Context, "SELECT bot_id FROM bots WHERE "+constants.ResolveBotSQL, name).Scan(&id)
+	id, err := utils.ResolveBot(state.Context, name)
 
 	if err != nil {
 		state.Logger.Error(err)
@@ -107,12 +105,6 @@ func updateClicks(r *http.Request, name string) {
 func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 	name := chi.URLParam(r, "id")
 
-	name = strings.ToLower(name)
-
-	if name == "" {
-		return api.DefaultResponse(http.StatusBadRequest)
-	}
-
 	// Check cache, this is how we can avoid hefty ratelimits
 	cache := state.Redis.Get(d.Context, "bc-"+name).Val()
 	if cache != "" {
@@ -128,32 +120,20 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 		}
 	}
 
-	// First check count so we can avoid expensive DB calls
-	var count int64
-
-	err := state.Pool.QueryRow(d.Context, "SELECT COUNT(*) FROM bots WHERE "+constants.ResolveBotSQL, name).Scan(&count)
+	id, err := utils.ResolveBot(state.Context, name)
 
 	if err != nil {
+		state.Logger.Error(err)
 		return api.DefaultResponse(http.StatusInternalServerError)
 	}
 
-	if count == 0 {
+	if id == "" {
 		return api.DefaultResponse(http.StatusNotFound)
-	}
-
-	if count > 1 {
-		// Delete one of the bots
-		_, err := state.Pool.Exec(d.Context, "DELETE FROM bots WHERE "+constants.ResolveBotSQL+" LIMIT 1", name)
-
-		if err != nil {
-			state.Logger.Error(err)
-			return api.DefaultResponse(http.StatusInternalServerError)
-		}
 	}
 
 	var bot types.Bot
 
-	row, err := state.Pool.Query(d.Context, "SELECT "+botCols+" FROM bots WHERE "+constants.ResolveBotSQL, name)
+	row, err := state.Pool.Query(d.Context, "SELECT "+botCols+" FROM bots WHERE bot_id = $1", id)
 
 	if err != nil {
 		state.Logger.Error(err)
