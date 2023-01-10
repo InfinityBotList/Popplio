@@ -207,20 +207,21 @@ Some experience in PostgreSQL and at least one of the below languages is require
 		Order:      4,
 		Info:       `Resubmit your denied bot to the list!`,
 		Name:       "Bot Resubmission",
+		Hidden:     true, // Mostly done by ibl next
 		ExtraLogic: extraLogicResubmit,
 		Questions: []Question{
 			{
 				ID:          "id",
-				Question:    "What is the bot ID?",
-				Paragraph:   "What is the bot ID? You can find this in the URL of your bots page or in Developer Portal",
+				Question:    "Bot ID?",
+				Paragraph:   "What is the bot ID?",
 				Placeholder: "Bot ID",
 				Short:       true,
 			},
 			{
 				ID:          "reason",
-				Question:    "Do you know why your bot was denied? Did you fix the problem?",
+				Question:    "Anything else?",
 				Paragraph:   "Make sure you know why your bot was denied and that you have fixed the problem. If you don't know why your bot was denied, please contact us on Discord",
-				Placeholder: "My bot was denied because...",
+				Placeholder: "I believe.../I fixed.../The bot was offline because...",
 				Short:       true,
 			},
 		},
