@@ -18,9 +18,6 @@ import (
 var (
 	reviewColsArr = utils.GetCols(types.Review{})
 	reviewCols    = strings.Join(reviewColsArr, ",")
-
-	replyColsArr = utils.GetCols(types.Reply{})
-	replyCols    = strings.Join(replyColsArr, ",")
 )
 
 func Docs() *docs.Doc {
@@ -65,24 +62,6 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 	if err != nil {
 		state.Logger.Error(err)
 		return api.DefaultResponse(http.StatusInternalServerError)
-	}
-
-	for i, review := range reviews {
-		rows, err := state.Pool.Query(d.Context, "SELECT "+replyCols+" FROM replies WHERE parent = $1", review.ID)
-
-		if err != nil {
-			continue
-		}
-
-		var replies []types.Reply = []types.Reply{}
-
-		err = pgxscan.ScanAll(&replies, rows)
-
-		if err != nil {
-			continue
-		}
-
-		reviews[i].Replies = replies
 	}
 
 	var allReviews = types.ReviewList{
