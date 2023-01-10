@@ -1153,6 +1153,9 @@ print(req.json())
 			return
 		}
 
+		w.Write([]byte("This endpoint has been deprecated and will be removed in v4. In order to test your app, we have decided to initiate a brownout of this API. Use /users/{user_id}/bots/{bot_id}/votes instead!"))
+		return
+
 		vars := mux.Vars(r)
 
 		var bot struct {
