@@ -21,12 +21,13 @@ func taskMgr(f func()) {
 			zap.String("task", funcName),
 		).Info("Running task")
 		f()
-		time.Sleep(5 * time.Second)
+		time.Sleep(10 * time.Second)
 	}
 }
 
 func startTaskMgr() {
 	for _, task := range tasks {
 		go taskMgr(task)
+		time.Sleep(3 * time.Second)
 	}
 }
