@@ -91,7 +91,6 @@ func corsMiddleware(next http.Handler) http.Handler {
 func main() {
 	state.Setup(configStr)
 	docs.Setup()
-	notifications.Setup()
 
 	m := minify.New()
 	m.AddFunc("application/javascript", js.Minify)
@@ -177,6 +176,8 @@ func main() {
 		w.WriteHeader(http.StatusNotFound)
 		w.Write([]byte(constants.NotFoundPage))
 	})
+
+	notifications.Setup()
 
 	err = http.ListenAndServe(":8081", r)
 

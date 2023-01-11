@@ -13,7 +13,6 @@ import (
 
 	"popplio/api"
 	"popplio/docs"
-	"popplio/notifications"
 	"popplio/routes/special/assets"
 	"popplio/state"
 	"popplio/types"
@@ -470,41 +469,45 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 		}
 
 		// Send embed to bot log channel
-		notifications.MessageNotifyChannel <- notifications.DiscordLog{
-			ChannelID: state.Config.Channels.BotLogs,
-			Message: &discordgo.MessageSend{
-				Content: "",
-				Embeds: []*discordgo.MessageEmbed{
-					{
-						URL:   state.Config.Sites.Frontend + "/bots/" + action.TID,
-						Title: "Bot Deleted",
-						Fields: []*discordgo.MessageEmbedField{
-							{
-								Name:  "Bot ID",
-								Value: action.TID,
-							},
-							{
-								Name:  "Main Owner",
-								Value: fmt.Sprintf("<@%s>", user.ID),
-							},
-							{
-								Name: "Additional Owners",
-								Value: func() string {
-									if len(additionalOwners) == 0 {
-										return "None"
-									}
+		_, err = state.Discord.ChannelMessageSendComplex(state.Config.Channels.BotLogs, &discordgo.MessageSend{
+			Content: "",
+			Embeds: []*discordgo.MessageEmbed{
+				{
+					URL:   state.Config.Sites.Frontend + "/bots/" + action.TID,
+					Title: "Bot Deleted",
+					Fields: []*discordgo.MessageEmbedField{
+						{
+							Name:  "Bot ID",
+							Value: action.TID,
+						},
+						{
+							Name:  "Main Owner",
+							Value: fmt.Sprintf("<@%s>", user.ID),
+						},
+						{
+							Name: "Additional Owners",
+							Value: func() string {
+								if len(additionalOwners) == 0 {
+									return "None"
+								}
 
-									var owners []string
-									for _, owner := range additionalOwners {
-										owners = append(owners, fmt.Sprintf("<@%s>", owner))
-									}
-									return strings.Join(owners, ", ")
-								}(),
-							},
+								var owners []string
+								for _, owner := range additionalOwners {
+									owners = append(owners, fmt.Sprintf("<@%s>", owner))
+								}
+								return strings.Join(owners, ", ")
+							}(),
 						},
 					},
 				},
 			},
+		})
+
+		if err != nil {
+			return api.HttpResponse{
+				Status: http.StatusOK,
+				Data:   "Successfully deleted bot [ :) ] but we couldn't send a log message [ :( ]",
+			}
 		}
 
 		return api.HttpResponse{

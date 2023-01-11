@@ -10,7 +10,6 @@ import (
 
 	"popplio/api"
 	"popplio/docs"
-	"popplio/notifications"
 	"popplio/state"
 	"popplio/types"
 	"popplio/utils"
@@ -400,46 +399,43 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 		return api.DefaultResponse(http.StatusInternalServerError)
 	}
 
-	notifications.MessageNotifyChannel <- notifications.DiscordLog{
-		ChannelID: state.Config.Channels.BotLogs,
-		Message: &discordgo.MessageSend{
-			Content: state.Config.Meta.UrgentMentions,
-			Embeds: []*discordgo.MessageEmbed{
-				{
-					URL:   state.Config.Sites.Frontend + "/bots/" + payload.BotID,
-					Title: "New Bot Added",
-					Fields: []*discordgo.MessageEmbedField{
-						{
-							Name:  "Name",
-							Value: resp.botName,
-						},
-						{
-							Name:  "Bot ID",
-							Value: payload.BotID,
-						},
-						{
-							Name:  "Main Owner",
-							Value: fmt.Sprintf("<@%s>", d.Auth.ID),
-						},
-						{
-							Name: "Additional Owners",
-							Value: func() string {
-								if len(payload.AdditionalOwners) == 0 {
-									return "None"
-								}
+	state.Discord.ChannelMessageSendComplex(state.Config.Channels.BotLogs, &discordgo.MessageSend{
+		Content: state.Config.Meta.UrgentMentions,
+		Embeds: []*discordgo.MessageEmbed{
+			{
+				URL:   state.Config.Sites.Frontend + "/bots/" + payload.BotID,
+				Title: "New Bot Added",
+				Fields: []*discordgo.MessageEmbedField{
+					{
+						Name:  "Name",
+						Value: resp.botName,
+					},
+					{
+						Name:  "Bot ID",
+						Value: payload.BotID,
+					},
+					{
+						Name:  "Main Owner",
+						Value: fmt.Sprintf("<@%s>", d.Auth.ID),
+					},
+					{
+						Name: "Additional Owners",
+						Value: func() string {
+							if len(payload.AdditionalOwners) == 0 {
+								return "None"
+							}
 
-								var owners []string
-								for _, owner := range payload.AdditionalOwners {
-									owners = append(owners, fmt.Sprintf("<@%s>", owner))
-								}
-								return strings.Join(owners, ", ")
-							}(),
-						},
+							var owners []string
+							for _, owner := range payload.AdditionalOwners {
+								owners = append(owners, fmt.Sprintf("<@%s>", owner))
+							}
+							return strings.Join(owners, ", ")
+						}(),
 					},
 				},
 			},
 		},
-	}
+	})
 
 	return api.HttpResponse{
 		Status: http.StatusNoContent,
