@@ -1145,7 +1145,6 @@ print(req.json())
 		}
 	}))
 
-	// For compatibility with old API
 	r.HandleFunc("/votes/{bot_id}/{user_id}", rateLimitWrap(10, 1*time.Minute, "deprecated-gvotes", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != "GET" {
 			w.WriteHeader(http.StatusMethodNotAllowed)
@@ -1153,73 +1152,9 @@ print(req.json())
 			return
 		}
 
-		w.Write([]byte("This endpoint has been deprecated and will be removed in v4. In order to test your app, we have decided to initiate a brownout of this API. Use /users/{user_id}/bots/{bot_id}/votes instead!"))
+		w.Write([]byte("This endpoint has been deprecated and will be removed in v4. In order to test your app, we have decided to initiate a REMOVAL of this API. Use /users/{user_id}/bots/{bot_id}/votes instead!"))
 		return
 
-		vars := mux.Vars(r)
-
-		var bot struct {
-			BotID      string `bson:"botID"`
-			Type       string `bson:"type,omitempty"`
-			VoteBanned bool   `bson:"vote_banned,omitempty"`
-		}
-
-		col := mongoDb.Collection("bots")
-
-		if r.Header.Get("Authorization") == "" {
-			w.WriteHeader(http.StatusUnauthorized)
-			w.Write([]byte(unauthorized))
-			return
-		} else {
-			options := options.FindOne().SetProjection(bson.M{"botID": 1, "type": 1, "vote_banned": 1})
-
-			err := col.FindOne(ctx, bson.M{"token": r.Header.Get("Authorization"), "botID": vars["bot_id"]}, options).Decode(&bot)
-
-			if err != nil {
-				log.Error(err)
-				w.WriteHeader(http.StatusUnauthorized)
-				w.Write([]byte(unauthorized))
-				return
-			}
-
-			vars["bot_id"] = bot.BotID
-		}
-
-		if bot.Type != "approved" {
-			w.WriteHeader(http.StatusBadRequest)
-			w.Write([]byte(notApproved))
-			return
-		}
-
-		if bot.VoteBanned {
-			w.WriteHeader(http.StatusForbidden)
-			w.Write([]byte(voteBanned))
-			return
-		}
-
-		voteParsed, err := utils.GetVoteData(ctx, mongoDb, vars["user_id"], vars["bot_id"])
-
-		if err != nil {
-			log.Error(err)
-			w.WriteHeader(http.StatusInternalServerError)
-			w.Write([]byte(internalError))
-			return
-		}
-
-		var compatData = types.UserVoteCompat{
-			HasVoted: voteParsed.HasVoted,
-		}
-
-		bytes, err := json.Marshal(compatData)
-
-		if err != nil {
-			log.Error(err)
-			w.WriteHeader(http.StatusInternalServerError)
-			w.Write([]byte(badRequest))
-			return
-		}
-
-		w.Write(bytes)
 	}))
 
 	docs.AddDocs("GET", "/voteinfo", "voteinfo", "Get Vote Info", "Returns basic voting info such as if its a weekend double vote", []docs.Paramater{}, []string{"Votes"}, nil, types.VoteInfo{Weekend: true}, []string{})
