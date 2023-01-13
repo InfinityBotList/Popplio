@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"crypto/sha512"
 	"fmt"
 	"html/template"
 	"io"
@@ -53,20 +54,120 @@ const (
 	backTick         = "`"
 )
 
+// Represents a moderated bucket typically used in 'combined' endpoints like Get/Create Votes which are just branches off a common function
+// This is also the concept used in so-called global ratelimits
+type moderatedBucket struct {
+	BucketName string
+
+	// Internally set, dont change
+	Global bool
+
+	// Whether or not to keep original rl
+	ChangeRL bool
+
+	Requests int
+	Time     time.Duration
+}
+
 var (
 	redisCache *redis.Client
 	mongoDb    *mongo.Database
 	ctx        context.Context
 	r          *mux.Router
+
+	// Default global ratelimit handler
+	defaultGlobalBucket = moderatedBucket{BucketName: "global", Requests: 2000, Time: 1 * time.Hour}
 )
 
 func init() {
 	godotenv.Load()
 }
 
+func bucketHandle(bucket moderatedBucket, id string, w http.ResponseWriter, r *http.Request) bool {
+
+	rlKey := "rl:" + id + "-" + bucket.BucketName
+
+	v := redisCache.Get(r.Context(), rlKey).Val()
+
+	if v == "" {
+		v = "0"
+
+		err := redisCache.Set(ctx, rlKey, "0", bucket.Time).Err()
+
+		if err != nil {
+			log.Error(err)
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusInternalServerError)
+			w.Write([]byte(internalError))
+			return false
+		}
+	}
+
+	err := redisCache.Incr(ctx, rlKey).Err()
+
+	if err != nil {
+		log.Error(err)
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte(internalError))
+		return false
+	}
+
+	vInt, err := strconv.Atoi(v)
+
+	if err != nil {
+		log.Error(err)
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte(internalError))
+		return false
+	}
+
+	if vInt < 0 {
+		redisCache.Expire(ctx, rlKey, 1*time.Second)
+		vInt = 0
+	}
+
+	if vInt > bucket.Requests {
+		w.Header().Set("Content-Type", "application/json")
+		retryAfter := redisCache.TTL(ctx, rlKey).Val()
+
+		if bucket.Global {
+			w.Header().Set("X-Global-Ratelimit", "true")
+		}
+
+		w.Header().Set("Retry-After", strconv.FormatFloat(retryAfter.Seconds(), 'g', -1, 64))
+
+		w.WriteHeader(http.StatusTooManyRequests)
+
+		// Set ratelimit to expire in more time if not global
+		if !bucket.Global {
+			redisCache.Expire(ctx, rlKey, retryAfter+2*time.Second)
+		}
+
+		w.Write([]byte("{\"message\":\"You're being rate limited!\",\"error\":true}"))
+
+		return false
+	}
+
+	if bucket.Global {
+		w.Header().Set("X-Ratelimit-Global-Req-Made", strconv.Itoa(vInt))
+	} else {
+		w.Header().Set("X-Ratelimit-Req-Made", strconv.Itoa(vInt))
+	}
+	return true
+}
+
 func rateLimitWrap(reqs int, t time.Duration, bucket string, fn http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		// Check if moderated buckets are needed, if so use them
+		var reqBucket = moderatedBucket{}
+		var globalBucket = defaultGlobalBucket
+
+		reqBucket.Requests = reqs
+		reqBucket.Time = t
+		reqBucket.BucketName = bucket
+
 		if strings.HasSuffix(r.Header.Get("Origin"), "infinitybots.gg") || strings.HasPrefix(r.Header.Get("Origin"), "localhost:") {
 			w.Header().Set("Access-Control-Allow-Origin", r.Header.Get("Origin"))
 			w.Header().Set("Access-Control-Allow-Credentials", "true")
@@ -76,8 +177,93 @@ func rateLimitWrap(reqs int, t time.Duration, bucket string, fn http.HandlerFunc
 		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
 		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE")
 
+		w.Header().Set("X-Ratelimit-Bucket", reqBucket.BucketName)
+		w.Header().Set("X-Ratelimit-Bucket-Global", globalBucket.BucketName)
+
+		w.Header().Set("X-Ratelimit-Bucket-Global-Reqs-Allowed-Count", strconv.Itoa(globalBucket.Requests))
+		w.Header().Set("X-Ratelimit-Bucket-Reqs-Allowed-Count", strconv.Itoa(reqBucket.Requests))
+
+		w.Header().Set("X-Ratelimit-Bucket-Global-Reqs-Allowed-Second", strconv.FormatFloat(globalBucket.Time.Seconds(), 'g', -1, 64))
+		w.Header().Set("X-Ratelimit-Bucket-Reqs-Allowed-Second", strconv.FormatFloat(reqBucket.Time.Seconds(), 'g', -1, 64))
+
 		if r.Method == "OPTIONS" {
 			w.Write([]byte(""))
+			return
+		}
+
+		// Get ratelimit from redis
+		var id string
+
+		auth := r.Header.Get("Authorization")
+
+		if auth != "" {
+			if strings.HasPrefix(auth, "User ") {
+				rlId := strings.TrimPrefix(auth, "User ")
+
+				if rlId == "" {
+					// Bot does not exist, return
+					w.Header().Set("Content-Type", "application/json")
+					w.WriteHeader(http.StatusForbidden)
+					w.Write([]byte("{\"error\":\"Invalid API token\"}"))
+					return
+				}
+
+				userCol := mongoDb.Collection("users")
+
+				var user struct {
+					UserID string `bson:"userID"`
+				}
+
+				options := options.FindOne().SetProjection(bson.M{"userID": 1})
+
+				err := userCol.FindOne(ctx, bson.M{"apiToken": strings.Replace(rlId, "User ", "", 1)}, options).Decode(&user)
+
+				if err != nil {
+					// Bot does not exist, return
+					log.Error(err)
+					w.Header().Set("Content-Type", "application/json")
+					w.WriteHeader(http.StatusForbidden)
+					w.Write([]byte("{\"error\":\"Invalid API token\"}"))
+					return
+				}
+
+				id = user.UserID
+			} else {
+
+				botCol := mongoDb.Collection("bots")
+
+				var bot struct {
+					BotID string `bson:"botID"`
+				}
+
+				options := options.FindOne().SetProjection(bson.M{"botID": 1})
+
+				err := botCol.FindOne(ctx, bson.M{"token": auth}, options).Decode(&bot)
+
+				if err != nil {
+					// Bot does not exist, return
+					w.Header().Set("Content-Type", "application/json")
+					w.WriteHeader(http.StatusForbidden)
+					w.Write([]byte("{\"error\":\"Invalid API token\"}"))
+					return
+				}
+
+				id = bot.BotID
+			}
+		} else {
+			remoteIp := strings.Split(strings.ReplaceAll(r.Header.Get("X-Forwarded-For"), " ", ""), ",")
+
+			// For user privacy, hash the remote ip
+			hasher := sha512.New()
+			hasher.Write([]byte(remoteIp[0]))
+			id = fmt.Sprintf("%x", hasher.Sum(nil))
+		}
+
+		if ok := bucketHandle(globalBucket, id, w, r); !ok {
+			return
+		}
+
+		if ok := bucketHandle(reqBucket, id, w, r); !ok {
 			return
 		}
 
@@ -267,8 +453,6 @@ func main() {
 				return
 			}
 		}
-
-		log.Info("BotID:", bot.BotID)
 
 		defer r.Body.Close()
 
