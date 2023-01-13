@@ -268,6 +268,8 @@ func main() {
 			}
 		}
 
+		log.Info("BotID:", bot.BotID)
+
 		defer r.Body.Close()
 
 		var payload types.BotStats
