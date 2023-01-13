@@ -50,7 +50,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 		return api.DefaultResponse(http.StatusNotFound)
 	}
 
-	rows, err := state.Pool.Query(d.Context, "SELECT "+reviewCols+" FROM reviews WHERE bot_id = $1", id)
+	rows, err := state.Pool.Query(d.Context, "SELECT "+reviewCols+" FROM reviews WHERE bot_id = $1 ORDER BY created_at ASC", id)
 
 	if err != nil {
 		state.Logger.Error(err)
