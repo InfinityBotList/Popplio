@@ -386,84 +386,6 @@ func main() {
 		w.Write([]byte(helloWorld))
 	})
 
-	docs.AddDocs("GET", "/announcements", "announcements", "Get Announcements", "Gets the announcements. User authentication is optional and using it will show user targetted announcements", []docs.Paramater{}, []string{"System"}, nil, types.Announcement{}, []string{"User"})
-	r.HandleFunc("/announcements", rateLimitWrap(30, 1*time.Minute, "gannounce", func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != "GET" {
-			w.WriteHeader(http.StatusMethodNotAllowed)
-			w.Write([]byte(methodNotAllowed))
-			return
-		}
-
-		col := mongoDb.Collection("announcements")
-
-		var announcements []types.Announcement
-
-		cur, err := col.Find(ctx, bson.M{})
-
-		if err != nil {
-			log.Error(err)
-			w.WriteHeader(http.StatusInternalServerError)
-			w.Write([]byte(err.Error()))
-			return
-		}
-
-		// Auth header check
-		auth := r.Header.Get("Authorization")
-
-		var target types.UserID
-
-		if auth != "" {
-			err := mongoDb.Collection("users").FindOne(ctx, bson.M{"apiToken": strings.Replace(auth, "User ", "", 1)}).Decode(&target)
-
-			if err != nil {
-				log.Error(err)
-				w.WriteHeader(http.StatusUnauthorized)
-				w.Write([]byte(unauthorized))
-				return
-			}
-		} else {
-			target = types.UserID{}
-		}
-
-		for cur.Next(ctx) {
-			var announcement types.Announcement
-
-			err := cur.Decode(&announcement)
-
-			if err != nil {
-				log.Error(err)
-				w.WriteHeader(http.StatusInternalServerError)
-				w.Write([]byte(internalError))
-				continue
-			}
-
-			if announcement.Status == "private" {
-				// Staff only
-				continue
-			}
-
-			if announcement.Targetted {
-				// Check auth header
-				if target.UserID != announcement.Target {
-					continue
-				}
-			}
-
-			announcements = append(announcements, announcement)
-		}
-
-		bytes, err := json.Marshal(announcements)
-
-		if err != nil {
-			log.Error(err)
-			w.WriteHeader(http.StatusInternalServerError)
-			w.Write([]byte(internalError))
-			return
-		}
-
-		w.Write(bytes)
-	}))
-
 	r.HandleFunc("/_duser/{id}", func(w http.ResponseWriter, r *http.Request) {
 		var id = mux.Vars(r)["id"]
 
@@ -1153,35 +1075,7 @@ print(req.json())
 		}
 
 		w.Write([]byte("This endpoint has been deprecated and will be removed in v4. In order to test your app, we have decided to initiate a REMOVAL of this API. Use /users/{user_id}/bots/{bot_id}/votes instead!"))
-		return
-
 	}))
-
-	docs.AddDocs("GET", "/voteinfo", "voteinfo", "Get Vote Info", "Returns basic voting info such as if its a weekend double vote", []docs.Paramater{}, []string{"Votes"}, nil, types.VoteInfo{Weekend: true}, []string{})
-	r.HandleFunc("/voteinfo", func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-
-		if r.Method != "GET" {
-			w.WriteHeader(http.StatusMethodNotAllowed)
-			w.Write([]byte(methodNotAllowed))
-			return
-		}
-
-		var payload = types.VoteInfo{
-			Weekend: utils.GetDoubleVote(),
-		}
-
-		b, err := json.Marshal(payload)
-
-		if err != nil {
-			log.Error(err)
-			w.WriteHeader(http.StatusInternalServerError)
-			w.Write([]byte(badRequest))
-			return
-		}
-
-		w.Write(b)
-	})
 
 	docs.AddDocs("GET", "/bots/{id}", "get_bot", "Get Bot", "Gets a bot by id or name, set ``resolve`` to true to also handle bot names."+`
 
@@ -1203,11 +1097,6 @@ print(req.json())
 
 	getBotsFn := rateLimitWrap(10, 1*time.Minute, "gbot", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-
-		if r.Method == "POST" {
-			statsFn(w, r)
-			return
-		}
 
 		if r.Method != "GET" {
 			w.WriteHeader(http.StatusMethodNotAllowed)
