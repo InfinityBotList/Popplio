@@ -180,12 +180,6 @@ func rateLimitWrap(reqs int, t time.Duration, bucket string, fn http.HandlerFunc
 		w.Header().Set("X-Ratelimit-Bucket", reqBucket.BucketName)
 		w.Header().Set("X-Ratelimit-Bucket-Global", globalBucket.BucketName)
 
-		w.Header().Set("X-Ratelimit-Bucket-Global-Reqs-Allowed-Count", strconv.Itoa(globalBucket.Requests))
-		w.Header().Set("X-Ratelimit-Bucket-Reqs-Allowed-Count", strconv.Itoa(reqBucket.Requests))
-
-		w.Header().Set("X-Ratelimit-Bucket-Global-Reqs-Allowed-Second", strconv.FormatFloat(globalBucket.Time.Seconds(), 'g', -1, 64))
-		w.Header().Set("X-Ratelimit-Bucket-Reqs-Allowed-Second", strconv.FormatFloat(reqBucket.Time.Seconds(), 'g', -1, 64))
-
 		if r.Method == "OPTIONS" {
 			w.Write([]byte(""))
 			return
