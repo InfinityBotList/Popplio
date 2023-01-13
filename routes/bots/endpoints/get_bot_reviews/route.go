@@ -66,6 +66,15 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 		return api.DefaultResponse(http.StatusInternalServerError)
 	}
 
+	for i := range reviews {
+		reviews[i].Author, err = utils.GetDiscordUser(reviews[i].AuthorID)
+
+		if err != nil {
+			state.Logger.Error(err)
+			return api.DefaultResponse(http.StatusInternalServerError)
+		}
+	}
+
 	var allReviews = types.ReviewList{
 		Reviews: reviews,
 	}
