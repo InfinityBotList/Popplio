@@ -10,6 +10,7 @@ import (
 	"popplio/docs"
 	"popplio/routes/special/assets"
 	"popplio/state"
+	"popplio/types"
 
 	"github.com/infinitybotlist/eureka/crypto"
 	jsoniter "github.com/json-iterator/go"
@@ -30,27 +31,30 @@ func Docs() *docs.Doc {
 func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 	if state.Config.HighSecurityCtx.Disabled {
 		return api.HttpResponse{
-			Status: http.StatusForbidden,
-			Data:   "High security mode is disabled right now. Please try again later.",
+			Status: http.StatusConflict,
+			Json: types.ApiError{
+				Error:   true,
+				Message: "High security mode is disabled right now. Please try again later.",
+			},
 		}
 	}
 
 	// Read assets.Action to get the action
 	var action assets.Action
 
-	err := json.NewDecoder(r.Body).Decode(&action)
+	hresp, ok := api.MarshalReq(r, &action)
 
-	if err != nil {
-		return api.HttpResponse{
-			Status: http.StatusBadRequest,
-			Data:   "Invalid request body",
-		}
+	if !ok {
+		return hresp
 	}
 
 	if action.Action == "" {
 		return api.HttpResponse{
 			Status: http.StatusBadRequest,
-			Data:   "Invalid action",
+			Json: types.ApiError{
+				Error:   true,
+				Message: "Invalid action",
+			},
 		}
 	}
 
@@ -63,22 +67,21 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 		if err != nil {
 			return api.HttpResponse{
 				Status: http.StatusBadRequest,
-				Data:   "Invalid tid",
+				Json: types.ApiError{
+					Error:   true,
+					Message: "Invalid tid",
+				},
 			}
 		}
 	}
 
-	// Encode act using gob
 	var b bytes.Buffer
 	e := json.NewEncoder(&b)
 
-	err = e.Encode(action)
+	err := e.Encode(action)
 
 	if err != nil {
-		return api.HttpResponse{
-			Status: http.StatusInternalServerError,
-			Data:   "Internal Server Error",
-		}
+		return api.DefaultResponse(http.StatusInternalServerError)
 	}
 
 	// Store in redis
@@ -86,10 +89,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 	err = state.Redis.Set(d.Context, "spec:"+stateTok, b.Bytes(), 5*time.Minute).Err()
 
 	if err != nil {
-		return api.HttpResponse{
-			Status: http.StatusInternalServerError,
-			Data:   "Internal Server Error",
-		}
+		return api.DefaultResponse(http.StatusInternalServerError)
 	}
 
 	return api.HttpResponse{
