@@ -179,6 +179,11 @@ func main() {
 		w.Write([]byte(constants.NotFoundPage))
 	})
 
+	r.MethodNotAllowed(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		w.Write([]byte(constants.MethodNotAllowed))
+	})
+
 	go notifications.Setup()
 
 	err = http.ListenAndServe(":8081", r)

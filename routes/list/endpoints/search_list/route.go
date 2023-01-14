@@ -161,11 +161,14 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 		return api.DefaultResponse(http.StatusInternalServerError)
 	}
 
-	indexBots, err = utils.ResolveIndexBot(indexBots)
+	for i, bot := range indexBots {
+		botUser, err := utils.GetDiscordUser(bot.BotID)
 
-	if err != nil {
-		state.Logger.Error(err)
-		return api.DefaultResponse(http.StatusInternalServerError)
+		if err != nil {
+			return api.DefaultResponse(http.StatusInternalServerError)
+		}
+
+		indexBots[i].User = botUser
 	}
 
 	return api.HttpResponse{

@@ -30,20 +30,6 @@ func IsNone(s string) bool {
 	return false
 }
 
-func ResolveIndexBot(ib []types.IndexBot) ([]types.IndexBot, error) {
-	for i, bot := range ib {
-		botUser, err := GetDiscordUser(bot.BotID)
-
-		if err != nil {
-			return nil, err
-		}
-
-		ib[i].User = botUser
-	}
-
-	return ib, nil
-}
-
 // Returns the votes of a pack, Used throughout the codebase
 func ResolvePackVotes(ctx context.Context, url string) ([]types.PackVote, error) {
 	rows, err := state.Pool.Query(ctx, "SELECT user_id, upvote, created_at FROM pack_votes WHERE url = $1", url)

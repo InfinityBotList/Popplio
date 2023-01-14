@@ -51,85 +51,86 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 		state.Logger.Error(err)
 		return api.DefaultResponse(http.StatusInternalServerError)
 	}
-
-	certDat := []types.IndexBot{}
-	err = pgxscan.ScanAll(&certDat, certRow)
+	listIndex.Certified = []types.IndexBot{}
+	err = pgxscan.ScanAll(&listIndex.Certified, certRow)
 	if err != nil {
 		state.Logger.Error(err)
 		return api.DefaultResponse(http.StatusInternalServerError)
 	}
+	for i, bot := range listIndex.Certified {
+		botUser, err := utils.GetDiscordUser(bot.BotID)
 
-	certDat, err = utils.ResolveIndexBot(certDat)
+		if err != nil {
+			return api.DefaultResponse(http.StatusInternalServerError)
+		}
 
-	if err != nil {
-		state.Logger.Error(err)
-		return api.DefaultResponse(http.StatusInternalServerError)
+		listIndex.Certified[i].User = botUser
 	}
-
-	listIndex.Certified = certDat
 
 	mostViewedRow, err := state.Pool.Query(d.Context, "SELECT "+indexBotCols+" FROM bots WHERE type = 'approved' OR type = 'certified' ORDER BY clicks DESC LIMIT 9")
 	if err != nil {
 		state.Logger.Error(err)
 		return api.DefaultResponse(http.StatusInternalServerError)
 	}
-	mostViewedDat := []types.IndexBot{}
-	err = pgxscan.ScanAll(&mostViewedDat, mostViewedRow)
+	listIndex.MostViewed = []types.IndexBot{}
+	err = pgxscan.ScanAll(&listIndex.MostViewed, mostViewedRow)
 	if err != nil {
 		state.Logger.Error(err)
 		return api.DefaultResponse(http.StatusInternalServerError)
 	}
+	for i, bot := range listIndex.MostViewed {
+		botUser, err := utils.GetDiscordUser(bot.BotID)
 
-	mostViewedDat, err = utils.ResolveIndexBot(mostViewedDat)
+		if err != nil {
+			return api.DefaultResponse(http.StatusInternalServerError)
+		}
 
-	if err != nil {
-		state.Logger.Error(err)
-		return api.DefaultResponse(http.StatusInternalServerError)
+		listIndex.MostViewed[i].User = botUser
 	}
-
-	listIndex.MostViewed = mostViewedDat
 
 	recentlyAddedRow, err := state.Pool.Query(d.Context, "SELECT "+indexBotCols+" FROM bots WHERE type = 'approved' ORDER BY created_at DESC LIMIT 9")
 	if err != nil {
 		state.Logger.Error(err)
 		return api.DefaultResponse(http.StatusInternalServerError)
 	}
-	recentlyAddedDat := []types.IndexBot{}
-	err = pgxscan.ScanAll(&recentlyAddedDat, recentlyAddedRow)
+	listIndex.RecentlyAdded = []types.IndexBot{}
+	err = pgxscan.ScanAll(&listIndex.RecentlyAdded, recentlyAddedRow)
 	if err != nil {
 		state.Logger.Error(err)
 		return api.DefaultResponse(http.StatusInternalServerError)
 	}
+	for i, bot := range listIndex.RecentlyAdded {
+		botUser, err := utils.GetDiscordUser(bot.BotID)
 
-	recentlyAddedDat, err = utils.ResolveIndexBot(recentlyAddedDat)
+		if err != nil {
+			return api.DefaultResponse(http.StatusInternalServerError)
+		}
 
-	if err != nil {
-		state.Logger.Error(err)
-		return api.DefaultResponse(http.StatusInternalServerError)
+		listIndex.RecentlyAdded[i].User = botUser
 	}
-
-	listIndex.RecentlyAdded = recentlyAddedDat
 
 	topVotedRow, err := state.Pool.Query(d.Context, "SELECT "+indexBotCols+" FROM bots WHERE type = 'approved' OR type = 'certified' ORDER BY votes DESC LIMIT 9")
 	if err != nil {
 		state.Logger.Error(err)
 		return api.DefaultResponse(http.StatusInternalServerError)
 	}
-	topVotedDat := []types.IndexBot{}
-	err = pgxscan.ScanAll(&topVotedDat, topVotedRow)
+	listIndex.TopVoted = []types.IndexBot{}
+	err = pgxscan.ScanAll(&listIndex.TopVoted, topVotedRow)
 	if err != nil {
 		state.Logger.Error(err)
 		return api.DefaultResponse(http.StatusInternalServerError)
 	}
-	topVotedDat, err = utils.ResolveIndexBot(topVotedDat)
+	for i, bot := range listIndex.TopVoted {
+		botUser, err := utils.GetDiscordUser(bot.BotID)
 
-	if err != nil {
-		state.Logger.Error(err)
-		return api.DefaultResponse(http.StatusInternalServerError)
+		if err != nil {
+			return api.DefaultResponse(http.StatusInternalServerError)
+		}
+
+		listIndex.TopVoted[i].User = botUser
 	}
 
-	listIndex.TopVoted = topVotedDat
-
+	// Packs
 	rows, err := state.Pool.Query(d.Context, "SELECT "+indexPackCols+" FROM packs ORDER BY created_at DESC")
 
 	if err != nil {

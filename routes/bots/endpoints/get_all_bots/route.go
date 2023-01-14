@@ -76,11 +76,15 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 		return api.DefaultResponse(http.StatusInternalServerError)
 	}
 
-	bots, err = utils.ResolveIndexBot(bots)
+	// Set the user for each bot
+	for i, bot := range bots {
+		botUser, err := utils.GetDiscordUser(bot.BotID)
 
-	if err != nil {
-		state.Logger.Error(err)
-		return api.DefaultResponse(http.StatusInternalServerError)
+		if err != nil {
+			return api.DefaultResponse(http.StatusInternalServerError)
+		}
+
+		bots[i].User = botUser
 	}
 
 	var previous strings.Builder
