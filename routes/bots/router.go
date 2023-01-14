@@ -5,7 +5,6 @@ import (
 	"popplio/routes/bots/endpoints/get_all_bots"
 	"popplio/routes/bots/endpoints/get_bot"
 	"popplio/routes/bots/endpoints/get_bot_invite"
-	"popplio/routes/bots/endpoints/get_bot_reviews"
 	"popplio/routes/bots/endpoints/get_bot_seo"
 	"popplio/routes/bots/endpoints/post_stats"
 	"popplio/types"
@@ -68,14 +67,6 @@ func (b Router) Routes(r *chi.Mux) {
 					Type: types.TargetTypeBot,
 				},
 			},
-		}.Route(r)
-
-		api.Route{
-			Pattern: "/{id}/reviews",
-			OpId:    "get_bot_reviews",
-			Method:  api.GET,
-			Docs:    get_bot_reviews.Docs,
-			Handler: get_bot_reviews.Route,
 		}.Route(r)
 	})
 }
