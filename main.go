@@ -179,7 +179,7 @@ func main() {
 		w.Write([]byte(constants.NotFoundPage))
 	})
 
-	notifications.Setup()
+	go notifications.Setup()
 
 	err = http.ListenAndServe(":8081", r)
 

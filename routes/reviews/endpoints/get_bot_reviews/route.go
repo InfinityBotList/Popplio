@@ -3,9 +3,11 @@ package get_bot_reviews
 import (
 	"net/http"
 	"strings"
+	"time"
 
 	"popplio/api"
 	"popplio/docs"
+	"popplio/routes/reviews/assets"
 	"popplio/state"
 	"popplio/types"
 	"popplio/utils"
@@ -50,6 +52,17 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 		return api.DefaultResponse(http.StatusNotFound)
 	}
 
+	// Check cache, this is how we can avoid hefty ratelimits
+	cache := state.Redis.Get(d.Context, "rv-"+id).Val()
+	if cache != "" {
+		return api.HttpResponse{
+			Data: cache,
+			Headers: map[string]string{
+				"X-Popplio-Cached": "true",
+			},
+		}
+	}
+
 	rows, err := state.Pool.Query(d.Context, "SELECT "+reviewCols+" FROM reviews WHERE bot_id = $1 ORDER BY created_at ASC", id)
 
 	if err != nil {
@@ -75,11 +88,20 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 		}
 	}
 
+	reviews, err = assets.GarbageCollect(d.Context, reviews)
+
+	if err != nil {
+		state.Logger.Error(err)
+		return api.DefaultResponse(http.StatusInternalServerError)
+	}
+
 	var allReviews = types.ReviewList{
 		Reviews: reviews,
 	}
 
 	return api.HttpResponse{
-		Json: allReviews,
+		Json:      allReviews,
+		CacheKey:  "rv-" + id,
+		CacheTime: time.Minute * 3,
 	}
 }
