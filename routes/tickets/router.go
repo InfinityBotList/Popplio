@@ -16,13 +16,12 @@ func (b Router) Tag() (string, string) {
 }
 
 func (b Router) Routes(r *chi.Mux) {
-	r.Route("/tickets", func(r chi.Router) {
-		api.Route{
-			Pattern: "/{id}",
-			OpId:    "get_ticket",
-			Method:  api.GET,
-			Docs:    get_ticket.Docs,
-			Handler: get_ticket.Route,
-		}.Route(r)
-	})
+	api.Route{
+		Pattern: "/tickets/{id}",
+		OpId:    "get_ticket",
+		Method:  api.GET,
+		Docs:    get_ticket.Docs,
+		Handler: get_ticket.Route,
+	}.Route(r)
+
 }

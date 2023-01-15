@@ -24,7 +24,6 @@ var (
 func Docs() *docs.Doc {
 	return &docs.Doc{
 		Method:      "GET",
-		Path:        "/tickets/{id}",
 		Summary:     "Get Ticket",
 		Description: "Gets a support ticket. **Note that this endpoint is only documented to be useful for staff and the like. It is not useful for normal users**",
 		Params: []docs.Parameter{

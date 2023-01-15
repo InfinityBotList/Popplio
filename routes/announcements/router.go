@@ -17,19 +17,17 @@ func (b Router) Tag() (string, string) {
 }
 
 func (b Router) Routes(r *chi.Mux) {
-	r.Route("/announcements", func(r chi.Router) {
-		api.Route{
-			Pattern: "/",
-			OpId:    "get_announcements",
-			Method:  api.GET,
-			Docs:    get_announcements.Docs,
-			Handler: get_announcements.Route,
-			Auth: []api.AuthType{
-				{
-					Type: types.TargetTypeUser,
-				},
+	api.Route{
+		Pattern: "/announcements",
+		OpId:    "get_announcements",
+		Method:  api.GET,
+		Docs:    get_announcements.Docs,
+		Handler: get_announcements.Route,
+		Auth: []api.AuthType{
+			{
+				Type: types.TargetTypeUser,
 			},
-			AuthOptional: true,
-		}.Route(r)
-	})
+		},
+		AuthOptional: true,
+	}.Route(r)
 }

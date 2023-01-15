@@ -15,7 +15,6 @@ import (
 func Docs() *docs.Doc {
 	return &docs.Doc{
 		Method:      "GET",
-		Path:        "/_duser/{id}/clear",
 		Summary:     "Clear Discord User Cache",
 		Description: "This endpoint will clear the cache for a specific discord user. This is useful if you the user's data has changes",
 		Params: []docs.Parameter{

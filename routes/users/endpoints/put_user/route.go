@@ -30,7 +30,6 @@ var allowedRedirectURLs = []string{
 func Docs() *docs.Doc {
 	return &docs.Doc{
 		Method:      "PUT",
-		Path:        "/users",
 		Summary:     "Login User",
 		Description: "Takes in a ``code`` query parameter and returns a user ``token``. **Cannot be used outside of the site for security reasons but documented in case we wish to allow its use in the future.**",
 		Req:         AuthorizeRequest{},

@@ -68,7 +68,6 @@ func Setup() {
 func Docs() *docs.Doc {
 	return &docs.Doc{
 		Method:      "POST",
-		Path:        "/list/search",
 		Summary:     "Search List",
 		Description: "Searches the list. This replaces arcadias tetanus API",
 		Req:         SearchQuery{},

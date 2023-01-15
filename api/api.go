@@ -264,6 +264,7 @@ func (r Route) Route(ro Router) {
 
 	docsObj := r.Docs()
 
+	docsObj.Pattern = r.Pattern
 	docsObj.OpId = r.OpId
 	docsObj.Method = r.Method.String()
 	docsObj.Tags = []string{CurrentTag}

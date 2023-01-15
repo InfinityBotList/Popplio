@@ -20,7 +20,6 @@ type CreatePackVote struct {
 func Docs() *docs.Doc {
 	return &docs.Doc{
 		Method:  "PUT",
-		Path:    "/users/{uid}/packs/{url}/votes",
 		Summary: "Create User Pack Vote",
 		Description: `Creates a vote for a pack. 
 		

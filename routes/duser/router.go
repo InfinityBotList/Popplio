@@ -17,21 +17,19 @@ func (b Router) Tag() (string, string) {
 }
 
 func (b Router) Routes(r *chi.Mux) {
-	r.Route("/_duser/{id}", func(r chi.Router) {
-		api.Route{
-			Pattern: "/",
-			OpId:    "get_duser",
-			Method:  api.GET,
-			Docs:    get_duser.Docs,
-			Handler: get_duser.Route,
-		}.Route(r)
+	api.Route{
+		Pattern: "/_duser/{id}",
+		OpId:    "get_duser",
+		Method:  api.GET,
+		Docs:    get_duser.Docs,
+		Handler: get_duser.Route,
+	}.Route(r)
 
-		api.Route{
-			Pattern: "/clear",
-			OpId:    "clear_duser",
-			Method:  api.GET,
-			Docs:    clear_duser.Docs,
-			Handler: clear_duser.Route,
-		}.Route(r)
-	})
+	api.Route{
+		Pattern: "/_duser/{id}/clear",
+		OpId:    "clear_duser",
+		Method:  api.GET,
+		Docs:    clear_duser.Docs,
+		Handler: clear_duser.Route,
+	}.Route(r)
 }

@@ -18,7 +18,6 @@ func Setup() {
 func Docs() *docs.Doc {
 	return &docs.Doc{
 		Method:      "GET",
-		Path:        "/users/authorize",
 		Summary:     "Get Login Info",
 		Description: "Gets the login info such as the client ID to use for the login.",
 		Resp:        types.AuthInfo{},

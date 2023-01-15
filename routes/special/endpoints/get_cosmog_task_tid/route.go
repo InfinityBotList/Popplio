@@ -14,7 +14,6 @@ import (
 func Docs() *docs.Doc {
 	return &docs.Doc{
 		Method:      "GET",
-		Path:        "/cosmog/tasks/{tid}.arceus",
 		Summary:     "Special Login Task View JSON",
 		Description: "Returns the status of a task as a arbitary json.",
 		Resp:        "[JSON]",

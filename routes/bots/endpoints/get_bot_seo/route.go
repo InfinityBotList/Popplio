@@ -16,7 +16,6 @@ import (
 func Docs() *docs.Doc {
 	return &docs.Doc{
 		Method:      "GET",
-		Path:        "/bots/{id}/seo",
 		Summary:     "Get Bot SEO Info",
 		Description: "Gets the minimal SEO information about a bot for embed/search purposes. Used by v4 website for meta tags",
 		Resp:        types.SEO{},

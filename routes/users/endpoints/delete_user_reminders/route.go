@@ -16,7 +16,6 @@ import (
 func Docs() *docs.Doc {
 	return &docs.Doc{
 		Method:      "DELETE",
-		Path:        "/users/{id}/reminder",
 		Summary:     "Delete User Reminders",
 		Description: "Deletes a users reminders. Returns 204 on success",
 		Params: []docs.Parameter{

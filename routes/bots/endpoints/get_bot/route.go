@@ -28,7 +28,6 @@ var (
 func Docs() *docs.Doc {
 	return &docs.Doc{
 		Method:  "GET",
-		Path:    "/bots/{id}",
 		Summary: "Get Bot",
 		Description: `
 Gets a bot by id or name

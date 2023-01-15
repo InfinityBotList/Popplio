@@ -67,7 +67,6 @@ func Setup() {
 func Docs() *docs.Doc {
 	return &docs.Doc{
 		Method:      "PATCH",
-		Path:        "/users/{uid}/bots/{bid}/settings",
 		Summary:     "Update Bot Settings",
 		Description: "Updates a bots vanity. Returns 204 on success",
 		Params: []docs.Parameter{

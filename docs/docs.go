@@ -158,34 +158,34 @@ func Route(doc *Doc) {
 	}
 
 	if len(doc.Tags) == 0 {
-		panic("no tags set in route: " + doc.Path)
+		panic("no tags set in route: " + doc.Pattern)
 	}
 
 	if len(doc.Params) > 0 {
 		for _, param := range doc.Params {
 			if param.In == "" {
-				panic("no in set in route: " + doc.Path)
+				panic("no in set in route: " + doc.Pattern)
 			}
 
 			if param.Name == "" {
-				panic("no name set in route: " + doc.Path)
+				panic("no name set in route: " + doc.Pattern)
 			}
 
 			if param.Schema == nil {
-				panic("no schema set in route: " + doc.Path)
+				panic("no schema set in route: " + doc.Pattern)
 			}
 
 			if param.Description == "" {
-				panic("no description set in route: " + doc.Path)
+				panic("no description set in route: " + doc.Pattern)
 			}
 		}
 	}
 
 	if doc.OpId == "" {
-		panic("no opId set in route: " + doc.Path)
+		panic("no opId set in route: " + doc.Pattern)
 	}
 
-	if doc.Path == "" {
+	if doc.Pattern == "" {
 		panic("no path set in route: " + doc.OpId)
 	}
 
@@ -234,8 +234,8 @@ func Route(doc *Doc) {
 			},
 		}
 
-		if _, ok := api.Paths.Get(doc.Path); !ok {
-			api.Paths.Set(doc.Path, Path{})
+		if _, ok := api.Paths.Get(doc.Pattern); !ok {
+			api.Paths.Set(doc.Pattern, Path{})
 		}
 
 		reqBodyRef = &Schema{Ref: "#/components/requestBodies/" + doc.Method + "_" + reqSchemaName}
@@ -297,29 +297,29 @@ func Route(doc *Doc) {
 		})
 	}
 
-	op, _ := api.Paths.Get(doc.Path)
+	op, _ := api.Paths.Get(doc.Pattern)
 
 	switch strings.ToLower(doc.Method) {
 	case "get":
 		op.Get = operationData
 
-		api.Paths.Set(doc.Path, op)
+		api.Paths.Set(doc.Pattern, op)
 	case "post":
 		op.Post = operationData
 
-		api.Paths.Set(doc.Path, op)
+		api.Paths.Set(doc.Pattern, op)
 	case "put":
 		op.Put = operationData
 
-		api.Paths.Set(doc.Path, op)
+		api.Paths.Set(doc.Pattern, op)
 	case "patch":
 		op.Patch = operationData
 
-		api.Paths.Set(doc.Path, op)
+		api.Paths.Set(doc.Pattern, op)
 	case "delete":
 		op.Delete = operationData
 
-		api.Paths.Set(doc.Path, op)
+		api.Paths.Set(doc.Pattern, op)
 	}
 }
 

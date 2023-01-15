@@ -26,7 +26,6 @@ var (
 func Docs() *docs.Doc {
 	return &docs.Doc{
 		Method:      "GET",
-		Path:        "/bots/all",
 		Summary:     "Get All Bots",
 		Description: "Gets all bots on the list. Returns a ``Index`` object",
 		Resp:        types.AllBots{},

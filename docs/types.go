@@ -119,7 +119,7 @@ type Openapi struct {
 
 type Doc struct {
 	Method      string
-	Path        string
+	Pattern     string
 	OpId        string
 	Summary     string
 	Description string

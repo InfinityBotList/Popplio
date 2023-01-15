@@ -189,7 +189,6 @@ func GetStats(s types.BotStats) (servers uint64, shards uint64, users uint64) {
 func Docs() *docs.Doc {
 	return &docs.Doc{
 		Method:  "POST",
-		Path:    "/bots/stats",
 		Summary: "Post Bot Stats",
 		Description: `
 This endpoint can be used to post the stats of a bot. This endpoint does not resolve the ID.

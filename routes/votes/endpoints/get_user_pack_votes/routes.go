@@ -15,7 +15,6 @@ import (
 func Docs() *docs.Doc {
 	return &docs.Doc{
 		Method:      "GET",
-		Path:        "/users/{uid}/packs/{url}/votes",
 		Summary:     "Get User Pack Votes",
 		Description: "Gets the users votes. **Does not require authentication**",
 		Params: []docs.Parameter{

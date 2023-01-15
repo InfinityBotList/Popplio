@@ -25,7 +25,6 @@ var (
 func Docs() *docs.Doc {
 	return &docs.Doc{
 		Method:      "GET",
-		Path:        "/packs/{id}",
 		Summary:     "Get Pack",
 		Description: "Gets a pack on the list based on either URL or Name.",
 		Params: []docs.Parameter{

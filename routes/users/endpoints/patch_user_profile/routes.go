@@ -24,7 +24,6 @@ type ProfileUpdate struct {
 func Docs() *docs.Doc {
 	return &docs.Doc{
 		Method:      "PATCH",
-		Path:        "/users/{id}",
 		Summary:     "Update User Profile",
 		Description: "Updates a users profile. Returns 204 on success",
 		Params: []docs.Parameter{

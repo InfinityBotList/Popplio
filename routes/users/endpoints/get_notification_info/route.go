@@ -12,7 +12,6 @@ import (
 func Docs() *docs.Doc {
 	return &docs.Doc{
 		Method:      "GET",
-		Path:        "/users/notifications/info",
 		Summary:     "Get Notifications Info",
 		Description: "Gets a users notifications",
 		Resp:        types.NotificationInfo{},

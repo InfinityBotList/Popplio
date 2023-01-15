@@ -2,8 +2,10 @@ package packs
 
 import (
 	"popplio/api"
+	"popplio/routes/packs/endpoints/add_pack"
 	"popplio/routes/packs/endpoints/get_all_packs"
 	"popplio/routes/packs/endpoints/get_pack"
+	"popplio/types"
 
 	"github.com/go-chi/chi/v5"
 )
@@ -19,21 +21,33 @@ func (b Router) Tag() (string, string) {
 }
 
 func (b Router) Routes(r *chi.Mux) {
-	r.Route("/packs", func(r chi.Router) {
-		api.Route{
-			Pattern: "/{id}",
-			OpId:    "get_pack",
-			Method:  api.GET,
-			Docs:    get_pack.Docs,
-			Handler: get_pack.Route,
-		}.Route(r)
+	api.Route{
+		Pattern: "/packs/{id}",
+		OpId:    "get_pack",
+		Method:  api.GET,
+		Docs:    get_pack.Docs,
+		Handler: get_pack.Route,
+	}.Route(r)
 
-		api.Route{
-			Pattern: "/all",
-			OpId:    "get_all_packs",
-			Method:  api.GET,
-			Docs:    get_all_packs.Docs,
-			Handler: get_all_packs.Route,
-		}.Route(r)
-	})
+	api.Route{
+		Pattern: "/packs/all",
+		OpId:    "get_all_packs",
+		Method:  api.GET,
+		Docs:    get_all_packs.Docs,
+		Handler: get_all_packs.Route,
+	}.Route(r)
+
+	api.Route{
+		Pattern: "/users/{id}/packs",
+		OpId:    "add_pack",
+		Method:  api.PUT,
+		Docs:    add_pack.Docs,
+		Handler: add_pack.Route,
+		Auth: []api.AuthType{
+			{
+				URLVar: "id",
+				Type:   types.TargetTypeUser,
+			},
+		},
+	}.Route(r)
 }

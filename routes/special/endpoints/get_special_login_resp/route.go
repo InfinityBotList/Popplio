@@ -34,7 +34,6 @@ var confirmTemplate string
 func Docs() *docs.Doc {
 	return &docs.Doc{
 		Method:      "GET",
-		Path:        "/cosmog",
 		Summary:     "Special Login Handler",
 		Description: "This endpoint is used to respond to a special login. It then spawns the task such as data requests etc.",
 		Resp:        "[Redirect+Task Creation]",

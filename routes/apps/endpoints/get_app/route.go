@@ -21,7 +21,6 @@ var (
 func Docs() *docs.Doc {
 	return &docs.Doc{
 		Method:      "GET",
-		Path:        "/apps/{id}",
 		Summary:     "Get Application",
 		Description: "Gets an application. **Does not require authentication.**",
 		Params: []docs.Parameter{

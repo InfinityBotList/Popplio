@@ -14,7 +14,6 @@ import (
 func Docs() *docs.Doc {
 	return &docs.Doc{
 		Method:      "DELETE",
-		Path:        "/users/{id}/notification",
 		Summary:     "Delete User Notifications",
 		Description: "Deletes a users notification. Returns 204 on success",
 		Params: []docs.Parameter{

@@ -16,7 +16,6 @@ import (
 func Docs() *docs.Doc {
 	return &docs.Doc{
 		Method:      "GET",
-		Path:        "/users/{id}/seo",
 		Summary:     "Get User SEO Info",
 		Description: "Gets a users SEO data by id or username",
 		Params: []docs.Parameter{

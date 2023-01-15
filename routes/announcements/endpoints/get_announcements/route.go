@@ -21,7 +21,6 @@ var (
 func Docs() *docs.Doc {
 	return &docs.Doc{
 		Method:      "GET",
-		Path:        "/announcements",
 		Summary:     "Get Announcements",
 		Description: "This endpoint will return a list of announcements. User authentication is optional and using it will show user targetted announcements.",
 		Resp:        types.AnnouncementList{},

@@ -22,7 +22,6 @@ var (
 func Docs() *docs.Doc {
 	return &docs.Doc{
 		Method:      "GET",
-		Path:        "/users/{id}/reminders",
 		Summary:     "Get User Reminders",
 		Description: "Gets a users reminders",
 		Params: []docs.Parameter{
