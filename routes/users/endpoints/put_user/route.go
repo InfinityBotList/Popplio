@@ -342,7 +342,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 		var banned bool
 		var tokenStr pgtype.Text
 
-		err = state.Pool.QueryRow(d.Context, "SELECT banned. api_token FROM users WHERE user_id = $1", user.ID).Scan(&banned, &tokenStr)
+		err = state.Pool.QueryRow(d.Context, "SELECT banned, api_token FROM users WHERE user_id = $1", user.ID).Scan(&banned, &tokenStr)
 
 		if err != nil {
 			state.Logger.Error(err)
