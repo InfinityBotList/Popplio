@@ -85,7 +85,10 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 
 	if !slices.Contains(allowedRedirectURLs, req.RedirectURI) {
 		return api.HttpResponse{
-			Data:    `{"error":true,"message":"Malformed redirect_uri"}`,
+			Json: types.ApiError{
+				Error:   true,
+				Message: "Malformed redirect_uri",
+			},
 			Status:  http.StatusBadRequest,
 			Headers: limit.Headers(),
 		}
@@ -93,23 +96,10 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 
 	if req.Nonce != "sauron" {
 		return api.HttpResponse{
-			Data:    `{"error":true,"message":"Your client is outdated and is not supported. Please update your client."}`,
-			Status:  http.StatusBadRequest,
-			Headers: limit.Headers(),
-		}
-	}
-
-	if req.Code == "" {
-		return api.HttpResponse{
-			Data:    `{"error":true,"message":"No code provided"}`,
-			Status:  http.StatusBadRequest,
-			Headers: limit.Headers(),
-		}
-	}
-
-	if len(req.Code) < 5 {
-		return api.HttpResponse{
-			Data:    `{"error":true,"message":"Code too short. Retry login?"}`,
+			Json: types.ApiError{
+				Error:   true,
+				Message: "Your client is outdated and is not supported. Please update your client.",
+			},
 			Status:  http.StatusBadRequest,
 			Headers: limit.Headers(),
 		}
@@ -117,7 +107,10 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 
 	if state.Redis.Exists(d.Context, "codecache:"+req.Code).Val() == 1 {
 		return api.HttpResponse{
-			Data:    `{"error":true,"message":"Code has been used before and is as such invalid"}`,
+			Json: types.ApiError{
+				Error:   true,
+				Message: "Code has been clearly used before and is as such invalid",
+			},
 			Status:  http.StatusBadRequest,
 			Headers: limit.Headers(),
 		}
@@ -137,7 +130,10 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 	if err != nil {
 		state.Logger.Error(err)
 		return api.HttpResponse{
-			Data:    `{"error":true,"message":"Failed to get token from Discord"}`,
+			Json: types.ApiError{
+				Error:   true,
+				Message: "Failed to send token request to Discord",
+			},
 			Status:  http.StatusInternalServerError,
 			Headers: limit.Headers(),
 		}
@@ -150,7 +146,10 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 	if err != nil {
 		state.Logger.Error(err)
 		return api.HttpResponse{
-			Data:    `{"error":true,"message":"Failed to read token response from Discord"}`,
+			Json: types.ApiError{
+				Error:   true,
+				Message: "Failed to read token response from Discord",
+			},
 			Status:  http.StatusInternalServerError,
 			Headers: limit.Headers(),
 		}
@@ -165,7 +164,10 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 	if err != nil {
 		state.Logger.Error(err)
 		return api.HttpResponse{
-			Data:    `{"error":true,"message":"Failed to parse token response from Discord"}`,
+			Json: types.ApiError{
+				Error:   true,
+				Message: "Failed to parse token response from Discord",
+			},
 			Status:  http.StatusBadRequest,
 			Headers: limit.Headers(),
 		}
@@ -174,7 +176,10 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 	if token.AccessToken == "" {
 		state.Logger.Error(err)
 		return api.HttpResponse{
-			Data:    `{"error":true,"message":"No access token provided by Discord"}`,
+			Json: types.ApiError{
+				Error:   true,
+				Message: "No access token provided by Discord",
+			},
 			Status:  http.StatusBadRequest,
 			Headers: limit.Headers(),
 		}
@@ -188,7 +193,10 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 	if err != nil {
 		state.Logger.Error(err)
 		return api.HttpResponse{
-			Data:    `{"error":true,"message":"Failed to create request to Discord to fetch user info"}`,
+			Json: types.ApiError{
+				Error:   true,
+				Message: "Failed to create request to Discord to fetch user info",
+			},
 			Status:  http.StatusInternalServerError,
 			Headers: limit.Headers(),
 		}
@@ -201,7 +209,10 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 	if err != nil {
 		state.Logger.Error(err)
 		return api.HttpResponse{
-			Data:    `{"error":true,"message":"Failed to get user info from Discord"}`,
+			Json: types.ApiError{
+				Error:   true,
+				Message: "Failed to send oauth2 request to Discord",
+			},
 			Status:  http.StatusInternalServerError,
 			Headers: limit.Headers(),
 		}
@@ -214,7 +225,10 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 	if err != nil {
 		state.Logger.Error(err)
 		return api.HttpResponse{
-			Data:    `{"error":true,"message":"Failed to read user info response from Discord"}`,
+			Json: types.ApiError{
+				Error:   true,
+				Message: "Failed to read oauth2 response from Discord",
+			},
 			Status:  http.StatusInternalServerError,
 			Headers: limit.Headers(),
 		}
@@ -227,7 +241,10 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 	if err != nil {
 		state.Logger.Error(err)
 		return api.HttpResponse{
-			Data:    `{"error":true,"message":"Failed to parse user info response from Discord"}`,
+			Json: types.ApiError{
+				Error:   true,
+				Message: "Failed to parse oauth2 response from Discord",
+			},
 			Status:  http.StatusInternalServerError,
 			Headers: limit.Headers(),
 		}
@@ -236,7 +253,10 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 	if user.ID == "" {
 		state.Logger.Error(err)
 		return api.HttpResponse{
-			Data:    `{"error":true,"message":"No user ID provided by Discord. Invalid token?"}`,
+			Json: types.ApiError{
+				Error:   true,
+				Message: "No user ID provided by Discord. Invalid code/access token?",
+			},
 			Status:  http.StatusBadRequest,
 			Headers: limit.Headers(),
 		}
@@ -250,7 +270,10 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 	if err != nil {
 		state.Logger.Error(err)
 		return api.HttpResponse{
-			Data:    `{"error":true,"message":"Failed to check if user exists on database"}`,
+			Json: types.ApiError{
+				Error:   true,
+				Message: "Failed to check if user exists on database",
+			},
 			Status:  http.StatusInternalServerError,
 			Headers: limit.Headers(),
 		}
@@ -261,7 +284,10 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 	if err != nil {
 		state.Logger.Error(err)
 		return api.HttpResponse{
-			Data:    `{"error":true,"message":"Failed to get user info from Discord"}`,
+			Json: types.ApiError{
+				Error:   true,
+				Message: "Failed to get user info from Discord",
+			},
 			Status:  http.StatusInternalServerError,
 			Headers: limit.Headers(),
 		}
@@ -283,7 +309,10 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 		if err != nil {
 			state.Logger.Error(err)
 			return api.HttpResponse{
-				Data:    `{"error":true,"message":"Failed to create user on database"}`,
+				Json: types.ApiError{
+					Error:   true,
+					Message: "Failed to create user on database",
+				},
 				Status:  http.StatusInternalServerError,
 				Headers: limit.Headers(),
 			}
@@ -300,22 +329,40 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 		if err != nil {
 			state.Logger.Error(err)
 			return api.HttpResponse{
-				Data:    `{"error":true,"message":"Failed to update user on database"}`,
+				Json: types.ApiError{
+					Error:   true,
+					Message: "Failed to update user on database",
+				},
 				Status:  http.StatusInternalServerError,
 				Headers: limit.Headers(),
 			}
 		}
 
-		// Get API token
+		// Get API token and ban state
+		var banned bool
 		var tokenStr pgtype.Text
 
-		err = state.Pool.QueryRow(d.Context, "SELECT api_token FROM users WHERE user_id = $1", user.ID).Scan(&tokenStr)
+		err = state.Pool.QueryRow(d.Context, "SELECT banned. api_token FROM users WHERE user_id = $1", user.ID).Scan(&banned, &tokenStr)
 
 		if err != nil {
 			state.Logger.Error(err)
 			return api.HttpResponse{
-				Data:    `{"error":true,"message":"Failed to get API token from database"}`,
+				Json: types.ApiError{
+					Error:   true,
+					Message: "Failed to get API token from database",
+				},
 				Status:  http.StatusInternalServerError,
+				Headers: limit.Headers(),
+			}
+		}
+
+		if banned {
+			return api.HttpResponse{
+				Json: types.ApiError{
+					Error:   true,
+					Message: "You are banned from the list. If you think this is a mistake, please contact support.",
+				},
+				Status:  http.StatusForbidden,
 				Headers: limit.Headers(),
 			}
 		}

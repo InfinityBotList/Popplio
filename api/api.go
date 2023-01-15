@@ -153,7 +153,8 @@ func (r Route) Authorize(req *http.Request) (AuthData, HttpResponse, bool) {
 			case types.TargetTypeUser:
 				// Check if the user exists with said ID and API token
 				var id pgtype.Text
-				err := state.Pool.QueryRow(state.Context, "SELECT user_id FROM users WHERE user_id = $1 AND api_token = $2", targetId, strings.Replace(authHeader, "User ", "", 1)).Scan(&id)
+				var banned bool
+				err := state.Pool.QueryRow(state.Context, "SELECT user_id, banned FROM users WHERE user_id = $1 AND api_token = $2", targetId, strings.Replace(authHeader, "User ", "", 1)).Scan(&id, &banned)
 
 				if err != nil {
 					continue
@@ -161,6 +162,17 @@ func (r Route) Authorize(req *http.Request) (AuthData, HttpResponse, bool) {
 
 				if !id.Valid || id.String != targetId {
 					continue
+				}
+
+				// Banned users cannot use the API at all
+				if banned {
+					return AuthData{}, HttpResponse{
+						Status: http.StatusForbidden,
+						Json: types.ApiError{
+							Error:   true,
+							Message: "You are banned from the list. If you think this is a mistake, please contact support.",
+						},
+					}, false
 				}
 
 				authData = AuthData{
@@ -193,7 +205,8 @@ func (r Route) Authorize(req *http.Request) (AuthData, HttpResponse, bool) {
 			case types.TargetTypeUser:
 				// Check if the user exists with said API token only
 				var id pgtype.Text
-				err := state.Pool.QueryRow(state.Context, "SELECT user_id FROM users WHERE api_token = $1", strings.Replace(authHeader, "User ", "", 1)).Scan(&id)
+				var banned bool
+				err := state.Pool.QueryRow(state.Context, "SELECT user_id, banned FROM users WHERE api_token = $1", strings.Replace(authHeader, "User ", "", 1)).Scan(&id, &banned)
 
 				if err != nil {
 					continue
@@ -201,6 +214,17 @@ func (r Route) Authorize(req *http.Request) (AuthData, HttpResponse, bool) {
 
 				if !id.Valid {
 					continue
+				}
+
+				// Banned users cannot use the API at all
+				if banned {
+					return AuthData{}, HttpResponse{
+						Status: http.StatusForbidden,
+						Json: types.ApiError{
+							Error:   true,
+							Message: "You are banned from the list. If you think this is a mistake, please contact support.",
+						},
+					}, false
 				}
 
 				authData = AuthData{
