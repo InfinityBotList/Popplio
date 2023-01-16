@@ -29,7 +29,7 @@ func Docs() *docs.Doc {
 		Params: []docs.Parameter{
 			{
 				Name:        "id",
-				Description: "The ID of the pack.",
+				Description: "The URL/Name of the pack.",
 				Required:    true,
 				In:          "path",
 				Schema:      docs.IdSchema,

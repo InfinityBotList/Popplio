@@ -5,6 +5,7 @@ import (
 	"popplio/routes/packs/endpoints/add_pack"
 	"popplio/routes/packs/endpoints/get_all_packs"
 	"popplio/routes/packs/endpoints/get_pack"
+	"popplio/routes/packs/endpoints/patch_pack"
 	"popplio/types"
 
 	"github.com/go-chi/chi/v5"
@@ -43,6 +44,20 @@ func (b Router) Routes(r *chi.Mux) {
 		Method:  api.PUT,
 		Docs:    add_pack.Docs,
 		Handler: add_pack.Route,
+		Auth: []api.AuthType{
+			{
+				URLVar: "id",
+				Type:   types.TargetTypeUser,
+			},
+		},
+	}.Route(r)
+
+	api.Route{
+		Pattern: "/users/{id}/packs/{id}",
+		OpId:    "patch_pack",
+		Method:  api.PATCH,
+		Docs:    patch_pack.Docs,
+		Handler: patch_pack.Route,
 		Auth: []api.AuthType{
 			{
 				URLVar: "id",
