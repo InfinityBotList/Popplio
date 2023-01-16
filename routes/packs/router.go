@@ -53,14 +53,14 @@ func (b Router) Routes(r *chi.Mux) {
 	}.Route(r)
 
 	api.Route{
-		Pattern: "/users/{id}/packs/{id}",
+		Pattern: "/users/{uid}/packs/{id}",
 		OpId:    "patch_pack",
 		Method:  api.PATCH,
 		Docs:    patch_pack.Docs,
 		Handler: patch_pack.Route,
 		Auth: []api.AuthType{
 			{
-				URLVar: "id",
+				URLVar: "uid",
 				Type:   types.TargetTypeUser,
 			},
 		},

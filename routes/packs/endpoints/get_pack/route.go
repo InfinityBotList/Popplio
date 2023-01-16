@@ -25,11 +25,11 @@ var (
 func Docs() *docs.Doc {
 	return &docs.Doc{
 		Summary:     "Get Pack",
-		Description: "Gets a pack on the list based on either URL or Name.",
+		Description: "Gets a pack on the list based on the URL.",
 		Params: []docs.Parameter{
 			{
 				Name:        "id",
-				Description: "The URL/Name of the pack.",
+				Description: "The URL of the pack.",
 				Required:    true,
 				In:          "path",
 				Schema:      docs.IdSchema,
@@ -49,7 +49,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 	// First check count so we can avoid expensive DB calls
 	var count int64
 
-	err := state.Pool.QueryRow(d.Context, "SELECT COUNT(*) FROM packs WHERE url = $1 OR name = $1", id).Scan(&count)
+	err := state.Pool.QueryRow(d.Context, "SELECT COUNT(*) FROM packs WHERE url = $1", id).Scan(&count)
 
 	if err != nil {
 		return api.DefaultResponse(http.StatusInternalServerError)
@@ -61,7 +61,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 
 	var pack types.BotPack
 
-	row, err := state.Pool.Query(d.Context, "SELECT "+packCols+" FROM packs WHERE url = $1 OR name = $1", id)
+	row, err := state.Pool.Query(d.Context, "SELECT "+packCols+" FROM packs WHERE url = $1", id)
 
 	if err != nil {
 		return api.DefaultResponse(http.StatusNotFound)
