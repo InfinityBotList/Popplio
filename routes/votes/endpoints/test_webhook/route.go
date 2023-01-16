@@ -23,7 +23,6 @@ type WebhookAuthPost struct {
 
 func Docs() *docs.Doc {
 	return &docs.Doc{
-		Method:      "POST",
 		Summary:     "Test Webhook",
 		Description: "Sends a test webhook to allow testing your vote system using the credentials you have set.",
 		Req:         WebhookAuthPost{},

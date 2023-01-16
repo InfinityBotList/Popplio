@@ -92,7 +92,6 @@ func Setup() {
 
 func Docs() *docs.Doc {
 	return &docs.Doc{
-		Method:      "PUT",
 		Summary:     "Create Bot",
 		Description: "Adds a bot to the database. The main owner will be the user who created the bot. Returns 204 on success",
 		Req:         CreateBot{},

@@ -11,7 +11,6 @@ import (
 
 func Docs() *docs.Doc {
 	return &docs.Doc{
-		Method:      "GET",
 		Summary:     "Get Vote Info",
 		Description: "Returns basic voting info such as if its a weekend double vote.",
 		Resp:        types.VoteInfo{Weekend: true, VoteTime: 6},

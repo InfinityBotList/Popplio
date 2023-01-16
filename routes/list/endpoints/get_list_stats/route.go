@@ -11,7 +11,6 @@ import (
 
 func Docs() *docs.Doc {
 	return &docs.Doc{
-		Method:      "GET",
 		Summary:     "Get List Statistics",
 		Description: "Gets the statistics of the list",
 		Resp: types.ListStats{

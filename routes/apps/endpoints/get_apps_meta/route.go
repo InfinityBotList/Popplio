@@ -9,7 +9,6 @@ import (
 
 func Docs() *docs.Doc {
 	return &docs.Doc{
-		Method:      "GET",
 		Summary:     "Get Apps Meta",
 		Description: "Gets the current applications metadata. Returns a ``AppMeta`` object. See schema for more info.",
 		Resp:        apps.AppMeta{},

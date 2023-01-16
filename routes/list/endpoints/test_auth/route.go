@@ -10,7 +10,6 @@ import (
 
 func Docs() *docs.Doc {
 	return &docs.Doc{
-		Method:      "POST",
 		Summary:     "Test Auth",
 		Description: "Test your authentication",
 		Req:         types.TestAuth{},

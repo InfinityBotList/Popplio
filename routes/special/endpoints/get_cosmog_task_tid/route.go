@@ -13,7 +13,6 @@ import (
 
 func Docs() *docs.Doc {
 	return &docs.Doc{
-		Method:      "GET",
 		Summary:     "Special Login Task View JSON",
 		Description: "Returns the status of a task as a arbitary json.",
 		Resp:        "[JSON]",

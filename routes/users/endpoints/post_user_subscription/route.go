@@ -20,7 +20,6 @@ var json = jsoniter.ConfigCompatibleWithStandardLibrary
 
 func Docs() *docs.Doc {
 	return &docs.Doc{
-		Method:      "POST",
 		Summary:     "Create User Subscription",
 		Description: "Creates a user subscription for a push notification. Returns 204 on success",
 		Params: []docs.Parameter{

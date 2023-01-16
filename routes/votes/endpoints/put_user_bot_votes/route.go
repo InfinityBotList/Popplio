@@ -25,7 +25,6 @@ var json = jsoniter.ConfigCompatibleWithStandardLibrary
 
 func Docs() *docs.Doc {
 	return &docs.Doc{
-		Method:      "PUT",
 		Summary:     "Create User Bot Vote",
 		Description: "Creates a vote for a bot. **For internal use only**. Returns 204 on success",
 		Params: []docs.Parameter{

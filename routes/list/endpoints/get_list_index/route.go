@@ -24,7 +24,6 @@ var (
 
 func Docs() *docs.Doc {
 	return &docs.Doc{
-		Method:      "GET",
 		Summary:     "Get List Index",
 		Description: "Gets the index of the list. Returns a ``Index`` object",
 		Resp:        types.ListIndex{},

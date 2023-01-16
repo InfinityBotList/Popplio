@@ -23,7 +23,6 @@ var (
 
 func Docs() *docs.Doc {
 	return &docs.Doc{
-		Method:      "GET",
 		Summary:     "Get Bot Reviews",
 		Description: "Gets the reviews of a bot by its ID or vanity",
 		Params: []docs.Parameter{

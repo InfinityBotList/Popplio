@@ -23,9 +23,9 @@ type CreatePack struct {
 
 func Docs() *docs.Doc {
 	return &docs.Doc{
-		Method:      "PUT",
 		Summary:     "Create Pack",
 		Description: "Creates a pack. Returns 204 on success",
+		Req:         CreatePack{},
 		Resp:        types.AllPacks{},
 	}
 }

@@ -20,7 +20,6 @@ var (
 
 func Docs() *docs.Doc {
 	return &docs.Doc{
-		Method:      "GET",
 		Summary:     "Get Application List",
 		Description: "Gets all applications that the user can access returning a list of apps.",
 		Params: []docs.Parameter{

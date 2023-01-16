@@ -51,7 +51,6 @@ func Setup() {
 
 func Docs() *docs.Doc {
 	return &docs.Doc{
-		Method:      "GET",
 		Summary:     "Ping Server",
 		Description: "This is a simple ping endpoint to check if the API is online. It will return a simple JSON object with a message, docs link, our site link and status page link.",
 		Resp:        helloWorldB,

@@ -16,7 +16,6 @@ import (
 
 func Docs() *docs.Doc {
 	return &docs.Doc{
-		Method:  "GET",
 		Summary: "Get Bot Invite",
 		Description: `
 Gets a bot invite by id or name

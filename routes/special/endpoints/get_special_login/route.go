@@ -20,9 +20,9 @@ var json = jsoniter.ConfigCompatibleWithStandardLibrary
 
 func Docs() *docs.Doc {
 	return &docs.Doc{
-		Method:      "POST",
 		Summary:     "Special Login",
 		Description: "This endpoint is used for special login actions. For example, data requests/deletions and regenerating tokens",
+		Req:         assets.Action{},
 		Resp:        assets.Redirect{},
 	}
 }

@@ -14,7 +14,6 @@ import (
 
 func Docs() *docs.Doc {
 	return &docs.Doc{
-		Method:      "GET",
 		Summary:     "Get Discord User",
 		Description: "This endpoint will return a discord user object. This is useful for getting a user's avatar, username or discriminator etc.",
 		Params: []docs.Parameter{

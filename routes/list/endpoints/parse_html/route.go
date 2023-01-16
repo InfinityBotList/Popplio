@@ -71,7 +71,6 @@ func Setup() {
 
 func Docs() *docs.Doc {
 	return &docs.Doc{
-		Method:      "POST",
 		Summary:     "Parse HTML",
 		Description: "Sanitizes a HTML string for use in previews or on long descriptions",
 		Resp:        "Sanitized HTML",

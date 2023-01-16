@@ -15,7 +15,6 @@ import (
 
 func Docs() *docs.Doc {
 	return &docs.Doc{
-		Method:      "PUT",
 		Summary:     "Create User Reminder",
 		Description: "Creates a new user reminders of a bot deleting existing ones for the bot",
 		Params: []docs.Parameter{

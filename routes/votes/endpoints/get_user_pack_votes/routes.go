@@ -14,7 +14,6 @@ import (
 
 func Docs() *docs.Doc {
 	return &docs.Doc{
-		Method:      "GET",
 		Summary:     "Get User Pack Votes",
 		Description: "Gets the users votes. **Does not require authentication**",
 		Params: []docs.Parameter{

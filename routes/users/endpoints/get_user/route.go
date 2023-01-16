@@ -26,7 +26,6 @@ var (
 
 func Docs() *docs.Doc {
 	return &docs.Doc{
-		Method:      "GET",
 		Summary:     "Get User",
 		Description: "Gets a user by id or username",
 		Params: []docs.Parameter{

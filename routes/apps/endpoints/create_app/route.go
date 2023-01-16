@@ -22,7 +22,6 @@ var compiledMessages = api.CompileValidationErrors(CreateApp{})
 
 func Docs() *docs.Doc {
 	return &docs.Doc{
-		Method:      "POST",
 		Summary:     "Create App For Position",
 		Description: "Creates an application for a position. Returns a 204 on success.",
 		Req:         CreateApp{},
