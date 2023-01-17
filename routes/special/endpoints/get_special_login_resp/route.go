@@ -104,6 +104,8 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 			prettyName = "Reset User Token"
 		case "rtb":
 			prettyName = "Reset Bot Token"
+		case "bhmac":
+			prettyName = "Bot HMAC Update"
 		case "bweburl":
 			prettyName = "Bot Webhook URL Update"
 		case "bwebsec":
@@ -344,6 +346,52 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 
 		return api.HttpResponse{
 			Data: "Your new API token is: " + token + "\n\nThank you and have a nice day ;)",
+		}
+	// Set HMAC secret for bots
+	case "bhmac":
+		if action.TID == "" {
+			return api.HttpResponse{
+				Status: http.StatusBadRequest,
+				Data:   "No target id set",
+			}
+		}
+
+		if action.Ctx != "true" && action.Ctx != "false" {
+			return api.HttpResponse{
+				Status: http.StatusBadRequest,
+				Data:   "Invalid value for hmac",
+			}
+		}
+
+		if action.Ctx == "true" {
+			// We want to unset hmac
+			_, err := state.Pool.Exec(d.Context, "UPDATE bots SET hmac = true WHERE bot_id = $1", action.TID)
+
+			if err != nil {
+				return api.HttpResponse{
+					Status: http.StatusInternalServerError,
+					Data:   err.Error(),
+				}
+			}
+
+			return api.HttpResponse{
+				Status: http.StatusOK,
+				Data:   "Successfully set hmac",
+			}
+		} else {
+			_, err := state.Pool.Exec(d.Context, "UPDATE bots SET hmac = false WHERE bot_id = $1", action.TID)
+
+			if err != nil {
+				return api.HttpResponse{
+					Status: http.StatusInternalServerError,
+					Data:   err.Error(),
+				}
+			}
+
+			return api.HttpResponse{
+				Status: http.StatusOK,
+				Data:   "Successfully unset hmac",
+			}
 		}
 	// Bot webhook url update
 	case "bweburl":
