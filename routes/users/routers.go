@@ -8,6 +8,7 @@ import (
 	"popplio/routes/users/endpoints/get_notification_info"
 	"popplio/routes/users/endpoints/get_user"
 	"popplio/routes/users/endpoints/get_user_notifications"
+	"popplio/routes/users/endpoints/get_user_perms"
 	"popplio/routes/users/endpoints/get_user_reminders"
 	"popplio/routes/users/endpoints/get_user_seo"
 	"popplio/routes/users/endpoints/patch_user_profile"
@@ -73,6 +74,14 @@ func (b Router) Routes(r *chi.Mux) {
 		Method:  api.GET,
 		Docs:    get_user_seo.Docs,
 		Handler: get_user_seo.Route,
+	}.Route(r)
+
+	api.Route{
+		Pattern: "/users/{id}/perms",
+		OpId:    "get_user_perms",
+		Method:  api.GET,
+		Docs:    get_user_perms.Docs,
+		Handler: get_user_perms.Route,
 	}.Route(r)
 
 	api.Route{

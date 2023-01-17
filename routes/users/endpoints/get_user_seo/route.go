@@ -20,7 +20,7 @@ func Docs() *docs.Doc {
 		Params: []docs.Parameter{
 			{
 				Name:        "id",
-				Description: "User ID",
+				Description: "User ID/Username",
 				Required:    true,
 				In:          "path",
 				Schema:      docs.IdSchema,
@@ -32,10 +32,6 @@ func Docs() *docs.Doc {
 
 func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 	name := chi.URLParam(r, "id")
-
-	if name == "" {
-		return api.DefaultResponse(http.StatusBadRequest)
-	}
 
 	cache := state.Redis.Get(d.Context, "seou:"+name).Val()
 	if cache != "" {

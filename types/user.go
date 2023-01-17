@@ -44,3 +44,14 @@ type UserBot struct {
 	Premium            bool         `db:"premium" json:"premium"`
 	AdditionalOwnerIDS []string     `db:"additional_owners" json:"additional_owner_ids"`
 }
+
+type UserPerm struct {
+	ID          string       `json:"user_id"`
+	User        *DiscordUser `json:"user"` // Must be handled internally
+	Experiments []string     `json:"experiments"`
+	Staff       bool         `json:"staff"`
+	Admin       bool         `json:"admin"`
+	HAdmin      bool         `json:"hadmin"`
+	IBLDev         bool         `json:"ibldev"`
+	IBLHDev        bool         `json:"iblhdev"`
+}
