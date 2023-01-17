@@ -22,6 +22,9 @@ var (
 	userBotColsArr = utils.GetCols(types.UserBot{})
 	// These are the columns of a userbot object
 	userBotCols = strings.Join(userBotColsArr, ",")
+
+	indexPackColsArr = utils.GetCols(types.IndexBotPack{})
+	indexPackCols    = strings.Join(indexPackColsArr, ",")
 )
 
 func Docs() *docs.Doc {
@@ -128,6 +131,34 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 	}
 
 	user.UserBots = parsedUserBots
+
+	// Packs
+	rows, err := state.Pool.Query(d.Context, "SELECT "+indexPackCols+" FROM packs WHERE owner = $1 ORDER BY created_at DESC", user.ID)
+
+	if err != nil {
+		state.Logger.Error(err)
+		return api.DefaultResponse(http.StatusInternalServerError)
+	}
+
+	packs := []types.IndexBotPack{}
+
+	err = pgxscan.ScanAll(&packs, rows)
+
+	if err != nil {
+		state.Logger.Error(err)
+		return api.DefaultResponse(http.StatusInternalServerError)
+	}
+
+	for i := range packs {
+		packs[i].Votes, err = utils.ResolvePackVotes(d.Context, packs[i].URL)
+
+		if err != nil {
+			state.Logger.Error(err)
+			return api.DefaultResponse(http.StatusInternalServerError)
+		}
+	}
+
+	user.UserPacks = packs
 
 	return api.HttpResponse{
 		Json:      user,

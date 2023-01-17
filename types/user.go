@@ -21,7 +21,8 @@ type User struct {
 	StaffOnboardGuild         pgtype.Text        `db:"staff_onboard_guild" json:"staff_onboard_guild"`
 	Certified                 bool               `db:"certified" json:"certified"`
 	Developer                 bool               `db:"developer" json:"developer"`
-	UserBots                  []UserBot          `json:"user_bots"` // Must be handled internally
+	UserBots                  []UserBot          `json:"user_bots"`  // Must be handled internally
+	UserPacks                 []IndexBotPack     `json:"user_packs"` // Must be handled internally
 	ExtraLinks                []Link             `db:"extra_links" json:"extra_links"`
 }
 
