@@ -363,6 +363,8 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 			}
 		}
 
+		utils.ClearBotCache(d.Context, action.TID)
+
 		if action.Ctx == "true" {
 			// We want to unset hmac
 			_, err := state.Pool.Exec(d.Context, "UPDATE bots SET hmac = true WHERE bot_id = $1", action.TID)
