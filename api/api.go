@@ -262,13 +262,20 @@ func (r Route) Authorize(req *http.Request) (AuthData, HttpResponse, bool) {
 	return authData, HttpResponse{}, true
 }
 
-func Test(f func(d RouteData, r *http.Request) HttpResponse, body []byte, t *testing.T) {
+type TestData struct {
+	Route  func(d RouteData, r *http.Request) HttpResponse
+	Body   []byte
+	T      *testing.T
+	Params map[string]string
+}
+
+func Test(d TestData) {
 	// Open config.yaml
 	os.Chdir("../../../../")
 	configFile, err := os.ReadFile("config.yaml")
 
 	if err != nil {
-		t.Error("Could not open config.yaml:", err)
+		d.T.Error("Could not open config.yaml:", err)
 		return
 	}
 
@@ -276,6 +283,10 @@ func Test(f func(d RouteData, r *http.Request) HttpResponse, body []byte, t *tes
 	rctx := context.Background()
 
 	ctx := chi.NewRouteContext()
+
+	for k, v := range d.Params {
+		ctx.URLParams.Add(k, v)
+	}
 
 	rctx = context.WithValue(rctx, chi.RouteCtxKey, ctx)
 
@@ -292,17 +303,17 @@ func Test(f func(d RouteData, r *http.Request) HttpResponse, body []byte, t *tes
 
 	// Create a test request
 	req := http.Request{
-		Body: io.NopCloser(bytes.NewReader(body)),
+		Body: io.NopCloser(bytes.NewReader(d.Body)),
 	}
 
-	resp := f(testRouteData, &req)
+	resp := d.Route(testRouteData, &req)
 
 	if resp.Status != 0 && resp.Status != http.StatusOK && resp.Status != http.StatusCreated {
-		t.Error("Expected status 200 or 204 but got ", strconv.Itoa(resp.Status), resp)
+		d.T.Error("Expected status 200 or 204 but got ", strconv.Itoa(resp.Status), resp)
 		return
 	}
 
-	t.Log(resp)
+	d.T.Log(resp)
 }
 
 func (r Route) Route(ro Router) {

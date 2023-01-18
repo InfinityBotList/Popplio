@@ -6,5 +6,10 @@ import (
 )
 
 func TestGetAnnouncements(t *testing.T) {
-	api.Test(Route, []byte{}, t)
+	api.Test(api.TestData{
+		Route:  Route,
+		Body:   []byte{},
+		T:      t,
+		Params: map[string]string{},
+	})
 }
