@@ -76,10 +76,6 @@ type AuthUser struct {
 	User        *DiscordUser `json:"user"`
 }
 
-type AuthInfo struct {
-	ClientID string `json:"client_id"`
-}
-
 type Message struct {
 	ID          string                         `json:"id"`
 	Timestamp   time.Time                      `json:"timestamp"` // Not in DB, but generated from snowflake ID
