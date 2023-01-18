@@ -11,7 +11,6 @@ import (
 	"popplio/ratelimit"
 	"popplio/state"
 	"popplio/types"
-	"popplio/utils"
 
 	"github.com/go-playground/validator/v10"
 	"github.com/infinitybotlist/eureka/crypto"
@@ -91,7 +90,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 		}
 	}
 
-	if req.Nonce != "sauron-2" {
+	if req.Nonce != "sauron-tolkien" {
 		return api.HttpResponse{
 			Json: types.ApiError{
 				Error:   true,
@@ -287,20 +286,6 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 		}
 	}
 
-	discordUser, err := utils.GetDiscordUser(user.ID)
-
-	if err != nil {
-		state.Logger.Error(err)
-		return api.HttpResponse{
-			Json: types.ApiError{
-				Error:   true,
-				Message: "Failed to get user info from Discord",
-			},
-			Status:  http.StatusInternalServerError,
-			Headers: limit.Headers(),
-		}
-	}
-
 	var apiToken string
 	if !exists {
 		// Create user
@@ -382,8 +367,8 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 
 	// Create authUser and send
 	var authUser types.AuthUser = types.AuthUser{
-		User:  discordUser,
-		Token: apiToken,
+		UserID: user.ID,
+		Token:  apiToken,
 	}
 
 	return api.HttpResponse{
