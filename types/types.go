@@ -71,9 +71,8 @@ type Reminder struct {
 }
 
 type AuthUser struct {
-	Token       string       `json:"token"`
-	AccessToken string       `json:"access_token"`
-	User        *DiscordUser `json:"user"`
+	Token string       `json:"token"`
+	User  *DiscordUser `json:"user"`
 }
 
 type Message struct {

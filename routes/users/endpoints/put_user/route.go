@@ -382,9 +382,8 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 
 	// Create authUser and send
 	var authUser types.AuthUser = types.AuthUser{
-		User:        discordUser,
-		AccessToken: token.AccessToken,
-		Token:       apiToken,
+		User:  discordUser,
+		Token: apiToken,
 	}
 
 	return api.HttpResponse{
