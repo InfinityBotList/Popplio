@@ -272,10 +272,17 @@ func Test(f func(d RouteData, r *http.Request) HttpResponse, body []byte, t *tes
 		return
 	}
 
+	// Create new ctx
+	rctx := context.Background()
+
+	ctx := chi.NewRouteContext()
+
+	rctx = context.WithValue(rctx, chi.RouteCtxKey, ctx)
+
 	state.Setup(configFile)
 
 	testRouteData := RouteData{
-		Context:  context.Background(),
+		Context:  rctx,
 		IsClient: true,
 		Auth: AuthData{
 			ID:         os.Getenv("TEST__USER_ID"),
