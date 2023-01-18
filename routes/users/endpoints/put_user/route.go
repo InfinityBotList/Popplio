@@ -363,8 +363,6 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 		apiToken = tokenStr.String
 	}
 
-	// Check if user is banned from main server (TODO, not yet implemented)
-
 	// Create authUser and send
 	var authUser types.AuthUser = types.AuthUser{
 		UserID: user.ID,
