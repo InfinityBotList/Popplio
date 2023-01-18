@@ -24,9 +24,6 @@ import (
 
 var json = jsoniter.ConfigCompatibleWithStandardLibrary
 
-// Simple blank map to avoid creating maps for every marshal etc.
-var BlankMap = make(map[string]string)
-
 // Stores the current tag
 var CurrentTag string
 
@@ -554,7 +551,7 @@ func DefaultResponse(statusCode int) HttpResponse {
 }
 
 // Read body
-func marshalReq(r *http.Request, dst interface{}, headers map[string]string) (resp HttpResponse, ok bool) {
+func marshalReq(r *http.Request, dst interface{}) (resp HttpResponse, ok bool) {
 	defer r.Body.Close()
 
 	bodyBytes, err := io.ReadAll(r.Body)
@@ -571,7 +568,6 @@ func marshalReq(r *http.Request, dst interface{}, headers map[string]string) (re
 				Message: "A body is required for this endpoint",
 				Error:   true,
 			},
-			Headers: headers,
 		}, false
 	}
 
@@ -585,7 +581,6 @@ func marshalReq(r *http.Request, dst interface{}, headers map[string]string) (re
 				Message: "Invalid JSON: " + err.Error(),
 				Error:   true,
 			},
-			Headers: headers,
 		}, false
 	}
 
@@ -593,9 +588,13 @@ func marshalReq(r *http.Request, dst interface{}, headers map[string]string) (re
 }
 
 func MarshalReq(r *http.Request, dst interface{}) (resp HttpResponse, ok bool) {
-	return marshalReq(r, dst, BlankMap)
+	return marshalReq(r, dst)
 }
 
 func MarshalReqWithHeaders(r *http.Request, dst interface{}, headers map[string]string) (resp HttpResponse, ok bool) {
-	return marshalReq(r, dst, headers)
+	resp, err := marshalReq(r, dst)
+
+	resp.Headers = headers
+
+	return resp, err
 }

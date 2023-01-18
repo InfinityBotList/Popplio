@@ -24,6 +24,8 @@ var (
 	botsSql string
 
 	botSqlTemplate *template.Template
+
+	compiledMessages = api.CompileValidationErrors(SearchQuery{})
 )
 
 type searchSqlTemplateCtx struct {
@@ -51,10 +53,10 @@ type TagFilter struct {
 
 type SearchQuery struct {
 	Query     string        `json:"query"`
-	Servers   *SearchFilter `json:"servers" validate:"required"`
-	Votes     *SearchFilter `json:"votes" validate:"required"`
-	Shards    *SearchFilter `json:"shards" validate:"required"`
-	TagFilter *TagFilter    `json:"tags" validate:"required"`
+	Servers   *SearchFilter `json:"servers" validate:"required" msg:"Servers must be a valid filter"`
+	Votes     *SearchFilter `json:"votes" validate:"required" msg:"Votes must be a valid filter"`
+	Shards    *SearchFilter `json:"shards" validate:"required" msg:"Shards must be a valid filter"`
+	TagFilter *TagFilter    `json:"tags" validate:"required" msg:"Tags must be a valid filter"`
 }
 
 type SearchResponse struct {
@@ -87,7 +89,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 
 	if err != nil {
 		errors := err.(validator.ValidationErrors)
-		return api.ValidatorErrorResponse(api.BlankMap, errors)
+		return api.ValidatorErrorResponse(compiledMessages, errors)
 	}
 
 	if payload.Query == "" && len(payload.TagFilter.Tags) == 0 {

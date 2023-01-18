@@ -20,12 +20,10 @@ import (
 	"golang.org/x/exp/slices"
 )
 
-var json = jsoniter.ConfigCompatibleWithStandardLibrary
-
-var allowedRedirectURLs = []string{
-	"http://localhost:3000/sauron",               // DEV
-	"https://reedwhisker.infinitybots.gg/sauron", // PROD
-}
+var (
+	json             = jsoniter.ConfigCompatibleWithStandardLibrary
+	compiledMessages = api.CompileValidationErrors(AuthorizeRequest{})
+)
 
 func Docs() *docs.Doc {
 	return &docs.Doc{
@@ -79,10 +77,10 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 
 	if err != nil {
 		errors := err.(validator.ValidationErrors)
-		return api.ValidatorErrorResponse(api.BlankMap, errors)
+		return api.ValidatorErrorResponse(compiledMessages, errors)
 	}
 
-	if !slices.Contains(allowedRedirectURLs, req.RedirectURI) {
+	if !slices.Contains(state.Config.DiscordAuth.AllowedRedirects, req.RedirectURI) {
 		return api.HttpResponse{
 			Json: types.ApiError{
 				Error:   true,

@@ -13,9 +13,10 @@ type Config struct {
 }
 
 type DiscordAuth struct {
-	Token        string `yaml:"token" comment:"Discord bot token" validate:"required"`
-	ClientID     string `yaml:"client_id" default:"870728078228324382" comment:"Discord Client ID" validate:"required"`
-	ClientSecret string `yaml:"client_secret" comment:"Discord Client Secret" validate:"required"`
+	Token            string   `yaml:"token" comment:"Discord bot token" validate:"required"`
+	ClientID         string   `yaml:"client_id" default:"870728078228324382" comment:"Discord Client ID" validate:"required"`
+	ClientSecret     string   `yaml:"client_secret" comment:"Discord Client Secret" validate:"required"`
+	AllowedRedirects []string `yaml:"allowed_redirects" default:"http://localhost:3000/sauron,https://reedwhisker.infinitybots.gg/sauron" validate:"required"`
 }
 
 type HighSecurityCtx struct {
