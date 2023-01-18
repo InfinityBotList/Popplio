@@ -35,6 +35,7 @@ func Docs() *docs.Doc {
 }
 
 type AuthorizeRequest struct {
+	ClientID    string `json:"client_id" validate:"required"`
 	Code        string `json:"code" validate:"required,min=5"`
 	RedirectURI string `json:"redirect_uri" validate:"required"`
 	Nonce       string `json:"nonce" validate:"required"` // Just to identify and block older clients from vulns
@@ -72,7 +73,6 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 	}
 
 	// Validate the payload
-
 	err = state.Validator.Struct(req)
 
 	if err != nil {
@@ -91,11 +91,22 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 		}
 	}
 
-	if req.Nonce != "sauron" {
+	if req.Nonce != "sauron-2" {
 		return api.HttpResponse{
 			Json: types.ApiError{
 				Error:   true,
 				Message: "Your client is outdated and is not supported. Please update your client.",
+			},
+			Status:  http.StatusBadRequest,
+			Headers: limit.Headers(),
+		}
+	}
+
+	if req.ClientID != state.Config.DiscordAuth.ClientID {
+		return api.HttpResponse{
+			Json: types.ApiError{
+				Error:   true,
+				Message: "Misconfigured client! Client id is incorrect",
 			},
 			Status:  http.StatusBadRequest,
 			Headers: limit.Headers(),
