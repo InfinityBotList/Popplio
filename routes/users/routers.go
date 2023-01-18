@@ -4,7 +4,6 @@ import (
 	"popplio/api"
 	"popplio/routes/users/endpoints/delete_user_notifications"
 	"popplio/routes/users/endpoints/delete_user_reminders"
-	"popplio/routes/users/endpoints/get_authorize_info"
 	"popplio/routes/users/endpoints/get_notification_info"
 	"popplio/routes/users/endpoints/get_user"
 	"popplio/routes/users/endpoints/get_user_notifications"
@@ -49,15 +48,6 @@ func (b Router) Routes(r *chi.Mux) {
 				Type:   types.TargetTypeUser,
 			},
 		},
-	}.Route(r)
-
-	api.Route{
-		Pattern: "/users/authorize",
-		OpId:    "get_authorize_info",
-		Method:  api.GET,
-		Docs:    get_authorize_info.Docs,
-		Handler: get_authorize_info.Route,
-		Setup:   get_authorize_info.Setup,
 	}.Route(r)
 
 	api.Route{
