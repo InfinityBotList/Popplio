@@ -8,6 +8,7 @@ var Apps = map[string]Position{
 
 We are a welcoming and laid back team who is always willing to give new people an opportunity!`,
 		Name: "Staff Team",
+		Tags: []string{"Staff", "Bot Reviewing"},
 		Interview: []Question{
 			{
 				ID:          "motive",
@@ -79,6 +80,7 @@ Some experience in PostgreSQL and at least one of the below languages is require
 - TypeScript (Javascript with type-safety)
 - Go/Golang`,
 		Name: "Dev Team",
+		Tags: []string{"Golang", "Rust"},
 		Interview: []Question{
 			{
 				ID:          "motive",
@@ -163,8 +165,15 @@ Some experience in PostgreSQL and at least one of the below languages is require
 	},
 	"partners": {
 		Order: 3,
-		Info:  `Partner your Discord Bot, Discord Server or Business today! It's easier than ever before!`,
-		Name:  "Partners",
+		Info: `Partner your Discord Bot, Discord Server or Business today! It's easier than ever before!
+
+Some points to note:
+
+- When you apply for a partnership, make sure that you are authorized to speak on the services behalf
+- Infinity Development reserves the right to deny or cancel any partnership application at any time.
+`,
+		Name: "Partners",
+		Tags: []string{"Advertising", "Business"},
 		Questions: []Question{
 			{
 				ID:          "what",
@@ -209,6 +218,7 @@ Some experience in PostgreSQL and at least one of the below languages is require
 		Name:       "Bot Resubmission",
 		Hidden:     true, // Mostly done by ibl next
 		ExtraLogic: extraLogicResubmit,
+		Tags:       []string{"Resubmissions"},
 		Questions: []Question{
 			{
 				ID:          "id",

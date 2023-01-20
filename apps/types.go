@@ -17,6 +17,7 @@ type Question struct {
 
 type Position struct {
 	Order      int        `json:"order" validate:"required"`
+	Tags       []string   `json:"tags" validate:"required"`
 	Info       string     `json:"info" validate:"required"`
 	Name       string     `json:"name" validate:"required"`
 	Interview  []Question `json:"interview"` // Optional as interview may not be required
