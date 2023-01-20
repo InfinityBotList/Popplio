@@ -19,6 +19,7 @@ import (
 	"popplio/routes/packs"
 	"popplio/routes/reviews"
 	"popplio/routes/special"
+	"popplio/routes/staff"
 	"popplio/routes/tickets"
 	"popplio/routes/users"
 	"popplio/routes/votes"
@@ -143,6 +144,7 @@ func main() {
 		diagnostics.Router{},
 		apps.Router{},
 		reviews.Router{},
+		staff.Router{},
 	}
 
 	for _, router := range routers {
