@@ -267,6 +267,7 @@ type TestData struct {
 	Body   []byte
 	T      *testing.T
 	Params map[string]string
+	AuthID string
 }
 
 func Test(d TestData) {
@@ -292,11 +293,17 @@ func Test(d TestData) {
 
 	state.Setup(configFile)
 
+	id := os.Getenv("TEST__USER_ID")
+
+	if d.AuthID != "" {
+		id = d.AuthID
+	}
+
 	testRouteData := RouteData{
 		Context:  rctx,
 		IsClient: true,
 		Auth: AuthData{
-			ID:         os.Getenv("TEST__USER_ID"),
+			ID:         id,
 			Authorized: true,
 		},
 	}
@@ -306,7 +313,9 @@ func Test(d TestData) {
 		Body: io.NopCloser(bytes.NewReader(d.Body)),
 	}
 
-	resp := d.Route(testRouteData, &req)
+	ctxReq := req.WithContext(rctx)
+
+	resp := d.Route(testRouteData, ctxReq)
 
 	if resp.Status != 0 && resp.Status != http.StatusOK && resp.Status != http.StatusCreated {
 		d.T.Error("Expected status 200 or 204 but got ", strconv.Itoa(resp.Status), resp)

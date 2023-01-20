@@ -364,7 +364,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 	}
 
 	// Create authUser and send
-	var authUser types.AuthUser = types.AuthUser{
+	var authUser = types.AuthUser{
 		UserID: user.ID,
 		Token:  apiToken,
 	}
