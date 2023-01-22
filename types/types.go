@@ -16,12 +16,14 @@ type Link struct {
 type Interval struct {
 	Duration time.Duration `json:"duration"`
 	String   string        `json:"string"`
+	Seconds  int           `json:"secs"`
 }
 
 func NewInterval(d time.Duration) Interval {
 	return Interval{
 		Duration: d,
 		String:   d.String(),
+		Seconds:  int(d.Seconds()),
 	}
 }
 
