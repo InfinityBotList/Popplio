@@ -3,6 +3,7 @@ package staff
 import (
 	"popplio/api"
 	"popplio/routes/staff/endpoints/get_staff_onboard_code"
+	"popplio/routes/staff/endpoints/get_staff_onboard_data"
 
 	"github.com/go-chi/chi/v5"
 )
@@ -22,5 +23,13 @@ func (b Router) Routes(r *chi.Mux) {
 		Method:  api.GET,
 		Docs:    get_staff_onboard_code.Docs,
 		Handler: get_staff_onboard_code.Route,
+	}.Route(r)
+
+	api.Route{
+		Pattern: "/staff-onboard-data/{id}",
+		OpId:    "get_staff_onboard_data",
+		Method:  api.GET,
+		Docs:    get_staff_onboard_data.Docs,
+		Handler: get_staff_onboard_data.Route,
 	}.Route(r)
 }
