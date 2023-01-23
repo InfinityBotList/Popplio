@@ -7,10 +7,16 @@ type VoteInfo struct {
 }
 
 type UserVote struct {
+	UserID       string   `json:"user_id"`
 	Timestamps   []int64  `json:"ts"`
 	HasVoted     bool     `json:"has_voted"`
 	LastVoteTime int64    `json:"last_vote_time"`
 	VoteInfo     VoteInfo `json:"vote_info"`
+}
+
+type AllVotes struct {
+	Votes []UserVote `json:"votes"`
+	Count int64      `json:"count"`
 }
 
 type WebhookPost struct {

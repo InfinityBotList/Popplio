@@ -246,7 +246,20 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 
 		var msg notifications.Message
 
-		if err != nil {
+		if err.Error() == "httpUser" {
+			state.Pool.Exec(
+				state.Context,
+				"INSERT INTO alerts (user_id, url, message, type) VALUES ($1, $2, $3, $4)",
+				userId,
+				"https://infinitybots.gg/bots/"+id,
+				"This bot uses the Get All Bot Votes HTTP API to handle vote rewards. ID: "+id+" ("+botObj.Username+")",
+				"info",
+			)
+			msg = notifications.Message{
+				Title:   "Vote Rewards Deferred!",
+				Message: botObj.Username + " uses the HTTP API for votes. Vote rewards may take time to register.",
+			}
+		} else if err != nil {
 			state.Pool.Exec(
 				state.Context,
 				"INSERT INTO alerts (user_id, url, message, type) VALUES ($1, $2, $3, $4)",
@@ -257,7 +270,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 			)
 			msg = notifications.Message{
 				Title:   "Whoa There!",
-				Message: "We couldn't notify " + botObj.Username + ": " + err.Error() + ". Vote rewards may not work",
+				Message: "We couldn't notify " + botObj.Username + ": " + err.Error() + ".",
 				Icon:    botObj.Avatar,
 			}
 		} else {
@@ -270,7 +283,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 				"info",
 			)
 			msg = notifications.Message{
-				Title:   "Vote Count Updated!",
+				Title:   "Bot Notified!",
 				Message: "Successfully alerted " + botObj.Username + " to your vote with ID of " + id + ".",
 			}
 		}

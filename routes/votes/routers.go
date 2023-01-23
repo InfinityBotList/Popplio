@@ -2,6 +2,7 @@ package votes
 
 import (
 	"popplio/api"
+	"popplio/routes/votes/endpoints/get_all_bot_votes"
 	"popplio/routes/votes/endpoints/get_user_bot_votes"
 	"popplio/routes/votes/endpoints/get_user_pack_votes"
 	"popplio/routes/votes/endpoints/put_user_bot_votes"
@@ -21,6 +22,20 @@ func (b Router) Tag() (string, string) {
 }
 
 func (b Router) Routes(r *chi.Mux) {
+	api.Route{
+		Pattern: "/bots/{id}/votes",
+		OpId:    "get_all_bot_votes",
+		Method:  api.GET,
+		Docs:    get_all_bot_votes.Docs,
+		Handler: get_all_bot_votes.Route,
+		Auth: []api.AuthType{
+			{
+				URLVar: "id",
+				Type:   types.TargetTypeBot,
+			},
+		},
+	}.Route(r)
+
 	api.Route{
 		Pattern: "/users/{uid}/bots/{bid}/votes",
 		OpId:    "get_user_bot_votes",

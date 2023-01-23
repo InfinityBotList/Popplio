@@ -69,6 +69,10 @@ func Send(webhook types.WebhookPost) error {
 		url = webhookURL.String
 	}
 
+	if url == "httpUser" {
+		return errors.New("httpUser")
+	}
+
 	isDiscordIntegration := isDiscord(url)
 
 	if isDiscordIntegration {
@@ -78,7 +82,7 @@ func Send(webhook types.WebhookPost) error {
 	state.Logger.Info("Using hmac: ", webhook.HMACAuth)
 
 	if utils.IsNone(url) {
-		return errors.New("refusing to continue as no webhook")
+		return errors.New("no webhook set, vote rewards may not work")
 	}
 
 	var dUser, err = utils.GetDiscordUser(webhook.UserID)
