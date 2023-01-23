@@ -10,6 +10,7 @@ import (
 	"popplio/utils"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 func Docs() *docs.Doc {
@@ -42,9 +43,10 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 	}
 
 	var webhook string
+	var webAuth pgtype.Text
 	var hmac bool
 
-	err = state.Pool.QueryRow(d.Context, "SELECT webhook, hmac FROM bots WHERE bot_id = $1", id).Scan(&webhook, &hmac)
+	err = state.Pool.QueryRow(d.Context, "SELECT webhook, web_auth, hmac FROM bots WHERE bot_id = $1", id).Scan(&webhook, &webAuth, &hmac)
 
 	if err != nil {
 		state.Logger.Error(err)
@@ -55,6 +57,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 		Json: types.WebhookState{
 			HTTP:        webhook == "httpUser",
 			WebhookHMAC: hmac,
+			SecretSet:   !webAuth.Valid || webAuth.String != "",
 		},
 	}
 }

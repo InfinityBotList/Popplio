@@ -51,4 +51,5 @@ type WebhookData struct {
 type WebhookState struct {
 	HTTP        bool `json:"http"`
 	WebhookHMAC bool `json:"webhook_hmac_auth"`
+	SecretSet   bool `json:"webhook_secret_set"`
 }
