@@ -60,14 +60,6 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 		}
 	}
 
-	// Check if the auth target id is correct
-	if authData.ID != payload.TargetID {
-		return api.HttpResponse{
-			Status: http.StatusUnauthorized,
-			Json:   types.ApiError{Message: "Invalid auth target id"},
-		}
-	}
-
 	return api.HttpResponse{
 		Json: authData,
 	}
