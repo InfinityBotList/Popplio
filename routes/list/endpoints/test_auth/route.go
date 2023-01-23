@@ -1,11 +1,14 @@
 package test_auth
 
 import (
+	"context"
 	"net/http"
 
 	"popplio/api"
 	"popplio/docs"
 	"popplio/types"
+
+	"github.com/go-chi/chi/v5"
 )
 
 func Docs() *docs.Doc {
@@ -34,30 +37,28 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 	}
 
 	// Create []AuthType
-
+	rctx := context.Background()
+	ctx := chi.NewRouteContext()
+	ctx.URLParams.Add("test", payload.TargetID)
+	rctx = context.WithValue(rctx, chi.RouteCtxKey, ctx)
 	authType := []api.AuthType{
 		{
-			Type: payload.AuthType,
+			URLVar: "test",
+			Type:   payload.AuthType,
 		},
 	}
+
+	reqCtxd := r.WithContext(rctx)
 
 	r.Header.Set("Authorization", payload.Token)
 
 	// Check auth
 	authData, hr, ok := api.Route{
 		Auth: authType,
-	}.Authorize(r)
+	}.Authorize(reqCtxd)
 
 	if !ok {
 		return hr
-	}
-
-	// Check if the auth type is correct
-	if authData.TargetType != payload.AuthType {
-		return api.HttpResponse{
-			Status: http.StatusUnauthorized,
-			Json:   types.ApiError{Message: "Invalid auth type"},
-		}
 	}
 
 	return api.HttpResponse{
