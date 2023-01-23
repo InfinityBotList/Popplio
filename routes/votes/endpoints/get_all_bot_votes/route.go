@@ -53,7 +53,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 	limit := perPage
 	offset := (pageNum - 1) * perPage
 
-	rows, err := state.Pool.Query(state.Context, "SELECT user_id FROM votes WHERE bot_id = $1 LIMIT $2 OFFSET $3", d.Auth.ID, limit, offset)
+	rows, err := state.Pool.Query(d.Context, "SELECT user_id FROM votes WHERE bot_id = $1 LIMIT $2 OFFSET $3", d.Auth.ID, limit, offset)
 
 	if err != nil {
 		state.Logger.Error(err)

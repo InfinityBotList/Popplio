@@ -37,7 +37,7 @@ Gets a bot invite by id or name
 func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 	name := chi.URLParam(r, "id")
 
-	id, err := utils.ResolveBot(state.Context, name)
+	id, err := utils.ResolveBot(d.Context, name)
 
 	if err != nil {
 		state.Logger.Error(err)
@@ -58,7 +58,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 
 	if d.IsClient {
 		// Update clicks
-		_, err = state.Pool.Exec(state.Context, "UPDATE bots SET invite_clicks = invite_clicks + 1 WHERE bot_id = $1", id)
+		_, err = state.Pool.Exec(d.Context, "UPDATE bots SET invite_clicks = invite_clicks + 1 WHERE bot_id = $1", id)
 
 		if err != nil {
 			state.Logger.Error(err)

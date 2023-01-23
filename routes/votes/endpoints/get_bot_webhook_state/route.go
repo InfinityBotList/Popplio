@@ -1,4 +1,4 @@
-package get_user_bot_votes
+package get_bot_webhook_state
 
 import (
 	"net/http"
@@ -14,32 +14,18 @@ import (
 
 func Docs() *docs.Doc {
 	return &docs.Doc{
-		Summary:     "Get User Bot Votes",
-		Description: "Gets the users votes. **Requires authentication**",
+		Summary:     "Get Bot Webhook State",
+		Description: "Returns whether or not the bot uses webhooks or REST for vote handling. **Requires authentication**",
 		Params: []docs.Parameter{
 			{
-				Name:        "uid",
-				Description: "The user ID",
-				Required:    true,
-				In:          "path",
-				Schema:      docs.IdSchema,
-			},
-			{
-				Name:        "bid",
+				Name:        "id",
 				Description: "The bot ID",
 				Required:    true,
 				In:          "path",
 				Schema:      docs.IdSchema,
 			},
 		},
-		Resp: types.UserVote{
-			Timestamps: []int64{},
-			VoteInfo: types.VoteInfo{
-				Weekend:  utils.GetDoubleVote(),
-				VoteTime: utils.GetVoteTime(),
-			},
-			HasVoted: true,
-		},
+		Resp: types.WebhookState{},
 	}
 }
 
@@ -55,9 +41,9 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 		return api.DefaultResponse(http.StatusNotFound)
 	}
 
-	userId := chi.URLParam(r, "uid")
+	var webhook string
 
-	voteParsed, err := utils.GetVoteData(d.Context, userId, id, true)
+	err = state.Pool.QueryRow(d.Context, "SELECT webhook FROM bots WHERE bot_id = $1", id).Scan(&webhook)
 
 	if err != nil {
 		state.Logger.Error(err)
@@ -65,6 +51,8 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 	}
 
 	return api.HttpResponse{
-		Json: voteParsed,
+		Json: types.WebhookState{
+			HTTP: webhook == "httpUser",
+		},
 	}
 }

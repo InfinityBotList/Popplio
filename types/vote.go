@@ -47,3 +47,7 @@ type WebhookData struct {
 	Test         bool         `json:"test"`
 	Time         int64        `json:"time"`
 }
+
+type WebhookState struct {
+	HTTP bool `json:"http"`
+}

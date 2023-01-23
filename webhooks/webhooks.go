@@ -21,7 +21,7 @@ import (
 
 var json = jsoniter.ConfigCompatibleWithStandardLibrary
 
-func isDiscord(url string) bool {
+func IsDiscordURL(url string) bool {
 	validPrefixes := []string{
 		"https://discordapp.com/api/webhooks/",
 		"https://discord.com/api/webhooks/",
@@ -73,7 +73,7 @@ func Send(webhook types.WebhookPost) error {
 		return errors.New("httpUser")
 	}
 
-	isDiscordIntegration := isDiscord(url)
+	isDiscordIntegration := IsDiscordURL(url)
 
 	if isDiscordIntegration {
 		return errors.New("webhook is not a discord webhook")

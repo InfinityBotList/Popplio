@@ -3,6 +3,7 @@ package votes
 import (
 	"popplio/api"
 	"popplio/routes/votes/endpoints/get_all_bot_votes"
+	"popplio/routes/votes/endpoints/get_bot_webhook_state"
 	"popplio/routes/votes/endpoints/get_user_bot_votes"
 	"popplio/routes/votes/endpoints/get_user_pack_votes"
 	"popplio/routes/votes/endpoints/put_user_bot_votes"
@@ -34,6 +35,14 @@ func (b Router) Routes(r *chi.Mux) {
 				Type:   types.TargetTypeBot,
 			},
 		},
+	}.Route(r)
+
+	api.Route{
+		Pattern: "/bots/{id}/webhook-state",
+		OpId:    "get_bot_webhook_state",
+		Method:  api.GET,
+		Docs:    get_bot_webhook_state.Docs,
+		Handler: get_bot_webhook_state.Route,
 	}.Route(r)
 
 	api.Route{
