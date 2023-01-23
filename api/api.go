@@ -161,7 +161,7 @@ func (r Route) Authorize(req *http.Request) (AuthData, HttpResponse, bool) {
 					continue
 				}
 
-				if !id.Valid || id.String != targetId {
+				if !id.Valid {
 					continue
 				}
 
@@ -190,7 +190,7 @@ func (r Route) Authorize(req *http.Request) (AuthData, HttpResponse, bool) {
 					continue
 				}
 
-				if !id.Valid || id.String != targetId {
+				if !id.Valid {
 					continue
 				}
 
