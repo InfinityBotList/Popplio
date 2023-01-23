@@ -30,7 +30,7 @@ func Docs() *docs.Doc {
 }
 
 func Route(d api.RouteData, r *http.Request) api.HttpResponse {
-	id, err := utils.ResolveBot(d.Context, chi.URLParam(r, "bid"))
+	id, err := utils.ResolveBot(d.Context, chi.URLParam(r, "id"))
 
 	if err != nil {
 		state.Logger.Error(err)
