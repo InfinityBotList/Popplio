@@ -42,8 +42,9 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 	}
 
 	var webhook string
+	var hmac bool
 
-	err = state.Pool.QueryRow(d.Context, "SELECT webhook FROM bots WHERE bot_id = $1", id).Scan(&webhook)
+	err = state.Pool.QueryRow(d.Context, "SELECT webhook, hmac FROM bots WHERE bot_id = $1", id).Scan(&webhook, &hmac)
 
 	if err != nil {
 		state.Logger.Error(err)
@@ -52,7 +53,8 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 
 	return api.HttpResponse{
 		Json: types.WebhookState{
-			HTTP: webhook == "httpUser",
+			HTTP:        webhook == "httpUser",
+			WebhookHMAC: hmac,
 		},
 	}
 }
