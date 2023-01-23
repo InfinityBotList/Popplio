@@ -420,6 +420,14 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 				Data:   "Successfully unset webhook url",
 			}
 		} else {
+			// Ensure webhook is a URL
+			if !strings.HasPrefix(action.Ctx, "https://") && action.Ctx != "httpUser" {
+				return api.HttpResponse{
+					Status: http.StatusBadRequest,
+					Data:   "Invalid webhook url",
+				}
+			}
+
 			_, err := state.Pool.Exec(d.Context, "UPDATE bots SET webhook = $1 WHERE bot_id = $2", action.Ctx, action.TID)
 
 			if err != nil {
