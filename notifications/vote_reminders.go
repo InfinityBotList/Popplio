@@ -34,7 +34,7 @@ func vrCheck() {
 			continue
 		}
 
-		voteParsed, err := utils.GetVoteData(state.Context, userId, botId)
+		voteParsed, err := utils.GetVoteData(state.Context, userId, botId, true)
 
 		if err != nil {
 			state.Logger.Error(err)

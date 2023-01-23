@@ -243,7 +243,7 @@ func GetVoteTime() uint16 {
 	}
 }
 
-func GetVoteData(ctx context.Context, userID, botID string) (*types.UserVote, error) {
+func GetVoteData(ctx context.Context, userID, botID string, log bool) (*types.UserVote, error) {
 	var votes []int64
 
 	var voteDates []*struct {
@@ -272,12 +272,14 @@ func GetVoteData(ctx context.Context, userID, botID string) (*types.UserVote, er
 		},
 	}
 
-	state.Logger.With(
-		zap.String("user_id", userID),
-		zap.String("bot_id", botID),
-		zap.Int64s("votes", votes),
-		zap.Error(err),
-	).Info("Got vote data")
+	if log {
+		state.Logger.With(
+			zap.String("user_id", userID),
+			zap.String("bot_id", botID),
+			zap.Int64s("votes", votes),
+			zap.Error(err),
+		).Info("Got vote data")
+	}
 
 	voteParsed.Timestamps = votes
 

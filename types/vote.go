@@ -15,8 +15,10 @@ type UserVote struct {
 }
 
 type AllVotes struct {
-	Votes []UserVote `json:"votes"`
-	Count int64      `json:"count"`
+	Votes      []UserVote `json:"votes"`
+	Count      uint64     `json:"count"`
+	PerPage    uint64     `json:"per_page"`
+	TotalPages uint64     `json:"total_pages"`
 }
 
 type WebhookPost struct {

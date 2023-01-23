@@ -196,7 +196,7 @@ func (r Route) Authorize(req *http.Request) (AuthData, HttpResponse, bool) {
 
 				authData = AuthData{
 					TargetType: types.TargetTypeBot,
-					ID:         targetId,
+					ID:         id.String,
 					Authorized: true,
 				}
 			}

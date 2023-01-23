@@ -28,6 +28,15 @@ func Docs() *docs.Doc {
 		Summary:     "Get All Bots",
 		Description: "Gets all bots on the list. Returns a ``Index`` object",
 		Resp:        types.AllBots{},
+		Params: []docs.Parameter{
+			{
+				Name:        "page",
+				Description: "The page number",
+				Required:    false,
+				In:          "query",
+				Schema:      docs.IdSchema,
+			},
+		},
 	}
 }
 

@@ -57,7 +57,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 
 	userId := chi.URLParam(r, "uid")
 
-	voteParsed, err := utils.GetVoteData(d.Context, userId, id)
+	voteParsed, err := utils.GetVoteData(d.Context, userId, id, true)
 
 	if err != nil {
 		state.Logger.Error(err)
