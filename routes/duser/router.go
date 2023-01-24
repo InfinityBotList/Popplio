@@ -4,6 +4,7 @@ import (
 	"popplio/api"
 	"popplio/routes/duser/endpoints/clear_duser"
 	"popplio/routes/duser/endpoints/get_duser"
+	"popplio/routes/duser/endpoints/get_duser_db"
 
 	"github.com/go-chi/chi/v5"
 )
@@ -23,6 +24,14 @@ func (b Router) Routes(r *chi.Mux) {
 		Method:  api.GET,
 		Docs:    get_duser.Docs,
 		Handler: get_duser.Route,
+	}.Route(r)
+
+	api.Route{
+		Pattern: "/_duser/{id}/db",
+		OpId:    "get_duser",
+		Method:  api.GET,
+		Docs:    get_duser_db.Docs,
+		Handler: get_duser_db.Route,
 	}.Route(r)
 
 	api.Route{

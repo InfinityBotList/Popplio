@@ -11,6 +11,7 @@ import (
 	"popplio/ratelimit"
 	"popplio/state"
 	"popplio/types"
+	"popplio/utils"
 
 	"github.com/go-playground/validator/v10"
 	"github.com/infinitybotlist/eureka/crypto"
@@ -287,16 +288,31 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 	}
 
 	var apiToken string
+
+	dUser, err := utils.GetDiscordUser(user.ID)
+
+	if err != nil {
+		state.Logger.Error(err)
+		return api.HttpResponse{
+			Json: types.ApiError{
+				Error:   true,
+				Message: "Failed to get user from Discord",
+			},
+			Status: http.StatusInternalServerError,
+		}
+	}
+
 	if !exists {
 		// Create user
 		apiToken = crypto.RandString(128)
 		_, err = state.Pool.Exec(
 			d.Context,
-			"INSERT INTO users (user_id, api_token, username, staff, developer, certified, extra_links) VALUES ($1, $2, $3, false, false, false, $4)",
+			"INSERT INTO users (user_id, api_token, username, staff, developer, certified, extra_links, avatar) VALUES ($1, $2, $3, false, false, false, $4, $5)",
 			user.ID,
 			apiToken,
 			user.Username,
 			[]types.Link{},
+			dUser.Avatar,
 		)
 
 		if err != nil {
@@ -314,8 +330,9 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 		// Update user
 		_, err = state.Pool.Exec(
 			d.Context,
-			"UPDATE users SET username = $1 WHERE user_id = $2",
+			"UPDATE users SET username = $1, avatar = $2 WHERE user_id = $3",
 			user.Username,
+			dUser.Avatar,
 			user.ID,
 		)
 

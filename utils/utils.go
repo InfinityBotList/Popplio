@@ -101,6 +101,12 @@ func GetDiscordUser(id string) (*types.DiscordUser, error) {
 				if err != nil {
 					state.Logger.Error("Failed to update bot queue name", zap.Error(err))
 				}
+			} else {
+				_, err = state.Pool.Exec(state.Context, "UPDATE users SET username = $1, avatar = $2 WHERE user_id = $3", member.User.Username, member.User.AvatarURL(""), member.User.ID)
+
+				if err != nil {
+					state.Logger.Error("Failed to update bot queue name", zap.Error(err))
+				}
 			}
 
 			obj := &types.DiscordUser{
@@ -147,6 +153,12 @@ func GetDiscordUser(id string) (*types.DiscordUser, error) {
 
 				if member.User.Bot {
 					_, err = state.Pool.Exec(state.Context, "UPDATE bots SET queue_name = $1, queue_avatar = $2 WHERE bot_id = $3", member.User.Username, member.User.AvatarURL(""), member.User.ID)
+
+					if err != nil {
+						state.Logger.Error("Failed to update bot queue name", zap.Error(err))
+					}
+				} else {
+					_, err = state.Pool.Exec(state.Context, "UPDATE users SET username = $1, avatar = $2 WHERE user_id = $3", member.User.Username, member.User.AvatarURL(""), member.User.ID)
 
 					if err != nil {
 						state.Logger.Error("Failed to update bot queue name", zap.Error(err))
@@ -208,6 +220,12 @@ func GetDiscordUser(id string) (*types.DiscordUser, error) {
 		if err != nil {
 			state.Logger.Error("Failed to update bot queue name", zap.Error(err))
 		}
+	} else {
+		_, err = state.Pool.Exec(state.Context, "UPDATE users SET username = $1, avatar = $2 WHERE user_id = $3", user.Username, user.AvatarURL(""), user.ID)
+
+		if err != nil {
+			state.Logger.Error("Failed to update bot queue name", zap.Error(err))
+		}
 	}
 
 	obj := &types.DiscordUser{
@@ -229,6 +247,51 @@ func GetDiscordUser(id string) (*types.DiscordUser, error) {
 	state.Redis.Set(state.Context, "uobj:"+id, obj, userExpiryTime)
 
 	return obj, nil
+}
+
+func GetDatabaseDiscordUser(ctx context.Context, id string) (*types.DatabaseDiscordUser, error) {
+	var count int64
+
+	err := state.Pool.QueryRow(ctx, "SELECT COUNT(*) FROM users WHERE user_id = $1", id).Scan(&count)
+
+	if err != nil {
+		state.Logger.Error(err)
+		return nil, err
+	}
+
+	if count == 0 {
+		return &types.DatabaseDiscordUser{
+			FoundInDB: false,
+		}, nil
+	}
+
+	var username string
+	var avatar string
+
+	err = state.Pool.QueryRow(ctx, "SELECT username, avatar FROM users WHERE user_id = $1", id).Scan(&username, &avatar)
+
+	if err != nil {
+		state.Logger.Error(err)
+		return nil, err
+	}
+
+	if avatar == "unset" {
+		user, err := GetDiscordUser(id)
+
+		if err != nil {
+			state.Logger.Error(err)
+			return nil, err
+		}
+
+		avatar = user.Avatar
+	}
+
+	return &types.DatabaseDiscordUser{
+		ID:        id,
+		Username:  username,
+		Avatar:    avatar,
+		FoundInDB: true,
+	}, nil
 }
 
 func GetDoubleVote() bool {

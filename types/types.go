@@ -59,6 +59,16 @@ type DiscordUser struct {
 	IsServerMember bool             `json:"is_member"`
 }
 
+// A database discord user is a smaller version of a discord user based on our database
+type DatabaseDiscordUser struct {
+	ID       string `json:"id"`
+	Username string `json:"username"`
+	Avatar   string `json:"avatar"`
+
+	// Internal fields
+	FoundInDB bool `json:"-"` // If the user was found in the database
+}
+
 type ResolvedReminderBot struct {
 	Name   string `db:"-" json:"name"`
 	Avatar string `db:"-" json:"avatar"`

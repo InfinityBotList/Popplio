@@ -1,4 +1,4 @@
-package get_duser
+package get_duser_db
 
 import (
 	"net/http"
@@ -14,8 +14,8 @@ import (
 
 func Docs() *docs.Doc {
 	return &docs.Doc{
-		Summary:     "Get Discord User",
-		Description: "This endpoint will return a discord user object. This is useful for getting a user's avatar, username or discriminator etc.",
+		Summary:     "Get Discord User From Database",
+		Description: "This endpoint will return a `DatabaseDiscordUser` object. This is useful for getting a user's avatar, username or discriminator quickly as it is stored in the database",
 		Params: []docs.Parameter{
 			{
 				Name:        "id",
@@ -25,17 +25,21 @@ func Docs() *docs.Doc {
 				Schema:      docs.IdSchema,
 			},
 		},
-		Resp: types.DiscordUser{},
+		Resp: types.DatabaseDiscordUser{},
 	}
 }
 
 func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 	var id = chi.URLParam(r, "id")
 
-	user, err := utils.GetDiscordUser(id)
+	user, err := utils.GetDatabaseDiscordUser(d.Context, id)
 
 	if err != nil {
 		state.Logger.Error(err)
+		return api.DefaultResponse(http.StatusNotFound)
+	}
+
+	if !user.FoundInDB {
 		return api.DefaultResponse(http.StatusNotFound)
 	}
 

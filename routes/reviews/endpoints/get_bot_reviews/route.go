@@ -24,7 +24,7 @@ var (
 func Docs() *docs.Doc {
 	return &docs.Doc{
 		Summary:     "Get Bot Reviews",
-		Description: "Gets the reviews of a bot by its ID or vanity",
+		Description: "Gets the reviews of a bot by its ID or vanity. The `author` returned here is a `DatabaseDiscordUser` to avoid hitting discords API constantly",
 		Params: []docs.Parameter{
 			{
 				Name:        "id",
@@ -82,6 +82,29 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 	if err != nil {
 		state.Logger.Error(err)
 		return api.DefaultResponse(http.StatusInternalServerError)
+	}
+
+	for i := range reviews {
+		user, err := utils.GetDatabaseDiscordUser(d.Context, reviews[i].AuthorID)
+
+		if err != nil {
+			state.Logger.Error(err)
+			continue
+		}
+
+		if !user.FoundInDB {
+			// Delete the review
+			_, err = state.Pool.Exec(d.Context, "DELETE FROM reviews WHERE id = $1", reviews[i].ID)
+
+			if err != nil {
+				state.Logger.Error(err)
+				continue
+			}
+
+			continue
+		}
+
+		reviews[i].Author = user
 	}
 
 	var allReviews = types.ReviewList{
