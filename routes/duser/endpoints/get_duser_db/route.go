@@ -15,7 +15,7 @@ import (
 func Docs() *docs.Doc {
 	return &docs.Doc{
 		Summary:     "Get Discord User From Database",
-		Description: "This endpoint will return a `DatabaseDiscordUser` object. This is useful for getting a user's avatar, username or discriminator quickly as it is stored in the database",
+		Description: "This endpoint will return a `DatabaseDiscordUser` object. This is useful for getting a user's (not bot and must be on db) avatar, username or discriminator quickly as it is stored in the database",
 		Params: []docs.Parameter{
 			{
 				Name:        "id",
