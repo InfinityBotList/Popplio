@@ -84,6 +84,9 @@ func corsMiddleware(next http.Handler) http.Handler {
 				r.Header.Set("Authorization", "User "+r.Header.Get("User-Auth"))
 			}
 		} else if r.Header.Get("Bot-Auth") != "" {
+			if strings.HasPrefix(r.Header.Get("Bot-Auth"), "Bot ") {
+				r.Header.Set("Authorization", r.Header.Get("Bot-Auth"))
+			}
 			r.Header.Set("Authorization", "Bot "+r.Header.Get("Bot-Auth"))
 		}
 
