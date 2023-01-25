@@ -36,7 +36,7 @@ window.addEventListener('DOMContentLoaded', () => {
       // Inject CSS
       let style = document.createElement('style');
       
-      style.innerHTML = `.mobile-menu:hover {opacity:0.8!important;}`;
+      style.innerHTML = [CSS];
       shadow.appendChild(style);
   
       // Add all mobile navigation elements
@@ -91,7 +91,7 @@ window.addEventListener('DOMContentLoaded', () => {
               menuContentListItemLink.onclick = () => {
               window.onscroll = function() {}; // enableScroll();
                 if(el.target) {
-                    document.getElementById('api').scrollTo(el.target);
+                  document.getElementById('api').scrollToPath(el.target);
                 }
   
                 menu.remove()

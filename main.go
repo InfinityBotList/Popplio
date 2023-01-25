@@ -41,7 +41,10 @@ import (
 var json = jsoniter.ConfigCompatibleWithStandardLibrary
 
 //go:embed docs/assets/ext.js
-var extUnminified string
+var extJsUnminified string
+
+//go:embed docs/assets/ext.css
+var extCssUnminified string
 
 //go:embed docs/assets/docs.html
 var docsHTML string
@@ -99,9 +102,16 @@ func main() {
 	m.AddFunc("text/css", css.Minify)
 
 	strWriter := &strings.Builder{}
+	strReader := strings.NewReader(extCssUnminified)
 
-	strReader := strings.NewReader(extUnminified)
+	if err := m.Minify("text/css", strWriter, strReader); err != nil {
+		panic(err)
+	}
 
+	extJsUnminified = strings.Replace(extJsUnminified, "[CSS]", "\""+strWriter.String()+"\"", 1)
+
+	strWriter = &strings.Builder{}
+	strReader = strings.NewReader(extJsUnminified)
 	if err := m.Minify("application/javascript", strWriter, strReader); err != nil {
 		panic(err)
 	}
