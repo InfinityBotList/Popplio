@@ -20,6 +20,13 @@ func Docs() *docs.Doc {
 		Description: "Gets a staff onboard code",
 		Params: []docs.Parameter{
 			{
+				Name:        "id",
+				Description: "User ID",
+				Required:    true,
+				In:          "path",
+				Schema:      docs.IdSchema,
+			},
+			{
 				Name:        "frag",
 				Description: "Onboard Code Fragment",
 				Required:    true,
