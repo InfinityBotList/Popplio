@@ -26,7 +26,7 @@ func Docs() *docs.Doc {
 		Summary:     "Create Pack",
 		Description: "Creates a pack. Returns 204 on success",
 		Req:         CreatePack{},
-		Resp:        types.AllPacks{},
+		Resp:        types.ApiError{},
 	}
 }
 

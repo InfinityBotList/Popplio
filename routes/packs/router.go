@@ -3,6 +3,7 @@ package packs
 import (
 	"popplio/api"
 	"popplio/routes/packs/endpoints/add_pack"
+	"popplio/routes/packs/endpoints/delete_pack"
 	"popplio/routes/packs/endpoints/get_all_packs"
 	"popplio/routes/packs/endpoints/get_pack"
 	"popplio/routes/packs/endpoints/patch_pack"
@@ -58,6 +59,20 @@ func (b Router) Routes(r *chi.Mux) {
 		Method:  api.PATCH,
 		Docs:    patch_pack.Docs,
 		Handler: patch_pack.Route,
+		Auth: []api.AuthType{
+			{
+				URLVar: "uid",
+				Type:   types.TargetTypeUser,
+			},
+		},
+	}.Route(r)
+
+	api.Route{
+		Pattern: "/users/{uid}/packs/{id}",
+		OpId:    "delete_pack",
+		Method:  api.DELETE,
+		Docs:    delete_pack.Docs,
+		Handler: delete_pack.Route,
 		Auth: []api.AuthType{
 			{
 				URLVar: "uid",
