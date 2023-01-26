@@ -425,6 +425,13 @@ func ClearBotCache(ctx context.Context, botId string) error {
 	return nil
 }
 
+func ClearUserCache(ctx context.Context, userId string) error {
+	// Delete from cache
+	state.Redis.Del(ctx, "uc-"+userId)
+
+	return nil
+}
+
 func ValidateExtraLinks(links []types.Link) error {
 	var public, private int
 
