@@ -244,13 +244,13 @@ Some points to note:
 	"banappeal": {
 		Order: 5,
 		Info: `
-<h3>Hello There, Welcome</h3>
+<h3 class="text-2xl font-semibold">Hello There, Welcome</h3>
 
 If you find yourself browsing or using this site, you should be dissapointed. 
 
 Here at Infinity we strive in providing our users a safe, curtious, drama free community and only ask that you follow a few simple rules. 
 
-You have clearly done something to violate them or piss us off.
+<span class="font-semibold">You have clearly done something to violate them or piss us off.</span>
 
 Our Staff may approve or deny your ban appeal based on your actions and reason for ban and how much it may or may not have an effect on our community. 
 
