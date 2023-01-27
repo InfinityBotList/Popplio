@@ -39,6 +39,7 @@ type AuthorizeRequest struct {
 	Code        string `json:"code" validate:"required,min=5"`
 	RedirectURI string `json:"redirect_uri" validate:"required"`
 	Nonce       string `json:"nonce" validate:"required"` // Just to identify and block older clients from vulns
+	Scope       string `json:"scope" validate:"required,oneof=normal banappeal"`
 }
 
 func Route(d api.RouteData, r *http.Request) api.HttpResponse {
@@ -91,7 +92,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 		}
 	}
 
-	if req.Nonce != "sauron-tolkien" {
+	if req.Nonce != "protozoa" {
 		return api.HttpResponse{
 			Json: types.ApiError{
 				Error:   true,
