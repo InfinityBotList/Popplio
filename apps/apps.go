@@ -276,6 +276,18 @@ You can only have up to one ban appeal at any given point of time. Abusing the s
 				Placeholder: "I was banned because...",
 				Short:       false,
 			},
+			{
+				ID:          "why",
+				Question:    "Why do you feel you should be unbanned?",
+				Paragraph:   "Why do you feel you should be unbanned from the list? Have you made any changes to your conduct. Have you reflected on what you did?",
+				Placeholder: "I feel I should be unbanned because... and I have made changes to my conduct by... and I have reflected on what I did by...",
+			},
+			{
+				ID:          "next-steps",
+				Question:    "What will you do to avoid being banned in the future?",
+				Paragraph:   "What will you do to avoid being banned in the future? Will you apologize if required?",
+				Placeholder: "I will avoid being banned in the future by... and I...",
+			},
 		},
 	},
 }
