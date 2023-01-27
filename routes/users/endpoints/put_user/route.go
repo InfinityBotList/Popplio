@@ -4,6 +4,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"strings"
 	"time"
 
 	"popplio/api"
@@ -412,6 +413,28 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 		}
 
 		apiToken = tokenStr.String
+
+		// Ensure api token has no dots in it due to scope
+		if strings.Contains(apiToken, ".") {
+			// Create new token
+			newApiToken := crypto.RandString(128)
+
+			_, err = state.Pool.Exec(d.Context, "UPDATE users SET api_token = $1 WHERE user_id = $2", newApiToken, user.ID)
+
+			if err != nil {
+				state.Logger.Error(err)
+				return api.HttpResponse{
+					Json: types.ApiError{
+						Error:   true,
+						Message: "Failed to update API token on database",
+					},
+					Status:  http.StatusInternalServerError,
+					Headers: limit.Headers(),
+				}
+			}
+
+			apiToken = newApiToken
+		}
 	}
 
 	// Create authUser and send
