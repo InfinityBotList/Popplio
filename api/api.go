@@ -69,14 +69,16 @@ func (m Method) String() string {
 }
 
 type AuthType struct {
-	URLVar string
-	Type   types.TargetType
+	URLVar       string
+	Type         types.TargetType
+	AllowedScope string // If this is set, then ban checks are not fatal
 }
 
 type AuthData struct {
 	TargetType types.TargetType `json:"target_type"`
 	ID         string           `json:"id"`
 	Authorized bool             `json:"authorized"`
+	Banned     bool             `json:"banned"` // Only applicable with AllowedScope
 }
 
 // Represents a route on the API
@@ -155,7 +157,10 @@ func (r Route) Authorize(req *http.Request) (AuthData, HttpResponse, bool) {
 				// Check if the user exists with said ID and API token
 				var id pgtype.Text
 				var banned bool
-				err := state.Pool.QueryRow(state.Context, "SELECT user_id, banned FROM users WHERE user_id = $1 AND api_token = $2", targetId, strings.Replace(authHeader, "User ", "", 1)).Scan(&id, &banned)
+
+				token := strings.Replace(authHeader, "User ", "", 1)
+
+				err := state.Pool.QueryRow(state.Context, "SELECT user_id, banned FROM users WHERE user_id = $1 AND api_token = $2", targetId, token).Scan(&id, &banned)
 
 				if err != nil {
 					continue
@@ -165,8 +170,33 @@ func (r Route) Authorize(req *http.Request) (AuthData, HttpResponse, bool) {
 					continue
 				}
 
-				// Banned users cannot use the API at all
-				if banned {
+				if auth.AllowedScope != "" {
+					// Ensure token has this scope
+					var scope = strings.Split(token, ".")
+
+					if len(scope) != 2 {
+						return AuthData{}, HttpResponse{
+							Status: http.StatusForbidden,
+							Json: types.ApiError{
+								Error:   true,
+								Message: "Scope error",
+							},
+						}, false
+					}
+
+					if scope[0] != auth.AllowedScope {
+						return AuthData{}, HttpResponse{
+							Status: http.StatusForbidden,
+							Json: types.ApiError{
+								Error:   true,
+								Message: "Required scope " + auth.AllowedScope + " is not set",
+							},
+						}, false
+					}
+				}
+
+				// Banned users cannot use the API at all otherwise if not explicitly scoped to "ban_exempt"
+				if banned && auth.AllowedScope != "ban_exempt" {
 					return AuthData{}, HttpResponse{
 						Status: http.StatusForbidden,
 						Json: types.ApiError{
@@ -180,6 +210,7 @@ func (r Route) Authorize(req *http.Request) (AuthData, HttpResponse, bool) {
 					TargetType: types.TargetTypeUser,
 					ID:         targetId,
 					Authorized: true,
+					Banned:     banned,
 				}
 			case types.TargetTypeBot:
 				// Check if the bot exists with said ID and API token
@@ -207,7 +238,10 @@ func (r Route) Authorize(req *http.Request) (AuthData, HttpResponse, bool) {
 				// Check if the user exists with said API token only
 				var id pgtype.Text
 				var banned bool
-				err := state.Pool.QueryRow(state.Context, "SELECT user_id, banned FROM users WHERE api_token = $1", strings.Replace(authHeader, "User ", "", 1)).Scan(&id, &banned)
+
+				token := strings.Replace(authHeader, "User ", "", 1)
+
+				err := state.Pool.QueryRow(state.Context, "SELECT user_id, banned FROM users WHERE api_token = $1", token).Scan(&id, &banned)
 
 				if err != nil {
 					continue
@@ -217,8 +251,33 @@ func (r Route) Authorize(req *http.Request) (AuthData, HttpResponse, bool) {
 					continue
 				}
 
-				// Banned users cannot use the API at all
-				if banned {
+				if auth.AllowedScope != "" {
+					// Ensure token has this scope
+					var scope = strings.Split(token, ".")
+
+					if len(scope) != 2 {
+						return AuthData{}, HttpResponse{
+							Status: http.StatusForbidden,
+							Json: types.ApiError{
+								Error:   true,
+								Message: "Scope error",
+							},
+						}, false
+					}
+
+					if scope[0] != auth.AllowedScope {
+						return AuthData{}, HttpResponse{
+							Status: http.StatusForbidden,
+							Json: types.ApiError{
+								Error:   true,
+								Message: "Required scope " + auth.AllowedScope + " is not set",
+							},
+						}, false
+					}
+				}
+
+				// Banned users cannot use the API at all otherwise if not explicitly scoped to "ban_exempt"
+				if banned && auth.AllowedScope != "ban_exempt" {
 					return AuthData{}, HttpResponse{
 						Status: http.StatusForbidden,
 						Json: types.ApiError{
@@ -232,6 +291,7 @@ func (r Route) Authorize(req *http.Request) (AuthData, HttpResponse, bool) {
 					TargetType: types.TargetTypeUser,
 					ID:         id.String,
 					Authorized: true,
+					Banned:     banned,
 				}
 			case types.TargetTypeBot:
 				// Check if the bot exists with said token only

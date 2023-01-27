@@ -58,8 +58,9 @@ func (b Router) Routes(r *chi.Mux) {
 		Handler: create_app.Route,
 		Auth: []api.AuthType{
 			{
-				URLVar: "user_id",
-				Type:   types.TargetTypeUser,
+				URLVar:       "user_id",
+				Type:         types.TargetTypeUser,
+				AllowedScope: "ban_exempt",
 			},
 		},
 	}.Route(r)

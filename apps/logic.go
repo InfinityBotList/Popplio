@@ -88,3 +88,11 @@ func extraLogicResubmit(d api.RouteData, p Position, answers map[string]string) 
 	// We don't want to actually create an application
 	return false, nil
 }
+
+func bappealLogic(d api.RouteData, p Position, answers map[string]string) (add bool, err error) {
+	if !d.Auth.Banned {
+		return false, errors.New("you are not banned")
+	}
+
+	return true, nil
+}

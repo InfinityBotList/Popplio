@@ -6,6 +6,7 @@ import (
 )
 
 type LogicFunc = func(d api.RouteData, p Position, answers map[string]string) (add bool, err error)
+type PositionDescriptionFunc = func(d api.RouteData, p Position) string
 
 type Question struct {
 	ID          string `json:"id" validate:"required"`
@@ -16,15 +17,20 @@ type Question struct {
 }
 
 type Position struct {
-	Order      int        `json:"order" validate:"required"`
-	Tags       []string   `json:"tags" validate:"required"`
-	Info       string     `json:"info" validate:"required"`
-	Name       string     `json:"name" validate:"required"`
-	Interview  []Question `json:"interview"` // Optional as interview may not be required
-	Questions  []Question `json:"questions" validate:"gt=0,required"`
-	Hidden     bool       `json:"hidden"`
-	ExtraLogic LogicFunc  `json:"-"`
-	Closed     bool       `json:"closed"`
+	Order     int        `json:"order" validate:"required"`
+	Tags      []string   `json:"tags" validate:"required"`
+	Info      string     `json:"info" validate:"required"`
+	Name      string     `json:"name" validate:"required"`
+	Interview []Question `json:"interview"` // Optional as interview may not be required
+	Questions []Question `json:"questions" validate:"gt=0,required"`
+	Hidden    bool       `json:"hidden"`
+	Closed    bool       `json:"closed"`
+
+	// Internal fields
+	Channel             func() string           `json:"-"`
+	ExtraLogic          LogicFunc               `json:"-"`
+	PositionDescription PositionDescriptionFunc `json:"-"` // Used for custom position descriptions
+	AllowedForBanned    bool                    `json:"-"` // If true, banned users can apply for this position
 }
 
 type AppMeta struct {

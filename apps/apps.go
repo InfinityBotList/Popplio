@@ -1,6 +1,11 @@
 // This contains the staff/dev/certification apps
 package apps
 
+import (
+	"popplio/api"
+	"popplio/state"
+)
+
 var Apps = map[string]Position{
 	"staff": {
 		Order: 1,
@@ -233,6 +238,44 @@ Some points to note:
 				Paragraph:   "Make sure you know why your bot was denied and that you have fixed the problem. If you don't know why your bot was denied, please contact us on Discord",
 				Placeholder: "I believe.../I fixed.../The bot was offline because...",
 				Short:       true,
+			},
+		},
+	},
+	"banappeal": {
+		Order: 5,
+		Info: `
+<h3>Hello There, Welcome</h3>
+
+If you find yourself browsing or using this site, you should be dissapointed. 
+
+Here at Infinity we strive in providing our users a safe, curtious, drama free community and only ask that you follow a few simple rules. 
+
+You have clearly done something to violate them or piss us off.
+
+Our Staff may approve or deny your ban appeal based on your actions and reason for ban and how much it may or may not have an effect on our community. 
+
+We do not guarantee that your ban appeal will be approved and your ban be lifted. If you feel you have been banned for an unjust cause please Contact Us.
+
+You can only have up to one ban appeal at any given point of time. Abusing the system will simply mean that you will not be unbanned and your ban appeal will be kept in queue.
+		`,
+		Name:       "Ban Appeal",
+		Hidden:     true, // Mostly done by ibl next
+		ExtraLogic: bappealLogic,
+		Tags:       []string{"Ban Appeal"},
+		Channel: func() string {
+			return state.Config.Channels.BanAppeals
+		},
+		PositionDescription: func(d api.RouteData, p Position) string {
+			return "User <@" + d.Auth.ID + "> wants to be unbanned now? :thinking:"
+		},
+		AllowedForBanned: true,
+		Questions: []Question{
+			{
+				ID:          "reason",
+				Question:    "Why were you banned?",
+				Paragraph:   "Why were you banned? If you do not know, say so here and we will try to reach out.",
+				Placeholder: "I was banned because...",
+				Short:       false,
 			},
 		},
 	},

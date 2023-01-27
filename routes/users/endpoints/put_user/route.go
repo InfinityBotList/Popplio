@@ -39,7 +39,7 @@ type AuthorizeRequest struct {
 	Code        string `json:"code" validate:"required,min=5"`
 	RedirectURI string `json:"redirect_uri" validate:"required"`
 	Nonce       string `json:"nonce" validate:"required"` // Just to identify and block older clients from vulns
-	Scope       string `json:"scope" validate:"required,oneof=normal banappeal"`
+	Scope       string `json:"scope" validate:"required,oneof=normal ban_exempt"`
 }
 
 func Route(d api.RouteData, r *http.Request) api.HttpResponse {
@@ -367,11 +367,44 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 			}
 		}
 
-		if banned {
+		// Handle scope
+		if req.Scope != "normal" {
+			// Create new token
+			newApiToken := req.Scope + "." + crypto.RandString(128)
+
+			_, err = state.Pool.Exec(d.Context, "UPDATE users SET api_token = $1 WHERE user_id = $2", newApiToken, user.ID)
+
+			if err != nil {
+				state.Logger.Error(err)
+				return api.HttpResponse{
+					Json: types.ApiError{
+						Error:   true,
+						Message: "Failed to update API token on database",
+					},
+					Status:  http.StatusInternalServerError,
+					Headers: limit.Headers(),
+				}
+			}
+
+			tokenStr.String = newApiToken
+		}
+
+		if banned && req.Scope != "ban_exempt" {
 			return api.HttpResponse{
 				Json: types.ApiError{
 					Error:   true,
 					Message: "You are banned from the list. If you think this is a mistake, please contact support.",
+				},
+				Status:  http.StatusForbidden,
+				Headers: limit.Headers(),
+			}
+		}
+
+		if !banned && req.Scope == "ban_exempt" {
+			return api.HttpResponse{
+				Json: types.ApiError{
+					Error:   true,
+					Message: "The selected scope is not allowed for unbanned users [ban_exempt].",
 				},
 				Status:  http.StatusForbidden,
 				Headers: limit.Headers(),

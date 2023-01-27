@@ -68,6 +68,16 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 		}
 	}
 
+	if d.Auth.Banned && !position.AllowedForBanned {
+		return api.HttpResponse{
+			Json: types.ApiError{
+				Error:   true,
+				Message: "Banned users are not allowed to apply for this position",
+			},
+			Status: http.StatusBadRequest,
+		}
+	}
+
 	if position.Closed {
 		return api.HttpResponse{
 			Json: types.ApiError{
@@ -189,14 +199,23 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 	}
 
 	// Send a message to APPS channel
+	var desc = "User <@" + d.Auth.ID + "> has applied for " + payload.Position + "."
+	if position.PositionDescription != nil {
+		desc = position.PositionDescription(d, position)
+	}
 
-	_, err = state.Discord.ChannelMessageSendComplex(state.Config.Channels.Apps, &discordgo.MessageSend{
+	var channel = state.Config.Channels.Apps
+	if position.Channel != nil {
+		channel = position.Channel()
+	}
+
+	_, err = state.Discord.ChannelMessageSendComplex(channel, &discordgo.MessageSend{
 		Content: state.Config.Meta.UrgentMentions,
 		Embeds: []*discordgo.MessageEmbed{
 			{
-				Title:       "New " + payload.Position + " application!",
+				Title:       "New " + position.Name + " Application!",
 				URL:         state.Config.Sites.AppSite + "/panel/apps/" + appId,
-				Description: "User <@" + d.Auth.ID + "> has applied for " + payload.Position + ".",
+				Description: desc,
 				Color:       0x00ff00,
 				Fields: []*discordgo.MessageEmbedField{
 					{

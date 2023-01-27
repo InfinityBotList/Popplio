@@ -38,9 +38,10 @@ type Metro struct {
 }
 
 type Channels struct {
-	BotLogs  string `yaml:"bot_logs" default:"1047125368894652439" comment:"Bot Logs Channel" validate:"required"`
-	Apps     string `yaml:"apps" default:"1034075132030894100" comment:"Apps Channel, should be a staff only channel" validate:"required"`
-	VoteLogs string `yaml:"vote_logs" default:"762077981811146752" comment:"Vote Logs Channel" validate:"required"`
+	BotLogs    string `yaml:"bot_logs" default:"1047125368894652439" comment:"Bot Logs Channel" validate:"required"`
+	Apps       string `yaml:"apps" default:"1034075132030894100" comment:"Apps Channel, should be a staff only channel" validate:"required"`
+	VoteLogs   string `yaml:"vote_logs" default:"762077981811146752" comment:"Vote Logs Channel" validate:"required"`
+	BanAppeals string `yaml:"ban_appeals" default:"870950610692878337" comment:"Ban Appeals Channel" validate:"required"`
 }
 
 type JAPI struct {
