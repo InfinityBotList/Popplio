@@ -120,6 +120,41 @@
             });
         })
 
+        function downloadTextFile(text, name) {
+            const a = document.createElement('a');
+            const type = name.split(".").pop();
+            a.href = URL.createObjectURL( new Blob([text], { type:`text/${type === "txt" ? "plain" : type}` }) );
+            a.download = name;
+            a.click();
+        }  
+
+        const attemptDeferred = async (tid) => {
+            if(window.isDone) {
+                return
+            }
+
+            let resp = await fetch(`/cosmog/tasks/${tid}`, {
+                headers: {
+                    "X-High-Security-Mode": "true"
+                }
+            })
+
+            if(!resp.ok) {
+                document.querySelector("#out").innerHTML = "An error occurred while processing your request. Please try again later."
+            }
+
+            let data = await resp.text()
+
+            if(data.startsWith("{")) {
+                downloadTextFile(data, act+"."+taskId+".json")
+                window.isDone = true
+            } else if(data != "WAITING" && data != "DONE") {
+                document.querySelector("#out").innerHTML = data
+            } else if(data == "DONE") {
+                window.isDone = true
+            }
+        }
+
         docReady(() => {
             document.getElementById("confirm-btn").addEventListener("click", async function(event) {
                 if(document.getElementById("confirm").value != rf.split(":")[0]) {
@@ -134,6 +169,12 @@
 
                 if(resp.headers.get("X-Loc")) {
                     window.location.href = resp.headers.get("X-Loc")
+                }
+
+                if(resp.headers.get("X-Defer")) {
+                    document.querySelector("#out").innerHTML = "Please wait while we process your request..."
+                    setInterval(() => attemptDeferred(resp.headers.get("X-Defer")), 3000)
+                    return
                 }
 
                 document.querySelector("#out").innerHTML = await resp.text()

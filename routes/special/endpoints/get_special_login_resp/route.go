@@ -2,7 +2,6 @@ package get_special_login_resp
 
 import (
 	"bytes"
-	"encoding/base64"
 	"fmt"
 	"html/template"
 	"io"
@@ -284,7 +283,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 
 		return api.HttpResponse{
 			Headers: map[string]string{
-				"X-Loc": state.Config.Sites.AppSite + "/data/confirm?tid=" + taskId + "&user=" + base64.URLEncoding.EncodeToString(body) + "&act=" + action.Action,
+				"X-Defer": taskId,
 			},
 		}
 	// Data deletion request
@@ -305,7 +304,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 		go assets.DataTask(taskId, user.ID, remoteIp[0], true)
 		return api.HttpResponse{
 			Headers: map[string]string{
-				"X-Loc": state.Config.Sites.AppSite + "/data/confirm?tid=" + taskId + "&user=" + base64.URLEncoding.EncodeToString(body) + "&act=" + action.Action,
+				"X-Defer": taskId,
 			},
 		}
 	// Reset token for users
