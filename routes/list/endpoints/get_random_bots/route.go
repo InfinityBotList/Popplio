@@ -42,7 +42,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 
 	var indexBots = []types.IndexBot{}
 
-	err = pgxscan.ScanAll(&rows, rows)
+	err = pgxscan.ScanAll(&indexBots, rows)
 
 	if err != nil {
 		state.Logger.Error(err)
