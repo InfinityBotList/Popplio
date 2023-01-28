@@ -146,7 +146,7 @@
             let data = await resp.text()
 
             if(data.startsWith("{")) {
-                downloadTextFile(data, act+"."+taskId+".json")
+                downloadTextFile(data, {{.Action.Action}}+"."+tid+".json")
                 window.isDone = true
             } else if(data != "WAITING" && data != "DONE") {
                 document.querySelector("#out").innerHTML = data
