@@ -26,9 +26,9 @@ func (b Router) Routes(r *chi.Mux) {
 	}.Route(r)
 
 	api.Route{
-		Pattern: "/_duser/{id}/clear",
+		Pattern: "/_duser/{id}",
 		OpId:    "clear_duser",
-		Method:  api.GET,
+		Method:  api.DELETE,
 		Docs:    clear_duser.Docs,
 		Handler: clear_duser.Route,
 	}.Route(r)
