@@ -333,12 +333,6 @@ type TestData struct {
 func Test(d TestData) {
 	// Open config.yaml
 	os.Chdir("../../../../")
-	configFile, err := os.ReadFile("config.yaml")
-
-	if err != nil {
-		d.T.Error("Could not open config.yaml:", err)
-		return
-	}
 
 	// Create new ctx
 	rctx := context.Background()
@@ -351,7 +345,7 @@ func Test(d TestData) {
 
 	rctx = context.WithValue(rctx, chi.RouteCtxKey, ctx)
 
-	state.Setup(configFile)
+	state.Setup()
 
 	id := os.Getenv("TEST__USER_ID")
 

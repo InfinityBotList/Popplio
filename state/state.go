@@ -28,8 +28,7 @@ var (
 	Context   = context.Background()
 	Validator = validator.New()
 
-	Migration = false
-	Config    *config.Config
+	Config *config.Config
 )
 
 func nonVulgar(fl validator.FieldLevel) bool {
@@ -79,23 +78,11 @@ func notpresent(fl validator.FieldLevel) bool {
 	}
 }
 
-func Setup(cfg []byte) {
+func Setup() {
 	Validator.RegisterValidation("nonvulgar", nonVulgar)
 	Validator.RegisterValidation("notblank", validators.NotBlank)
 	Validator.RegisterValidation("nospaces", noSpaces)
 	Validator.RegisterValidation("notpresent", notpresent)
-
-	err := yaml.Unmarshal(cfg, &Config)
-
-	if err != nil {
-		panic(err)
-	}
-
-	err = Validator.Struct(Config)
-
-	if err != nil {
-		panic("configError: " + err.Error())
-	}
 
 	var connUrl string
 	var redisUrl string
@@ -113,10 +100,45 @@ func Setup(cfg []byte) {
 		}
 	}
 
+	cfg, err := os.ReadFile("config.yaml")
+
+	if err != nil {
+		panic(err)
+	}
+
+	err = yaml.Unmarshal(cfg, &Config)
+
+	if err != nil {
+		panic(err)
+	}
+
+	err = Validator.Struct(Config)
+
+	if err != nil {
+		panic("configError: " + err.Error())
+	}
+
 	Pool, err = pgxpool.New(Context, connUrl)
 
 	if err != nil {
 		panic(err)
+	}
+
+	// Create the cache tables in db
+	_, err = Pool.Exec(Context, `
+		CREATE TABLE IF NOT EXISTS internal_user_cache (
+			id TEXT PRIMARY KEY,
+			username TEXT NOT NULL,
+			discriminator TEXT NOT NULL,
+			avatar TEXT NOT NULL,
+			bot BOOLEAN NOT NULL,
+			created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+			last_updated TIMESTAMPTZ NOT NULL DEFAULT NOW()
+		)
+	`)
+
+	if err != nil {
+		panic("User cache table creation error: " + err.Error())
 	}
 
 	rOptions, err := redis.ParseURL(redisUrl)
@@ -142,8 +164,6 @@ func Setup(cfg []byte) {
 		}
 	}()
 
-	// lumberjack.Logger is already safe for concurrent use, so we don't need to
-	// lock it.
 	w := zapcore.AddSync(os.Stdout)
 
 	core := zapcore.NewCore(

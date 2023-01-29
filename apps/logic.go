@@ -47,7 +47,7 @@ func extraLogicResubmit(d api.RouteData, p Position, answers map[string]string) 
 		return false, fmt.Errorf("error setting bot type to pending: %w", err)
 	}
 
-	user, err := utils.GetDiscordUser(botID)
+	user, err := utils.GetDiscordUser(d.Context, botID)
 
 	if err != nil {
 		return false, fmt.Errorf("error getting discord user: %w", err)

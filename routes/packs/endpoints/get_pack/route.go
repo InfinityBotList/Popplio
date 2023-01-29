@@ -87,7 +87,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 }
 
 func ResolveBotPack(ctx context.Context, pack *types.BotPack) error {
-	ownerUser, err := utils.GetDiscordUser(pack.Owner)
+	ownerUser, err := utils.GetDiscordUser(ctx, pack.Owner)
 
 	if err != nil {
 		return err
@@ -123,7 +123,7 @@ func ResolveBotPack(ctx context.Context, pack *types.BotPack) error {
 			return err
 		}
 
-		botUser, err := utils.GetDiscordUser(botId)
+		botUser, err := utils.GetDiscordUser(ctx, botId)
 
 		if err != nil {
 			return err

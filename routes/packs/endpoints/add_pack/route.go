@@ -49,7 +49,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 
 	// Check that all bots exist
 	for _, bot := range payload.Bots {
-		botUser, err := utils.GetDiscordUser(bot)
+		botUser, err := utils.GetDiscordUser(d.Context, bot)
 
 		if err != nil {
 			return api.HttpResponse{

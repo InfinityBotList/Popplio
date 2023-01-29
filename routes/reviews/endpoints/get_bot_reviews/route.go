@@ -85,22 +85,10 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 	}
 
 	for i := range reviews {
-		user, err := utils.GetDatabaseDiscordUser(d.Context, reviews[i].AuthorID)
+		user, err := utils.GetDiscordUser(d.Context, reviews[i].AuthorID)
 
 		if err != nil {
 			state.Logger.Error(err)
-			continue
-		}
-
-		if !user.FoundInDB {
-			// Delete the review
-			_, err = state.Pool.Exec(d.Context, "DELETE FROM reviews WHERE id = $1", reviews[i].ID)
-
-			if err != nil {
-				state.Logger.Error(err)
-				continue
-			}
-
 			continue
 		}
 

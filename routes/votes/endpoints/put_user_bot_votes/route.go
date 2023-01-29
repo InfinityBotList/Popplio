@@ -176,7 +176,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 		return api.DefaultResponse(http.StatusInternalServerError)
 	}
 
-	userObj, err := utils.GetDiscordUser(userId)
+	userObj, err := utils.GetDiscordUser(d.Context, userId)
 
 	if err != nil {
 		// Revert vote
@@ -186,7 +186,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 		return api.DefaultResponse(http.StatusInternalServerError)
 	}
 
-	botObj, err := utils.GetDiscordUser(id)
+	botObj, err := utils.GetDiscordUser(d.Context, id)
 
 	if err != nil {
 		// Revert vote

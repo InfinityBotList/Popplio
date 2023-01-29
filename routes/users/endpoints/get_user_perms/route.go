@@ -45,7 +45,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 		return api.DefaultResponse(http.StatusNotFound)
 	}
 
-	user, err := utils.GetDiscordUser(id)
+	user, err := utils.GetDiscordUser(d.Context, id)
 
 	if err != nil {
 		state.Logger.Error(err)

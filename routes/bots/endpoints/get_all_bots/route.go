@@ -85,7 +85,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 
 	// Set the user for each bot
 	for i, bot := range bots {
-		botUser, err := utils.GetDiscordUser(bot.BotID)
+		botUser, err := utils.GetDiscordUser(d.Context, bot.BotID)
 
 		if err != nil {
 			return api.DefaultResponse(http.StatusInternalServerError)

@@ -155,7 +155,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 		bot.Invite.String = ""
 	}
 
-	ownerUser, err := utils.GetDiscordUser(bot.Owner)
+	ownerUser, err := utils.GetDiscordUser(d.Context, bot.Owner)
 
 	if err != nil {
 		state.Logger.Error(err)
@@ -166,7 +166,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 
 	bot.MainOwner = ownerUser
 
-	botUser, err := utils.GetDiscordUser(bot.BotID)
+	botUser, err := utils.GetDiscordUser(d.Context, bot.BotID)
 
 	if err != nil {
 		state.Logger.Error(err)
@@ -178,7 +178,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 	bot.ResolvedAdditionalOwners = []*types.DiscordUser{}
 
 	for _, owner := range bot.AdditionalOwners {
-		ownerUser, err := utils.GetDiscordUser(owner)
+		ownerUser, err := utils.GetDiscordUser(d.Context, owner)
 
 		if err != nil {
 			state.Logger.Error(err)

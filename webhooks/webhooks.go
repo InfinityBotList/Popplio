@@ -85,7 +85,7 @@ func Send(webhook types.WebhookPost) error {
 		return errors.New("no webhook set, vote rewards may not work")
 	}
 
-	var dUser, err = utils.GetDiscordUser(webhook.UserID)
+	var dUser, err = utils.GetDiscordUser(state.Context, webhook.UserID)
 
 	if err != nil {
 		state.Logger.Error(err)

@@ -92,7 +92,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 		user.About.String = ""
 	}
 
-	userObj, err := utils.GetDiscordUser(user.ID)
+	userObj, err := utils.GetDiscordUser(d.Context, user.ID)
 
 	if err != nil {
 		state.Logger.Error(err)
@@ -119,7 +119,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 
 	parsedUserBots := []types.UserBot{}
 	for _, bot := range userBots {
-		userObj, err := utils.GetDiscordUser(bot.BotID)
+		userObj, err := utils.GetDiscordUser(d.Context, bot.BotID)
 
 		if err != nil {
 			state.Logger.Error(err)

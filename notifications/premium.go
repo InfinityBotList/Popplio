@@ -24,7 +24,7 @@ func premium() {
 		}
 
 		// Send message
-		botObj, err := utils.GetDiscordUser(id)
+		botObj, err := utils.GetDiscordUser(state.Context, id)
 
 		if err != nil {
 			state.Logger.Errorw("Error getting bot object", "error", err, "bot_id", id)
@@ -40,7 +40,7 @@ func premium() {
 			continue
 		}
 
-		userObj, err := utils.GetDiscordUser(owner.String)
+		userObj, err := utils.GetDiscordUser(state.Context, owner.String)
 
 		if err != nil {
 			state.Logger.Errorw("Error getting main owner info:", "error", err, "user_id", owner.String, "bot_id", id)

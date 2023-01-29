@@ -64,10 +64,40 @@ func ResolvePackVotes(ctx context.Context, url string) ([]types.PackVote, error)
 	return votes, nil
 }
 
-func GetDiscordUser(id string) (*types.DiscordUser, error) {
-	// Check if in discordgo session first
-
+func GetDiscordUser(ctx context.Context, id string) (userObj *types.DiscordUser, err error) {
 	const userExpiryTime = 8 * time.Hour
+
+	cachedReturn := func(u *types.DiscordUser) (*types.DiscordUser, error) {
+		if u == nil {
+			return nil, errors.New("user not found")
+		}
+
+		// Update internal_user_cache
+		_, err := state.Pool.Exec(ctx, "INSERT INTO internal_user_cache (id, username, discriminator, avatar, bot) VALUES ($1, $2, $3, $4, $5) ON CONFLICT (id) DO UPDATE SET username = $2, discriminator = $3, avatar = $4, bot = $5, last_updated = NOW()", u.ID, u.Username, u.Discriminator, u.Avatar, u.Bot)
+
+		if err != nil {
+			state.Logger.Error("Failed to update internal user cache", zap.Error(err))
+			return nil, err
+		}
+
+		// Needed for arcadia
+		if u.Bot {
+			_, err = state.Pool.Exec(ctx, "UPDATE bots SET queue_name = $1, queue_avatar = $2 WHERE bot_id = $3", u.Username, u.Avatar, u.ID)
+
+			if err != nil {
+				state.Logger.Error("Failed to update bot queue name", zap.Error(err))
+				return nil, err
+			}
+		}
+
+		bytes, err := json.Marshal(u)
+
+		if err == nil {
+			state.Redis.Set(ctx, "uobj:"+id, bytes, userExpiryTime)
+		}
+
+		return u, nil
+	}
 
 	// Before wasting time searching state, ensure the ID is actually a valid snowflake
 	if _, err := strconv.ParseUint(id, 10, 64); err != nil {
@@ -79,14 +109,48 @@ func GetDiscordUser(id string) (*types.DiscordUser, error) {
 		return nil, errors.New("invalid snowflake")
 	}
 
-	if state.Discord.State != nil {
-		guilds := state.Discord.State.Guilds
+	// First try for main server
+	member, err := state.Discord.State.Member(state.Config.Servers.Main, id)
 
-		// First try for main server
-		member, err := state.Discord.State.Member(state.Config.Servers.Main, id)
+	if err == nil {
+		p, pErr := state.Discord.State.Presence(state.Config.Servers.Main, id)
+
+		if pErr != nil {
+			p = &discordgo.Presence{
+				User:   member.User,
+				Status: discordgo.StatusOffline,
+			}
+		}
+
+		return cachedReturn(&types.DiscordUser{
+			ID:             id,
+			Username:       member.User.Username,
+			Avatar:         member.User.AvatarURL(""),
+			Discriminator:  member.User.Discriminator,
+			Bot:            member.User.Bot,
+			Nickname:       member.Nick,
+			Guild:          state.Config.Servers.Main,
+			Mention:        member.User.Mention(),
+			Status:         p.Status,
+			System:         member.User.System,
+			Flags:          member.User.Flags,
+			Tag:            member.User.Username + "#" + member.User.Discriminator,
+			IsServerMember: true,
+			Route: &types.CacheRoute{
+				State: true,
+			},
+		})
+	}
+
+	for _, guild := range state.Discord.State.Guilds {
+		if guild.ID == state.Config.Servers.Main {
+			continue // Already checked
+		}
+
+		member, err := state.Discord.State.Member(guild.ID, id)
 
 		if err == nil {
-			p, pErr := state.Discord.State.Presence(state.Config.Servers.Main, id)
+			p, pErr := state.Discord.State.Presence(guild.ID, id)
 
 			if pErr != nil {
 				p = &discordgo.Presence{
@@ -95,105 +159,29 @@ func GetDiscordUser(id string) (*types.DiscordUser, error) {
 				}
 			}
 
-			if member.User.Bot {
-				_, err = state.Pool.Exec(state.Context, "UPDATE bots SET queue_name = $1, queue_avatar = $2 WHERE bot_id = $3", member.User.Username, member.User.AvatarURL(""), member.User.ID)
-
-				if err != nil {
-					state.Logger.Error("Failed to update bot queue name", zap.Error(err))
-				}
-			} else {
-				_, err = state.Pool.Exec(state.Context, "UPDATE users SET username = $1, avatar = $2 WHERE user_id = $3", member.User.Username, member.User.AvatarURL(""), member.User.ID)
-
-				if err != nil {
-					state.Logger.Error("Failed to update bot queue name", zap.Error(err))
-				}
-			}
-
-			obj := &types.DiscordUser{
+			return cachedReturn(&types.DiscordUser{
 				ID:             id,
 				Username:       member.User.Username,
 				Avatar:         member.User.AvatarURL(""),
 				Discriminator:  member.User.Discriminator,
 				Bot:            member.User.Bot,
 				Nickname:       member.Nick,
-				Guild:          state.Config.Servers.Main,
+				Guild:          guild.ID,
 				Mention:        member.User.Mention(),
 				Status:         p.Status,
 				System:         member.User.System,
 				Flags:          member.User.Flags,
 				Tag:            member.User.Username + "#" + member.User.Discriminator,
-				IsServerMember: true,
-			}
-
-			bytes, err := json.Marshal(obj)
-
-			if err == nil {
-				state.Redis.Set(state.Context, "uobj:"+id, bytes, userExpiryTime)
-			}
-
-			return obj, nil
-		}
-
-		for _, guild := range guilds {
-			if guild.ID == state.Config.Servers.Main {
-				continue // Already checked
-			}
-
-			member, err := state.Discord.State.Member(guild.ID, id)
-
-			if err == nil {
-				p, pErr := state.Discord.State.Presence(guild.ID, id)
-
-				if pErr != nil {
-					p = &discordgo.Presence{
-						User:   member.User,
-						Status: discordgo.StatusOffline,
-					}
-				}
-
-				if member.User.Bot {
-					_, err = state.Pool.Exec(state.Context, "UPDATE bots SET queue_name = $1, queue_avatar = $2 WHERE bot_id = $3", member.User.Username, member.User.AvatarURL(""), member.User.ID)
-
-					if err != nil {
-						state.Logger.Error("Failed to update bot queue name", zap.Error(err))
-					}
-				} else {
-					_, err = state.Pool.Exec(state.Context, "UPDATE users SET username = $1, avatar = $2 WHERE user_id = $3", member.User.Username, member.User.AvatarURL(""), member.User.ID)
-
-					if err != nil {
-						state.Logger.Error("Failed to update bot queue name", zap.Error(err))
-					}
-				}
-
-				obj := &types.DiscordUser{
-					ID:             id,
-					Username:       member.User.Username,
-					Avatar:         member.User.AvatarURL(""),
-					Discriminator:  member.User.Discriminator,
-					Bot:            member.User.Bot,
-					Nickname:       member.Nick,
-					Guild:          guild.ID,
-					Mention:        member.User.Mention(),
-					Status:         p.Status,
-					System:         member.User.System,
-					Flags:          member.User.Flags,
-					Tag:            member.User.Username + "#" + member.User.Discriminator,
-					IsServerMember: false,
-				}
-
-				bytes, err := json.Marshal(obj)
-
-				if err == nil {
-					state.Redis.Set(state.Context, "uobj:"+id, bytes, userExpiryTime)
-				}
-
-				return obj, nil
-			}
+				IsServerMember: false,
+				Route: &types.CacheRoute{
+					State: true,
+				},
+			})
 		}
 	}
 
 	// Check if in redis cache
-	userBytes, err := state.Redis.Get(state.Context, "uobj:"+id).Result()
+	userBytes, err := state.Redis.Get(ctx, "uobj:"+id).Result()
 
 	if err == nil {
 		// Try to unmarshal
@@ -202,33 +190,100 @@ func GetDiscordUser(id string) (*types.DiscordUser, error) {
 
 		err = json.Unmarshal([]byte(userBytes), &user)
 
-		if err == nil {
-			return &user, err
+		if user.Route == nil {
+			user.Route = &types.CacheRoute{}
 		}
+		user.Route.Redis = true
+		user.Route.State = false
+
+		if err == nil {
+			return &user, nil
+		}
+	}
+
+	// Check if in internal_user_cache, this allows fetches of users not in cache to be done in the background
+	var count int64
+
+	err = state.Pool.QueryRow(ctx, "SELECT COUNT(*) FROM internal_user_cache WHERE id = $1", id).Scan(&count)
+
+	if err == nil && count > 0 {
+		// Check if expired
+		var lastUpdated time.Time
+
+		err = state.Pool.QueryRow(ctx, "SELECT last_updated FROM internal_user_cache WHERE id = $1", id).Scan(&lastUpdated)
+
+		if err != nil {
+			return nil, err
+		}
+
+		if time.Since(lastUpdated) > userExpiryTime {
+			// Update in background, since this is in cache, users won't mind this but will mind timeouts
+			go func() {
+				// Get from discord
+				user, err := state.Discord.User(id)
+
+				if err != nil {
+					state.Logger.Error("Failed to update expired user cache", zap.Error(err))
+				}
+
+				cachedReturn(&types.DiscordUser{
+					ID:            id,
+					Username:      user.Username,
+					Avatar:        user.AvatarURL(""),
+					Discriminator: user.Discriminator,
+					Bot:           user.Bot,
+					Nickname:      "",
+					Guild:         "",
+					Mention:       user.Mention(),
+					Status:        discordgo.StatusOffline,
+					System:        user.System,
+					Flags:         user.Flags,
+					Tag:           user.Username + "#" + user.Discriminator,
+				})
+			}()
+		}
+
+		var username string
+		var discriminator string
+		var avatar string
+		var bot bool
+		var createdAt time.Time
+
+		err = state.Pool.QueryRow(ctx, "SELECT username, discriminator, avatar, bot, created_at FROM internal_user_cache WHERE id = $1", id).Scan(&username, &discriminator, &avatar, &bot, &createdAt)
+
+		if err != nil {
+			return nil, err
+		}
+
+		return cachedReturn(&types.DiscordUser{
+			ID:             id,
+			Username:       username,
+			Avatar:         avatar,
+			Discriminator:  discriminator,
+			Bot:            bot,
+			Nickname:       "",
+			Guild:          "",
+			Mention:        "<@" + id + ">",
+			Status:         discordgo.StatusOffline,
+			System:         false,
+			Flags:          0,
+			Tag:            username + "#" + discriminator,
+			IsServerMember: false,
+			Route: &types.CacheRoute{
+				DB: true,
+			},
+		})
 	}
 
 	// Get from discord
 	user, err := state.Discord.User(id)
 
 	if err != nil {
+		state.Logger.Error("Failed to update expired user cache", zap.Error(err))
 		return nil, err
 	}
 
-	if user.Bot {
-		_, err = state.Pool.Exec(state.Context, "UPDATE bots SET queue_name = $1, queue_avatar = $2 WHERE bot_id = $3", user.Username, user.AvatarURL(""), user.ID)
-
-		if err != nil {
-			state.Logger.Error("Failed to update bot queue name", zap.Error(err))
-		}
-	} else {
-		_, err = state.Pool.Exec(state.Context, "UPDATE users SET username = $1, avatar = $2 WHERE user_id = $3", user.Username, user.AvatarURL(""), user.ID)
-
-		if err != nil {
-			state.Logger.Error("Failed to update bot queue name", zap.Error(err))
-		}
-	}
-
-	obj := &types.DiscordUser{
+	return cachedReturn(&types.DiscordUser{
 		ID:            id,
 		Username:      user.Username,
 		Avatar:        user.AvatarURL(""),
@@ -241,57 +296,7 @@ func GetDiscordUser(id string) (*types.DiscordUser, error) {
 		System:        user.System,
 		Flags:         user.Flags,
 		Tag:           user.Username + "#" + user.Discriminator,
-	}
-
-	// Store in redis
-	state.Redis.Set(state.Context, "uobj:"+id, obj, userExpiryTime)
-
-	return obj, nil
-}
-
-func GetDatabaseDiscordUser(ctx context.Context, id string) (*types.DatabaseDiscordUser, error) {
-	var count int64
-
-	err := state.Pool.QueryRow(ctx, "SELECT COUNT(*) FROM users WHERE user_id = $1", id).Scan(&count)
-
-	if err != nil {
-		state.Logger.Error(err)
-		return nil, err
-	}
-
-	if count == 0 {
-		return &types.DatabaseDiscordUser{
-			FoundInDB: false,
-		}, nil
-	}
-
-	var username string
-	var avatar string
-
-	err = state.Pool.QueryRow(ctx, "SELECT username, avatar FROM users WHERE user_id = $1", id).Scan(&username, &avatar)
-
-	if err != nil {
-		state.Logger.Error(err)
-		return nil, err
-	}
-
-	if avatar == "unset" {
-		user, err := GetDiscordUser(id)
-
-		if err != nil {
-			state.Logger.Error(err)
-			return nil, err
-		}
-
-		avatar = user.Avatar
-	}
-
-	return &types.DatabaseDiscordUser{
-		ID:        id,
-		Username:  username,
-		Avatar:    avatar,
-		FoundInDB: true,
-	}, nil
+	})
 }
 
 func GetDoubleVote() bool {

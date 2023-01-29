@@ -7,7 +7,7 @@ import (
 	"strings"
 )
 
-func _retArrInt[T comparable](t []T) []string {
+func retArrInt[T comparable](t []T) []string {
 	var arr []string
 	for _, v := range t {
 		arr = append(arr, fmt.Sprint(v))
@@ -30,31 +30,31 @@ func arrayCast(v any) []string {
 		return arr
 	// All the int types
 	case []int:
-		return _retArrInt(t)
+		return retArrInt(t)
 	case []int8:
-		return _retArrInt(t)
+		return retArrInt(t)
 	case []int16:
-		return _retArrInt(t)
+		return retArrInt(t)
 	case []int32:
-		return _retArrInt(t)
+		return retArrInt(t)
 	case []int64:
-		return _retArrInt(t)
+		return retArrInt(t)
 	// All the uint types
 	case []uint:
-		return _retArrInt(t)
+		return retArrInt(t)
 	case []uint8:
-		return _retArrInt(t)
+		return retArrInt(t)
 	case []uint16:
-		return _retArrInt(t)
+		return retArrInt(t)
 	case []uint32:
-		return _retArrInt(t)
+		return retArrInt(t)
 	case []uint64:
-		return _retArrInt(t)
+		return retArrInt(t)
 	// All the float types
 	case []float32:
-		return _retArrInt(t)
+		return retArrInt(t)
 	case []float64:
-		return _retArrInt(t)
+		return retArrInt(t)
 	}
 	panic(fmt.Sprintf("arrayCast: invalid type %T", v))
 }

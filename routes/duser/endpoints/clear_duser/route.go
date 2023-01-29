@@ -32,6 +32,10 @@ func Docs() *docs.Doc {
 func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 	id := chi.URLParam(r, "id")
 	state.Redis.Del(d.Context, "uobj:"+id)
+
+	// Delete from internal_user_cache
+	state.Pool.Exec(d.Context, "DELETE FROM internal_user_cache WHERE id = $1", id)
+
 	return api.HttpResponse{
 		Status: http.StatusOK,
 		Data:   constants.Success,

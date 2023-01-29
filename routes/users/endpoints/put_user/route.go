@@ -291,7 +291,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 
 	var apiToken string
 
-	dUser, err := utils.GetDiscordUser(user.ID)
+	dUser, err := utils.GetDiscordUser(d.Context, user.ID)
 
 	if err != nil {
 		state.Logger.Error(err)

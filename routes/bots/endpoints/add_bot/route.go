@@ -287,7 +287,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 	}
 
 	// Ensure the bot actually exists right now
-	bot, err := utils.GetDiscordUser(payload.BotID)
+	bot, err := utils.GetDiscordUser(d.Context, payload.BotID)
 
 	if err != nil {
 		return api.HttpResponse{
@@ -310,7 +310,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 	}
 
 	// Ensure the main owner exists
-	_, err = utils.GetDiscordUser(d.Auth.ID)
+	_, err = utils.GetDiscordUser(d.Context, d.Auth.ID)
 
 	if err != nil {
 		return api.HttpResponse{
@@ -324,7 +324,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 
 	// Ensure the additional owners exist
 	for _, owner := range payload.AdditionalOwners {
-		ownerObj, err := utils.GetDiscordUser(owner)
+		ownerObj, err := utils.GetDiscordUser(d.Context, owner)
 
 		if err != nil {
 			return api.HttpResponse{

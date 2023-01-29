@@ -57,16 +57,13 @@ type DiscordUser struct {
 	Flags          int              `json:"flags"`
 	Tag            string           `json:"tag"`
 	IsServerMember bool             `json:"is_member"`
+	Route          *CacheRoute      `json:"route"`
 }
 
-// A database discord user is a smaller version of a discord user based on our database
-type DatabaseDiscordUser struct {
-	ID       string `json:"id"`
-	Username string `json:"username"`
-	Avatar   string `json:"avatar"`
-
-	// Internal fields
-	FoundInDB bool `json:"-"` // If the user was found in the database
+type CacheRoute struct {
+	State bool `json:"state"`
+	Redis bool `json:"redis"`
+	DB    bool `json:"db"`
 }
 
 type ResolvedReminderBot struct {
@@ -157,6 +154,7 @@ type NotifGetList struct {
 // List Index
 type ListIndex struct {
 	Certified     []IndexBot     `json:"certified"`
+	Premium       []IndexBot     `json:"premium"`
 	MostViewed    []IndexBot     `json:"most_viewed"`
 	Packs         []IndexBotPack `json:"packs"`
 	RecentlyAdded []IndexBot     `json:"recently_added"`

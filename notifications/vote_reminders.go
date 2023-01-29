@@ -62,7 +62,7 @@ func vrCheck() {
 				return
 			}
 
-			botInf, err := utils.GetDiscordUser(botId)
+			botInf, err := utils.GetDiscordUser(state.Context, botId)
 
 			if err != nil {
 				state.Logger.Error("Error finding bot info:", err)

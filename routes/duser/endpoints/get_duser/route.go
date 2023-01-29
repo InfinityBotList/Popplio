@@ -32,7 +32,7 @@ func Docs() *docs.Doc {
 func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 	var id = chi.URLParam(r, "id")
 
-	user, err := utils.GetDiscordUser(id)
+	user, err := utils.GetDiscordUser(d.Context, id)
 
 	if err != nil {
 		state.Logger.Error(err)

@@ -198,7 +198,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 	}
 
 	// Get bot discord user
-	botUser, err := utils.GetDiscordUser(botId)
+	botUser, err := utils.GetDiscordUser(d.Context, botId)
 
 	if err != nil {
 		return api.HttpResponse{
@@ -212,7 +212,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 
 	// Ensure the additional owners exist
 	for _, owner := range payload.AdditionalOwners {
-		ownerObj, err := utils.GetDiscordUser(owner)
+		ownerObj, err := utils.GetDiscordUser(d.Context, owner)
 
 		if err != nil {
 			return api.HttpResponse{

@@ -49,9 +49,6 @@ var extCssUnminified string
 //go:embed docs/assets/docs.html
 var docsHTML string
 
-//go:embed config.yaml
-var configStr []byte
-
 var (
 	docsJs  string
 	openapi []byte
@@ -97,7 +94,7 @@ func corsMiddleware(next http.Handler) http.Handler {
 }
 
 func main() {
-	state.Setup(configStr)
+	state.Setup()
 	docs.Setup()
 
 	m := minify.New()

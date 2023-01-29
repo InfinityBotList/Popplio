@@ -107,6 +107,28 @@ func DataTask(taskId string, id string, ip string, del bool) {
 		}
 	}
 
+	// Delete from psql user_cache if `del` is true
+	if del {
+		_, err := state.Pool.Exec(ctx, "DELETE FROM internal_user_cache WHERE id = $1", id)
+
+		if err != nil {
+			// Just log it, don't return as it's not critical
+			state.Logger.Error(err)
+
+			finalDump["internal_user_cache"] = map[string]any{
+				"message": "Failed to delete from internal_user_cache",
+				"error":   true,
+				"ctx":     err.Error(),
+			}
+		} else {
+			finalDump["internal_user_cache"] = map[string]any{
+				"message": "Successfully deleted from internal_user_cache",
+				"error":   false,
+				"ctx":     nil,
+			}
+		}
+	}
+
 	bytes, err := json.Marshal(finalDump)
 
 	if err != nil {

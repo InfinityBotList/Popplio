@@ -56,13 +56,34 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 		return api.DefaultResponse(http.StatusInternalServerError)
 	}
 	for i, bot := range listIndex.Certified {
-		botUser, err := utils.GetDiscordUser(bot.BotID)
+		botUser, err := utils.GetDiscordUser(d.Context, bot.BotID)
 
 		if err != nil {
 			return api.DefaultResponse(http.StatusInternalServerError)
 		}
 
 		listIndex.Certified[i].User = botUser
+	}
+
+	premRow, err := state.Pool.Query(d.Context, "SELECT "+indexBotCols+" FROM bots WHERE premium = true ORDER BY votes DESC LIMIT 9")
+	if err != nil {
+		state.Logger.Error(err)
+		return api.DefaultResponse(http.StatusInternalServerError)
+	}
+	listIndex.Premium = []types.IndexBot{}
+	err = pgxscan.ScanAll(&listIndex.Premium, premRow)
+	if err != nil {
+		state.Logger.Error(err)
+		return api.DefaultResponse(http.StatusInternalServerError)
+	}
+	for i, bot := range listIndex.Premium {
+		botUser, err := utils.GetDiscordUser(d.Context, bot.BotID)
+
+		if err != nil {
+			return api.DefaultResponse(http.StatusInternalServerError)
+		}
+
+		listIndex.Premium[i].User = botUser
 	}
 
 	mostViewedRow, err := state.Pool.Query(d.Context, "SELECT "+indexBotCols+" FROM bots WHERE type = 'approved' OR type = 'certified' ORDER BY clicks DESC LIMIT 9")
@@ -77,7 +98,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 		return api.DefaultResponse(http.StatusInternalServerError)
 	}
 	for i, bot := range listIndex.MostViewed {
-		botUser, err := utils.GetDiscordUser(bot.BotID)
+		botUser, err := utils.GetDiscordUser(d.Context, bot.BotID)
 
 		if err != nil {
 			return api.DefaultResponse(http.StatusInternalServerError)
@@ -98,7 +119,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 		return api.DefaultResponse(http.StatusInternalServerError)
 	}
 	for i, bot := range listIndex.RecentlyAdded {
-		botUser, err := utils.GetDiscordUser(bot.BotID)
+		botUser, err := utils.GetDiscordUser(d.Context, bot.BotID)
 
 		if err != nil {
 			return api.DefaultResponse(http.StatusInternalServerError)
@@ -119,7 +140,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 		return api.DefaultResponse(http.StatusInternalServerError)
 	}
 	for i, bot := range listIndex.TopVoted {
-		botUser, err := utils.GetDiscordUser(bot.BotID)
+		botUser, err := utils.GetDiscordUser(d.Context, bot.BotID)
 
 		if err != nil {
 			return api.DefaultResponse(http.StatusInternalServerError)

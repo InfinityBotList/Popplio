@@ -63,7 +63,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 	for i, reminder := range reminders {
 		// Try resolving the bot from discord API
 		var resolvedBot types.ResolvedReminderBot
-		bot, err := utils.GetDiscordUser(reminder.BotID)
+		bot, err := utils.GetDiscordUser(d.Context, reminder.BotID)
 
 		if err != nil {
 			resolvedBot = types.ResolvedReminderBot{
