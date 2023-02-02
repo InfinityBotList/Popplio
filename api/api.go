@@ -170,31 +170,6 @@ func (r Route) Authorize(req *http.Request) (AuthData, HttpResponse, bool) {
 					continue
 				}
 
-				if auth.AllowedScope != "" {
-					// Ensure token has this scope
-					var scope = strings.Split(token, ".")
-
-					if len(scope) != 2 {
-						return AuthData{}, HttpResponse{
-							Status: http.StatusForbidden,
-							Json: types.ApiError{
-								Error:   true,
-								Message: "Scope error",
-							},
-						}, false
-					}
-
-					if scope[0] != auth.AllowedScope {
-						return AuthData{}, HttpResponse{
-							Status: http.StatusForbidden,
-							Json: types.ApiError{
-								Error:   true,
-								Message: "Required scope " + auth.AllowedScope + " is not set",
-							},
-						}, false
-					}
-				}
-
 				// Banned users cannot use the API at all otherwise if not explicitly scoped to "ban_exempt"
 				if banned && auth.AllowedScope != "ban_exempt" {
 					return AuthData{}, HttpResponse{
@@ -249,31 +224,6 @@ func (r Route) Authorize(req *http.Request) (AuthData, HttpResponse, bool) {
 
 				if !id.Valid {
 					continue
-				}
-
-				if auth.AllowedScope != "" {
-					// Ensure token has this scope
-					var scope = strings.Split(token, ".")
-
-					if len(scope) != 2 {
-						return AuthData{}, HttpResponse{
-							Status: http.StatusForbidden,
-							Json: types.ApiError{
-								Error:   true,
-								Message: "Scope error",
-							},
-						}, false
-					}
-
-					if scope[0] != auth.AllowedScope {
-						return AuthData{}, HttpResponse{
-							Status: http.StatusForbidden,
-							Json: types.ApiError{
-								Error:   true,
-								Message: "Required scope " + auth.AllowedScope + " is not set",
-							},
-						}, false
-					}
 				}
 
 				// Banned users cannot use the API at all otherwise if not explicitly scoped to "ban_exempt"

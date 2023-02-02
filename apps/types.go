@@ -31,6 +31,7 @@ type Position struct {
 	ExtraLogic          LogicFunc               `json:"-"`
 	PositionDescription PositionDescriptionFunc `json:"-"` // Used for custom position descriptions
 	AllowedForBanned    bool                    `json:"-"` // If true, banned users can apply for this position
+	BannedOnly          bool                    `json:"-"` // If true, only banned users can apply for this position
 }
 
 type AppMeta struct {

@@ -268,6 +268,7 @@ You can only have up to one ban appeal at any given point of time. Abusing the s
 			return "User <@" + d.Auth.ID + "> wants to be unbanned now? :thinking:"
 		},
 		AllowedForBanned: true,
+		BannedOnly:       true,
 		Questions: []Question{
 			{
 				ID:          "reason",

@@ -78,6 +78,16 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 		}
 	}
 
+	if !d.Auth.Banned && position.BannedOnly {
+		return api.HttpResponse{
+			Json: types.ApiError{
+				Error:   true,
+				Message: "Only banned users are allowed to apply for this position",
+			},
+			Status: http.StatusBadRequest,
+		}
+	}
+
 	if position.Closed {
 		return api.HttpResponse{
 			Json: types.ApiError{
