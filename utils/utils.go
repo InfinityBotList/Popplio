@@ -73,7 +73,7 @@ func GetDiscordUser(ctx context.Context, id string) (userObj *types.DiscordUser,
 		}
 
 		// Update internal_user_cache
-		_, err := state.Pool.Exec(ctx, "INSERT INTO internal_user_cache (id, username, discriminator, avatar, bot) VALUES ($1, $2, $3, $4, $5) ON CONFLICT (id) DO UPDATE SET username = $2, discriminator = $3, avatar = $4, bot = $5, last_updated = NOW()", u.ID, u.Username, u.Discriminator, u.Avatar, u.Bot)
+		_, err := state.Pool.Exec(state.Context, "INSERT INTO internal_user_cache (id, username, discriminator, avatar, bot) VALUES ($1, $2, $3, $4, $5) ON CONFLICT (id) DO UPDATE SET username = $2, discriminator = $3, avatar = $4, bot = $5, last_updated = NOW()", u.ID, u.Username, u.Discriminator, u.Avatar, u.Bot)
 
 		if err != nil {
 			state.Logger.Error("Failed to update internal user cache", zap.Error(err))
@@ -82,7 +82,7 @@ func GetDiscordUser(ctx context.Context, id string) (userObj *types.DiscordUser,
 
 		// Needed for arcadia
 		if u.Bot {
-			_, err = state.Pool.Exec(ctx, "UPDATE bots SET queue_name = $1, queue_avatar = $2 WHERE bot_id = $3", u.Username, u.Avatar, u.ID)
+			_, err = state.Pool.Exec(state.Context, "UPDATE bots SET queue_name = $1, queue_avatar = $2 WHERE bot_id = $3", u.Username, u.Avatar, u.ID)
 
 			if err != nil {
 				state.Logger.Error("Failed to update bot queue name", zap.Error(err))
@@ -93,7 +93,7 @@ func GetDiscordUser(ctx context.Context, id string) (userObj *types.DiscordUser,
 		bytes, err := json.Marshal(u)
 
 		if err == nil {
-			state.Redis.Set(ctx, "uobj:"+id, bytes, userExpiryTime)
+			state.Redis.Set(state.Context, "uobj:"+id, bytes, userExpiryTime)
 		}
 
 		return u, nil
