@@ -278,7 +278,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 
 	if count > 0 {
 		return api.HttpResponse{
-			Status: http.StatusBadRequest,
+			Status: http.StatusConflict,
 			Json: types.ApiError{
 				Message: "This bot is already in the database",
 				Error:   true,

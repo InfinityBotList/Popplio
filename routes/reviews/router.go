@@ -2,7 +2,9 @@ package reviews
 
 import (
 	"popplio/api"
+	"popplio/routes/reviews/endpoints/add_bot_review"
 	"popplio/routes/reviews/endpoints/get_bot_reviews"
+	"popplio/types"
 
 	"github.com/go-chi/chi/v5"
 )
@@ -24,5 +26,19 @@ func (b Router) Routes(r *chi.Mux) {
 		Method:  api.GET,
 		Docs:    get_bot_reviews.Docs,
 		Handler: get_bot_reviews.Route,
+	}.Route(r)
+
+	api.Route{
+		Pattern: "/users/{uid}/bots/{bid}/reviews",
+		OpId:    "add_bot_review",
+		Method:  api.POST,
+		Docs:    add_bot_review.Docs,
+		Handler: add_bot_review.Route,
+		Auth: []api.AuthType{
+			{
+				Type:   types.TargetTypeUser,
+				URLVar: "uid",
+			},
+		},
 	}.Route(r)
 }

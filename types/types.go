@@ -161,17 +161,6 @@ type ListIndex struct {
 	TopVoted      []IndexBot     `json:"top_voted"`
 }
 
-// List Stats
-type ListStatsBot struct {
-	BotID              string   `json:"bot_id"`
-	Vanity             string   `json:"vanity"`
-	Short              string   `json:"short"`
-	Type               string   `json:"type"`
-	MainOwnerID        string   `json:"main_owner_id"`
-	AdditionalOwnerIDS []string `json:"additional_owners_ids"`
-	QueueName          string   `json:"queue_name"`
-}
-
 type ListStats struct {
 	Bots         []ListStatsBot `json:"bots"`
 	TotalStaff   int64          `json:"total_staff"`

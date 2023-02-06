@@ -7,7 +7,7 @@ import (
 )
 
 // The GC step is needed to kill any reviews whose parent has been deleted etc.
-func GarbageCollect(ctx context.Context, reviews []types.Review) ([]types.Review, error) {
+func GarbageCollect(ctx context.Context, reviews []types.Review) error {
 	var okReviews []types.Review = []types.Review{}
 	var hasDeleted bool
 	for i := range reviews {
@@ -31,7 +31,7 @@ func GarbageCollect(ctx context.Context, reviews []types.Review) ([]types.Review
 			// Delete the review
 			_, err := state.Pool.Exec(ctx, "DELETE FROM reviews WHERE id = $1", reviews[i].ID.Bytes)
 			if err != nil {
-				return nil, err
+				return err
 			}
 
 			hasDeleted = true
@@ -43,5 +43,5 @@ func GarbageCollect(ctx context.Context, reviews []types.Review) ([]types.Review
 		return GarbageCollect(ctx, okReviews)
 	}
 
-	return okReviews, nil
+	return nil
 }

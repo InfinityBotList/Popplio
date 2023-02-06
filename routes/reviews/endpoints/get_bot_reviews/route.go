@@ -7,7 +7,6 @@ import (
 
 	"popplio/api"
 	"popplio/docs"
-	"popplio/routes/reviews/assets"
 	"popplio/state"
 	"popplio/types"
 	"popplio/utils"
@@ -24,7 +23,7 @@ var (
 func Docs() *docs.Doc {
 	return &docs.Doc{
 		Summary:     "Get Bot Reviews",
-		Description: "Gets the reviews of a bot by its ID or vanity. The `author` returned here is a `DatabaseDiscordUser` to avoid hitting discords API constantly",
+		Description: "Gets the reviews of a bot by its ID or vanity.",
 		Params: []docs.Parameter{
 			{
 				Name:        "id",
@@ -71,13 +70,6 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 	var reviews []types.Review = []types.Review{}
 
 	err = pgxscan.ScanAll(&reviews, rows)
-
-	if err != nil {
-		state.Logger.Error(err)
-		return api.DefaultResponse(http.StatusInternalServerError)
-	}
-
-	reviews, err = assets.GarbageCollect(d.Context, reviews)
 
 	if err != nil {
 		state.Logger.Error(err)
