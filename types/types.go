@@ -4,7 +4,6 @@ import (
 	"time"
 
 	"github.com/bwmarrin/discordgo"
-	"github.com/jackc/pgx/v5/pgtype"
 )
 
 // A link is any extra link
@@ -66,47 +65,9 @@ type CacheRoute struct {
 	DB    bool `json:"db"`
 }
 
-type ResolvedReminderBot struct {
-	Name   string `db:"-" json:"name"`
-	Avatar string `db:"-" json:"avatar"`
-}
-
-type Reminder struct {
-	UserID      string              `db:"user_id" json:"user_id"`
-	BotID       string              `db:"bot_id" json:"bot_id"`
-	ResolvedBot ResolvedReminderBot `db:"-" json:"resolved"`
-	CreatedAt   time.Time           `db:"created_at" json:"created_at"`
-	LastAcked   time.Time           `db:"last_acked" json:"last_acked"`
-}
-
 type AuthUser struct {
 	Token  string `json:"token"`
 	UserID string `json:"user_id"`
-}
-
-type Message struct {
-	ID          string                         `json:"id"`
-	Timestamp   time.Time                      `json:"timestamp"` // Not in DB, but generated from snowflake ID
-	Content     string                         `json:"content"`
-	Embeds      []*discordgo.MessageEmbed      `json:"embeds"`
-	AuthorID    string                         `json:"author_id"`
-	Author      *DiscordUser                   `json:"author"`
-	Attachments []*discordgo.MessageAttachment `json:"attachments"`
-}
-
-type Ticket struct {
-	ID            string            `db:"id" json:"id"`
-	ChannelID     string            `db:"channel_id" json:"channel_id"`
-	TopicID       string            `db:"topic_id" json:"topic_id"`
-	Issue         string            `db:"issue" json:"issue"`
-	TicketContext map[string]string `db:"ticket_context" json:"ticket_context"`
-	Messages      []Message         `db:"messages" json:"messages"`
-	UserID        string            `db:"user_id" json:"-"`
-	Author        *DiscordUser      `db:"-" json:"author"`
-	CloseUserID   pgtype.Text       `db:"close_user_id" json:"-"`
-	CloseUser     *DiscordUser      `db:"-" json:"close_user"`
-	Open          bool              `db:"open" json:"open"`
-	CreatedAt     time.Time         `db:"created_at" json:"created_at"`
 }
 
 type UserSubscription struct {
