@@ -34,7 +34,14 @@ func Docs() *docs.Doc {
 		Description: "Creates a new users review of a bot. A user may have only one `root review` per bot. Triggers a garbage collection step to remove any orphaned reviews afterwards. Returns 204 on success",
 		Params: []docs.Parameter{
 			{
-				Name:        "id",
+				Name:        "uid",
+				Description: "The users ID",
+				Required:    true,
+				In:          "path",
+				Schema:      docs.IdSchema,
+			},
+			{
+				Name:        "bid",
 				Description: "The bots ID or vanity",
 				Required:    true,
 				In:          "path",
