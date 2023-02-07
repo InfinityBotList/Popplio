@@ -16,6 +16,15 @@ func Docs() *docs.Doc {
 		Summary:     "Special Login Task View JSON",
 		Description: "Returns the status of a task as a arbitary json.",
 		Resp:        "[JSON]",
+		Params: []docs.Parameter{
+			{
+				Name:        "tid",
+				Description: "The task ID",
+				Required:    true,
+				In:          "path",
+				Schema:      docs.IdSchema,
+			},
+		},
 	}
 }
 

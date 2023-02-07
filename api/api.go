@@ -22,6 +22,7 @@ import (
 	"github.com/go-playground/validator/v10"
 	"github.com/jackc/pgx/v5/pgtype"
 	"go.uber.org/zap"
+	"golang.org/x/exp/slices"
 
 	jsoniter "github.com/json-iterator/go"
 )
@@ -366,6 +367,44 @@ func (r Route) Route(ro Router) {
 		docsObj.AuthType = append(docsObj.AuthType, auth.Type)
 	}
 
+	// Count the number of { and } in the pattern
+	brStart := strings.Count(r.Pattern, "{")
+	brEnd := strings.Count(r.Pattern, "}")
+	pathParams := []string{}
+	patternParams := []string{}
+
+	for _, param := range docsObj.Params {
+		if param.In == "" || param.Name == "" || param.Schema == nil {
+			panic("Param is missing required fields: " + r.String())
+		}
+
+		if param.In == "path" {
+			pathParams = append(pathParams, param.Name)
+		}
+	}
+
+	// Get pattern params from the pattern
+	for _, param := range strings.Split(r.Pattern, "/") {
+		if strings.HasPrefix(param, "{") && strings.HasSuffix(param, "}") {
+			patternParams = append(patternParams, param[1:len(param)-1])
+		} else if strings.Contains(param, "{") || strings.Contains(param, "}") {
+			panic("{ and } in pattern but does not start with it " + r.String())
+		}
+	}
+
+	if brStart != brEnd {
+		panic("Mismatched { and } in pattern: " + r.String())
+	}
+
+	if brStart != len(pathParams) {
+		panic("Mismatched number of params and { in pattern: " + r.String())
+	}
+
+	if !slices.Equal(patternParams, pathParams) {
+		panic("Mismatched params in pattern and docs: " + r.String())
+	}
+
+	// Add the path params to the docs
 	docs.Route(docsObj)
 
 	handle := func(w http.ResponseWriter, req *http.Request) {

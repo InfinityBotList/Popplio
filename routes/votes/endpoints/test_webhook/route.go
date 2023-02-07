@@ -27,6 +27,22 @@ func Docs() *docs.Doc {
 		Description: "Sends a test webhook to allow testing your vote system using the credentials you have set.",
 		Req:         WebhookAuthPost{},
 		Resp:        types.ApiError{},
+		Params: []docs.Parameter{
+			{
+				Name:        "uid",
+				Description: "The user's ID",
+				Required:    true,
+				In:          "path",
+				Schema:      docs.IdSchema,
+			},
+			{
+				Name:        "bid",
+				Description: "The bots ID, name or vanity",
+				Required:    true,
+				In:          "path",
+				Schema:      docs.IdSchema,
+			},
+		},
 	}
 }
 

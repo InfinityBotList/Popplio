@@ -27,6 +27,22 @@ func Docs() *docs.Doc {
 		Description: "Edits a pack you are owner of based on the URL only. Returns 204 on success",
 		Req:         PatchPack{},
 		Resp:        types.AllPacks{},
+		Params: []docs.Parameter{
+			{
+				Name:        "uid",
+				Description: "The user's ID",
+				Required:    true,
+				In:          "path",
+				Schema:      docs.IdSchema,
+			},
+			{
+				Name:        "id",
+				Description: "The pack's URL",
+				Required:    true,
+				In:          "path",
+				Schema:      docs.IdSchema,
+			},
+		},
 	}
 }
 

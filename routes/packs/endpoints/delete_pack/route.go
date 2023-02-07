@@ -13,8 +13,24 @@ import (
 func Docs() *docs.Doc {
 	return &docs.Doc{
 		Summary:     "Delete Pack",
-		Description: "Deletes a pack. You *must* be the owner of the pack to delete packs. Returns 204 on success",
+		Description: "Deletes a pack by URL. You *must* be the owner of the pack to delete packs. Returns 204 on success",
 		Resp:        types.ApiError{},
+		Params: []docs.Parameter{
+			{
+				Name:        "uid",
+				Description: "The user's ID",
+				Required:    true,
+				In:          "path",
+				Schema:      docs.IdSchema,
+			},
+			{
+				Name:        "id",
+				Description: "The pack's URL",
+				Required:    true,
+				In:          "path",
+				Schema:      docs.IdSchema,
+			},
+		},
 	}
 }
 

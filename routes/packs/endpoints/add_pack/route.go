@@ -27,6 +27,15 @@ func Docs() *docs.Doc {
 		Description: "Creates a pack. Returns 204 on success",
 		Req:         CreatePack{},
 		Resp:        types.ApiError{},
+		Params: []docs.Parameter{
+			{
+				Name:        "id",
+				Description: "The user's ID",
+				Required:    true,
+				In:          "path",
+				Schema:      docs.IdSchema,
+			},
+		},
 	}
 }
 
