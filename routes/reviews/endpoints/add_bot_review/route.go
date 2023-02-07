@@ -87,7 +87,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 	// Check if the user has already made a 'root' review for this bot
 	var count int
 
-	err = state.Pool.QueryRow(d.Context, "SELECT COUNT(*) FROM reviews WHERE user_id = $1 AND bot_id = $2 AND parent_id IS NULL", d.Auth.ID, bot).Scan(&count)
+	err = state.Pool.QueryRow(d.Context, "SELECT COUNT(*) FROM reviews WHERE author = $1 AND bot_id = $2 AND parent_id IS NULL", d.Auth.ID, bot).Scan(&count)
 
 	if err != nil {
 		state.Logger.Error(err)
@@ -127,12 +127,18 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 	}
 
 	// Create the review
-	_, err = state.Pool.Exec(d.Context, "INSERT INTO reviews (author, bot_id, content, stars, parent_id) VALUES ($1, $2, $3, $4, $5)", d.Auth.ID, bot, payload.Content, payload.Stars, payload.ParentID)
+	if payload.ParentID == "" {
+		_, err = state.Pool.Exec(d.Context, "INSERT INTO reviews (author, bot_id, content, stars) VALUES ($1, $2, $3, $4)", d.Auth.ID, bot, payload.Content, payload.Stars)
+	} else {
+		_, err = state.Pool.Exec(d.Context, "INSERT INTO reviews (author, bot_id, content, stars, parent_id) VALUES ($1, $2, $3, $4, $5)", d.Auth.ID, bot, payload.Content, payload.Stars, payload.ParentID)
+	}
 
 	if err != nil {
 		state.Logger.Error(err)
 		return api.DefaultResponse(http.StatusInternalServerError)
 	}
+
+	state.Redis.Del(d.Context, "rv-"+bot)
 
 	// Trigger a garbage collection step to remove any orphaned reviews
 	go func() {
