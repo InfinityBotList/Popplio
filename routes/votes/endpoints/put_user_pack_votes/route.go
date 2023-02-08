@@ -21,13 +21,8 @@ func Docs() *docs.Doc {
 	return &docs.Doc{
 		Summary: "Create User Pack Vote",
 		Description: `Creates a vote for a pack. 
-		
-This updates any existing vote or creates a new one if none exist. 
 
-Does NOT error if the same vote is sent twice but will merely have no effect. Use` + constants.DoubleBackTick + `clear` + constants.DoubleBackTick + ` to clear a vote (which overrides upvote if sent). 
-
-Returns 204 on success.`,
-
+This updates any existing vote or creates a new one if none exist.  Returns 204 on success.`,
 		Params: []docs.Parameter{
 			{
 				Name:        "uid",
@@ -121,6 +116,31 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 			return api.DefaultResponse(http.StatusInternalServerError)
 		}
 	} else {
+		var upvote bool
+
+		err = state.Pool.QueryRow(d.Context, "SELECT upvote FROM pack_votes WHERE user_id = $1 AND url = $2", userId, packUrl).Scan(&upvote)
+
+		if err != nil {
+			state.Logger.Error(err)
+			return api.DefaultResponse(http.StatusInternalServerError)
+		}
+
+		if upvote == vote.Upvote {
+			var msg = "You have already upvoted this bot"
+
+			if !vote.Upvote {
+				msg = "You have already downvoted this bot"
+			}
+
+			return api.HttpResponse{
+				Status: http.StatusBadRequest,
+				Json: types.ApiError{
+					Message: msg,
+					Error:   true,
+				},
+			}
+		}
+
 		// Update the vote
 		_, err = state.Pool.Exec(d.Context, "UPDATE pack_votes SET upvote = $1, created_at = NOW() WHERE user_id = $2 AND url = $3", vote.Upvote, userId, packUrl)
 
