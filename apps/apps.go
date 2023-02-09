@@ -243,8 +243,7 @@ Some points to note:
 	},
 	"banappeal": {
 		Order: 5,
-		Info: `
-<h3 class="text-2xl font-semibold">Hello There, Welcome</h3>
+		Info: `<h3 class="text-2xl font-semibold">Hello There, Welcome</h3>
 If you find yourself browsing or using this site, you should be disappointed. 
 
 Here at Infinity we strive in providing our users a safe, curtious, drama free community and only ask that you follow a few simple rules. 
@@ -291,9 +290,9 @@ You can only have up to one ban appeal at any given point of time. Abusing the s
 		},
 	},
 	"certification": {
+		Name:  "Certification",
 		Order: 6,
-		Info: `
-So you want to apply for certification, eh?
+		Info: `So you want to apply for certification, eh?
 
 Firstly, read the <a href="/help/programs/certification" target="_blank">rules</a> to see if you qualify.
 
