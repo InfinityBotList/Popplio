@@ -223,6 +223,7 @@ Some points to note:
 		Name:       "Bot Resubmission",
 		Hidden:     true, // Mostly done by ibl next
 		ExtraLogic: extraLogicResubmit,
+		Dummy:      true,
 		Tags:       []string{"Resubmissions"},
 		Questions: []Question{
 			{
@@ -256,9 +257,10 @@ We do not guarantee that your ban appeal will be approved and your ban be lifted
 
 You can only have up to one ban appeal at any given point of time. Abusing the system will simply mean that you will not be unbanned and your ban appeal will be kept in queue.
 		`,
-		Name:   "Ban Appeal",
-		Hidden: true, // We don't want it to be prominently shown
-		Tags:   []string{"Ban Appeal"},
+		Name:        "Ban Appeal",
+		Hidden:      true, // We don't want it to be prominently shown
+		ReviewLogic: reviewLogicBanAppeal,
+		Tags:        []string{"Ban Appeal"},
 		Channel: func() string {
 			return state.Config.Channels.BanAppeals
 		},
@@ -300,8 +302,9 @@ Then fill out the form below and wait for a staff member to review your applicat
 
 You can only have one certification application at a time. If you have already applied, please wait for a staff member to review your application before applying again.
 		`,
-		ExtraLogic: extraLogicCert,
-		Tags:       []string{"Certification"},
+		ExtraLogic:  extraLogicCert,
+		ReviewLogic: reviewLogicCert,
+		Tags:        []string{"Certification"},
 		Questions: []Question{
 			{
 				ID:          "id",

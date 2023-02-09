@@ -138,3 +138,57 @@ func extraLogicCert(d api.RouteData, p Position, answers map[string]string) (add
 
 	return true, nil
 }
+
+func reviewLogicBanAppeal(d api.RouteData, resp AppResponse, reason string) (review bool, err error) {
+	// Unban user
+
+	if len(reason) > 384 {
+		return false, errors.New("reason must be less than 384 characters")
+	}
+
+	err = state.Discord.GuildBanDelete(
+		state.Config.Servers.Main,
+		resp.UserID,
+		discordgo.WithAuditLogReason("Ban appeal accepted by "+d.Auth.ID+" | "+reason),
+	)
+
+	if err != nil {
+		return false, err
+	}
+
+	return true, nil
+}
+
+func reviewLogicCert(d api.RouteData, resp AppResponse, reason string) (review bool, err error) {
+	// Get the bot ID
+	botID, ok := resp.Answers["id"]
+
+	if !ok {
+		return false, errors.New("bot ID not found")
+	}
+
+	// Get the bot
+	var botType string
+	err = state.Pool.QueryRow(d.Context, "SELECT type FROM bots WHERE bot_id = $1", botID).Scan(&botType)
+
+	if err != nil {
+		return false, fmt.Errorf("error getting bot type, does the bot exist?: %w", err)
+	}
+
+	if botType == "certified" {
+		return true, nil // Just approve the review
+	}
+
+	if botType != "approved" {
+		return false, errors.New("bot is not approved | state=" + botType + ". Please deny the certification until approved")
+	}
+
+	// Set the bot type to certified
+	_, err = state.Pool.Exec(d.Context, "UPDATE bots SET type = 'certified' WHERE bot_id = $1", botID)
+
+	if err != nil {
+		return false, fmt.Errorf("error setting bot type to certified: %w", err)
+	}
+
+	return true, nil
+}
