@@ -96,7 +96,6 @@ type Bot struct {
 	Library                  string             `db:"library" json:"library"`
 	NSFW                     pgtype.Bool        `db:"nsfw" json:"nsfw"`
 	Premium                  pgtype.Bool        `db:"premium" json:"premium"`
-	PendingCert              pgtype.Bool        `db:"pending_cert" json:"pending_cert"`
 	Servers                  int                `db:"servers" json:"servers"`
 	Shards                   int                `db:"shards" json:"shards"`
 	ShardList                []int              `db:"shard_list" json:"shard_list"`

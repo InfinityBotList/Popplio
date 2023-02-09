@@ -257,10 +257,9 @@ We do not guarantee that your ban appeal will be approved and your ban be lifted
 
 You can only have up to one ban appeal at any given point of time. Abusing the system will simply mean that you will not be unbanned and your ban appeal will be kept in queue.
 		`,
-		Name:       "Ban Appeal",
-		Hidden:     true, // Mostly done by ibl next
-		ExtraLogic: bappealLogic,
-		Tags:       []string{"Ban Appeal"},
+		Name:   "Ban Appeal",
+		Hidden: true, // We don't want it to be prominently shown
+		Tags:   []string{"Ban Appeal"},
 		Channel: func() string {
 			return state.Config.Channels.BanAppeals
 		},
@@ -288,6 +287,43 @@ You can only have up to one ban appeal at any given point of time. Abusing the s
 				Question:    "What will you do to avoid being banned in the future?",
 				Paragraph:   "What will you do to avoid being banned in the future? Will you apologize if required?",
 				Placeholder: "I will avoid being banned in the future by... and I...",
+			},
+		},
+	},
+	"certification": {
+		Order: 6,
+		Info: `
+So you want to apply for certification, eh?
+
+Firstly, read the <a href="/help/programs/certification" target="_blank">rules</a> to see if you qualify.
+
+Then fill out the form below and wait for a staff member to review your application. If you are accepted, you're in the club!
+
+You can only have one certification application at a time. If you have already applied, please wait for a staff member to review your application before applying again.
+		`,
+		ExtraLogic: extraLogicCert,
+		Tags:       []string{"Certification"},
+		Questions: []Question{
+			{
+				ID:          "id",
+				Question:    "Bot ID?",
+				Paragraph:   "What is the bot ID?",
+				Placeholder: "Bot ID",
+				Short:       true,
+			},
+			{
+				ID:          "why",
+				Question:    "Why do you want to be certified?",
+				Paragraph:   "Why do you want to be certified? What special functionality does your bot provide that others dont?",
+				Placeholder: "I want to be certified because...",
+				Short:       false,
+			},
+			{
+				ID:          "what",
+				Question:    "What does your bot do?",
+				Paragraph:   "What does your bot do? Does it have NSFW functionality?",
+				Placeholder: "My bot does...",
+				Short:       false,
 			},
 		},
 	},
