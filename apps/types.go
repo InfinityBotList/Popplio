@@ -43,13 +43,13 @@ type AppMeta struct {
 }
 
 type AppResponse struct {
-	AppID            string            `db:"app_id" json:"app_id"`
-	UserID           string            `db:"user_id" json:"user_id"`
-	Answers          map[string]string `db:"answers" json:"answers"`
-	InterviewAnswers map[string]string `db:"interview_answers" json:"interview_answers"`
-	State            string            `db:"state" json:"state"`
-	CreatedAt        time.Time         `db:"created_at" json:"created_at"`
-	Position         string            `db:"position" json:"position"`
+	AppID            string         `db:"app_id" json:"app_id"`
+	UserID           string         `db:"user_id" json:"user_id"`
+	Answers          map[string]any `db:"answers" json:"answers"`
+	InterviewAnswers map[string]any `db:"interview_answers" json:"interview_answers"`
+	State            string         `db:"state" json:"state"`
+	CreatedAt        time.Time      `db:"created_at" json:"created_at"`
+	Position         string         `db:"position" json:"position"`
 }
 
 type AppListResponse struct {

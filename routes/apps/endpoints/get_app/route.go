@@ -68,7 +68,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 
 	if err != nil {
 		state.Logger.Error(err)
-		return api.DefaultResponse(http.StatusNotFound)
+		return api.DefaultResponse(http.StatusInternalServerError)
 	}
 
 	return api.HttpResponse{
