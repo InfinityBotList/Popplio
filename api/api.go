@@ -622,6 +622,11 @@ func ValidatorErrorResponse(compiled map[string]string, v validator.ValidationEr
 // Creates a default HTTP response based on the status code
 func DefaultResponse(statusCode int) HttpResponse {
 	switch statusCode {
+	case http.StatusForbidden:
+		return HttpResponse{
+			Status: statusCode,
+			Data:   constants.Forbidden,
+		}
 	case http.StatusUnauthorized:
 		return HttpResponse{
 			Status: statusCode,

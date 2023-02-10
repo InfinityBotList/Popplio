@@ -6,6 +6,7 @@ import (
 	"popplio/apps"
 	"popplio/docs"
 	"popplio/state"
+	"popplio/types"
 	"popplio/utils"
 	"strings"
 
@@ -66,7 +67,13 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 
 	// Full needs admin permissions
 	if full == "true" && !admin {
-		return api.DefaultResponse(http.StatusForbidden)
+		return api.HttpResponse{
+			Status: http.StatusForbidden,
+			Json: types.ApiError{
+				Error:   true,
+				Message: "Only admins may use the 'full' query parameter.",
+			},
+		}
 	}
 
 	if full == "true" {
