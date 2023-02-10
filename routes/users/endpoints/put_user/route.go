@@ -12,7 +12,6 @@ import (
 	"popplio/ratelimit"
 	"popplio/state"
 	"popplio/types"
-	"popplio/utils"
 
 	"github.com/go-playground/validator/v10"
 	"github.com/infinitybotlist/eureka/crypto"
@@ -291,8 +290,6 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 
 	var apiToken string
 
-	dUser, err := utils.GetDiscordUser(d.Context, user.ID)
-
 	if err != nil {
 		state.Logger.Error(err)
 		return api.HttpResponse{
@@ -309,12 +306,10 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 		apiToken = crypto.RandString(128)
 		_, err = state.Pool.Exec(
 			d.Context,
-			"INSERT INTO users (user_id, api_token, username, staff, developer, certified, extra_links, avatar) VALUES ($1, $2, $3, false, false, false, $4, $5)",
+			"INSERT INTO users (user_id, api_token, staff, developer, certified, extra_links) VALUES ($1, $2, $3, false, false, false)",
 			user.ID,
 			apiToken,
-			user.Username,
 			[]types.Link{},
-			dUser.Avatar,
 		)
 
 		if err != nil {
@@ -329,27 +324,6 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 			}
 		}
 	} else {
-		// Update user
-		_, err = state.Pool.Exec(
-			d.Context,
-			"UPDATE users SET username = $1, avatar = $2 WHERE user_id = $3",
-			user.Username,
-			dUser.Avatar,
-			user.ID,
-		)
-
-		if err != nil {
-			state.Logger.Error(err)
-			return api.HttpResponse{
-				Json: types.ApiError{
-					Error:   true,
-					Message: "Failed to update user on database",
-				},
-				Status:  http.StatusInternalServerError,
-				Headers: limit.Headers(),
-			}
-		}
-
 		// Get API token and ban state
 		var banned bool
 		var tokenStr pgtype.Text

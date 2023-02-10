@@ -30,7 +30,7 @@ var (
 func Docs() *docs.Doc {
 	return &docs.Doc{
 		Summary:     "Get User",
-		Description: "Gets a user by id or username",
+		Description: "Gets a user by id",
 		Params: []docs.Parameter{
 			{
 				Name:        "id",
@@ -73,7 +73,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 
 	var err error
 
-	row, err := state.Pool.Query(d.Context, "SELECT "+userCols+" FROM users WHERE user_id = $1 OR username = $1", name)
+	row, err := state.Pool.Query(d.Context, "SELECT "+userCols+" FROM users WHERE user_id = $1", name)
 
 	if err != nil {
 		state.Logger.Error(err)

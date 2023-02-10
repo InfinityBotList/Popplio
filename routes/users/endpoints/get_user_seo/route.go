@@ -16,11 +16,11 @@ import (
 func Docs() *docs.Doc {
 	return &docs.Doc{
 		Summary:     "Get User SEO Info",
-		Description: "Gets a users SEO data by id or username",
+		Description: "Gets a users SEO data by id",
 		Params: []docs.Parameter{
 			{
 				Name:        "id",
-				Description: "User ID/Username",
+				Description: "User ID",
 				Required:    true,
 				In:          "path",
 				Schema:      docs.IdSchema,
@@ -45,7 +45,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 
 	var about string
 	var userId string
-	err := state.Pool.QueryRow(d.Context, "SELECT about, user_id FROM users WHERE user_id = $1 OR username = $1", name).Scan(&about, &userId)
+	err := state.Pool.QueryRow(d.Context, "SELECT about, user_id FROM users WHERE user_id = $1", name).Scan(&about, &userId)
 
 	if err != nil {
 		state.Logger.Error(err)
