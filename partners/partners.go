@@ -6,7 +6,7 @@ var Partners = PartnerList{
 	Featured: []*Partner{
 		{
 			ID:     "discord-bot-constructor",
-			Name:   "Discord Bot Constructor",
+			Name:   "DBC",
 			Short:  "Get A Free Custom Discord Bot - No Ads, No Paywalls, And 200 Feature Selection",
 			UserID: "503591563046420483",
 			Image:  "https://cdn.infinitybots.xyz/images/png/discordbotconstructor-partner.png",
