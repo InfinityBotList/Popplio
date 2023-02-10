@@ -118,14 +118,14 @@ Some experience in PostgreSQL and at least one of the below languages is require
 		},
 		Questions: []Question{
 			{
-				ID:          "sql-basic",
+				ID:          "sql-basics-1",
 				Question:    "Write a SQL expression to select from a table named 'shop' the columns price (float) and quantity (integer) limited to 6 rows, ordered by the price in descending order",
 				Paragraph:   "Answer the questions above using the most readable and (where possible) the most optimized SQL. Assume PostgreSQL 15 is being used and the 'pgxpool' (go) driver is being used.",
 				Placeholder: "SQL Here",
 				Short:       false,
 			},
 			{
-				ID:          "sql-basic",
+				ID:          "sql-basics-2",
 				Question:    "You now need to select all rows of the 'shop' table where rating (float) is above 5, the name (text) is similar (and case-insensitive) to $1 and categories (text[]) contains at least one element from $2 and all elements of $3 where $1, $2 and $3 are parameters of a parameterized query",
 				Paragraph:   "Answer the questions above using the most readable and (where possible) the most optimized SQL. Assume PostgreSQL 15 is being used and the 'pgxpool' (go) driver is being used.",
 				Placeholder: "SQL Here",
