@@ -112,7 +112,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 		timeElapsed := time.Now().UnixMilli() - voteParsed.LastVoteTime
 		state.Logger.Info(timeElapsed)
 
-		timeToWait := int64(utils.GetVoteTime())*60*60*1000 - timeElapsed
+		timeToWait := int64(voteParsed.VoteInfo.VoteTime)*60*60*1000 - timeElapsed
 
 		timeToWaitTime := (time.Duration(timeToWait) * time.Millisecond)
 

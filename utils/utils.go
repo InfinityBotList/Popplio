@@ -349,7 +349,7 @@ func GetVoteData(ctx context.Context, userID, botID string, log bool) (*types.Us
 	}
 
 	if premium {
-		voteParsed.VoteInfo.VoteTime = 6
+		voteParsed.VoteInfo.VoteTime = 4
 	}
 
 	if log {

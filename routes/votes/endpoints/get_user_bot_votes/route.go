@@ -34,11 +34,7 @@ func Docs() *docs.Doc {
 		},
 		Resp: types.UserVote{
 			Timestamps: []int64{},
-			VoteInfo: types.VoteInfo{
-				Weekend:  utils.GetDoubleVote(),
-				VoteTime: utils.GetVoteTime(),
-			},
-			HasVoted: true,
+			VoteInfo: types.VoteInfo{},
 		},
 	}
 }
