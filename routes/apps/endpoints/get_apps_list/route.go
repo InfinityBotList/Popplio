@@ -94,6 +94,10 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 		return api.DefaultResponse(http.StatusNotFound)
 	}
 
+	if len(app) == 0 {
+		return api.DefaultResponse(http.StatusNotFound)
+	}
+
 	return api.HttpResponse{
 		Json: apps.AppListResponse{
 			Apps: app,
