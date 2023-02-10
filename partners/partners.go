@@ -77,6 +77,10 @@ var Partners = PartnerList{
 					Name:  "View Website",
 					Value: "https://antiraid.xyz/?source=infinitybotlist",
 				},
+				{
+					Name:  "Discord",
+					Value: "https://discord.gg/k3rcRBc8",
+				},
 			},
 		},
 		{
