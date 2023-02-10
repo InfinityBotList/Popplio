@@ -52,14 +52,6 @@ type AppResponse struct {
 	Position         string            `db:"position" json:"position"`
 }
 
-type AppList struct {
-	AppID     string    `db:"app_id" json:"app_id"`
-	UserID    string    `db:"user_id" json:"user_id"`
-	State     string    `db:"state" json:"state"`
-	CreatedAt time.Time `db:"created_at" json:"created_at"`
-	Position  string    `db:"position" json:"position"`
-}
-
 type AppListResponse struct {
-	Apps []AppList `json:"apps"`
+	Apps []AppResponse `json:"apps"`
 }
