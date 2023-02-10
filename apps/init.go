@@ -1,9 +1,8 @@
 package apps
 
 import (
+	"popplio/state"
 	"sort"
-
-	"github.com/go-playground/validator/v10"
 )
 
 var Stable = true
@@ -30,7 +29,7 @@ func Setup() {
 	}
 
 	for _, app := range Apps {
-		appValidator := validator.New().Struct(app)
+		appValidator := state.Validator.Struct(app)
 
 		if appValidator != nil {
 			panic("App validation failed: " + appValidator.Error())

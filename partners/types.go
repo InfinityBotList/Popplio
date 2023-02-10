@@ -11,11 +11,11 @@ type Partner struct {
 	UserID string       `json:"-" validate:"required,numeric"`
 
 	// Internal field
-	User *types.DiscordUser `json:"user" validate:"notpresent"`
+	User *types.DiscordUser `json:"user"`
 }
 
 type PartnerList struct {
-	Featured        []Partner `json:"featured" validate:"required"`
-	BotPartners     []Partner `json:"bot_partners" validate:"required"`
-	BotListPartners []Partner `json:"bot_list_partners" validate:"required"`
+	Featured        []*Partner `json:"featured" validate:"required,dive"`
+	BotPartners     []*Partner `json:"bot_partners" validate:"required,dive"`
+	BotListPartners []*Partner `json:"bot_list_partners" validate:"required,dive"`
 }

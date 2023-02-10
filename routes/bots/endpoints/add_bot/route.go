@@ -24,11 +24,11 @@ import (
 var json = jsoniter.ConfigCompatibleWithStandardLibrary
 
 type internalData struct {
-	QueueName   *string `db:"queue_name" json:"-" validate:"omitempty,notpresent"`
-	QueueAvatar *string `db:"queue_avatar" json:"-" validate:"omitempty,notpresent"`
-	Owner       *string `db:"owner" json:"-" validate:"omitempty,notpresent"`
-	Vanity      *string `db:"vanity" json:"-" validate:"omitempty,notpresent"`
-	GuildCount  *int    `db:"servers" json:"-" validate:"omitempty,notpresent"`
+	QueueName   *string
+	QueueAvatar *string
+	Owner       *string
+	Vanity      *string
+	GuildCount  *int
 }
 
 func createBotsArgs(bot types.CreateBot, id internalData) []any {

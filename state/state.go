@@ -63,26 +63,10 @@ func noSpaces(fl validator.FieldLevel) bool {
 	}
 }
 
-func notpresent(fl validator.FieldLevel) bool {
-	// get the field value
-	switch fl.Field().Kind() {
-	case reflect.String:
-		value := fl.Field().String()
-
-		if value == "" {
-			return false
-		}
-		return true
-	default:
-		panic("not a string")
-	}
-}
-
 func Setup() {
 	Validator.RegisterValidation("nonvulgar", nonVulgar)
 	Validator.RegisterValidation("notblank", validators.NotBlank)
 	Validator.RegisterValidation("nospaces", noSpaces)
-	Validator.RegisterValidation("notpresent", notpresent)
 
 	var connUrl string
 	var redisUrl string

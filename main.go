@@ -7,9 +7,11 @@ import (
 	"time"
 
 	"popplio/api"
+	poplapps "popplio/apps"
 	"popplio/constants"
 	"popplio/docs"
 	"popplio/notifications"
+	"popplio/partners"
 	"popplio/routes/announcements"
 	"popplio/routes/apps"
 	"popplio/routes/bots"
@@ -195,6 +197,9 @@ func main() {
 		w.WriteHeader(http.StatusMethodNotAllowed)
 		w.Write([]byte(constants.MethodNotAllowed))
 	})
+
+	poplapps.Setup()
+	partners.Setup()
 
 	go notifications.Setup()
 

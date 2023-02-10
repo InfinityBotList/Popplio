@@ -2,7 +2,6 @@ package apps
 
 import (
 	"popplio/api"
-	"popplio/apps"
 	"popplio/routes/apps/endpoints/create_app"
 	"popplio/routes/apps/endpoints/get_app"
 	"popplio/routes/apps/endpoints/get_apps_list"
@@ -21,8 +20,6 @@ func (b Router) Tag() (string, string) {
 }
 
 func (b Router) Routes(r *chi.Mux) {
-	apps.Setup()
-
 	api.Route{
 		Pattern: "/apps/meta",
 		OpId:    "get_apps_meta",

@@ -3,7 +3,7 @@ package partners
 import "popplio/types"
 
 var Partners = PartnerList{
-	Featured: []Partner{
+	Featured: []*Partner{
 		{
 			ID:     "discord-bot-constructor",
 			Name:   "Discord Bot Constructor",
@@ -31,7 +31,7 @@ var Partners = PartnerList{
 			},
 		},
 	},
-	BotPartners: []Partner{
+	BotPartners: []*Partner{
 		{
 			ID:     "trivia-bot",
 			Name:   "Trivia Bot",
@@ -97,7 +97,7 @@ var Partners = PartnerList{
 			},
 		},
 	},
-	BotListPartners: []Partner{
+	BotListPartners: []*Partner{
 		{
 			ID:     "topic-bot-list",
 			Name:   "Topic Bot List",
