@@ -198,10 +198,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 
 	var appId = crypto.RandString(64)
 
-	_, err = state.Pool.Exec(d.Context, "INSERT INTO apps (app_id, user_id, position, answers) VALUES ($1, $2, $3, $4)", appId, d.Auth.ID, payload.Position, map[string]any{
-		"questions": position.Questions,
-		"answers":   answerMap,
-	})
+	_, err = state.Pool.Exec(d.Context, "INSERT INTO apps (app_id, user_id, position, questions, answers) VALUES ($1, $2, $3, $4, $5)", appId, d.Auth.ID, payload.Position, position.Questions, answerMap)
 
 	if err != nil {
 		state.Logger.Error(err)
