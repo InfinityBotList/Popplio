@@ -12,6 +12,7 @@ type UserVote struct {
 	HasVoted     bool     `json:"has_voted"`
 	LastVoteTime int64    `json:"last_vote_time"`
 	VoteInfo     VoteInfo `json:"vote_info"`
+	PremiumBot   bool     `json:"premium_bot"`
 }
 
 type AllVotes struct {

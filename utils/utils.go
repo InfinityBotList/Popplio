@@ -312,6 +312,13 @@ func GetVoteTime() uint16 {
 }
 
 func GetVoteData(ctx context.Context, userID, botID string, log bool) (*types.UserVote, error) {
+	var premium bool
+	err := state.Pool.QueryRow(ctx, "SELECT premium FROM bots WHERE bot_id = $1", botID).Scan(&premium)
+
+	if err != nil {
+		return nil, err
+	}
+
 	var votes []int64
 
 	var voteDates []*struct {
@@ -338,6 +345,11 @@ func GetVoteData(ctx context.Context, userID, botID string, log bool) (*types.Us
 			Weekend:  GetDoubleVote(),
 			VoteTime: GetVoteTime(),
 		},
+		PremiumBot: premium,
+	}
+
+	if premium {
+		voteParsed.VoteInfo.VoteTime = 6
 	}
 
 	if log {
@@ -358,7 +370,7 @@ func GetVoteData(ctx context.Context, userID, botID string, log bool) (*types.Us
 			votes[0] = time.Now().UnixMilli()
 		}
 
-		if time.Now().UnixMilli()-votes[0] < int64(GetVoteTime())*60*60*1000 {
+		if time.Now().UnixMilli()-votes[0] < int64(voteParsed.VoteInfo.VoteTime)*60*60*1000 {
 			voteParsed.HasVoted = true
 			voteParsed.LastVoteTime = votes[0]
 		}
