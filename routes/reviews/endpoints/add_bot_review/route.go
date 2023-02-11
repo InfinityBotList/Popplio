@@ -30,7 +30,7 @@ var (
 
 func Docs() *docs.Doc {
 	return &docs.Doc{
-		Summary:     "Add Bot Review",
+		Summary:     "Create Bot Review",
 		Description: "Creates a new users review of a bot. A user may have only one `root review` per bot. Triggers a garbage collection step to remove any orphaned reviews afterwards. Returns 204 on success",
 		Params: []docs.Parameter{
 			{
