@@ -38,8 +38,9 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 	rid := chi.URLParam(r, "rid")
 
 	var author string
+	var botId string
 
-	err := state.Pool.QueryRow(d.Context, "SELECT author FROM reviews WHERE id = $1", rid).Scan(&author)
+	err := state.Pool.QueryRow(d.Context, "SELECT author, bot_id FROM reviews WHERE id = $1", rid).Scan(&author, &botId)
 
 	if err != nil {
 		state.Logger.Error(err)
@@ -62,6 +63,8 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 		state.Logger.Error(err)
 		return api.DefaultResponse(http.StatusInternalServerError)
 	}
+
+	state.Redis.Del(d.Context, "rv-"+botId)
 
 	return api.DefaultResponse(http.StatusNoContent)
 }
