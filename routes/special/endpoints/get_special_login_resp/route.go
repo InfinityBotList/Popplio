@@ -532,7 +532,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 		}
 
 		// Send embed to bot log channel
-		_, err = state.Discord.ChannelMessageSendComplex(state.Config.Channels.BotLogs, &discordgo.MessageSend{
+		_, err = state.Discord.ChannelMessageSendComplex(state.Config.Channels.ModLogs, &discordgo.MessageSend{
 			Content: "",
 			Embeds: []*discordgo.MessageEmbed{
 				{
