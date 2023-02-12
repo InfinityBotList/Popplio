@@ -201,7 +201,7 @@ func main() {
 	poplapps.Setup()
 	partners.Setup()
 
-	go notifications.Setup()
+	go notifications.VrLoop()
 
 	err = http.ListenAndServe(":8081", r)
 

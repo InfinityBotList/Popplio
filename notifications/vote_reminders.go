@@ -3,9 +3,21 @@ package notifications
 import (
 	"popplio/state"
 	"popplio/utils"
+	"time"
 
 	"github.com/georgysavva/scany/v2/pgxscan"
+	jsoniter "github.com/json-iterator/go"
 )
+
+var json = jsoniter.ConfigCompatibleWithStandardLibrary
+
+func VrLoop() {
+	for {
+		state.Logger.Info("Running vrCheck")
+		vrCheck()
+		time.Sleep(10 * time.Second)
+	}
+}
 
 func vrCheck() {
 	rows, err := state.Pool.Query(state.Context, "SELECT user_id, bot_id FROM silverpelt WHERE NOW() - last_acked > interval '4 hours'")
