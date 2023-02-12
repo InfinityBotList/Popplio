@@ -82,7 +82,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 		return api.HttpResponse{
 			Json: types.ApiError{
 				Error:   true,
-				Message: "Only banned users are allowed to apply for this position",
+				Message: "You are not banned? Why are you appealing?",
 			},
 			Status: http.StatusBadRequest,
 		}
