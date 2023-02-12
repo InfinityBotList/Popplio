@@ -190,5 +190,31 @@ func reviewLogicCert(d api.RouteData, resp AppResponse, reason string) (review b
 		return false, fmt.Errorf("error setting bot type to certified: %w", err)
 	}
 
+	// Send an embed to the bot logs channel
+	_, err = state.Discord.ChannelMessageSendComplex(state.Config.Channels.BotLogs, &discordgo.MessageSend{
+		Embeds: []*discordgo.MessageEmbed{
+			{
+				Title:       "Bot Certified!",
+				URL:         state.Config.Sites.Frontend + "/bots/" + botID,
+				Description: "<@" + d.Auth.ID + "> has certified bot <@" + botID + ">",
+				Color:       0x00ff00,
+				Fields: []*discordgo.MessageEmbedField{
+					{
+						Name:  "Bot ID",
+						Value: botID,
+					},
+					{
+						Name:  "Reason",
+						Value: reason,
+					},
+				},
+			},
+		},
+	})
+
+	if err != nil {
+		return false, fmt.Errorf("error sending embed to bot logs channel: %w", err)
+	}
+
 	return true, nil
 }
