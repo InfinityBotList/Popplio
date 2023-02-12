@@ -314,9 +314,10 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 				continue
 			}
 
-			notifications.NotifChannel <- notifications.Notification{
-				NotifID: notifId,
-				Message: bytes,
+			err = notifications.PushToClient(notifId, bytes)
+
+			if err != nil {
+				state.Logger.Error(err)
 			}
 		}
 	}()

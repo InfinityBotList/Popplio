@@ -5,16 +5,7 @@ import (
 	"popplio/utils"
 
 	"github.com/georgysavva/scany/v2/pgxscan"
-	jsoniter "github.com/json-iterator/go"
 )
-
-var json = jsoniter.ConfigCompatibleWithStandardLibrary
-
-type Message struct {
-	Message string `json:"message"`
-	Title   string `json:"title"`
-	Icon    string `json:"icon"`
-}
 
 func vrCheck() {
 	rows, err := state.Pool.Query(state.Context, "SELECT user_id, bot_id FROM silverpelt WHERE NOW() - last_acked > interval '4 hours'")
@@ -66,7 +57,7 @@ func vrCheck() {
 
 			if err != nil {
 				state.Logger.Error("Error finding bot info:", err)
-				return
+				continue
 			}
 
 			message := Message{
@@ -79,7 +70,7 @@ func vrCheck() {
 
 			if err != nil {
 				state.Logger.Error(err)
-				return
+				continue
 			}
 
 			for _, notif := range notifs {
@@ -87,11 +78,13 @@ func vrCheck() {
 					continue
 				}
 
-				state.Logger.Info("NotifID: ", notif.NotifId)
+				state.Logger.Infow("Sending notification", "notif_id", notif.NotifId)
 
-				NotifChannel <- Notification{
-					NotifID: notif.NotifId,
-					Message: bytes,
+				err := PushToClient(notif.NotifId, bytes)
+
+				if err != nil {
+					state.Logger.Error(err)
+					continue
 				}
 			}
 

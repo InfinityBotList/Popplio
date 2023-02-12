@@ -84,10 +84,13 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 	)
 
 	// Fan out test notification
-	notifications.NotifChannel <- notifications.Notification{
-		NotifID: notifId,
-		Message: []byte(constants.TestNotif),
-	}
+	go func() {
+		err = notifications.PushToClient(notifId, []byte(constants.TestNotif))
+
+		if err != nil {
+			state.Logger.Error(err)
+		}
+	}()
 
 	return api.HttpResponse{
 		Status: http.StatusNoContent,

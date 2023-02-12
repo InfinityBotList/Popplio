@@ -1,7 +1,9 @@
 package notifications
 
-func Setup() {
-	go webPush()
+import jsoniter "github.com/json-iterator/go"
 
+var json = jsoniter.ConfigCompatibleWithStandardLibrary
+
+func Setup() {
 	startTaskMgr()
 }
