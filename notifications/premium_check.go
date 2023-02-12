@@ -82,22 +82,5 @@ func premiumCheck() {
 			state.Logger.Errorw("[PremiumCheck] Error sending message", "error", err, "msg", msg)
 			continue
 		}
-
-		// Send DM
-		pc, err := state.Discord.UserChannelCreate(owner)
-
-		if err != nil {
-			state.Logger.Errorw("[PremiumCheck] Error creating DM channel", "error", err, "user_id", owner)
-			continue
-		}
-
-		_, err = state.Discord.ChannelMessageSendComplex(pc.ID, &discordgo.MessageSend{
-			Content: msg,
-		})
-
-		if err != nil {
-			state.Logger.Errorw("[PremiumCheck] Error sending DM", "error", err, "msg", msg)
-			continue
-		}
 	}
 }
