@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"popplio/api"
-	"popplio/constants"
 	"popplio/docs"
 	"popplio/notifications"
 	"popplio/state"
@@ -73,7 +72,10 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 	if voteBannedState {
 		return api.HttpResponse{
 			Status: http.StatusForbidden,
-			Data:   constants.VoteBanned,
+			Json: types.ApiError{
+				Message: "You are banned from voting right now! Contact support if you think this is a mistake",
+				Error:   true,
+			},
 		}
 	}
 
@@ -90,14 +92,20 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 	if voteBannedBotsState {
 		return api.HttpResponse{
 			Status: http.StatusForbidden,
-			Data:   constants.VoteBanned,
+			Json: types.ApiError{
+				Message: "This bot is banned from being voted on right now! Contact support if you think this is a mistake",
+				Error:   true,
+			},
 		}
 	}
 
 	if botType.String != "approved" && botType.String != "certified" {
 		return api.HttpResponse{
 			Status: http.StatusBadRequest,
-			Data:   constants.NotApproved,
+			Json: types.ApiError{
+				Message: "Woah there, this bot needs to be approved before you can vote for it!",
+				Error:   true,
+			},
 		}
 	}
 

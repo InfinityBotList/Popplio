@@ -4,7 +4,6 @@ import (
 	"net/http"
 
 	"popplio/api"
-	"popplio/constants"
 	"popplio/docs"
 	"popplio/state"
 	"popplio/types"
@@ -59,7 +58,10 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 	if voteBannedState {
 		return api.HttpResponse{
 			Status: http.StatusForbidden,
-			Data:   constants.VoteBanned,
+			Json: types.ApiError{
+				Message: "You are banned from voting right now! Contact support if you think this is a mistake",
+				Error:   true,
+			},
 		}
 	}
 
