@@ -50,6 +50,8 @@ type UserPerm struct {
 	ID          string       `json:"user_id"`
 	User        *DiscordUser `json:"user"` // Must be handled internally
 	Experiments []string     `json:"experiments"`
+	Banned      bool         `json:"banned"`
+	VoteBanned  bool         `json:"vote_banned"`
 	Staff       bool         `json:"staff"`
 	Admin       bool         `json:"admin"`
 	HAdmin      bool         `json:"hadmin"`
