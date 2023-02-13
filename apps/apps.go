@@ -296,7 +296,7 @@ You can only have up to one ban appeal at any given point of time. Abusing the s
 		Order: 6,
 		Info: `So you want to apply for certification, eh?
 
-Firstly, read the <a href="/help/programs/certification" target="_blank">rules</a> to see if you qualify.
+Firstly, read the <a class="text-themable-400" href="/help/programs/certification" target="_blank">rules</a> to see if you qualify.
 
 Then fill out the form below and wait for a staff member to review your application. If you are accepted, you're in the club!
 
