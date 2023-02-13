@@ -6,24 +6,25 @@ type User struct {
 	ITag                      pgtype.UUID        `db:"itag" json:"itag"`
 	ID                        string             `db:"user_id" json:"user_id"`
 	User                      *DiscordUser       `db:"-" json:"user"` // Must be handled internally
-	Staff                     bool               `db:"staff" json:"staff"`
-	About                     pgtype.Text        `db:"about" json:"about"`
 	Experiments               []string           `db:"experiments" json:"experiments"`
-	VoteBanned                bool               `db:"vote_banned" json:"vote_banned"`
-	Admin                     bool               `db:"admin" json:"admin"`
-	HAdmin                    bool               `db:"hadmin" json:"hadmin"`
-	Dev                       bool               `db:"ibldev" json:"ibldev"`
-	HDev                      bool               `db:"iblhdev" json:"iblhdev"`
 	StaffOnboarded            bool               `db:"staff_onboarded" json:"staff_onboarded"`
 	StaffOnboardState         string             `db:"staff_onboard_state" json:"staff_onboard_state"`
 	StaffOnboardLastStartTime pgtype.Timestamptz `db:"staff_onboard_last_start_time" json:"staff_onboard_last_start_time"`
 	StaffOnboardMacroTime     pgtype.Timestamptz `db:"staff_onboard_macro_time" json:"staff_onboard_macro_time"`
 	StaffOnboardGuild         pgtype.Text        `db:"staff_onboard_guild" json:"staff_onboard_guild"`
+	Staff                     bool               `db:"staff" json:"staff"`
+	Admin                     bool               `db:"admin" json:"admin"`
+	HAdmin                    bool               `db:"hadmin" json:"hadmin"`
 	Certified                 bool               `db:"certified" json:"certified"`
+	Dev                       bool               `db:"ibldev" json:"ibldev"`
+	HDev                      bool               `db:"iblhdev" json:"iblhdev"`
 	Developer                 bool               `db:"developer" json:"developer"`
+	ExtraLinks                []Link             `db:"extra_links" json:"extra_links"`
+	About                     pgtype.Text        `db:"about" json:"about"`
+	VoteBanned                bool               `db:"vote_banned" json:"vote_banned"`
+	Banned                    bool               `db:"banned" json:"banned"`
 	UserBots                  []UserBot          `json:"user_bots"`  // Must be handled internally
 	UserPacks                 []IndexBotPack     `json:"user_packs"` // Must be handled internally
-	ExtraLinks                []Link             `db:"extra_links" json:"extra_links"`
 }
 
 type UserBot struct {
@@ -52,6 +53,6 @@ type UserPerm struct {
 	Staff       bool         `json:"staff"`
 	Admin       bool         `json:"admin"`
 	HAdmin      bool         `json:"hadmin"`
-	IBLDev         bool         `json:"ibldev"`
-	IBLHDev        bool         `json:"iblhdev"`
+	IBLDev      bool         `json:"ibldev"`
+	IBLHDev     bool         `json:"iblhdev"`
 }
