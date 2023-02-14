@@ -38,7 +38,10 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 	var hadmin bool
 	var ibldev bool
 	var iblhdev bool
-	err := state.Pool.QueryRow(d.Context, "SELECT experiments, staff, admin, hadmin, ibldev, iblhdev FROM users WHERE user_id = $1", id).Scan(&experiments, &staff, &admin, &hadmin, &ibldev, &iblhdev)
+	var banned bool
+	var captchaSponsorEnabled bool
+	var voteBanned bool
+	err := state.Pool.QueryRow(d.Context, "SELECT experiments, staff, admin, hadmin, ibldev, iblhdev, banned, captcha_sponsor_enabled, vote_banned FROM users WHERE user_id = $1", id).Scan(&experiments, &staff, &admin, &hadmin, &ibldev, &iblhdev, &banned, &captchaSponsorEnabled, &voteBanned)
 
 	if err != nil {
 		state.Logger.Error(err)
@@ -53,14 +56,17 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 	}
 
 	up := types.UserPerm{
-		ID:          id,
-		User:        user,
-		Experiments: experiments,
-		Staff:       staff,
-		Admin:       admin,
-		HAdmin:      hadmin,
-		IBLDev:      ibldev,
-		IBLHDev:     iblhdev,
+		ID:                    id,
+		User:                  user,
+		Experiments:           experiments,
+		Banned:                banned,
+		CaptchaSponsorEnabled: captchaSponsorEnabled,
+		VoteBanned:            voteBanned,
+		Staff:                 staff,
+		Admin:                 admin,
+		HAdmin:                hadmin,
+		IBLDev:                ibldev,
+		IBLHDev:               iblhdev,
 	}
 
 	return api.HttpResponse{

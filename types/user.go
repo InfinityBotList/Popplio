@@ -18,7 +18,8 @@ type User struct {
 	Certified                 bool               `db:"certified" json:"certified"`
 	Dev                       bool               `db:"ibldev" json:"ibldev"`
 	HDev                      bool               `db:"iblhdev" json:"iblhdev"`
-	Developer                 bool               `db:"developer" json:"developer"`
+	BotDeveloper              bool               `db:"developer" json:"bot_developer"`
+	CaptchaSponsorEnabled     bool               `db:"captcha_sponsor_enabled" json:"captcha_sponsor_enabled"`
 	ExtraLinks                []Link             `db:"extra_links" json:"extra_links"`
 	About                     pgtype.Text        `db:"about" json:"about"`
 	VoteBanned                bool               `db:"vote_banned" json:"vote_banned"`
@@ -47,14 +48,15 @@ type UserBot struct {
 }
 
 type UserPerm struct {
-	ID          string       `json:"user_id"`
-	User        *DiscordUser `json:"user"` // Must be handled internally
-	Experiments []string     `json:"experiments"`
-	Banned      bool         `json:"banned"`
-	VoteBanned  bool         `json:"vote_banned"`
-	Staff       bool         `json:"staff"`
-	Admin       bool         `json:"admin"`
-	HAdmin      bool         `json:"hadmin"`
-	IBLDev      bool         `json:"ibldev"`
-	IBLHDev     bool         `json:"iblhdev"`
+	ID                    string       `json:"user_id"`
+	User                  *DiscordUser `json:"user"` // Must be handled internally
+	Experiments           []string     `json:"experiments"`
+	Banned                bool         `json:"banned"`
+	CaptchaSponsorEnabled bool         `json:"captcha_sponsor_enabled"`
+	VoteBanned            bool         `json:"vote_banned"`
+	Staff                 bool         `json:"staff"`
+	Admin                 bool         `json:"admin"`
+	HAdmin                bool         `json:"hadmin"`
+	IBLDev                bool         `json:"ibldev"`
+	IBLHDev               bool         `json:"iblhdev"`
 }

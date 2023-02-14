@@ -17,8 +17,9 @@ import (
 var json = jsoniter.ConfigCompatibleWithStandardLibrary
 
 type ProfileUpdate struct {
-	About      string       `json:"bio"`
-	ExtraLinks []types.Link `json:"extra_links"`
+	About                 string       `json:"bio"`
+	ExtraLinks            []types.Link `json:"extra_links"`
+	CaptchaSponsorEnabled bool         `json:"captcha_sponsor_enabled"`
 }
 
 func Docs() *docs.Doc {
@@ -87,8 +88,8 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 			}
 		}
 
-		// Update about
-		_, err = state.Pool.Exec(d.Context, "UPDATE users SET about = $1 WHERE user_id = $2", profile.About, id)
+		// Update about, captcha_sponsor_enabled
+		_, err = state.Pool.Exec(d.Context, "UPDATE users SET about = $1, captcha_sponsor_enabled = $2 WHERE user_id = $3", profile.About, profile.CaptchaSponsorEnabled, id)
 
 		if err != nil {
 			state.Logger.Error(err)
