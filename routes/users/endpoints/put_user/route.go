@@ -13,10 +13,12 @@ import (
 	"popplio/state"
 	"popplio/types"
 
+	"github.com/bwmarrin/discordgo"
 	"github.com/go-playground/validator/v10"
 	"github.com/infinitybotlist/eureka/crypto"
 	"github.com/jackc/pgx/v5/pgtype"
 	jsoniter "github.com/json-iterator/go"
+	"go.uber.org/zap"
 	"golang.org/x/exp/slices"
 )
 
@@ -42,6 +44,89 @@ type AuthorizeRequest struct {
 	Scope       string `json:"scope" validate:"required,oneof=normal ban_exempt"`
 }
 
+func sendAuthLog(user types.OauthUser, req AuthorizeRequest, new bool) {
+	var banned bool
+	var voteBanned bool
+
+	if !new {
+		err := state.Pool.QueryRow(state.Context, "SELECT banned, vote_banned FROM users WHERE user_id = $1", user.ID).Scan(&banned, &voteBanned)
+
+		if err != nil {
+			state.Logger.Error(err)
+			return
+		}
+	}
+
+	state.Logger.With(
+		zap.String("user_id", user.ID),
+		zap.String("channel_id", state.Config.Channels.AuthLogs),
+		zap.String("bot_info", state.Discord.State.User.String()),
+	).Info("Channel Info")
+
+	_, err := state.Discord.ChannelMessageSendComplex(state.Config.Channels.AuthLogs, &discordgo.MessageSend{
+		Embeds: []*discordgo.MessageEmbed{
+			{
+				Title: "User Login Attempt",
+				Color: 0xff0000,
+				Fields: []*discordgo.MessageEmbedField{
+					{
+						Name:   "User ID",
+						Value:  user.ID,
+						Inline: true,
+					},
+					{
+						Name:   "Username",
+						Value:  user.Username + "#" + user.Disc,
+						Inline: true,
+					},
+					{
+						Name: "Banned",
+						Value: func() string {
+							if banned {
+								return "Yes"
+							}
+
+							return "No"
+						}(),
+						Inline: true,
+					},
+					{
+						Name: "Vote Banned",
+						Value: func() string {
+							if voteBanned {
+								return "Yes"
+							}
+
+							return "No"
+						}(),
+						Inline: true,
+					},
+					{
+						Name: "New User",
+						Value: func() string {
+							if new {
+								return "Yes"
+							}
+
+							return "No"
+						}(),
+						Inline: true,
+					},
+					{
+						Name:   "Scope",
+						Value:  req.Scope,
+						Inline: true,
+					},
+				},
+			},
+		},
+	})
+
+	if err != nil {
+		state.Logger.Error(err)
+	}
+}
+
 func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 	limit, err := ratelimit.Ratelimit{
 		Expiry:      1 * time.Minute,
@@ -62,6 +147,15 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 			},
 			Headers: limit.Headers(),
 			Status:  http.StatusTooManyRequests,
+		}
+	}
+
+	if !d.IsClient {
+		return api.HttpResponse{
+			Json: types.ApiError{
+				Error:   true,
+				Message: "This endpoint is not available for public use",
+			},
 		}
 	}
 
@@ -323,6 +417,8 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 				Headers: limit.Headers(),
 			}
 		}
+
+		go sendAuthLog(user, req, true)
 	} else {
 		// Get API token and ban state
 		var banned bool
@@ -341,6 +437,8 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 				Headers: limit.Headers(),
 			}
 		}
+
+		go sendAuthLog(user, req, false)
 
 		// Handle scope
 		if req.Scope != "normal" {
