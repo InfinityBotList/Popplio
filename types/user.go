@@ -12,6 +12,7 @@ type User struct {
 	StaffOnboardLastStartTime pgtype.Timestamptz `db:"staff_onboard_last_start_time" json:"staff_onboard_last_start_time"`
 	StaffOnboardMacroTime     pgtype.Timestamptz `db:"staff_onboard_macro_time" json:"staff_onboard_macro_time"`
 	StaffOnboardGuild         pgtype.Text        `db:"staff_onboard_guild" json:"staff_onboard_guild"`
+	StaffRPCLastVerify        pgtype.Timestamptz `db:"staff_rpc_last_verify" json:"staff_rpc_last_verify"`
 	Staff                     bool               `db:"staff" json:"staff"`
 	Admin                     bool               `db:"admin" json:"admin"`
 	HAdmin                    bool               `db:"hadmin" json:"hadmin"`
