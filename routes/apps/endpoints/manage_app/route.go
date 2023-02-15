@@ -17,7 +17,7 @@ import (
 
 type ManageApp struct {
 	Approved bool   `json:"approved" validate:"required"`
-	Reason   string `json:"reason" validate:"required"`
+	Reason   string `json:"reason" validate:"required,min=5,max=1000" msg:"Reason must be between 5 and 1000 characters long"`
 }
 
 var (
