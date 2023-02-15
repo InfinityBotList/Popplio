@@ -100,7 +100,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 
 	var userApps int64
 
-	err = state.Pool.QueryRow(d.Context, "SELECT COUNT(1) FROM apps WHERE user_id = $1 AND position = $2 AND (state = 'pending' OR state = 'pending-interview' OR state = 'pending-approval')", d.Auth.ID, payload.Position).Scan(&userApps)
+	err = state.Pool.QueryRow(d.Context, "SELECT COUNT(1) FROM apps WHERE user_id = $1 AND position = $2 AND state = 'pending'", d.Auth.ID, payload.Position).Scan(&userApps)
 
 	if err != nil {
 		state.Logger.Error(err)
@@ -200,13 +200,12 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 
 	_, err = state.Pool.Exec(
 		d.Context,
-		"INSERT INTO apps (app_id, user_id, position, questions, answers, interview_questions) VALUES ($1, $2, $3, $4, $5, $6)",
+		"INSERT INTO apps (app_id, user_id, position, questions, answers) VALUES ($1, $2, $3, $4, $5)",
 		appId,
 		d.Auth.ID,
 		payload.Position,
 		position.Questions,
 		answerMap,
-		[]apps.Question{},
 	)
 
 	if err != nil {

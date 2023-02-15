@@ -25,7 +25,7 @@ We are a welcoming and laid back team who is always willing to give new people a
 			{
 				ID:          "strengths",
 				Question:    "List some of your strengths",
-				Paragraph:   "Tell us a little bit about yourself.",
+				Paragraph:   "What are your strengths/abilities. How long can you be active?",
 				Placeholder: "I am always online and active...",
 				Short:       false,
 			},
