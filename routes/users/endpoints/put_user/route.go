@@ -80,6 +80,11 @@ func sendAuthLog(user types.OauthUser, req AuthorizeRequest, new bool) {
 						Inline: true,
 					},
 					{
+						Name:   "Scope",
+						Value:  req.Scope,
+						Inline: true,
+					},
+					{
 						Name: "Banned",
 						Value: func() string {
 							if banned {
@@ -112,12 +117,11 @@ func sendAuthLog(user types.OauthUser, req AuthorizeRequest, new bool) {
 						}(),
 						Inline: true,
 					},
-					{
-						Name:   "Scope",
-						Value:  req.Scope,
-						Inline: true,
-					},
 				},
+				Footer: &discordgo.MessageEmbedFooter{
+					Text: "© Copyright 2023 - Infinity Bot List",
+				},
+				Timestamp: time.Now().Format(time.RFC3339),
 			},
 		},
 	})
