@@ -42,6 +42,9 @@ func Docs() *docs.Doc {
 			{
 				Name:        "app_id",
 				Description: "The App ID",
+				Required:    true,
+				In:          "path",
+				Schema:      docs.IdSchema,
 			},
 		},
 		Resp: types.ApiError{},
