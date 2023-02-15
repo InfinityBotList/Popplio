@@ -66,7 +66,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 	}
 
 	// Full needs admin permissions
-	if full == "true" && !admin {
+	if full == "true" && (!admin || d.Auth.Banned) {
 		return api.HttpResponse{
 			Status: http.StatusForbidden,
 			Json: types.ApiError{

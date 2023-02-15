@@ -14,29 +14,6 @@ var Apps = map[string]Position{
 We are a welcoming and laid back team who is always willing to give new people an opportunity!`,
 		Name: "Staff Team",
 		Tags: []string{"Staff", "Bot Reviewing"},
-		Interview: []Question{
-			{
-				ID:          "motive",
-				Question:    "Why did you apply for the staff team position?",
-				Paragraph:   "Why did you apply for this role? Be specific. We want to know how you can help Infinity Bot List and why you wish to",
-				Placeholder: "I applied because...",
-				Short:       false,
-			},
-			{
-				ID:          "team-player",
-				Question:    "What is a scenario in which you had to be a team player?",
-				Paragraph:   "What is a scenario in which you had to be a team player? We want to know that you can collaborate effectively with us.",
-				Placeholder: "I had to...",
-				Short:       false,
-			},
-			{
-				ID:          "about-you",
-				Question:    "Tell us a little about yourself",
-				Paragraph:   "Tell us a little about yourself. Its that simple!",
-				Placeholder: "I am...",
-				Short:       false,
-			},
-		},
 		Questions: []Question{
 			{
 				ID:          "experience",
@@ -67,6 +44,20 @@ We are a welcoming and laid back team who is always willing to give new people a
 				Short:       false,
 			},
 			{
+				ID:          "team-player",
+				Question:    "What is a scenario in which you had to be a team player?",
+				Paragraph:   "What is a scenario in which you had to be a team player? We want to know that you can collaborate effectively with us.",
+				Placeholder: "I had to...",
+				Short:       false,
+			},
+			{
+				ID:          "about-you",
+				Question:    "Tell us a little about yourself",
+				Paragraph:   "Tell us a little about yourself. Its that simple!",
+				Placeholder: "I am...",
+				Short:       false,
+			},
+			{
 				ID:          "other",
 				Question:    "Anything else you want to add?",
 				Paragraph:   "Anything else you want to add?",
@@ -86,36 +77,6 @@ Some experience in PostgreSQL and at least one of the below languages is require
 - Go/Golang`,
 		Name: "Dev Team",
 		Tags: []string{"Golang", "Rust"},
-		Interview: []Question{
-			{
-				ID:          "motive",
-				Question:    "Why did you apply for the dev team position?",
-				Paragraph:   "Why did you apply for this role? Be specific. We want to know how you can help Infinity Bot List and why you wish to",
-				Placeholder: "I applied because...",
-				Short:       false,
-			},
-			{
-				ID:          "team-player",
-				Question:    "What is a scenario in which you had to be a team player?",
-				Paragraph:   "What is a scenario in which you had to be a team player? We want to know that you can collaborate effectively with us.",
-				Placeholder: "I had to...",
-				Short:       false,
-			},
-			{
-				ID:          "some-work",
-				Question:    "What is some of the projects you have done? Can you share some links with us?",
-				Paragraph:   "What is some of the projects you have done? Can you share some links with us? We want to see your finest works",
-				Placeholder: "Some work I did...",
-				Short:       false,
-			},
-			{
-				ID:          "about-you",
-				Question:    "Tell us a little about yourself",
-				Paragraph:   "Tell us a little about yourself. Its that simple!",
-				Placeholder: "I am...",
-				Short:       false,
-			},
-		},
 		Questions: []Question{
 			{
 				ID:          "sql-basics-1",
@@ -146,13 +107,6 @@ Some experience in PostgreSQL and at least one of the below languages is require
 				Short:       false,
 			},
 			{
-				ID:          "strengths",
-				Question:    "What are your strengths in coding",
-				Paragraph:   "What are your strengths in coding",
-				Placeholder: "I am good at...",
-				Short:       false,
-			},
-			{
 				ID:          "db",
 				Question:    "Do you have Exprience with PostgreSQL. How much experience do you have?",
 				Paragraph:   "Do you have Exprience with PostgreSQL",
@@ -165,6 +119,20 @@ Some experience in PostgreSQL and at least one of the below languages is require
 				Paragraph:   "Why do you want to join the dev team? Be specific",
 				Placeholder: "I want to join the dev team because...",
 				Short:       false,
+			},
+			{
+				ID:          "team-player",
+				Question:    "What is a scenario in which you had to be a team player?",
+				Paragraph:   "What is a scenario in which you had to be a team player? We want to know that you can collaborate effectively with us.",
+				Placeholder: "I had to...",
+				Short:       false,
+			},
+			{
+				ID:          "other",
+				Question:    "Anything else you want to add?",
+				Paragraph:   "Anything else you want to add?",
+				Placeholder: "Just state anything that doesn't hit anywhere else",
+				Short:       true,
 			},
 		},
 	},

@@ -22,7 +22,6 @@ type Position struct {
 	Tags      []string   `json:"tags" validate:"required"`
 	Info      string     `json:"info" validate:"required"`
 	Name      string     `json:"name" validate:"required"`
-	Interview []Question `json:"interview"` // Optional as interview may not be required
 	Questions []Question `json:"questions" validate:"gt=0,required"`
 	Hidden    bool       `json:"hidden"`
 	Closed    bool       `json:"closed"`
@@ -43,15 +42,14 @@ type AppMeta struct {
 }
 
 type AppResponse struct {
-	AppID              string            `db:"app_id" json:"app_id"`
-	UserID             string            `db:"user_id" json:"user_id"`
-	Questions          []Question        `db:"questions" json:"questions"`
-	Answers            map[string]string `db:"answers" json:"answers"`
-	InterviewQuestions []Question        `db:"interview_questions" json:"interview_questions"`
-	InterviewAnswers   map[string]string `db:"interview_answers" json:"interview_answers"`
-	State              string            `db:"state" json:"state"`
-	CreatedAt          time.Time         `db:"created_at" json:"created_at"`
-	Position           string            `db:"position" json:"position"`
+	AppID          string            `db:"app_id" json:"app_id"`
+	UserID         string            `db:"user_id" json:"user_id"`
+	Questions      []Question        `db:"questions" json:"questions"`
+	Answers        map[string]string `db:"answers" json:"answers"`
+	State          string            `db:"state" json:"state"`
+	CreatedAt      time.Time         `db:"created_at" json:"created_at"`
+	Position       string            `db:"position" json:"position"`
+	ReviewFeedback *string           `db:"review_feedback" json:"review_feedback"`
 }
 
 type AppListResponse struct {
