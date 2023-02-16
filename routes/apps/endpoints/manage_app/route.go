@@ -1,6 +1,7 @@
 package manage_app
 
 import (
+	"fmt"
 	"net/http"
 	"popplio/api"
 	"popplio/apps"
@@ -10,13 +11,14 @@ import (
 	"popplio/utils"
 	"strings"
 
+	"github.com/bwmarrin/discordgo"
 	"github.com/georgysavva/scany/v2/pgxscan"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-playground/validator/v10"
 )
 
 type ManageApp struct {
-	Approved bool   `json:"approved" validate:"required"`
+	Approved bool   `json:"approved"`
 	Reason   string `json:"reason" validate:"required,min=5,max=1000" msg:"Reason must be between 5 and 1000 characters long"`
 }
 
@@ -97,7 +99,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 	}
 
 	// Fetch app info such as the position from database
-	appId := chi.URLParam(r, "id")
+	appId := chi.URLParam(r, "app_id")
 
 	// First check count so we can avoid expensive DB calls
 	var count int64
@@ -158,6 +160,8 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 		}
 	}
 
+	var embeds []*discordgo.MessageEmbed
+
 	if payload.Approved {
 		if positionData.ReviewLogic != nil {
 			add, err := positionData.ReviewLogic(d, app, payload.Reason)
@@ -184,6 +188,42 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 			state.Logger.Error(err)
 			return api.DefaultResponse(http.StatusInternalServerError)
 		}
+
+		embeds = []*discordgo.MessageEmbed{
+			{
+				Title:       "Application Approved",
+				URL:         state.Config.Sites.AppSite + "/panel/apps",
+				Description: fmt.Sprintf("<@%s> has approved an application by <@%s> for the position of %s", d.Auth.ID, app.UserID, app.Position),
+				Color:       0x00ff00,
+				Fields: []*discordgo.MessageEmbedField{
+					{
+						Name:   "App ID",
+						Value:  appId,
+						Inline: true,
+					},
+					{
+						Name:   "User ID",
+						Value:  app.UserID,
+						Inline: true,
+					},
+					{
+						Name:   "Approved By",
+						Value:  fmt.Sprintf("<@%s>", d.Auth.ID),
+						Inline: true,
+					},
+					{
+						Name:   "Position",
+						Value:  app.Position,
+						Inline: true,
+					},
+					{
+						Name:   "Feedback",
+						Value:  payload.Reason,
+						Inline: false,
+					},
+				},
+			},
+		}
 	} else {
 		_, err = state.Pool.Exec(d.Context, "UPDATE apps SET state = 'denied', review_feedback = $2 WHERE app_id = $1", appId, payload.Reason)
 
@@ -191,7 +231,79 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 			state.Logger.Error(err)
 			return api.DefaultResponse(http.StatusInternalServerError)
 		}
+
+		embeds = []*discordgo.MessageEmbed{
+			{
+				Title:       "Application Denied",
+				URL:         state.Config.Sites.AppSite + "/panel/apps",
+				Description: fmt.Sprintf("<@%s> has denied an application by <@%s> for the position of %s", d.Auth.ID, app.UserID, app.Position),
+				Color:       0xff0000,
+				Fields: []*discordgo.MessageEmbedField{
+					{
+						Name:   "App ID",
+						Value:  appId,
+						Inline: true,
+					},
+					{
+						Name:   "User ID",
+						Value:  app.UserID,
+						Inline: true,
+					},
+					{
+						Name:   "Denied By",
+						Value:  fmt.Sprintf("<@%s>", d.Auth.ID),
+						Inline: true,
+					},
+					{
+						Name:   "Position",
+						Value:  app.Position,
+						Inline: true,
+					},
+					{
+						Name:   "Reason",
+						Value:  payload.Reason,
+						Inline: false,
+					},
+				},
+			},
+		}
 	}
 
+	// Send message to apps channel
+	_, err = state.Discord.ChannelMessageSendEmbeds(state.Config.Channels.Apps, embeds)
+
+	if err != nil {
+		state.Logger.Error(err)
+		return api.DefaultResponse(http.StatusInternalServerError)
+	}
+
+	// Send message to user if in main server
+	_, err = state.Discord.State.Member(state.Config.Servers.Main, app.UserID)
+
+	if err == nil {
+		dm, err := state.Discord.UserChannelCreate(app.UserID)
+
+		if err != nil {
+			state.Logger.Error(err)
+			return api.HttpResponse{
+				Json: types.ApiError{
+					Error:   true,
+					Message: "Could not send DM, but app was updated successfully",
+				},
+			}
+		}
+
+		_, err = state.Discord.ChannelMessageSendEmbeds(dm.ID, embeds)
+
+		if err != nil {
+			state.Logger.Error(err)
+			return api.HttpResponse{
+				Json: types.ApiError{
+					Error:   true,
+					Message: "Could not send DM, but app was updated successfully",
+				},
+			}
+		}
+	}
 	return api.DefaultResponse(http.StatusNoContent)
 }

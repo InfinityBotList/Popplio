@@ -229,7 +229,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 		Embeds: []*discordgo.MessageEmbed{
 			{
 				Title:       "New " + position.Name + " Application!",
-				URL:         state.Config.Sites.AppSite + "/panel/apps/" + appId,
+				URL:         state.Config.Sites.AppSite + "/panel/apps",
 				Description: desc,
 				Color:       0x00ff00,
 				Fields: []*discordgo.MessageEmbedField{
