@@ -58,7 +58,7 @@ func Docs() *docs.Doc {
 func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 	limit, err := ratelimit.Ratelimit{
 		Expiry:      1 * time.Minute,
-		MaxRequests: 3,
+		MaxRequests: 2,
 		Bucket:      "review",
 	}.Limit(d.Context, r)
 
