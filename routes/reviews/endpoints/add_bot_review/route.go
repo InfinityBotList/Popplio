@@ -85,22 +85,24 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 	}
 
 	// Check if the user has already made a 'root' review for this bot
-	var count int
+	if payload.ParentID == "" {
+		var count int
 
-	err = state.Pool.QueryRow(d.Context, "SELECT COUNT(*) FROM reviews WHERE author = $1 AND bot_id = $2 AND parent_id IS NULL", d.Auth.ID, bot).Scan(&count)
+		err = state.Pool.QueryRow(d.Context, "SELECT COUNT(*) FROM reviews WHERE author = $1 AND bot_id = $2 AND parent_id IS NULL", d.Auth.ID, bot).Scan(&count)
 
-	if err != nil {
-		state.Logger.Error(err)
-		return api.DefaultResponse(http.StatusInternalServerError)
-	}
+		if err != nil {
+			state.Logger.Error(err)
+			return api.DefaultResponse(http.StatusInternalServerError)
+		}
 
-	if count > 0 {
-		return api.HttpResponse{
-			Status: http.StatusConflict,
-			Json: types.ApiError{
-				Message: "You have already made a root review for this bot",
-				Error:   true,
-			},
+		if count > 0 {
+			return api.HttpResponse{
+				Status: http.StatusConflict,
+				Json: types.ApiError{
+					Message: "You have already made a root review for this bot",
+					Error:   true,
+				},
+			}
 		}
 	}
 
