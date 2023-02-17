@@ -4,10 +4,19 @@ import (
 	"net/http"
 	"popplio/api"
 	"popplio/docs"
+	"popplio/routes/reviews/assets"
 	"popplio/state"
 	"popplio/types"
+	"popplio/utils"
+	"strings"
 
+	"github.com/georgysavva/scany/v2/pgxscan"
 	"github.com/go-chi/chi/v5"
+)
+
+var (
+	reviewColsArr = utils.GetCols(types.Review{})
+	reviewCols    = strings.Join(reviewColsArr, ",")
 )
 
 func Docs() *docs.Doc {
@@ -63,6 +72,29 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 		state.Logger.Error(err)
 		return api.DefaultResponse(http.StatusInternalServerError)
 	}
+
+	// Trigger a garbage collection step to remove any orphaned reviews
+	go func() {
+		rows, err := state.Pool.Query(state.Context, "SELECT "+reviewCols+" FROM reviews WHERE bot_id = $1 ORDER BY created_at ASC", botId)
+
+		if err != nil {
+			state.Logger.Error(err)
+		}
+
+		var reviews []types.Review = []types.Review{}
+
+		err = pgxscan.ScanAll(&reviews, rows)
+
+		if err != nil {
+			state.Logger.Error(err)
+		}
+
+		err = assets.GarbageCollect(state.Context, reviews)
+
+		if err != nil {
+			state.Logger.Error(err)
+		}
+	}()
 
 	state.Redis.Del(d.Context, "rv-"+botId)
 
