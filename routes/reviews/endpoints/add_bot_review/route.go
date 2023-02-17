@@ -4,11 +4,13 @@ import (
 	"net/http"
 	"popplio/api"
 	"popplio/docs"
+	"popplio/ratelimit"
 	"popplio/routes/reviews/assets"
 	"popplio/state"
 	"popplio/types"
 	"popplio/utils"
 	"strings"
+	"time"
 
 	"github.com/georgysavva/scany/v2/pgxscan"
 	"github.com/go-chi/chi/v5"
@@ -54,6 +56,28 @@ func Docs() *docs.Doc {
 }
 
 func Route(d api.RouteData, r *http.Request) api.HttpResponse {
+	limit, err := ratelimit.Ratelimit{
+		Expiry:      1 * time.Minute,
+		MaxRequests: 3,
+		Bucket:      "review",
+	}.Limit(d.Context, r)
+
+	if err != nil {
+		state.Logger.Error(err)
+		return api.DefaultResponse(http.StatusInternalServerError)
+	}
+
+	if limit.Exceeded {
+		return api.HttpResponse{
+			Json: types.ApiError{
+				Error:   true,
+				Message: "You are being ratelimited. Please try again in " + limit.TimeToReset.String(),
+			},
+			Headers: limit.Headers(),
+			Status:  http.StatusTooManyRequests,
+		}
+	}
+
 	var payload CreateReview
 
 	hresp, ok := api.MarshalReq(r, &payload)
@@ -64,7 +88,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 
 	// Validate the payload
 
-	err := state.Validator.Struct(payload)
+	err = state.Validator.Struct(payload)
 
 	if err != nil {
 		errors := err.(validator.ValidationErrors)
@@ -106,7 +130,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 		}
 	}
 
-	// If parent_id is provided, check if it exists
+	// If parent_id is provided, check if it exists and check nesting
 	if payload.ParentID != "" {
 		var count int
 
@@ -122,6 +146,16 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 				Status: http.StatusBadRequest,
 				Json: types.ApiError{
 					Message: "Parent review not found",
+					Error:   true,
+				},
+			}
+		}
+
+		if assets.Nest(d.Context, payload.ParentID) > 2 {
+			return api.HttpResponse{
+				Status: http.StatusBadRequest,
+				Json: types.ApiError{
+					Message: "Maximum nesting for reviews reached",
 					Error:   true,
 				},
 			}
