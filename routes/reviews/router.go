@@ -3,8 +3,9 @@ package reviews
 import (
 	"popplio/api"
 	"popplio/routes/reviews/endpoints/add_bot_review"
+	"popplio/routes/reviews/endpoints/edit_review"
 	"popplio/routes/reviews/endpoints/get_bot_reviews"
-	"popplio/routes/reviews/endpoints/remove_bot_review"
+	"popplio/routes/reviews/endpoints/remove_review"
 	"popplio/types"
 
 	"github.com/go-chi/chi/v5"
@@ -45,10 +46,24 @@ func (b Router) Routes(r *chi.Mux) {
 
 	api.Route{
 		Pattern: "/users/{uid}/reviews/{rid}",
-		OpId:    "remove_bot_review",
+		OpId:    "edit_review",
+		Method:  api.PATCH,
+		Docs:    edit_review.Docs,
+		Handler: edit_review.Route,
+		Auth: []api.AuthType{
+			{
+				Type:   types.TargetTypeUser,
+				URLVar: "uid",
+			},
+		},
+	}.Route(r)
+
+	api.Route{
+		Pattern: "/users/{uid}/reviews/{rid}",
+		OpId:    "remove_review",
 		Method:  api.DELETE,
-		Docs:    remove_bot_review.Docs,
-		Handler: remove_bot_review.Route,
+		Docs:    remove_review.Docs,
+		Handler: remove_review.Route,
 		Auth: []api.AuthType{
 			{
 				Type:   types.TargetTypeUser,

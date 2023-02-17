@@ -1,4 +1,4 @@
-package remove_bot_review
+package remove_review
 
 import (
 	"net/http"
@@ -21,8 +21,8 @@ var (
 
 func Docs() *docs.Doc {
 	return &docs.Doc{
-		Summary:     "Delete Bot Review",
-		Description: "Deletes a bot review by review ID. This will automatically trigger a garbage collection task and returns 204 on success",
+		Summary:     "Delete Review",
+		Description: "Deletes a review by review ID. The user must be the author of this review. This will automatically trigger a garbage collection task and returns 204 on success",
 		Params: []docs.Parameter{
 			{
 				Name:        "uid",
