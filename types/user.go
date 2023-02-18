@@ -17,8 +17,9 @@ type User struct {
 	Admin                     bool               `db:"admin" json:"admin"`
 	HAdmin                    bool               `db:"hadmin" json:"hadmin"`
 	Certified                 bool               `db:"certified" json:"certified"`
-	Dev                       bool               `db:"ibldev" json:"ibldev"`
-	HDev                      bool               `db:"iblhdev" json:"iblhdev"`
+	IBLDev                    bool               `db:"ibldev" json:"ibldev"`
+	IBLHDev                   bool               `db:"iblhdev" json:"iblhdev"`
+	Owner                     bool               `db:"owner" json:"owner"`
 	BotDeveloper              bool               `db:"developer" json:"bot_developer"`
 	CaptchaSponsorEnabled     bool               `db:"captcha_sponsor_enabled" json:"captcha_sponsor_enabled"`
 	ExtraLinks                []Link             `db:"extra_links" json:"extra_links"`
@@ -60,4 +61,5 @@ type UserPerm struct {
 	HAdmin                bool         `db:"hadmin" json:"hadmin"`
 	IBLDev                bool         `db:"ibldev" json:"ibldev"`
 	IBLHDev               bool         `db:"iblhdev" json:"iblhdev"`
+	Owner                 bool         `db:"owner" json:"owner"`
 }
