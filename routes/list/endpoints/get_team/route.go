@@ -18,7 +18,7 @@ var (
 )
 
 type StaffTeam struct {
-	Members []types.UserPerm
+	Members []types.UserPerm `json:"members"`
 }
 
 func Docs() *docs.Doc {
