@@ -4,7 +4,7 @@ import "github.com/jackc/pgx/v5/pgtype"
 
 type User struct {
 	ITag                      pgtype.UUID        `db:"itag" json:"itag"`
-	ID                        string             `db:"user_id" json:"user_id"`
+	ID                        string             `db:"user_id" json:"-"`
 	User                      *DiscordUser       `db:"-" json:"user"` // Must be handled internally
 	Experiments               []string           `db:"experiments" json:"experiments"`
 	StaffOnboarded            bool               `db:"staff_onboarded" json:"staff_onboarded"`
@@ -50,7 +50,7 @@ type UserBot struct {
 }
 
 type UserPerm struct {
-	ID                    string       `db:"user_id" json:"user_id"`
+	ID                    string       `db:"user_id" json:"-"`
 	User                  *DiscordUser `db:"-" json:"user"` // Must be handled internally
 	Experiments           []string     `db:"experiments" json:"experiments"`
 	Banned                bool         `db:"banned" json:"banned"`
