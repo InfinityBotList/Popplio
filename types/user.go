@@ -49,15 +49,15 @@ type UserBot struct {
 }
 
 type UserPerm struct {
-	ID                    string       `json:"user_id"`
-	User                  *DiscordUser `json:"user"` // Must be handled internally
-	Experiments           []string     `json:"experiments"`
-	Banned                bool         `json:"banned"`
-	CaptchaSponsorEnabled bool         `json:"captcha_sponsor_enabled"`
-	VoteBanned            bool         `json:"vote_banned"`
-	Staff                 bool         `json:"staff"`
-	Admin                 bool         `json:"admin"`
-	HAdmin                bool         `json:"hadmin"`
-	IBLDev                bool         `json:"ibldev"`
-	IBLHDev               bool         `json:"iblhdev"`
+	ID                    string       `db:"user_id" json:"user_id"`
+	User                  *DiscordUser `db:"-" json:"user"` // Must be handled internally
+	Experiments           []string     `db:"experiments" json:"experiments"`
+	Banned                bool         `db:"banned" json:"banned"`
+	CaptchaSponsorEnabled bool         `db:"captcha_sponsor_enabled" json:"captcha_sponsor_enabled"`
+	VoteBanned            bool         `db:"vote_banned" json:"vote_banned"`
+	Staff                 bool         `db:"staff" json:"staff"`
+	Admin                 bool         `db:"admin" json:"admin"`
+	HAdmin                bool         `db:"hadmin" json:"hadmin"`
+	IBLDev                bool         `db:"ibldev" json:"ibldev"`
+	IBLHDev               bool         `db:"iblhdev" json:"iblhdev"`
 }

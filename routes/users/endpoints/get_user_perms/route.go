@@ -2,6 +2,7 @@ package get_user_perms
 
 import (
 	"net/http"
+	"strings"
 
 	"popplio/api"
 	"popplio/docs"
@@ -9,7 +10,13 @@ import (
 	"popplio/types"
 	"popplio/utils"
 
+	"github.com/georgysavva/scany/v2/pgxscan"
 	"github.com/go-chi/chi/v5"
+)
+
+var (
+	userPermColsArr = utils.GetCols(types.UserPerm{})
+	userPermCols    = strings.Join(userPermColsArr, ",")
 )
 
 func Docs() *docs.Doc {
@@ -32,16 +39,16 @@ func Docs() *docs.Doc {
 func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 	id := chi.URLParam(r, "id")
 
-	var experiments []string
-	var staff bool
-	var admin bool
-	var hadmin bool
-	var ibldev bool
-	var iblhdev bool
-	var banned bool
-	var captchaSponsorEnabled bool
-	var voteBanned bool
-	err := state.Pool.QueryRow(d.Context, "SELECT experiments, staff, admin, hadmin, ibldev, iblhdev, banned, captcha_sponsor_enabled, vote_banned FROM users WHERE user_id = $1", id).Scan(&experiments, &staff, &admin, &hadmin, &ibldev, &iblhdev, &banned, &captchaSponsorEnabled, &voteBanned)
+	row, err := state.Pool.Query(d.Context, "SELECT "+userPermCols+" FROM users WHERE user_id = $1", id)
+
+	if err != nil {
+		state.Logger.Error(err)
+		return api.DefaultResponse(http.StatusNotFound)
+	}
+
+	var up types.UserPerm
+
+	err = pgxscan.ScanOne(&up, row)
 
 	if err != nil {
 		state.Logger.Error(err)
@@ -55,19 +62,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 		return api.DefaultResponse(http.StatusInternalServerError)
 	}
 
-	up := types.UserPerm{
-		ID:                    id,
-		User:                  user,
-		Experiments:           experiments,
-		Banned:                banned,
-		CaptchaSponsorEnabled: captchaSponsorEnabled,
-		VoteBanned:            voteBanned,
-		Staff:                 staff,
-		Admin:                 admin,
-		HAdmin:                hadmin,
-		IBLDev:                ibldev,
-		IBLHDev:               iblhdev,
-	}
+	up.User = user
 
 	return api.HttpResponse{
 		Json: up,

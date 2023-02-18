@@ -6,6 +6,7 @@ import (
 	"popplio/routes/list/endpoints/get_list_stats"
 	"popplio/routes/list/endpoints/get_partners"
 	"popplio/routes/list/endpoints/get_random_bots"
+	"popplio/routes/list/endpoints/get_team"
 	"popplio/routes/list/endpoints/parse_html"
 	"popplio/routes/list/endpoints/search_list"
 	"popplio/routes/list/endpoints/test_auth"
@@ -78,5 +79,13 @@ func (b Router) Routes(r *chi.Mux) {
 		Method:  api.GET,
 		Docs:    get_partners.Docs,
 		Handler: get_partners.Route,
+	}.Route(r)
+
+	api.Route{
+		Pattern: "/list/team",
+		OpId:    "get_team",
+		Method:  api.GET,
+		Docs:    get_team.Docs,
+		Handler: get_team.Route,
 	}.Route(r)
 }

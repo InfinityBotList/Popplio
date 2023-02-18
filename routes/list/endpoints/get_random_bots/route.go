@@ -25,7 +25,7 @@ type RandomBotResponse struct {
 func Docs() *docs.Doc {
 	return &docs.Doc{
 		Summary:     "Get Random Bots",
-		Description: "Gets3 random bots from the database",
+		Description: "Returns a list of bots from the database in random order",
 		Resp: RandomBotResponse{
 			Bots: []types.IndexBot{},
 		},
