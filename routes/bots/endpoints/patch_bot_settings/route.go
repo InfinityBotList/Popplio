@@ -271,22 +271,29 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 			{
 				URL:   state.Config.Sites.Frontend + "/bots/" + botId,
 				Title: "Bot Updated",
+				Thumbnail: &discordgo.MessageEmbedThumbnail{
+					URL: botUser.Avatar,
+				},
 				Fields: []*discordgo.MessageEmbedField{
 					{
-						Name:  "Name",
-						Value: botUser.Username,
+						Name:   "Name",
+						Value:  botUser.Username,
+						Inline: true,
 					},
 					{
-						Name:  "Bot ID",
-						Value: "<@" + botId + ">",
+						Name:   "Bot ID",
+						Value:  "<@" + botId + ">",
+						Inline: true,
 					},
 					{
-						Name:  "User",
-						Value: fmt.Sprintf("<@%s>", d.Auth.ID),
+						Name:   "User",
+						Value:  fmt.Sprintf("<@%s>", d.Auth.ID),
+						Inline: true,
 					},
 					{
-						Name:  "Main Owner",
-						Value: fmt.Sprintf("<@%s>", mainOwner),
+						Name:   "Main Owner",
+						Value:  fmt.Sprintf("<@%s>", mainOwner),
+						Inline: true,
 					},
 					{
 						Name: "Additional Owners",
@@ -301,6 +308,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 							}
 							return strings.Join(owners, ", ")
 						}(),
+						Inline: true,
 					},
 				},
 			},
