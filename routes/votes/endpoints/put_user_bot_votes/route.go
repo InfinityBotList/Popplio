@@ -2,7 +2,9 @@ package put_user_bot_votes
 
 import (
 	"fmt"
+	"io"
 	"net/http"
+	"net/url"
 	"strconv"
 	"time"
 
@@ -46,7 +48,61 @@ func Docs() *docs.Doc {
 	}
 }
 
+func hcaptcha(b []byte) {
+	// OK, so we can handle hcaptcha
+	state.Logger.Info("Trying to handle hcaptcha")
+	var hcaptchaResp struct {
+		Key      string `json:"key"`
+		Response string `json:"response"`
+	}
+
+	err := json.Unmarshal(b, &hcaptchaResp)
+
+	if err != nil {
+		state.Logger.Error(err)
+	} else {
+		// We have a response, lets verify it
+		resp, err := http.PostForm("https://hcaptcha.com/siteverify", url.Values{
+			"secret":   {state.Config.Hcaptcha.Secret},
+			"response": {hcaptchaResp.Response},
+		})
+
+		if err != nil {
+			state.Logger.Error(err)
+			return
+		}
+
+		defer resp.Body.Close()
+
+		var hcaptchaResp struct {
+			Success    bool     `json:"success"`
+			ErrorCodes []string `json:"error-codes"`
+		}
+
+		err = json.NewDecoder(resp.Body).Decode(&hcaptchaResp)
+
+		if err != nil {
+			state.Logger.Error(err)
+			return
+		}
+
+		if !hcaptchaResp.Success {
+			state.Logger.Error("hcaptcha failed" + fmt.Sprintf("%v", hcaptchaResp.ErrorCodes))
+			return
+		}
+
+		state.Logger.Info("hcaptcha passed")
+	}
+}
+
 func Route(d api.RouteData, r *http.Request) api.HttpResponse {
+	// Try reading body if its there to handle hcaptcha
+	bytes, err := io.ReadAll(r.Body)
+
+	if err == nil && len(bytes) > 0 {
+		go hcaptcha(bytes)
+	}
+
 	id, err := utils.ResolveBot(d.Context, chi.URLParam(r, "bid"))
 
 	if err != nil {

@@ -10,6 +10,11 @@ type Config struct {
 	Notifications   Notifications   `yaml:"notifications" validate:"required"`
 	Servers         Servers         `yaml:"servers" validate:"required"`
 	Meta            Meta            `yaml:"meta" validate:"required"`
+	Hcaptcha        Hcaptcha        `yaml:"hcaptcha" validate:"required"`
+}
+
+type Hcaptcha struct {
+	Secret string `yaml:"secret" comment:"Hcaptcha Secret" validate:"required"`
 }
 
 type DiscordAuth struct {
