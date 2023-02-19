@@ -11,10 +11,6 @@ If you need some help or think you have spotted a problem with our API you can t
 
 ---
 
-## API Intro
-
-Infinity uses a REST(ish) API for most of its functionality. This API is used by our website and our bots to interact with the database.
-
 ## Authorization
 
 To access our API you need to authorize yourself or in this case your bot, this can be done by using your Infinity API Token which can be found in the `Owner Section` of your bots page.
