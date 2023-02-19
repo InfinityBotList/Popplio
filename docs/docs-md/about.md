@@ -21,10 +21,10 @@ To access our API you need to authorize yourself or in this case your bot, this 
 
 ![Owner Section Screenshot](https://media.discordapp.net/attachments/832011830238248961/871632845821591562/image0.png)
 
-Authentication is performed with the `authorization` HTTP header:
+Authentication is performed with the `Authorization` HTTP header:
 
 ```
-Header: your-token-here with prefix
+Authorization: your-token-here with prefix
 ```
 
 **Please see https://docs.botlist.site for more info on the basics of our API. This site purely exists to be an API reference not a guide**
