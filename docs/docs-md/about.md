@@ -35,5 +35,5 @@ Authentication is performed with the `authorization` HTTP header:
 Header: your-token-here with prefix
 ```
 
-## Please see https://docs.botlist.site for more info on the basics of our API. This site purely exists to be an API reference not a guide
+**Please see https://docs.botlist.site for more info on the basics of our API. This site purely exists to be an API reference not a guide**
 
