@@ -21,25 +21,7 @@ If you need some help or think you have spotted a problem with our API you can t
 
 ## API Intro
 
-Infinity uses a REST API for general operations such as sending and receiving `POST` and `GET` requests.
-
-#### Base Url
-
-[api.infinitybotlist.com](https://api.infinitybotlist.com) (latest stable API)
-
-[spider.infinitybots.gg](https://spider.infinitybots.gg) (beta API)
-
-#### Beta API Note
-
-[spider.infinitybots.gg](https://spider.infinitybots.gg) is the beta API and will always point to the current latest API version. 
-
-The current latest beta API version is ``v6``. The current stable API version is ``v5`` (which is what currently runs on https://api.infinitybots.gg)
-
-**Note that in most cases, ``spider.infinitybotlist.com`` and ``api.infinitybots.gg`` will be in sync and will point to the same server**
-
-**There are several breaking changes in ``v5``. Your library should be taking care of these differences (such as 'flatter'/simpler to use API responses)
-
----
+Infinity uses a REST(ish) API for most of its functionality. This API is used by our website and our bots to interact with the database.
 
 ## Authorization
 
@@ -49,8 +31,9 @@ To access our API you need to authorize yourself or in this case your bot, this 
 
 Authentication is performed with the `authorization` HTTP header:
 
-```json
-{
-  "authorization": "your-secret-token"
-}
 ```
+Header: your-token-here with prefix
+```
+
+## Please see https://docs.botlist.site for more info on the basics of our API. This site purely exists to be an API reference not a guide
+
