@@ -4,14 +4,6 @@ Hey there 👋, welcome to our Official Documentation!
 
 ---
 
-#### Navigation
-
-If you want to just see the list of endpoints, click [here](#operations-top).
-
-#### I'm busy son!
-
-We offer several libraries for interacting with the API as seen below:
-
 ## Getting Help
 
 If you need some help or think you have spotted a problem with our API you can talk to us in our 
