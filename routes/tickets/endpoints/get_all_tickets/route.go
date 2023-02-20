@@ -29,13 +29,6 @@ func Docs() *docs.Doc {
 		Description: "Gets a support ticket. Requires admin permissions",
 		Params: []docs.Parameter{
 			{
-				Name:        "id",
-				In:          "path",
-				Description: "The ticket's ID",
-				Required:    true,
-				Schema:      docs.IdSchema,
-			},
-			{
 				Name:        "page",
 				In:          "query",
 				Description: "The page of tickets to get. Defaults to 1",
