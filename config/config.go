@@ -6,6 +6,7 @@ type Config struct {
 	Sites           Sites           `yaml:"sites" validate:"required"`
 	Metro           Metro           `yaml:"metro" validate:"required"`
 	Channels        Channels        `yaml:"channels" validate:"required"`
+	Roles           Roles           `yaml:"roles" validate:"required"`
 	JAPI            JAPI            `yaml:"japi" validate:"required"`
 	Notifications   Notifications   `yaml:"notifications" validate:"required"`
 	Servers         Servers         `yaml:"servers" validate:"required"`
@@ -40,6 +41,10 @@ type Sites struct {
 type Metro struct {
 	ListID    string `yaml:"list_id" default:"02a6a5d1-8cd4-4847-a3ed-a32c88bd805b" comment:"Metro List ID" validate:"required"`
 	SecretKey string `yaml:"secret_key" comment:"Metro Secret Key" required:"false"`
+}
+
+type Roles struct {
+	AwaitingStaff string `yaml:"awaiting_staff" default:"1029058929361174678" comment:"Awaiting Staff Role" validate:"required"`
 }
 
 type Channels struct {

@@ -14,6 +14,7 @@ var Apps = map[string]Position{
 We are a welcoming and laid back team who is always willing to give new people an opportunity!`,
 		Name: "Staff Team",
 		Tags: []string{"Staff", "Bot Reviewing"},
+		ReviewLogic: reviewLogicStaff,
 		Questions: []Question{
 			{
 				ID:          "experience",

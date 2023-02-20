@@ -218,3 +218,13 @@ func reviewLogicCert(d api.RouteData, resp AppResponse, reason string) (review b
 
 	return true, nil
 }
+
+func reviewLogicStaff(d api.RouteData, resp AppResponse, reason string) (review bool, err error) {
+	err = state.Discord.GuildMemberRoleAdd(state.Config.Servers.Main, resp.UserID, state.Config.Roles.AwaitingStaff)
+
+	if err != nil {
+		return false, err
+	}
+
+	return true, nil
+}
