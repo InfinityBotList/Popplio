@@ -64,8 +64,6 @@ func noSpaces(fl validator.FieldLevel) bool {
 }
 
 func Setup() {
-	setupPolicy()
-
 	Validator.RegisterValidation("nonvulgar", nonVulgar)
 	Validator.RegisterValidation("notblank", validators.NotBlank)
 	Validator.RegisterValidation("nospaces", noSpaces)
@@ -109,6 +107,8 @@ func Setup() {
 	if err != nil {
 		panic(err)
 	}
+
+	setupPolicy()
 
 	// Create the cache tables in db
 	_, err = Pool.Exec(Context, `
