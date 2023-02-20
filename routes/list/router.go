@@ -71,7 +71,6 @@ func (b Router) Routes(r *chi.Mux) {
 		Method:  api.POST,
 		Docs:    parse_html.Docs,
 		Handler: parse_html.Route,
-		Setup:   parse_html.Setup,
 	}.Route(r)
 
 	api.Route{

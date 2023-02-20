@@ -10,6 +10,7 @@ type BlogPost struct {
 	Author      *DiscordUser `db:"-" json:"author"`
 	CreatedAt   time.Time    `db:"created_at" json:"created_at"`
 	Content     string       `db:"content" json:"content"`
+	HTMLContent string       `db:"-" json:"html_content"` // Must be parsed internally
 	Draft       bool         `db:"draft" json:"draft"`
 	Tags        []string     `db:"tags" json:"tags"`
 }
