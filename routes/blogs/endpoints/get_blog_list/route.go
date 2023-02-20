@@ -1,4 +1,4 @@
-package get_blog
+package get_blog_list
 
 import (
 	"net/http"
@@ -13,15 +13,15 @@ import (
 )
 
 var (
-	blogColsArr = utils.GetCols(types.BlogPost{})
+	blogColsArr = utils.GetCols(types.BlogListPost{})
 
 	blogCols = strings.Join(blogColsArr, ",")
 )
 
 func Docs() *docs.Doc {
 	return &docs.Doc{
-		Summary:     "Get Blog",
-		Description: "Gets all blog posts on the list. Returns a ``Blog`` object",
+		Summary:     "Get Blog List",
+		Description: "Gets all blog posts on the list in condensed form",
 		Resp:        types.Blog{},
 	}
 }
@@ -34,7 +34,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 		return api.DefaultResponse(http.StatusInternalServerError)
 	}
 
-	var blogPosts []types.BlogPost
+	var blogPosts []types.BlogListPost
 
 	err = pgxscan.ScanAll(&blogPosts, rows)
 

@@ -3,7 +3,7 @@ package blogs
 import (
 	"popplio/api"
 	"popplio/routes/blogs/endpoints/create_blog_post"
-	"popplio/routes/blogs/endpoints/get_blog"
+	"popplio/routes/blogs/endpoints/get_blog_list"
 	"popplio/types"
 
 	"github.com/go-chi/chi/v5"
@@ -34,9 +34,9 @@ func (b Router) Routes(r *chi.Mux) {
 
 	api.Route{
 		Pattern: "/blog",
-		OpId:    "get_blog",
+		OpId:    "get_blog_list",
 		Method:  api.GET,
-		Docs:    get_blog.Docs,
-		Handler: get_blog.Route,
+		Docs:    get_blog_list.Docs,
+		Handler: get_blog_list.Route,
 	}.Route(r)
 }
