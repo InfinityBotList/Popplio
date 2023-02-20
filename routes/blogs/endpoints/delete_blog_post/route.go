@@ -50,7 +50,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 		return api.HttpResponse{
 			Status: http.StatusForbidden,
 			Json: types.ApiError{
-				Message: "You do not have permission to create a blog post",
+				Message: "You do not have permission to delete a blog post",
 				Error:   true,
 			},
 		}
