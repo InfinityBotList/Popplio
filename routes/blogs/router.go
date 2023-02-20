@@ -19,7 +19,7 @@ func (b Router) Tag() (string, string) {
 
 func (b Router) Routes(r *chi.Mux) {
 	api.Route{
-		Pattern: "/users/{user_id}/blogs",
+		Pattern: "/users/{user_id}/blog",
 		OpId:    "create_blog_post",
 		Method:  api.POST,
 		Docs:    create_blog_post.Docs,
