@@ -79,7 +79,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 	// Get ticket
 	var ticket []types.Ticket
 
-	row, err := state.Pool.Query(d.Context, "SELECT "+ticketCols+" FROM tickets LIMIT $1 OFFSET $2", limit, offset)
+	row, err := state.Pool.Query(d.Context, "SELECT "+ticketCols+" FROM tickets WHERE open = false LIMIT $1 OFFSET $2", limit, offset)
 
 	if err != nil {
 		state.Logger.Error(err)
@@ -141,7 +141,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 
 	var count uint64
 
-	err = state.Pool.QueryRow(d.Context, "SELECT COUNT(*) FROM bots").Scan(&count)
+	err = state.Pool.QueryRow(d.Context, "SELECT COUNT(*) FROM tickets").Scan(&count)
 
 	if err != nil {
 		state.Logger.Error(err)

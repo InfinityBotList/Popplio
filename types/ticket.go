@@ -37,5 +37,5 @@ type AllTickets struct {
 	PerPage  uint64   `json:"per_page"`
 	Next     string   `json:"next"`
 	Previous string   `json:"previous"`
-	Results  []Ticket `json:"bots"`
+	Results  []Ticket `json:"tickets"`
 }
