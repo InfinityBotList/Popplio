@@ -2,6 +2,7 @@ package list
 
 import (
 	"popplio/api"
+	"popplio/routes/list/endpoints/current_status"
 	"popplio/routes/list/endpoints/get_list_index"
 	"popplio/routes/list/endpoints/get_list_stats"
 	"popplio/routes/list/endpoints/get_partners"
@@ -87,5 +88,13 @@ func (b Router) Routes(r *chi.Mux) {
 		Method:  api.GET,
 		Docs:    get_team.Docs,
 		Handler: get_team.Route,
+	}.Route(r)
+
+	api.Route{
+		Pattern: "/list/current-status",
+		OpId:    "current_status",
+		Method:  api.GET,
+		Docs:    current_status.Docs,
+		Handler: current_status.Route,
 	}.Route(r)
 }
