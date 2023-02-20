@@ -6,6 +6,7 @@ import (
 	"popplio/docs"
 	"popplio/state"
 	"popplio/types"
+	"strings"
 
 	"github.com/go-playground/validator/v10"
 )
@@ -75,6 +76,16 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 	if err != nil {
 		errors := err.(validator.ValidationErrors)
 		return api.ValidatorErrorResponse(compiledMessages, errors)
+	}
+
+	if strings.Contains(payload.Slug, " ") {
+		return api.HttpResponse{
+			Status: http.StatusBadRequest,
+			Json: types.ApiError{
+				Message: "Slug cannot contain spaces",
+				Error:   true,
+			},
+		}
 	}
 
 	// Check slug
