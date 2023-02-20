@@ -45,6 +45,38 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 		return api.DefaultResponse(http.StatusNotFound)
 	}
 
+	// Check ownership
+	var userId string
+
+	err := state.Pool.QueryRow(d.Context, "SELECT user_id FROM tickets WHERE id = $1", ticketId).Scan(&userId)
+
+	if err != nil {
+		state.Logger.Error(err)
+		return api.DefaultResponse(http.StatusNotFound)
+	}
+
+	if userId != d.Auth.ID {
+		// Check if user is staff
+		var staff bool
+
+		err = state.Pool.QueryRow(d.Context, "SELECT staff FROM users WHERE user_id = $1", d.Auth.ID).Scan(&staff)
+
+		if err != nil {
+			state.Logger.Error(err)
+			return api.DefaultResponse(http.StatusInternalServerError)
+		}
+
+		if !staff {
+			return api.HttpResponse{
+				Status: http.StatusForbidden,
+				Json: types.ApiError{
+					Message: "You do not have permission to view this ticket",
+					Error:   true,
+				},
+			}
+		}
+	}
+
 	// Check cache, this is how we can avoid hefty ratelimits
 	cache := state.Redis.Get(d.Context, "tik-"+ticketId).Val()
 	if cache != "" {
