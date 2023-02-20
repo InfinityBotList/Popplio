@@ -77,6 +77,26 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 		return api.ValidatorErrorResponse(compiledMessages, errors)
 	}
 
+	// Check slug
+	var slugExists bool
+
+	err = state.Pool.QueryRow(d.Context, "SELECT EXISTS(SELECT 1 FROM blogs WHERE slug = $1)", payload.Slug).Scan(&slugExists)
+
+	if err != nil {
+		state.Logger.Error(err)
+		return api.DefaultResponse(http.StatusInternalServerError)
+	}
+
+	if slugExists {
+		return api.HttpResponse{
+			Status: http.StatusBadRequest,
+			Json: types.ApiError{
+				Message: "Slug already exists",
+				Error:   true,
+			},
+		}
+	}
+
 	// Create the blog post
 	_, err = state.Pool.Exec(
 		d.Context,
