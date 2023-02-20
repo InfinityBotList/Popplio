@@ -80,7 +80,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 	// Create the blog post
 	_, err = state.Pool.Exec(
 		d.Context,
-		"INSERT INTO blog_posts (slug, title, description, content, draft, author, tags) VALUES ($1, $2, $3, $4, $5, $6, $7)",
+		"INSERT INTO blogs (slug, title, description, content, draft, author, tags) VALUES ($1, $2, $3, $4, $5, $6, $7)",
 		payload.Slug,
 		payload.Title,
 		payload.Description,
