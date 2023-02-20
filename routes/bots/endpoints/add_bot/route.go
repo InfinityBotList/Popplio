@@ -46,6 +46,13 @@ type CreateBot struct {
 	NSFW             bool         `db:"nsfw" json:"nsfw"`
 	CrossAdd         bool         `db:"cross_add" json:"cross_add"`
 	StaffNote        *string      `db:"approval_note" json:"staff_note" validate:"omitempty,max=512" msg:"Staff note must be less than 512 characters if sent"` // impld
+
+	// Not needed to send
+	QueueName   *string `db:"queue_name" json:"-"`
+	QueueAvatar *string `db:"queue_avatar" json:"-"`
+	Owner       *string `db:"owner" json:"-"`
+	Vanity      *string `db:"vanity" json:"-"`
+	GuildCount  *int    `db:"servers" json:"-"`
 }
 
 func createBotsArgs(bot CreateBot, id internalData) []any {
