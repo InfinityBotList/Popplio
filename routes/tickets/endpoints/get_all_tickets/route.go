@@ -16,7 +16,7 @@ import (
 	"github.com/georgysavva/scany/v2/pgxscan"
 )
 
-const perPage = 12
+const perPage = 5
 
 var (
 	ticketColsArr = utils.GetCols(types.Ticket{})
