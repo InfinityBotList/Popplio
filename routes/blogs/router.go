@@ -36,7 +36,7 @@ func (b Router) Routes(r *chi.Mux) {
 	}.Route(r)
 
 	api.Route{
-		Pattern: "/users/{user_id}/blog/{slug}",
+		Pattern: "/users/{user_id}/blog/{slug}/draft",
 		OpId:    "publish_blog_post",
 		Method:  api.PATCH,
 		Docs:    publish_blog_post.Docs,
