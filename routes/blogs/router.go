@@ -5,6 +5,7 @@ import (
 	"popplio/routes/blogs/endpoints/create_blog_post"
 	"popplio/routes/blogs/endpoints/delete_blog_post"
 	"popplio/routes/blogs/endpoints/get_blog_list"
+	"popplio/routes/blogs/endpoints/get_blog_post"
 	"popplio/types"
 
 	"github.com/go-chi/chi/v5"
@@ -53,5 +54,13 @@ func (b Router) Routes(r *chi.Mux) {
 		Method:  api.GET,
 		Docs:    get_blog_list.Docs,
 		Handler: get_blog_list.Route,
+	}.Route(r)
+
+	api.Route{
+		Pattern: "/blog/{slug}",
+		OpId:    "get_blog_post",
+		Method:  api.GET,
+		Docs:    get_blog_post.Docs,
+		Handler: get_blog_post.Route,
 	}.Route(r)
 }
