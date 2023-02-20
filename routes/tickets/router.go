@@ -2,6 +2,7 @@ package tickets
 
 import (
 	"popplio/api"
+	"popplio/routes/tickets/endpoints/get_all_tickets"
 	"popplio/routes/tickets/endpoints/get_ticket"
 	"popplio/types"
 
@@ -18,6 +19,19 @@ func (b Router) Tag() (string, string) {
 
 func (b Router) Routes(r *chi.Mux) {
 	api.Route{
+		Pattern: "/tickets/all",
+		OpId:    "get_all_tickets",
+		Method:  api.GET,
+		Docs:    get_all_tickets.Docs,
+		Handler: get_all_tickets.Route,
+		Auth: []api.AuthType{
+			{
+				Type: types.TargetTypeUser,
+			},
+		},
+	}.Route(r)
+
+	api.Route{
 		Pattern: "/tickets/{id}",
 		OpId:    "get_ticket",
 		Method:  api.GET,
@@ -29,5 +43,4 @@ func (b Router) Routes(r *chi.Mux) {
 			},
 		},
 	}.Route(r)
-
 }
