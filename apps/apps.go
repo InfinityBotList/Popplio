@@ -12,8 +12,8 @@ var Apps = map[string]Position{
 		Info: `Join the Infinity Staff Team and help us Approve, Deny and Certify Discord Bots. 
 
 We are a welcoming and laid back team who is always willing to give new people an opportunity!`,
-		Name: "Staff Team",
-		Tags: []string{"Staff", "Bot Reviewing"},
+		Name:        "Staff Team",
+		Tags:        []string{"Staff", "Bot Reviewing"},
 		ReviewLogic: reviewLogicStaff,
 		Questions: []Question{
 			{
@@ -146,8 +146,9 @@ Some points to note:
 - When you apply for a partnership, make sure that you are authorized to speak on the services behalf
 - Infinity Development reserves the right to deny or cancel any partnership application at any time.
 `,
-		Name: "Partners",
-		Tags: []string{"Advertising", "Business"},
+		Name:   "Partners",
+		Tags:   []string{"Advertising", "Business"},
+		Closed: true,
 		Questions: []Question{
 			{
 				ID:          "what",
