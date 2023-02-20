@@ -4,6 +4,7 @@ import (
 	"popplio/api"
 	"popplio/routes/blogs/endpoints/create_blog_post"
 	"popplio/routes/blogs/endpoints/delete_blog_post"
+	"popplio/routes/blogs/endpoints/edit_blog_post"
 	"popplio/routes/blogs/endpoints/get_blog_list"
 	"popplio/routes/blogs/endpoints/get_blog_post"
 	"popplio/routes/blogs/endpoints/publish_blog_post"
@@ -27,6 +28,20 @@ func (b Router) Routes(r *chi.Mux) {
 		Method:  api.POST,
 		Docs:    create_blog_post.Docs,
 		Handler: create_blog_post.Route,
+		Auth: []api.AuthType{
+			{
+				URLVar: "user_id",
+				Type:   types.TargetTypeUser,
+			},
+		},
+	}.Route(r)
+
+	api.Route{
+		Pattern: "/users/{user_id}/blog/{slug}",
+		OpId:    "edit_blog_post",
+		Method:  api.PATCH,
+		Docs:    edit_blog_post.Docs,
+		Handler: edit_blog_post.Route,
 		Auth: []api.AuthType{
 			{
 				URLVar: "user_id",
