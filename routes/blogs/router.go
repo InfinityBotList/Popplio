@@ -34,7 +34,7 @@ func (b Router) Routes(r *chi.Mux) {
 	}.Route(r)
 
 	api.Route{
-		Pattern: "/users/{user_id}/blog",
+		Pattern: "/users/{user_id}/blog/{slug}",
 		OpId:    "delete_blog_post",
 		Method:  api.DELETE,
 		Docs:    delete_blog_post.Docs,
