@@ -116,7 +116,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 		payload.Title,
 		payload.Description,
 		payload.Content,
-		false,
+		true,
 		d.Auth.ID,
 		payload.Tags,
 	)

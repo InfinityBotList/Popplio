@@ -57,7 +57,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 	}
 
 	// Delete the blog post
-	_, err = state.Pool.Exec(d.Context, "DELETE FROM blog_posts WHERE slug = $1", chi.URLParam(r, "slug"))
+	_, err = state.Pool.Exec(d.Context, "DELETE FROM blogs WHERE slug = $1", chi.URLParam(r, "slug"))
 
 	if err != nil {
 		state.Logger.Error(err)
