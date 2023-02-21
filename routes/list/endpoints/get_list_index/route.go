@@ -180,6 +180,6 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 	return api.HttpResponse{
 		Json:      listIndex,
 		CacheKey:  "indexcache",
-		CacheTime: 15 * time.Minute,
+		CacheTime: 3 * time.Minute,
 	}
 }

@@ -404,7 +404,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 		apiToken = crypto.RandString(128)
 		_, err = state.Pool.Exec(
 			d.Context,
-			"INSERT INTO users (user_id, api_token, staff, developer, certified, extra_links) VALUES ($1, $2, $3, false, false, false)",
+			"INSERT INTO users (user_id, api_token, extra_links, staff, developer, certified) VALUES ($1, $2, $3, false, false, false)",
 			user.ID,
 			apiToken,
 			[]types.Link{},
