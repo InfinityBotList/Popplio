@@ -10,6 +10,13 @@ import (
 
 var json = jsoniter.ConfigCompatibleWithStandardLibrary
 
+type TableStruct struct {
+	ForeignTable      string `db:"foreign_table_name"`
+	TableName         string `db:"table_name"`
+	ColumnName        string `db:"column_name"`
+	ForeignColumnName string `db:"foreign_column_name"`
+}
+
 const ddrStr = `
 SELECT 
   tbl.relname AS table_name,
@@ -34,12 +41,7 @@ func DataTask(taskId string, id string, ip string, del bool) {
 		KeepTTL: true,
 	}).Err()
 
-	var keys []*struct {
-		ForeignTable      string `db:"foreign_table_name"`
-		TableName         string `db:"table_name"`
-		ColumnName        string `db:"column_name"`
-		ForeignColumnName string `db:"foreign_column_name"`
-	}
+	var keys []TableStruct
 
 	data, err := state.Pool.Query(ctx, ddrStr)
 
@@ -62,6 +64,13 @@ func DataTask(taskId string, id string, ip string, del bool) {
 
 		return
 	}
+
+	keys = append(keys, TableStruct{
+		ForeignTable:      "users",
+		TableName:         "users",
+		ColumnName:        "user_id",
+		ForeignColumnName: "user_id",
+	})
 
 	finalDump := make(map[string]any)
 
