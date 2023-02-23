@@ -124,6 +124,6 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 	return api.HttpResponse{
 		Json:      data,
 		CacheKey:  "pca-" + strconv.FormatUint(pageNum, 10),
-		CacheTime: 2 * time.Minute,
+		CacheTime: 1 * time.Minute,
 	}
 }
