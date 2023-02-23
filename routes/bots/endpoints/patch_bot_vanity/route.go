@@ -97,10 +97,10 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 		}
 	}
 
-	if vanity.Vanity == "undefined" || vanity.Vanity == "null" {
+	if vanity.Vanity == "undefined" || vanity.Vanity == "null" || vanity.Vanity == "blog" {
 		return api.HttpResponse{
 			Status: http.StatusBadRequest,
-			Json:   types.ApiError{Message: "Vanity cannot be undefined or null", Error: true},
+			Json:   types.ApiError{Message: "Vanity cannot be undefined, blog or null", Error: true},
 		}
 	}
 
