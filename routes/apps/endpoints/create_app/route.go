@@ -225,7 +225,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 	}
 
 	_, err = state.Discord.ChannelMessageSendComplex(channel, &discordgo.MessageSend{
-		Content: state.Config.Meta.UrgentMentions,
+		Content: "<@&" + state.Config.Roles.Apps + ">",
 		Embeds: []*discordgo.MessageEmbed{
 			{
 				Title:       "New " + position.Name + " Application!",

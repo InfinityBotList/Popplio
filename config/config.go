@@ -45,6 +45,7 @@ type Metro struct {
 
 type Roles struct {
 	AwaitingStaff string `yaml:"awaiting_staff" default:"1029058929361174678" comment:"Awaiting Staff Role" validate:"required"`
+	Apps          string `yaml:"apps" default:"907729844605968454" comment:"Apps Role" validate:"required"`
 }
 
 type Channels struct {
