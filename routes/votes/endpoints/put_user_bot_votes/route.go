@@ -310,7 +310,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 
 		var msg notifications.Message
 
-		if err.Error() == "httpUser" {
+		if err != nil && err.Error() == "httpUser" {
 			state.Pool.Exec(
 				state.Context,
 				"INSERT INTO alerts (user_id, url, message, type) VALUES ($1, $2, $3, $4)",
