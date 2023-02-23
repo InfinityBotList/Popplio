@@ -132,6 +132,12 @@ func Setup() {
 		if err != nil {
 			panic(err)
 		}
+
+		err = Discord.UpdateWatchStatus(0, "infinitybots.gg")
+
+		if err != nil {
+			panic(err)
+		}
 	}()
 
 	w := zapcore.AddSync(os.Stdout)
