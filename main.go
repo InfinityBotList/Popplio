@@ -205,7 +205,7 @@ func main() {
 
 	go notifications.VrLoop()
 
-	err = http.ListenAndServe(":8081", r)
+	err = http.ListenAndServe(state.Config.Meta.Port, r)
 
 	if err != nil {
 		fmt.Println(err)

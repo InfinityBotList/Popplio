@@ -1,8 +1,8 @@
-package genconfig
+package config
 
 import (
 	"fmt"
-	"popplio/config"
+	"os"
 	"reflect"
 	"strings"
 )
@@ -240,6 +240,30 @@ func GenConfig() {
 		defaultOnly: true,
 	}
 
-	var cfg = config.Config{}
-	fmt.Println(syp.parse(cfg))
+	var cfg = Config{}
+
+	// Create config.yaml.sample, delete if it already exists
+	_, err := os.Stat("config.yaml.sample")
+
+	if err == nil {
+		err = os.Remove("config.yaml.sample")
+
+		if err != nil {
+			panic(err)
+		}
+	}
+
+	f, err := os.Create("config.yaml.sample")
+
+	if err != nil {
+		panic(err)
+	}
+
+	defer f.Close()
+
+	_, err = f.WriteString(syp.parse(cfg))
+
+	if err != nil {
+		panic(err)
+	}
 }

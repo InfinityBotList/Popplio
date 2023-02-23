@@ -2,12 +2,10 @@ package state
 
 import (
 	"context"
-	"flag"
 	"os"
 	"reflect"
 	"strings"
 
-	"popplio/cmd/genconfig"
 	"popplio/config"
 
 	"github.com/bwmarrin/discordgo"
@@ -68,21 +66,7 @@ func Setup() {
 	Validator.RegisterValidation("notblank", validators.NotBlank)
 	Validator.RegisterValidation("nospaces", noSpaces)
 
-	var connUrl string
-	var redisUrl string
-	var cmdStr string
-
-	flag.StringVar(&connUrl, "db", "postgresql:///infinity", "Database connection URL")
-	flag.StringVar(&redisUrl, "redis", "redis://localhost:6379", "Redis connection URL")
-	flag.StringVar(&cmdStr, "cmd", "", "Command to run")
-	flag.Parse()
-
-	if cmdStr != "" {
-		if cmdStr == "genconfig" {
-			genconfig.GenConfig()
-			os.Exit(0)
-		}
-	}
+	config.GenConfig()
 
 	cfg, err := os.ReadFile("config.yaml")
 
@@ -102,11 +86,19 @@ func Setup() {
 		panic("configError: " + err.Error())
 	}
 
-	Pool, err = pgxpool.New(Context, connUrl)
+	Pool, err = pgxpool.New(Context, Config.Meta.PostgresURL)
 
 	if err != nil {
 		panic(err)
 	}
+
+	rOptions, err := redis.ParseURL(Config.Meta.RedisURL)
+
+	if err != nil {
+		panic(err)
+	}
+
+	Redis = redis.NewClient(rOptions)
 
 	setupPolicy()
 
@@ -126,14 +118,6 @@ func Setup() {
 	if err != nil {
 		panic("User cache table creation error: " + err.Error())
 	}
-
-	rOptions, err := redis.ParseURL(redisUrl)
-
-	if err != nil {
-		panic(err)
-	}
-
-	Redis = redis.NewClient(rOptions)
 
 	Discord, err = discordgo.New("Bot " + Config.DiscordAuth.Token)
 
