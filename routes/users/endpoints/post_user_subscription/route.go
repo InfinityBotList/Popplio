@@ -62,7 +62,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 	}
 
 	// Store new subscription
-	notifId := crypto.RandString(512)
+	notifId := crypto.RandString(64)
 
 	ua := r.UserAgent()
 

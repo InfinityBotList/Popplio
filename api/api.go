@@ -141,7 +141,7 @@ func (r Route) Authorize(req *http.Request) (AuthData, HttpResponse, bool) {
 			var id pgtype.Text
 			var banned bool
 
-			err := state.Pool.QueryRow(state.Context, "SELECT user_id, banned FROM users WHERE api_token = $1", strings.Replace(authHeader, "User", "", 1)).Scan(&id, &banned)
+			err := state.Pool.QueryRow(state.Context, "SELECT user_id, banned FROM users WHERE api_token = $1", strings.Replace(authHeader, "User ", "", 1)).Scan(&id, &banned)
 
 			if err != nil {
 				continue
@@ -182,6 +182,7 @@ func (r Route) Authorize(req *http.Request) (AuthData, HttpResponse, bool) {
 
 		// Now handle the URLVar
 		if auth.URLVar != "" {
+			state.Logger.Info("URLVar: ", auth.URLVar)
 			gotUserId := chi.URLParam(req, auth.URLVar)
 			if !slices.Contains(urlIds, gotUserId) {
 				authData = AuthData{} // Remove auth data
