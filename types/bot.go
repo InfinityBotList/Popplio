@@ -108,6 +108,7 @@ type Bot struct {
 	CreatedAt                pgtype.Timestamptz `db:"created_at" json:"created_at"`
 	LastClaimed              pgtype.Timestamptz `db:"last_claimed" json:"last_claimed"`
 	WebhookHMAC              bool               `db:"hmac" json:"webhook_hmac_auth"`
+	TeamOwner                pgtype.UUID        `db:"team_owner" json:"team_owner"`
 }
 
 // All bots

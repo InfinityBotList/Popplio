@@ -21,13 +21,14 @@ type User struct {
 	IBLHDev                   bool               `db:"iblhdev" json:"iblhdev"`
 	Owner                     bool               `db:"owner" json:"owner"`
 	BotDeveloper              bool               `db:"developer" json:"bot_developer"`
-	BugHunters                bool                `db:"bug_hunters" json:"bug_hunters"`
+	BugHunters                bool               `db:"bug_hunters" json:"bug_hunters"`
 	CaptchaSponsorEnabled     bool               `db:"captcha_sponsor_enabled" json:"captcha_sponsor_enabled"`
 	ExtraLinks                []Link             `db:"extra_links" json:"extra_links"`
 	About                     pgtype.Text        `db:"about" json:"about"`
 	VoteBanned                bool               `db:"vote_banned" json:"vote_banned"`
 	Banned                    bool               `db:"banned" json:"banned"`
 	UserBots                  []UserBot          `json:"user_bots"`  // Must be handled internally
+	TeamBots                  []UserBot          `json:"team_bots"`  // Must be handled internally
 	UserPacks                 []IndexBotPack     `json:"user_packs"` // Must be handled internally
 }
 

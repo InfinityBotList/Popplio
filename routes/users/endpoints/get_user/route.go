@@ -132,8 +132,59 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 
 	user.UserBots = parsedUserBots
 
+	// Team Owned Bots
+
+	var userTeams []string
+
+	userTeamRows, err := state.Pool.Query(d.Context, "SELECT team_id FROM team_members WHERE user_id = $1", user.ID)
+
+	if err != nil {
+		state.Logger.Error(err)
+		return api.DefaultResponse(http.StatusInternalServerError)
+	}
+
+	err = pgxscan.ScanAll(&userTeams, userTeamRows)
+
+	if err != nil {
+		state.Logger.Error(err)
+		return api.DefaultResponse(http.StatusInternalServerError)
+	}
+
+	var teamBots = []types.UserBot{}
+
+	for _, team := range userTeams {
+		var bots = []types.UserBot{}
+
+		teamBotsRows, err := state.Pool.Query(d.Context, "SELECT "+userBotCols+" FROM bots WHERE team = $1", team)
+
+		if err != nil {
+			state.Logger.Error(err)
+			return api.DefaultResponse(http.StatusInternalServerError)
+		}
+
+		err = pgxscan.ScanAll(&bots, teamBotsRows)
+
+		if err != nil {
+			state.Logger.Error(err)
+			return api.DefaultResponse(http.StatusInternalServerError)
+		}
+
+		for i := range bots {
+			bots[i].User, err = utils.GetDiscordUser(d.Context, bots[i].BotID)
+
+			if err != nil {
+				state.Logger.Error(err)
+				return api.DefaultResponse(http.StatusInternalServerError)
+			}
+		}
+
+		teamBots = append(teamBots, bots...)
+	}
+
+	user.TeamBots = teamBots
+
 	// Packs
-	rows, err := state.Pool.Query(d.Context, "SELECT "+indexPackCols+" FROM packs WHERE owner = $1 ORDER BY created_at DESC", user.ID)
+	packsRows, err := state.Pool.Query(d.Context, "SELECT "+indexPackCols+" FROM packs WHERE owner = $1 ORDER BY created_at DESC", user.ID)
 
 	if err != nil {
 		state.Logger.Error(err)
@@ -142,7 +193,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 
 	packs := []types.IndexBotPack{}
 
-	err = pgxscan.ScanAll(&packs, rows)
+	err = pgxscan.ScanAll(&packs, packsRows)
 
 	if err != nil {
 		state.Logger.Error(err)
