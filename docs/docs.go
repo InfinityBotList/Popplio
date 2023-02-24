@@ -68,7 +68,7 @@ func Setup() {
 }
 
 var api = Openapi{
-	OpenAPI: "3.0.3",
+	OpenAPI: "3.1,0",
 	Info: Info{
 		Title: "Infinity Bot List API",
 		Description: `
