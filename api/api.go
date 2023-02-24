@@ -21,7 +21,6 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/go-playground/validator/v10"
 	"github.com/jackc/pgx/v5/pgtype"
-	"go.uber.org/zap"
 	"golang.org/x/exp/slices"
 
 	jsoniter "github.com/json-iterator/go"
@@ -134,135 +133,70 @@ func (r Route) Authorize(req *http.Request) (AuthData, HttpResponse, bool) {
 			continue
 		}
 
-		if auth.Type == types.TargetTypeServer {
-			// Server auth
-			return AuthData{}, HttpResponse{
-				Status: http.StatusNotImplemented,
-				Data:   "Server auth is not implemented yet",
-			}, false
-		}
+		var urlIds []string
 
-		if auth.URLVar != "" {
-			targetId := chi.URLParam(req, auth.URLVar)
+		switch auth.Type {
+		case types.TargetTypeUser:
+			// Check if the user exists with said API token only
+			var id pgtype.Text
+			var banned bool
 
-			if targetId == "" {
-				state.Logger.With(
-					zap.String("endpoint", r.Pattern),
-					zap.String("urlVar", auth.URLVar),
-				).Error("Target ID is empty")
+			err := state.Pool.QueryRow(state.Context, "SELECT user_id, banned FROM users WHERE api_token = $1", strings.Replace(authHeader, "User", "", 1)).Scan(&id, &banned)
+
+			if err != nil {
 				continue
 			}
 
-			switch auth.Type {
-			case types.TargetTypeUser:
-				// Check if the user exists with said ID and API token
-				var id pgtype.Text
-				var banned bool
-
-				token := strings.Replace(authHeader, "User ", "", 1)
-
-				err := state.Pool.QueryRow(state.Context, "SELECT user_id, banned FROM users WHERE user_id = $1 AND api_token = $2", targetId, token).Scan(&id, &banned)
-
-				if err != nil {
-					continue
-				}
-
-				if !id.Valid {
-					continue
-				}
-
-				// Banned users cannot use the API at all otherwise if not explicitly scoped to "ban_exempt"
-				if banned && auth.AllowedScope != "ban_exempt" {
-					return AuthData{}, HttpResponse{
-						Status: http.StatusForbidden,
-						Json: types.ApiError{
-							Error:   true,
-							Message: "You are banned from the list. If you think this is a mistake, please contact support.",
-						},
-					}, false
-				}
-
-				authData = AuthData{
-					TargetType: types.TargetTypeUser,
-					ID:         targetId,
-					Authorized: true,
-					Banned:     banned,
-				}
-			case types.TargetTypeBot:
-				// Check if the bot exists with said ID and API token
-				var id pgtype.Text
-				err := state.Pool.QueryRow(state.Context, "SELECT bot_id FROM bots WHERE "+constants.ResolveBotSQL+" AND api_token = $2 LIMIT 1", targetId, strings.Replace(authHeader, "Bot ", "", 1)).Scan(&id)
-
-				if err != nil {
-					continue
-				}
-
-				if !id.Valid {
-					continue
-				}
-
-				authData = AuthData{
-					TargetType: types.TargetTypeBot,
-					ID:         id.String,
-					Authorized: true,
-				}
+			if !id.Valid {
+				continue
 			}
-		} else {
-			// Case #2: No URLVar, only token
-			switch auth.Type {
-			case types.TargetTypeUser:
-				// Check if the user exists with said API token only
-				var id pgtype.Text
-				var banned bool
 
-				token := strings.Replace(authHeader, "User ", "", 1)
-
-				err := state.Pool.QueryRow(state.Context, "SELECT user_id, banned FROM users WHERE api_token = $1", token).Scan(&id, &banned)
-
-				if err != nil {
-					continue
-				}
-
-				if !id.Valid {
-					continue
-				}
-
-				// Banned users cannot use the API at all otherwise if not explicitly scoped to "ban_exempt"
-				if banned && auth.AllowedScope != "ban_exempt" {
-					return AuthData{}, HttpResponse{
-						Status: http.StatusForbidden,
-						Json: types.ApiError{
-							Error:   true,
-							Message: "You are banned from the list. If you think this is a mistake, please contact support.",
-						},
-					}, false
-				}
-
-				authData = AuthData{
-					TargetType: types.TargetTypeUser,
-					ID:         id.String,
-					Authorized: true,
-					Banned:     banned,
-				}
-			case types.TargetTypeBot:
-				// Check if the bot exists with said token only
-				var id pgtype.Text
-				err := state.Pool.QueryRow(state.Context, "SELECT bot_id FROM bots WHERE api_token = $1", strings.Replace(authHeader, "Bot ", "", 1)).Scan(&id)
-
-				if err != nil {
-					continue
-				}
-
-				if !id.Valid {
-					continue
-				}
-
-				authData = AuthData{
-					TargetType: types.TargetTypeBot,
-					ID:         id.String,
-					Authorized: true,
-				}
+			authData = AuthData{
+				TargetType: types.TargetTypeUser,
+				ID:         id.String,
+				Authorized: true,
+				Banned:     banned,
 			}
+			urlIds = []string{id.String}
+		case types.TargetTypeBot:
+			// Check if the bot exists with said token only
+			var id pgtype.Text
+			var vanity pgtype.Text
+			err := state.Pool.QueryRow(state.Context, "SELECT bot_id, vanity FROM bots WHERE api_token = $1", strings.Replace(authHeader, "Bot ", "", 1)).Scan(&id, &vanity)
+
+			if err != nil {
+				continue
+			}
+
+			if !id.Valid {
+				continue
+			}
+
+			authData = AuthData{
+				TargetType: types.TargetTypeBot,
+				ID:         id.String,
+				Authorized: true,
+			}
+			urlIds = []string{id.String, vanity.String}
+		}
+
+		// Now handle the URLVar
+		if auth.URLVar != "" {
+			gotUserId := chi.URLParam(req, auth.URLVar)
+			if !slices.Contains(urlIds, gotUserId) {
+				authData = AuthData{} // Remove auth data
+			}
+		}
+
+		// Banned users cannot use the API at all otherwise if not explicitly scoped to "ban_exempt"
+		if authData.Banned && auth.AllowedScope != "ban_exempt" {
+			return AuthData{}, HttpResponse{
+				Status: http.StatusForbidden,
+				Json: types.ApiError{
+					Error:   true,
+					Message: "You are banned from the list. If you think this is a mistake, please contact support.",
+				},
+			}, false
 		}
 	}
 

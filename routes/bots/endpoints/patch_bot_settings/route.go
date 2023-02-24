@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"net/http"
 	"popplio/api"
-	"popplio/constants"
 	"popplio/docs"
 	"popplio/state"
 	"popplio/types"
@@ -90,19 +89,22 @@ func Docs() *docs.Doc {
 }
 
 func Route(d api.RouteData, r *http.Request) api.HttpResponse {
-	botIdParam := chi.URLParam(r, "bid")
+	name := chi.URLParam(r, "bid")
 
-	// Resolve id
-	var botId string
-
-	err := state.Pool.QueryRow(d.Context, "SELECT bot_id FROM bots WHERE "+constants.ResolveBotSQL, botIdParam).Scan(&botId)
+	// Resolve bot ID
+	id, err := utils.ResolveBot(state.Context, name)
 
 	if err != nil {
+		state.Logger.Error(err)
+		return api.DefaultResponse(http.StatusInternalServerError)
+	}
+
+	if id == "" {
 		return api.DefaultResponse(http.StatusNotFound)
 	}
 
 	// Validate that they actually own this bot
-	isOwner, err := utils.IsBotOwner(d.Context, d.Auth.ID, botId)
+	isOwner, err := utils.IsBotOwner(d.Context, d.Auth.ID, id)
 
 	if err != nil {
 		return api.HttpResponse{
@@ -159,7 +161,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 	// Get main owner
 	var mainOwner string
 
-	err = state.Pool.QueryRow(d.Context, "SELECT owner FROM bots WHERE bot_id = $1", botId).Scan(&mainOwner)
+	err = state.Pool.QueryRow(d.Context, "SELECT owner FROM bots WHERE bot_id = $1", id).Scan(&mainOwner)
 
 	if err != nil {
 		return api.DefaultResponse(http.StatusInternalServerError)
@@ -198,7 +200,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 	}
 
 	// Get bot discord user
-	botUser, err := utils.GetDiscordUser(d.Context, botId)
+	botUser, err := utils.GetDiscordUser(d.Context, id)
 
 	if err != nil {
 		return api.HttpResponse{
@@ -251,7 +253,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 	}
 
 	// Add the bot id to the end of the args
-	botArgs = append(botArgs, botId)
+	botArgs = append(botArgs, id)
 
 	// Update the bot
 	_, err = state.Pool.Exec(d.Context, "UPDATE bots SET "+updateSqlStr+" WHERE bot_id=$"+strconv.Itoa(len(botArgs)), botArgs...)
@@ -262,14 +264,14 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 	}
 
 	// Clear cache
-	utils.ClearBotCache(d.Context, botId)
+	utils.ClearBotCache(d.Context, id)
 
 	// Send a message to the bot logs channel
 	state.Discord.ChannelMessageSendComplex(state.Config.Channels.BotLogs, &discordgo.MessageSend{
 		Content: "",
 		Embeds: []*discordgo.MessageEmbed{
 			{
-				URL:   state.Config.Sites.Frontend + "/bots/" + botId,
+				URL:   state.Config.Sites.Frontend + "/bots/" + id,
 				Title: "Bot Updated",
 				Thumbnail: &discordgo.MessageEmbedThumbnail{
 					URL: botUser.Avatar,
@@ -282,7 +284,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 					},
 					{
 						Name:   "Bot ID",
-						Value:  "<@" + botId + ">",
+						Value:  "<@" + id + ">",
 						Inline: true,
 					},
 					{

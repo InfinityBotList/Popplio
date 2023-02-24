@@ -9,7 +9,6 @@ import (
 	"strings"
 	"time"
 
-	"popplio/constants"
 	"popplio/state"
 	"popplio/types"
 
@@ -464,10 +463,12 @@ func ValidateExtraLinks(links []types.Link) error {
 }
 
 func ResolveBot(ctx context.Context, name string) (string, error) {
+	resolveBotSQL := "(lower(vanity) = $1 OR bot_id = $1 OR client_id = $1)"
+
 	// First check count so we can avoid expensive DB calls
 	var count int64
 
-	err := state.Pool.QueryRow(ctx, "SELECT COUNT(*) FROM bots WHERE "+constants.ResolveBotSQL, name).Scan(&count)
+	err := state.Pool.QueryRow(ctx, "SELECT COUNT(*) FROM bots WHERE "+resolveBotSQL, name).Scan(&count)
 
 	if err != nil {
 		return "", err
@@ -479,7 +480,7 @@ func ResolveBot(ctx context.Context, name string) (string, error) {
 
 	if count > 1 {
 		// Delete one of the bots
-		_, err := state.Pool.Exec(ctx, "DELETE FROM bots WHERE "+constants.ResolveBotSQL+" LIMIT 1", name)
+		_, err := state.Pool.Exec(ctx, "DELETE FROM bots WHERE "+resolveBotSQL+" LIMIT 1", name)
 
 		if err != nil {
 			return "", err
@@ -487,7 +488,7 @@ func ResolveBot(ctx context.Context, name string) (string, error) {
 	}
 
 	var id string
-	err = state.Pool.QueryRow(ctx, "SELECT bot_id FROM bots WHERE "+constants.ResolveBotSQL, name).Scan(&id)
+	err = state.Pool.QueryRow(ctx, "SELECT bot_id FROM bots WHERE "+resolveBotSQL, name).Scan(&id)
 
 	if err != nil {
 		return "", err

@@ -57,6 +57,10 @@ func updateClicks(r *http.Request, name string) {
 		return
 	}
 
+	if id == "" {
+		return
+	}
+
 	// Get IP from request and hash it
 	hashedIp := fmt.Sprintf("%x", sha256.Sum256([]byte(r.RemoteAddr)))
 
@@ -103,8 +107,20 @@ func updateClicks(r *http.Request, name string) {
 func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 	name := chi.URLParam(r, "id")
 
+	// Resolve bot ID
+	id, err := utils.ResolveBot(state.Context, name)
+
+	if err != nil {
+		state.Logger.Error(err)
+		return api.DefaultResponse(http.StatusInternalServerError)
+	}
+
+	if id == "" {
+		return api.DefaultResponse(http.StatusNotFound)
+	}
+
 	// Check cache, this is how we can avoid hefty ratelimits
-	cache := state.Redis.Get(d.Context, "bc-"+name).Val()
+	cache := state.Redis.Get(d.Context, "bc-"+id).Val()
 	if cache != "" {
 		if d.IsClient {
 			go updateClicks(r, name)
@@ -116,17 +132,6 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 				"X-Popplio-Cached": "true",
 			},
 		}
-	}
-
-	id, err := utils.ResolveBot(state.Context, name)
-
-	if err != nil {
-		state.Logger.Error(err)
-		return api.DefaultResponse(http.StatusInternalServerError)
-	}
-
-	if id == "" {
-		return api.DefaultResponse(http.StatusNotFound)
 	}
 
 	var bot types.Bot

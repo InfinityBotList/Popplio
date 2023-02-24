@@ -14,7 +14,4 @@ const (
 	DoubleBackTick   = "``"
 	TestNotif        = "{\"message\":\"Test notification!\",\"title\":\"Test notification!\",\"icon\":\"https://cdn.infinitybots.xyz/images/webp/logo2.webp\",\"error\":false}"
 	InvalidClient    = "{\"message\":\"Slow down, bucko! You're client is out of date and needs an update?\",\"error\":true}"
-
-	// Resolve Bot SQL
-	ResolveBotSQL = "(lower(vanity) = $1 OR bot_id = $1 OR client_id = $1)"
 )

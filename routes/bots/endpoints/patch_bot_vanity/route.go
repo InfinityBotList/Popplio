@@ -6,7 +6,6 @@ import (
 	"unicode"
 
 	"popplio/api"
-	"popplio/constants"
 	"popplio/docs"
 	"popplio/state"
 	"popplio/types"
@@ -45,19 +44,22 @@ func Docs() *docs.Doc {
 }
 
 func Route(d api.RouteData, r *http.Request) api.HttpResponse {
-	botIdParam := chi.URLParam(r, "bid")
+	name := chi.URLParam(r, "bid")
 
-	// Resolve id
-	var botId string
-
-	err := state.Pool.QueryRow(d.Context, "SELECT bot_id FROM bots WHERE "+constants.ResolveBotSQL, botIdParam).Scan(&botId)
+	// Resolve bot ID
+	id, err := utils.ResolveBot(state.Context, name)
 
 	if err != nil {
+		state.Logger.Error(err)
+		return api.DefaultResponse(http.StatusInternalServerError)
+	}
+
+	if id == "" {
 		return api.DefaultResponse(http.StatusNotFound)
 	}
 
 	// Validate that they actually own this bot
-	isOwner, err := utils.IsBotOwner(d.Context, d.Auth.ID, botId)
+	isOwner, err := utils.IsBotOwner(d.Context, d.Auth.ID, id)
 
 	if err != nil {
 		return api.HttpResponse{
@@ -128,14 +130,14 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 	}
 
 	// Update vanity
-	_, err = state.Pool.Exec(d.Context, "UPDATE bots SET vanity = $1 WHERE bot_id = $2", vanity.Vanity, botId)
+	_, err = state.Pool.Exec(d.Context, "UPDATE bots SET vanity = $1 WHERE bot_id = $2", vanity.Vanity, id)
 
 	if err != nil {
 		state.Logger.Error(err)
 		return api.DefaultResponse(http.StatusInternalServerError)
 	}
 
-	utils.ClearBotCache(d.Context, botId)
+	utils.ClearBotCache(d.Context, id)
 
 	return api.DefaultResponse(http.StatusNoContent)
 }

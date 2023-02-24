@@ -4,7 +4,6 @@ import (
 	"net/http"
 
 	"popplio/api"
-	"popplio/constants"
 	"popplio/docs"
 	"popplio/state"
 	"popplio/types"
@@ -47,26 +46,26 @@ func Docs() *docs.Doc {
 }
 
 func Route(d api.RouteData, r *http.Request) api.HttpResponse {
-	// Check if the user is owner of the bot
-	botIdParam := chi.URLParam(r, "bid")
+	name := chi.URLParam(r, "bid")
 
-	// Resolve id
-	var botId string
-
-	err := state.Pool.QueryRow(d.Context, "SELECT bot_id FROM bots WHERE "+constants.ResolveBotSQL, botIdParam).Scan(&botId)
+	// Resolve bot ID
+	id, err := utils.ResolveBot(state.Context, name)
 
 	if err != nil {
+		state.Logger.Error(err)
+		return api.DefaultResponse(http.StatusInternalServerError)
+	}
+
+	if id == "" {
 		return api.DefaultResponse(http.StatusNotFound)
 	}
 
 	// Validate that they actually own this bot
-	isOwner, err := utils.IsBotOwner(d.Context, d.Auth.ID, botId)
+	isOwner, err := utils.IsBotOwner(d.Context, d.Auth.ID, id)
 
 	if err != nil {
-		return api.HttpResponse{
-			Status: http.StatusInternalServerError,
-			Json:   types.ApiError{Message: "Owner find error: " + err.Error(), Error: true},
-		}
+		state.Logger.Error(err)
+		return api.DefaultResponse(http.StatusInternalServerError)
 	}
 
 	if !isOwner {
@@ -94,7 +93,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 
 	webhPayload := types.WebhookPost{
 		UserID: d.Auth.ID,
-		BotID:  botId,
+		BotID:  id,
 		Votes:  payload.Votes,
 		Test:   true,
 	}

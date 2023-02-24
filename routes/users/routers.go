@@ -125,28 +125,28 @@ func (b Router) Routes(r *chi.Mux) {
 	}.Route(r)
 
 	api.Route{
-		Pattern: "/users/{id}/reminders",
+		Pattern: "/users/{uid}/reminders/{bid}",
 		OpId:    "put_user_reminders",
 		Method:  api.PUT,
 		Docs:    put_user_reminders.Docs,
 		Handler: put_user_reminders.Route,
 		Auth: []api.AuthType{
 			{
-				URLVar: "id",
+				URLVar: "uid",
 				Type:   types.TargetTypeUser,
 			},
 		},
 	}.Route(r)
 
 	api.Route{
-		Pattern: "/users/{id}/reminder",
+		Pattern: "/users/{uid}/reminders/{bid}",
 		OpId:    "delete_user_reminders",
 		Method:  api.DELETE,
 		Docs:    delete_user_reminders.Docs,
 		Handler: delete_user_reminders.Route,
 		Auth: []api.AuthType{
 			{
-				URLVar: "id",
+				URLVar: "uid",
 				Type:   types.TargetTypeUser,
 			},
 		},
