@@ -21,53 +21,40 @@ var (
 func Docs() *docs.Doc {
 	return &docs.Doc{
 		Summary:     "Get Announcements",
-		Description: "This endpoint will return a list of announcements. User authentication is optional and using it will show user targetted announcements.",
+		Description: "Returns the public announcements on the list.",
 		Resp:        types.AnnouncementList{},
 	}
 }
 
 func Route(d api.RouteData, r *http.Request) api.HttpResponse {
-	rows, err := state.Pool.Query(d.Context, "SELECT "+announcementCols+" FROM announcements ORDER BY id DESC")
+	rows, err := state.Pool.Query(d.Context, "SELECT "+announcementCols+" FROM announcements WHERE status = 'public' ORDER BY id DESC")
 
 	if err != nil {
-		state.Logger.Error("Could not", err)
-		return api.DefaultResponse(http.StatusNotFound)
+		state.Logger.Error("Could not load announcements", err)
+		return api.DefaultResponse(http.StatusInternalServerError)
 	}
 
-	var announcements []types.Announcement
+	var announcements = []types.Announcement{}
 
 	err = pgxscan.ScanAll(&announcements, rows)
 
 	if err != nil {
 		state.Logger.Error(err)
-		return api.DefaultResponse(http.StatusNotFound)
+		return api.DefaultResponse(http.StatusInternalServerError)
 	}
 
-	// Auth header check
+	for i := range announcements {
+		announcements[i].Author, err = utils.GetDiscordUser(d.Context, announcements[i].UserID)
 
-	annList := []types.Announcement{}
-
-	for _, announcement := range announcements {
-		if announcement.Status == "private" {
-			// Staff only
-			continue
+		if err != nil {
+			state.Logger.Error(err)
+			return api.DefaultResponse(http.StatusInternalServerError)
 		}
-
-		if announcement.Targetted {
-			// Check auth header
-			if !d.Auth.Authorized || d.Auth.ID != announcement.Target.String {
-				continue
-			}
-		}
-
-		annList = append(annList, announcement)
-	}
-
-	annListObj := types.AnnouncementList{
-		Announcements: annList,
 	}
 
 	return api.HttpResponse{
-		Json: annListObj,
+		Json: types.AnnouncementList{
+			Announcements: announcements,
+		},
 	}
 }

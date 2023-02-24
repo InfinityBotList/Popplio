@@ -123,22 +123,15 @@ func GetDiscordUser(ctx context.Context, id string) (userObj *types.DiscordUser,
 		}
 
 		return cachedReturn(&types.DiscordUser{
-			ID:             id,
-			Username:       member.User.Username,
-			Avatar:         member.User.AvatarURL(""),
-			Discriminator:  member.User.Discriminator,
-			Bot:            member.User.Bot,
-			Nickname:       member.Nick,
-			Guild:          state.Config.Servers.Main,
-			Mention:        member.User.Mention(),
-			Status:         p.Status,
-			System:         member.User.System,
-			Flags:          member.User.Flags,
-			Tag:            member.User.Username + "#" + member.User.Discriminator,
-			IsServerMember: true,
-			Route: &types.CacheRoute{
-				State: true,
-			},
+			ID:            id,
+			Username:      member.User.Username,
+			Avatar:        member.User.AvatarURL(""),
+			Discriminator: member.User.Discriminator,
+			Bot:           member.User.Bot,
+			Nickname:      member.Nick,
+			Guild:         state.Config.Servers.Main,
+			Status:        p.Status,
+			System:        member.User.System,
 		})
 	}
 
@@ -160,22 +153,15 @@ func GetDiscordUser(ctx context.Context, id string) (userObj *types.DiscordUser,
 			}
 
 			return cachedReturn(&types.DiscordUser{
-				ID:             id,
-				Username:       member.User.Username,
-				Avatar:         member.User.AvatarURL(""),
-				Discriminator:  member.User.Discriminator,
-				Bot:            member.User.Bot,
-				Nickname:       member.Nick,
-				Guild:          guild.ID,
-				Mention:        member.User.Mention(),
-				Status:         p.Status,
-				System:         member.User.System,
-				Flags:          member.User.Flags,
-				Tag:            member.User.Username + "#" + member.User.Discriminator,
-				IsServerMember: false,
-				Route: &types.CacheRoute{
-					State: true,
-				},
+				ID:            id,
+				Username:      member.User.Username,
+				Avatar:        member.User.AvatarURL(""),
+				Discriminator: member.User.Discriminator,
+				Bot:           member.User.Bot,
+				Nickname:      member.Nick,
+				Guild:         guild.ID,
+				Status:        p.Status,
+				System:        member.User.System,
 			})
 		}
 	}
@@ -189,12 +175,6 @@ func GetDiscordUser(ctx context.Context, id string) (userObj *types.DiscordUser,
 		var user types.DiscordUser
 
 		err = json.Unmarshal([]byte(userBytes), &user)
-
-		if user.Route == nil {
-			user.Route = &types.CacheRoute{}
-		}
-		user.Route.Redis = true
-		user.Route.State = false
 
 		if err == nil {
 			return &user, nil
@@ -232,13 +212,8 @@ func GetDiscordUser(ctx context.Context, id string) (userObj *types.DiscordUser,
 					Avatar:        user.AvatarURL(""),
 					Discriminator: user.Discriminator,
 					Bot:           user.Bot,
-					Nickname:      "",
-					Guild:         "",
-					Mention:       user.Mention(),
 					Status:        discordgo.StatusOffline,
 					System:        user.System,
-					Flags:         user.Flags,
-					Tag:           user.Username + "#" + user.Discriminator,
 				})
 			}()
 		}
@@ -256,22 +231,12 @@ func GetDiscordUser(ctx context.Context, id string) (userObj *types.DiscordUser,
 		}
 
 		return cachedReturn(&types.DiscordUser{
-			ID:             id,
-			Username:       username,
-			Avatar:         avatar,
-			Discriminator:  discriminator,
-			Bot:            bot,
-			Nickname:       "",
-			Guild:          "",
-			Mention:        "<@" + id + ">",
-			Status:         discordgo.StatusOffline,
-			System:         false,
-			Flags:          0,
-			Tag:            username + "#" + discriminator,
-			IsServerMember: false,
-			Route: &types.CacheRoute{
-				DB: true,
-			},
+			ID:            id,
+			Username:      username,
+			Avatar:        avatar,
+			Discriminator: discriminator,
+			Bot:           bot,
+			Status:        discordgo.StatusOffline,
 		})
 	}
 
@@ -289,13 +254,8 @@ func GetDiscordUser(ctx context.Context, id string) (userObj *types.DiscordUser,
 		Avatar:        user.AvatarURL(""),
 		Discriminator: user.Discriminator,
 		Bot:           user.Bot,
-		Nickname:      "",
-		Guild:         "",
-		Mention:       user.Mention(),
 		Status:        discordgo.StatusOffline,
 		System:        user.System,
-		Flags:         user.Flags,
-		Tag:           user.Username + "#" + user.Discriminator,
 	})
 }
 
