@@ -68,6 +68,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 	}
 
 	return api.HttpResponse{
+		Status: http.StatusPartialContent,
 		Json: CreateTeamResponse{
 			TeamID: teamId,
 		},
