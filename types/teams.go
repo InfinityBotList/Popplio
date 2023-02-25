@@ -6,6 +6,7 @@ type Team struct {
 	Avatar    string       `json:"avatar"`
 	MainOwner *DiscordUser `json:"main_owner"`
 	Members   []TeamMember `json:"members"`
+	UserBots  []UserBot    `json:"user_bots"` // Bots that are owned by the team
 }
 
 type TeamMember struct {

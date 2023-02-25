@@ -20,7 +20,6 @@ var (
 	userCols    = strings.Join(userColsArr, ",")
 
 	userBotColsArr = utils.GetCols(types.UserBot{})
-	// These are the columns of a userbot object
 	userBotCols = strings.Join(userBotColsArr, ",")
 
 	indexPackColsArr = utils.GetCols(types.IndexBotPack{})

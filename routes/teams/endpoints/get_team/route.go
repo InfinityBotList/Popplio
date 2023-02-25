@@ -7,8 +7,15 @@ import (
 	"popplio/state"
 	"popplio/types"
 	"popplio/utils"
+	"strings"
 
+	"github.com/georgysavva/scany/v2/pgxscan"
 	"github.com/go-chi/chi/v5"
+)
+
+var (
+	userBotColsArr = utils.GetCols(types.UserBot{})
+	userBotCols    = strings.Join(userBotColsArr, ",")
 )
 
 func Docs() *docs.Doc {
@@ -98,6 +105,36 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 		})
 	}
 
+	// Bots
+	userBotsRows, err := state.Pool.Query(d.Context, "SELECT "+userBotCols+" FROM bots WHERE team_owner = $1", id)
+
+	if err != nil {
+		state.Logger.Error(err)
+		return api.DefaultResponse(http.StatusInternalServerError)
+	}
+
+	var userBots = []types.UserBot{}
+
+	err = pgxscan.ScanAll(&userBots, userBotsRows)
+
+	if err != nil {
+		state.Logger.Error(err)
+		return api.DefaultResponse(http.StatusInternalServerError)
+	}
+
+	parsedUserBots := []types.UserBot{}
+	for _, bot := range userBots {
+		userObj, err := utils.GetDiscordUser(d.Context, bot.BotID)
+
+		if err != nil {
+			state.Logger.Error(err)
+			continue
+		}
+
+		bot.User = userObj
+		parsedUserBots = append(parsedUserBots, bot)
+	}
+
 	return api.HttpResponse{
 		Json: types.Team{
 			ID:        id,
@@ -105,6 +142,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 			MainOwner: owner,
 			Avatar:    avatar,
 			Members:   members,
+			UserBots:  parsedUserBots,
 		},
 	}
 }
