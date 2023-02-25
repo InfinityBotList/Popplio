@@ -233,6 +233,6 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 	return api.HttpResponse{
 		Json:      user,
 		CacheKey:  "uc-" + name,
-		CacheTime: 3 * time.Minute,
+		CacheTime: 2 * time.Minute,
 	}
 }
