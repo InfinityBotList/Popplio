@@ -42,7 +42,19 @@ func nonVulgar(fl validator.FieldLevel) bool {
 		}
 		return true
 	default:
-		panic("not a string")
+		return false
+	}
+}
+
+func isHttps(fl validator.FieldLevel) bool {
+	// get the field value
+	switch fl.Field().Kind() {
+	case reflect.String:
+		value := fl.Field().String()
+
+		return strings.HasPrefix(value, "https://")
+	default:
+		return false
 	}
 }
 
@@ -57,7 +69,7 @@ func noSpaces(fl validator.FieldLevel) bool {
 		}
 		return true
 	default:
-		panic("not a string")
+		return false
 	}
 }
 
@@ -65,6 +77,7 @@ func Setup() {
 	Validator.RegisterValidation("nonvulgar", nonVulgar)
 	Validator.RegisterValidation("notblank", validators.NotBlank)
 	Validator.RegisterValidation("nospaces", noSpaces)
+	Validator.RegisterValidation("https", isHttps)
 
 	config.GenConfig()
 
