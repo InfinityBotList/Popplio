@@ -21,7 +21,7 @@ func (b Router) Tag() (string, string) {
 
 func (b Router) Routes(r *chi.Mux) {
 	api.Route{
-		Pattern: "/teams/meta/permissions",
+		Pattern: "/teams/{id}/permissions",
 		OpId:    "get_team_permissions",
 		Method:  api.GET,
 		Docs:    get_team_permissions.Docs,

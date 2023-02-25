@@ -14,8 +14,17 @@ type PermissionResponse struct {
 func Docs() *docs.Doc {
 	return &docs.Doc{
 		Summary:     "Get Team Permissions",
-		Description: "Gets all permissions that a team can have",
+		Description: "Gets all permissions that the team can have",
 		Resp:        PermissionResponse{},
+		Params: []docs.Parameter{
+			{
+				Name:        "id",
+				Description: "Team ID",
+				Required:    true,
+				In:          "path",
+				Schema:      docs.IdSchema,
+			},
+		},
 	}
 }
 
