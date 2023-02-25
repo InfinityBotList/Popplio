@@ -8,6 +8,7 @@ require (
 	github.com/getkin/kin-openapi v0.114.0
 	github.com/go-chi/chi/v5 v5.0.8
 	github.com/go-redis/redis/v8 v8.11.5
+	github.com/google/uuid v1.3.0
 	github.com/infinitybotlist/eureka v0.0.0-20230123041109-426207f20916
 	github.com/mileusna/useragent v1.2.1
 	github.com/wk8/go-ordered-map/v2 v2.1.6

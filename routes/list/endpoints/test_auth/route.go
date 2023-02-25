@@ -32,7 +32,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 	if payload.TargetID == "" {
 		return api.HttpResponse{
 			Status: http.StatusBadRequest,
-			Json:   types.ApiError{Message: "Target ID is required"},
+			Json:   types.ApiError{Message: "Target ID is required", Error: true},
 		}
 	}
 

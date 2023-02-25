@@ -15,6 +15,7 @@ import (
 
 	"github.com/bwmarrin/discordgo"
 	"github.com/georgysavva/scany/v2/pgxscan"
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
 	jsoniter "github.com/json-iterator/go"
 	"go.uber.org/zap"
@@ -526,4 +527,9 @@ func ResolveBot(ctx context.Context, name string) (string, error) {
 	}
 
 	return id, nil
+}
+
+func IsValidUUID(u string) bool {
+	_, err := uuid.Parse(u)
+	return err == nil
 }

@@ -5,6 +5,7 @@ import (
 	"popplio/routes/teams/endpoints/add_team_member"
 	"popplio/routes/teams/endpoints/create_team"
 	"popplio/routes/teams/endpoints/get_team"
+	"popplio/routes/teams/endpoints/get_team_permissions"
 	"popplio/types"
 
 	"github.com/go-chi/chi/v5"
@@ -19,6 +20,14 @@ func (b Router) Tag() (string, string) {
 }
 
 func (b Router) Routes(r *chi.Mux) {
+	api.Route{
+		Pattern: "/teams/meta/permissions",
+		OpId:    "get_team_permissions",
+		Method:  api.GET,
+		Docs:    get_team_permissions.Docs,
+		Handler: get_team_permissions.Route,
+	}.Route(r)
+
 	api.Route{
 		Pattern: "/teams/{id}",
 		OpId:    "get_team",

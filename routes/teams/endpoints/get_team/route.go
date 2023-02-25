@@ -38,6 +38,11 @@ func Docs() *docs.Doc {
 func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 	id := chi.URLParam(r, "id")
 
+	// Convert ID to UUID
+	if !utils.IsValidUUID(id) {
+		return api.DefaultResponse(http.StatusNotFound)
+	}
+
 	var count int
 
 	err := state.Pool.QueryRow(d.Context, "SELECT COUNT(*) FROM teams WHERE id = $1", id).Scan(&count)

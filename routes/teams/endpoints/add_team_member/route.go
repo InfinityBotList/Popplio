@@ -8,6 +8,7 @@ import (
 	"popplio/state"
 	"popplio/teams"
 	"popplio/types"
+	"popplio/utils"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-playground/validator/v10"
@@ -50,6 +51,24 @@ func Docs() *docs.Doc {
 func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 	var teamId = chi.URLParam(r, "tid")
 
+	// Convert ID to UUID
+	if !utils.IsValidUUID(teamId) {
+		return api.DefaultResponse(http.StatusNotFound)
+	}
+
+	var count int
+
+	err := state.Pool.QueryRow(d.Context, "SELECT COUNT(*) FROM teams WHERE id = $1", teamId).Scan(&count)
+
+	if err != nil {
+		state.Logger.Error(err)
+		return api.DefaultResponse(http.StatusInternalServerError)
+	}
+
+	if count == 0 {
+		return api.DefaultResponse(http.StatusNotFound)
+	}
+
 	var payload AddTeamMember
 
 	hresp, ok := api.MarshalReq(r, &payload)
@@ -59,11 +78,28 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 	}
 
 	// Validate the payload
-	err := state.Validator.Struct(payload)
+	err = state.Validator.Struct(payload)
 
 	if err != nil {
 		errors := err.(validator.ValidationErrors)
 		return api.ValidatorErrorResponse(compiledMessages, errors)
+	}
+
+	// Ensure manager is a member of the team
+	var managerCount int
+
+	err = state.Pool.QueryRow(d.Context, "SELECT COUNT(*) FROM team_members WHERE team_id = $1 AND user_id = $2", teamId, d.Auth.ID).Scan(&managerCount)
+
+	if err != nil {
+		state.Logger.Error(err)
+		return api.DefaultResponse(http.StatusInternalServerError)
+	}
+
+	if managerCount == 0 {
+		return api.HttpResponse{
+			Status: http.StatusForbidden,
+			Json:   types.ApiError{Message: "You are not a member of this team", Error: true},
+		}
 	}
 
 	var managerPerms []teams.TeamPermission
