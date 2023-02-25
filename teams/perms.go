@@ -45,7 +45,7 @@ var TeamPermDetails = []PermDetailMap{
 	{TeamPermissionTestBotWebhooks, "Test Bot Webhooks", "Test bot webhooks. Note that this is a separate permission from 'Edit Bot Webhooks' and is required to test webhooks."},
 	{TeamPermissionSetBotVanity, "Set Bot Vanity", "Set vanity URLs for bots on the team"},
 	{TeamPermissionManageTeam, "Manage Team", "Edit team settings"},
-	{TeamPermissionManageTeamMembers, "Manage Team Members", "Add or remove team members from the team. Note that 'Owner' is a separate permission and is required to add or remove additional owners."},
+	{TeamPermissionManageTeamMembers, "Manage Team Members", "Add or remove team members from the team as well as edit their permissions"},
 	{TeamPermissionOwner, "Owner", "Do everything (as they're owner)"},
 }
 
