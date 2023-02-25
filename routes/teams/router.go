@@ -3,6 +3,7 @@ package teams
 import (
 	"popplio/api"
 	"popplio/routes/teams/endpoints/create_team"
+	"popplio/routes/teams/endpoints/get_team"
 	"popplio/types"
 
 	"github.com/go-chi/chi/v5"
@@ -29,5 +30,13 @@ func (b Router) Routes(r *chi.Mux) {
 				URLVar: "id",
 			},
 		},
+	}.Route(r)
+
+	api.Route{
+		Pattern: "/teams/{id}",
+		OpId:    "get_team",
+		Method:  api.GET,
+		Docs:    get_team.Docs,
+		Handler: get_team.Route,
 	}.Route(r)
 }

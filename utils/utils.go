@@ -381,6 +381,19 @@ func GetUserBotPerms(ctx context.Context, userID string, botID string) (*teams.P
 
 	// Team overrides everything
 	if teamOwner.Valid && teamOwner.String != "" {
+		// Check if owner of team
+		var owner string
+
+		err = state.Pool.QueryRow(ctx, "SELECT owner FROM teams WHERE id = $1", teamOwner).Scan(&owner)
+
+		if err != nil {
+			return &teams.PermissionManager{}, fmt.Errorf("error finding team: %v", err)
+		}
+
+		if owner == userID {
+			return teams.NewPermissionManager([]teams.TeamPermission{teams.TeamPermissionOwner}), nil
+		}
+
 		// Get the team member from the team
 		var teamPerms []teams.TeamPermission
 

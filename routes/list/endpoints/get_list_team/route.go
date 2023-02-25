@@ -1,4 +1,4 @@
-package get_team
+package get_list_team
 
 import (
 	"net/http"
@@ -23,7 +23,7 @@ type StaffTeam struct {
 
 func Docs() *docs.Doc {
 	return &docs.Doc{
-		Summary:     "Get Staff Team",
+		Summary:     "Get List Team",
 		Description: "Gets an up to date listing of the staff team of the list",
 		Resp:        StaffTeam{},
 	}

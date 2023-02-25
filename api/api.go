@@ -4,6 +4,7 @@ package api
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"io"
 	"net/http"
 	"os"
@@ -330,6 +331,8 @@ func (r Route) Route(ro Router) {
 	if brStart != brEnd {
 		panic("Mismatched { and } in pattern: " + r.String())
 	}
+
+	fmt.Println(pathParams, patternParams)
 
 	if brStart != len(pathParams) {
 		panic("Mismatched number of params and { in pattern: " + r.String())
