@@ -22,7 +22,7 @@ func Docs() *docs.Doc {
 func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 	listStats := types.ListStats{}
 
-	bots, err := state.Pool.Query(d.Context, "SELECT bot_id, vanity, short, type, owner, additional_owners, queue_name FROM bots")
+	bots, err := state.Pool.Query(d.Context, "SELECT bot_id, vanity, short, type, owner, queue_name FROM bots")
 
 	if err != nil {
 		state.Logger.Error(err)
@@ -37,10 +37,9 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 		var short string
 		var typeStr string
 		var owner string
-		var additionalOwners []string
 		var queueName string
 
-		err := bots.Scan(&botId, &vanity, &short, &typeStr, &owner, &additionalOwners, &queueName)
+		err := bots.Scan(&botId, &vanity, &short, &typeStr, &owner, &queueName)
 
 		if err != nil {
 			state.Logger.Error(err)
@@ -48,13 +47,12 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 		}
 
 		listStats.Bots = append(listStats.Bots, types.ListStatsBot{
-			BotID:              botId,
-			Vanity:             vanity,
-			Short:              short,
-			Type:               typeStr,
-			MainOwnerID:        owner,
-			AdditionalOwnerIDS: additionalOwners,
-			QueueName:          queueName,
+			BotID:       botId,
+			Vanity:      vanity,
+			Short:       short,
+			Type:        typeStr,
+			MainOwnerID: owner,
+			QueueName:   queueName,
 		})
 	}
 

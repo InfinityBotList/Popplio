@@ -8,6 +8,7 @@ import (
 	"popplio/api"
 	"popplio/docs"
 	"popplio/state"
+	"popplio/teams"
 	"popplio/types"
 	"popplio/utils"
 
@@ -58,20 +59,17 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 		return api.DefaultResponse(http.StatusNotFound)
 	}
 
-	// Validate that they actually own this bot
-	isOwner, err := utils.IsBotOwner(d.Context, d.Auth.ID, id)
+	perms, err := utils.GetUserBotPerms(d.Context, d.Auth.ID, id)
 
 	if err != nil {
-		return api.HttpResponse{
-			Status: http.StatusInternalServerError,
-			Json:   types.ApiError{Message: err.Error()},
-		}
+		state.Logger.Error(err)
+		return api.DefaultResponse(http.StatusInternalServerError)
 	}
 
-	if !isOwner {
+	if !perms.Has(teams.TeamPermissionSetBotVanity) {
 		return api.HttpResponse{
-			Status: http.StatusBadRequest,
-			Json:   types.ApiError{Message: "You do not own the bot you are trying to manage", Error: true},
+			Status: http.StatusForbidden,
+			Json:   types.ApiError{Message: "You do not have permission to set bot vanity", Error: true},
 		}
 	}
 

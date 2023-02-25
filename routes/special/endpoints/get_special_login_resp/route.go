@@ -14,6 +14,7 @@ import (
 	"popplio/docs"
 	"popplio/routes/special/assets"
 	"popplio/state"
+	"popplio/teams"
 	"popplio/types"
 	"popplio/utils"
 	"popplio/webhooks"
@@ -23,7 +24,6 @@ import (
 	"github.com/bwmarrin/discordgo"
 	"github.com/infinitybotlist/eureka/crypto"
 	jsoniter "github.com/json-iterator/go"
-	"golang.org/x/exp/slices"
 )
 
 var json = jsoniter.ConfigCompatibleWithStandardLibrary
@@ -244,21 +244,23 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 		}
 	}
 
+	var perms *teams.PermissionManager
+
 	if action.TID != "" {
 		// Validate that they actually own this bot
-		isOwner, err := utils.IsBotOwner(d.Context, user.ID, action.TID)
+		perms, err = utils.GetUserBotPerms(d.Context, user.ID, action.TID)
 
 		if err != nil {
 			return api.HttpResponse{
 				Status: http.StatusInternalServerError,
-				Data:   "Bot ownership check failed:" + err.Error(),
+				Data:   "Bot check failed:" + err.Error(),
 			}
 		}
 
-		if !isOwner {
+		if !perms.HasSomePerms() {
 			return api.HttpResponse{
-				Status: http.StatusBadRequest,
-				Data:   "You do not own the bot you are trying to manage",
+				Status: http.StatusUnauthorized,
+				Data:   "You cannot access high security actions for this bot",
 			}
 		}
 	}
@@ -333,6 +335,13 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 			}
 		}
 
+		if !perms.Has(teams.TeamPermissionResetBotTokens) {
+			return api.HttpResponse{
+				Status: http.StatusUnauthorized,
+				Data:   "You do not have permission to reset this bot's token",
+			}
+		}
+
 		token := crypto.RandString(128)
 
 		_, err := state.Pool.Exec(d.Context, "UPDATE bots SET api_token = $1 WHERE bot_id = $2", token, action.TID)
@@ -353,6 +362,13 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 			return api.HttpResponse{
 				Status: http.StatusBadRequest,
 				Data:   "No target id set",
+			}
+		}
+
+		if !perms.Has(teams.TeamPermissionEditBotWebhooks) {
+			return api.HttpResponse{
+				Status: http.StatusUnauthorized,
+				Data:   "You do not have permission to edit this bot's hmac secret",
 			}
 		}
 
@@ -401,6 +417,13 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 			return api.HttpResponse{
 				Status: http.StatusBadRequest,
 				Data:   "No target id set",
+			}
+		}
+
+		if !perms.Has(teams.TeamPermissionEditBotWebhooks) {
+			return api.HttpResponse{
+				Status: http.StatusUnauthorized,
+				Data:   "You do not have permission to edit this bot's webhook url",
 			}
 		}
 
@@ -458,6 +481,13 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 			}
 		}
 
+		if !perms.Has(teams.TeamPermissionEditBotWebhooks) {
+			return api.HttpResponse{
+				Status: http.StatusUnauthorized,
+				Data:   "You do not have permission to edit this bot's webhook secret",
+			}
+		}
+
 		if action.Ctx == "" {
 			// We want to unset webhook secret
 			_, err := state.Pool.Exec(d.Context, "UPDATE bots SET web_auth = NULL WHERE bot_id = $1", action.TID)
@@ -497,24 +527,10 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 			}
 		}
 
-		// Get main owner of bot
-		var owner string
-		var additionalOwners []string
-
-		err := state.Pool.QueryRow(d.Context, "SELECT owner, additional_owners FROM bots WHERE bot_id = $1", action.TID).Scan(&owner, &additionalOwners)
-
-		if err != nil {
+		if !perms.Has(teams.TeamPermissionDeleteBots) {
 			return api.HttpResponse{
-				Status: http.StatusInternalServerError,
-				Data:   "Bot find error: " + err.Error(),
-			}
-		}
-
-		// Check if user is main owner
-		if owner != user.ID {
-			return api.HttpResponse{
-				Status: http.StatusForbidden,
-				Data:   "You are not the main owner of this bot. Only main owners can delete bots",
+				Status: http.StatusUnauthorized,
+				Data:   "You do not have permission to delete bots",
 			}
 		}
 
@@ -544,22 +560,8 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 							Value: action.TID,
 						},
 						{
-							Name:  "Main Owner",
+							Name:  "Deleter",
 							Value: fmt.Sprintf("<@%s>", user.ID),
-						},
-						{
-							Name: "Additional Owners",
-							Value: func() string {
-								if len(additionalOwners) == 0 {
-									return "None"
-								}
-
-								var owners []string
-								for _, owner := range additionalOwners {
-									owners = append(owners, fmt.Sprintf("<@%s>", owner))
-								}
-								return strings.Join(owners, ", ")
-							}(),
 						},
 					},
 				},
@@ -586,100 +588,9 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 			}
 		}
 
-		// Get main owner of bot
-		var owner string
-
-		err := state.Pool.QueryRow(d.Context, "SELECT owner FROM bots WHERE bot_id = $1", action.TID).Scan(&owner)
-
-		if err != nil {
-			return api.HttpResponse{
-				Status: http.StatusInternalServerError,
-				Data:   err.Error(),
-			}
-		}
-
-		// Check if user is main owner
-		if owner != user.ID {
-			return api.HttpResponse{
-				Status: http.StatusForbidden,
-				Data:   "You are not the main owner of this bot. Only main owners can transfer the ownership of bots",
-			}
-		}
-
-		// Ensure new owner is currently an additional owner
-		var additionalOwners []string
-
-		err = state.Pool.QueryRow(d.Context, "SELECT additional_owners FROM bots WHERE bot_id = $1", action.TID).Scan(&additionalOwners)
-
-		if err != nil {
-			return api.HttpResponse{
-				Status: http.StatusInternalServerError,
-				Data:   err.Error(),
-			}
-		}
-
-		if !slices.Contains(additionalOwners, action.Ctx) {
-			return api.HttpResponse{
-				Status: http.StatusBadRequest,
-				Data:   "New owner is not currently an additional owner!",
-			}
-		}
-
-		// Transfer ownership
-		tr, err := state.Pool.Begin(d.Context)
-
-		if err != nil {
-			return api.HttpResponse{
-				Status: http.StatusInternalServerError,
-				Data:   err.Error(),
-			}
-		}
-
-		defer tr.Rollback(d.Context)
-
-		_, err = tr.Exec(d.Context, "UPDATE bots SET owner = $1 WHERE bot_id = $2", action.Ctx, action.TID)
-
-		if err != nil {
-			return api.HttpResponse{
-				Status: http.StatusInternalServerError,
-				Data:   err.Error(),
-			}
-		}
-
-		// Remove new owner from additional owners
-		_, err = tr.Exec(d.Context, "UPDATE bots SET additional_owners = array_remove(additional_owners, $1) WHERE bot_id = $2", action.Ctx, action.TID)
-
-		if err != nil {
-			return api.HttpResponse{
-				Status: http.StatusInternalServerError,
-				Data:   err.Error(),
-			}
-		}
-
-		// Add old owner to additional owners
-		_, err = tr.Exec(d.Context, "UPDATE bots SET additional_owners = array_append(additional_owners, $1) WHERE bot_id = $2", owner, action.TID)
-
-		if err != nil {
-			return api.HttpResponse{
-				Status: http.StatusInternalServerError,
-				Data:   err.Error(),
-			}
-		}
-
-		err = tr.Commit(d.Context)
-
-		if err != nil {
-			return api.HttpResponse{
-				Status: http.StatusInternalServerError,
-				Data:   err.Error(),
-			}
-		}
-
-		utils.ClearBotCache(d.Context, action.TID)
-
 		return api.HttpResponse{
 			Status: http.StatusOK,
-			Data:   "Successfully transferred ownership of bot. The old owner (you!) is now an additional owner and the new owner is the main owner now.",
+			Data:   "This is currently disabled while we transfer to teams! Please contact us if you need to transfer a bot at this time",
 		}
 
 	default:

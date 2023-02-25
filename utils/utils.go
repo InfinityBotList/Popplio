@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"popplio/state"
+	"popplio/teams"
 	"popplio/types"
 
 	"github.com/bwmarrin/discordgo"
@@ -17,6 +18,7 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 	jsoniter "github.com/json-iterator/go"
 	"go.uber.org/zap"
+	"golang.org/x/exp/slices"
 )
 
 var json = jsoniter.ConfigCompatibleWithStandardLibrary
@@ -365,21 +367,37 @@ func GetCols(s any) []string {
 	return cols
 }
 
-// Returns true if the user is a owner of the bot
-func IsBotOwner(ctx context.Context, userID string, botID string) (bool, error) {
-	// Validate that they actually own this bot
-	var count int64
-	err := state.Pool.QueryRow(ctx, "SELECT COUNT(*) FROM bots WHERE bot_id = $1 AND (owner = $2 OR additional_owners && $3)", botID, userID, []string{userID}).Scan(&count)
+// Returns a permission manager of the permissions the user has on the bot
+// Also takes teams into account if the bot is in a team
+func GetUserBotPerms(ctx context.Context, userID string, botID string) (*teams.PermissionManager, error) {
+	var teamOwner pgtype.Text
+	var owner string
+	var additionalOwners []string // Will be removed once teams are implemented
+	err := state.Pool.QueryRow(ctx, "SELECT team_owner, owner, additional_owners FROM bots WHERE bot_id = $1", botID).Scan(&teamOwner, &owner, &additionalOwners)
 
 	if err != nil {
-		return false, fmt.Errorf("error getting ownership info: %v", err)
+		return &teams.PermissionManager{}, fmt.Errorf("error finding bot: %v", err)
 	}
 
-	if count == 0 {
-		return false, nil
+	// Team overrides everything
+	if teamOwner.Valid && teamOwner.String != "" {
+		// Get the team member from the team
+		var teamPerms []teams.TeamPermission
+
+		err = state.Pool.QueryRow(ctx, "SELECT perms FROM team_members WHERE team_id = $1 AND user_id = $2", teamOwner, userID).Scan(&teamPerms)
+
+		if err != nil {
+			return &teams.PermissionManager{}, fmt.Errorf("error finding team member: %v", err)
+		}
+
+		return teams.NewPermissionManager(teamPerms), nil
 	}
 
-	return true, nil
+	if owner == userID || slices.Contains(additionalOwners, userID) {
+		return teams.NewPermissionManager([]teams.TeamPermission{teams.TeamPermissionOwner}), nil
+	}
+
+	return teams.NewPermissionManager([]teams.TeamPermission{}), nil
 }
 
 func ClearBotCache(ctx context.Context, botId string) error {

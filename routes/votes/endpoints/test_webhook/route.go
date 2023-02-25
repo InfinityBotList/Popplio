@@ -6,6 +6,7 @@ import (
 	"popplio/api"
 	"popplio/docs"
 	"popplio/state"
+	"popplio/teams"
 	"popplio/types"
 	"popplio/utils"
 	"popplio/webhooks"
@@ -61,17 +62,17 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 	}
 
 	// Validate that they actually own this bot
-	isOwner, err := utils.IsBotOwner(d.Context, d.Auth.ID, id)
+	perms, err := utils.GetUserBotPerms(d.Context, d.Auth.ID, id)
 
 	if err != nil {
 		state.Logger.Error(err)
 		return api.DefaultResponse(http.StatusInternalServerError)
 	}
 
-	if !isOwner {
+	if !perms.Has(teams.TeamPermissionTestBotWebhooks) {
 		return api.HttpResponse{
 			Status: http.StatusBadRequest,
-			Json:   types.ApiError{Message: "You do not own the bot you are trying to manage", Error: true},
+			Json:   types.ApiError{Message: "You do not have permission to test this bot's webhooks", Error: true},
 		}
 	}
 

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"popplio/api"
 	"popplio/state"
+	"popplio/teams"
 	"popplio/utils"
 
 	"github.com/bwmarrin/discordgo"
@@ -26,14 +27,15 @@ func extraLogicResubmit(d api.RouteData, p Position, answers map[string]string) 
 		return false, fmt.Errorf("error getting bot type, does the bot exist?: %w", err)
 	}
 
-	owner, err := utils.IsBotOwner(d.Context, d.Auth.ID, botID)
+	perms, err := utils.GetUserBotPerms(d.Context, d.Auth.ID, botID)
 
 	if err != nil {
-		return false, fmt.Errorf("error checking if user is bot owner: %w", err)
+		return false, fmt.Errorf("error getting user bot perms: %w", err)
 	}
 
-	if !owner {
-		return false, errors.New("you are not the owner of this bot")
+	// Check if user has TeamPermissionResubmitBots
+	if !perms.Has(teams.TeamPermissionResubmitBots) {
+		return false, errors.New("you do not have permission to resubmit bots")
 	}
 
 	if botType == "approved" || botType == "pending" || botType == "certified" {
@@ -105,14 +107,15 @@ func extraLogicCert(d api.RouteData, p Position, answers map[string]string) (add
 		return false, fmt.Errorf("error getting bot type, does the bot exist?: %w", err)
 	}
 
-	owner, err := utils.IsBotOwner(d.Context, d.Auth.ID, botID)
+	perms, err := utils.GetUserBotPerms(d.Context, d.Auth.ID, botID)
 
 	if err != nil {
-		return false, fmt.Errorf("error checking if user is bot owner: %w", err)
+		return false, fmt.Errorf("error getting user bot perms: %w", err)
 	}
 
-	if !owner {
-		return false, errors.New("you are not the owner of this bot")
+	// Check if user has TeamPermissionCertifyBots
+	if !perms.Has(teams.TeamPermissionCertifyBots) {
+		return false, errors.New("you do not have permission to certify bots")
 	}
 
 	if botType != "approved" {
