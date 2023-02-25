@@ -28,8 +28,14 @@ type User struct {
 	VoteBanned                bool               `db:"vote_banned" json:"vote_banned"`
 	Banned                    bool               `db:"banned" json:"banned"`
 	UserBots                  []UserBot          `json:"user_bots"`  // Must be handled internally
-	TeamBots                  []UserBot          `json:"team_bots"`  // Must be handled internally
+	UserTeams                 []UserTeam         `json:"user_teams"` // Must be handled internally
 	UserPacks                 []IndexBotPack     `json:"user_packs"` // Must be handled internally
+}
+
+type UserTeam struct {
+	ID     string `db:"id" json:"id"`
+	Name   string `db:"name" json:"name"`
+	Avatar string `db:"avatar" json:"avatar"`
 }
 
 type UserBot struct {

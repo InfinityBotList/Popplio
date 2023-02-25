@@ -13,6 +13,7 @@ import (
 
 	"github.com/georgysavva/scany/v2/pgxscan"
 	"github.com/go-chi/chi/v5"
+	"golang.org/x/exp/slices"
 )
 
 var (
@@ -20,10 +21,13 @@ var (
 	userCols    = strings.Join(userColsArr, ",")
 
 	userBotColsArr = utils.GetCols(types.UserBot{})
-	userBotCols = strings.Join(userBotColsArr, ",")
+	userBotCols    = strings.Join(userBotColsArr, ",")
 
 	indexPackColsArr = utils.GetCols(types.IndexBotPack{})
 	indexPackCols    = strings.Join(indexPackColsArr, ",")
+
+	userTeamColsArr = utils.GetCols(types.UserTeam{})
+	userTeamCols    = strings.Join(userTeamColsArr, ",")
 )
 
 func Docs() *docs.Doc {
@@ -131,8 +135,26 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 
 	user.UserBots = parsedUserBots
 
-	// Team Owned Bots
+	// Get user teams
 
+	// Teams the user is a owner in
+	var userOwnerTeams []string
+
+	userOwnerTeamRows, err := state.Pool.Query(d.Context, "SELECT id FROM teams WHERE owner = $1", user.ID)
+
+	if err != nil {
+		state.Logger.Error(err)
+		return api.DefaultResponse(http.StatusInternalServerError)
+	}
+
+	err = pgxscan.ScanAll(&userOwnerTeams, userOwnerTeamRows)
+
+	if err != nil {
+		state.Logger.Error(err)
+		return api.DefaultResponse(http.StatusInternalServerError)
+	}
+
+	// Teams the user is a member in
 	var userTeams []string
 
 	userTeamRows, err := state.Pool.Query(d.Context, "SELECT team_id FROM team_members WHERE user_id = $1", user.ID)
@@ -149,38 +171,36 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 		return api.DefaultResponse(http.StatusInternalServerError)
 	}
 
-	var teamBots = []types.UserBot{}
-
-	for _, team := range userTeams {
-		var bots = []types.UserBot{}
-
-		teamBotsRows, err := state.Pool.Query(d.Context, "SELECT "+userBotCols+" FROM bots WHERE team = $1", team)
-
-		if err != nil {
-			state.Logger.Error(err)
-			return api.DefaultResponse(http.StatusInternalServerError)
+	// Merge the two slices
+	for _, teamId := range userOwnerTeams {
+		if !slices.Contains(userTeams, teamId) {
+			userTeams = append(userTeams, teamId)
 		}
-
-		err = pgxscan.ScanAll(&bots, teamBotsRows)
-
-		if err != nil {
-			state.Logger.Error(err)
-			return api.DefaultResponse(http.StatusInternalServerError)
-		}
-
-		for i := range bots {
-			bots[i].User, err = utils.GetDiscordUser(d.Context, bots[i].BotID)
-
-			if err != nil {
-				state.Logger.Error(err)
-				return api.DefaultResponse(http.StatusInternalServerError)
-			}
-		}
-
-		teamBots = append(teamBots, bots...)
 	}
 
-	user.TeamBots = teamBots
+	var teams = []types.UserTeam{}
+
+	for _, teamId := range userTeams {
+		var team = types.UserTeam{}
+
+		teamBotsRows, err := state.Pool.Query(d.Context, "SELECT "+userTeamCols+" FROM teams WHERE id = $1", teamId)
+
+		if err != nil {
+			state.Logger.Error(err)
+			return api.DefaultResponse(http.StatusInternalServerError)
+		}
+
+		err = pgxscan.ScanOne(&team, teamBotsRows)
+
+		if err != nil {
+			state.Logger.Error(err)
+			return api.DefaultResponse(http.StatusInternalServerError)
+		}
+
+		teams = append(teams, team)
+	}
+
+	user.UserTeams = teams
 
 	// Packs
 	packsRows, err := state.Pool.Query(d.Context, "SELECT "+indexPackCols+" FROM packs WHERE owner = $1 ORDER BY created_at DESC", user.ID)
