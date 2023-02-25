@@ -2,6 +2,7 @@ package teams
 
 import (
 	"popplio/api"
+	"popplio/routes/teams/endpoints/add_team_member"
 	"popplio/routes/teams/endpoints/create_team"
 	"popplio/routes/teams/endpoints/get_team"
 	"popplio/types"
@@ -19,6 +20,14 @@ func (b Router) Tag() (string, string) {
 
 func (b Router) Routes(r *chi.Mux) {
 	api.Route{
+		Pattern: "/teams/{id}",
+		OpId:    "get_team",
+		Method:  api.GET,
+		Docs:    get_team.Docs,
+		Handler: get_team.Route,
+	}.Route(r)
+
+	api.Route{
 		Pattern: "/users/{id}/teams",
 		OpId:    "create_team",
 		Method:  api.POST,
@@ -33,10 +42,16 @@ func (b Router) Routes(r *chi.Mux) {
 	}.Route(r)
 
 	api.Route{
-		Pattern: "/teams/{id}",
-		OpId:    "get_team",
-		Method:  api.GET,
-		Docs:    get_team.Docs,
-		Handler: get_team.Route,
+		Pattern: "/users/{uid}/teams/{tid}/members",
+		OpId:    "add_team_member",
+		Method:  api.PUT,
+		Docs:    add_team_member.Docs,
+		Handler: add_team_member.Route,
+		Auth: []api.AuthType{
+			{
+				Type:   types.TargetTypeUser,
+				URLVar: "uid",
+			},
+		},
 	}.Route(r)
 }
