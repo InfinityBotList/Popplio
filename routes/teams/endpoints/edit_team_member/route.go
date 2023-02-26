@@ -1,4 +1,4 @@
-package add_team_member
+package edit_team_member
 
 import (
 	"net/http"
@@ -12,21 +12,21 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-playground/validator/v10"
+	"golang.org/x/exp/slices"
 )
 
-type AddTeamMember struct {
-	UserID string                 `json:"user_id" validate:"required" msg:"User ID must be a valid snowflake"`
-	Perms  []teams.TeamPermission `json:"perms" validate:"required" msg:"Permissions must be a valid array of strings"`
+type EditTeamMember struct {
+	Perms []teams.TeamPermission `json:"perms" validate:"required" msg:"Permissions must be a valid array of strings"`
 }
 
 var (
-	compiledMessages = api.CompileValidationErrors(AddTeamMember{})
+	compiledMessages = api.CompileValidationErrors(EditTeamMember{})
 )
 
 func Docs() *docs.Doc {
 	return &docs.Doc{
-		Summary:     "Add Team Member",
-		Description: "Adds a member to a team. Returns a 204 on success",
+		Summary:     "Edit Team Member",
+		Description: "Edits a member to a team. Returns a 204 on success",
 		Params: []docs.Parameter{
 			{
 				Name:        "uid",
@@ -42,14 +42,22 @@ func Docs() *docs.Doc {
 				In:          "path",
 				Schema:      docs.IdSchema,
 			},
+			{
+				Name:        "mid",
+				Description: "Member ID",
+				Required:    true,
+				In:          "path",
+				Schema:      docs.IdSchema,
+			},
 		},
-		Req:  AddTeamMember{},
+		Req:  EditTeamMember{},
 		Resp: types.ApiError{},
 	}
 }
 
 func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 	var teamId = chi.URLParam(r, "tid")
+	var userId = chi.URLParam(r, "mid")
 
 	// Convert ID to UUID
 	if !utils.IsValidUUID(teamId) {
@@ -69,7 +77,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 		return api.DefaultResponse(http.StatusNotFound)
 	}
 
-	var payload AddTeamMember
+	var payload EditTeamMember
 
 	hresp, ok := api.MarshalReq(r, &payload)
 
@@ -102,6 +110,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 		}
 	}
 
+	// Get the manager's permissions
 	var managerPerms []teams.TeamPermission
 	err = state.Pool.QueryRow(d.Context, "SELECT perms FROM team_members WHERE team_id = $1 AND user_id = $2", teamId, d.Auth.ID).Scan(&managerPerms)
 
@@ -110,7 +119,17 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 		return api.DefaultResponse(http.StatusInternalServerError)
 	}
 
-	perms, err := assets.CheckPerms(managerPerms, []teams.TeamPermission{}, payload.Perms)
+	// Get the old permissions of the user
+	var oldPerms []teams.TeamPermission
+
+	err = state.Pool.QueryRow(d.Context, "SELECT perms FROM team_members WHERE team_id = $1 AND user_id = $2", teamId, userId).Scan(&oldPerms)
+
+	if err != nil {
+		state.Logger.Error(err)
+		return api.DefaultResponse(http.StatusInternalServerError)
+	}
+
+	perms, err := assets.CheckPerms(managerPerms, oldPerms, payload.Perms)
 
 	if err != nil {
 		return api.HttpResponse{
@@ -119,41 +138,47 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 		}
 	}
 
-	// Check if user exists on IBL
-	var userExists bool
-
-	err = state.Pool.QueryRow(d.Context, "SELECT EXISTS(SELECT 1 FROM users WHERE user_id = $1)", payload.UserID).Scan(&userExists)
-
-	if err != nil {
-		state.Logger.Error(err)
-		return api.DefaultResponse(http.StatusInternalServerError)
+	if perms == nil {
+		perms = []teams.TeamPermission{}
 	}
 
-	if !userExists {
-		return api.HttpResponse{
-			Status: http.StatusBadRequest,
-			Json:   types.ApiError{Message: "User must login here at least once before you can add them", Error: true},
-		}
-	}
-
-	// Check that they aren't already a member
+	// Check that they are a member
 	var memberExists bool
 
-	err = state.Pool.QueryRow(d.Context, "SELECT EXISTS(SELECT 1 FROM team_members WHERE team_id = $1 AND user_id = $2)", teamId, payload.UserID).Scan(&memberExists)
+	err = state.Pool.QueryRow(d.Context, "SELECT EXISTS(SELECT 1 FROM team_members WHERE team_id = $1 AND user_id = $2)", teamId, userId).Scan(&memberExists)
 
 	if err != nil {
 		state.Logger.Error(err)
 		return api.DefaultResponse(http.StatusInternalServerError)
 	}
 
-	if memberExists {
+	if !memberExists {
 		return api.HttpResponse{
 			Status: http.StatusBadRequest,
-			Json:   types.ApiError{Message: "User is already a member of this team", Error: true},
+			Json:   types.ApiError{Message: "User is not already a member of this team", Error: true},
 		}
 	}
 
-	_, err = state.Pool.Exec(d.Context, "INSERT INTO team_members (team_id, user_id, perms) VALUES ($1, $2, $3)", teamId, payload.UserID, perms)
+	// Ensure that if perms includes owner, that there is at least one other owner
+	if slices.Contains(managerPerms, teams.TeamPermissionOwner) && !slices.Contains(perms, teams.TeamPermissionOwner) {
+		var ownerCount int
+
+		err = state.Pool.QueryRow(d.Context, "SELECT COUNT(*) FROM team_members WHERE team_id = $1 AND user_id != $2 AND perms && $3", teamId, userId, []teams.TeamPermission{teams.TeamPermissionOwner}).Scan(&ownerCount)
+
+		if err != nil {
+			state.Logger.Error(err)
+			return api.DefaultResponse(http.StatusInternalServerError)
+		}
+
+		if ownerCount == 0 {
+			return api.HttpResponse{
+				Status: http.StatusBadRequest,
+				Json:   types.ApiError{Message: "There needs to be one other owner before you can remove yourself from owner", Error: true},
+			}
+		}
+	}
+
+	_, err = state.Pool.Exec(d.Context, "UPDATE team_members SET perms = $1 WHERE team_id = $2 AND user_id = $3", perms, teamId, userId)
 
 	if err != nil {
 		state.Logger.Error(err)
