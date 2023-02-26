@@ -85,17 +85,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 		return api.ValidatorErrorResponse(compiledMessages, errors)
 	}
 
-	// Fetch owner
-	var owner string
-
-	err = state.Pool.QueryRow(d.Context, "SELECT owner FROM teams WHERE id = $1", teamId).Scan(&owner)
-
-	if err != nil {
-		state.Logger.Error(err)
-		return api.DefaultResponse(http.StatusInternalServerError)
-	}
-
-	// Ensure manager is a member of the team or the owner
+	// Ensure manager is a member of the team
 	var managerCount int
 
 	err = state.Pool.QueryRow(d.Context, "SELECT COUNT(*) FROM team_members WHERE team_id = $1 AND user_id = $2", teamId, d.Auth.ID).Scan(&managerCount)
@@ -114,8 +104,6 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 			state.Logger.Error(err)
 			return api.DefaultResponse(http.StatusInternalServerError)
 		}
-	} else if owner == d.Auth.ID {
-		managerPerms = []teams.TeamPermission{teams.TeamPermissionOwner}
 	} else {
 		return api.HttpResponse{
 			Status: http.StatusForbidden,

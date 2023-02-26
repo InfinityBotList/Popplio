@@ -13,7 +13,6 @@ import (
 
 	"github.com/georgysavva/scany/v2/pgxscan"
 	"github.com/go-chi/chi/v5"
-	"golang.org/x/exp/slices"
 )
 
 var (
@@ -136,24 +135,6 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 	user.UserBots = parsedUserBots
 
 	// Get user teams
-
-	// Teams the user is a owner in
-	var userOwnerTeams []string
-
-	userOwnerTeamRows, err := state.Pool.Query(d.Context, "SELECT id FROM teams WHERE owner = $1", user.ID)
-
-	if err != nil {
-		state.Logger.Error(err)
-		return api.DefaultResponse(http.StatusInternalServerError)
-	}
-
-	err = pgxscan.ScanAll(&userOwnerTeams, userOwnerTeamRows)
-
-	if err != nil {
-		state.Logger.Error(err)
-		return api.DefaultResponse(http.StatusInternalServerError)
-	}
-
 	// Teams the user is a member in
 	var userTeams []string
 
@@ -169,13 +150,6 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 	if err != nil {
 		state.Logger.Error(err)
 		return api.DefaultResponse(http.StatusInternalServerError)
-	}
-
-	// Merge the two slices
-	for _, teamId := range userOwnerTeams {
-		if !slices.Contains(userTeams, teamId) {
-			userTeams = append(userTeams, teamId)
-		}
 	}
 
 	var teams = []types.UserTeam{}

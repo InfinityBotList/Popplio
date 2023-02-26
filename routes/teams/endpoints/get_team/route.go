@@ -58,17 +58,9 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 	}
 
 	var name string
-	var ownerId string
 	var avatar string
 
-	err = state.Pool.QueryRow(d.Context, "SELECT name, owner, avatar FROM teams WHERE id = $1", id).Scan(&name, &ownerId, &avatar)
-
-	if err != nil {
-		state.Logger.Error(err)
-		return api.DefaultResponse(http.StatusInternalServerError)
-	}
-
-	owner, err := utils.GetDiscordUser(d.Context, ownerId)
+	err = state.Pool.QueryRow(d.Context, "SELECT name, avatar FROM teams WHERE id = $1", id).Scan(&name, &avatar)
 
 	if err != nil {
 		state.Logger.Error(err)
@@ -145,12 +137,11 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 
 	return api.HttpResponse{
 		Json: types.Team{
-			ID:        id,
-			Name:      name,
-			MainOwner: owner,
-			Avatar:    avatar,
-			Members:   members,
-			UserBots:  parsedUserBots,
+			ID:       id,
+			Name:     name,
+			Avatar:   avatar,
+			Members:  members,
+			UserBots: parsedUserBots,
 		},
 	}
 }

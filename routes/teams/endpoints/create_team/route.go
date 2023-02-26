@@ -5,6 +5,7 @@ import (
 	"popplio/api"
 	"popplio/docs"
 	"popplio/state"
+	"popplio/teams"
 
 	"github.com/go-playground/validator/v10"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -59,8 +60,32 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 	}
 
 	// Create the team
+	tx, err := state.Pool.Begin(d.Context)
+
+	if err != nil {
+		state.Logger.Error(err)
+		return api.DefaultResponse(http.StatusInternalServerError)
+	}
+
+	defer tx.Rollback(d.Context)
+
 	var teamId pgtype.UUID
-	err = state.Pool.QueryRow(d.Context, "INSERT INTO teams (owner, name, avatar) VALUES ($1, $2, $3) RETURNING id", d.Auth.ID, payload.Name, payload.Avatar).Scan(&teamId)
+	err = tx.QueryRow(d.Context, "INSERT INTO teams (name, avatar) VALUES ($1, $2) RETURNING id", payload.Name, payload.Avatar).Scan(&teamId)
+
+	if err != nil {
+		state.Logger.Error(err)
+		return api.DefaultResponse(http.StatusInternalServerError)
+	}
+
+	// Add the user to the team
+	_, err = tx.Exec(d.Context, "INSERT INTO team_members (team_id, user_id, perms) VALUES ($1, $2, $3)", teamId, d.Auth.ID, []teams.TeamPermission{teams.TeamPermissionOwner})
+
+	if err != nil {
+		state.Logger.Error(err)
+		return api.DefaultResponse(http.StatusInternalServerError)
+	}
+
+	err = tx.Commit(d.Context)
 
 	if err != nil {
 		state.Logger.Error(err)
