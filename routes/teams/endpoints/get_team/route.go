@@ -8,6 +8,7 @@ import (
 	"popplio/types"
 	"popplio/utils"
 	"strings"
+	"time"
 
 	"github.com/georgysavva/scany/v2/pgxscan"
 	"github.com/go-chi/chi/v5"
@@ -77,7 +78,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 	// Next handle members
 	var members = []types.TeamMember{}
 
-	rows, err := state.Pool.Query(d.Context, "SELECT user_id, perms FROM team_members WHERE team_id = $1", id)
+	rows, err := state.Pool.Query(d.Context, "SELECT user_id, perms, created_at FROM team_members WHERE team_id = $1", id)
 
 	if err != nil {
 		state.Logger.Error(err)
@@ -89,8 +90,9 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 	for rows.Next() {
 		var userId string
 		var perms []string
+		var createdAt time.Time
 
-		err = rows.Scan(&userId, &perms)
+		err = rows.Scan(&userId, &perms, &createdAt)
 
 		if err != nil {
 			state.Logger.Error(err)
@@ -105,8 +107,9 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 		}
 
 		members = append(members, types.TeamMember{
-			User:  user,
-			Perms: perms,
+			User:      user,
+			Perms:     perms,
+			CreatedAt: createdAt,
 		})
 	}
 

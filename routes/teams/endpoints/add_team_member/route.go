@@ -132,6 +132,40 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 		}
 	}
 
+	// Check if user exists on IBL
+	var userExists bool
+
+	err = state.Pool.QueryRow(d.Context, "SELECT EXISTS(SELECT 1 FROM users WHERE user_id = $1)", payload.UserID).Scan(&userExists)
+
+	if err != nil {
+		state.Logger.Error(err)
+		return api.DefaultResponse(http.StatusInternalServerError)
+	}
+
+	if !userExists {
+		return api.HttpResponse{
+			Status: http.StatusBadRequest,
+			Json:   types.ApiError{Message: "User must login here at least once before you can add them", Error: true},
+		}
+	}
+
+	// Check that they aren't already a member
+	var memberExists bool
+
+	err = state.Pool.QueryRow(d.Context, "SELECT EXISTS(SELECT 1 FROM team_members WHERE team_id = $1 AND user_id = $2)", teamId, payload.UserID).Scan(&memberExists)
+
+	if err != nil {
+		state.Logger.Error(err)
+		return api.DefaultResponse(http.StatusInternalServerError)
+	}
+
+	if memberExists {
+		return api.HttpResponse{
+			Status: http.StatusBadRequest,
+			Json:   types.ApiError{Message: "User is already a member of this team", Error: true},
+		}
+	}
+
 	_, err = state.Pool.Exec(d.Context, "INSERT INTO team_members (team_id, user_id, perms) VALUES ($1, $2, $3)", teamId, payload.UserID, perms)
 
 	if err != nil {

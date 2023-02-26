@@ -1,5 +1,7 @@
 package types
 
+import "time"
+
 type Team struct {
 	ID        string       `json:"id"`
 	Name      string       `json:"name"`
@@ -10,6 +12,7 @@ type Team struct {
 }
 
 type TeamMember struct {
-	User  *DiscordUser `json:"user"`
-	Perms []string     `json:"perms"`
+	User      *DiscordUser `json:"user"`
+	Perms     []string     `json:"perms"`
+	CreatedAt time.Time    `json:"created_at"`
 }
