@@ -13,19 +13,21 @@ TODO:
 
 // MAKE SURE TO UPDATE INFINITY-NEXT utils/teams/teamPerms.ts WHEN UPDATING THIS
 const (
-	TeamPermissionUndefined         TeamPermission = ""                    // TeamPermissionUndefined is the default permission
-	TeamPermissionEditBotSettings   TeamPermission = "EDIT_BOT_SETTINGS"   // TeamPermissionManageBots is the permission to edit bot settings
-	TeamPermissionAddNewBots        TeamPermission = "ADD_NEW_BOTS"        // TeamPermissionAddNewBots is the permission to add new bots to the team
-	TeamPermissionResubmitBots      TeamPermission = "RESUBMIT_BOTS"       // TeamPermissionResubmitBots is the permission to resubmit bots on the team
-	TeamPermissionCertifyBots       TeamPermission = "CERTIFY_BOTS"        // TeamPermissionCertifyBots is the permission to request certification for bots on the team
-	TeamPermissionDeleteBots        TeamPermission = "DELETE_BOTS"         // TeamPermissionDeleteBots is the permission to delete bots from the team
-	TeamPermissionResetBotTokens    TeamPermission = "RESET_BOT_TOKEN"     // TeamPermissionResetToken is the permission to reset the bot's API token
-	TeamPermissionEditBotWebhooks   TeamPermission = "EDIT_BOT_WEBHOOKS"   // TeamPermissionEditBotWebhooks is the permission to edit bot webhook settings
-	TeamPermissionTestBotWebhooks   TeamPermission = "TEST_BOT_WEBHOOKS"   // TeamPermissionTestBotWebhooks is the permission to test bot webhooks
-	TeamPermissionSetBotVanity      TeamPermission = "SET_BOT_VANITY"      // TeamPermissionSetVanity is the permission to edit vanities for bots
-	TeamPermissionManageTeam        TeamPermission = "MANAGE_TEAM"         // TeamPermissionManageTeam is the permission to edit team settings
-	TeamPermissionManageTeamMembers TeamPermission = "MANAGE_TEAM_MEMBERS" // TeamPermissionAddNewTeamMembers is the permission to add or remove team members from the team
-	TeamPermissionOwner             TeamPermission = "OWNER"               // TeamPermissionOwner is the permission to do everything (as they're owner)
+	TeamPermissionUndefined                 TeamPermission = ""                             // TeamPermissionUndefined is the default permission
+	TeamPermissionEditBotSettings           TeamPermission = "EDIT_BOT_SETTINGS"            // TeamPermissionManageBots is the permission to edit bot settings
+	TeamPermissionAddNewBots                TeamPermission = "ADD_NEW_BOTS"                 // TeamPermissionAddNewBots is the permission to add new bots to the team
+	TeamPermissionResubmitBots              TeamPermission = "RESUBMIT_BOTS"                // TeamPermissionResubmitBots is the permission to resubmit bots on the team
+	TeamPermissionCertifyBots               TeamPermission = "CERTIFY_BOTS"                 // TeamPermissionCertifyBots is the permission to request certification for bots on the team
+	TeamPermissionDeleteBots                TeamPermission = "DELETE_BOTS"                  // TeamPermissionDeleteBots is the permission to delete bots from the team
+	TeamPermissionResetBotTokens            TeamPermission = "RESET_BOT_TOKEN"              // TeamPermissionResetToken is the permission to reset the bot's API token
+	TeamPermissionEditBotWebhooks           TeamPermission = "EDIT_BOT_WEBHOOKS"            // TeamPermissionEditBotWebhooks is the permission to edit bot webhook settings
+	TeamPermissionTestBotWebhooks           TeamPermission = "TEST_BOT_WEBHOOKS"            // TeamPermissionTestBotWebhooks is the permission to test bot webhooks
+	TeamPermissionSetBotVanity              TeamPermission = "SET_BOT_VANITY"               // TeamPermissionSetVanity is the permission to edit vanities for bots
+	TeamPermissionManageTeam                TeamPermission = "MANAGE_TEAM"                  // TeamPermissionManageTeam is the permission to edit team settings
+	TeamPermissionAddTeamMembers            TeamPermission = "ADD_TEAM_MEMBERS"             // TeamPermissionManageTeamMembers is the permission to add team members to the team
+	TeamPermissionRemoveTeamMembers         TeamPermission = "REMOVE_TEAM_MEMBERS"          // TeamPermissionRemoveTeamMembers is the permission to remove team members from the team
+	TeamPermissionEditTeamMemberPermissions TeamPermission = "EDIT_TEAM_MEMBER_PERMISSIONS" // TeamPermissionEditTeamMembers is the permission to edit team members' permissions
+	TeamPermissionOwner                     TeamPermission = "OWNER"                        // TeamPermissionOwner is the permission to do everything (as they're owner)
 )
 
 type PermDetailMap struct {
@@ -46,8 +48,20 @@ var TeamPermDetails = []PermDetailMap{
 	{TeamPermissionTestBotWebhooks, "Test Bot Webhooks", "Test bot webhooks. Note that this is a separate permission from 'Edit Bot Webhooks' and is required to test webhooks."},
 	{TeamPermissionSetBotVanity, "Set Bot Vanity", "Set vanity URLs for bots on the team"},
 	{TeamPermissionManageTeam, "Manage Team", "Edit team settings"},
-	{TeamPermissionManageTeamMembers, "Manage Team Members", "Add or remove team members from the team as well as edit their permissions"},
+	{TeamPermissionAddTeamMembers, "Add Team Members", "Add team members to the team. Also needs 'Edit Team Member Permissions'"},
+	{TeamPermissionRemoveTeamMembers, "Remove Team Members", "Remove team members from the team if they have all the permissions of the user they are removing. Does **NOT** need 'Edit Team Member Permissions'"},
+	{TeamPermissionEditTeamMemberPermissions, "Edit Team Member Permissions", "Edit team members' permissions"},
 	{TeamPermissionOwner, "Owner", "Do everything (as they're owner)"},
+}
+
+func isValidPerm(perm TeamPermission) bool {
+	for _, p := range TeamPermDetails {
+		if p.ID == perm {
+			return true
+		}
+	}
+
+	return false
 }
 
 // PermissionManager is a manager for team permissions
@@ -61,7 +75,7 @@ func NewPermissionManager(perms []TeamPermission) *PermissionManager {
 	var uniquePerms []TeamPermission
 
 	for _, perm := range perms {
-		if perm == TeamPermissionUndefined {
+		if perm == TeamPermissionUndefined || !isValidPerm(perm) {
 			continue
 		}
 

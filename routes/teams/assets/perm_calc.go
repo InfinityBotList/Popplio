@@ -51,7 +51,7 @@ func CheckPerms(managerPerms []teams.TeamPermission, oldPerms []teams.TeamPermis
 		return userPerms, nil
 	}
 
-	if !managerPermsManager.Has(teams.TeamPermissionManageTeamMembers) {
+	if !managerPermsManager.Has(teams.TeamPermissionEditTeamMemberPermissions) {
 		return nil, errors.New("you can't manage team members")
 	}
 
