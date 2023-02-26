@@ -11,12 +11,12 @@ import (
 	"github.com/go-chi/chi/v5"
 )
 
-const tagName = "Tickets + Transcripts"
+const tagName = "Teams"
 
 type Router struct{}
 
 func (b Router) Tag() (string, string) {
-	return tagName, "These API endpoints are related to our ticketting and transcripts system"
+	return tagName, "These API endpoints are related to our teams system"
 }
 
 func (b Router) Routes(r *chi.Mux) {
