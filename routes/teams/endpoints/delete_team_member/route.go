@@ -83,6 +83,23 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 		}
 	}
 
+	// Ensure user is a member of the team
+	var userCount int
+
+	err = state.Pool.QueryRow(d.Context, "SELECT COUNT(*) FROM team_members WHERE team_id = $1 AND user_id = $2", teamId, userId).Scan(&userCount)
+
+	if err != nil {
+		state.Logger.Error(err)
+		return api.DefaultResponse(http.StatusInternalServerError)
+	}
+
+	if userCount == 0 {
+		return api.HttpResponse{
+			Status: http.StatusForbidden,
+			Json:   types.ApiError{Message: "User is not a member of this team", Error: true},
+		}
+	}
+
 	// Get the manager's permissions
 	var managerPerms []teams.TeamPermission
 	err = state.Pool.QueryRow(d.Context, "SELECT perms FROM team_members WHERE team_id = $1 AND user_id = $2", teamId, d.Auth.ID).Scan(&managerPerms)
@@ -102,10 +119,10 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 		return api.DefaultResponse(http.StatusInternalServerError)
 	}
 
-	op := teams.NewPermissionManager(oldPerms)
+	mp := teams.NewPermissionManager(managerPerms)
 
 	// Ensure that if perms includes owner, that there is at least one other owner
-	if op.Has(teams.TeamPermissionOwner) {
+	if mp.Has(teams.TeamPermissionOwner) {
 		var ownerCount int
 
 		err = state.Pool.QueryRow(d.Context, "SELECT COUNT(*) FROM team_members WHERE team_id = $1 AND user_id != $2 AND perms && $3", teamId, userId, []teams.TeamPermission{teams.TeamPermissionOwner}).Scan(&ownerCount)
@@ -124,7 +141,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 	}
 
 	// Ensure that all permissions
-	if !op.Has(teams.TeamPermissionRemoveTeamMembers) {
+	if !mp.Has(teams.TeamPermissionRemoveTeamMembers) {
 		return api.HttpResponse{
 			Status: http.StatusForbidden,
 			Json:   types.ApiError{Message: "You do not have permission to remove team members", Error: true},
@@ -141,7 +158,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 		}
 	}
 
-	_, err = state.Pool.Exec(d.Context, "DELETE FROM teams WHERE id = $1", teamId)
+	_, err = state.Pool.Exec(d.Context, "DELETE FROM team_members WHERE team_id = $1 AND user_id = $2", teamId, userId)
 
 	if err != nil {
 		state.Logger.Error(err)
