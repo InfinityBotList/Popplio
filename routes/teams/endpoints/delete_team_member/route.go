@@ -11,22 +11,12 @@ import (
 	"popplio/utils"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/go-playground/validator/v10"
-	"golang.org/x/exp/slices"
-)
-
-type EditTeamMember struct {
-	Perms []teams.TeamPermission `json:"perms" validate:"required" msg:"Permissions must be a valid array of strings"`
-}
-
-var (
-	compiledMessages = api.CompileValidationErrors(EditTeamMember{})
 )
 
 func Docs() *docs.Doc {
 	return &docs.Doc{
-		Summary:     "Edit Team Member",
-		Description: "Edits a member to a team. Returns a 204 on success",
+		Summary:     "Delete Team Member",
+		Description: "Deletes a member from the team. Returns a 204 on success",
 		Params: []docs.Parameter{
 			{
 				Name:        "uid",
@@ -50,7 +40,6 @@ func Docs() *docs.Doc {
 				Schema:      docs.IdSchema,
 			},
 		},
-		Req:  EditTeamMember{},
 		Resp: types.ApiError{},
 	}
 }
@@ -75,22 +64,6 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 
 	if count == 0 {
 		return api.DefaultResponse(http.StatusNotFound)
-	}
-
-	var payload EditTeamMember
-
-	hresp, ok := api.MarshalReq(r, &payload)
-
-	if !ok {
-		return hresp
-	}
-
-	// Validate the payload
-	err = state.Validator.Struct(payload)
-
-	if err != nil {
-		errors := err.(validator.ValidationErrors)
-		return api.ValidatorErrorResponse(compiledMessages, errors)
 	}
 
 	// Ensure manager is a member of the team
@@ -129,38 +102,10 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 		return api.DefaultResponse(http.StatusInternalServerError)
 	}
 
-	perms, err := assets.CheckPerms(managerPerms, oldPerms, payload.Perms)
-
-	if err != nil {
-		return api.HttpResponse{
-			Status: http.StatusBadRequest,
-			Json:   types.ApiError{Message: err.Error(), Error: true},
-		}
-	}
-
-	if perms == nil {
-		perms = []teams.TeamPermission{}
-	}
-
-	// Check that they are a member
-	var memberExists bool
-
-	err = state.Pool.QueryRow(d.Context, "SELECT EXISTS(SELECT 1 FROM team_members WHERE team_id = $1 AND user_id = $2)", teamId, userId).Scan(&memberExists)
-
-	if err != nil {
-		state.Logger.Error(err)
-		return api.DefaultResponse(http.StatusInternalServerError)
-	}
-
-	if !memberExists {
-		return api.HttpResponse{
-			Status: http.StatusBadRequest,
-			Json:   types.ApiError{Message: "User is not already a member of this team", Error: true},
-		}
-	}
+	op := teams.NewPermissionManager(oldPerms)
 
 	// Ensure that if perms includes owner, that there is at least one other owner
-	if slices.Contains(managerPerms, teams.TeamPermissionOwner) && !slices.Contains(perms, teams.TeamPermissionOwner) {
+	if op.Has(teams.TeamPermissionOwner) {
 		var ownerCount int
 
 		err = state.Pool.QueryRow(d.Context, "SELECT COUNT(*) FROM team_members WHERE team_id = $1 AND user_id != $2 AND perms && $3", teamId, userId, []teams.TeamPermission{teams.TeamPermissionOwner}).Scan(&ownerCount)
@@ -178,7 +123,25 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 		}
 	}
 
-	_, err = state.Pool.Exec(d.Context, "UPDATE team_members SET perms = $1 WHERE team_id = $2 AND user_id = $3", perms, teamId, userId)
+	// Ensure that all permissions
+	if !op.Has(teams.TeamPermissionRemoveTeamMembers) {
+		return api.HttpResponse{
+			Status: http.StatusForbidden,
+			Json:   types.ApiError{Message: "You do not have permission to remove team members", Error: true},
+		}
+	}
+
+	// A remove is essentially the same as first converting oldPerms->managerPerms, then removing the user
+	_, err = assets.CheckPerms(managerPerms, oldPerms, managerPerms)
+
+	if err != nil {
+		return api.HttpResponse{
+			Status: http.StatusBadRequest,
+			Json:   types.ApiError{Message: err.Error(), Error: true},
+		}
+	}
+
+	_, err = state.Pool.Exec(d.Context, "DELETE FROM teams WHERE id = $1", teamId)
 
 	if err != nil {
 		state.Logger.Error(err)

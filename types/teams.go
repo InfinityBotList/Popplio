@@ -1,6 +1,9 @@
 package types
 
-import "time"
+import (
+	"popplio/teams"
+	"time"
+)
 
 type Team struct {
 	ID       string       `json:"id"`
@@ -11,7 +14,7 @@ type Team struct {
 }
 
 type TeamMember struct {
-	User      *DiscordUser `json:"user"`
-	Perms     []string     `json:"perms"`
-	CreatedAt time.Time    `json:"created_at"`
+	User      *DiscordUser           `json:"user"`
+	Perms     []teams.TeamPermission `json:"perms"`
+	CreatedAt time.Time              `json:"created_at"`
 }

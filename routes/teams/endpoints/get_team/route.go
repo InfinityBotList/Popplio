@@ -5,6 +5,7 @@ import (
 	"popplio/api"
 	"popplio/docs"
 	"popplio/state"
+	"popplio/teams"
 	"popplio/types"
 	"popplio/utils"
 	"strings"
@@ -81,7 +82,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 
 	for rows.Next() {
 		var userId string
-		var perms []string
+		var perms []teams.TeamPermission
 		var createdAt time.Time
 
 		err = rows.Scan(&userId, &perms, &createdAt)
@@ -100,7 +101,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 
 		members = append(members, types.TeamMember{
 			User:      user,
-			Perms:     perms,
+			Perms:     teams.NewPermissionManager(perms).Perms(),
 			CreatedAt: createdAt,
 		})
 	}

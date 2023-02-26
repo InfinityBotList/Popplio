@@ -119,6 +119,23 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 		return api.DefaultResponse(http.StatusInternalServerError)
 	}
 
+	// Check that they are a member
+	var memberExists bool
+
+	err = state.Pool.QueryRow(d.Context, "SELECT EXISTS(SELECT 1 FROM team_members WHERE team_id = $1 AND user_id = $2)", teamId, userId).Scan(&memberExists)
+
+	if err != nil {
+		state.Logger.Error(err)
+		return api.DefaultResponse(http.StatusInternalServerError)
+	}
+
+	if !memberExists {
+		return api.HttpResponse{
+			Status: http.StatusBadRequest,
+			Json:   types.ApiError{Message: "User is not already a member of this team", Error: true},
+		}
+	}
+
 	// Get the old permissions of the user
 	var oldPerms []teams.TeamPermission
 
@@ -140,23 +157,6 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 
 	if perms == nil {
 		perms = []teams.TeamPermission{}
-	}
-
-	// Check that they are a member
-	var memberExists bool
-
-	err = state.Pool.QueryRow(d.Context, "SELECT EXISTS(SELECT 1 FROM team_members WHERE team_id = $1 AND user_id = $2)", teamId, userId).Scan(&memberExists)
-
-	if err != nil {
-		state.Logger.Error(err)
-		return api.DefaultResponse(http.StatusInternalServerError)
-	}
-
-	if !memberExists {
-		return api.HttpResponse{
-			Status: http.StatusBadRequest,
-			Json:   types.ApiError{Message: "User is not already a member of this team", Error: true},
-		}
 	}
 
 	// Ensure that if perms includes owner, that there is at least one other owner

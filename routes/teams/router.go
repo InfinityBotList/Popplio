@@ -4,6 +4,7 @@ import (
 	"popplio/api"
 	"popplio/routes/teams/endpoints/add_team_member"
 	"popplio/routes/teams/endpoints/create_team"
+	"popplio/routes/teams/endpoints/delete_team_member"
 	"popplio/routes/teams/endpoints/edit_team_member"
 	"popplio/routes/teams/endpoints/get_team"
 	"popplio/routes/teams/endpoints/get_team_permissions"
@@ -71,6 +72,20 @@ func (b Router) Routes(r *chi.Mux) {
 		Method:  api.PATCH,
 		Docs:    edit_team_member.Docs,
 		Handler: edit_team_member.Route,
+		Auth: []api.AuthType{
+			{
+				Type:   types.TargetTypeUser,
+				URLVar: "uid",
+			},
+		},
+	}.Route(r)
+
+	api.Route{
+		Pattern: "/users/{uid}/teams/{tid}/members/{mid}",
+		OpId:    "delete_team_member",
+		Method:  api.DELETE,
+		Docs:    delete_team_member.Docs,
+		Handler: delete_team_member.Route,
 		Auth: []api.AuthType{
 			{
 				Type:   types.TargetTypeUser,
