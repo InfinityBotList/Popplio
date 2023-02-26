@@ -85,7 +85,17 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 		return api.ValidatorErrorResponse(compiledMessages, errors)
 	}
 
-	// Ensure manager is a member of the team
+	// Fetch owner
+	var owner string
+
+	err = state.Pool.QueryRow(d.Context, "SELECT owner FROM teams WHERE id = $1", teamId).Scan(&owner)
+
+	if err != nil {
+		state.Logger.Error(err)
+		return api.DefaultResponse(http.StatusInternalServerError)
+	}
+
+	// Ensure manager is a member of the team or the owner
 	var managerCount int
 
 	err = state.Pool.QueryRow(d.Context, "SELECT COUNT(*) FROM team_members WHERE team_id = $1 AND user_id = $2", teamId, d.Auth.ID).Scan(&managerCount)
@@ -95,20 +105,22 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 		return api.DefaultResponse(http.StatusInternalServerError)
 	}
 
-	if managerCount == 0 {
+	var managerPerms []teams.TeamPermission
+
+	if managerCount > 0 {
+		err = state.Pool.QueryRow(d.Context, "SELECT perms FROM team_members WHERE team_id = $1 AND user_id = $2", teamId, d.Auth.ID).Scan(&managerPerms)
+
+		if err != nil {
+			state.Logger.Error(err)
+			return api.DefaultResponse(http.StatusInternalServerError)
+		}
+	} else if owner == d.Auth.ID {
+		managerPerms = []teams.TeamPermission{teams.TeamPermissionOwner}
+	} else {
 		return api.HttpResponse{
 			Status: http.StatusForbidden,
 			Json:   types.ApiError{Message: "You are not a member of this team", Error: true},
 		}
-	}
-
-	var managerPerms []teams.TeamPermission
-
-	err = state.Pool.QueryRow(d.Context, "SELECT perms FROM team_members WHERE team_id = $1 AND user_id = $2", teamId, d.Auth.ID).Scan(&managerPerms)
-
-	if err != nil {
-		state.Logger.Error(err)
-		return api.DefaultResponse(http.StatusInternalServerError)
 	}
 
 	perms, err := assets.CheckPerms(managerPerms, payload.Perms)
