@@ -22,6 +22,11 @@ import (
 	"golang.org/x/exp/slices"
 )
 
+var (
+	userBotColsArr = GetCols(types.UserBot{})
+	userBotCols    = strings.Join(userBotColsArr, ",")
+)
+
 var json = jsoniter.ConfigCompatibleWithStandardLibrary
 
 // Returns if a string is empty/null or not. Used throughout the codebase
@@ -64,6 +69,53 @@ func ResolvePackVotes(ctx context.Context, url string) ([]types.PackVote, error)
 	}
 
 	return votes, nil
+}
+
+func ResolveTeamBots(ctx context.Context, teamId string) ([]types.UserBot, error) {
+	// Gets the bots of the team so we can add it to UserBots
+	var teamBotIds []string
+	var bots = []types.UserBot{}
+
+	teamBotRows, err := state.Pool.Query(ctx, "SELECT bot_id FROM bots WHERE team_owner = $1", teamId)
+
+	if err != nil {
+		return nil, err
+	}
+
+	err = pgxscan.ScanAll(&teamBotIds, teamBotRows)
+
+	if err != nil {
+		return nil, err
+	}
+
+	for _, botId := range teamBotIds {
+		userBotsRows, err := state.Pool.Query(ctx, "SELECT "+userBotCols+" FROM bots WHERE bot_id = $1", botId)
+
+		if err != nil {
+			return nil, err
+		}
+
+		var userBot = types.UserBot{}
+
+		err = pgxscan.ScanOne(&userBot, userBotsRows)
+
+		if err != nil {
+			return nil, err
+		}
+
+		userObj, err := GetDiscordUser(ctx, userBot.BotID)
+
+		if err != nil {
+			state.Logger.Error(err)
+			continue
+		}
+
+		userBot.User = userObj
+
+		bots = append(bots, userBot)
+	}
+
+	return bots, nil
 }
 
 func GetDiscordUser(ctx context.Context, id string) (userObj *types.DiscordUser, err error) {

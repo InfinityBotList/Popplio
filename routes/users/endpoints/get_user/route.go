@@ -26,8 +26,8 @@ var (
 	indexPackColsArr = utils.GetCols(types.IndexBotPack{})
 	indexPackCols    = strings.Join(indexPackColsArr, ",")
 
-	userTeamColsArr = utils.GetCols(types.UserTeam{})
-	userTeamCols    = strings.Join(userTeamColsArr, ",")
+	teamColsArr = utils.GetCols(types.Team{})
+	teamCols    = strings.Join(teamColsArr, ",")
 )
 
 func Docs() *docs.Doc {
@@ -120,20 +120,23 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 		return api.DefaultResponse(http.StatusInternalServerError)
 	}
 
-	parsedUserBots := []types.UserBot{}
-	for _, bot := range userBots {
-		userObj, err := utils.GetDiscordUser(d.Context, bot.BotID)
+	for i := range userBots {
+		userObj, err := utils.GetDiscordUser(d.Context, userBots[i].BotID)
 
 		if err != nil {
 			state.Logger.Error(err)
 			continue
 		}
 
-		bot.User = userObj
-		parsedUserBots = append(parsedUserBots, bot)
+		userBots[i].User = userObj
 	}
 
-	user.UserBots = parsedUserBots
+	user.UserBots = userBots
+
+	/*
+
+
+	 */
 
 	// Get user teams
 	// Teams the user is a member in
@@ -153,19 +156,19 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 		return api.DefaultResponse(http.StatusInternalServerError)
 	}
 
-	var userTeams = []types.UserTeam{}
+	var userTeams = []types.Team{}
 
 	for _, teamId := range userTeamIds {
-		var team = types.UserTeam{}
+		var team = types.Team{}
 
-		teamBotsRows, err := state.Pool.Query(d.Context, "SELECT "+userTeamCols+" FROM teams WHERE id = $1", teamId)
+		teamRows, err := state.Pool.Query(d.Context, "SELECT "+teamCols+" FROM teams WHERE id = $1", teamId)
 
 		if err != nil {
 			state.Logger.Error(err)
 			return api.DefaultResponse(http.StatusInternalServerError)
 		}
 
-		err = pgxscan.ScanOne(&team, teamBotsRows)
+		err = pgxscan.ScanOne(&team, teamRows)
 
 		if err != nil {
 			state.Logger.Error(err)
@@ -212,10 +215,26 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 
 		team.Members = members
 
+		// Gets the bots of the team so we can add it to UserBots
+		bots, err := utils.ResolveTeamBots(d.Context, teamId)
+
+		if err != nil {
+			state.Logger.Error(err)
+			return api.DefaultResponse(http.StatusInternalServerError)
+		}
+
+		userBots = append(userBots, bots...)
+		team.UserBots = bots
+
 		userTeams = append(userTeams, team)
 	}
 
 	user.UserTeams = userTeams
+
+	/*
+
+
+	 */
 
 	// Packs
 	packsRows, err := state.Pool.Query(d.Context, "SELECT "+indexPackCols+" FROM packs WHERE owner = $1 ORDER BY created_at DESC", user.ID)

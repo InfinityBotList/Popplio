@@ -25,8 +25,8 @@ var (
 	botColsArr = utils.GetCols(types.Bot{})
 	botCols    = strings.Join(botColsArr, ",")
 
-	userTeamColsArr = utils.GetCols(types.UserTeam{})
-	userTeamCols    = strings.Join(userTeamColsArr, ",")
+	teamColsArr = utils.GetCols(types.Team{})
+	teamCols    = strings.Join(teamColsArr, ",")
 )
 
 func Docs() *docs.Doc {
@@ -174,9 +174,9 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 
 		bot.MainOwner = ownerUser
 	} else {
-		var team = types.UserTeam{}
+		var team = types.Team{}
 
-		teamBotsRows, err := state.Pool.Query(d.Context, "SELECT "+userTeamCols+" FROM teams WHERE id = $1", bot.TeamOwnerID)
+		teamBotsRows, err := state.Pool.Query(d.Context, "SELECT "+teamCols+" FROM teams WHERE id = $1", bot.TeamOwnerID)
 
 		if err != nil {
 			state.Logger.Error(err)
@@ -229,6 +229,16 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 		}
 
 		team.Members = members
+
+		// Gets the bots of the team so we can add it to UserBots
+		bots, err := utils.ResolveTeamBots(d.Context, team.ID)
+
+		if err != nil {
+			state.Logger.Error(err)
+			return api.DefaultResponse(http.StatusInternalServerError)
+		}
+
+		team.UserBots = bots
 
 		bot.TeamOwner = &team
 	}

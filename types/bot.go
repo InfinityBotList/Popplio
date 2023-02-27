@@ -109,7 +109,7 @@ type Bot struct {
 	LastClaimed              pgtype.Timestamptz `db:"last_claimed" json:"last_claimed"`
 	WebhookHMAC              bool               `db:"hmac" json:"webhook_hmac_auth"`
 	TeamOwnerID              pgtype.UUID        `db:"team_owner" json:"-"`
-	TeamOwner                *UserTeam          `json:"team_owner"` // Must be parsed internally
+	TeamOwner                *Team              `json:"team_owner"` // Must be parsed internally
 }
 
 // All bots

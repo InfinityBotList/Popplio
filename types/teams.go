@@ -6,10 +6,10 @@ import (
 )
 
 type Team struct {
-	ID       string       `json:"id"`
-	Name     string       `json:"name"`
-	Avatar   string       `json:"avatar"`
-	Members  []TeamMember `json:"members"`
+	ID       string       `db:"id" json:"id"`
+	Name     string       `db:"name" json:"name"`
+	Avatar   string       `db:"avatar" json:"avatar"`
+	Members  []TeamMember `db:"-" json:"members"`
 	UserBots []UserBot    `json:"user_bots"` // Bots that are owned by the team
 }
 
