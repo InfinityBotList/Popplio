@@ -33,9 +33,10 @@ type User struct {
 }
 
 type UserTeam struct {
-	ID     string `db:"id" json:"id"`
-	Name   string `db:"name" json:"name"`
-	Avatar string `db:"avatar" json:"avatar"`
+	ID      string       `db:"id" json:"id"`
+	Name    string       `db:"name" json:"name"`
+	Avatar  string       `db:"avatar" json:"avatar"`
+	Members []TeamMember `db:"-" json:"members"`
 }
 
 type UserBot struct {

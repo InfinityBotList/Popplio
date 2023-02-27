@@ -39,7 +39,7 @@ type PermDetailMap struct {
 var TeamPermDetails = []PermDetailMap{
 	{TeamPermissionUndefined, "Undefined", "Undefined"},
 	{TeamPermissionEditBotSettings, "Edit Bot Settings", "Edit bot settings for bots on the team"},
-	{TeamPermissionAddNewBots, "Add New Bots", "Add new bots to the team"},
+	{TeamPermissionAddNewBots, "Add New Bots", "Add new bots to the team or allow transferring bots to this team"},
 	{TeamPermissionResubmitBots, "Resubmit Bots", "Resubmit bots on the team"},
 	{TeamPermissionCertifyBots, "Certify Bots", "Request certification for bots on the team"},
 	{TeamPermissionDeleteBots, "Delete Bots", "Delete bots from the team"},

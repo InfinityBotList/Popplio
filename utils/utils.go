@@ -372,7 +372,7 @@ func GetCols(s any) []string {
 // Also takes teams into account if the bot is in a team
 func GetUserBotPerms(ctx context.Context, userID string, botID string) (*teams.PermissionManager, error) {
 	var teamOwner pgtype.Text
-	var owner string
+	var owner pgtype.Text
 	var additionalOwners []string // Will be removed once teams are implemented
 	err := state.Pool.QueryRow(ctx, "SELECT team_owner, owner, additional_owners FROM bots WHERE bot_id = $1", botID).Scan(&teamOwner, &owner, &additionalOwners)
 
@@ -394,7 +394,7 @@ func GetUserBotPerms(ctx context.Context, userID string, botID string) (*teams.P
 		return teams.NewPermissionManager(teamPerms), nil
 	}
 
-	if owner == userID || slices.Contains(additionalOwners, userID) {
+	if owner.String == userID || slices.Contains(additionalOwners, userID) {
 		return teams.NewPermissionManager([]teams.TeamPermission{teams.TeamPermissionOwner}), nil
 	}
 

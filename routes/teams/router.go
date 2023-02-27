@@ -2,6 +2,7 @@ package teams
 
 import (
 	"popplio/api"
+	"popplio/routes/teams/endpoints/add_bot_to_team"
 	"popplio/routes/teams/endpoints/add_team_member"
 	"popplio/routes/teams/endpoints/create_team"
 	"popplio/routes/teams/endpoints/delete_team_member"
@@ -86,6 +87,20 @@ func (b Router) Routes(r *chi.Mux) {
 		Method:  api.DELETE,
 		Docs:    delete_team_member.Docs,
 		Handler: delete_team_member.Route,
+		Auth: []api.AuthType{
+			{
+				Type:   types.TargetTypeUser,
+				URLVar: "uid",
+			},
+		},
+	}.Route(r)
+
+	api.Route{
+		Pattern: "/users/{uid}/bots/{bid}/teams",
+		OpId:    "add_bot_to_team",
+		Method:  api.PATCH,
+		Docs:    add_bot_to_team.Docs,
+		Handler: add_bot_to_team.Route,
 		Auth: []api.AuthType{
 			{
 				Type:   types.TargetTypeUser,

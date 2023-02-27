@@ -26,7 +26,7 @@ var json = jsoniter.ConfigCompatibleWithStandardLibrary
 type internalData struct {
 	QueueName   *string
 	QueueAvatar *string
-	Owner       *string
+	Owner       string
 	Vanity      *string
 	GuildCount  *int
 }
@@ -50,7 +50,7 @@ type CreateBot struct {
 	// Not needed to send
 	QueueName   *string `db:"queue_name" json:"-"`
 	QueueAvatar *string `db:"queue_avatar" json:"-"`
-	Owner       *string `db:"owner" json:"-"`
+	Owner       string  `db:"owner" json:"-"`
 	Vanity      *string `db:"vanity" json:"-"`
 	GuildCount  *int    `db:"servers" json:"-"`
 }
@@ -350,7 +350,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 
 	id.QueueName = &resp.botName
 	id.QueueAvatar = &resp.botAvatar
-	id.Owner = &d.Auth.ID
+	id.Owner = d.Auth.ID
 	id.GuildCount = &resp.guildCount
 
 	if payload.StaffNote == nil {

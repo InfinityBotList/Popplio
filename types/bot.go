@@ -69,7 +69,7 @@ type Bot struct {
 	Tags                     []string           `db:"tags" json:"tags"`
 	Prefix                   pgtype.Text        `db:"prefix" json:"prefix"`
 	User                     *DiscordUser       `json:"user"` // Must be parsed internally
-	Owner                    string             `db:"owner" json:"-"`
+	Owner                    pgtype.Text        `db:"owner" json:"-"`
 	MainOwner                *DiscordUser       `json:"owner"` // Must be parsed internally
 	AdditionalOwners         []string           `db:"additional_owners" json:"-"`
 	ResolvedAdditionalOwners []*DiscordUser     `json:"additional_owners"` // Must be parsed internally
@@ -108,7 +108,8 @@ type Bot struct {
 	CreatedAt                pgtype.Timestamptz `db:"created_at" json:"created_at"`
 	LastClaimed              pgtype.Timestamptz `db:"last_claimed" json:"last_claimed"`
 	WebhookHMAC              bool               `db:"hmac" json:"webhook_hmac_auth"`
-	TeamOwner                pgtype.UUID        `db:"team_owner" json:"team_owner"`
+	TeamOwnerID              pgtype.UUID        `db:"team_owner" json:"-"`
+	TeamOwner                *UserTeam          `json:"team_owner"` // Must be parsed internally
 }
 
 // All bots

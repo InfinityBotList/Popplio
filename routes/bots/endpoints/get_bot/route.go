@@ -11,6 +11,7 @@ import (
 	"popplio/constants"
 	"popplio/docs"
 	"popplio/state"
+	"popplio/teams"
 	"popplio/types"
 	"popplio/utils"
 
@@ -23,6 +24,9 @@ import (
 var (
 	botColsArr = utils.GetCols(types.Bot{})
 	botCols    = strings.Join(botColsArr, ",")
+
+	userTeamColsArr = utils.GetCols(types.UserTeam{})
+	userTeamCols    = strings.Join(userTeamColsArr, ",")
 )
 
 func Docs() *docs.Doc {
@@ -160,16 +164,76 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 		bot.Invite.String = ""
 	}
 
-	ownerUser, err := utils.GetDiscordUser(d.Context, bot.Owner)
+	if bot.Owner.Valid {
+		ownerUser, err := utils.GetDiscordUser(d.Context, bot.Owner.String)
 
-	if err != nil {
-		state.Logger.Error(err)
-		return api.DefaultResponse(http.StatusNotFound)
+		if err != nil {
+			state.Logger.Error(err)
+			return api.DefaultResponse(http.StatusNotFound)
+		}
+
+		bot.MainOwner = ownerUser
+	} else {
+		var team = types.UserTeam{}
+
+		teamBotsRows, err := state.Pool.Query(d.Context, "SELECT "+userTeamCols+" FROM teams WHERE id = $1", bot.TeamOwnerID)
+
+		if err != nil {
+			state.Logger.Error(err)
+			return api.DefaultResponse(http.StatusInternalServerError)
+		}
+
+		err = pgxscan.ScanOne(&team, teamBotsRows)
+
+		if err != nil {
+			state.Logger.Error(err)
+			return api.DefaultResponse(http.StatusInternalServerError)
+		}
+
+		// Next handle members
+		var members = []types.TeamMember{}
+
+		rows, err := state.Pool.Query(d.Context, "SELECT user_id, perms, created_at FROM team_members WHERE team_id = $1", bot.TeamOwnerID)
+
+		if err != nil {
+			state.Logger.Error(err)
+			return api.DefaultResponse(http.StatusInternalServerError)
+		}
+
+		defer rows.Close()
+
+		for rows.Next() {
+			var userId string
+			var perms []teams.TeamPermission
+			var createdAt time.Time
+
+			err = rows.Scan(&userId, &perms, &createdAt)
+
+			if err != nil {
+				state.Logger.Error(err)
+				return api.DefaultResponse(http.StatusInternalServerError)
+			}
+
+			user, err := utils.GetDiscordUser(d.Context, userId)
+
+			if err != nil {
+				state.Logger.Error(err)
+				return api.DefaultResponse(http.StatusInternalServerError)
+			}
+
+			members = append(members, types.TeamMember{
+				User:      user,
+				Perms:     teams.NewPermissionManager(perms).Perms(),
+				CreatedAt: createdAt,
+			})
+		}
+
+		team.Members = members
+
+		bot.TeamOwner = &team
 	}
 
 	bot.SubPeriodParsed = types.NewInterval(bot.SubPeriod)
-
-	bot.MainOwner = ownerUser
 
 	botUser, err := utils.GetDiscordUser(d.Context, bot.BotID)
 

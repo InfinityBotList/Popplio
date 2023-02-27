@@ -8,6 +8,7 @@ import (
 	"popplio/api"
 	"popplio/docs"
 	"popplio/state"
+	"popplio/teams"
 	"popplio/types"
 	"popplio/utils"
 
@@ -136,7 +137,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 
 	// Get user teams
 	// Teams the user is a member in
-	var userTeams []string
+	var userTeamIds []string
 
 	userTeamRows, err := state.Pool.Query(d.Context, "SELECT team_id FROM team_members WHERE user_id = $1", user.ID)
 
@@ -145,16 +146,16 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 		return api.DefaultResponse(http.StatusInternalServerError)
 	}
 
-	err = pgxscan.ScanAll(&userTeams, userTeamRows)
+	err = pgxscan.ScanAll(&userTeamIds, userTeamRows)
 
 	if err != nil {
 		state.Logger.Error(err)
 		return api.DefaultResponse(http.StatusInternalServerError)
 	}
 
-	var teams = []types.UserTeam{}
+	var userTeams = []types.UserTeam{}
 
-	for _, teamId := range userTeams {
+	for _, teamId := range userTeamIds {
 		var team = types.UserTeam{}
 
 		teamBotsRows, err := state.Pool.Query(d.Context, "SELECT "+userTeamCols+" FROM teams WHERE id = $1", teamId)
@@ -171,10 +172,50 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 			return api.DefaultResponse(http.StatusInternalServerError)
 		}
 
-		teams = append(teams, team)
+		// Next handle members
+		var members = []types.TeamMember{}
+
+		rows, err := state.Pool.Query(d.Context, "SELECT user_id, perms, created_at FROM team_members WHERE team_id = $1", teamId)
+
+		if err != nil {
+			state.Logger.Error(err)
+			return api.DefaultResponse(http.StatusInternalServerError)
+		}
+
+		defer rows.Close()
+
+		for rows.Next() {
+			var userId string
+			var perms []teams.TeamPermission
+			var createdAt time.Time
+
+			err = rows.Scan(&userId, &perms, &createdAt)
+
+			if err != nil {
+				state.Logger.Error(err)
+				return api.DefaultResponse(http.StatusInternalServerError)
+			}
+
+			user, err := utils.GetDiscordUser(d.Context, userId)
+
+			if err != nil {
+				state.Logger.Error(err)
+				return api.DefaultResponse(http.StatusInternalServerError)
+			}
+
+			members = append(members, types.TeamMember{
+				User:      user,
+				Perms:     teams.NewPermissionManager(perms).Perms(),
+				CreatedAt: createdAt,
+			})
+		}
+
+		team.Members = members
+
+		userTeams = append(userTeams, team)
 	}
 
-	user.UserTeams = teams
+	user.UserTeams = userTeams
 
 	// Packs
 	packsRows, err := state.Pool.Query(d.Context, "SELECT "+indexPackCols+" FROM packs WHERE owner = $1 ORDER BY created_at DESC", user.ID)
