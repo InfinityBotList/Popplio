@@ -253,19 +253,6 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 
 	bot.User = botUser
 
-	bot.ResolvedAdditionalOwners = []*types.DiscordUser{}
-
-	for _, owner := range bot.AdditionalOwners {
-		ownerUser, err := utils.GetDiscordUser(d.Context, owner)
-
-		if err != nil {
-			state.Logger.Error(err)
-			continue
-		}
-
-		bot.ResolvedAdditionalOwners = append(bot.ResolvedAdditionalOwners, ownerUser)
-	}
-
 	var uniqueClicks int64
 	err = state.Pool.QueryRow(d.Context, "SELECT cardinality(unique_clicks) AS unique_clicks FROM bots WHERE bot_id = $1", bot.BotID).Scan(&uniqueClicks)
 

@@ -33,22 +33,21 @@ type User struct {
 }
 
 type UserBot struct {
-	BotID              string       `db:"bot_id" json:"bot_id"`
-	User               *DiscordUser `db:"-" json:"user"`
-	Short              string       `db:"short" json:"short"`
-	Type               string       `db:"type" json:"type"`
-	Vanity             string       `db:"vanity" json:"vanity"`
-	Votes              int          `db:"votes" json:"votes"`
-	Shards             int          `db:"shards" json:"shards"`
-	Library            string       `db:"library" json:"library"`
-	InviteClicks       int          `db:"invite_clicks" json:"invite_clicks"`
-	Views              int          `db:"clicks" json:"clicks"`
-	Servers            int          `db:"servers" json:"servers"`
-	NSFW               bool         `db:"nsfw" json:"nsfw"`
-	Tags               []string     `db:"tags" json:"tags"`
-	OwnerID            pgtype.Text  `db:"owner" json:"owner_id"`
-	Premium            bool         `db:"premium" json:"premium"`
-	AdditionalOwnerIDS []string     `db:"additional_owners" json:"additional_owner_ids"`
+	BotID        string       `db:"bot_id" json:"bot_id"`
+	User         *DiscordUser `db:"-" json:"user"`
+	Short        string       `db:"short" json:"short"`
+	Type         string       `db:"type" json:"type"`
+	Vanity       string       `db:"vanity" json:"vanity"`
+	Votes        int          `db:"votes" json:"votes"`
+	Shards       int          `db:"shards" json:"shards"`
+	Library      string       `db:"library" json:"library"`
+	InviteClicks int          `db:"invite_clicks" json:"invite_clicks"`
+	Views        int          `db:"clicks" json:"clicks"`
+	Servers      int          `db:"servers" json:"servers"`
+	NSFW         bool         `db:"nsfw" json:"nsfw"`
+	Tags         []string     `db:"tags" json:"tags"`
+	OwnerID      pgtype.Text  `db:"owner" json:"owner_id"`
+	Premium      bool         `db:"premium" json:"premium"`
 }
 
 type UserPerm struct {

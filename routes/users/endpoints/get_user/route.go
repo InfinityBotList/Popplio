@@ -104,7 +104,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 
 	user.User = userObj
 
-	userBotsRows, err := state.Pool.Query(d.Context, "SELECT "+userBotCols+" FROM bots WHERE owner = $1 OR additional_owners && $2", user.ID, []string{user.ID})
+	userBotsRows, err := state.Pool.Query(d.Context, "SELECT "+userBotCols+" FROM bots WHERE owner = $1", user.ID, []string{user.ID})
 
 	if err != nil {
 		state.Logger.Error(err)

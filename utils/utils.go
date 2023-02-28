@@ -19,7 +19,6 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 	jsoniter "github.com/json-iterator/go"
 	"go.uber.org/zap"
-	"golang.org/x/exp/slices"
 )
 
 var (
@@ -425,14 +424,13 @@ func GetCols(s any) []string {
 func GetUserBotPerms(ctx context.Context, userID string, botID string) (*teams.PermissionManager, error) {
 	var teamOwner pgtype.Text
 	var owner pgtype.Text
-	var additionalOwners []string // Will be removed once teams are implemented
-	err := state.Pool.QueryRow(ctx, "SELECT team_owner, owner, additional_owners FROM bots WHERE bot_id = $1", botID).Scan(&teamOwner, &owner, &additionalOwners)
+	err := state.Pool.QueryRow(ctx, "SELECT team_owner, owner FROM bots WHERE bot_id = $1", botID).Scan(&teamOwner, &owner)
 
 	if err != nil {
 		return &teams.PermissionManager{}, fmt.Errorf("error finding bot: %v", err)
 	}
 
-	// Team overrides everything
+	// Handle teams
 	if teamOwner.Valid && teamOwner.String != "" {
 		// Get the team member from the team
 		var teamPerms []teams.TeamPermission
@@ -446,7 +444,7 @@ func GetUserBotPerms(ctx context.Context, userID string, botID string) (*teams.P
 		return teams.NewPermissionManager(teamPerms), nil
 	}
 
-	if owner.String == userID || slices.Contains(additionalOwners, userID) {
+	if owner.String == userID {
 		return teams.NewPermissionManager([]teams.TeamPermission{teams.TeamPermissionOwner}), nil
 	}
 
