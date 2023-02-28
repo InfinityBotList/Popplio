@@ -9,6 +9,7 @@ import (
 	"popplio/routes/teams/endpoints/edit_team_member"
 	"popplio/routes/teams/endpoints/get_team"
 	"popplio/routes/teams/endpoints/get_team_permissions"
+	"popplio/routes/teams/endpoints/patch_bot_team"
 	"popplio/types"
 
 	"github.com/go-chi/chi/v5"
@@ -101,6 +102,20 @@ func (b Router) Routes(r *chi.Mux) {
 		Method:  api.PUT,
 		Docs:    add_bot_to_team.Docs,
 		Handler: add_bot_to_team.Route,
+		Auth: []api.AuthType{
+			{
+				Type:   types.TargetTypeUser,
+				URLVar: "uid",
+			},
+		},
+	}.Route(r)
+
+	api.Route{
+		Pattern: "/users/{uid}/bots/{bid}/teams",
+		OpId:    "patch_bot_team",
+		Method:  api.PATCH,
+		Docs:    patch_bot_team.Docs,
+		Handler: patch_bot_team.Route,
 		Auth: []api.AuthType{
 			{
 				Type:   types.TargetTypeUser,

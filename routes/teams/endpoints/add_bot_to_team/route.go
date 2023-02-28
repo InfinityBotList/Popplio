@@ -190,10 +190,11 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 		Embeds: []*discordgo.MessageEmbed{
 			{
 				URL:   state.Config.Sites.Frontend + "/bots/" + botId,
-				Title: "Bot Team Transferred (please audit!)",
+				Title: "Bot Moved To Team (please audit!)",
 				Fields: []*discordgo.MessageEmbedField{
 					{
-						Name:   fmt.Sprintf("<@%s>", payload.TeamID),
+						Name:   "Team",
+						Value:  fmt.Sprintf("[View Team](%s/team/%s)", state.Config.Sites.Frontend, payload.TeamID),
 						Inline: true,
 					},
 					{

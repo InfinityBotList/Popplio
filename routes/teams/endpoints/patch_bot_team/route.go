@@ -189,7 +189,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 		Embeds: []*discordgo.MessageEmbed{
 			{
 				URL:   state.Config.Sites.Frontend + "/bots/" + botId,
-				Title: "Bot Team Moved (please audit!)",
+				Title: "Bot Team Update (please audit!)",
 				Fields: []*discordgo.MessageEmbedField{
 					{
 						Name:   "Bot ID",
@@ -202,14 +202,12 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 						Inline: true,
 					},
 					{
-						Name: "Old Team",
-						Value: func() string {
-							if currentBotTeam.Valid {
-								return encodeUUID(currentBotTeam.Bytes)
-							}
-
-							return "None"
-						}(),
+						Name:  "Old Team",
+						Value: fmt.Sprintf("[View Team](%s/team/%s)", state.Config.Sites.Frontend, encodeUUID(currentBotTeam.Bytes)),
+					},
+					{
+						Name:  "New Team",
+						Value: fmt.Sprintf("[View Team](%s/team/%s)", state.Config.Sites.Frontend, payload.TeamID),
 					},
 				},
 			},
