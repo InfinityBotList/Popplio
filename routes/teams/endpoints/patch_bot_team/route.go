@@ -1,4 +1,4 @@
-package add_bot_to_team
+package patch_bot_team
 
 import (
 	"fmt"
@@ -16,26 +16,30 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-type AddBotTeam struct {
+type PatchBotTeam struct {
 	TeamID string `json:"team_id" validate:"required"`
 }
 
 var (
-	compiledMessages = api.CompileValidationErrors(AddBotTeam{})
+	compiledMessages = api.CompileValidationErrors(PatchBotTeam{})
 )
 
 func Docs() *docs.Doc {
 	return &docs.Doc{
-		Summary: "Add Bot To Team",
-		Description: `Transfers a bot owned by a user. 
+		Summary: "Patch Bot Team",
+		Description: `Transfers a bot owned by a team to another team. 
 
-The below are the requirements for this:
+Semantically equivalent to:
+- Remove bot in question from list
+- Readd bot to list with same data
+- Transfer bot ownership to team
 
-- The bot must not be already owned by a team (see the "Patch Bot Team" endpoint for transferring a bot from a team to a team)
-- The bot must be owned by the user making the request
+The below are the requirements for this due to the above:
+
+- The user must have the "Delete Bots" permission in the team they are transferring the bot from
 - The user must have the "Add New Bots" permission in the team they are transferring the bot to
 
-The bots ownership will be transferred to the team.
+The bots ownership will be transferred to to the team.
 
 Returns a 204 on success`,
 		Params: []docs.Parameter{
@@ -54,7 +58,7 @@ Returns a 204 on success`,
 				Schema:      docs.IdSchema,
 			},
 		},
-		Req:  AddBotTeam{},
+		Req:  PatchBotTeam{},
 		Resp: types.ApiError{},
 	}
 }
@@ -62,7 +66,7 @@ Returns a 204 on success`,
 func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 	botId := chi.URLParam(r, "bid")
 
-	var payload AddBotTeam
+	var payload PatchBotTeam
 
 	hresp, ok := api.MarshalReq(r, &payload)
 
@@ -78,36 +82,48 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 		return api.ValidatorErrorResponse(compiledMessages, errors)
 	}
 
-	// Check linked main owner
-	var linkedOwnerId pgtype.Text
-	var teamOwner pgtype.Text
+	// Get current team of bot
+	var currentBotTeam pgtype.UUID
 
-	err = state.Pool.QueryRow(d.Context, "SELECT owner FROM bots WHERE bot_id = $1", botId).Scan(&linkedOwnerId)
-
-	if err != nil {
-		state.Logger.Error(err)
-		return api.DefaultResponse(http.StatusInternalServerError)
-	}
-
-	err = state.Pool.QueryRow(d.Context, "SELECT team_owner FROM bots WHERE bot_id = $1", botId).Scan(&teamOwner)
+	err = state.Pool.QueryRow(d.Context, "SELECT team_owner FROM bots WHERE bot_id = $1", botId).Scan(&currentBotTeam)
 
 	if err != nil {
 		state.Logger.Error(err)
 		return api.DefaultResponse(http.StatusInternalServerError)
 	}
 
-	if teamOwner.Valid {
+	if !currentBotTeam.Valid {
 		return api.HttpResponse{
-			Status: http.StatusForbidden,
-			Json:   types.ApiError{Message: "This bot is already in a team", Error: true},
+			Status: http.StatusNotFound,
+			Json:   types.ApiError{Message: "This bot is not in a team?", Error: true},
 		}
 	}
 
-	if linkedOwnerId.Valid && linkedOwnerId.String != d.Auth.ID {
+	// Check if manager
+	// Ensure manager is a member of the team
+	var managerCount int
+
+	err = state.Pool.QueryRow(d.Context, "SELECT COUNT(*) FROM team_members WHERE team_id = $1 AND user_id = $2", currentBotTeam, d.Auth.ID).Scan(&managerCount)
+
+	if err != nil {
+		state.Logger.Error(err)
+		return api.DefaultResponse(http.StatusInternalServerError)
+	}
+
+	if managerCount == 0 {
 		return api.HttpResponse{
 			Status: http.StatusForbidden,
-			Json:   types.ApiError{Message: "You must be the owner to transfer a bot to a team", Error: true},
+			Json:   types.ApiError{Message: "You are not a member of this team", Error: true},
 		}
+	}
+
+	// Get the manager's permissions in current team
+	var managerPerms []teams.TeamPermission
+	err = state.Pool.QueryRow(d.Context, "SELECT perms FROM team_members WHERE team_id = $1 AND user_id = $2", currentBotTeam, d.Auth.ID).Scan(&managerPerms)
+
+	if err != nil {
+		state.Logger.Error(err)
+		return api.DefaultResponse(http.StatusInternalServerError)
 	}
 
 	// Convert ID to UUID
@@ -118,6 +134,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 		}
 	}
 
+	// Find new team
 	var count int
 
 	err = state.Pool.QueryRow(d.Context, "SELECT COUNT(*) FROM teams WHERE id = $1", payload.TeamID).Scan(&count)
@@ -134,45 +151,27 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 		}
 	}
 
-	// Ensure manager is a member of the team
-	var managerCount int
+	// Get manager perms in new team
+	var newTeamPerms []teams.TeamPermission
 
-	err = state.Pool.QueryRow(d.Context, "SELECT COUNT(*) FROM team_members WHERE team_id = $1 AND user_id = $2", payload.TeamID, d.Auth.ID).Scan(&managerCount)
-
-	if err != nil {
-		state.Logger.Error(err)
-		return api.DefaultResponse(http.StatusInternalServerError)
-	}
-
-	if managerCount == 0 {
-		return api.HttpResponse{
-			Status: http.StatusForbidden,
-			Json:   types.ApiError{Message: "You are not a member of this team", Error: true},
-		}
-	}
-
-	var managerPerms []teams.TeamPermission
-	err = state.Pool.QueryRow(d.Context, "SELECT perms FROM team_members WHERE team_id = $1 AND user_id = $2", payload.TeamID, d.Auth.ID).Scan(&managerPerms)
+	err = state.Pool.QueryRow(d.Context, "SELECT perms FROM team_members WHERE team_id = $1 AND user_id = $2", payload.TeamID, d.Auth.ID).Scan(&newTeamPerms)
 
 	if err != nil {
 		state.Logger.Error(err)
 		return api.DefaultResponse(http.StatusInternalServerError)
 	}
 
-	mp := teams.NewPermissionManager(managerPerms)
-
-	if !mp.Has(teams.TeamPermissionAddNewBots) {
+	if !teams.NewPermissionManager(managerPerms).Has(teams.TeamPermissionDeleteBots) {
 		return api.HttpResponse{
 			Status: http.StatusForbidden,
-			Json:   types.ApiError{Message: "You do not have permission to add new bots", Error: true},
+			Json:   types.ApiError{Message: "You must be able to delete bots on the current team", Error: true},
 		}
 	}
 
-	// Check if bot is already in the team
-	if teamOwner.String == payload.TeamID {
+	if !teams.NewPermissionManager(newTeamPerms).Has(teams.TeamPermissionAddNewBots) {
 		return api.HttpResponse{
-			Status: http.StatusConflict,
-			Json:   types.ApiError{Message: "This bot is already in the team", Error: true},
+			Status: http.StatusForbidden,
+			Json:   types.ApiError{Message: "You must be able to add new bots on the new team", Error: true},
 		}
 	}
 
@@ -190,12 +189,8 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 		Embeds: []*discordgo.MessageEmbed{
 			{
 				URL:   state.Config.Sites.Frontend + "/bots/" + botId,
-				Title: "Bot Team Transferred (please audit!)",
+				Title: "Bot Team Moved (please audit!)",
 				Fields: []*discordgo.MessageEmbedField{
-					{
-						Name:   fmt.Sprintf("<@%s>", payload.TeamID),
-						Inline: true,
-					},
 					{
 						Name:   "Bot ID",
 						Value:  botId,
@@ -206,10 +201,24 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 						Value:  fmt.Sprintf("<@%s>", d.Auth.ID),
 						Inline: true,
 					},
+					{
+						Name: "Old Team",
+						Value: func() string {
+							if currentBotTeam.Valid {
+								return encodeUUID(currentBotTeam.Bytes)
+							}
+
+							return "None"
+						}(),
+					},
 				},
 			},
 		},
 	})
 
 	return api.DefaultResponse(http.StatusNoContent)
+}
+
+func encodeUUID(src [16]byte) string {
+	return fmt.Sprintf("%x-%x-%x-%x-%x", src[0:4], src[4:6], src[6:8], src[8:10], src[10:16])
 }

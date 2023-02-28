@@ -98,7 +98,7 @@ func (b Router) Routes(r *chi.Mux) {
 	api.Route{
 		Pattern: "/users/{uid}/bots/{bid}/teams",
 		OpId:    "add_bot_to_team",
-		Method:  api.PATCH,
+		Method:  api.PUT,
 		Docs:    add_bot_to_team.Docs,
 		Handler: add_bot_to_team.Route,
 		Auth: []api.AuthType{
