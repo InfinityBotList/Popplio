@@ -16,7 +16,6 @@ import (
 	"github.com/bwmarrin/discordgo"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-playground/validator/v10"
-	"golang.org/x/exp/slices"
 )
 
 type BotSettingsUpdate struct {
@@ -136,25 +135,6 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 		return api.ValidatorErrorResponse(compiledMessages, errors)
 	}
 
-	// Get main owner
-	var mainOwner string
-
-	err = state.Pool.QueryRow(d.Context, "SELECT owner FROM bots WHERE bot_id = $1", id).Scan(&mainOwner)
-
-	if err != nil {
-		return api.DefaultResponse(http.StatusInternalServerError)
-	}
-
-	if slices.Contains(payload.AdditionalOwners, mainOwner) {
-		return api.HttpResponse{
-			Status: http.StatusBadRequest,
-			Json: types.ApiError{
-				Message: "The main owner cannot be an additional owner",
-				Error:   true,
-			},
-		}
-	}
-
 	err = utils.ValidateExtraLinks(payload.ExtraLinks)
 
 	if err != nil {
@@ -258,11 +238,6 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 					{
 						Name:   "User",
 						Value:  fmt.Sprintf("<@%s>", d.Auth.ID),
-						Inline: true,
-					},
-					{
-						Name:   "Main Owner",
-						Value:  fmt.Sprintf("<@%s>", mainOwner),
 						Inline: true,
 					},
 					{

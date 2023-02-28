@@ -115,7 +115,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 	id, err := utils.ResolveBot(state.Context, name)
 
 	if err != nil {
-		state.Logger.Error(err)
+		state.Logger.Error("Resolve Error", err)
 		return api.DefaultResponse(http.StatusInternalServerError)
 	}
 
@@ -184,7 +184,6 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 		}
 
 		err = pgxscan.ScanOne(&team, teamBotsRows)
-
 		if err != nil {
 			state.Logger.Error(err)
 			return api.DefaultResponse(http.StatusInternalServerError)

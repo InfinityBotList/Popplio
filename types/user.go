@@ -46,7 +46,7 @@ type UserBot struct {
 	Servers            int          `db:"servers" json:"servers"`
 	NSFW               bool         `db:"nsfw" json:"nsfw"`
 	Tags               []string     `db:"tags" json:"tags"`
-	OwnerID            string       `db:"owner" json:"owner_id"`
+	OwnerID            pgtype.Text  `db:"owner" json:"owner_id"`
 	Premium            bool         `db:"premium" json:"premium"`
 	AdditionalOwnerIDS []string     `db:"additional_owners" json:"additional_owner_ids"`
 }

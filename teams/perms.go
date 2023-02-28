@@ -18,7 +18,6 @@ const (
 	TeamPermissionAddNewBots                TeamPermission = "ADD_NEW_BOTS"
 	TeamPermissionResubmitBots              TeamPermission = "RESUBMIT_BOTS"
 	TeamPermissionCertifyBots               TeamPermission = "CERTIFY_BOTS"
-	TeamPermissionDeleteBots                TeamPermission = "DELETE_BOTS"
 	TeamPermissionResetBotTokens            TeamPermission = "RESET_BOT_TOKEN"
 	TeamPermissionEditBotWebhooks           TeamPermission = "EDIT_BOT_WEBHOOKS"
 	TeamPermissionTestBotWebhooks           TeamPermission = "TEST_BOT_WEBHOOKS"
@@ -27,6 +26,7 @@ const (
 	TeamPermissionAddTeamMembers            TeamPermission = "ADD_TEAM_MEMBERS"
 	TeamPermissionRemoveTeamMembers         TeamPermission = "REMOVE_TEAM_MEMBERS"
 	TeamPermissionEditTeamMemberPermissions TeamPermission = "EDIT_TEAM_MEMBER_PERMISSIONS"
+	TeamPermissionDeleteBots                TeamPermission = "DELETE_BOTS"
 	TeamPermissionOwner                     TeamPermission = "OWNER"
 )
 
@@ -42,7 +42,6 @@ var TeamPermDetails = []PermDetailMap{
 	{TeamPermissionAddNewBots, "Add New Bots", "Add new bots to the team or allow transferring bots to this team"},
 	{TeamPermissionResubmitBots, "Resubmit Bots", "Resubmit bots on the team"},
 	{TeamPermissionCertifyBots, "Certify Bots", "Request certification for bots on the team"},
-	{TeamPermissionDeleteBots, "Delete Bots", "Delete bots from the team"},
 	{TeamPermissionResetBotTokens, "Reset Bot Tokens", "Reset the API token of bots on the team"},
 	{TeamPermissionEditBotWebhooks, "Edit Bot Webhooks", "Edit bot webhook settings. Note that 'Test Bot Webhooks' is a separate permission and is required to test webhooks."},
 	{TeamPermissionTestBotWebhooks, "Test Bot Webhooks", "Test bot webhooks. Note that this is a separate permission from 'Edit Bot Webhooks' and is required to test webhooks."},
@@ -51,7 +50,8 @@ var TeamPermDetails = []PermDetailMap{
 	{TeamPermissionAddTeamMembers, "Add Team Members", "Add team members to the team. Also needs 'Edit Team Member Permissions'"},
 	{TeamPermissionRemoveTeamMembers, "Remove Team Members", "Remove team members from the team if they have all the permissions of the user they are removing. Does **NOT** need 'Edit Team Member Permissions'"},
 	{TeamPermissionEditTeamMemberPermissions, "Edit Team Member Permissions", "Edit team members' permissions"},
-	{TeamPermissionOwner, "Owner", "Do everything (as they're owner)"},
+	{TeamPermissionDeleteBots, "Delete Bots", "Delete bots from the team. This is a very dangerous permission and should usually never be given to anyone."},
+	{TeamPermissionOwner, "Owner", "Do everything (as they're owner). This is a very dangerous permission and should usually never be given to anyone."},
 }
 
 func isValidPerm(perm TeamPermission) bool {

@@ -12,12 +12,17 @@ import (
 
 	"github.com/bwmarrin/discordgo"
 	"github.com/go-chi/chi/v5"
+	"github.com/go-playground/validator/v10"
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
 type AddBotTeam struct {
-	TeamID string `json:"team_id"`
+	TeamID string `json:"team_id" validate:"required"`
 }
+
+var (
+	compiledMessages = api.CompileValidationErrors(AddBotTeam{})
+)
 
 func Docs() *docs.Doc {
 	return &docs.Doc{
@@ -65,18 +70,26 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 		return hresp
 	}
 
+	// Validate the payload
+	err := state.Validator.Struct(payload)
+
+	if err != nil {
+		errors := err.(validator.ValidationErrors)
+		return api.ValidatorErrorResponse(compiledMessages, errors)
+	}
+
 	// Check linked main owner
 	var linkedOwnerId pgtype.Text
 	var teamOwner pgtype.Text
 
-	err := state.Pool.QueryRow(d.Context, "SELECT owner FROM bots WHERE id = $1", botId).Scan(&linkedOwnerId)
+	err = state.Pool.QueryRow(d.Context, "SELECT owner FROM bots WHERE bot_id = $1", botId).Scan(&linkedOwnerId)
 
 	if err != nil {
 		state.Logger.Error(err)
 		return api.DefaultResponse(http.StatusInternalServerError)
 	}
 
-	err = state.Pool.QueryRow(d.Context, "SELECT team_owner FROM bots WHERE id = $1", botId).Scan(&teamOwner)
+	err = state.Pool.QueryRow(d.Context, "SELECT team_owner FROM bots WHERE bot_id = $1", botId).Scan(&teamOwner)
 
 	if err != nil {
 		state.Logger.Error(err)
@@ -93,7 +106,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 	if linkedOwnerId.Valid && linkedOwnerId.String != d.Auth.ID {
 		return api.HttpResponse{
 			Status: http.StatusForbidden,
-			Json:   types.ApiError{Message: "You must be appointed as the owner of this bot by its old owner! You may however still delete the bot, just not transfer it", Error: true},
+			Json:   types.ApiError{Message: "You must be the owner to transfer a bot to a team", Error: true},
 		}
 	}
 

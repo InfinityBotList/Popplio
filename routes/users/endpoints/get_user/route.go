@@ -131,8 +131,6 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 		userBots[i].User = userObj
 	}
 
-	user.UserBots = userBots
-
 	/*
 
 
@@ -263,6 +261,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 	}
 
 	user.UserPacks = packs
+	user.UserBots = userBots
 
 	return api.HttpResponse{
 		Json:      user,
