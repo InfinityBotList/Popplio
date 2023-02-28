@@ -16,7 +16,7 @@ import (
 func Docs() *docs.Doc {
 	return &docs.Doc{
 		Summary:     "Delete Team Member",
-		Description: "Deletes a member from the team. Returns a 204 on success",
+		Description: "Deletes a member from the team. Users can always delete themselves. Returns a 204 on success",
 		Params: []docs.Parameter{
 			{
 				Name:        "uid",
@@ -109,17 +109,37 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 		return api.DefaultResponse(http.StatusInternalServerError)
 	}
 
-	// Get the old permissions of the user
-	var oldPerms []teams.TeamPermission
-
-	err = state.Pool.QueryRow(d.Context, "SELECT perms FROM team_members WHERE team_id = $1 AND user_id = $2", teamId, userId).Scan(&oldPerms)
-
-	if err != nil {
-		state.Logger.Error(err)
-		return api.DefaultResponse(http.StatusInternalServerError)
-	}
-
 	mp := teams.NewPermissionManager(managerPerms)
+
+	if d.Auth.ID != userId {
+		// Ensure that all permissions
+		if !mp.Has(teams.TeamPermissionRemoveTeamMembers) {
+			return api.HttpResponse{
+				Status: http.StatusForbidden,
+				Json:   types.ApiError{Message: "You do not have permission to remove team members", Error: true},
+			}
+		}
+
+		// Get the old permissions of the user
+		var oldPerms []teams.TeamPermission
+
+		err = state.Pool.QueryRow(d.Context, "SELECT perms FROM team_members WHERE team_id = $1 AND user_id = $2", teamId, userId).Scan(&oldPerms)
+
+		if err != nil {
+			state.Logger.Error(err)
+			return api.DefaultResponse(http.StatusInternalServerError)
+		}
+
+		// A remove is essentially the same as first converting oldPerms->managerPerms, then removing the user
+		_, err = assets.CheckPerms(managerPerms, oldPerms, managerPerms)
+
+		if err != nil {
+			return api.HttpResponse{
+				Status: http.StatusBadRequest,
+				Json:   types.ApiError{Message: err.Error(), Error: true},
+			}
+		}
+	}
 
 	// Ensure that if perms includes owner, that there is at least one other owner
 	if mp.Has(teams.TeamPermissionOwner) {
@@ -137,24 +157,6 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 				Status: http.StatusBadRequest,
 				Json:   types.ApiError{Message: "There needs to be one other owner before you can remove yourself from owner", Error: true},
 			}
-		}
-	}
-
-	// Ensure that all permissions
-	if !mp.Has(teams.TeamPermissionRemoveTeamMembers) {
-		return api.HttpResponse{
-			Status: http.StatusForbidden,
-			Json:   types.ApiError{Message: "You do not have permission to remove team members", Error: true},
-		}
-	}
-
-	// A remove is essentially the same as first converting oldPerms->managerPerms, then removing the user
-	_, err = assets.CheckPerms(managerPerms, oldPerms, managerPerms)
-
-	if err != nil {
-		return api.HttpResponse{
-			Status: http.StatusBadRequest,
-			Json:   types.ApiError{Message: err.Error(), Error: true},
 		}
 	}
 
