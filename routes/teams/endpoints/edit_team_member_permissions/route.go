@@ -1,4 +1,4 @@
-package edit_team_member
+package edit_team_member_permissions
 
 import (
 	"net/http"
@@ -25,8 +25,8 @@ var (
 
 func Docs() *docs.Doc {
 	return &docs.Doc{
-		Summary:     "Edit Team Member",
-		Description: "Edits a member to a team. Returns a 204 on success",
+		Summary:     "Edit Team Member Permissions",
+		Description: "Edits a members permissions on a team. Returns a 204 on success",
 		Params: []docs.Parameter{
 			{
 				Name:        "uid",
