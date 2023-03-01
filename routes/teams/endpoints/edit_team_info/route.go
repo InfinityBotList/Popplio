@@ -107,11 +107,11 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 
 	mp := teams.NewPermissionManager(managerPerms)
 
-	// Ensure the manager has the 'Edit Team Name/Avatar' permission
+	// Ensure the manager has the 'Edit Team Information' permission
 	if !mp.Has(teams.TeamPermissionEditTeamInfo) {
 		return api.HttpResponse{
 			Status: http.StatusForbidden,
-			Json:   types.ApiError{Message: "You don't have permission to do this", Error: true},
+			Json:   types.ApiError{Message: "You don't have permission to edit team information", Error: true},
 		}
 	}
 
