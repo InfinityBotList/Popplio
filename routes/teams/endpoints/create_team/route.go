@@ -27,7 +27,7 @@ var (
 func Docs() *docs.Doc {
 	return &docs.Doc{
 		Summary:     "Create Team",
-		Description: "Creates a team. Returns a 206 with the team ID on success.",
+		Description: "Creates a team. Returns a 201 with the team ID on success.",
 		Params: []docs.Parameter{
 			{
 				Name:        "id",
@@ -93,7 +93,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 	}
 
 	return api.HttpResponse{
-		Status: http.StatusPartialContent,
+		Status: http.StatusCreated,
 		Json: CreateTeamResponse{
 			TeamID: teamId,
 		},
