@@ -11,7 +11,6 @@ TODO:
 - Arcadia task to ensure all owners have a team_member entry with the OWNER permission
 */
 
-// MAKE SURE TO UPDATE INFINITY-NEXT utils/teams/teamPerms.ts WHEN UPDATING THIS
 const (
 	TeamPermissionUndefined                 TeamPermission = ""
 	TeamPermissionEditBotSettings           TeamPermission = "EDIT_BOT_SETTINGS"
