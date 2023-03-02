@@ -71,11 +71,14 @@ type Servers struct {
 }
 
 type Meta struct {
-	PostgresURL     string   `yaml:"postgres_url" default:"postgresql:///infinity" comment:"Postgres URL" validate:"required"`
-	RedisURL        string   `yaml:"redis_url" default:"redis://localhost:6379" comment:"Redis URL" validate:"required"`
-	Port            string   `yaml:"port" default:":8081" comment:"Port to run the server on" validate:"required"`
-	VulgarList      []string `yaml:"vulgar_list" default:"fuck,suck,shit,kill" validate:"required"`
-	AllowedHTMLTags []string `yaml:"allowed_html_tags" default:"a,i,button,span,img,video,iframe,style,span,p,br,center,div,h1,h2,h3,h4,h5,section,article,lang,code,pre,strong,em" validate:"required"`
-	CliNonce        string   `yaml:"cli_nonce" default:"" comment:"CLI Nonce" validate:"required"`
-	UrgentMentions  string   `yaml:"urgent_mentions" default:"<@&1061643797315993701>" comment:"Urgent mentions" validate:"required"`
+	PostgresURL      string   `yaml:"postgres_url" default:"postgresql:///infinity" comment:"Postgres URL" validate:"required"`
+	RedisURL         string   `yaml:"redis_url" default:"redis://localhost:6379" comment:"Redis URL" validate:"required"`
+	Port             string   `yaml:"port" default:":8081" comment:"Port to run the server on" validate:"required"`
+	VulgarList       []string `yaml:"vulgar_list" default:"fuck,suck,shit,kill" validate:"required"`
+	AllowedHTMLTags  []string `yaml:"allowed_html_tags" default:"a,i,button,span,img,video,iframe,style,span,p,br,center,div,h1,h2,h3,h4,h5,section,article,lang,code,pre,strong,em" validate:"required"`
+	CliNonce         string   `yaml:"cli_nonce" default:"" comment:"CLI Nonce" validate:"required"`
+	UrgentMentions   string   `yaml:"urgent_mentions" default:"<@&1061643797315993701>" comment:"Urgent mentions" validate:"required"`
+	PaypalClientID   string   `yaml:"paypal_client_id" default:"" comment:"Paypal Client ID" validate:"required"`
+	PaypalSecret     string   `yaml:"paypal_secret" default:"" comment:"Paypal Secret" validate:"required"`
+	PaypalUseSandbox bool     `yaml:"paypal_use_sandbox" default:"true" comment:"Use Paypal Sandbox"`
 }

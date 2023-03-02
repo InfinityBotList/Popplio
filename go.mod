@@ -61,6 +61,7 @@ require (
 	github.com/jackc/pgx/v5 v5.3.0
 	github.com/json-iterator/go v1.1.12
 	github.com/microcosm-cc/bluemonday v1.0.22
+	github.com/plutov/paypal/v4 v4.7.0
 	github.com/tdewolff/minify/v2 v2.12.4
 	github.com/yuin/goldmark v1.5.4
 	go.uber.org/zap v1.24.0
