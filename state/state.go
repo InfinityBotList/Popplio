@@ -13,6 +13,7 @@ import (
 	"github.com/go-playground/validator/v10/non-standard/validators"
 	"github.com/go-redis/redis/v8"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/plutov/paypal/v4"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 	"gopkg.in/yaml.v3"
@@ -20,6 +21,7 @@ import (
 
 var (
 	Pool      *pgxpool.Pool
+	Paypal    *paypal.Client
 	Redis     *redis.Client
 	Discord   *discordgo.Session
 	Logger    *zap.SugaredLogger
@@ -162,4 +164,24 @@ func Setup() {
 	)
 
 	Logger = zap.New(core).Sugar()
+
+	c, err := paypal.NewClient(Config.Meta.PaypalClientID, Config.Meta.PaypalSecret, func() string {
+		if Config.Meta.PaypalUseSandbox {
+			return paypal.APIBaseSandBox
+		} else {
+			return paypal.APIBaseLive
+		}
+	}())
+
+	if err != nil {
+		panic(err)
+	}
+
+	_, err = c.GetAccessToken(Context)
+
+	if err != nil {
+		panic(err)
+	}
+
+	Paypal = c
 }

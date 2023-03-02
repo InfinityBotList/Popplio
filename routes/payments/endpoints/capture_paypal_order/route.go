@@ -1,7 +1,6 @@
-package create_paypal_order
+package capture_paypal_order
 
 import (
-	"fmt"
 	"net/http"
 	"popplio/api"
 	"popplio/docs"
@@ -18,24 +17,24 @@ import (
 
 var json = jsoniter.ConfigCompatibleWithStandardLibrary
 
+type PaypalCaptureOrderReq struct {
+	ID string `json:"id" validate:"required" msg:"ID is required."`
+}
+
 type PaypalOrderReq struct {
 	ProductName string `json:"name" validate:"required" msg:"Product name is required."`
 	ProductID   string `json:"id" validate:"required" msg:"Product ID is required."`
 	For         string `json:"for" validate:"required" msg:"For is required."`
 }
 
-var compiledMessages = api.CompileValidationErrors(PaypalOrderReq{})
-
-type PaypalOrderID struct {
-	OrderID string `json:"order_id"`
-}
+var compiledMessages = api.CompileValidationErrors(PaypalCaptureOrderReq{})
 
 func Docs() *docs.Doc {
 	return &docs.Doc{
-		Summary:     "Create Paypal Order",
-		Description: "Creates a paypal order. Not intended for public use.",
-		Req:         PaypalOrderReq{},
-		Resp:        PaypalOrderID{},
+		Summary:     "Capture Paypal Order",
+		Description: "Captures a paypal order, giving any needed perks.",
+		Req:         PaypalCaptureOrderReq{},
+		Resp:        types.ApiError{},
 		Params: []docs.Parameter{
 			{
 				Name:        "id",
@@ -81,7 +80,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 		}
 	}
 
-	var payload PaypalOrderReq
+	var payload PaypalCaptureOrderReq
 
 	hresp, ok := api.MarshalReqWithHeaders(r, &payload, limit.Headers())
 
@@ -97,14 +96,15 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 		return api.ValidatorErrorResponse(compiledMessages, errors)
 	}
 
-	perk, err := assets.FindPerks(d.Context, assets.PerkData{
-		ProductName: payload.ProductName,
-		ProductID:   payload.ProductID,
-		For:         payload.For,
-	})
-
 	if err != nil {
 		state.Logger.Error(err)
+		return api.DefaultResponse(http.StatusInternalServerError)
+	}
+
+	captured, err := state.Paypal.CaptureOrder(d.Context, payload.ID, paypal.CaptureOrderRequest{})
+
+	if err != nil {
+		state.Logger.Error("At capture", err)
 		return api.HttpResponse{
 			Status: http.StatusBadRequest,
 			Json: types.ApiError{
@@ -114,52 +114,63 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 		}
 	}
 
-	priceStr := fmt.Sprintf("%.2f", perk.Price)
+	if captured.Status == "VOIDED" {
+		return api.HttpResponse{
+			Status: http.StatusBadRequest,
+			Json: types.ApiError{
+				Error:   true,
+				Message: "Order is voided. Please contact support if you believe this is an error.",
+			},
+		}
+	}
 
-	customId, err := json.Marshal(payload)
+	if len(captured.PurchaseUnits) == 0 {
+		return api.HttpResponse{
+			Status: http.StatusBadRequest,
+			Json: types.ApiError{
+				Error:   true,
+				Message: "No purchase units found. Please contact support if you believe this is an error.",
+			},
+		}
+	}
+
+	if len(captured.PurchaseUnits[0].Items) == 0 {
+		return api.HttpResponse{
+			Status: http.StatusBadRequest,
+			Json: types.ApiError{
+				Error:   true,
+				Message: "No purchase items found. Please contact support if you believe this is an error.",
+			},
+		}
+	}
+
+	var productJson = captured.PurchaseUnits[0].Items[0].SKU
+
+	var product PaypalOrderReq
+
+	err = json.Unmarshal([]byte(productJson), &product)
 
 	if err != nil {
 		state.Logger.Error(err)
 		return api.DefaultResponse(http.StatusInternalServerError)
 	}
 
-	order, err := state.Paypal.CreateOrder(d.Context, "CAPTURE", []paypal.PurchaseUnitRequest{
-		{
-			Description: perk.Name,
-			CustomID:    string(customId),
-			Items: []paypal.Item{
-				{
-					Name:        perk.Name,
-					Description: perk.Benefit,
-					UnitAmount: &paypal.Money{
-						Currency: "USD",
-						Value:    priceStr,
-					},
-					Quantity: "1",
-					SKU:      string(customId),
-				},
-			},
-			Amount: &paypal.PurchaseUnitAmount{
-				Currency: "USD",
-				Value:    priceStr,
-				Breakdown: &paypal.PurchaseUnitAmountBreakdown{
-					ItemTotal: &paypal.Money{
-						Currency: "USD",
-						Value:    priceStr,
-					},
-				},
-			},
-		},
-	}, &paypal.CreateOrderPayer{}, &paypal.ApplicationContext{})
+	err = assets.GivePerks(d.Context, d.Auth.ID, assets.PerkData{
+		For:         product.For,
+		ProductName: product.ProductName,
+		ProductID:   product.ProductID,
+	})
 
 	if err != nil {
 		state.Logger.Error(err)
-		return api.DefaultResponse(http.StatusInternalServerError)
+		return api.HttpResponse{
+			Status: http.StatusBadRequest,
+			Json: types.ApiError{
+				Error:   true,
+				Message: "Error: " + err.Error(),
+			},
+		}
 	}
 
-	return api.HttpResponse{
-		Json: PaypalOrderID{
-			OrderID: order.ID,
-		},
-	}
+	return api.DefaultResponse(http.StatusNoContent)
 }

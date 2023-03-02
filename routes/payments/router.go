@@ -2,6 +2,7 @@ package payments
 
 import (
 	"popplio/api"
+	"popplio/routes/payments/endpoints/capture_paypal_order"
 	"popplio/routes/payments/endpoints/create_paypal_order"
 	"popplio/routes/payments/endpoints/get_paypal"
 	"popplio/routes/payments/endpoints/get_premium_plans"
@@ -35,6 +36,20 @@ func (b Router) Routes(r *chi.Mux) {
 		Method:  api.POST,
 		Docs:    create_paypal_order.Docs,
 		Handler: create_paypal_order.Route,
+		Auth: []api.AuthType{
+			{
+				Type:   types.TargetTypeUser,
+				URLVar: "id",
+			},
+		},
+	}.Route(r)
+
+	api.Route{
+		Pattern: "/users/{id}/paypal/capture",
+		OpId:    "capture_paypal_order",
+		Method:  api.POST,
+		Docs:    capture_paypal_order.Docs,
+		Handler: capture_paypal_order.Route,
 		Auth: []api.AuthType{
 			{
 				Type:   types.TargetTypeUser,

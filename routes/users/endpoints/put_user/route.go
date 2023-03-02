@@ -156,6 +156,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 
 	if !d.IsClient {
 		return api.HttpResponse{
+			Status: http.StatusBadRequest,
 			Json: types.ApiError{
 				Error:   true,
 				Message: "This endpoint is not available for public use",
