@@ -109,7 +109,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 			Status: http.StatusBadRequest,
 			Json: types.ApiError{
 				Error:   true,
-				Message: err.Error(),
+				Message: "Error: " + err.Error(),
 			},
 		}
 	}
