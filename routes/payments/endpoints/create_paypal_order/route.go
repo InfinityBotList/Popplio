@@ -177,9 +177,26 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 		{
 			Description: paymentData.Name,
 			CustomID:    paymentData.ID + "-" + d.Auth.ID + "-" + payload.For,
+			Items: []paypal.Item{
+				{
+					Name:        paymentData.Name,
+					Description: paymentData.Benefit,
+					UnitAmount: &paypal.Money{
+						Currency: "USD",
+						Value:    priceStr,
+					},
+					Quantity: "1",
+				},
+			},
 			Amount: &paypal.PurchaseUnitAmount{
 				Currency: "USD",
 				Value:    priceStr,
+				Breakdown: &paypal.PurchaseUnitAmountBreakdown{
+					ItemTotal: &paypal.Money{
+						Currency: "USD",
+						Value:    priceStr,
+					},
+				},
 			},
 		},
 	}, &paypal.CreateOrderPayer{}, &paypal.ApplicationContext{})
