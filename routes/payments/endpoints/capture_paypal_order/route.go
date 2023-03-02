@@ -125,6 +125,20 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 	}
 
 	if len(captured.PurchaseUnits) == 0 {
+		// Refund the order
+		_, err = state.Paypal.RefundCapture(d.Context, payload.ID, paypal.RefundCaptureRequest{})
+
+		if err != nil {
+			state.Logger.Error("At refund", err)
+			return api.HttpResponse{
+				Status: http.StatusBadRequest,
+				Json: types.ApiError{
+					Error:   true,
+					Message: "Failed to refund order.",
+				},
+			}
+		}
+
 		return api.HttpResponse{
 			Status: http.StatusBadRequest,
 			Json: types.ApiError{
@@ -135,6 +149,20 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 	}
 
 	if len(captured.PurchaseUnits[0].Items) == 0 {
+		// Refund the order
+		_, err = state.Paypal.RefundCapture(d.Context, payload.ID, paypal.RefundCaptureRequest{})
+
+		if err != nil {
+			state.Logger.Error("At refund", err)
+			return api.HttpResponse{
+				Status: http.StatusBadRequest,
+				Json: types.ApiError{
+					Error:   true,
+					Message: "Failed to refund order.",
+				},
+			}
+		}
+
 		return api.HttpResponse{
 			Status: http.StatusBadRequest,
 			Json: types.ApiError{
@@ -151,6 +179,20 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 	err = json.Unmarshal([]byte(productJson), &product)
 
 	if err != nil {
+		// Refund the order
+		_, err = state.Paypal.RefundCapture(d.Context, payload.ID, paypal.RefundCaptureRequest{})
+
+		if err != nil {
+			state.Logger.Error("At refund", err)
+			return api.HttpResponse{
+				Status: http.StatusBadRequest,
+				Json: types.ApiError{
+					Error:   true,
+					Message: "Failed to refund order.",
+				},
+			}
+		}
+
 		state.Logger.Error(err)
 		return api.DefaultResponse(http.StatusInternalServerError)
 	}
@@ -162,6 +204,20 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 	})
 
 	if err != nil {
+		// Refund the order
+		_, err = state.Paypal.RefundCapture(d.Context, payload.ID, paypal.RefundCaptureRequest{})
+
+		if err != nil {
+			state.Logger.Error("At refund", err)
+			return api.HttpResponse{
+				Status: http.StatusBadRequest,
+				Json: types.ApiError{
+					Error:   true,
+					Message: "Failed to refund order.",
+				},
+			}
+		}
+
 		state.Logger.Error(err)
 		return api.HttpResponse{
 			Status: http.StatusBadRequest,
