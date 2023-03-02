@@ -42,8 +42,9 @@ func FindPerks(ctx context.Context, payload PerkData) (*payments.Plan, error) {
 				}
 
 				var typeStr string
+				var premium bool
 
-				err = state.Pool.QueryRow(ctx, "SELECT type FROM bots WHERE bot_id = $1", payload.For).Scan(&typeStr)
+				err = state.Pool.QueryRow(ctx, "SELECT type, premium FROM bots WHERE bot_id = $1", payload.For).Scan(&typeStr, &premium)
 
 				if err != nil {
 					return nil, errors.New("our database broke, please try again later")
@@ -51,6 +52,10 @@ func FindPerks(ctx context.Context, payload PerkData) (*payments.Plan, error) {
 
 				if typeStr != "approved" && typeStr != "certified" {
 					return nil, errors.New("bot is not approved or certified")
+				}
+
+				if premium {
+					return nil, errors.New("bot is already premium")
 				}
 
 				perk = &plan
@@ -80,18 +85,6 @@ func GivePerks(ctx context.Context, userID string, perkData PerkData) error {
 	switch perkData.ProductID {
 	case "premium":
 		var botID = perkData.For
-
-		var premium bool
-
-		err = state.Pool.QueryRow(ctx, "SELECT premium FROM bots WHERE bot_id = $1", botID).Scan(&premium)
-
-		if err != nil {
-			return errors.New("our database broke, please try again later")
-		}
-
-		if premium {
-			return errors.New("bot already has premium")
-		}
 
 		_, err = state.Pool.Exec(ctx,
 			"UPDATE bots SET start_premium_period = NOW(), premium_period_length = make_interval(hours => $1), premium = true WHERE bot_id = $2",
