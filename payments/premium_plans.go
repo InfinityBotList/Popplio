@@ -20,14 +20,14 @@ var Plans = []Plan{
 		"silver",
 		"Silver Plan",
 		"6 months of premium",
-		30 * 3,
+		24 * 30 * 6,
 		4.99,
 	},
 	{
 		"gold",
 		"Gold Plan",
 		"1 year of premium",
-		30 * 6,
+		24 * 30 * 12,
 		7.99,
 	},
 }
