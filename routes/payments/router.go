@@ -6,6 +6,7 @@ import (
 	"popplio/routes/payments/endpoints/create_paypal_order"
 	"popplio/routes/payments/endpoints/get_paypal"
 	"popplio/routes/payments/endpoints/get_premium_plans"
+	"popplio/routes/payments/endpoints/get_stripe"
 	"popplio/types"
 
 	"github.com/go-chi/chi/v5"
@@ -56,6 +57,14 @@ func (b Router) Routes(r *chi.Mux) {
 				URLVar: "id",
 			},
 		},
+	}.Route(r)
+
+	api.Route{
+		Pattern: "/payments/stripe",
+		OpId:    "get_stripe",
+		Method:  api.GET,
+		Docs:    get_stripe.Docs,
+		Handler: get_stripe.Route,
 	}.Route(r)
 
 	api.Route{

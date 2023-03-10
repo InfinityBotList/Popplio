@@ -14,6 +14,7 @@ import (
 	"github.com/go-redis/redis/v8"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/plutov/paypal/v4"
+	"github.com/stripe/stripe-go/v74"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 	"gopkg.in/yaml.v3"
@@ -184,4 +185,6 @@ func Setup() {
 	}
 
 	Paypal = c
+
+	stripe.Key = Config.Meta.StripeSecretKey
 }

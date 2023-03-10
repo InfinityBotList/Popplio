@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"popplio/api"
-	"popplio/constants"
 	"popplio/docs"
 	"popplio/state"
 	"popplio/teams"
@@ -35,10 +34,7 @@ func Docs() *docs.Doc {
 		Description: `
 Gets a bot by id or name
 
-**Some things to note:**
-
--` + constants.BackTick + constants.BackTick + `external_source` + constants.BackTick + constants.BackTick + ` shows the source of where a bot came from (Metro Reviews etc.). If this is set to ` + constants.BackTick + constants.BackTick + `metro` + constants.BackTick + constants.BackTick + `, then ` + constants.BackTick + constants.BackTick + `list_source` + constants.BackTick + constants.BackTick + ` will be set to the metro list ID where it came from` + `
-`,
+**Some things to note:**`,
 		Params: []docs.Parameter{
 			{
 				Name:        "id",

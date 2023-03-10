@@ -4,7 +4,6 @@ type Config struct {
 	DiscordAuth     DiscordAuth     `yaml:"discord_auth" validate:"required"`
 	HighSecurityCtx HighSecurityCtx `yaml:"high_security_ctx" validate:"required"`
 	Sites           Sites           `yaml:"sites" validate:"required"`
-	Metro           Metro           `yaml:"metro" validate:"required"`
 	Channels        Channels        `yaml:"channels" validate:"required"`
 	Roles           Roles           `yaml:"roles" validate:"required"`
 	JAPI            JAPI            `yaml:"japi" validate:"required"`
@@ -36,11 +35,6 @@ type Sites struct {
 	Frontend string `yaml:"frontend" default:"https://reedwhisker.infinitybots.gg" comment:"Frontend URL" validate:"required"`
 	API      string `yaml:"api" default:"https://spider.infinitybots.gg" comment:"API URL" validate:"required"`
 	AppSite  string `yaml:"app_site" default:"https://ptb.botlist.app" comment:"App Site" validate:"required"`
-}
-
-type Metro struct {
-	ListID    string `yaml:"list_id" default:"02a6a5d1-8cd4-4847-a3ed-a32c88bd805b" comment:"Metro List ID" validate:"required"`
-	SecretKey string `yaml:"secret_key" comment:"Metro Secret Key" required:"false"`
 }
 
 type Roles struct {
@@ -81,4 +75,6 @@ type Meta struct {
 	PaypalClientID   string   `yaml:"paypal_client_id" default:"" comment:"Paypal Client ID" validate:"required"`
 	PaypalSecret     string   `yaml:"paypal_secret" default:"" comment:"Paypal Secret" validate:"required"`
 	PaypalUseSandbox bool     `yaml:"paypal_use_sandbox" default:"true" comment:"Use Paypal Sandbox"`
+	StripePublicKey  string   `yaml:"stripe_public_key" default:"" comment:"Stripe Public Key" validate:"required"`
+	StripeSecretKey  string   `yaml:"stripe_secret_key" default:"" comment:"Stripe Public Key" validate:"required"`
 }
