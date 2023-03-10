@@ -366,7 +366,10 @@ func (r Route) Route(ro Router) {
 				if clientHeader != state.Config.Meta.CliNonce {
 					resp <- HttpResponse{
 						Status: http.StatusUnprocessableEntity,
-						Data:   constants.InvalidClient,
+						Json: types.ApiError{
+							Error:   true,
+							Message: "Out-of-date client",
+						},
 					}
 					return
 				}

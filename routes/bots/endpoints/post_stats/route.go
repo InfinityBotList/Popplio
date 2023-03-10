@@ -218,8 +218,11 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 			payload = types.BotStats{}
 		} else {
 			return api.HttpResponse{
-				Data:   constants.BadRequestStats,
 				Status: http.StatusBadRequest,
+				Json: types.ApiError{
+					Error:   true,
+					Message: "Slow down, bucko! You're not posting stats correctly. Try posting stats as integers and not as strings?",
+				},
 			}
 		}
 	}
