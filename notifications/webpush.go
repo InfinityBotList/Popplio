@@ -2,58 +2,90 @@ package notifications
 
 import (
 	"fmt"
-	"io"
 	"popplio/state"
+	"popplio/types"
 
 	"github.com/SherClockHolmes/webpush-go"
 )
 
-type Message struct {
-	Message string `json:"message"`
-	Title   string `json:"title"`
-	Icon    string `json:"icon"`
-}
-
-func PushToClient(notifId string, message []byte) error {
-	var auth string
-	var endpoint string
-	var p256dh string
-
-	err := state.Pool.QueryRow(state.Context, "SELECT auth, endpoint, p256dh FROM poppypaw WHERE notif_id = $1", notifId).Scan(&auth, &endpoint, &p256dh)
+func PushNotification(userId string, notif types.Notification) error {
+	err := state.Validator.Struct(notif)
 
 	if err != nil {
-		return fmt.Errorf("error finding notification: %s", err)
+		panic(fmt.Sprintf("invalid notification: %s", err))
 	}
 
-	sub := webpush.Subscription{
-		Endpoint: endpoint,
-		Keys: webpush.Keys{
-			Auth:   auth,
-			P256dh: p256dh,
-		},
+	if len(notif.AlertData) == 0 {
+		notif.AlertData = map[string]any{}
 	}
 
-	// Send Notification
-	resp, err := webpush.SendNotification(message, &sub, &webpush.Options{
-		Subscriber:      "votereminders@infinitybots.gg",
-		VAPIDPublicKey:  state.Config.Notifications.VapidPublicKey,
-		VAPIDPrivateKey: state.Config.Notifications.VapidPrivateKey,
-		TTL:             30,
-	})
+	state.Pool.Exec(
+		state.Context,
+		"INSERT INTO alerts (user_id, type, url, message, title, icon, data) VALUES ($1, $2, $3, $4, $5, $6, $7)",
+		userId,
+		notif.Type,
+		notif.URL,
+		notif.Message,
+		notif.Title,
+		notif.Icon,
+		notif.AlertData,
+	)
+
+	bytes, err := json.Marshal(notif)
 
 	if err != nil {
-		// TODO: Handle error
-		if resp.StatusCode == 410 || resp.StatusCode == 404 {
-			// Delete the subscription
-			state.Pool.Exec(state.Context, "DELETE FROM poppypaw WHERE notif_id = $1", notifId)
-		}
 		return err
 	}
 
-	defer resp.Body.Close()
+	notifIds, err := state.Pool.Query(state.Context, "SELECT notif_id, auth, endpoint, p256dh FROM poppypaw WHERE user_id = $1", userId)
 
-	msg, _ := io.ReadAll(resp.Body)
-	state.Logger.Info(resp.StatusCode, msg)
+	if err != nil {
+		return err
+	}
+
+	defer notifIds.Close()
+
+	for notifIds.Next() {
+		var notifId string
+		var auth string
+		var endpoint string
+		var p256dh string
+
+		err = notifIds.Scan(&notifId, &auth, &endpoint, &p256dh)
+
+		if err != nil {
+			return fmt.Errorf("error finding notification: %s", err)
+		}
+
+		if notifId == "" {
+			continue
+		}
+
+		state.Logger.Infow("Sending notification", "notif_id", notifId)
+
+		sub := webpush.Subscription{
+			Endpoint: endpoint,
+			Keys: webpush.Keys{
+				Auth:   auth,
+				P256dh: p256dh,
+			},
+		}
+
+		resp, err := webpush.SendNotification(bytes, &sub, &webpush.Options{
+			Subscriber:      "notifications@infinitybots.gg",
+			VAPIDPublicKey:  state.Config.Notifications.VapidPublicKey,
+			VAPIDPrivateKey: state.Config.Notifications.VapidPrivateKey,
+			TTL:             30,
+		})
+
+		if err != nil {
+			if resp.StatusCode == 410 || resp.StatusCode == 404 {
+				// Delete the subscription
+				state.Pool.Exec(state.Context, "DELETE FROM poppypaw WHERE notif_id = $1", notifId)
+			}
+			return err
+		}
+	}
 
 	return nil
 }

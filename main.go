@@ -12,7 +12,6 @@ import (
 	"popplio/docs"
 	"popplio/notifications"
 	"popplio/partners"
-	"popplio/routes/announcements"
 	"popplio/routes/apps"
 	"popplio/routes/blogs"
 	"popplio/routes/bots"
@@ -150,7 +149,6 @@ func main() {
 
 	routers := []api.APIRouter{
 		// Use same order as routes folder
-		announcements.Router{},
 		blogs.Router{},
 		bots.Router{},
 		duser.Router{},

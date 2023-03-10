@@ -9,9 +9,7 @@ const (
 	Unauthorized     = "{\"message\":\"Slow down, bucko! You're not authorized to do this or did you forget a API token somewhere?\",\"error\":true}"
 	InternalError    = "{\"message\":\"Slow down, bucko! Something went wrong on our end!\",\"error\":true}"
 	MethodNotAllowed = "{\"message\":\"Slow down, bucko! That method is not allowed for this endpoint!!!\",\"error\":true}"
-	Success          = "{\"message\":\"Success!\",\"error\":false}"
 	BackTick         = "`"
 	DoubleBackTick   = "``"
-	TestNotif        = "{\"message\":\"Test notification!\",\"title\":\"Test notification!\",\"icon\":\"https://cdn.infinitybots.xyz/images/webp/logo2.webp\",\"error\":false}"
 	InvalidClient    = "{\"message\":\"Slow down, bucko! You're client is out of date and needs an update?\",\"error\":true}"
 )

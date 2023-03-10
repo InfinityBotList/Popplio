@@ -5,7 +5,6 @@ import (
 	"net/http"
 
 	"popplio/api"
-	"popplio/constants"
 	"popplio/docs"
 	"popplio/notifications"
 	"popplio/state"
@@ -83,14 +82,16 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 		ua,
 	)
 
-	// Fan out test notification
-	go func() {
-		err = notifications.PushToClient(notifId, []byte(constants.TestNotif))
+	// Fan out notification
+	err = notifications.PushNotification(id, types.Notification{
+		Type:    types.NotificationTypeSuccess,
+		Title:   "New Subscription",
+		Message: "This is an automated message to let you know that you have successfully subscribed to push notifications!",
+	})
 
-		if err != nil {
-			state.Logger.Error(err)
-		}
-	}()
+	if err != nil {
+		state.Logger.Error(err)
+	}
 
 	return api.HttpResponse{
 		Status: http.StatusNoContent,

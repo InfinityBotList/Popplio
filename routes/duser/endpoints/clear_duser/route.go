@@ -4,7 +4,6 @@ import (
 	"net/http"
 
 	"popplio/api"
-	"popplio/constants"
 	"popplio/docs"
 	"popplio/state"
 	"popplio/types"
@@ -37,7 +36,9 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 	state.Pool.Exec(d.Context, "DELETE FROM internal_user_cache WHERE id = $1", id)
 
 	return api.HttpResponse{
-		Status: http.StatusOK,
-		Data:   constants.Success,
+		Json: types.ApiError{
+			Error:   false,
+			Message: "Successfully cleared cache",
+		},
 	}
 }

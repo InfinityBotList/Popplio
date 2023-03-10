@@ -2,10 +2,10 @@ package notifications
 
 import (
 	"popplio/state"
+	"popplio/types"
 	"popplio/utils"
 	"time"
 
-	"github.com/georgysavva/scany/v2/pgxscan"
 	jsoniter "github.com/json-iterator/go"
 )
 
@@ -45,26 +45,6 @@ func vrCheck() {
 		}
 
 		if !voteParsed.HasVoted {
-			// Loop over all user poppypaw subscriptions and push to goro
-			rows, err := state.Pool.Query(state.Context, "SELECT notif_id, endpoint FROM poppypaw WHERE user_id = $1", userId)
-
-			if err != nil {
-				state.Logger.Error("Error finding subscriptions:", err)
-				return
-			}
-
-			var notifs []struct {
-				NotifId  string `db:"notif_id"`
-				Endpoint string `db:"endpoint"`
-			}
-
-			err = pgxscan.ScanAll(&notifs, rows)
-
-			if err != nil {
-				state.Logger.Error("Error finding subscriptions:", err)
-				return
-			}
-
 			botInf, err := utils.GetDiscordUser(state.Context, botId)
 
 			if err != nil {
@@ -72,32 +52,18 @@ func vrCheck() {
 				continue
 			}
 
-			message := Message{
+			message := types.Notification{
+				Type:    types.NotificationTypeInfo,
 				Message: "You can vote for " + botInf.Username + " now!",
 				Title:   "Vote for " + botInf.Username + "!",
 				Icon:    botInf.Avatar,
 			}
 
-			bytes, err := json.Marshal(message)
+			err = PushNotification(userId, message)
 
 			if err != nil {
 				state.Logger.Error(err)
 				continue
-			}
-
-			for _, notif := range notifs {
-				if notif.NotifId == "" {
-					continue
-				}
-
-				state.Logger.Infow("Sending notification", "notif_id", notif.NotifId)
-
-				err := PushToClient(notif.NotifId, bytes)
-
-				if err != nil {
-					state.Logger.Error(err)
-					continue
-				}
 			}
 
 			_, err = state.Pool.Exec(state.Context, "UPDATE silverpelt SET last_acked = NOW() WHERE bot_id = $1 AND user_id = $2", botId, userId)

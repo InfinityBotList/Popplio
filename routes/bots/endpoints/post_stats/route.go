@@ -284,6 +284,6 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 	utils.ClearBotCache(d.Context, id)
 
 	return api.HttpResponse{
-		Data: constants.Success,
+		Status: http.StatusNoContent,
 	}
 }

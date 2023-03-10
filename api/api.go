@@ -555,6 +555,7 @@ func ValidatorErrorResponse(compiled map[string]string, v validator.ValidationEr
 }
 
 // Creates a default HTTP response based on the status code
+// 200 is treated as 204 No Content
 func DefaultResponse(statusCode int) HttpResponse {
 	switch statusCode {
 	case http.StatusForbidden:
@@ -589,8 +590,7 @@ func DefaultResponse(statusCode int) HttpResponse {
 		}
 	case http.StatusOK:
 		return HttpResponse{
-			Status: statusCode,
-			Data:   constants.Success,
+			Status: http.StatusNoContent,
 		}
 	}
 

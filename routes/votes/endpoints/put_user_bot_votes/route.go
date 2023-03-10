@@ -308,81 +308,35 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 			Votes:  int(votes),
 		})
 
-		var msg notifications.Message
+		var msg types.Notification
 
 		if err != nil && err.Error() == "httpUser" {
-			state.Pool.Exec(
-				state.Context,
-				"INSERT INTO alerts (user_id, url, message, type) VALUES ($1, $2, $3, $4)",
-				userId,
-				"https://infinitybots.gg/bots/"+id,
-				"This bot uses the Get All Bot Votes HTTP API to handle vote rewards. ID: "+id+" ("+botObj.Username+")",
-				"info",
-			)
-			msg = notifications.Message{
+			msg = types.Notification{
+				Type:    types.NotificationTypeWarning,
 				Title:   "Vote Rewards Deferred!",
 				Message: botObj.Username + " uses the HTTP API for votes. Vote rewards may take time to register.",
+				Icon:    botObj.Avatar,
 			}
 		} else if err != nil {
-			state.Pool.Exec(
-				state.Context,
-				"INSERT INTO alerts (user_id, url, message, type) VALUES ($1, $2, $3, $4)",
-				userId,
-				"https://infinitybots.gg/bots/"+id,
-				"Something went wrong when notifying this bot. The error was: "+err.Error()+".",
-				"error",
-			)
-			msg = notifications.Message{
+			msg = types.Notification{
+				Type:    types.NotificationTypeError,
 				Title:   "Whoa There!",
 				Message: "We couldn't notify " + botObj.Username + ": " + err.Error() + ".",
 				Icon:    botObj.Avatar,
 			}
 		} else {
-			state.Pool.Exec(
-				state.Context,
-				"INSERT INTO alerts (user_id, url, message, type) VALUES ($1, $2, $3, $4)",
-				userId,
-				"https://infinitybots.gg/bots/"+id,
-				"Successfully alerted this bot to your vote with ID of "+id+"("+botObj.Username+")",
-				"info",
-			)
-			msg = notifications.Message{
+			msg = types.Notification{
+				Type:    types.NotificationTypeSuccess,
 				Title:   "Bot Notified!",
 				Message: "Successfully alerted " + botObj.Username + " to your vote with ID of " + id + ".",
+				Icon:    botObj.Avatar,
 			}
 		}
 
-		notifIds, err := state.Pool.Query(state.Context, "SELECT notif_id FROM poppypaw WHERE user_id = $1", userId)
+		err = notifications.PushNotification(userId, msg)
 
 		if err != nil {
 			state.Logger.Error(err)
-			return
-		}
-
-		defer notifIds.Close()
-
-		for notifIds.Next() {
-			var notifId string
-
-			err = notifIds.Scan(&notifId)
-
-			if err != nil {
-				state.Logger.Error(err)
-				continue
-			}
-
-			bytes, err := json.Marshal(msg)
-
-			if err != nil {
-				state.Logger.Error(err)
-				continue
-			}
-
-			err = notifications.PushToClient(notifId, bytes)
-
-			if err != nil {
-				state.Logger.Error(err)
-			}
 		}
 	}()
 
