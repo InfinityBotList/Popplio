@@ -12,12 +12,12 @@ import (
 )
 
 type PerkData struct {
-	ProductName string
-	ProductID   string
-	For         string
+	ProductName string `json:"name" validate:"required" msg:"Product name is required."`
+	ProductID   string `json:"id" validate:"required" msg:"Product ID is required."`
+	For         string `json:"for" validate:"required" msg:"For is required."`
 }
 
-// Finds the associated perm for the given payload. ProductID is still needed to determine whats being purchased.
+// Finds and validates the associated perm for the given payload. ProductID is still needed to determine whats being purchased.
 func FindPerks(ctx context.Context, payload PerkData) (*payments.Plan, error) {
 	var perk *payments.Plan
 

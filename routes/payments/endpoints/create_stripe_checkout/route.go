@@ -1,4 +1,4 @@
-package create_paypal_order
+package create_stripe_checkout
 
 import (
 	"fmt"
@@ -9,27 +9,29 @@ import (
 	"popplio/routes/payments/assets"
 	"popplio/state"
 	"popplio/types"
+	"strconv"
 	"time"
 
 	"github.com/go-playground/validator/v10"
 	jsoniter "github.com/json-iterator/go"
-	"github.com/plutov/paypal/v4"
+	"github.com/stripe/stripe-go/v74"
+	"github.com/stripe/stripe-go/v74/checkout/session"
 )
 
 var json = jsoniter.ConfigCompatibleWithStandardLibrary
 
 var compiledMessages = api.CompileValidationErrors(assets.PerkData{})
 
-type PaypalOrderID struct {
-	OrderID string `json:"order_id"`
+type StripeCheckout struct {
+	URL string `json:"url"`
 }
 
 func Docs() *docs.Doc {
 	return &docs.Doc{
-		Summary:     "Create Paypal Order",
-		Description: "Creates a paypal order. Not intended for public use.",
+		Summary:     "Create Stripe Checkout",
+		Description: "Creates a stripe checkout session returning the URL. Not intended for public use.",
 		Req:         assets.PerkData{},
-		Resp:        PaypalOrderID{},
+		Resp:        StripeCheckout{},
 		Params: []docs.Parameter{
 			{
 				Name:        "id",
@@ -113,34 +115,29 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 		return api.DefaultResponse(http.StatusInternalServerError)
 	}
 
-	order, err := state.Paypal.CreateOrder(d.Context, "CAPTURE", []paypal.PurchaseUnitRequest{
-		{
-			Description: perk.Name,
-			CustomID:    string(customId),
-			Items: []paypal.Item{
-				{
-					Name:        perk.Name,
-					Description: perk.Benefit,
-					UnitAmount: &paypal.Money{
-						Currency: "USD",
-						Value:    priceStr,
-					},
-					Quantity: "1",
-					SKU:      string(customId),
-				},
-			},
-			Amount: &paypal.PurchaseUnitAmount{
-				Currency: "USD",
-				Value:    priceStr,
-				Breakdown: &paypal.PurchaseUnitAmountBreakdown{
-					ItemTotal: &paypal.Money{
-						Currency: "USD",
-						Value:    priceStr,
+	params := &stripe.CheckoutSessionParams{
+		LineItems: []*stripe.CheckoutSessionLineItemParams{
+			{
+				// Provide the exact Price ID (for example, pr_1234) of the product you want to sell
+				PriceData: &stripe.CheckoutSessionLineItemPriceDataParams{
+					Currency: stripe.String(string(stripe.CurrencyUSD)),
+					ProductData: &stripe.CheckoutSessionLineItemPriceDataProductDataParams{
+						Name:        stripe.String(perk.Name),
+						Description: stripe.String("Gives " + perk.Benefit + " for " + payload.For + " with duration of " + strconv.Itoa(perk.TimePeriod) + " hours"),
 					},
 				},
+				Price:    stripe.String(priceStr),
+				Quantity: stripe.Int64(1),
 			},
 		},
-	}, &paypal.CreateOrderPayer{}, &paypal.ApplicationContext{})
+		ClientReferenceID: stripe.String(string(customId)),
+		Mode:              stripe.String(string(stripe.CheckoutSessionModePayment)),
+		AutomaticTax:      &stripe.CheckoutSessionAutomaticTaxParams{Enabled: stripe.Bool(true)},
+		SuccessURL:        stripe.String(state.Config.Sites.Frontend + "/stripe/success"),
+		CancelURL:         stripe.String(state.Config.Sites.Frontend + "/stripe/cancel"),
+	}
+
+	order, err := session.New(params)
 
 	if err != nil {
 		state.Logger.Error(err)
@@ -148,8 +145,8 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 	}
 
 	return api.HttpResponse{
-		Json: PaypalOrderID{
-			OrderID: order.ID,
+		Json: StripeCheckout{
+			URL: order.URL,
 		},
 	}
 }

@@ -4,6 +4,7 @@ import (
 	"popplio/api"
 	"popplio/routes/payments/endpoints/capture_paypal_order"
 	"popplio/routes/payments/endpoints/create_paypal_order"
+	"popplio/routes/payments/endpoints/create_stripe_checkout"
 	"popplio/routes/payments/endpoints/get_paypal"
 	"popplio/routes/payments/endpoints/get_premium_plans"
 	"popplio/routes/payments/endpoints/get_stripe"
@@ -65,6 +66,20 @@ func (b Router) Routes(r *chi.Mux) {
 		Method:  api.GET,
 		Docs:    get_stripe.Docs,
 		Handler: get_stripe.Route,
+	}.Route(r)
+
+	api.Route{
+		Pattern: "/users/{id}/stripe",
+		OpId:    "create_stripe_checkout",
+		Method:  api.POST,
+		Docs:    create_stripe_checkout.Docs,
+		Handler: create_stripe_checkout.Route,
+		Auth: []api.AuthType{
+			{
+				Type:   types.TargetTypeUser,
+				URLVar: "id",
+			},
+		},
 	}.Route(r)
 
 	api.Route{

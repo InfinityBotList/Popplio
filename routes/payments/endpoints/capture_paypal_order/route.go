@@ -21,12 +21,6 @@ type PaypalCaptureOrderReq struct {
 	ID string `json:"id" validate:"required" msg:"ID is required."`
 }
 
-type PaypalOrderReq struct {
-	ProductName string `json:"name" validate:"required" msg:"Product name is required."`
-	ProductID   string `json:"id" validate:"required" msg:"Product ID is required."`
-	For         string `json:"for" validate:"required" msg:"For is required."`
-}
-
 var compiledMessages = api.CompileValidationErrors(PaypalCaptureOrderReq{})
 
 func Docs() *docs.Doc {
@@ -174,7 +168,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 
 	var productJson = captured.PurchaseUnits[0].Items[0].SKU
 
-	var product PaypalOrderReq
+	var product assets.PerkData
 
 	err = json.Unmarshal([]byte(productJson), &product)
 
@@ -197,11 +191,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 		return api.DefaultResponse(http.StatusInternalServerError)
 	}
 
-	err = assets.GivePerks(d.Context, d.Auth.ID, assets.PerkData{
-		For:         product.For,
-		ProductName: product.ProductName,
-		ProductID:   product.ProductID,
-	})
+	err = assets.GivePerks(d.Context, d.Auth.ID, product)
 
 	if err != nil {
 		// Refund the order
