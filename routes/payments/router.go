@@ -8,6 +8,7 @@ import (
 	"popplio/routes/payments/endpoints/get_paypal"
 	"popplio/routes/payments/endpoints/get_premium_plans"
 	"popplio/routes/payments/endpoints/get_stripe"
+	"popplio/routes/payments/endpoints/handle_stripe_webhook"
 	"popplio/types"
 
 	"github.com/go-chi/chi/v5"
@@ -80,6 +81,14 @@ func (b Router) Routes(r *chi.Mux) {
 				URLVar: "id",
 			},
 		},
+	}.Route(r)
+
+	api.Route{
+		Pattern: "/payments/stripe/webhook",
+		OpId:    "handle_stripe_webhook",
+		Method:  api.POST,
+		Docs:    handle_stripe_webhook.Docs,
+		Handler: handle_stripe_webhook.Route,
 	}.Route(r)
 
 	api.Route{

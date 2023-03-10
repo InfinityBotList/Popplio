@@ -2,6 +2,8 @@ package state
 
 import (
 	"context"
+	"io"
+	"net/http"
 	"os"
 	"reflect"
 	"strings"
@@ -15,6 +17,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/plutov/paypal/v4"
 	"github.com/stripe/stripe-go/v74"
+	"github.com/stripe/stripe-go/v74/webhookendpoint"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 	"gopkg.in/yaml.v3"
@@ -29,7 +32,9 @@ var (
 	Context   = context.Background()
 	Validator = validator.New()
 
-	Config *config.Config
+	Config           *config.Config
+	StripeWebhSecret string
+	StripeWebhIPList []string
 )
 
 func nonVulgar(fl validator.FieldLevel) bool {
@@ -187,4 +192,62 @@ func Setup() {
 	Paypal = c
 
 	stripe.Key = Config.Meta.StripeSecretKey
+
+	go func() {
+		// Get all current webhooks
+		i := webhookendpoint.List(&stripe.WebhookEndpointListParams{})
+
+		for i.Next() {
+			// Delete it
+			_, err := webhookendpoint.Del(i.WebhookEndpoint().ID, nil)
+
+			if err != nil {
+				panic(err)
+			}
+		}
+
+		// Add/update stripe webhook
+		params := &stripe.WebhookEndpointParams{
+			URL: stripe.String(Config.Sites.API + "/payments/stripe/webhook"),
+			EnabledEvents: stripe.StringSlice([]string{
+				"checkout.session.completed",
+				"checkout.session.async_payment_succeeded",
+				"checkout.session.async_payment_failed",
+			}),
+		}
+		wh, err := webhookendpoint.New(params)
+
+		if err != nil {
+			panic(err)
+		}
+
+		StripeWebhSecret = wh.Secret
+
+		// Next fetch the IP list
+		resp, err := http.Get("https://stripe.com/files/ips/ips_webhooks.txt")
+
+		if err != nil {
+			panic(err)
+		}
+
+		defer resp.Body.Close()
+
+		body, err := io.ReadAll(resp.Body)
+
+		if err != nil {
+			panic(err)
+		}
+
+		// Split the body into lines
+		StripeWebhIPList = strings.Split(string(body), "\n")
+
+		// Remove empty lines
+		for i, v := range StripeWebhIPList {
+			if v == "" {
+				StripeWebhIPList = append(StripeWebhIPList[:i], StripeWebhIPList[i+1:]...)
+			}
+		}
+
+		Logger.Info("Stripe webhook IP allowlist:", StripeWebhIPList)
+	}()
 }

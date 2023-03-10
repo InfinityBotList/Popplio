@@ -1,7 +1,6 @@
 package create_stripe_checkout
 
 import (
-	"fmt"
 	"net/http"
 	"popplio/api"
 	"popplio/docs"
@@ -106,8 +105,6 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 		}
 	}
 
-	priceStr := fmt.Sprintf("%.2f", perk.Price)
-
 	customId, err := json.Marshal(payload)
 
 	if err != nil {
@@ -120,21 +117,21 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 			{
 				// Provide the exact Price ID (for example, pr_1234) of the product you want to sell
 				PriceData: &stripe.CheckoutSessionLineItemPriceDataParams{
-					Currency: stripe.String(string(stripe.CurrencyUSD)),
+					Currency:   stripe.String(string(stripe.CurrencyUSD)),
+					UnitAmount: stripe.Int64(int64(perk.Price * 100)),
 					ProductData: &stripe.CheckoutSessionLineItemPriceDataProductDataParams{
 						Name:        stripe.String(perk.Name),
 						Description: stripe.String("Gives " + perk.Benefit + " for " + payload.For + " with duration of " + strconv.Itoa(perk.TimePeriod) + " hours"),
 					},
 				},
-				Price:    stripe.String(priceStr),
 				Quantity: stripe.Int64(1),
 			},
 		},
 		ClientReferenceID: stripe.String(string(customId)),
 		Mode:              stripe.String(string(stripe.CheckoutSessionModePayment)),
-		AutomaticTax:      &stripe.CheckoutSessionAutomaticTaxParams{Enabled: stripe.Bool(true)},
-		SuccessURL:        stripe.String(state.Config.Sites.Frontend + "/stripe/success"),
-		CancelURL:         stripe.String(state.Config.Sites.Frontend + "/stripe/cancel"),
+		//AutomaticTax:      &stripe.CheckoutSessionAutomaticTaxParams{Enabled: stripe.Bool(true)},
+		SuccessURL: stripe.String(state.Config.Sites.Frontend + "/stripe/success"),
+		CancelURL:  stripe.String(state.Config.Sites.Frontend + "/stripe/cancel"),
 	}
 
 	order, err := session.New(params)
