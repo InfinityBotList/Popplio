@@ -302,25 +302,19 @@ func Route(doc *Doc) {
 	switch strings.ToLower(doc.Method) {
 	case "get":
 		op.Get = operationData
-
-		api.Paths.Set(doc.Pattern, op)
 	case "post":
 		op.Post = operationData
-
-		api.Paths.Set(doc.Pattern, op)
 	case "put":
 		op.Put = operationData
-
-		api.Paths.Set(doc.Pattern, op)
 	case "patch":
 		op.Patch = operationData
-
-		api.Paths.Set(doc.Pattern, op)
 	case "delete":
 		op.Delete = operationData
-
-		api.Paths.Set(doc.Pattern, op)
+	default:
+		panic("unknown method: " + doc.Method)
 	}
+
+	api.Paths.Set(doc.Pattern, op)
 }
 
 func GetSchema() any {

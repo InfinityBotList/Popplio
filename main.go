@@ -63,21 +63,17 @@ func corsMiddleware(next http.Handler) http.Handler {
 		// limit body to 10mb
 		r.Body = http.MaxBytesReader(w, r.Body, 10*1024*1024)
 
-		if r.Header.Get("Origin") == "" || strings.HasSuffix(r.Header.Get("Origin"), "spider.infinitybots.gg") {
-			w.Header().Set("Docs-Site", "true")
-			// Needed for docs
-			if r.Header.Get("User-Auth") != "" {
-				if strings.HasPrefix(r.Header.Get("User-Auth"), "User ") {
-					r.Header.Set("Authorization", r.Header.Get("User-Auth"))
-				} else {
-					r.Header.Set("Authorization", "User "+r.Header.Get("User-Auth"))
-				}
-			} else if r.Header.Get("Bot-Auth") != "" {
-				if strings.HasPrefix(r.Header.Get("Bot-Auth"), "Bot ") {
-					r.Header.Set("Authorization", r.Header.Get("Bot-Auth"))
-				}
-				r.Header.Set("Authorization", "Bot "+r.Header.Get("Bot-Auth"))
+		if r.Header.Get("User-Auth") != "" {
+			if strings.HasPrefix(r.Header.Get("User-Auth"), "User ") {
+				r.Header.Set("Authorization", r.Header.Get("User-Auth"))
+			} else {
+				r.Header.Set("Authorization", "User "+r.Header.Get("User-Auth"))
 			}
+		} else if r.Header.Get("Bot-Auth") != "" {
+			if strings.HasPrefix(r.Header.Get("Bot-Auth"), "Bot ") {
+				r.Header.Set("Authorization", r.Header.Get("Bot-Auth"))
+			}
+			r.Header.Set("Authorization", "Bot "+r.Header.Get("Bot-Auth"))
 		}
 
 		if strings.HasSuffix(r.Header.Get("Origin"), "infinitybots.gg") || strings.HasPrefix(r.Header.Get("Origin"), "localhost:") {
@@ -127,8 +123,8 @@ func main() {
 
 	docsHTML = strings.Replace(docsHTML, "[JS]", docsJs, 1)
 
-	docs.AddSecuritySchema("User", "User-Auth", "Requires a user token. Should be prefixed with `User ` *in `Authorization` header*. **This docs page has an exemption to allow differenciation of schemas.**")
-	docs.AddSecuritySchema("Bot", "Bot-Auth", "Requires a bot token. Should be prefixed with `Bot ` *in `Authorization` header*. **This docs page has an exemption to allow differenciation of schemas.**")
+	docs.AddSecuritySchema("User", "User-Auth", "Requires a user token. Should be prefixed with `User ` in `Authorization` header.")
+	docs.AddSecuritySchema("Bot", "Bot-Auth", "Requires a bot token. Should be prefixed with `Bot ` in `Authorization` header.")
 
 	r := chi.NewRouter()
 
