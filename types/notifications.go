@@ -13,7 +13,8 @@ type Notification struct {
 	Type      NotificationType `json:"type" validate:"required,oneof=success error info warning"`
 	Message   string           `json:"message" validate:"required"`
 	Title     string           `json:"title" validate:"required"`
-	URL       string           `json:"url"`  // Optional
-	Icon      string           `json:"icon"` // Optional
-	AlertData map[string]any   `json:"data"` // Optional
+	Priority  int              `json:"priority"` // Optional
+	URL       string           `json:"url"`      // Optional
+	Icon      string           `json:"icon"`     // Optional
+	AlertData map[string]any   `json:"data"`     // Optional
 }

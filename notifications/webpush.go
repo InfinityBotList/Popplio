@@ -19,9 +19,9 @@ func PushNotification(userId string, notif types.Notification) error {
 		notif.AlertData = map[string]any{}
 	}
 
-	state.Pool.Exec(
+	_, err = state.Pool.Exec(
 		state.Context,
-		"INSERT INTO alerts (user_id, type, url, message, title, icon, data) VALUES ($1, $2, $3, $4, $5, $6, $7)",
+		"INSERT INTO alerts (user_id, type, url, message, title, icon, alert_data, priority) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)",
 		userId,
 		notif.Type,
 		notif.URL,
@@ -29,7 +29,13 @@ func PushNotification(userId string, notif types.Notification) error {
 		notif.Title,
 		notif.Icon,
 		notif.AlertData,
+		notif.Priority,
 	)
+
+	if err != nil {
+		state.Logger.Error(err)
+		return err
+	}
 
 	bytes, err := json.Marshal(notif)
 
