@@ -286,7 +286,5 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 
 	utils.ClearBotCache(d.Context, id)
 
-	return api.HttpResponse{
-		Status: http.StatusNoContent,
-	}
+	return api.DefaultResponse(http.StatusNoContent)
 }

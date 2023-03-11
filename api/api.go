@@ -591,6 +591,7 @@ func DefaultResponse(statusCode int) HttpResponse {
 			Status: statusCode,
 			Data:   constants.MethodNotAllowed,
 		}
+	case http.StatusNoContent:
 	case http.StatusOK:
 		return HttpResponse{
 			Status: http.StatusNoContent,

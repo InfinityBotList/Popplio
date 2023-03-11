@@ -129,7 +129,5 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 
 	utils.ClearUserCache(d.Context, d.Auth.ID)
 
-	return api.HttpResponse{
-		Status: http.StatusNoContent,
-	}
+	return api.DefaultResponse(http.StatusNoContent)
 }

@@ -378,7 +378,5 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 		},
 	})
 
-	return api.HttpResponse{
-		Status: http.StatusNoContent,
-	}
+	return api.DefaultResponse(http.StatusNoContent)
 }

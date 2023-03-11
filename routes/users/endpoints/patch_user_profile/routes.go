@@ -108,7 +108,5 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 
 	state.Redis.Del(d.Context, "uc-"+id)
 
-	return api.HttpResponse{
-		Status: http.StatusNoContent,
-	}
+	return api.DefaultResponse(http.StatusNoContent)
 }

@@ -54,7 +54,5 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 	// Delete old
 	state.Pool.Exec(d.Context, "DELETE FROM silverpelt WHERE user_id = $1 AND bot_id = $2", d.Auth.ID, id)
 
-	return api.HttpResponse{
-		Status: http.StatusNoContent,
-	}
+	return api.DefaultResponse(http.StatusNoContent)
 }
