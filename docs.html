@@ -1,22 +1,32 @@
-/*
-Below is the expanded implementation of disableScroll() and enableScroll() functions as used in the below code.
-
-function disableScroll() {
-  // Get the current page scroll position
-  scrollTop = window.pageYOffset || document.documentElement.scrollTop;
-  scrollLeft = window.pageXOffset || document.documentElement.scrollLeft,
-
-  // if any scroll is attempted, set this to the previous value
-  window.onscroll = function() {
-      window.scrollTo(scrollLeft, scrollTop);
-  };
-}
-  
-function enableScroll() {
-    window.onscroll = function() {};
-}
-*/
-
+<!doctype html> <!-- Important: must specify -->
+<html>
+<head>
+  <meta charset="utf-8"> <!-- Important: rapi-doc uses utf8 characters -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <script type="module" src="https://unpkg.com/rapidoc@9.3.4/dist/rapidoc-min.js"></script>
+  <style>
+  </style>
+</head>
+<body>
+  <rapi-doc
+    id="api"
+    spec-url="/openapi"
+    theme="dark"
+    render-style="read"
+    schema-style="table"
+    info-description-headings-in-navbar="true"
+    allow-spec-url-load="false"
+    allow-spec-file-load="false"
+    persist-auth="true"
+    allow-spec-file-download="true"
+    allow-server-selection="false"
+    font-size="large"
+    regular-font="'Lexend Deca'"
+    load-fonts="false"
+    sort-endpoints-by="none"
+  > 
+    <img id="logo" slot="logo" src="https://cdn.infinitybots.xyz/images/png/Infinity1.png" style="width:50px; height:50px; display: none;"/>
+    <script>
 window.addEventListener('DOMContentLoaded', () => {
     const rapidocEl = document.getElementById('api');
     document.querySelector("#logo").style.display = "block"
@@ -36,7 +46,15 @@ window.addEventListener('DOMContentLoaded', () => {
       // Inject CSS
       let style = document.createElement('style');
       
-      style.innerHTML = [CSS];
+      style.innerHTML = `
+.overview-headers, .left-bar {
+  padding-left:3px;
+}
+
+.mobile-menu:hover {
+  opacity: 0.8 !important;
+}
+      `;
       shadow.appendChild(style);
   
       // Add all mobile navigation elements
@@ -121,3 +139,7 @@ window.addEventListener('DOMContentLoaded', () => {
       shadow.appendChild(showMenuBottom);
     });
 });
+    </script>
+  </rapi-doc>
+</body>
+</html>

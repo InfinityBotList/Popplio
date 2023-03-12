@@ -37,26 +37,16 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
-	"github.com/tdewolff/minify/v2"
-	"github.com/tdewolff/minify/v2/css"
-	"github.com/tdewolff/minify/v2/js"
 
 	jsoniter "github.com/json-iterator/go"
 )
 
 var json = jsoniter.ConfigCompatibleWithStandardLibrary
 
-//go:embed docs/ext.js
-var extJsUnminified string
-
-//go:embed docs/ext.css
-var extCssUnminified string
-
-//go:embed docs/docs.html
+//go:embed docs.html
 var docsHTML string
 
 var (
-	docsJs  string
 	openapi []byte
 )
 
@@ -121,29 +111,6 @@ If you need some help or think you have spotted a problem with our API you can t
 	}
 
 	docs.Setup()
-
-	m := minify.New()
-	m.AddFunc("application/javascript", js.Minify)
-	m.AddFunc("text/css", css.Minify)
-
-	strWriter := &strings.Builder{}
-	strReader := strings.NewReader(extCssUnminified)
-
-	if err := m.Minify("text/css", strWriter, strReader); err != nil {
-		panic(err)
-	}
-
-	extJsUnminified = strings.Replace(extJsUnminified, "[CSS]", "\""+strWriter.String()+"\"", 1)
-
-	strWriter = &strings.Builder{}
-	strReader = strings.NewReader(extJsUnminified)
-	if err := m.Minify("application/javascript", strWriter, strReader); err != nil {
-		panic(err)
-	}
-
-	docsJs = strWriter.String()
-
-	docsHTML = strings.Replace(docsHTML, "[JS]", docsJs, 1)
 
 	docs.AddSecuritySchema("User", "User-Auth", "Requires a user token. Should be prefixed with `User ` in `Authorization` header.")
 	docs.AddSecuritySchema("Bot", "Bot-Auth", "Requires a bot token. Should be prefixed with `Bot ` in `Authorization` header.")
