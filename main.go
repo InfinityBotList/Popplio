@@ -127,11 +127,6 @@ If you need some help or think you have spotted a problem with our API you can t
 		middleware.Timeout(30*time.Second),
 	)
 
-	// Set a timeout value on the request context (ctx), that will signal
-	// through ctx.Done() that the request has timed out and further
-	// processing should be stopped.
-	r.Use()
-
 	routers := []api.APIRouter{
 		// Use same order as routes folder
 		blogs.Router{},
