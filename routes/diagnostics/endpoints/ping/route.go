@@ -4,8 +4,9 @@ import (
 	"net/http"
 
 	"popplio/api"
-	"popplio/docs"
 	"popplio/state"
+
+	docs "github.com/infinitybotlist/doclib"
 
 	jsoniter "github.com/json-iterator/go"
 )

@@ -3,9 +3,10 @@ package create_team
 import (
 	"net/http"
 	"popplio/api"
-	"popplio/docs"
 	"popplio/state"
 	"popplio/teams"
+
+	docs "github.com/infinitybotlist/doclib"
 
 	"github.com/go-playground/validator/v10"
 	"github.com/jackc/pgx/v5/pgtype"

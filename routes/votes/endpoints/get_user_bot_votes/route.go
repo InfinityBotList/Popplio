@@ -4,10 +4,11 @@ import (
 	"net/http"
 
 	"popplio/api"
-	"popplio/docs"
 	"popplio/state"
 	"popplio/types"
 	"popplio/utils"
+
+	docs "github.com/infinitybotlist/doclib"
 
 	"github.com/go-chi/chi/v5"
 )
@@ -34,7 +35,7 @@ func Docs() *docs.Doc {
 		},
 		Resp: types.UserVote{
 			Timestamps: []int64{},
-			VoteInfo: types.VoteInfo{},
+			VoteInfo:   types.VoteInfo{},
 		},
 	}
 }

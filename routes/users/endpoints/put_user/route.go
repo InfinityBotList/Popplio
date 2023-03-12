@@ -8,10 +8,11 @@ import (
 	"time"
 
 	"popplio/api"
-	"popplio/docs"
 	"popplio/ratelimit"
 	"popplio/state"
 	"popplio/types"
+
+	docs "github.com/infinitybotlist/doclib"
 
 	"github.com/bwmarrin/discordgo"
 	"github.com/go-playground/validator/v10"

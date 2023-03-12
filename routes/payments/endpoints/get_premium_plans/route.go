@@ -3,8 +3,9 @@ package get_premium_plans
 import (
 	"net/http"
 	"popplio/api"
-	"popplio/docs"
 	"popplio/payments"
+
+	docs "github.com/infinitybotlist/doclib"
 )
 
 type PlanList struct {

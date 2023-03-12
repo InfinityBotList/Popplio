@@ -14,9 +14,10 @@ import (
 	"time"
 
 	"popplio/constants"
-	"popplio/docs"
 	"popplio/state"
 	"popplio/types"
+
+	docs "github.com/infinitybotlist/doclib"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-playground/validator/v10"
@@ -296,10 +297,17 @@ func (r Route) Route(ro Router) {
 	docsObj.OpId = r.OpId
 	docsObj.Method = r.Method.String()
 	docsObj.Tags = []string{CurrentTag}
-	docsObj.AuthType = []types.TargetType{}
+	docsObj.AuthType = []string{}
 
 	for _, auth := range r.Auth {
-		docsObj.AuthType = append(docsObj.AuthType, auth.Type)
+		switch auth.Type {
+		case types.TargetTypeUser:
+			docsObj.AuthType = append(docsObj.AuthType, "User")
+		case types.TargetTypeBot:
+			docsObj.AuthType = append(docsObj.AuthType, "Bot")
+		default:
+			panic("Unknown auth type: " + r.String())
+		}
 	}
 
 	// Count the number of { and } in the pattern

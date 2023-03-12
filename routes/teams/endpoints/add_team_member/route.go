@@ -3,12 +3,13 @@ package add_team_member
 import (
 	"net/http"
 	"popplio/api"
-	"popplio/docs"
 	"popplio/routes/teams/assets"
 	"popplio/state"
 	"popplio/teams"
 	"popplio/types"
 	"popplio/utils"
+
+	docs "github.com/infinitybotlist/doclib"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-playground/validator/v10"

@@ -3,8 +3,9 @@ package get_stripe
 import (
 	"net/http"
 	"popplio/api"
-	"popplio/docs"
 	"popplio/state"
+
+	docs "github.com/infinitybotlist/doclib"
 )
 
 type StripeMeta struct {

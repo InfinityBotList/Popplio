@@ -3,11 +3,12 @@ package get_blog_list
 import (
 	"net/http"
 	"popplio/api"
-	"popplio/docs"
 	"popplio/state"
 	"popplio/types"
 	"popplio/utils"
 	"strings"
+
+	docs "github.com/infinitybotlist/doclib"
 
 	"github.com/georgysavva/scany/v2/pgxscan"
 )

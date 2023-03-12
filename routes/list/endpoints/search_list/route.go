@@ -7,10 +7,11 @@ import (
 	"text/template"
 
 	"popplio/api"
-	"popplio/docs"
 	"popplio/state"
 	"popplio/types"
 	"popplio/utils"
+
+	docs "github.com/infinitybotlist/doclib"
 
 	"github.com/georgysavva/scany/v2/pgxscan"
 	"github.com/go-playground/validator/v10"

@@ -3,7 +3,8 @@ package current_status
 import (
 	"net/http"
 	"popplio/api"
-	"popplio/docs"
+
+	docs "github.com/infinitybotlist/doclib"
 
 	jsoniter "github.com/json-iterator/go"
 )

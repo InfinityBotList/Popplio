@@ -3,12 +3,13 @@ package remove_review
 import (
 	"net/http"
 	"popplio/api"
-	"popplio/docs"
 	"popplio/routes/reviews/assets"
 	"popplio/state"
 	"popplio/types"
 	"popplio/utils"
 	"strings"
+
+	docs "github.com/infinitybotlist/doclib"
 
 	"github.com/georgysavva/scany/v2/pgxscan"
 	"github.com/go-chi/chi/v5"

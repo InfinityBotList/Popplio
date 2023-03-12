@@ -7,10 +7,11 @@ import (
 
 	"popplio/api"
 	"popplio/constants"
-	"popplio/docs"
 	"popplio/state"
 	"popplio/types"
 	"popplio/utils"
+
+	docs "github.com/infinitybotlist/doclib"
 )
 
 func GetStats(s types.BotStats) (servers uint64, shards uint64, users uint64) {

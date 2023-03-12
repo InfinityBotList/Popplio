@@ -4,12 +4,13 @@ import (
 	"fmt"
 	"net/http"
 	"popplio/api"
-	"popplio/docs"
 	"popplio/ratelimit"
 	"popplio/routes/payments/assets"
 	"popplio/state"
 	"popplio/types"
 	"time"
+
+	docs "github.com/infinitybotlist/doclib"
 
 	"github.com/go-playground/validator/v10"
 	jsoniter "github.com/json-iterator/go"

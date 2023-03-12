@@ -4,11 +4,12 @@ import (
 	"net/http"
 	"popplio/api"
 	"popplio/apps"
-	"popplio/docs"
 	"popplio/state"
 	"popplio/types"
 	"popplio/utils"
 	"strings"
+
+	docs "github.com/infinitybotlist/doclib"
 
 	"github.com/georgysavva/scany/v2/pgxscan"
 	"github.com/jackc/pgx/v5"

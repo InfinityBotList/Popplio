@@ -3,8 +3,9 @@ package get_team_permissions
 import (
 	"net/http"
 	"popplio/api"
-	"popplio/docs"
 	"popplio/teams"
+
+	docs "github.com/infinitybotlist/doclib"
 )
 
 type PermissionResponse struct {

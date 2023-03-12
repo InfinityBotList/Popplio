@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"net/http"
 	"popplio/api"
-	"popplio/docs"
 	"popplio/state"
 	"popplio/teams"
 	"popplio/types"
@@ -12,6 +11,8 @@ import (
 	"reflect"
 	"strconv"
 	"strings"
+
+	docs "github.com/infinitybotlist/doclib"
 
 	"github.com/bwmarrin/discordgo"
 	"github.com/go-chi/chi/v5"

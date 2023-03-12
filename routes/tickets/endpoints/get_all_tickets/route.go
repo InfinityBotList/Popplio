@@ -7,10 +7,11 @@ import (
 	"strings"
 
 	"popplio/api"
-	"popplio/docs"
 	"popplio/state"
 	"popplio/types"
 	"popplio/utils"
+
+	docs "github.com/infinitybotlist/doclib"
 
 	"github.com/bwmarrin/discordgo"
 	"github.com/georgysavva/scany/v2/pgxscan"

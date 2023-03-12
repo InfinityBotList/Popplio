@@ -3,7 +3,6 @@ package add_bot_review
 import (
 	"net/http"
 	"popplio/api"
-	"popplio/docs"
 	"popplio/ratelimit"
 	"popplio/routes/reviews/assets"
 	"popplio/state"
@@ -11,6 +10,8 @@ import (
 	"popplio/utils"
 	"strings"
 	"time"
+
+	docs "github.com/infinitybotlist/doclib"
 
 	"github.com/georgysavva/scany/v2/pgxscan"
 	"github.com/go-chi/chi/v5"

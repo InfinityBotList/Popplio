@@ -7,10 +7,11 @@ import (
 	"time"
 
 	"popplio/api"
-	"popplio/docs"
 	"popplio/routes/special/assets"
 	"popplio/state"
 	"popplio/types"
+
+	docs "github.com/infinitybotlist/doclib"
 
 	"github.com/infinitybotlist/eureka/crypto"
 	jsoniter "github.com/json-iterator/go"

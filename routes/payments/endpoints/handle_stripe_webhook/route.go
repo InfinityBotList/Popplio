@@ -5,9 +5,10 @@ import (
 	"io"
 	"net/http"
 	"popplio/api"
-	"popplio/docs"
 	"popplio/state"
 	"popplio/types"
+
+	docs "github.com/infinitybotlist/doclib"
 
 	"github.com/stripe/stripe-go/v74/webhook"
 	"golang.org/x/exp/slices"

@@ -7,9 +7,10 @@ import (
 	"time"
 
 	"popplio/api"
-	"popplio/docs"
 	"popplio/state"
 	"popplio/types"
+
+	docs "github.com/infinitybotlist/doclib"
 
 	"github.com/go-chi/chi/v5"
 )

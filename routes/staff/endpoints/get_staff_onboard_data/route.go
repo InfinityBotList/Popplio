@@ -3,9 +3,10 @@ package get_staff_onboard_data
 import (
 	"net/http"
 	"popplio/api"
-	"popplio/docs"
 	"popplio/state"
 	"popplio/types"
+
+	docs "github.com/infinitybotlist/doclib"
 
 	"github.com/go-chi/chi/v5"
 )

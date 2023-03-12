@@ -11,13 +11,14 @@ import (
 	"time"
 
 	"popplio/api"
-	"popplio/docs"
 	"popplio/routes/special/assets"
 	"popplio/state"
 	"popplio/teams"
 	"popplio/types"
 	"popplio/utils"
 	"popplio/webhooks"
+
+	docs "github.com/infinitybotlist/doclib"
 
 	_ "embed"
 

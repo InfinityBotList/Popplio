@@ -5,10 +5,11 @@ import (
 	"strconv"
 
 	"popplio/api"
-	"popplio/docs"
 	"popplio/state"
 	"popplio/types"
 	"popplio/utils"
+
+	docs "github.com/infinitybotlist/doclib"
 )
 
 const perPage = 10

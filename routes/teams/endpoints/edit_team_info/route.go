@@ -3,10 +3,11 @@ package edit_team_info
 import (
 	"net/http"
 	"popplio/api"
-	"popplio/docs"
 	"popplio/state"
 	"popplio/teams"
 	"popplio/types"
+
+	docs "github.com/infinitybotlist/doclib"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-playground/validator/v10"

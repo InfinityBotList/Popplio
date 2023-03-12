@@ -4,9 +4,10 @@ import (
 	"net/http"
 	"popplio/api"
 	"popplio/apps"
-	"popplio/docs"
 	"popplio/state"
 	"popplio/types"
+
+	docs "github.com/infinitybotlist/doclib"
 
 	"github.com/bwmarrin/discordgo"
 	"github.com/go-playground/validator/v10"

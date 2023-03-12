@@ -9,12 +9,13 @@ import (
 	"time"
 
 	"popplio/api"
-	"popplio/docs"
 	"popplio/notifications"
 	"popplio/state"
 	"popplio/types"
 	"popplio/utils"
 	"popplio/webhooks"
+
+	docs "github.com/infinitybotlist/doclib"
 
 	"github.com/bwmarrin/discordgo"
 	"github.com/go-chi/chi/v5"

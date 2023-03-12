@@ -7,8 +7,9 @@ import (
 	"strings"
 
 	"popplio/api"
-	"popplio/docs"
 	"popplio/state"
+
+	docs "github.com/infinitybotlist/doclib"
 )
 
 func Docs() *docs.Doc {

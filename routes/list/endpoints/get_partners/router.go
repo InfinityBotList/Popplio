@@ -3,8 +3,9 @@ package get_partners
 import (
 	"net/http"
 	"popplio/api"
-	"popplio/docs"
 	"popplio/partners"
+
+	docs "github.com/infinitybotlist/doclib"
 )
 
 func Docs() *docs.Doc {
@@ -18,6 +19,6 @@ func Docs() *docs.Doc {
 func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 	return api.HttpResponse{
 		Status: http.StatusOK,
-		Json: partners.Partners,
+		Json:   partners.Partners,
 	}
 }
