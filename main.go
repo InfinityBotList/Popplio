@@ -46,13 +46,13 @@ import (
 
 var json = jsoniter.ConfigCompatibleWithStandardLibrary
 
-//go:embed docs/assets/ext.js
+//go:embed docs/ext.js
 var extJsUnminified string
 
-//go:embed docs/assets/ext.css
+//go:embed docs/ext.css
 var extCssUnminified string
 
-//go:embed docs/assets/docs.html
+//go:embed docs/docs.html
 var docsHTML string
 
 var (
