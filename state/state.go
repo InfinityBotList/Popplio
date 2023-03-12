@@ -14,6 +14,7 @@ import (
 	"github.com/go-playground/validator/v10"
 	"github.com/go-playground/validator/v10/non-standard/validators"
 	"github.com/go-redis/redis/v8"
+	"github.com/infinitybotlist/genconfig"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/plutov/paypal/v4"
 	"github.com/stripe/stripe-go/v74"
@@ -87,7 +88,7 @@ func Setup() {
 	Validator.RegisterValidation("nospaces", noSpaces)
 	Validator.RegisterValidation("https", isHttps)
 
-	config.GenConfig()
+	genconfig.GenConfig(config.Config{})
 
 	cfg, err := os.ReadFile("config.yaml")
 
