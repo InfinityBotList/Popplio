@@ -3,7 +3,7 @@ module popplio
 go 1.18
 
 require (
-	github.com/bwmarrin/discordgo v0.27.0
+	github.com/bwmarrin/discordgo v0.27.1
 	github.com/georgysavva/scany/v2 v2.0.0
 	github.com/getkin/kin-openapi v0.114.0 // indirect
 	github.com/go-chi/chi/v5 v5.0.8
@@ -16,7 +16,7 @@ require (
 )
 
 require (
-	github.com/infinitybotlist/doclib v0.0.0-20230312055228-d8dc53c4e4fd
+	github.com/infinitybotlist/doclib v0.0.0-20230312063635-20fe089bfe09
 	github.com/infinitybotlist/genconfig v0.0.0-20230312045948-20cdb56f90d3
 	github.com/stripe/stripe-go/v74 v74.11.0
 )
@@ -29,14 +29,14 @@ require (
 	github.com/go-playground/locales v0.14.1 // indirect
 	github.com/go-playground/universal-translator v0.18.1 // indirect
 	github.com/gorilla/css v1.0.0 // indirect
-	github.com/leodido/go-urn v1.2.1 // indirect
+	github.com/leodido/go-urn v1.2.2 // indirect
 	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
 	github.com/modern-go/reflect2 v1.0.2 // indirect
 	github.com/mohae/deepcopy v0.0.0-20170929034955-c48cc78d4826 // indirect
 	github.com/perimeterx/marshmallow v1.1.4 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
-	github.com/stretchr/testify v1.8.1 // indirect
-	golang.org/x/net v0.7.0 // indirect
+	github.com/stretchr/testify v1.8.2 // indirect
+	golang.org/x/net v0.8.0 // indirect
 	golang.org/x/sync v0.1.0 // indirect
 )
 
@@ -56,21 +56,21 @@ require (
 	github.com/lib/pq v1.10.2 // indirect
 	github.com/mailru/easyjson v0.7.7 // indirect
 	go.uber.org/atomic v1.10.0 // indirect
-	go.uber.org/multierr v1.9.0 // indirect
-	golang.org/x/crypto v0.6.0 // indirect
-	golang.org/x/text v0.7.0 // indirect
+	go.uber.org/multierr v1.10.0 // indirect
+	golang.org/x/crypto v0.7.0 // indirect
+	golang.org/x/text v0.8.0 // indirect
 )
 
 require (
 	github.com/SherClockHolmes/webpush-go v1.2.0
 	github.com/go-playground/validator/v10 v10.11.2
-	github.com/jackc/pgx/v5 v5.3.0
+	github.com/jackc/pgx/v5 v5.3.1
 	github.com/json-iterator/go v1.1.12
-	github.com/microcosm-cc/bluemonday v1.0.22
+	github.com/microcosm-cc/bluemonday v1.0.23
 	github.com/plutov/paypal/v4 v4.7.0
 	github.com/yuin/goldmark v1.5.4
 	go.uber.org/zap v1.24.0
-	golang.org/x/exp v0.0.0-20230213192124-5e25df0256eb
-	golang.org/x/sys v0.5.0 // indirect
+	golang.org/x/exp v0.0.0-20230310171629-522b1b587ee0
+	golang.org/x/sys v0.6.0 // indirect
 	mvdan.cc/xurls/v2 v2.4.0
 )

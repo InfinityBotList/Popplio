@@ -94,7 +94,11 @@ func main() {
 	docs.DocsSetupData = &docs.SetupData{
 		URL:         state.Config.Sites.API,
 		ErrorStruct: types.ApiError{},
-		Description: `
+		Info: docs.Info{
+			Title:          "Infinity Bot List API",
+			TermsOfService: "https://infinitybotlist.com/terms",
+			Version:        "6.0",
+			Description: `
 # Introduction
 
 Hey there 👋, welcome to our Official Documentation!
@@ -106,8 +110,18 @@ Hey there 👋, welcome to our Official Documentation!
 **Please see https://docs.botlist.site for more info on the basics of our API. This site purely exists to be an API reference not a guide**
 
 If you need some help or think you have spotted a problem with our API you can talk to us in our 
-[#api-support](https://discord.com/channels/758641373074423808/826363644295643136) channel in our [discord server](https://infinitybotlist.com/discord).
-		`,
+[#api-support](https://discord.com/channels/758641373074423808/826363644295643136) channel in our [discord server](https://infinitybotlist.com/discord).			
+			`,
+			Contact: docs.Contact{
+				Name:  "Infinity Bot List",
+				URL:   "https://infinitybotlist.com",
+				Email: "support@infinitybots.gg",
+			},
+			License: docs.License{
+				Name: "MIT",
+				URL:  "https://opensource.org/licenses/MIT",
+			},
+		},
 	}
 
 	docs.Setup()
