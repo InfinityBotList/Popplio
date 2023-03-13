@@ -332,6 +332,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 	botArgs := createBotsArgs(payload, id)
 
 	if len(createBotsColsArr) != len(botArgs) {
+		state.Logger.Error(botArgs, createBotsColsArr)
 		return api.HttpResponse{
 			Status: http.StatusInternalServerError,
 			Json: types.ApiError{
