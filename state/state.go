@@ -139,7 +139,7 @@ func Setup() {
 			panic(err)
 		}
 
-		err = Discord.UpdateWatchStatus(0, "infinitybots.gg")
+		err = Discord.UpdateWatchStatus(0, Config.Sites.Frontend)
 
 		if err != nil {
 			panic(err)
