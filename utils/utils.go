@@ -451,6 +451,13 @@ func GetUserBotPerms(ctx context.Context, userID string, botID string) (*teams.P
 	return teams.NewPermissionManager([]teams.TeamPermission{}), nil
 }
 
+func ClearUserCache(ctx context.Context, userId string) error {
+	// Delete from cache
+	state.Redis.Del(ctx, "uc-"+userId)
+
+	return nil
+}
+
 func ClearBotCache(ctx context.Context, botId string) error {
 	// Get name and vanity, delete from cache
 	var vanity string
@@ -466,13 +473,6 @@ func ClearBotCache(ctx context.Context, botId string) error {
 	state.Redis.Del(ctx, "bc-"+vanity)
 	state.Redis.Del(ctx, "bc-"+botId)
 	state.Redis.Del(ctx, "bc-"+clientId)
-
-	return nil
-}
-
-func ClearUserCache(ctx context.Context, userId string) error {
-	// Delete from cache
-	state.Redis.Del(ctx, "uc-"+userId)
 
 	return nil
 }

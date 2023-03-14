@@ -62,6 +62,17 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 		}
 	}
 
+	// Check cache, this is how we can avoid hefty ratelimits
+	cache := state.Redis.Get(d.Context, "uc-"+name).Val()
+	if cache != "" {
+		return api.HttpResponse{
+			Data: cache,
+			Headers: map[string]string{
+				"X-Popplio-Cached": "true",
+			},
+		}
+	}
+
 	var user types.User
 
 	var err error
@@ -254,6 +265,8 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 	user.UserBots = userBots
 
 	return api.HttpResponse{
-		Json: user,
+		Json:      user,
+		CacheKey:  "uc-" + name,
+		CacheTime: 2 * time.Minute,
 	}
 }
