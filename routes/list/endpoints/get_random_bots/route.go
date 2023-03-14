@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	docs "github.com/infinitybotlist/doclib"
+	"github.com/infinitybotlist/dovewing"
 
 	"github.com/georgysavva/scany/v2/pgxscan"
 )
@@ -51,7 +52,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 	}
 
 	for i, bot := range indexBots {
-		botUser, err := utils.GetDiscordUser(d.Context, bot.BotID)
+		botUser, err := dovewing.GetDiscordUser(d.Context, bot.BotID)
 
 		if err != nil {
 			return api.DefaultResponse(http.StatusInternalServerError)

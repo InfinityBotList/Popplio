@@ -14,6 +14,7 @@ import (
 	"popplio/utils"
 
 	docs "github.com/infinitybotlist/doclib"
+	"github.com/infinitybotlist/dovewing"
 
 	"github.com/georgysavva/scany/v2/pgxscan"
 	"github.com/go-chi/chi/v5"
@@ -162,7 +163,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 	}
 
 	if bot.Owner.Valid {
-		ownerUser, err := utils.GetDiscordUser(d.Context, bot.Owner.String)
+		ownerUser, err := dovewing.GetDiscordUser(d.Context, bot.Owner.String)
 
 		if err != nil {
 			state.Logger.Error(err)
@@ -210,7 +211,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 				return api.DefaultResponse(http.StatusInternalServerError)
 			}
 
-			user, err := utils.GetDiscordUser(d.Context, userId)
+			user, err := dovewing.GetDiscordUser(d.Context, userId)
 
 			if err != nil {
 				state.Logger.Error(err)
@@ -241,7 +242,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 
 	bot.SubPeriodParsed = types.NewInterval(bot.SubPeriod)
 
-	botUser, err := utils.GetDiscordUser(d.Context, bot.BotID)
+	botUser, err := dovewing.GetDiscordUser(d.Context, bot.BotID)
 
 	if err != nil {
 		state.Logger.Error(err)

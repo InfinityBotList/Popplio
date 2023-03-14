@@ -4,8 +4,8 @@ import (
 	"popplio/state"
 
 	"github.com/georgysavva/scany/v2/pgxscan"
-	"github.com/go-redis/redis/v8"
 	jsoniter "github.com/json-iterator/go"
+	"github.com/redis/go-redis/v9"
 )
 
 var json = jsoniter.ConfigCompatibleWithStandardLibrary

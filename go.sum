@@ -61,6 +61,8 @@ github.com/infinitybotlist/doclib v0.0.0-20230312055228-d8dc53c4e4fd h1:imZe8jT9
 github.com/infinitybotlist/doclib v0.0.0-20230312055228-d8dc53c4e4fd/go.mod h1:yRoQp8q6sZ8pFDuLXPvg/0sm64D3v3VekzbBcGiXuE8=
 github.com/infinitybotlist/doclib v0.0.0-20230312063635-20fe089bfe09 h1:KJw4O9V3CmKzJGlfhj6QlVHf6rSK7PvTrfUwKWbCcM0=
 github.com/infinitybotlist/doclib v0.0.0-20230312063635-20fe089bfe09/go.mod h1:yRoQp8q6sZ8pFDuLXPvg/0sm64D3v3VekzbBcGiXuE8=
+github.com/infinitybotlist/dovewing v0.0.0-20230314101657-c2dca4dde84f h1:SfIGjgB4xggY01ck41slBFZRRKWu59yalzSePH7hu+M=
+github.com/infinitybotlist/dovewing v0.0.0-20230314101657-c2dca4dde84f/go.mod h1:YrvR6uAc6JQscNvxhnJ6jevNze+OSsMBhJqtHo6VzVI=
 github.com/infinitybotlist/eureka v0.0.0-20230123041109-426207f20916 h1:H7Xm4s5Wvnr0R7mO1MvbL/9dexCmNlQNDOdscTduKvw=
 github.com/infinitybotlist/eureka v0.0.0-20230123041109-426207f20916/go.mod h1:tOzJAtbgIM29vIinvJ7DbnXjS8q5b7AMgMXJGXjI0bU=
 github.com/infinitybotlist/genconfig v0.0.0-20230312045948-20cdb56f90d3 h1:olVszvMtmzCZSfibcNdsWgGVq+axyyNS2BUJxwvVY0U=
@@ -123,6 +125,8 @@ github.com/plutov/paypal/v4 v4.7.0 h1:6TRvYD4ny6yQfHaABeStNf43GFM1wpW5jU/XEDGQmq
 github.com/plutov/paypal/v4 v4.7.0/go.mod h1:D56boafCRGcF/fEM0w282kj0fCDKIyrwOPX/Te1jCmw=
 github.com/pmezard/go-difflib v1.0.0 h1:4DBwDE0NGyQoBHbLQYPwSUPoCMWR5BEzIk/f1lZbAQM=
 github.com/pmezard/go-difflib v1.0.0/go.mod h1:iKH77koFhYxTK1pcRnkKkqfTogsbg7gZNVY4sRDYZ/4=
+github.com/redis/go-redis/v9 v9.0.2 h1:BA426Zqe/7r56kCcvxYLWe1mkaz71LKF77GwgFzSxfE=
+github.com/redis/go-redis/v9 v9.0.2/go.mod h1:/xDTe9EF1LM61hek62Poq2nzQSGj0xSrEtEHbBQevps=
 github.com/rogpeppe/go-internal v1.8.1/go.mod h1:JeRgkft04UBgHMgCIwADu4Pn6Mtm5d4nPKWu0nJ5d+o=
 github.com/rogpeppe/go-internal v1.9.0 h1:73kH8U+JUqXU8lRuOHeVHaa/SZPifC7BkcraZVejAe8=
 github.com/rwtodd/Go.Sed v0.0.0-20210816025313-55464686f9ef/go.mod h1:8AEUvGVi2uQ5b24BIhcr0GCcpd/RNAFWaN2CJFrWIIQ=

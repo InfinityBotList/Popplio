@@ -13,6 +13,7 @@ import (
 	"strings"
 
 	docs "github.com/infinitybotlist/doclib"
+	"github.com/infinitybotlist/dovewing"
 
 	"github.com/bwmarrin/discordgo"
 	"github.com/go-chi/chi/v5"
@@ -147,7 +148,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 	}
 
 	// Get bot discord user
-	botUser, err := utils.GetDiscordUser(d.Context, id)
+	botUser, err := dovewing.GetDiscordUser(d.Context, id)
 
 	if err != nil {
 		return api.HttpResponse{

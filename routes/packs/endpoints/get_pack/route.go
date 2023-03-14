@@ -11,6 +11,7 @@ import (
 	"popplio/utils"
 
 	docs "github.com/infinitybotlist/doclib"
+	"github.com/infinitybotlist/dovewing"
 
 	"github.com/georgysavva/scany/v2/pgxscan"
 	"github.com/go-chi/chi/v5"
@@ -88,7 +89,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 }
 
 func ResolveBotPack(ctx context.Context, pack *types.BotPack) error {
-	ownerUser, err := utils.GetDiscordUser(ctx, pack.Owner)
+	ownerUser, err := dovewing.GetDiscordUser(ctx, pack.Owner)
 
 	if err != nil {
 		return err
@@ -124,7 +125,7 @@ func ResolveBotPack(ctx context.Context, pack *types.BotPack) error {
 			return err
 		}
 
-		botUser, err := utils.GetDiscordUser(ctx, botId)
+		botUser, err := dovewing.GetDiscordUser(ctx, botId)
 
 		if err != nil {
 			return err

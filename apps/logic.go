@@ -9,6 +9,7 @@ import (
 	"popplio/utils"
 
 	"github.com/bwmarrin/discordgo"
+	"github.com/infinitybotlist/dovewing"
 )
 
 func extraLogicResubmit(d api.RouteData, p Position, answers map[string]string) (add bool, err error) {
@@ -49,7 +50,7 @@ func extraLogicResubmit(d api.RouteData, p Position, answers map[string]string) 
 		return false, fmt.Errorf("error setting bot type to pending: %w", err)
 	}
 
-	user, err := utils.GetDiscordUser(d.Context, botID)
+	user, err := dovewing.GetDiscordUser(d.Context, botID)
 
 	if err != nil {
 		return false, fmt.Errorf("error getting discord user: %w", err)

@@ -13,6 +13,7 @@ import (
 	"popplio/utils"
 
 	docs "github.com/infinitybotlist/doclib"
+	"github.com/infinitybotlist/dovewing"
 
 	"github.com/georgysavva/scany/v2/pgxscan"
 )
@@ -86,7 +87,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 
 	// Set the user for each bot
 	for i, bot := range bots {
-		botUser, err := utils.GetDiscordUser(d.Context, bot.BotID)
+		botUser, err := dovewing.GetDiscordUser(d.Context, bot.BotID)
 
 		if err != nil {
 			return api.DefaultResponse(http.StatusInternalServerError)

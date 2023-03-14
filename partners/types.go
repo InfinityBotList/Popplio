@@ -1,6 +1,10 @@
 package partners
 
-import "popplio/types"
+import (
+	"popplio/types"
+
+	"github.com/infinitybotlist/dovewing"
+)
 
 type Partner struct {
 	ID     string       `json:"id" validate:"required"`
@@ -11,7 +15,7 @@ type Partner struct {
 	UserID string       `json:"-" validate:"required,numeric"`
 
 	// Internal field
-	User *types.DiscordUser `json:"user"`
+	User *dovewing.DiscordUser `json:"user"`
 }
 
 type PartnerList struct {

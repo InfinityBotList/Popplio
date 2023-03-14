@@ -10,6 +10,7 @@ import (
 	"popplio/utils"
 
 	docs "github.com/infinitybotlist/doclib"
+	"github.com/infinitybotlist/dovewing"
 
 	"github.com/go-chi/chi/v5"
 )
@@ -63,7 +64,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 		return api.DefaultResponse(http.StatusNotFound)
 	}
 
-	bot, err := utils.GetDiscordUser(d.Context, id)
+	bot, err := dovewing.GetDiscordUser(d.Context, id)
 
 	if err != nil {
 		state.Logger.Error(err)

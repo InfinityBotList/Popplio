@@ -14,6 +14,7 @@ import (
 	"popplio/utils"
 
 	docs "github.com/infinitybotlist/doclib"
+	"github.com/infinitybotlist/dovewing"
 
 	"github.com/bwmarrin/discordgo"
 	"github.com/go-playground/validator/v10"
@@ -262,7 +263,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 	}
 
 	// Ensure the bot actually exists right now
-	bot, err := utils.GetDiscordUser(d.Context, payload.BotID)
+	bot, err := dovewing.GetDiscordUser(d.Context, payload.BotID)
 
 	if err != nil {
 		return api.HttpResponse{
@@ -285,7 +286,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 	}
 
 	// Ensure the main owner exists
-	_, err = utils.GetDiscordUser(d.Context, d.Auth.ID)
+	_, err = dovewing.GetDiscordUser(d.Context, d.Auth.ID)
 
 	if err != nil {
 		return api.HttpResponse{

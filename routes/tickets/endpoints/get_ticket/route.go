@@ -11,6 +11,7 @@ import (
 	"popplio/utils"
 
 	docs "github.com/infinitybotlist/doclib"
+	"github.com/infinitybotlist/dovewing"
 
 	"github.com/bwmarrin/discordgo"
 	"github.com/georgysavva/scany/v2/pgxscan"
@@ -107,7 +108,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 	}
 
 	// Parse the ticket
-	ticket.Author, err = utils.GetDiscordUser(d.Context, ticket.UserID)
+	ticket.Author, err = dovewing.GetDiscordUser(d.Context, ticket.UserID)
 
 	if err != nil {
 		state.Logger.Error(err)
@@ -115,7 +116,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 	}
 
 	if ticket.CloseUserID.Valid && ticket.CloseUserID.String != "" {
-		ticket.CloseUser, err = utils.GetDiscordUser(d.Context, ticket.CloseUserID.String)
+		ticket.CloseUser, err = dovewing.GetDiscordUser(d.Context, ticket.CloseUserID.String)
 
 		if err != nil {
 			state.Logger.Error(err)
@@ -124,7 +125,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 	}
 
 	for i := range ticket.Messages {
-		ticket.Messages[i].Author, err = utils.GetDiscordUser(d.Context, ticket.Messages[i].AuthorID)
+		ticket.Messages[i].Author, err = dovewing.GetDiscordUser(d.Context, ticket.Messages[i].AuthorID)
 
 		if err != nil {
 			state.Logger.Error(err)

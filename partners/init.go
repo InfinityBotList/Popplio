@@ -2,11 +2,12 @@ package partners
 
 import (
 	"popplio/state"
-	"popplio/utils"
+
+	"github.com/infinitybotlist/dovewing"
 )
 
 func processPartner(partner *Partner) *Partner {
-	u, err := utils.GetDiscordUser(state.Context, partner.UserID)
+	u, err := dovewing.GetDiscordUser(state.Context, partner.UserID)
 
 	if err != nil {
 		panic("Error getting discord user: " + err.Error())

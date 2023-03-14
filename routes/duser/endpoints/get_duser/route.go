@@ -5,10 +5,9 @@ import (
 
 	"popplio/api"
 	"popplio/state"
-	"popplio/types"
-	"popplio/utils"
 
 	docs "github.com/infinitybotlist/doclib"
+	"github.com/infinitybotlist/dovewing"
 
 	"github.com/go-chi/chi/v5"
 )
@@ -26,14 +25,14 @@ func Docs() *docs.Doc {
 				Schema:      docs.IdSchema,
 			},
 		},
-		Resp: types.DiscordUser{},
+		Resp: dovewing.DiscordUser{},
 	}
 }
 
 func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 	var id = chi.URLParam(r, "id")
 
-	user, err := utils.GetDiscordUser(d.Context, id)
+	user, err := dovewing.GetDiscordUser(d.Context, id)
 
 	if err != nil {
 		state.Logger.Error(err)

@@ -2,8 +2,6 @@ package types
 
 import (
 	"time"
-
-	"github.com/bwmarrin/discordgo"
 )
 
 // A link is any extra link
@@ -39,19 +37,6 @@ type ApiError struct {
 	Context any    `json:"context,omitempty"`
 	Message string `json:"message"`
 	Error   bool   `json:"error"`
-}
-
-// A discord user
-type DiscordUser struct {
-	ID            string           `json:"id"`
-	Username      string           `json:"username"`
-	Discriminator string           `json:"discriminator"`
-	Avatar        string           `json:"avatar"`
-	Bot           bool             `json:"bot"`
-	Status        discordgo.Status `json:"status"`
-	System        bool             `json:"system"`
-	Nickname      string           `json:"nickname"`
-	Guild         string           `json:"in_guild"`
 }
 
 type AuthUser struct {

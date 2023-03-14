@@ -15,6 +15,7 @@ import (
 	"popplio/types"
 	"popplio/utils"
 
+	"github.com/infinitybotlist/dovewing"
 	"github.com/jackc/pgx/v5/pgtype"
 	jsoniter "github.com/json-iterator/go"
 )
@@ -85,7 +86,7 @@ func Send(webhook types.WebhookPost) error {
 		return errors.New("no webhook set, vote rewards may not work")
 	}
 
-	var dUser, err = utils.GetDiscordUser(state.Context, webhook.UserID)
+	var dUser, err = dovewing.GetDiscordUser(state.Context, webhook.UserID)
 
 	if err != nil {
 		state.Logger.Error(err)

@@ -13,10 +13,11 @@ import (
 	"github.com/bwmarrin/discordgo"
 	"github.com/go-playground/validator/v10"
 	"github.com/go-playground/validator/v10/non-standard/validators"
-	"github.com/go-redis/redis/v8"
+	"github.com/infinitybotlist/dovewing"
 	"github.com/infinitybotlist/genconfig"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/plutov/paypal/v4"
+	"github.com/redis/go-redis/v9"
 	"github.com/stripe/stripe-go/v74"
 	"github.com/stripe/stripe-go/v74/webhookendpoint"
 	"go.uber.org/zap"
@@ -124,23 +125,6 @@ func Setup() {
 
 	setupPolicy()
 
-	// Create the cache tables in db
-	_, err = Pool.Exec(Context, `
-		CREATE TABLE IF NOT EXISTS internal_user_cache (
-			id TEXT PRIMARY KEY,
-			username TEXT NOT NULL,
-			discriminator TEXT NOT NULL,
-			avatar TEXT NOT NULL,
-			bot BOOLEAN NOT NULL,
-			created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-			last_updated TIMESTAMPTZ NOT NULL DEFAULT NOW()
-		)
-	`)
-
-	if err != nil {
-		panic("User cache table creation error: " + err.Error())
-	}
-
 	Discord, err = discordgo.New("Bot " + Config.DiscordAuth.Token)
 
 	if err != nil {
@@ -171,6 +155,16 @@ func Setup() {
 	)
 
 	Logger = zap.New(core).Sugar()
+
+	// Load dovewing state
+	dovewing.SetState(&dovewing.State{
+		Discord:        Discord,
+		Pool:           Pool,
+		Logger:         Logger,
+		PreferredGuild: Config.Servers.Main,
+		Context:        Context,
+		Redis:          Redis,
+	})
 
 	c, err := paypal.NewClient(Config.Meta.PaypalClientID, Config.Meta.PaypalSecret, func() string {
 		if Config.Meta.PaypalUseSandbox {

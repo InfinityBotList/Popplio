@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	docs "github.com/infinitybotlist/doclib"
+	"github.com/infinitybotlist/dovewing"
 
 	"github.com/georgysavva/scany/v2/pgxscan"
 )
@@ -45,7 +46,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 	}
 
 	for i := range blogPosts {
-		blogPosts[i].Author, err = utils.GetDiscordUser(d.Context, blogPosts[i].UserID)
+		blogPosts[i].Author, err = dovewing.GetDiscordUser(d.Context, blogPosts[i].UserID)
 
 		if err != nil {
 			state.Logger.Error(err)

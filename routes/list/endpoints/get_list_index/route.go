@@ -11,6 +11,7 @@ import (
 	"popplio/utils"
 
 	docs "github.com/infinitybotlist/doclib"
+	"github.com/infinitybotlist/dovewing"
 
 	"github.com/georgysavva/scany/v2/pgxscan"
 )
@@ -57,7 +58,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 		return api.DefaultResponse(http.StatusInternalServerError)
 	}
 	for i, bot := range listIndex.Certified {
-		botUser, err := utils.GetDiscordUser(d.Context, bot.BotID)
+		botUser, err := dovewing.GetDiscordUser(d.Context, bot.BotID)
 
 		if err != nil {
 			return api.DefaultResponse(http.StatusInternalServerError)
@@ -78,7 +79,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 		return api.DefaultResponse(http.StatusInternalServerError)
 	}
 	for i, bot := range listIndex.Premium {
-		botUser, err := utils.GetDiscordUser(d.Context, bot.BotID)
+		botUser, err := dovewing.GetDiscordUser(d.Context, bot.BotID)
 
 		if err != nil {
 			return api.DefaultResponse(http.StatusInternalServerError)
@@ -99,7 +100,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 		return api.DefaultResponse(http.StatusInternalServerError)
 	}
 	for i, bot := range listIndex.MostViewed {
-		botUser, err := utils.GetDiscordUser(d.Context, bot.BotID)
+		botUser, err := dovewing.GetDiscordUser(d.Context, bot.BotID)
 
 		if err != nil {
 			return api.DefaultResponse(http.StatusInternalServerError)
@@ -120,7 +121,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 		return api.DefaultResponse(http.StatusInternalServerError)
 	}
 	for i, bot := range listIndex.RecentlyAdded {
-		botUser, err := utils.GetDiscordUser(d.Context, bot.BotID)
+		botUser, err := dovewing.GetDiscordUser(d.Context, bot.BotID)
 
 		if err != nil {
 			return api.DefaultResponse(http.StatusInternalServerError)
@@ -141,7 +142,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 		return api.DefaultResponse(http.StatusInternalServerError)
 	}
 	for i, bot := range listIndex.TopVoted {
-		botUser, err := utils.GetDiscordUser(d.Context, bot.BotID)
+		botUser, err := dovewing.GetDiscordUser(d.Context, bot.BotID)
 
 		if err != nil {
 			return api.DefaultResponse(http.StatusInternalServerError)

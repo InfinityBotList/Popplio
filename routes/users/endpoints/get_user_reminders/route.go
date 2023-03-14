@@ -10,6 +10,7 @@ import (
 	"popplio/utils"
 
 	docs "github.com/infinitybotlist/doclib"
+	"github.com/infinitybotlist/dovewing"
 
 	"github.com/georgysavva/scany/v2/pgxscan"
 	"github.com/go-chi/chi/v5"
@@ -64,7 +65,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 	for i, reminder := range reminders {
 		// Try resolving the bot from discord API
 		var resolvedBot types.ResolvedReminderBot
-		bot, err := utils.GetDiscordUser(d.Context, reminder.BotID)
+		bot, err := dovewing.GetDiscordUser(d.Context, reminder.BotID)
 
 		if err != nil {
 			resolvedBot = types.ResolvedReminderBot{

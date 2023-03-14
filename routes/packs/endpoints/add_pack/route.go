@@ -8,6 +8,7 @@ import (
 	"popplio/utils"
 
 	docs "github.com/infinitybotlist/doclib"
+	"github.com/infinitybotlist/dovewing"
 
 	"github.com/go-playground/validator/v10"
 )
@@ -59,7 +60,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 
 	// Check that all bots exist
 	for _, bot := range payload.Bots {
-		botUser, err := utils.GetDiscordUser(d.Context, bot)
+		botUser, err := dovewing.GetDiscordUser(d.Context, bot)
 
 		if err != nil {
 			return api.HttpResponse{

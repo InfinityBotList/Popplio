@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	docs "github.com/infinitybotlist/doclib"
+	"github.com/infinitybotlist/dovewing"
 
 	"github.com/georgysavva/scany/v2/pgxscan"
 	"github.com/go-chi/chi/v5"
@@ -68,7 +69,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 		return api.DefaultResponse(http.StatusInternalServerError)
 	}
 
-	blogPost.Author, err = utils.GetDiscordUser(d.Context, blogPost.UserID)
+	blogPost.Author, err = dovewing.GetDiscordUser(d.Context, blogPost.UserID)
 
 	if err != nil {
 		state.Logger.Error(err)

@@ -3,6 +3,8 @@ package types
 import (
 	"popplio/teams"
 	"time"
+
+	"github.com/infinitybotlist/dovewing"
 )
 
 type Team struct {
@@ -14,7 +16,7 @@ type Team struct {
 }
 
 type TeamMember struct {
-	User      *DiscordUser           `json:"user"`
+	User      *dovewing.DiscordUser  `json:"user"`
 	Perms     []teams.TeamPermission `json:"perms"`
 	CreatedAt time.Time              `json:"created_at"`
 }

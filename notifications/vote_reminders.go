@@ -6,6 +6,7 @@ import (
 	"popplio/utils"
 	"time"
 
+	"github.com/infinitybotlist/dovewing"
 	jsoniter "github.com/json-iterator/go"
 )
 
@@ -45,7 +46,7 @@ func vrCheck() {
 		}
 
 		if !voteParsed.HasVoted {
-			botInf, err := utils.GetDiscordUser(state.Context, botId)
+			botInf, err := dovewing.GetDiscordUser(state.Context, botId)
 
 			if err != nil {
 				state.Logger.Error("Error finding bot info:", err)

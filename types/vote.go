@@ -1,5 +1,7 @@
 package types
 
+import "github.com/infinitybotlist/dovewing"
+
 // Vote Info
 type VoteInfo struct {
 	Weekend  bool   `json:"is_weekend"`
@@ -39,14 +41,14 @@ type WebhookPost struct {
 }
 
 type WebhookData struct {
-	Votes        int          `json:"votes"`
-	UserID       string       `json:"user"`
-	UserObj      *DiscordUser `json:"userObj"`
-	BotID        string       `json:"bot"`
-	UserIDLegacy string       `json:"userID"`
-	BotIDLegacy  string       `json:"botID"`
-	Test         bool         `json:"test"`
-	Time         int64        `json:"time"`
+	Votes        int                   `json:"votes"`
+	UserID       string                `json:"user"`
+	UserObj      *dovewing.DiscordUser `json:"userObj"`
+	BotID        string                `json:"bot"`
+	UserIDLegacy string                `json:"userID"`
+	BotIDLegacy  string                `json:"botID"`
+	Test         bool                  `json:"test"`
+	Time         int64                 `json:"time"`
 }
 
 type WebhookState struct {

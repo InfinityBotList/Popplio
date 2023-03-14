@@ -10,6 +10,7 @@ import (
 	"time"
 
 	docs "github.com/infinitybotlist/doclib"
+	"github.com/infinitybotlist/dovewing"
 
 	"github.com/go-chi/chi/v5"
 )
@@ -86,7 +87,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 			return api.DefaultResponse(http.StatusInternalServerError)
 		}
 
-		user, err := utils.GetDiscordUser(d.Context, userId)
+		user, err := dovewing.GetDiscordUser(d.Context, userId)
 
 		if err != nil {
 			state.Logger.Error(err)
