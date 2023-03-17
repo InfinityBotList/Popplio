@@ -341,9 +341,9 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 	if vanityCount > 0 {
 		newVanity := vanity + "-" + crypto.RandString(5)
 		id.Vanity = &newVanity
+	} else {
+		id.Vanity = &vanity
 	}
-
-	id.Vanity = &vanity
 
 	// Get the arguments to pass when adding the bot
 	botArgs := createBotsArgs(payload, id)
