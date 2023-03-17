@@ -15,6 +15,7 @@ import (
 
 	docs "github.com/infinitybotlist/doclib"
 	"github.com/infinitybotlist/dovewing"
+	"github.com/infinitybotlist/eureka/crypto"
 
 	"github.com/bwmarrin/discordgo"
 	"github.com/go-playground/validator/v10"
@@ -326,6 +327,21 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 	vanity := strings.ReplaceAll(strings.ToLower(resp.botName), " ", "-")
 	vanity = regexp.MustCompile("[^a-zA-Z0-9-]").ReplaceAllString(vanity, "")
 	vanity = strings.TrimSuffix(vanity, "-")
+
+	// Check that vanity isnt already taken
+	var vanityCount int64
+
+	err = state.Pool.QueryRow(d.Context, "SELECT COUNT(*) FROM bots WHERE lower(vanity) = $1", vanity).Scan(&vanityCount)
+
+	if err != nil {
+		state.Logger.Error(err)
+		return api.DefaultResponse(http.StatusInternalServerError)
+	}
+
+	if vanityCount > 0 {
+		newVanity := vanity + "-" + crypto.RandString(5)
+		id.Vanity = &newVanity
+	}
 
 	id.Vanity = &vanity
 
