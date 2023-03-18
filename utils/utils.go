@@ -16,7 +16,6 @@ import (
 	"github.com/google/uuid"
 	"github.com/infinitybotlist/dovewing"
 	"github.com/jackc/pgx/v5/pgtype"
-	jsoniter "github.com/json-iterator/go"
 	"go.uber.org/zap"
 )
 
@@ -24,8 +23,6 @@ var (
 	userBotColsArr = GetCols(types.UserBot{})
 	userBotCols    = strings.Join(userBotColsArr, ",")
 )
-
-var json = jsoniter.ConfigCompatibleWithStandardLibrary
 
 // Returns if a string is empty/null or not. Used throughout the codebase
 func IsNone(s string) bool {
