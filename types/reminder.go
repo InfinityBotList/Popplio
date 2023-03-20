@@ -14,3 +14,7 @@ type Reminder struct {
 	CreatedAt   time.Time           `db:"created_at" json:"created_at"`
 	LastAcked   time.Time           `db:"last_acked" json:"last_acked"`
 }
+
+type ReminderList struct {
+	Reminders []Reminder `json:"reminders"`
+}

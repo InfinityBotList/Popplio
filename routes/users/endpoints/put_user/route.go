@@ -33,7 +33,7 @@ func Docs() *docs.Doc {
 		Summary:     "Login User",
 		Description: "Takes in a ``code`` query parameter and returns a user ``token``. **Cannot be used outside of the site for security reasons but documented in case we wish to allow its use in the future.**",
 		Req:         AuthorizeRequest{},
-		Resp:        types.AuthUser{},
+		Resp:        types.UserLogin{},
 	}
 }
 
@@ -516,7 +516,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 	}
 
 	// Create authUser and send
-	var authUser = types.AuthUser{
+	var authUser = types.UserLogin{
 		UserID: user.ID,
 		Token:  apiToken,
 	}

@@ -28,7 +28,7 @@ func Docs() *docs.Doc {
 	return &docs.Doc{
 		Summary:     "Get List Index",
 		Description: "Gets the index of the list. Returns a ``Index`` object",
-		Resp:        types.ListIndex{},
+		Resp:        types.ListIndexBot{},
 	}
 }
 
@@ -44,7 +44,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 		}
 	}
 
-	listIndex := types.ListIndex{}
+	listIndex := types.ListIndexBot{}
 
 	certRow, err := state.Pool.Query(d.Context, "SELECT "+indexBotCols+" FROM bots WHERE type = 'certified' ORDER BY votes DESC LIMIT 9")
 	if err != nil {

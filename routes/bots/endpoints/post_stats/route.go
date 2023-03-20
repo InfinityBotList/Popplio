@@ -14,7 +14,7 @@ import (
 	docs "github.com/infinitybotlist/doclib"
 )
 
-func GetStats(s types.BotStats) (servers uint64, shards uint64, users uint64) {
+func GetStats(s types.BotStats) (servers uint64, shards uint64, users uint64, shardList []uint64) {
 	var serverCount any
 	var shardCount any
 	var userCount any
@@ -46,6 +46,7 @@ func GetStats(s types.BotStats) (servers uint64, shards uint64, users uint64) {
 	var serversParsed uint64
 	var shardsParsed uint64
 	var usersParsed uint64
+	var shardListParsed []uint64
 
 	// Handle uint64 by converting to uint32
 	if serverInt, ok := serverCount.(uint64); ok {
@@ -175,16 +176,39 @@ func GetStats(s types.BotStats) (servers uint64, shards uint64, users uint64) {
 		}
 	}
 
+	if s.ShardList != nil && len(s.ShardList) > 0 {
+		shardsParsed = uint64(len(s.ShardList))
+
+		// Convert our []any into []string first
+		var strShardList = utils.ArrayCast(s.ShardList)
+
+		// Convert our []string into []uint64 removing any invalid values
+		for _, shard := range strShardList {
+			if shard == "" {
+				continue
+			}
+
+			shardInt, err := strconv.ParseUint(shard, 10, 64)
+			if err != nil {
+				continue
+			}
+
+			shardListParsed = append(shardListParsed, shardInt)
+		}
+	}
+
 	state.Logger.With(
 		"serverCount", serversParsed,
 		"shardCount", shardsParsed,
 		"userCount", usersParsed,
+		"shardList", shardListParsed,
 		"serversType", reflect.TypeOf(serverCount),
 		"shardsType", reflect.TypeOf(shardCount),
 		"usersType", reflect.TypeOf(userCount),
+		"shardListType", reflect.TypeOf(s.ShardList),
 	).Info("Parsed stats")
 
-	return serversParsed, shardsParsed, usersParsed
+	return serversParsed, shardsParsed, usersParsed, shardListParsed
 }
 
 func Docs() *docs.Doc {
@@ -256,7 +280,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 		return api.DefaultResponse(http.StatusNotFound)
 	}
 
-	servers, shards, users := GetStats(payload)
+	servers, shards, users, shardList := GetStats(payload)
 
 	if servers > 0 {
 		_, err = state.Pool.Exec(d.Context, "UPDATE bots SET servers = $1 WHERE bot_id = $2", servers, id)
@@ -278,6 +302,15 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 
 	if users > 0 {
 		_, err = state.Pool.Exec(d.Context, "UPDATE bots SET users = $1 WHERE bot_id = $2", users, id)
+
+		if err != nil {
+			state.Logger.Error(err)
+			return api.DefaultResponse(http.StatusInternalServerError)
+		}
+	}
+
+	if len(shardList) > 0 {
+		_, err = state.Pool.Exec(d.Context, "UPDATE bots SET shard_list = $1 WHERE bot_id = $2", shardList, id)
 
 		if err != nil {
 			state.Logger.Error(err)

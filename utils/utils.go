@@ -371,3 +371,55 @@ func IsValidUUID(u string) bool {
 	_, err := uuid.Parse(u)
 	return err == nil
 }
+
+func retArrInt[T comparable](t []T) []string {
+	var arr []string
+	for _, v := range t {
+		arr = append(arr, fmt.Sprint(v))
+	}
+	return arr
+}
+
+// Casts a array of type any to []string
+func ArrayCast(v any) []string {
+	switch t := v.(type) {
+	// String type
+	case []string:
+		return t
+	// Any type
+	case []any:
+		var arr []string
+		for _, v := range t {
+			arr = append(arr, v.(string))
+		}
+		return arr
+	// All the int types
+	case []int:
+		return retArrInt(t)
+	case []int8:
+		return retArrInt(t)
+	case []int16:
+		return retArrInt(t)
+	case []int32:
+		return retArrInt(t)
+	case []int64:
+		return retArrInt(t)
+	// All the uint types
+	case []uint:
+		return retArrInt(t)
+	case []uint8:
+		return retArrInt(t)
+	case []uint16:
+		return retArrInt(t)
+	case []uint32:
+		return retArrInt(t)
+	case []uint64:
+		return retArrInt(t)
+	// All the float types
+	case []float32:
+		return retArrInt(t)
+	case []float64:
+		return retArrInt(t)
+	}
+	return []string{}
+}

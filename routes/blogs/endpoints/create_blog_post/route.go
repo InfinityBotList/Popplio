@@ -12,21 +12,13 @@ import (
 	"github.com/go-playground/validator/v10"
 )
 
-type CreateBlogPost struct {
-	Slug        string   `db:"slug" json:"slug" validate:"required"`
-	Title       string   `db:"title" json:"title" validate:"required"`
-	Description string   `db:"description" json:"description" validate:"required"`
-	Content     string   `db:"content" json:"content" validate:"required"`
-	Tags        []string `db:"tags" json:"tags" validate:"required,dive,required"`
-}
-
-var compiledMessages = api.CompileValidationErrors(CreateBlogPost{})
+var compiledMessages = api.CompileValidationErrors(types.CreateBlogPost{})
 
 func Docs() *docs.Doc {
 	return &docs.Doc{
 		Summary:     "Create Blog Post",
 		Description: "Creates a blog post. You must be an `iblhdev` or an `hadmin` to create a blog post. Returns a 204 on success",
-		Req:         CreateBlogPost{},
+		Req:         types.CreateBlogPost{},
 		Params: []docs.Parameter{
 			{
 				Name:        "user_id",
@@ -62,7 +54,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 		}
 	}
 
-	var payload CreateBlogPost
+	var payload types.CreateBlogPost
 
 	hresp, ok := api.MarshalReq(r, &payload)
 

@@ -11,15 +11,11 @@ import (
 	"github.com/go-chi/chi/v5"
 )
 
-type PublishBlogPost struct {
-	Draft bool `db:"draft" json:"draft"`
-}
-
 func Docs() *docs.Doc {
 	return &docs.Doc{
 		Summary:     "Publish Blog Post",
 		Description: "Publishes or unpublishes a blog post. You must be an `iblhdev` or an `hadmin` to create a blog post. Returns a 204 on success",
-		Req:         PublishBlogPost{},
+		Req:         types.PublishBlogPost{},
 		Params: []docs.Parameter{
 			{
 				Name:        "user_id",
@@ -62,7 +58,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 		}
 	}
 
-	var payload PublishBlogPost
+	var payload types.PublishBlogPost
 
 	hresp, ok := api.MarshalReq(r, &payload)
 

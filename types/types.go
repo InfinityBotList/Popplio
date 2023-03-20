@@ -6,14 +6,14 @@ import (
 
 // A link is any extra link
 type Link struct {
-	Name  string `json:"name"`
-	Value string `json:"value"`
+	Name  string `json:"name" description:"Name of the link. Links starting with an underscore are 'asset links' and are not visible"`
+	Value string `json:"value" description:"Value of the link. Must normally be HTTPS with the exception of 'asset links'"`
 }
 
 type Interval struct {
-	Duration time.Duration `json:"duration"`
-	String   string        `json:"string"`
-	Seconds  int           `json:"secs"`
+	Duration time.Duration `json:"duration" description:"Duration of the interval (in ns)"`
+	String   string        `json:"string" description:"String representation of the interval"`
+	Seconds  int           `json:"secs" description:"Duration of the interval (in secs)"`
 }
 
 func NewInterval(d time.Duration) Interval {
@@ -26,36 +26,17 @@ func NewInterval(d time.Duration) Interval {
 
 // SEO object (minified bot/user/server for seo purposes)
 type SEO struct {
-	Username string `json:"username"`
-	ID       string `json:"id"`
-	Avatar   string `json:"avatar"`
-	Short    string `json:"short"`
+	Username string `json:"username" description:"Username of the entity"`
+	ID       string `json:"id" description:"ID of the entity"`
+	Avatar   string `json:"avatar" description:"The entities resolved avatar URL (not just hash)"`
+	Short    string `json:"short" description:"Short description of the entity"`
 }
 
 // This represents a IBL Popplio API Error
 type ApiError struct {
-	Context any    `json:"context,omitempty"`
-	Message string `json:"message"`
-	Error   bool   `json:"error"`
-}
-
-type AuthUser struct {
-	Token  string `json:"token"`
-	UserID string `json:"user_id"`
-}
-
-type UserSubscription struct {
-	Auth     string `json:"auth"`
-	P256dh   string `json:"p256dh"`
-	Endpoint string `json:"endpoint"`
-}
-
-type ReminderList struct {
-	Reminders []Reminder `json:"reminders"`
-}
-
-type NotificationInfo struct {
-	PublicKey string `json:"public_key"`
+	Context map[string]string `json:"context,omitempty" description:"Context of the error. Usually used for validation error contexts"`
+	Message string            `json:"message" description:"Message of the error"`
+	Error   bool              `json:"error" description:"Whether or not this is an error"`
 }
 
 type TargetType int
@@ -65,45 +46,6 @@ const (
 	TargetTypeBot
 	TargetTypeServer
 )
-
-// Notification
-type NotifGet struct {
-	Endpoint    string           `json:"endpoint"`
-	NotifID     string           `json:"notif_id"`
-	CreatedAt   time.Time        `json:"created_at"`
-	BrowserInfo NotifBrowserInfo `json:"browser_info"`
-}
-
-type NotifBrowserInfo struct {
-	// The OS of the browser
-	OS         string
-	Browser    string
-	BrowserVer string
-	Mobile     bool
-}
-
-type NotifGetList struct {
-	Notifications []NotifGet `json:"notifications"`
-}
-
-// List Index
-type ListIndex struct {
-	Certified     []IndexBot     `json:"certified"`
-	Premium       []IndexBot     `json:"premium"`
-	MostViewed    []IndexBot     `json:"most_viewed"`
-	Packs         []IndexBotPack `json:"packs"`
-	RecentlyAdded []IndexBot     `json:"recently_added"`
-	TopVoted      []IndexBot     `json:"top_voted"`
-}
-
-type ListStats struct {
-	Bots         []ListStatsBot `json:"bots"`
-	TotalStaff   int64          `json:"total_staff"`
-	TotalUsers   int64          `json:"total_users"`
-	TotalVotes   int64          `json:"total_votes"`
-	TotalPacks   int64          `json:"total_packs"`
-	TotalTickets int64          `json:"total_tickets"`
-}
 
 // OauthInfo struct, internally used
 type OauthUser struct {

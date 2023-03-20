@@ -5,7 +5,7 @@ go 1.18
 require (
 	github.com/bwmarrin/discordgo v0.27.1
 	github.com/georgysavva/scany/v2 v2.0.0
-	github.com/getkin/kin-openapi v0.114.0 // indirect
+	github.com/getkin/kin-openapi v0.115.0 // indirect
 	github.com/go-chi/chi/v5 v5.0.8
 	github.com/google/uuid v1.3.0
 	github.com/infinitybotlist/eureka v0.0.0-20230123041109-426207f20916
@@ -15,9 +15,10 @@ require (
 )
 
 require (
-	github.com/infinitybotlist/doclib v0.0.0-20230312063635-20fe089bfe09
+	github.com/infinitybotlist/doclib v0.0.0-20230320172045-580c93fc9e4a
+	github.com/infinitybotlist/dovewing v0.0.0-20230320150614-2d5f1c23d540
 	github.com/infinitybotlist/genconfig v0.0.0-20230312045948-20cdb56f90d3
-	github.com/stripe/stripe-go/v74 v74.11.0
+	github.com/stripe/stripe-go/v74 v74.12.0
 )
 
 require (
@@ -28,7 +29,6 @@ require (
 	github.com/go-playground/locales v0.14.1 // indirect
 	github.com/go-playground/universal-translator v0.18.1 // indirect
 	github.com/gorilla/css v1.0.0 // indirect
-	github.com/infinitybotlist/dovewing v0.0.0-20230314101657-c2dca4dde84f // indirect
 	github.com/leodido/go-urn v1.2.2 // indirect
 	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
 	github.com/modern-go/reflect2 v1.0.2 // indirect
@@ -63,7 +63,7 @@ require (
 
 require (
 	github.com/SherClockHolmes/webpush-go v1.2.0
-	github.com/go-playground/validator/v10 v10.11.2
+	github.com/go-playground/validator/v10 v10.12.0
 	github.com/jackc/pgx/v5 v5.3.1
 	github.com/json-iterator/go v1.1.12
 	github.com/microcosm-cc/bluemonday v1.0.23
@@ -71,7 +71,7 @@ require (
 	github.com/redis/go-redis/v9 v9.0.2
 	github.com/yuin/goldmark v1.5.4
 	go.uber.org/zap v1.24.0
-	golang.org/x/exp v0.0.0-20230310171629-522b1b587ee0
+	golang.org/x/exp v0.0.0-20230315142452-642cacee5cc0
 	golang.org/x/sys v0.6.0 // indirect
 	mvdan.cc/xurls/v2 v2.4.0
 )

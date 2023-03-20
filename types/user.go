@@ -5,6 +5,11 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+type UserLogin struct {
+	Token  string `json:"token" description:"The users token"`
+	UserID string `json:"user_id" description:"The users ID"`
+}
+
 type User struct {
 	ITag                      pgtype.UUID           `db:"itag" json:"itag"`
 	ID                        string                `db:"user_id" json:"-"`
