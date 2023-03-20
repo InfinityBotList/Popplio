@@ -6,7 +6,6 @@ import (
 	"popplio/routes/reviews/endpoints/edit_review"
 	"popplio/routes/reviews/endpoints/get_bot_reviews"
 	"popplio/routes/reviews/endpoints/remove_review"
-	"popplio/types"
 
 	"github.com/go-chi/chi/v5"
 )
@@ -38,7 +37,7 @@ func (b Router) Routes(r *chi.Mux) {
 		Handler: add_bot_review.Route,
 		Auth: []api.AuthType{
 			{
-				Type:   types.TargetTypeUser,
+				Type:   api.TargetTypeUser,
 				URLVar: "uid",
 			},
 		},
@@ -52,7 +51,7 @@ func (b Router) Routes(r *chi.Mux) {
 		Handler: edit_review.Route,
 		Auth: []api.AuthType{
 			{
-				Type:   types.TargetTypeUser,
+				Type:   api.TargetTypeUser,
 				URLVar: "uid",
 			},
 		},
@@ -66,7 +65,7 @@ func (b Router) Routes(r *chi.Mux) {
 		Handler: remove_review.Route,
 		Auth: []api.AuthType{
 			{
-				Type:   types.TargetTypeUser,
+				Type:   api.TargetTypeUser,
 				URLVar: "uid",
 			},
 		},

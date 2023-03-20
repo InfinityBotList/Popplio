@@ -4,7 +4,6 @@ import (
 	"popplio/api"
 	"popplio/routes/tickets/endpoints/get_all_tickets"
 	"popplio/routes/tickets/endpoints/get_ticket"
-	"popplio/types"
 
 	"github.com/go-chi/chi/v5"
 )
@@ -26,7 +25,7 @@ func (b Router) Routes(r *chi.Mux) {
 		Handler: get_all_tickets.Route,
 		Auth: []api.AuthType{
 			{
-				Type: types.TargetTypeUser,
+				Type: api.TargetTypeUser,
 			},
 		},
 	}.Route(r)
@@ -39,7 +38,7 @@ func (b Router) Routes(r *chi.Mux) {
 		Handler: get_ticket.Route,
 		Auth: []api.AuthType{
 			{
-				Type: types.TargetTypeUser,
+				Type: api.TargetTypeUser,
 			},
 		},
 	}.Route(r)

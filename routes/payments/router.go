@@ -9,7 +9,6 @@ import (
 	"popplio/routes/payments/endpoints/get_premium_plans"
 	"popplio/routes/payments/endpoints/get_stripe"
 	"popplio/routes/payments/endpoints/handle_stripe_webhook"
-	"popplio/types"
 
 	"github.com/go-chi/chi/v5"
 )
@@ -41,7 +40,7 @@ func (b Router) Routes(r *chi.Mux) {
 		Handler: create_paypal_order.Route,
 		Auth: []api.AuthType{
 			{
-				Type:   types.TargetTypeUser,
+				Type:   api.TargetTypeUser,
 				URLVar: "id",
 			},
 		},
@@ -55,7 +54,7 @@ func (b Router) Routes(r *chi.Mux) {
 		Handler: capture_paypal_order.Route,
 		Auth: []api.AuthType{
 			{
-				Type:   types.TargetTypeUser,
+				Type:   api.TargetTypeUser,
 				URLVar: "id",
 			},
 		},
@@ -77,7 +76,7 @@ func (b Router) Routes(r *chi.Mux) {
 		Handler: create_stripe_checkout.Route,
 		Auth: []api.AuthType{
 			{
-				Type:   types.TargetTypeUser,
+				Type:   api.TargetTypeUser,
 				URLVar: "id",
 			},
 		},

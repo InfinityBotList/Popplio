@@ -14,7 +14,6 @@ import (
 	"popplio/routes/users/endpoints/post_user_subscription"
 	"popplio/routes/users/endpoints/put_user"
 	"popplio/routes/users/endpoints/put_user_reminders"
-	"popplio/types"
 
 	"github.com/go-chi/chi/v5"
 )
@@ -45,7 +44,7 @@ func (b Router) Routes(r *chi.Mux) {
 		Auth: []api.AuthType{
 			{
 				URLVar: "id",
-				Type:   types.TargetTypeUser,
+				Type:   api.TargetTypeUser,
 			},
 		},
 	}.Route(r)
@@ -91,7 +90,7 @@ func (b Router) Routes(r *chi.Mux) {
 		Auth: []api.AuthType{
 			{
 				URLVar: "id",
-				Type:   types.TargetTypeUser,
+				Type:   api.TargetTypeUser,
 			},
 		},
 	}.Route(r)
@@ -105,7 +104,7 @@ func (b Router) Routes(r *chi.Mux) {
 		Auth: []api.AuthType{
 			{
 				URLVar: "id",
-				Type:   types.TargetTypeUser,
+				Type:   api.TargetTypeUser,
 			},
 		},
 	}.Route(r)
@@ -119,7 +118,7 @@ func (b Router) Routes(r *chi.Mux) {
 		Auth: []api.AuthType{
 			{
 				URLVar: "id",
-				Type:   types.TargetTypeUser,
+				Type:   api.TargetTypeUser,
 			},
 		},
 	}.Route(r)
@@ -133,7 +132,7 @@ func (b Router) Routes(r *chi.Mux) {
 		Auth: []api.AuthType{
 			{
 				URLVar: "uid",
-				Type:   types.TargetTypeUser,
+				Type:   api.TargetTypeUser,
 			},
 		},
 	}.Route(r)
@@ -147,7 +146,7 @@ func (b Router) Routes(r *chi.Mux) {
 		Auth: []api.AuthType{
 			{
 				URLVar: "uid",
-				Type:   types.TargetTypeUser,
+				Type:   api.TargetTypeUser,
 			},
 		},
 	}.Route(r)
@@ -161,7 +160,7 @@ func (b Router) Routes(r *chi.Mux) {
 		Auth: []api.AuthType{
 			{
 				URLVar: "id",
-				Type:   types.TargetTypeUser,
+				Type:   api.TargetTypeUser,
 			},
 		},
 	}.Route(r)

@@ -7,7 +7,6 @@ import (
 	"popplio/routes/packs/endpoints/get_all_packs"
 	"popplio/routes/packs/endpoints/get_pack"
 	"popplio/routes/packs/endpoints/patch_pack"
-	"popplio/types"
 
 	"github.com/go-chi/chi/v5"
 )
@@ -48,7 +47,7 @@ func (b Router) Routes(r *chi.Mux) {
 		Auth: []api.AuthType{
 			{
 				URLVar: "id",
-				Type:   types.TargetTypeUser,
+				Type:   api.TargetTypeUser,
 			},
 		},
 	}.Route(r)
@@ -62,7 +61,7 @@ func (b Router) Routes(r *chi.Mux) {
 		Auth: []api.AuthType{
 			{
 				URLVar: "uid",
-				Type:   types.TargetTypeUser,
+				Type:   api.TargetTypeUser,
 			},
 		},
 	}.Route(r)
@@ -76,7 +75,7 @@ func (b Router) Routes(r *chi.Mux) {
 		Auth: []api.AuthType{
 			{
 				URLVar: "uid",
-				Type:   types.TargetTypeUser,
+				Type:   api.TargetTypeUser,
 			},
 		},
 	}.Route(r)

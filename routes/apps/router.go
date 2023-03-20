@@ -7,7 +7,6 @@ import (
 	"popplio/routes/apps/endpoints/get_apps_list"
 	"popplio/routes/apps/endpoints/get_apps_meta"
 	"popplio/routes/apps/endpoints/manage_app"
-	"popplio/types"
 
 	"github.com/go-chi/chi/v5"
 )
@@ -44,7 +43,7 @@ func (b Router) Routes(r *chi.Mux) {
 		Auth: []api.AuthType{
 			{
 				URLVar:       "user_id",
-				Type:         types.TargetTypeUser,
+				Type:         api.TargetTypeUser,
 				AllowedScope: "ban_exempt", // Ensure banned users can view their own apps
 			},
 		},
@@ -58,7 +57,7 @@ func (b Router) Routes(r *chi.Mux) {
 		Auth: []api.AuthType{
 			{
 				URLVar:       "user_id",
-				Type:         types.TargetTypeUser,
+				Type:         api.TargetTypeUser,
 				AllowedScope: "ban_exempt", // Ensure banned users can create apps
 			},
 		},
@@ -72,7 +71,7 @@ func (b Router) Routes(r *chi.Mux) {
 		Auth: []api.AuthType{
 			{
 				URLVar: "user_id",
-				Type:   types.TargetTypeUser,
+				Type:   api.TargetTypeUser,
 			},
 		},
 	}.Route(r)

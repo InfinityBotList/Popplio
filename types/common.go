@@ -39,23 +39,9 @@ type ApiError struct {
 	Error   bool              `json:"error" description:"Whether or not this is an error"`
 }
 
-type TargetType int
-
-const (
-	TargetTypeUser TargetType = iota
-	TargetTypeBot
-	TargetTypeServer
-)
-
-// OauthInfo struct, internally used
+// OauthInfo struct for oauth2 info
 type OauthUser struct {
-	ID       string `json:"id"`
-	Username string `json:"username"`
-	Disc     string `json:"discriminator"`
-}
-
-type TestAuth struct {
-	AuthType TargetType `json:"auth_type"`
-	TargetID string     `json:"target_id"`
-	Token    string     `json:"token"`
+	ID       string `json:"id" description:"The user's ID"`
+	Username string `json:"username" description:"The user's username"`
+	Disc     string `json:"discriminator" description:"The user's discriminator"`
 }

@@ -10,7 +10,6 @@ import (
 	"popplio/routes/bots/endpoints/patch_bot_settings"
 	"popplio/routes/bots/endpoints/patch_bot_vanity"
 	"popplio/routes/bots/endpoints/post_stats"
-	"popplio/types"
 
 	"github.com/go-chi/chi/v5"
 )
@@ -66,7 +65,7 @@ func (b Router) Routes(r *chi.Mux) {
 		Handler: post_stats.Route,
 		Auth: []api.AuthType{
 			{
-				Type: types.TargetTypeBot,
+				Type: api.TargetTypeBot,
 			},
 		},
 	}.Route(r)
@@ -80,7 +79,7 @@ func (b Router) Routes(r *chi.Mux) {
 		Auth: []api.AuthType{
 			{
 				URLVar: "id",
-				Type:   types.TargetTypeUser,
+				Type:   api.TargetTypeUser,
 			},
 		},
 		Setup: add_bot.Setup,
@@ -96,7 +95,7 @@ func (b Router) Routes(r *chi.Mux) {
 		Auth: []api.AuthType{
 			{
 				URLVar: "uid",
-				Type:   types.TargetTypeUser,
+				Type:   api.TargetTypeUser,
 			},
 		},
 	}.Route(r)
@@ -110,7 +109,7 @@ func (b Router) Routes(r *chi.Mux) {
 		Auth: []api.AuthType{
 			{
 				URLVar: "uid",
-				Type:   types.TargetTypeUser,
+				Type:   api.TargetTypeUser,
 			},
 		},
 	}.Route(r)

@@ -38,6 +38,14 @@ type APIRouter interface {
 	Tag() (string, string)
 }
 
+type TargetType int
+
+const (
+	TargetTypeUser TargetType = iota
+	TargetTypeBot
+	TargetTypeServer
+)
+
 type Method int
 
 const (
@@ -71,15 +79,15 @@ func (m Method) String() string {
 
 type AuthType struct {
 	URLVar       string
-	Type         types.TargetType
+	Type         TargetType
 	AllowedScope string // If this is set, then ban checks are not fatal
 }
 
 type AuthData struct {
-	TargetType types.TargetType `json:"target_type"`
-	ID         string           `json:"id"`
-	Authorized bool             `json:"authorized"`
-	Banned     bool             `json:"banned"` // Only applicable with AllowedScope
+	TargetType TargetType `json:"target_type"`
+	ID         string     `json:"id"`
+	Authorized bool       `json:"authorized"`
+	Banned     bool       `json:"banned"` // Only applicable with AllowedScope
 }
 
 // Represents a route on the API
@@ -137,7 +145,7 @@ func (r Route) Authorize(req *http.Request) (AuthData, HttpResponse, bool) {
 		var urlIds []string
 
 		switch auth.Type {
-		case types.TargetTypeUser:
+		case TargetTypeUser:
 			// Check if the user exists with said API token only
 			var id pgtype.Text
 			var banned bool
@@ -153,13 +161,13 @@ func (r Route) Authorize(req *http.Request) (AuthData, HttpResponse, bool) {
 			}
 
 			authData = AuthData{
-				TargetType: types.TargetTypeUser,
+				TargetType: TargetTypeUser,
 				ID:         id.String,
 				Authorized: true,
 				Banned:     banned,
 			}
 			urlIds = []string{id.String}
-		case types.TargetTypeBot:
+		case TargetTypeBot:
 			// Check if the bot exists with said token only
 			var id pgtype.Text
 			var vanity pgtype.Text
@@ -174,7 +182,7 @@ func (r Route) Authorize(req *http.Request) (AuthData, HttpResponse, bool) {
 			}
 
 			authData = AuthData{
-				TargetType: types.TargetTypeBot,
+				TargetType: TargetTypeBot,
 				ID:         id.String,
 				Authorized: true,
 			}
@@ -301,9 +309,9 @@ func (r Route) Route(ro Router) {
 
 	for _, auth := range r.Auth {
 		switch auth.Type {
-		case types.TargetTypeUser:
+		case TargetTypeUser:
 			docsObj.AuthType = append(docsObj.AuthType, "User")
-		case types.TargetTypeBot:
+		case TargetTypeBot:
 			docsObj.AuthType = append(docsObj.AuthType, "Bot")
 		default:
 			panic("Unknown auth type: " + r.String())

@@ -12,7 +12,6 @@ import (
 	"popplio/routes/teams/endpoints/get_team"
 	"popplio/routes/teams/endpoints/get_team_permissions"
 	"popplio/routes/teams/endpoints/patch_bot_team"
-	"popplio/types"
 
 	"github.com/go-chi/chi/v5"
 )
@@ -50,7 +49,7 @@ func (b Router) Routes(r *chi.Mux) {
 		Handler: create_team.Route,
 		Auth: []api.AuthType{
 			{
-				Type:   types.TargetTypeUser,
+				Type:   api.TargetTypeUser,
 				URLVar: "id",
 			},
 		},
@@ -64,7 +63,7 @@ func (b Router) Routes(r *chi.Mux) {
 		Handler: edit_team_info.Route,
 		Auth: []api.AuthType{
 			{
-				Type:   types.TargetTypeUser,
+				Type:   api.TargetTypeUser,
 				URLVar: "uid",
 			},
 		},
@@ -78,7 +77,7 @@ func (b Router) Routes(r *chi.Mux) {
 		Handler: delete_team.Route,
 		Auth: []api.AuthType{
 			{
-				Type:   types.TargetTypeUser,
+				Type:   api.TargetTypeUser,
 				URLVar: "uid",
 			},
 		},
@@ -92,7 +91,7 @@ func (b Router) Routes(r *chi.Mux) {
 		Handler: add_team_member.Route,
 		Auth: []api.AuthType{
 			{
-				Type:   types.TargetTypeUser,
+				Type:   api.TargetTypeUser,
 				URLVar: "uid",
 			},
 		},
@@ -106,7 +105,7 @@ func (b Router) Routes(r *chi.Mux) {
 		Handler: edit_team_member_permissions.Route,
 		Auth: []api.AuthType{
 			{
-				Type:   types.TargetTypeUser,
+				Type:   api.TargetTypeUser,
 				URLVar: "uid",
 			},
 		},
@@ -120,7 +119,7 @@ func (b Router) Routes(r *chi.Mux) {
 		Handler: delete_team_member.Route,
 		Auth: []api.AuthType{
 			{
-				Type:   types.TargetTypeUser,
+				Type:   api.TargetTypeUser,
 				URLVar: "uid",
 			},
 		},
@@ -134,7 +133,7 @@ func (b Router) Routes(r *chi.Mux) {
 		Handler: add_bot_to_team.Route,
 		Auth: []api.AuthType{
 			{
-				Type:   types.TargetTypeUser,
+				Type:   api.TargetTypeUser,
 				URLVar: "uid",
 			},
 		},
@@ -148,7 +147,7 @@ func (b Router) Routes(r *chi.Mux) {
 		Handler: patch_bot_team.Route,
 		Auth: []api.AuthType{
 			{
-				Type:   types.TargetTypeUser,
+				Type:   api.TargetTypeUser,
 				URLVar: "uid",
 			},
 		},

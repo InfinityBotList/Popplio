@@ -8,7 +8,6 @@ import (
 	"popplio/routes/blogs/endpoints/get_blog_list"
 	"popplio/routes/blogs/endpoints/get_blog_post"
 	"popplio/routes/blogs/endpoints/publish_blog_post"
-	"popplio/types"
 
 	"github.com/go-chi/chi/v5"
 )
@@ -31,7 +30,7 @@ func (b Router) Routes(r *chi.Mux) {
 		Auth: []api.AuthType{
 			{
 				URLVar: "user_id",
-				Type:   types.TargetTypeUser,
+				Type:   api.TargetTypeUser,
 			},
 		},
 	}.Route(r)
@@ -45,7 +44,7 @@ func (b Router) Routes(r *chi.Mux) {
 		Auth: []api.AuthType{
 			{
 				URLVar: "user_id",
-				Type:   types.TargetTypeUser,
+				Type:   api.TargetTypeUser,
 			},
 		},
 	}.Route(r)
@@ -59,7 +58,7 @@ func (b Router) Routes(r *chi.Mux) {
 		Auth: []api.AuthType{
 			{
 				URLVar: "user_id",
-				Type:   types.TargetTypeUser,
+				Type:   api.TargetTypeUser,
 			},
 		},
 	}.Route(r)
@@ -73,7 +72,7 @@ func (b Router) Routes(r *chi.Mux) {
 		Auth: []api.AuthType{
 			{
 				URLVar: "user_id",
-				Type:   types.TargetTypeUser,
+				Type:   api.TargetTypeUser,
 			},
 		},
 	}.Route(r)

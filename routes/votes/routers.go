@@ -9,7 +9,6 @@ import (
 	"popplio/routes/votes/endpoints/put_user_bot_votes"
 	"popplio/routes/votes/endpoints/put_user_pack_votes"
 	"popplio/routes/votes/endpoints/test_webhook"
-	"popplio/types"
 
 	"github.com/go-chi/chi/v5"
 )
@@ -32,7 +31,7 @@ func (b Router) Routes(r *chi.Mux) {
 		Auth: []api.AuthType{
 			{
 				URLVar: "id",
-				Type:   types.TargetTypeBot,
+				Type:   api.TargetTypeBot,
 			},
 		},
 	}.Route(r)
@@ -54,11 +53,11 @@ func (b Router) Routes(r *chi.Mux) {
 		Auth: []api.AuthType{
 			{
 				URLVar: "uid",
-				Type:   types.TargetTypeUser,
+				Type:   api.TargetTypeUser,
 			},
 			{
 				URLVar: "bid",
-				Type:   types.TargetTypeBot,
+				Type:   api.TargetTypeBot,
 			},
 		},
 	}.Route(r)
@@ -72,7 +71,7 @@ func (b Router) Routes(r *chi.Mux) {
 		Auth: []api.AuthType{
 			{
 				URLVar: "uid",
-				Type:   types.TargetTypeUser,
+				Type:   api.TargetTypeUser,
 			},
 		},
 	}.Route(r)
@@ -94,7 +93,7 @@ func (b Router) Routes(r *chi.Mux) {
 		Auth: []api.AuthType{
 			{
 				URLVar: "uid",
-				Type:   types.TargetTypeUser,
+				Type:   api.TargetTypeUser,
 			},
 		},
 	}.Route(r)
@@ -107,7 +106,7 @@ func (b Router) Routes(r *chi.Mux) {
 		Handler: test_webhook.Route,
 		Auth: []api.AuthType{
 			{
-				Type:   types.TargetTypeUser,
+				Type:   api.TargetTypeUser,
 				URLVar: "uid",
 			},
 		},
