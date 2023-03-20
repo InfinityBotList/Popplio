@@ -76,6 +76,13 @@ func updateClicks(r *http.Request, name string) {
 
 	defer tx.Rollback(state.Context)
 
+	_, err = tx.Exec(state.Context, "UPDATE bots SET clicks = clicks + 1")
+
+	if err != nil {
+		state.Logger.Error(err)
+		return
+	}
+
 	// Check if the IP has already clicked the bot by checking the unique_clicks row
 	var hasClicked bool
 
