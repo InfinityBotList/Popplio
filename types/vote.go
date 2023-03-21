@@ -24,7 +24,7 @@ type AllVotes struct {
 	TotalPages uint64     `json:"total_pages"`
 }
 
-type WebhookPost struct {
+type WebhookPostLegacy struct {
 	BotID  string `json:"bot_id" validate:"required"`
 	UserID string `json:"user_id" validate:"required"`
 	Test   bool   `json:"test"`
@@ -52,7 +52,7 @@ type WebhookData struct {
 }
 
 type WebhookState struct {
-	HTTP        bool `json:"http"`
+	HTTP       bool `json:"http"`
 	WebhooksV2 bool `json:"webhooks_v2"`
-	SecretSet   bool `json:"webhook_secret_set"`
+	SecretSet  bool `json:"webhook_secret_set"`
 }

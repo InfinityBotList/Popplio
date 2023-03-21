@@ -39,8 +39,8 @@ func IsDiscordURL(url string) bool {
 	return false
 }
 
-// Sends a webhook
-func Send(webhook types.WebhookPost) error {
+// Sends a webhook using the legacy v1 format
+func SendLegacy(webhook types.WebhookPostLegacy) error {
 	url, token := webhook.URL, webhook.Token
 
 	if utils.IsNone(url) || utils.IsNone(token) {

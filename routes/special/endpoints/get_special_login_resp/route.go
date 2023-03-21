@@ -357,8 +357,8 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 		return api.HttpResponse{
 			Data: "Your new API token is: " + token + "\n\nThank you and have a nice day ;)",
 		}
-	// Set HMAC secret for bots
-	case "bhmac":
+	// Set webhooks_v2
+	case "bwebv2":
 		if action.TID == "" {
 			return api.HttpResponse{
 				Status: http.StatusBadRequest,
@@ -369,48 +369,25 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 		if !perms.Has(teams.TeamPermissionEditBotWebhooks) {
 			return api.HttpResponse{
 				Status: http.StatusUnauthorized,
-				Data:   "You do not have permission to edit this bot's hmac secret",
+				Data:   "You do not have permission to edit this bot's webhook information",
 			}
 		}
 
-		if action.Ctx != "true" && action.Ctx != "false" {
+		// We want to unset hmac
+		_, err := state.Pool.Exec(d.Context, "UPDATE bots SET webhooks_v2 = true WHERE bot_id = $1", action.TID)
+
+		if err != nil {
 			return api.HttpResponse{
-				Status: http.StatusBadRequest,
-				Data:   "Invalid value for hmac",
+				Status: http.StatusInternalServerError,
+				Data:   err.Error(),
 			}
 		}
 
 		utils.ClearBotCache(d.Context, action.TID)
 
-		if action.Ctx == "true" {
-			// We want to unset hmac
-			_, err := state.Pool.Exec(d.Context, "UPDATE bots SET hmac = true WHERE bot_id = $1", action.TID)
-
-			if err != nil {
-				return api.HttpResponse{
-					Status: http.StatusInternalServerError,
-					Data:   err.Error(),
-				}
-			}
-
-			return api.HttpResponse{
-				Status: http.StatusOK,
-				Data:   "Successfully set hmac",
-			}
-		} else {
-			_, err := state.Pool.Exec(d.Context, "UPDATE bots SET hmac = false WHERE bot_id = $1", action.TID)
-
-			if err != nil {
-				return api.HttpResponse{
-					Status: http.StatusInternalServerError,
-					Data:   err.Error(),
-				}
-			}
-
-			return api.HttpResponse{
-				Status: http.StatusOK,
-				Data:   "Successfully unset hmac",
-			}
+		return api.HttpResponse{
+			Status: http.StatusOK,
+			Data:   "Successfully set webhooks_v2 flag",
 		}
 	// Bot webhook url update
 	case "bweburl":
