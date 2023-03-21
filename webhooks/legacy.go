@@ -96,7 +96,7 @@ func SendLegacy(webhook types.WebhookPostLegacy) error {
 
 	for tries < 3 {
 		// Create response body
-		body := types.WebhookData{
+		body := types.WebhookDataLegacy{
 			Votes:        webhook.Votes,
 			UserID:       webhook.UserID,
 			UserObj:      dUser,
