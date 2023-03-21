@@ -126,7 +126,8 @@ func extraLogicCert(d api.RouteData, p Position, answers map[string]string) (add
 	// Now check server count and unique clicks
 	var serverCount int64
 	var uniqueClicks int64
-	err = state.Pool.QueryRow(d.Context, "SELECT servers, cardinality(unique_clicks) AS unique_clicks FROM bots WHERE bot_id = $1", botID).Scan(&serverCount, &uniqueClicks)
+	var webhooksV2 bool
+	err = state.Pool.QueryRow(d.Context, "SELECT servers, cardinality(unique_clicks) AS unique_clicks, webhooksV2 FROM bots WHERE bot_id = $1", botID).Scan(&serverCount, &uniqueClicks, &webhooksV2)
 
 	if err != nil {
 		return false, fmt.Errorf("error getting server count: %w", err)
@@ -138,6 +139,10 @@ func extraLogicCert(d api.RouteData, p Position, answers map[string]string) (add
 
 	if uniqueClicks < 30 {
 		return false, errors.New("bot does not have enough unique clicks to be certified: has " + fmt.Sprint(uniqueClicks) + ", needs 30")
+	}
+
+	if !webhooksV2 {
+		return false, errors.New("bot does not have 'Webhooks V2' enabled, enable this in 'Bot Settings' after checking your webhook usage and then retry")
 	}
 
 	return true, nil
