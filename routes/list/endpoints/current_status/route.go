@@ -3,6 +3,7 @@ package current_status
 import (
 	"net/http"
 	"popplio/api"
+	"popplio/types"
 
 	docs "github.com/infinitybotlist/doclib"
 
@@ -15,7 +16,7 @@ func Docs() *docs.Doc {
 	return &docs.Doc{
 		Summary:     "Get Current Status",
 		Description: "Gets the current status of the list",
-		Resp:        map[string]any{},
+		Resp:        types.StatusDocs{},
 	}
 }
 
