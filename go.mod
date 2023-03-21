@@ -15,7 +15,7 @@ require (
 )
 
 require (
-	github.com/infinitybotlist/doclib v0.0.0-20230320172045-580c93fc9e4a
+	github.com/infinitybotlist/doclib v0.0.0-20230321150633-a93b33450378
 	github.com/infinitybotlist/dovewing v0.0.0-20230320150614-2d5f1c23d540
 	github.com/infinitybotlist/genconfig v0.0.0-20230312045948-20cdb56f90d3
 	github.com/stripe/stripe-go/v74 v74.12.0
@@ -65,6 +65,6 @@ require (
 	github.com/plutov/paypal/v4 v4.7.0
 	github.com/redis/go-redis/v9 v9.0.2
 	go.uber.org/zap v1.24.0
-	golang.org/x/exp v0.0.0-20230315142452-642cacee5cc0
+	golang.org/x/exp v0.0.0-20230321023759-10a507213a29
 	golang.org/x/sys v0.6.0 // indirect
 )
