@@ -123,8 +123,6 @@ func Setup() {
 
 	Redis = redis.NewClient(rOptions)
 
-	setupPolicy()
-
 	Discord, err = discordgo.New("Bot " + Config.DiscordAuth.Token)
 
 	if err != nil {

@@ -14,7 +14,6 @@ type BlogPost struct {
 	Author      *dovewing.DiscordUser `db:"-" json:"author" description:"The author of the blog post"`
 	CreatedAt   time.Time             `db:"created_at" json:"created_at" description:"The time the blog post was created at"`
 	Content     string                `db:"content" json:"content" description:"The content of the blog post in markdown format"`
-	HTMLContent string                `db:"-" json:"html_content" description:"The parsed and sanitized content of the blog post in HTML format for viewing purposes"` // Must be parsed internally
 	Draft       bool                  `db:"draft" json:"draft" description:"Whether the blog post is a draft or not (hidden or public)"`
 	Tags        []string              `db:"tags" json:"tags" description:"The tags of the blog post for filtering purposes"`
 }

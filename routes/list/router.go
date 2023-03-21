@@ -8,7 +8,6 @@ import (
 	"popplio/routes/list/endpoints/get_list_team"
 	"popplio/routes/list/endpoints/get_partners"
 	"popplio/routes/list/endpoints/get_random_bots"
-	"popplio/routes/list/endpoints/parse_html"
 	"popplio/routes/list/endpoints/search_list"
 	"popplio/routes/list/endpoints/test_auth"
 
@@ -63,14 +62,6 @@ func (b Router) Routes(r *chi.Mux) {
 		Method:  api.POST,
 		Docs:    test_auth.Docs,
 		Handler: test_auth.Route,
-	}.Route(r)
-
-	api.Route{
-		Pattern: "/list/parse-html",
-		OpId:    "parse_html",
-		Method:  api.POST,
-		Docs:    parse_html.Docs,
-		Handler: parse_html.Route,
 	}.Route(r)
 
 	api.Route{

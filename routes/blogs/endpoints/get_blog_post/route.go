@@ -1,7 +1,6 @@
 package get_blog_post
 
 import (
-	"bytes"
 	"net/http"
 	"popplio/api"
 	"popplio/state"
@@ -75,12 +74,6 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 		state.Logger.Error(err)
 		return api.DefaultResponse(http.StatusInternalServerError)
 	}
-
-	var buf bytes.Buffer
-
-	state.GoldMark.Convert([]byte(blogPost.Content), &buf)
-
-	blogPost.HTMLContent = buf.String()
 
 	return api.HttpResponse{
 		Json: blogPost,
