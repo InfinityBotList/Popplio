@@ -107,7 +107,7 @@ type Bot struct {
 	Note            pgtype.Text           `db:"approval_note" json:"approval_note"`
 	CreatedAt       pgtype.Timestamptz    `db:"created_at" json:"created_at"`
 	LastClaimed     pgtype.Timestamptz    `db:"last_claimed" json:"last_claimed"`
-	WebhookHMAC     bool                  `db:"hmac" json:"webhook_hmac_auth"`
+	WebhooksV2      bool                  `db:"webhooks_v2" json:"webhooks_v2"`
 	TeamOwnerID     pgtype.UUID           `db:"team_owner" json:"-"`
 	TeamOwner       *Team                 `json:"team_owner"` // Must be parsed internally
 }

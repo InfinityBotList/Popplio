@@ -45,9 +45,9 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 
 	var webhook string
 	var webAuth pgtype.Text
-	var hmac bool
+	var webhooksV2 bool
 
-	err = state.Pool.QueryRow(d.Context, "SELECT webhook, web_auth, hmac FROM bots WHERE bot_id = $1", id).Scan(&webhook, &webAuth, &hmac)
+	err = state.Pool.QueryRow(d.Context, "SELECT webhook, web_auth, webhooks_v2 FROM bots WHERE bot_id = $1", id).Scan(&webhook, &webAuth, &webhooksV2)
 
 	if err != nil {
 		state.Logger.Error(err)
@@ -56,9 +56,9 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 
 	return api.HttpResponse{
 		Json: types.WebhookState{
-			HTTP:        webhook == "httpUser",
-			WebhookHMAC: hmac,
-			SecretSet:   !webAuth.Valid || webAuth.String != "",
+			HTTP:       webhook == "httpUser",
+			WebhooksV2: webhooksV2,
+			SecretSet:  !webAuth.Valid || webAuth.String != "",
 		},
 	}
 }

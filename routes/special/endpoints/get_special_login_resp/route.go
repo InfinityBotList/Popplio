@@ -105,8 +105,8 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 			prettyName = "Reset User Token"
 		case "rtb":
 			prettyName = "Reset Bot Token"
-		case "bhmac":
-			prettyName = "Bot HMAC Update"
+		case "bwebv2":
+			prettyName = "Enable Webhooks V2 (IRREVERSIBLE)"
 		case "bweburl":
 			prettyName = "Bot Webhook URL Update"
 		case "bwebsec":
