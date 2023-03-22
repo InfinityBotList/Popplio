@@ -164,11 +164,6 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 		bot.Banner.String = ""
 	}
 
-	if utils.IsNone(bot.Invite.String) || !strings.HasPrefix(bot.Invite.String, "https://") {
-		bot.Invite.Valid = false
-		bot.Invite.String = ""
-	}
-
 	if bot.Owner.Valid {
 		ownerUser, err := dovewing.GetDiscordUser(d.Context, bot.Owner.String)
 
@@ -247,7 +242,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 		bot.TeamOwner = &team
 	}
 
-	bot.SubPeriodParsed = types.NewInterval(bot.SubPeriod)
+	bot.PremiumPeriodLengthParsed = types.NewInterval(bot.PremiumPeriodLength)
 
 	botUser, err := dovewing.GetDiscordUser(d.Context, bot.BotID)
 

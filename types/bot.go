@@ -12,7 +12,7 @@ type IndexBot struct {
 	User        *dovewing.DiscordUser `db:"-" json:"user" description:"The bot's user information"`
 	Short       string                `db:"short" json:"short" description:"The bot's short description"`
 	Long        string                `db:"long" json:"long" description:"The bot's long description in raw format (HTML/markdown etc. based on the bots settings)"`
-	Type        string                `db:"type" json:"type" description:"The bot's type (e.g. pending/approved/certified/denied  etc.)"`
+	Type        string                `db:"type" json:"type" description:"The bot's type (e.g. pending/approved/certified/denied etc.)"`
 	Vanity      string                `db:"vanity" json:"vanity" description:"The bot's vanity URL if it has one, otherwise null"`
 	Votes       int                   `db:"votes" json:"votes" description:"The bot's vote count"`
 	Shards      int                   `db:"shards" json:"shards" description:"The bot's shard count"`
@@ -65,51 +65,48 @@ type BotStats struct {
 // Bot represents a bot
 // A bot is a Discord bot that is on the infinitybotlist.
 type Bot struct {
-	ITag            pgtype.UUID           `db:"itag" json:"itag" description:"The bot's internal ID. Not that useful and more a artifact of database migrations. May be removed in the future."`
-	BotID           string                `db:"bot_id" json:"bot_id" description:"The bot's ID"`
-	ClientID        string                `db:"client_id" json:"client_id" description:"The bot's associated client ID validated using that top-secret Oauth2 API! Used in anti-abuse measures."`
-	QueueName       string                `db:"queue_name" json:"queue_name"` // Used purely by the queue system
-	QueueAvatar     string                `db:"queue_avatar" json:"queue_avatar" description:"The bot's queue name if it has one, otherwise null"`
-	ExtraLinks      []Link                `db:"extra_links" json:"extra_links" description:"The bot's links that it wishes to advertise"`
-	Tags            []string              `db:"tags" json:"tags" description:"The bot's tags (e.g. music, moderation, etc.)"`
-	Prefix          pgtype.Text           `db:"prefix" json:"prefix" description:"The bot's prefix"`
-	User            *dovewing.DiscordUser `json:"user" description:"The bot's user information"` // Must be parsed internally
-	Owner           pgtype.Text           `db:"owner" json:"-"`
-	MainOwner       *dovewing.DiscordUser `json:"owner" description:"The bot owner's user information"` // Must be parsed internally
-	Short           string                `db:"short" json:"short" description:"The bot's short description"`
-	Long            string                `db:"long" json:"long" description:"The bot's long description in raw format (HTML/markdown etc. based on the bots settings)"`
-	Library         string                `db:"library" json:"library" description:"The bot's library"`
-	NSFW            pgtype.Bool           `db:"nsfw" json:"nsfw" description:"Whether the bot is NSFW or not"`
-	Premium         pgtype.Bool           `db:"premium" json:"premium" description:"Whether the bot is a premium bot or not"`
-	Servers         int                   `db:"servers" json:"servers" description:"The bot's server count"`
-	Shards          int                   `db:"shards" json:"shards" description:"The bot's shard count"`
-	ShardList       []int                 `db:"shard_list" json:"shard_list" description:"The number of servers per shard"`
-	Users           int                   `db:"users" json:"users" description:"The bot's user count"`
-	Votes           int                   `db:"votes" json:"votes"`
-	Views           int                   `db:"clicks" json:"clicks"`
-	UniqueClicks    int64                 `json:"unique_clicks"` // Must be parsed internally
-	InviteClicks    int                   `db:"invite_clicks" json:"invite_clicks"`
-	Banner          pgtype.Text           `db:"banner" json:"banner"`
-	Invite          pgtype.Text           `db:"invite" json:"invite"`
-	Type            string                `db:"type" json:"type"` // For auditing reasons, we do not filter out denied/banned bots in API
-	Vanity          string                `db:"vanity" json:"vanity"`
-	ExternalSource  pgtype.Text           `db:"external_source" json:"external_source"`
-	ListSource      pgtype.UUID           `db:"list_source" json:"list_source"`
-	VoteBanned      bool                  `db:"vote_banned" json:"vote_banned"`
-	CrossAdd        bool                  `db:"cross_add" json:"cross_add"`
-	StartPeriod     pgtype.Timestamptz    `db:"start_premium_period" json:"start_premium_period"`
-	SubPeriod       time.Duration         `db:"premium_period_length" json:"-"`
-	SubPeriodParsed Interval              `db:"-" json:"premium_period_length"` // Must be parsed internally
-	CertReason      pgtype.Text           `db:"cert_reason" json:"cert_reason"`
-	Uptime          int                   `db:"uptime" json:"uptime"`
-	TotalUptime     int                   `db:"total_uptime" json:"total_uptime"`
-	ClaimedBy       pgtype.Text           `db:"claimed_by" json:"claimed_by"`
-	Note            pgtype.Text           `db:"approval_note" json:"approval_note"`
-	CreatedAt       pgtype.Timestamptz    `db:"created_at" json:"created_at"`
-	LastClaimed     pgtype.Timestamptz    `db:"last_claimed" json:"last_claimed"`
-	WebhooksV2      bool                  `db:"webhooks_v2" json:"webhooks_v2"`
-	TeamOwnerID     pgtype.UUID           `db:"team_owner" json:"-"`
-	TeamOwner       *Team                 `json:"team_owner"` // Must be parsed internally
+	ITag                      pgtype.UUID           `db:"itag" json:"itag" description:"The bot's internal ID. Not that useful and more a artifact of database migrations. May be removed in the future."`
+	BotID                     string                `db:"bot_id" json:"bot_id" description:"The bot's ID"`
+	ClientID                  string                `db:"client_id" json:"client_id" description:"The bot's associated client ID validated using that top-secret Oauth2 API! Used in anti-abuse measures."`
+	QueueName                 string                `db:"queue_name" json:"queue_name"` // Used purely by the queue system
+	QueueAvatar               string                `db:"queue_avatar" json:"queue_avatar" description:"The bot's queue name if it has one, otherwise null"`
+	ExtraLinks                []Link                `db:"extra_links" json:"extra_links" description:"The bot's links that it wishes to advertise"`
+	Tags                      []string              `db:"tags" json:"tags" description:"The bot's tags (e.g. music, moderation, etc.)"`
+	Prefix                    string                `db:"prefix" json:"prefix" description:"The bot's prefix"`
+	User                      *dovewing.DiscordUser `json:"user" description:"The bot's user information"` // Must be parsed internally
+	Owner                     pgtype.Text           `db:"owner" json:"-"`
+	MainOwner                 *dovewing.DiscordUser `json:"owner" description:"The bot owner's user information. If in a team, this will be null and team_owner will instead be set"` // Must be parsed internally
+	Short                     string                `db:"short" json:"short" description:"The bot's short description"`
+	Long                      string                `db:"long" json:"long" description:"The bot's long description in raw format (HTML/markdown etc. based on the bots settings)"`
+	Library                   string                `db:"library" json:"library" description:"The bot's library"`
+	NSFW                      bool                  `db:"nsfw" json:"nsfw" description:"Whether the bot is NSFW or not"`
+	Premium                   bool                  `db:"premium" json:"premium" description:"Whether the bot is a premium bot or not"`
+	Servers                   int                   `db:"servers" json:"servers" description:"The bot's server count"`
+	Shards                    int                   `db:"shards" json:"shards" description:"The bot's shard count"`
+	ShardList                 []int                 `db:"shard_list" json:"shard_list" description:"The number of servers per shard"`
+	Users                     int                   `db:"users" json:"users" description:"The bot's user count"`
+	Votes                     int                   `db:"votes" json:"votes" description:"The bot's vote count"`
+	Views                     int                   `db:"clicks" json:"clicks" description:"The bot's total click count"`
+	UniqueClicks              int64                 `json:"unique_clicks" description:"The bot's unique click count based on SHA256 hashed IPs"` // Must be parsed internally
+	InviteClicks              int                   `db:"invite_clicks" json:"invite_clicks" description:"The bot's invite click count (via users inviting the bot from IBL)"`
+	Banner                    pgtype.Text           `db:"banner" json:"banner" description:"The bot's banner URL if it has one, otherwise null"`
+	Invite                    string                `db:"invite" json:"invite" description:"The bot's invite URL. Must be present"`
+	Type                      string                `db:"type" json:"type" description:"The bot's type (e.g. pending/approved/certified/denied etc.). Note that we do not filter out denied/banned bots in API"`
+	Vanity                    string                `db:"vanity" json:"vanity" description:"The bot's vanity URL if it has one, otherwise null"`
+	VoteBanned                bool                  `db:"vote_banned" json:"vote_banned" description:"Whether the bot is vote banned or not"`
+	StartPeriod               pgtype.Timestamptz    `db:"start_premium_period" json:"start_premium_period"`
+	PremiumPeriodLength       time.Duration         `db:"premium_period_length" json:"-"`
+	PremiumPeriodLengthParsed Interval              `db:"-" json:"premium_period_length" description:"The period of premium for the bot"` // Must be parsed internally
+	CertReason                pgtype.Text           `db:"cert_reason" json:"cert_reason" description:"The reason for the bot being certified"`
+	Uptime                    int                   `db:"uptime" json:"uptime" description:"The bot's total number of successful uptime checks"`
+	TotalUptime               int                   `db:"total_uptime" json:"total_uptime" description:"The bot's total number of uptime checks"`
+	ClaimedBy                 pgtype.Text           `db:"claimed_by" json:"claimed_by" description:"The user who claimed the bot"`
+	Note                      pgtype.Text           `db:"approval_note" json:"approval_note" description:"The note for the bot's approval"`
+	CreatedAt                 pgtype.Timestamptz    `db:"created_at" json:"created_at" description:"The bot's creation date"`
+	LastClaimed               pgtype.Timestamptz    `db:"last_claimed" json:"last_claimed" description:"The bot's last claimed date"`
+	WebhooksV2                bool                  `db:"webhooks_v2" json:"webhooks_v2" description:"Whether the bot is using webhooks v2 or not"`
+	TeamOwnerID               pgtype.UUID           `db:"team_owner" json:"-"`
+	TeamOwner                 *Team                 `json:"team_owner" description:"If the bot is in a team, who owns the bot. If not in a team, this will be null and owner will instead be set"` // Must be parsed internally
 }
 
 // All bots

@@ -45,7 +45,6 @@ type CreateBot struct {
 	ExtraLinks []types.Link `db:"extra_links" json:"extra_links" validate:"required" msg:"Extra links must be sent"`                                   // Impld
 	Tags       []string     `db:"tags" json:"tags" validate:"required,unique,min=1,max=5,dive,min=3,max=30,notblank,nonvulgar" msg:"There must be between 1 and 5 tags without duplicates" amsg:"Each tag must be between 3 and 30 characters and alphabetic"`
 	NSFW       bool         `db:"nsfw" json:"nsfw"`
-	CrossAdd   bool         `db:"cross_add" json:"cross_add"`
 	StaffNote  *string      `db:"approval_note" json:"staff_note" validate:"omitempty,max=512" msg:"Staff note must be less than 512 characters if sent"` // impld
 
 	// Not needed to send
@@ -69,7 +68,6 @@ func createBotsArgs(bot CreateBot, id internalData) []any {
 		bot.ExtraLinks,
 		bot.Tags,
 		bot.NSFW,
-		bot.CrossAdd,
 		bot.StaffNote,
 		id.QueueName,
 		id.QueueAvatar,

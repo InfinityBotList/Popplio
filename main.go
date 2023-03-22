@@ -28,6 +28,7 @@ import (
 	"popplio/routes/votes"
 	"popplio/state"
 	"popplio/types"
+	"popplio/webhooks"
 
 	docs "github.com/infinitybotlist/doclib"
 
@@ -125,6 +126,7 @@ If you need some help or think you have spotted a problem with our API you can t
 	}
 
 	docs.Setup()
+	webhooks.Setup()
 
 	docs.AddSecuritySchema("User", "User-Auth", "Requires a user token. Should be prefixed with `User ` in `Authorization` header.")
 	docs.AddSecuritySchema("Bot", "Bot-Auth", "Requires a bot token. Should be prefixed with `Bot ` in `Authorization` header.")
