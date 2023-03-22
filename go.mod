@@ -15,7 +15,7 @@ require (
 )
 
 require (
-	github.com/infinitybotlist/doclib v0.0.0-20230322090830-3a20eb272c67
+	github.com/infinitybotlist/doclib v0.0.0-20230322134154-ca69c6b0fb19
 	github.com/infinitybotlist/dovewing v0.0.0-20230320150614-2d5f1c23d540
 	github.com/infinitybotlist/genconfig v0.0.0-20230312045948-20cdb56f90d3
 	github.com/stripe/stripe-go/v74 v74.12.0

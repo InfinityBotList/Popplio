@@ -16,7 +16,6 @@ import (
 	"popplio/teams"
 	"popplio/types"
 	"popplio/utils"
-	"popplio/webhooks"
 
 	docs "github.com/infinitybotlist/doclib"
 
@@ -426,13 +425,6 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 				return api.HttpResponse{
 					Status: http.StatusBadRequest,
 					Data:   "Invalid webhook url",
-				}
-			}
-
-			if webhooks.IsDiscordURL(action.Ctx) {
-				return api.HttpResponse{
-					Status: http.StatusBadRequest,
-					Data:   "Discord webhooks are not supported at this time due to connection issues and abuse. See https://github.com/infinitybotlist/iblcli for the alternative solution.",
 				}
 			}
 

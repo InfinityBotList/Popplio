@@ -93,7 +93,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 		return api.ValidatorErrorResponse(compiledMessages, errors)
 	}
 
-	webhPayload := types.WebhookPostLegacy{
+	webhPayload := webhooks.WebhookPostLegacy{
 		UserID: d.Auth.ID,
 		BotID:  id,
 		Votes:  payload.Votes,

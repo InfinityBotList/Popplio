@@ -8,11 +8,9 @@ import (
 	"errors"
 	"io"
 	"net/http"
-	"strings"
 	"time"
 
 	"popplio/state"
-	"popplio/types"
 	"popplio/utils"
 
 	"github.com/infinitybotlist/dovewing"
@@ -22,25 +20,41 @@ import (
 
 var json = jsoniter.ConfigCompatibleWithStandardLibrary
 
-func IsDiscordURL(url string) bool {
-	validPrefixes := []string{
-		"https://discordapp.com/api/webhooks/",
-		"https://discord.com/api/webhooks/",
-		"https://canary.discord.com/api/webhooks/",
-		"https://ptb.discord.com/api/webhooks/",
-	}
+type WebhookPostLegacy struct {
+	BotID  string `json:"bot_id" validate:"required"`
+	UserID string `json:"user_id" validate:"required"`
+	Test   bool   `json:"test"`
+	Votes  int    `json:"votes" validate:"required"`
 
-	for _, prefix := range validPrefixes {
-		if strings.HasPrefix(url, prefix) {
-			return true
-		}
-	}
+	// Only present on test webhook API or during sends internally
+	URL string `json:"url" validate:"required"`
 
-	return false
+	// Only present on test webhook API
+	Token string `json:"token" validate:"required"`
+
+	// Only present on test webhook API
+	HMACAuth bool `json:"hmac_auth"`
+}
+
+type WebhookStateLegacy struct {
+	HTTP       bool `json:"http"`
+	WebhooksV2 bool `json:"webhooks_v2"`
+	SecretSet  bool `json:"webhook_secret_set"`
+}
+
+type WebhookDataLegacy struct {
+	Votes        int                   `json:"votes"`
+	UserID       string                `json:"user"`
+	UserObj      *dovewing.DiscordUser `json:"userObj"`
+	BotID        string                `json:"bot"`
+	UserIDLegacy string                `json:"userID"`
+	BotIDLegacy  string                `json:"botID"`
+	Test         bool                  `json:"test"`
+	Time         int64                 `json:"time"`
 }
 
 // Sends a webhook using the legacy v1 format
-func SendLegacy(webhook types.WebhookPostLegacy) error {
+func SendLegacy(webhook WebhookPostLegacy) error {
 	url, token := webhook.URL, webhook.Token
 
 	if utils.IsNone(url) || utils.IsNone(token) {
@@ -69,11 +83,7 @@ func SendLegacy(webhook types.WebhookPostLegacy) error {
 		url = webhookURL.String
 	}
 
-	if url == "httpUser" {
-		return errors.New("httpUser")
-	}
-
-	isDiscordIntegration := IsDiscordURL(url)
+	isDiscordIntegration := isDiscordURL(url)
 
 	if isDiscordIntegration {
 		return errors.New("webhook is not a discord webhook")
@@ -96,7 +106,7 @@ func SendLegacy(webhook types.WebhookPostLegacy) error {
 
 	for tries < 3 {
 		// Create response body
-		body := types.WebhookDataLegacy{
+		body := WebhookDataLegacy{
 			Votes:        webhook.Votes,
 			UserID:       webhook.UserID,
 			UserObj:      dUser,

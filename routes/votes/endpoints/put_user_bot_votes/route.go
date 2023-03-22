@@ -304,7 +304,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 
 	// Send webhook in a goroutine refunding the vote if it failed
 	go func() {
-		err = webhooks.SendLegacy(types.WebhookPostLegacy{
+		err = webhooks.SendLegacy(webhooks.WebhookPostLegacy{
 			BotID:  id,
 			UserID: userId,
 			Votes:  int(votes),
