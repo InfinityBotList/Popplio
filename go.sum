@@ -57,6 +57,8 @@ github.com/infinitybotlist/doclib v0.0.0-20230321150146-d3ea1710f00f h1:GAy44j0q
 github.com/infinitybotlist/doclib v0.0.0-20230321150146-d3ea1710f00f/go.mod h1:yRoQp8q6sZ8pFDuLXPvg/0sm64D3v3VekzbBcGiXuE8=
 github.com/infinitybotlist/doclib v0.0.0-20230321150633-a93b33450378 h1:HbChbOFIZkv0MJTguiZ46WDXqL8xfUjxJuLcqIRmayQ=
 github.com/infinitybotlist/doclib v0.0.0-20230321150633-a93b33450378/go.mod h1:yRoQp8q6sZ8pFDuLXPvg/0sm64D3v3VekzbBcGiXuE8=
+github.com/infinitybotlist/doclib v0.0.0-20230322074703-83fbf5c631a1 h1:5IOHlwZGRZvPxYhZOppz7wNw7UINF4g63Ph+2yvrIPI=
+github.com/infinitybotlist/doclib v0.0.0-20230322074703-83fbf5c631a1/go.mod h1:yRoQp8q6sZ8pFDuLXPvg/0sm64D3v3VekzbBcGiXuE8=
 github.com/infinitybotlist/dovewing v0.0.0-20230320150614-2d5f1c23d540 h1:cOnLwY2H7wniJLyfbQcGoT3/8fK2k4tegTCw87WziBc=
 github.com/infinitybotlist/dovewing v0.0.0-20230320150614-2d5f1c23d540/go.mod h1:YrvR6uAc6JQscNvxhnJ6jevNze+OSsMBhJqtHo6VzVI=
 github.com/infinitybotlist/eureka v0.0.0-20230123041109-426207f20916 h1:H7Xm4s5Wvnr0R7mO1MvbL/9dexCmNlQNDOdscTduKvw=
