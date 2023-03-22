@@ -34,3 +34,5 @@ type WebhookNewReviewData struct {
 	ReviewID string `json:"review_id"` // The ID of the review
 	Content  string `json:"content"`   // The content of the review
 }
+
+// Actual code
