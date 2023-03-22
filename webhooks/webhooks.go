@@ -91,12 +91,12 @@ func isDiscordURL(url string) bool {
 }
 
 // Creates a discord webhook send
-func SendDiscord(url string) error {
+func sendDiscord(url string) error {
 	return nil
 }
 
 // Creates a custom webhook response, retrying if needed
-func SendCustom(d *webhookSendState) error {
+func sendCustom(d *webhookSendState) error {
 	return nil
 }
 
@@ -118,7 +118,7 @@ func (w *WebhookResponse) Create() error {
 
 	// Abort early and call SendDiscord if the webhook url is a discord webhook url
 	if isDiscordURL(webhookURL) {
-		return SendDiscord(webhookURL)
+		return sendDiscord(webhookURL)
 	}
 
 	var webhookSecret string
@@ -141,7 +141,7 @@ func (w *WebhookResponse) Create() error {
 	h.Write(payload)
 	finalToken := hex.EncodeToString(h.Sum(nil))
 
-	return SendCustom(&webhookSendState{
+	return sendCustom(&webhookSendState{
 		URL:  webhookURL,
 		Sign: finalToken,
 		Data: payload,
