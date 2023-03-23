@@ -200,7 +200,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 	}
 
 	// Get user info
-	req, err := http.NewRequest("GET", "https://discord.com/api/users/@me", nil)
+	req, err := http.NewRequestWithContext(state.Context, "GET", "https://discord.com/api/users/@me", nil)
 
 	if err != nil {
 		return api.HttpResponse{

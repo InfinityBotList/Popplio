@@ -134,7 +134,7 @@ func SendLegacy(webhook WebhookPostLegacy) error {
 
 		// Create request
 		responseBody := bytes.NewBuffer(data)
-		req, err := http.NewRequest("POST", url, responseBody)
+		req, err := http.NewRequestWithContext(state.Context, "POST", url, responseBody)
 
 		if err != nil {
 			state.Logger.Error("Failed to create request")
@@ -142,7 +142,7 @@ func SendLegacy(webhook WebhookPostLegacy) error {
 		}
 
 		req.Header.Set("Content-Type", "application/json")
-		req.Header.Set("User-Agent", "popplio/v6.0")
+		req.Header.Set("User-Agent", "popplio/legacyhandler-1")
 		req.Header.Set("Authorization", finalToken)
 
 		// Send request

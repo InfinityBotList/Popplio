@@ -297,7 +297,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 	cli := &http.Client{}
 
 	var httpReq *http.Request
-	httpReq, err = http.NewRequest("GET", "https://discord.com/api/v10/users/@me", nil)
+	httpReq, err = http.NewRequestWithContext(state.Context, "GET", "https://discord.com/api/v10/users/@me", nil)
 
 	if err != nil {
 		state.Logger.Error(err)

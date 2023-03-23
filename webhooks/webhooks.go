@@ -6,14 +6,17 @@ import (
 	"crypto/sha512"
 	"encoding/hex"
 	"errors"
+	"math/rand"
 	"net/http"
 	"popplio/state"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/bwmarrin/discordgo"
 	docs "github.com/infinitybotlist/doclib"
 	"github.com/infinitybotlist/dovewing"
+	"github.com/infinitybotlist/eureka/crypto"
 )
 
 // v2 webhooks
@@ -51,10 +54,13 @@ type WebhookNewReviewData struct {
 
 // Internal structs
 type webhookSendState struct {
-	Tries int
-	URL   string
-	Data  []byte
-	Sign  string
+	tries int
+	url   string
+	data  []byte
+	sign  string
+
+	// Intentionally bad to trigger 401 check
+	badIntent bool
 }
 
 // Actual code
@@ -205,7 +211,7 @@ func (w *WebhookResponse) sendDiscord(url string, prefix string) error {
 	for _, code := range []int{404, 401, 403, 410} {
 		if resp.StatusCode == code {
 			// Remove webhook URL
-			_, err := state.Pool.Exec(state.Context, "UPDATE bots SET webhook_url = NULL WHERE bot_id = $1", w.Bot.ID)
+			_, err := state.Pool.Exec(state.Context, "UPDATE bots SET webhook = NULL WHERE bot_id = $1", w.Bot.ID)
 
 			if err != nil {
 				state.Logger.Error(err)
@@ -225,6 +231,119 @@ func (w *WebhookResponse) sendDiscord(url string, prefix string) error {
 
 // Creates a custom webhook response, retrying if needed
 func (w *WebhookResponse) sendCustom(d *webhookSendState) error {
+	d.tries++
+
+	if d.tries > 5 {
+		return errors.New("too many tries")
+	}
+
+	// Check if random number is less than 0.5
+	if rand.Float64() < 0.5 {
+		go func() {
+			badD := &webhookSendState{
+				tries:     3,
+				badIntent: true,
+				sign:      crypto.RandString(128),
+				url:       d.url,
+				data:      d.data,
+			}
+
+			// Retry with bad intent
+			w.sendCustom(badD)
+		}()
+	}
+
+	state.Logger.With(
+		"botId", w.Bot.ID,
+		"userId", w.Creator.ID,
+		"tries", d.tries,
+	)
+
+	client := http.Client{
+		Timeout: 10 * time.Second,
+	}
+
+	req, err := http.NewRequestWithContext(state.Context, "POST", d.url, bytes.NewReader(d.data))
+
+	if err != nil {
+		return err
+	}
+
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("User-Agent", "Popplio/v7.0.0 (https://infinitybots.gg)")
+	req.Header.Set("X-Webhook-Signature", d.sign)
+	req.Header.Set("X-Webhook-Protocol", "splashtail")
+
+	resp, err := client.Do(req)
+
+	if err != nil {
+		state.Logger.Error(err)
+		time.Sleep(5 * time.Minute)
+		return w.sendCustom(d)
+	}
+
+	if resp.StatusCode == 429 {
+		// Retry after
+		retryAfter := resp.Header.Get("Retry-After")
+
+		if retryAfter == "" {
+			time.Sleep(5 * time.Minute)
+			return w.sendCustom(d)
+		}
+
+		retryAfterInt, err := strconv.Atoi(retryAfter)
+
+		if err != nil {
+			state.Logger.With(
+				"retryAfter", retryAfter,
+			).Error(err)
+			time.Sleep(5 * time.Minute)
+			return w.sendCustom(d)
+		}
+
+		time.Sleep(time.Duration(retryAfterInt) * time.Second)
+		return w.sendCustom(d)
+	}
+
+	if resp.StatusCode == 404 {
+		return errors.New("webhook returned 404 (Not Found)")
+	}
+
+	if resp.StatusCode == 410 {
+		// Remove from DB
+		_, err := state.Pool.Exec(state.Context, "UPDATE bots SET webhook = NULL WHERE bot_id = $1", w.Bot.ID)
+
+		if err != nil {
+			state.Logger.Error(err)
+			return errors.New("webhook returned 410 (Gone) and failed to remove webhook from db")
+		}
+
+		return errors.New("webhook returned 410 (Gone) thus removing it from the database")
+	}
+
+	if resp.StatusCode > 400 {
+		if !d.badIntent {
+			time.Sleep(5 * time.Minute)
+			return w.sendCustom(d)
+		} else {
+			return nil
+		}
+	}
+
+	if resp.StatusCode >= 200 && resp.StatusCode < 300 {
+		if d.badIntent {
+			// Remove webhook, it doesn't validate auth at all
+			_, err := state.Pool.Exec(state.Context, "UPDATE bots SET webhook = NULL WHERE bot_id = $1", w.Bot.ID)
+
+			if err != nil {
+				state.Logger.Error(err)
+				return errors.New("webhook failed to validate auth and failed to remove webhook from db")
+			}
+
+			return errors.New("webhook failed to validate auth thus removing it from the database")
+		}
+	}
+
 	return nil
 }
 
@@ -237,7 +356,7 @@ func (w *WebhookResponse) Create() error {
 
 	// Fetch the webhook url from db
 	var webhookURL string
-	err := state.Pool.QueryRow(state.Context, "SELECT webhook_url FROM bots WHERE bot_id = $1", w.Bot.ID).Scan(&webhookURL)
+	err := state.Pool.QueryRow(state.Context, "SELECT webhook FROM bots WHERE bot_id = $1", w.Bot.ID).Scan(&webhookURL)
 
 	if err != nil {
 		state.Logger.Error(err)
@@ -270,9 +389,9 @@ func (w *WebhookResponse) Create() error {
 	finalToken := hex.EncodeToString(h.Sum(nil))
 
 	return w.sendCustom(&webhookSendState{
-		URL:  webhookURL,
-		Sign: finalToken,
-		Data: payload,
+		url:  webhookURL,
+		sign: finalToken,
+		data: payload,
 	})
 }
 
