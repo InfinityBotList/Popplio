@@ -83,10 +83,10 @@ func SendLegacy(webhook WebhookPostLegacy) error {
 		url = webhookURL.String
 	}
 
-	isDiscordIntegration := isDiscordURL(url)
+	isDiscordIntegration, _ := isDiscordAPIURL(url)
 
 	if isDiscordIntegration {
-		return errors.New("webhook is not a discord webhook")
+		return errors.New("only supported on v2")
 	}
 
 	state.Logger.Info("Using hmac: ", webhook.HMACAuth)

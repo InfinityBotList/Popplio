@@ -1,13 +1,17 @@
 package webhooks
 
 import (
+	"bytes"
 	"crypto/hmac"
 	"crypto/sha512"
 	"encoding/hex"
 	"errors"
+	"net/http"
 	"popplio/state"
+	"strconv"
 	"strings"
 
+	"github.com/bwmarrin/discordgo"
 	docs "github.com/infinitybotlist/doclib"
 	"github.com/infinitybotlist/dovewing"
 )
@@ -73,31 +77,154 @@ func (w *WebhookResponse) Validate() error {
 	return nil
 }
 
-// Returns true if the given url is a valid discord webhook url
-func isDiscordURL(url string) bool {
+func isDiscordAPIURL(url string) (bool, string) {
 	validPrefixes := []string{
-		"https://discordapp.com/api/webhooks/",
-		"https://discord.com/api/webhooks/",
-		"https://canary.discord.com/api/webhooks/",
-		"https://ptb.discord.com/api/webhooks/",
+		"https://discordapp.com/",
+		"https://discord.com/",
+		"https://canary.discord.com/",
+		"https://ptb.discord.com/",
 	}
 
 	for _, prefix := range validPrefixes {
 		if strings.HasPrefix(url, prefix) {
-			return true
+			return true, prefix
 		}
 	}
 
-	return false
+	return false, ""
 }
 
 // Creates a discord webhook send
-func sendDiscord(url string) error {
+func (w *WebhookResponse) sendDiscord(url string, prefix string) error {
+	// Remove out prefix
+	url = state.Config.Meta.PopplioProxy + "/" + strings.TrimPrefix(url, prefix)
+
+	if !strings.Contains(url, "/webhooks/") {
+		return errors.New("invalid discord webhook url")
+	}
+
+	var data *discordgo.WebhookParams
+
+	switch w.Type {
+	case WebhookTypeVote:
+		voteData := w.Data.(WebhookVoteData)
+
+		data = &discordgo.WebhookParams{
+			Embeds: []*discordgo.MessageEmbed{
+				{
+					URL: "https://botlist.site/" + w.Bot.ID,
+					Thumbnail: &discordgo.MessageEmbedThumbnail{
+						URL: w.Bot.Avatar,
+					},
+					Title:       "🎉 Vote Count Updated!",
+					Description: ":heart:" + w.Creator.Username + "#" + w.Creator.Discriminator + " has voted for " + w.Bot.Username,
+					Color:       0x8A6BFD,
+					Fields: []*discordgo.MessageEmbedField{
+						{
+							Name:   "Vote Count:",
+							Value:  strconv.Itoa(int(voteData.Votes)),
+							Inline: true,
+						},
+						{
+							Name:   "User ID:",
+							Value:  w.Creator.ID,
+							Inline: true,
+						},
+						{
+							Name:   "Vote Page",
+							Value:  "[View " + w.Bot.Username + "](https://botlist.site/" + w.Bot.ID + ")",
+							Inline: true,
+						},
+						{
+							Name:   "Vote Page",
+							Value:  "[Vote for " + w.Bot.Username + "](https://botlist.site/" + w.Bot.ID + "/vote)",
+							Inline: true,
+						},
+					},
+				},
+			},
+		}
+	case WebhookTypeNewReview:
+		reviewData := w.Data.(WebhookNewReviewData)
+
+		data = &discordgo.WebhookParams{
+			Embeds: []*discordgo.MessageEmbed{
+				{
+					URL: "https://botlist.site/" + w.Bot.ID,
+					Thumbnail: &discordgo.MessageEmbedThumbnail{
+						URL: w.Bot.Avatar,
+					},
+					Title:       "📝 New Review!",
+					Description: ":heart:" + w.Creator.Username + "#" + w.Creator.Discriminator + " has left a review for " + w.Bot.Username,
+					Color:       0x8A6BFD,
+					Fields: []*discordgo.MessageEmbedField{
+						{
+							Name:   "Review ID:",
+							Value:  reviewData.ReviewID,
+							Inline: true,
+						},
+						{
+							Name:   "User ID:",
+							Value:  w.Creator.ID,
+							Inline: true,
+						},
+						{
+							Name: "Review Content:",
+							Value: func() string {
+								if len(reviewData.Content) > 1000 {
+									return reviewData.Content[:1000] + "..."
+								}
+
+								return reviewData.Content
+							}(),
+							Inline: true,
+						},
+						{
+							Name:   "Review Page",
+							Value:  "[View " + w.Bot.Username + "](https://botlist.site/" + w.Bot.ID + ")",
+							Inline: true,
+						},
+					},
+				},
+			},
+		}
+	}
+
+	payload, err := json.Marshal(data)
+
+	if err != nil {
+		return err
+	}
+
+	resp, err := http.Post(url, "application/json", bytes.NewReader(payload))
+
+	if err != nil {
+		return err
+	}
+
+	for _, code := range []int{404, 401, 403, 410} {
+		if resp.StatusCode == code {
+			// Remove webhook URL
+			_, err := state.Pool.Exec(state.Context, "UPDATE bots SET webhook_url = NULL WHERE bot_id = $1", w.Bot.ID)
+
+			if err != nil {
+				state.Logger.Error(err)
+			}
+
+			return errors.New("bad webhook url (removed from db)")
+		}
+	}
+
+	state.Logger.With(
+		"botId", w.Bot.ID,
+		"statusCode", resp.StatusCode,
+	).Info("sent discord webhook")
+
 	return nil
 }
 
 // Creates a custom webhook response, retrying if needed
-func sendCustom(d *webhookSendState) error {
+func (w *WebhookResponse) sendCustom(d *webhookSendState) error {
 	return nil
 }
 
@@ -118,8 +245,8 @@ func (w *WebhookResponse) Create() error {
 	}
 
 	// Abort early and call SendDiscord if the webhook url is a discord webhook url
-	if isDiscordURL(webhookURL) {
-		return sendDiscord(webhookURL)
+	if ok, prefix := isDiscordAPIURL(webhookURL); ok {
+		return w.sendDiscord(webhookURL, prefix)
 	}
 
 	var webhookSecret string
@@ -142,7 +269,7 @@ func (w *WebhookResponse) Create() error {
 	h.Write(payload)
 	finalToken := hex.EncodeToString(h.Sum(nil))
 
-	return sendCustom(&webhookSendState{
+	return w.sendCustom(&webhookSendState{
 		URL:  webhookURL,
 		Sign: finalToken,
 		Data: payload,
@@ -166,8 +293,7 @@ func Setup() {
 
 The data of the webhook may differ based on its webhook type
 
-If the webhook type is WebhookTypeVoteNormal or WebhookTypeVoteTest, the data will be of type WebhookVoteData as shown below:
-`,
+If the webhook type is WebhookTypeVote, the data will be of type WebhookVoteData`,
 		Format: WebhookResponse{
 			Type: WebhookTypeVote,
 			Data: WebhookVoteData{},

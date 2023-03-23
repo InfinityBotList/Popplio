@@ -77,4 +77,5 @@ type Meta struct {
 	PaypalUseSandbox bool     `yaml:"paypal_use_sandbox" default:"true" comment:"Use Paypal Sandbox"`
 	StripePublicKey  string   `yaml:"stripe_public_key" default:"" comment:"Stripe Public Key" validate:"required"`
 	StripeSecretKey  string   `yaml:"stripe_secret_key" default:"" comment:"Stripe Public Key" validate:"required"`
+	PopplioProxy     string   `yaml:"popplio_proxy" default:"http://100.104.199.117:3219" comment:"Popplio Proxy URL" validate:"required"`
 }
