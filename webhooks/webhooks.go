@@ -16,27 +16,28 @@ import (
 type WebhookType int
 
 const (
-	WebhookTypeVoteNormal WebhookType = iota
-	WebhookTypeVoteTest
+	WebhookTypeUnknown WebhookType = iota
+	WebhookTypeVote
 	WebhookTypeNewReview // To be implemented
 )
 
 // Generic because docs
 type WebhookResponse struct {
-	Creator   *dovewing.DiscordUser `json:"creator"`
-	Bot       *dovewing.DiscordUser `json:"bot"`
-	CreatedAt int                   `json:"created_at"`
+	Creator   *dovewing.DiscordUser `json:"creator" description:"The user who created the action/event (e.g voted for the bot or made a review)"`
+	Bot       *dovewing.DiscordUser `json:"bot" description:"The bot that the action/event was performed on"`
+	CreatedAt int                   `json:"created_at" description:"The time in *seconds* (unix epoch) of when the action/event was performed"`
 	Type      WebhookType           `json:"type" dynexample:"true" enum:"0,1,2"`
 
 	// The data of the webhook may differ based on its webhook type
 	//
-	// If the webhook type is WebhookTypeVoteNormal or WebhookTypeVoteTest, the data will be of type WebhookVoteData
+	// If the webhook type is WebhookTypeVote, the data will be of type WebhookVoteData
 	// If the webhook type is WebhookTypeNewReview, the data will be of type WebhookNewReviewData
 	Data any `json:"data" dynschema:"true"`
 }
 
 type WebhookVoteData struct {
-	Votes int `json:"votes"` // The amount of votes the bot received
+	Votes int  `json:"votes"` // The amount of votes the bot received
+	Test  bool `json:"test"`  // Whether the vote was a test vote or not
 }
 
 type WebhookNewReviewData struct {
@@ -59,7 +60,7 @@ func (w *WebhookResponse) Validate() error {
 	var ok bool
 
 	switch w.Type {
-	case WebhookTypeVoteNormal, WebhookTypeVoteTest:
+	case WebhookTypeVote:
 		_, ok = w.Data.(WebhookVoteData)
 	case WebhookTypeNewReview:
 		_, ok = w.Data.(WebhookNewReviewData)
@@ -156,10 +157,9 @@ func Setup() {
 	)
 
 	docs.AddWebhook(&docs.WebhookDoc{
-		Name:    "Vote",
+		Name:    "NewBotVote",
 		Summary: "New Bot Vote",
 		Tags: []string{
-			"Votes",
 			"Webhooks",
 		},
 		Description: `This webhook is sent when a user votes for a bot.
@@ -169,9 +169,28 @@ The data of the webhook may differ based on its webhook type
 If the webhook type is WebhookTypeVoteNormal or WebhookTypeVoteTest, the data will be of type WebhookVoteData as shown below:
 `,
 		Format: WebhookResponse{
-			Type: WebhookTypeVoteTest,
+			Type: WebhookTypeVote,
 			Data: WebhookVoteData{},
 		},
 		FormatName: "WebhookResponse-WebhookVoteData",
+	})
+
+	docs.AddWebhook(&docs.WebhookDoc{
+		Name:    "NewBotReview",
+		Summary: "New Bot Review",
+		Tags: []string{
+			"Webhooks",
+		},
+		Description: `This webhook is sent when a user creates a new review on a bot.
+
+The data of the webhook may differ based on its webhook type
+
+If the webhook type is WebhookTypeNewReview, the data will be of type WebhookNewReviewData
+`,
+		Format: WebhookResponse{
+			Type: WebhookTypeNewReview,
+			Data: WebhookNewReviewData{},
+		},
+		FormatName: "WebhookResponse-WebhookNewReviewData",
 	})
 }
