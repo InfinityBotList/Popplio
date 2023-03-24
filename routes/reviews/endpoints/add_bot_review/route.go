@@ -8,10 +8,12 @@ import (
 	"popplio/state"
 	"popplio/types"
 	"popplio/utils"
+	"popplio/webhooks"
 	"strings"
 	"time"
 
 	docs "github.com/infinitybotlist/doclib"
+	"github.com/infinitybotlist/dovewing"
 
 	"github.com/georgysavva/scany/v2/pgxscan"
 	"github.com/go-chi/chi/v5"
@@ -164,15 +166,60 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 	}
 
 	// Create the review
+	var reviewId string
 	if payload.ParentID == "" {
-		_, err = state.Pool.Exec(d.Context, "INSERT INTO reviews (author, bot_id, content, stars) VALUES ($1, $2, $3, $4)", d.Auth.ID, bot, payload.Content, payload.Stars)
+		err = state.Pool.QueryRow(d.Context, "INSERT INTO reviews (author, bot_id, content, stars) VALUES ($1, $2, $3, $4) RETURNING id", d.Auth.ID, bot, payload.Content, payload.Stars).Scan(&reviewId)
 	} else {
-		_, err = state.Pool.Exec(d.Context, "INSERT INTO reviews (author, bot_id, content, stars, parent_id) VALUES ($1, $2, $3, $4, $5)", d.Auth.ID, bot, payload.Content, payload.Stars, payload.ParentID)
+		err = state.Pool.QueryRow(d.Context, "INSERT INTO reviews (author, bot_id, content, stars, parent_id) VALUES ($1, $2, $3, $4, $5) RETURNING id", d.Auth.ID, bot, payload.Content, payload.Stars, payload.ParentID).Scan(&reviewId)
 	}
 
 	if err != nil {
 		state.Logger.Error(err)
 		return api.DefaultResponse(http.StatusInternalServerError)
+	}
+
+	var webhooksV2 bool
+
+	err = state.Pool.QueryRow(state.Context, "SELECT webhooks_v2 FROM bots WHERE bot_id = $1", bot).Scan(&webhooksV2)
+
+	if err != nil {
+		state.Logger.Error(err)
+		return api.DefaultResponse(http.StatusInternalServerError)
+	}
+
+	if webhooksV2 {
+		bot, err := dovewing.GetDiscordUser(d.Context, bot)
+
+		if err != nil {
+			state.Logger.Error(err)
+			return api.DefaultResponse(http.StatusInternalServerError)
+		}
+
+		user, err := dovewing.GetDiscordUser(d.Context, d.Auth.ID)
+
+		if err != nil {
+			state.Logger.Error(err)
+			return api.DefaultResponse(http.StatusInternalServerError)
+		}
+
+		state.Logger.Info("Sending webhook for bot " + bot.ID)
+
+		resp := &webhooks.WebhookResponse{
+			Creator:   user,
+			Bot:       bot,
+			CreatedAt: int(time.Now().Unix()),
+			Type:      webhooks.WebhookTypeNewReview,
+			Data: webhooks.WebhookNewReviewData{
+				ReviewID: reviewId,
+				Content:  payload.Content,
+			},
+		}
+
+		err = resp.Create()
+
+		if err != nil {
+			state.Logger.Error(err)
+		}
 	}
 
 	state.Redis.Del(d.Context, "rv-"+bot)
