@@ -8,7 +8,9 @@ import (
 	"errors"
 	"math/rand"
 	"net/http"
+	"popplio/notifications"
 	"popplio/state"
+	"popplio/types"
 	"strconv"
 	"strings"
 	"time"
@@ -20,6 +22,17 @@ import (
 )
 
 // v2 webhooks
+const MaxWebhookTries = 5
+
+type WebhookSaveState int
+
+const (
+	WebhookSaveStatePending WebhookSaveState = iota
+	WebhookSaveStateSuccess
+	WebhookSaveStateFailed
+	WebhookSaveStateRemoved
+)
+
 type WebhookType int
 
 const (
@@ -61,6 +74,21 @@ type webhookSendState struct {
 
 	// Intentionally bad to trigger 401 check
 	badIntent bool
+
+	// Automatically set fields
+	logID string
+}
+
+func (st *webhookSendState) cancelSend(saveState WebhookSaveState) {
+	st.tries = MaxWebhookTries
+
+	state.Logger.Warnf("Cancelling webhook send for %s", st.logID)
+
+	_, err := state.Pool.Exec(state.Context, "UPDATE webhooks SET state = $1 WHERE log_id = $2", saveState, st.logID)
+
+	if err != nil {
+		state.Logger.Errorf("Failed to update webhook state for %s: %s", st.logID, err.Error())
+	}
 }
 
 // Actual code
@@ -233,24 +261,33 @@ func (w *WebhookResponse) sendDiscord(url string, prefix string) error {
 func (w *WebhookResponse) sendCustom(d *webhookSendState) error {
 	d.tries++
 
-	if d.tries > 5 {
-		return errors.New("too many tries")
+	if d.logID == "" {
+		// Add to webhook logs for automatic retry
+		var logID string
+		err := state.Pool.QueryRow(state.Context, "INSERT INTO webhook_logs (bot_id, user_id, url, data, sign, bad_intent) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id", w.Bot.ID, w.Creator.ID, d.url, d.data, d.sign, d.badIntent).Scan(&logID)
+
+		if err != nil {
+			return err
+		}
+
+		d.logID = logID
+	} else {
+		// Update webhook logs
+		_, err := state.Pool.Exec(state.Context, "UPDATE webhook_logs SET tries = tries + 1 WHERE id = $1", d.logID)
+
+		if err != nil {
+			return err
+		}
 	}
 
-	// Check if random number is less than 0.5
-	if rand.Float64() < 0.5 {
-		go func() {
-			badD := &webhookSendState{
-				tries:     3,
-				badIntent: true,
-				sign:      crypto.RandString(128),
-				url:       d.url,
-				data:      d.data,
-			}
+	if d.tries > MaxWebhookTries {
+		_, err := state.Pool.Exec(state.Context, "UPDATE webhook_logs SET state = $2 WHERE id = $1", d.logID, WebhookSaveStateFailed)
 
-			// Retry with bad intent
-			w.sendCustom(badD)
-		}()
+		if err != nil {
+			return err
+		}
+
+		return errors.New("too many tries")
 	}
 
 	state.Logger.With(
@@ -302,12 +339,21 @@ func (w *WebhookResponse) sendCustom(d *webhookSendState) error {
 			return w.sendCustom(d)
 		}
 
-		time.Sleep(time.Duration(retryAfterInt) * time.Second)
+		time.Sleep(time.Duration(retryAfterInt+d.tries^2+15) * time.Second)
 		return w.sendCustom(d)
 
 	case resp.StatusCode == 404 || resp.StatusCode == 410:
 		// Remove from DB
+		d.cancelSend(WebhookSaveStateFailed)
 		_, err := state.Pool.Exec(state.Context, "UPDATE bots SET webhook = NULL WHERE bot_id = $1", w.Bot.ID)
+
+		if err != nil {
+			state.Logger.Error(err)
+			return err
+		}
+
+		// Remove from webhook logs
+		_, err = state.Pool.Exec(state.Context, "UPDATE webhook_logs SET state = $2 WHERE id = $1", d.logID, WebhookSaveStateRemoved)
 
 		if err != nil {
 			state.Logger.Error(err)
@@ -319,9 +365,21 @@ func (w *WebhookResponse) sendCustom(d *webhookSendState) error {
 	case resp.StatusCode == 401 || resp.StatusCode == 403:
 		if d.badIntent {
 			// webhook auth is invalid as intended,
+			d.cancelSend(WebhookSaveStateSuccess)
+
 			return nil
 		} else {
 			// webhook auth is invalid, return error
+			err = notifications.PushNotification(w.Creator.ID, types.Notification{
+				Type:    "info",
+				Message: "This webhook does not properly handle authentication at this time.",
+				Title:   "Webhook Auth Error",
+			})
+
+			if err != nil {
+				state.Logger.Error(err)
+			}
+
 			return errors.New("webhook auth error")
 		}
 
@@ -331,6 +389,18 @@ func (w *WebhookResponse) sendCustom(d *webhookSendState) error {
 
 	case resp.StatusCode >= 200 && resp.StatusCode < 300:
 		if d.badIntent {
+			d.cancelSend(WebhookSaveStateRemoved)
+
+			err = notifications.PushNotification(w.Creator.ID, types.Notification{
+				Type:    "info",
+				Message: "This webhook does not properly handle authentication at this time.",
+				Title:   "Webhook Auth Error",
+			})
+
+			if err != nil {
+				state.Logger.Error(err)
+			}
+
 			// Remove webhook, it doesn't validate auth at all
 			_, err := state.Pool.Exec(state.Context, "UPDATE bots SET webhook = NULL WHERE bot_id = $1", w.Bot.ID)
 
@@ -339,11 +409,39 @@ func (w *WebhookResponse) sendCustom(d *webhookSendState) error {
 				return errors.New("webhook failed to validate auth and failed to remove webhook from db")
 			}
 
+			// Remove from webhook logs
+			_, err = state.Pool.Exec(state.Context, "UPDATE webhook_logs SET state = $2 WHERE id = $1", d.logID, WebhookSaveStateRemoved)
+
+			if err != nil {
+				state.Logger.Error(err)
+				return errors.New("webhook failed to validate auth and failed to remove webhook from logdb")
+			}
+
 			return errors.New("webhook failed to validate auth thus removing it from the database")
+		} else {
+			d.cancelSend(WebhookSaveStateSuccess)
 		}
 	case resp.StatusCode >= 500:
+		// Give 15 minutes to recover
 		time.Sleep(15 * time.Minute)
 		return w.sendCustom(d)
+	}
+
+	_, err = state.Pool.Exec(state.Context, "UPDATE webhook_logs SET state = $2 WHERE id = $1", d.logID, WebhookSaveStateSuccess)
+
+	if err != nil {
+		state.Logger.Error(err)
+		return err
+	}
+
+	err = notifications.PushNotification(w.Creator.ID, types.Notification{
+		Type:    "success",
+		Message: "Successfully notified bot " + w.Bot.Username + " of this action.",
+		Title:   "Webhook Send Successful!",
+	})
+
+	if err != nil {
+		state.Logger.Error(err)
 	}
 
 	return nil
@@ -390,6 +488,22 @@ func (w *WebhookResponse) Create() error {
 	h.Write(payload)
 	finalToken := hex.EncodeToString(h.Sum(nil))
 
+	// Check if random number is less than 0.5 for fake
+	if rand.Float64() < 0.5 {
+		go func() {
+			badD := &webhookSendState{
+				tries:     3,
+				badIntent: true,
+				sign:      crypto.RandString(128),
+				url:       webhookURL,
+				data:      payload,
+			}
+
+			// Retry with bad intent
+			w.sendCustom(badD)
+		}()
+	}
+
 	return w.sendCustom(&webhookSendState{
 		url:  webhookURL,
 		sign: finalToken,
@@ -397,8 +511,96 @@ func (w *WebhookResponse) Create() error {
 	})
 }
 
+// Resend pending hooks
+func resendPending() {
+	// Fetch every pending webhook from webhook_logs
+	rows, err := state.Pool.Query(state.Context, "SELECT id, bot_id, user_id, url, data, sign, bad_intent, tries FROM webhook_logs WHERE state = $1", WebhookSaveStatePending)
+
+	if err != nil {
+		state.Logger.Error(err)
+		return
+	}
+
+	defer rows.Close()
+
+	for rows.Next() {
+		var (
+			id        string
+			botId     string
+			userId    string
+			url       string
+			data      []byte
+			sign      string
+			badIntent bool
+			tries     int
+		)
+
+		err := rows.Scan(&id, &botId, &userId, &url, &data, &sign, &badIntent, &tries)
+
+		if err != nil {
+			state.Logger.Error(err)
+			continue
+		}
+
+		// Create webhook
+		bot, err := dovewing.GetDiscordUser(state.Context, botId)
+
+		if err != nil {
+			state.Logger.Error(err)
+			continue
+		}
+
+		user, err := dovewing.GetDiscordUser(state.Context, userId)
+
+		if err != nil {
+			state.Logger.Error(err)
+			continue
+		}
+
+		w := &WebhookResponse{
+			Bot:     bot,
+			Creator: user,
+		}
+
+		// Send webhook
+		err = w.sendCustom(&webhookSendState{
+			url:       url,
+			sign:      sign,
+			data:      data,
+			badIntent: badIntent,
+			logID:     id,
+			tries:     tries,
+		})
+
+		if err != nil {
+			state.Logger.Error(err)
+		}
+	}
+}
+
 // Setup code
 func Setup() {
+	// Create webhook_logs
+	_, err := state.Pool.Exec(state.Context, `CREATE TABLE IF NOT EXISTS webhook_logs (
+		id UUID PRIMARY KEY DEFAULT uuid_generate_v4(), 
+		bot_id TEXT NOT NULL REFERENCES bots(bot_id), 
+		user_id TEXT NOT NULL REFERENCES users(user_id), 
+		url TEXT NOT NULL, 
+		data JSONB NOT NULL, 
+		sign TEXT NOT NULL, 
+		bad_intent BOOLEAN NOT NULL, 
+		created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), 
+		state INTEGER NOT NULL DEFAULT 0, 
+		tries INTEGER NOT NULL DEFAULT 0, 
+		last_try TIMESTAMPTZ NOT NULL DEFAULT NOW()
+	)`)
+
+	if err != nil {
+		panic(err)
+	}
+
+	go resendPending()
+
 	docs.AddTag(
 		"Webhooks",
 		"Webhooks are a way to receive events from Infinity Bot List in real time. You can use webhooks to receive events such as new votes, new reviews, and more.",

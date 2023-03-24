@@ -304,6 +304,38 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 
 	// Send webhook in a goroutine refunding the vote if it failed
 	go func() {
+		var webhooksV2 bool
+
+		err := state.Pool.QueryRow(state.Context, "SELECT webhooks_v2 FROM bots WHERE bot_id = $1", id).Scan(&webhooksV2)
+
+		if err != nil {
+			state.Logger.Error(err)
+			return
+		}
+
+		if webhooksV2 {
+			state.Logger.Info("Sending webhook for vote (v2) for " + id)
+			resp := &webhooks.WebhookResponse{
+				Creator:   userObj,
+				Bot:       botObj,
+				CreatedAt: int(time.Now().Unix()),
+				Type:      webhooks.WebhookTypeVote,
+				Data: webhooks.WebhookVoteData{
+					Votes: int(votes),
+					Test:  false,
+				},
+			}
+
+			err := resp.Create()
+
+			if err != nil {
+				state.Logger.Error(err)
+				return
+			}
+
+			return
+		}
+
 		err = webhooks.SendLegacy(webhooks.WebhookPostLegacy{
 			BotID:  id,
 			UserID: userId,

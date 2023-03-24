@@ -2,11 +2,7 @@ package webhooks
 
 import (
 	"bytes"
-	"crypto/hmac"
-	"crypto/sha512"
-	"encoding/hex"
 	"errors"
-	"io"
 	"net/http"
 	"time"
 
@@ -102,80 +98,47 @@ func SendLegacy(webhook WebhookPostLegacy) error {
 		return err
 	}
 
-	var tries = 0
+	// Create response body
+	body := WebhookDataLegacy{
+		Votes:        webhook.Votes,
+		UserID:       webhook.UserID,
+		UserObj:      dUser,
+		BotID:        webhook.BotID,
+		UserIDLegacy: webhook.UserID,
+		BotIDLegacy:  webhook.BotID,
+		Test:         webhook.Test,
+		Time:         time.Now().Unix(),
+	}
 
-	for tries < 3 {
-		// Create response body
-		body := WebhookDataLegacy{
-			Votes:        webhook.Votes,
-			UserID:       webhook.UserID,
-			UserObj:      dUser,
-			BotID:        webhook.BotID,
-			UserIDLegacy: webhook.UserID,
-			BotIDLegacy:  webhook.BotID,
-			Test:         webhook.Test,
-			Time:         time.Now().Unix(),
-		}
+	data, err := json.Marshal(body)
 
-		data, err := json.Marshal(body)
+	if err != nil {
+		state.Logger.Error("Failed to encode data")
+		return err
+	}
 
-		if err != nil {
-			state.Logger.Error("Failed to encode data")
-			return err
-		}
+	var finalToken string = webhook.Token
 
-		var finalToken string = webhook.Token
-		if webhook.HMACAuth {
-			// Generate HMAC token using token and request body
-			h := hmac.New(sha512.New, []byte(webhook.Token))
-			h.Write(data)
-			finalToken = hex.EncodeToString(h.Sum(nil))
-		}
+	// Create request
+	responseBody := bytes.NewBuffer(data)
+	req, err := http.NewRequestWithContext(state.Context, "POST", url, responseBody)
 
-		// Create request
-		responseBody := bytes.NewBuffer(data)
-		req, err := http.NewRequestWithContext(state.Context, "POST", url, responseBody)
+	if err != nil {
+		state.Logger.Error("Failed to create request")
+		return err
+	}
 
-		if err != nil {
-			state.Logger.Error("Failed to create request")
-			return err
-		}
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("User-Agent", "popplio/legacyhandler-1")
+	req.Header.Set("Authorization", finalToken)
 
-		req.Header.Set("Content-Type", "application/json")
-		req.Header.Set("User-Agent", "popplio/legacyhandler-1")
-		req.Header.Set("Authorization", finalToken)
+	// Send request
+	client := &http.Client{Timeout: time.Second * 5}
+	_, err = client.Do(req)
 
-		// Send request
-		client := &http.Client{Timeout: time.Second * 5}
-		resp, err := client.Do(req)
-
-		if err != nil {
-			state.Logger.Error("Failed to send request")
-			return err
-		}
-
-		if resp.StatusCode == 401 || resp.StatusCode == 403 {
-			state.Logger.Error("Failed to send request: invalid token")
-
-			// get response body
-			body, err := io.ReadAll(resp.Body)
-
-			if err != nil {
-				state.Logger.Error("Failed to read response body")
-			}
-
-			state.Logger.Info("Response body: ", string(body))
-
-			return errors.New("webhook is broken")
-		}
-
-		if resp.StatusCode >= 400 && resp.StatusCode < 500 {
-			state.Logger.Info("Retrying webhook again. Got status code of ", resp.StatusCode)
-			tries++
-			continue
-		}
-
-		break
+	if err != nil {
+		state.Logger.Error("Failed to send request")
+		return err
 	}
 
 	return nil

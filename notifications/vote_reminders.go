@@ -14,7 +14,7 @@ var json = jsoniter.ConfigCompatibleWithStandardLibrary
 
 func VrLoop() {
 	for {
-		state.Logger.Info("Running vrCheck")
+		//state.Logger.Debug("Running vrCheck")
 		vrCheck()
 		time.Sleep(10 * time.Second)
 	}

@@ -1,6 +1,7 @@
 package test_webhook
 
 import (
+	"math/rand"
 	"net/http"
 
 	"popplio/api"
@@ -11,6 +12,7 @@ import (
 	"popplio/webhooks"
 
 	docs "github.com/infinitybotlist/doclib"
+	"github.com/infinitybotlist/dovewing"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-playground/validator/v10"
@@ -93,24 +95,83 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 		return api.ValidatorErrorResponse(compiledMessages, errors)
 	}
 
-	webhPayload := webhooks.WebhookPostLegacy{
-		UserID: d.Auth.ID,
-		BotID:  id,
-		Votes:  payload.Votes,
-		Test:   true,
-	}
+	var webhooksV2 bool
 
-	err = webhooks.SendLegacy(webhPayload)
+	err = state.Pool.QueryRow(d.Context, "SELECT webhooks_v2 FROM bots WHERE bot_id = $1", id).Scan(&webhooksV2)
 
 	if err != nil {
 		state.Logger.Error(err)
+		return api.DefaultResponse(http.StatusInternalServerError)
+	}
 
-		return api.HttpResponse{
-			Status: http.StatusBadRequest,
-			Json: types.ApiError{
-				Error:   true,
-				Message: err.Error(),
+	if webhooksV2 {
+		bot, err := dovewing.GetDiscordUser(state.Context, id)
+
+		if err != nil {
+			state.Logger.Error(err)
+			return api.DefaultResponse(http.StatusInternalServerError)
+		}
+
+		user, err := dovewing.GetDiscordUser(state.Context, d.Auth.ID)
+
+		if err != nil {
+			state.Logger.Error(err)
+			return api.DefaultResponse(http.StatusInternalServerError)
+		}
+
+		resp := webhooks.WebhookResponse{
+			Creator: user,
+			Bot:     bot,
+			Type:    webhooks.WebhookTypeVote,
+			Data: webhooks.WebhookVoteData{
+				Votes: payload.Votes,
+				Test:  true,
 			},
+		}
+
+		err = resp.Create()
+
+		if err != nil {
+			state.Logger.Error(err)
+			return api.HttpResponse{
+				Status: http.StatusBadRequest,
+				Json: types.ApiError{
+					Error:   true,
+					Message: err.Error(),
+				},
+			}
+		}
+
+		return api.DefaultResponse(http.StatusNoContent)
+	} else {
+		if rand.Float64() < 0.1 {
+			return api.HttpResponse{
+				Status: http.StatusBadRequest,
+				Json: types.ApiError{
+					Error:   true,
+					Message: "webhooks v1 is deprecated and so this endpoint will error sometimes to ensure visibility",
+				},
+			}
+		}
+		webhPayload := webhooks.WebhookPostLegacy{
+			UserID: d.Auth.ID,
+			BotID:  id,
+			Votes:  payload.Votes,
+			Test:   true,
+		}
+
+		err = webhooks.SendLegacy(webhPayload)
+
+		if err != nil {
+			state.Logger.Error(err)
+
+			return api.HttpResponse{
+				Status: http.StatusBadRequest,
+				Json: types.ApiError{
+					Error:   true,
+					Message: err.Error(),
+				},
+			}
 		}
 	}
 
