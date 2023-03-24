@@ -129,7 +129,10 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 			},
 		}
 
-		err = resp.Create()
+		err = resp.WithBot(webhooks.WebhookWithBot{
+			UserID: d.Auth.ID,
+			BotID:  id,
+		}).Create()
 
 		if err != nil {
 			state.Logger.Error(err)

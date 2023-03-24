@@ -13,7 +13,6 @@ import (
 	"time"
 
 	docs "github.com/infinitybotlist/doclib"
-	"github.com/infinitybotlist/dovewing"
 
 	"github.com/georgysavva/scany/v2/pgxscan"
 	"github.com/go-chi/chi/v5"
@@ -188,25 +187,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 	}
 
 	if webhooksV2 {
-		bot, err := dovewing.GetDiscordUser(d.Context, bot)
-
-		if err != nil {
-			state.Logger.Error(err)
-			return api.DefaultResponse(http.StatusInternalServerError)
-		}
-
-		user, err := dovewing.GetDiscordUser(d.Context, d.Auth.ID)
-
-		if err != nil {
-			state.Logger.Error(err)
-			return api.DefaultResponse(http.StatusInternalServerError)
-		}
-
-		state.Logger.Info("Sending webhook for bot " + bot.ID)
-
 		resp := &webhooks.WebhookResponse{
-			Creator:   user,
-			Bot:       bot,
 			CreatedAt: int(time.Now().Unix()),
 			Type:      webhooks.WebhookTypeNewReview,
 			Data: webhooks.WebhookNewReviewData{
@@ -215,7 +196,10 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 			},
 		}
 
-		err = resp.Create()
+		err = resp.WithBot(webhooks.WebhookWithBot{
+			UserID: d.Auth.ID,
+			BotID:  bot,
+		}).Create()
 
 		if err != nil {
 			state.Logger.Error(err)

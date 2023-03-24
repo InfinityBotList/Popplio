@@ -317,7 +317,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 			state.Logger.Info("Sending webhook for vote (v2) for " + id)
 			resp := &webhooks.WebhookResponse{
 				Creator:   userObj,
-				Bot:       botObj,
+				Bot:    botObj,
 				CreatedAt: int(time.Now().Unix()),
 				Type:      webhooks.WebhookTypeVote,
 				Data: webhooks.WebhookVoteData{

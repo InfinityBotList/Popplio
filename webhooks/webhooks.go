@@ -93,8 +93,42 @@ func (st *webhookSendState) cancelSend(saveState WebhookSaveState) {
 
 // Actual code
 
+// Simple ergonomic webhook builder
+type WebhookWithBot struct {
+	UserID string
+	BotID  string
+}
+
+// Fills in Bot and Creator from IDs
+func (w *WebhookResponse) WithBot(with WebhookWithBot) *WebhookResponse {
+	bot, err := dovewing.GetDiscordUser(state.Context, with.BotID)
+
+	if err != nil {
+		state.Logger.Error(err)
+		return w
+	}
+
+	user, err := dovewing.GetDiscordUser(state.Context, with.UserID)
+
+	if err != nil {
+		state.Logger.Error(err)
+		return w
+	}
+
+	state.Logger.Info("Sending webhook for bot " + bot.ID)
+
+	w.Bot = bot
+	w.Creator = user
+
+	return w
+}
+
 // Validates the webhook
 func (w *WebhookResponse) Validate() error {
+	if w.Creator == nil || w.Bot == nil {
+		return errors.New("invalid webhook creator or bot data")
+	}
+
 	var ok bool
 
 	switch w.Type {
