@@ -1,9 +1,10 @@
-package webhooks
+package legacy
 
 import (
 	"bytes"
 	"errors"
 	"net/http"
+	"strings"
 	"time"
 
 	"popplio/state"
@@ -33,9 +34,8 @@ type WebhookPostLegacy struct {
 }
 
 type WebhookStateLegacy struct {
-	HTTP       bool `json:"http"`
-	WebhooksV2 bool `json:"webhooks_v2"`
-	SecretSet  bool `json:"webhook_secret_set"`
+	HTTP      bool `json:"http"`
+	SecretSet bool `json:"webhook_secret_set"`
 }
 
 type WebhookDataLegacy struct {
@@ -47,6 +47,23 @@ type WebhookDataLegacy struct {
 	BotIDLegacy  string                `json:"botID"`
 	Test         bool                  `json:"test"`
 	Time         int64                 `json:"time"`
+}
+
+func isDiscordAPIURL(url string) (bool, string) {
+	validPrefixes := []string{
+		"https://discordapp.com/",
+		"https://discord.com/",
+		"https://canary.discord.com/",
+		"https://ptb.discord.com/",
+	}
+
+	for _, prefix := range validPrefixes {
+		if strings.HasPrefix(url, prefix) {
+			return true, prefix
+		}
+	}
+
+	return false, ""
 }
 
 // Sends a webhook using the legacy v1 format

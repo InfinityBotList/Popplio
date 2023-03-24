@@ -3,13 +3,15 @@ package test_webhook
 import (
 	"math/rand"
 	"net/http"
+	"time"
 
 	"popplio/api"
 	"popplio/state"
 	"popplio/teams"
 	"popplio/types"
 	"popplio/utils"
-	"popplio/webhooks"
+	"popplio/webhooks/bothooks"
+	legacyhooks "popplio/webhooks/legacy"
 
 	docs "github.com/infinitybotlist/doclib"
 	"github.com/infinitybotlist/dovewing"
@@ -119,17 +121,16 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 			return api.DefaultResponse(http.StatusInternalServerError)
 		}
 
-		resp := webhooks.WebhookResponse{
-			Creator: user,
-			Bot:     bot,
-			Type:    webhooks.WebhookTypeVote,
-			Data: webhooks.WebhookVoteData{
+		err = bothooks.WebhookResponse{
+			Creator:   user,
+			Bot:       bot,
+			CreatedAt: int(time.Now().Unix()),
+			Type:      bothooks.WebhookTypeVote,
+			Data: bothooks.WebhookVoteData{
 				Votes: payload.Votes,
 				Test:  true,
 			},
-		}
-
-		err = resp.WithBot(webhooks.WebhookWithBot{
+		}.With(bothooks.With{
 			UserID: d.Auth.ID,
 			BotID:  id,
 		}).Create()
@@ -156,14 +157,13 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 				},
 			}
 		}
-		webhPayload := webhooks.WebhookPostLegacy{
+
+		err = legacyhooks.SendLegacy(legacyhooks.WebhookPostLegacy{
 			UserID: d.Auth.ID,
 			BotID:  id,
 			Votes:  payload.Votes,
 			Test:   true,
-		}
-
-		err = webhooks.SendLegacy(webhPayload)
+		})
 
 		if err != nil {
 			state.Logger.Error(err)

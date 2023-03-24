@@ -13,7 +13,8 @@ import (
 	"popplio/state"
 	"popplio/types"
 	"popplio/utils"
-	"popplio/webhooks"
+	"popplio/webhooks/bothooks"
+	legacyhooks "popplio/webhooks/legacy"
 
 	docs "github.com/infinitybotlist/doclib"
 	"github.com/infinitybotlist/dovewing"
@@ -315,18 +316,16 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 
 		if webhooksV2 {
 			state.Logger.Info("Sending webhook for vote (v2) for " + id)
-			resp := &webhooks.WebhookResponse{
+			err := bothooks.WebhookResponse{
 				Creator:   userObj,
-				Bot:    botObj,
+				Bot:       botObj,
 				CreatedAt: int(time.Now().Unix()),
-				Type:      webhooks.WebhookTypeVote,
-				Data: webhooks.WebhookVoteData{
+				Type:      bothooks.WebhookTypeVote,
+				Data: bothooks.WebhookVoteData{
 					Votes: int(votes),
 					Test:  false,
 				},
-			}
-
-			err := resp.Create()
+			}.Create()
 
 			if err != nil {
 				state.Logger.Error(err)
@@ -336,7 +335,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 			return
 		}
 
-		err = webhooks.SendLegacy(webhooks.WebhookPostLegacy{
+		err = legacyhooks.SendLegacy(legacyhooks.WebhookPostLegacy{
 			BotID:  id,
 			UserID: userId,
 			Votes:  int(votes),

@@ -8,7 +8,7 @@ import (
 	"popplio/state"
 	"popplio/types"
 	"popplio/utils"
-	"popplio/webhooks"
+	"popplio/webhooks/bothooks"
 	"strings"
 	"time"
 
@@ -177,33 +177,20 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 		return api.DefaultResponse(http.StatusInternalServerError)
 	}
 
-	var webhooksV2 bool
-
-	err = state.Pool.QueryRow(state.Context, "SELECT webhooks_v2 FROM bots WHERE bot_id = $1", bot).Scan(&webhooksV2)
+	err = bothooks.WebhookResponse{
+		CreatedAt: int(time.Now().Unix()),
+		Type:      bothooks.WebhookTypeNewReview,
+		Data: bothooks.WebhookNewReviewData{
+			ReviewID: reviewId,
+			Content:  payload.Content,
+		},
+	}.With(bothooks.With{
+		UserID: d.Auth.ID,
+		BotID:  bot,
+	}).Create()
 
 	if err != nil {
 		state.Logger.Error(err)
-		return api.DefaultResponse(http.StatusInternalServerError)
-	}
-
-	if webhooksV2 {
-		resp := &webhooks.WebhookResponse{
-			CreatedAt: int(time.Now().Unix()),
-			Type:      webhooks.WebhookTypeNewReview,
-			Data: webhooks.WebhookNewReviewData{
-				ReviewID: reviewId,
-				Content:  payload.Content,
-			},
-		}
-
-		err = resp.WithBot(webhooks.WebhookWithBot{
-			UserID: d.Auth.ID,
-			BotID:  bot,
-		}).Create()
-
-		if err != nil {
-			state.Logger.Error(err)
-		}
 	}
 
 	state.Redis.Del(d.Context, "rv-"+bot)
