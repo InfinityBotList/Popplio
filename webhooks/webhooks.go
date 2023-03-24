@@ -282,7 +282,8 @@ func (w *WebhookResponse) sendCustom(d *webhookSendState) error {
 		return w.sendCustom(d)
 	}
 
-	if resp.StatusCode == 429 {
+	switch {
+	case resp.StatusCode >= 429:
 		// Retry after
 		retryAfter := resp.Header.Get("Retry-After")
 
@@ -303,34 +304,32 @@ func (w *WebhookResponse) sendCustom(d *webhookSendState) error {
 
 		time.Sleep(time.Duration(retryAfterInt) * time.Second)
 		return w.sendCustom(d)
-	}
 
-	if resp.StatusCode == 404 {
-		return errors.New("webhook returned 404 (Not Found)")
-	}
-
-	if resp.StatusCode == 410 {
+	case resp.StatusCode == 404 || resp.StatusCode == 410:
 		// Remove from DB
 		_, err := state.Pool.Exec(state.Context, "UPDATE bots SET webhook = NULL WHERE bot_id = $1", w.Bot.ID)
 
 		if err != nil {
 			state.Logger.Error(err)
-			return errors.New("webhook returned 410 (Gone) and failed to remove webhook from db")
+			return err
 		}
 
-		return errors.New("webhook returned 410 (Gone) thus removing it from the database")
-	}
+		return errors.New("webhook returned not found thus removing it from the database")
 
-	if resp.StatusCode > 400 {
-		if !d.badIntent {
-			time.Sleep(5 * time.Minute)
-			return w.sendCustom(d)
-		} else {
+	case resp.StatusCode == 401 || resp.StatusCode == 403:
+		if d.badIntent {
+			// webhook auth is invalid as intended,
 			return nil
+		} else {
+			// webhook auth is invalid, return error
+			return errors.New("webhook auth error")
 		}
-	}
 
-	if resp.StatusCode >= 200 && resp.StatusCode < 300 {
+	case resp.StatusCode >= 400:
+		time.Sleep(10 * time.Minute)
+		return w.sendCustom(d)
+
+	case resp.StatusCode >= 200 && resp.StatusCode < 300:
 		if d.badIntent {
 			// Remove webhook, it doesn't validate auth at all
 			_, err := state.Pool.Exec(state.Context, "UPDATE bots SET webhook = NULL WHERE bot_id = $1", w.Bot.ID)
@@ -342,6 +341,9 @@ func (w *WebhookResponse) sendCustom(d *webhookSendState) error {
 
 			return errors.New("webhook failed to validate auth thus removing it from the database")
 		}
+	case resp.StatusCode >= 500:
+		time.Sleep(15 * time.Minute)
+		return w.sendCustom(d)
 	}
 
 	return nil
