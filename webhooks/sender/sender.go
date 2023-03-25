@@ -2,10 +2,15 @@ package sender
 
 import (
 	"bytes"
+	"crypto/aes"
+	"crypto/cipher"
 	"crypto/hmac"
+	"crypto/rand"
+	"crypto/sha256"
 	"crypto/sha512"
 	"encoding/hex"
 	"errors"
+	"io"
 	"net/http"
 	"popplio/notifications"
 	"popplio/state"
@@ -15,6 +20,17 @@ import (
 
 	"github.com/infinitybotlist/eureka/crypto"
 )
+
+// The Secret
+type Secret struct {
+	Raw string
+}
+
+func (s Secret) Sign(data []byte) string {
+	h := hmac.New(sha512.New, []byte(s.Raw))
+	h.Write(data)
+	return hex.EncodeToString(h.Sum(nil))
+}
 
 // Internal structs
 type WebhookSendState struct {
@@ -28,7 +44,7 @@ type WebhookSendState struct {
 	Data []byte
 
 	// the hmac512 signed header to send
-	Sign string
+	Sign Secret
 
 	// is it a bad intent: intentionally bad auth to trigger 401 check
 	BadIntent bool
@@ -96,7 +112,7 @@ func SendCustom(d *WebhookSendState) error {
 	if d.LogID == "" {
 		// Add to webhook logs for automatic retry
 		var logID string
-		err := state.Pool.QueryRow(state.Context, "INSERT INTO webhook_logs (entity_id, entity_type, user_id, url, data, sign, bad_intent) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id", d.Entity.EntityID, d.Entity.EntityType, d.UserID, d.Url, d.Data, d.Sign, d.BadIntent).Scan(&logID)
+		err := state.Pool.QueryRow(state.Context, "INSERT INTO webhook_logs (entity_id, entity_type, user_id, url, data, sign, bad_intent) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id", d.Entity.EntityID, d.Entity.EntityType, d.UserID, d.Url, d.Data, d.Data, d.BadIntent).Scan(&logID)
 
 		if err != nil {
 			return err
@@ -132,19 +148,41 @@ func SendCustom(d *WebhookSendState) error {
 		Timeout: 10 * time.Second,
 	}
 
-	req, err := http.NewRequestWithContext(state.Context, "POST", d.Url, bytes.NewReader(d.Data))
+	keyHash := sha256.New()
+	keyHash.Write([]byte(d.Sign.Raw))
+
+	// Encrypt request body with hashed
+	c, err := aes.NewCipher(keyHash.Sum(nil))
 
 	if err != nil {
 		return err
 	}
 
-	// Create a request nonce to further randomize the signature
-	nonce := crypto.RandString(16)
+	gcm, err := cipher.NewGCM(c)
 
-	// Generate HMAC token using nonce and signed header
-	h := hmac.New(sha512.New, []byte(d.Sign))
-	h.Write([]byte(nonce))
-	finalToken := hex.EncodeToString(h.Sum(nil))
+	if err != nil {
+		return err
+	}
+
+	aesNonce := make([]byte, gcm.NonceSize())
+	if _, err = io.ReadFull(rand.Reader, aesNonce); err != nil {
+		return err
+	}
+
+	postData := gcm.Seal(aesNonce, aesNonce, d.Data, nil)
+
+	// HMAC with encrypted request body
+	tok1 := d.Sign.Sign(postData)
+
+	// Generate HMAC token using nonce and signed header for further randomization
+	nonce := crypto.RandString(16)
+	finalToken := Secret{Raw: tok1}.Sign([]byte(nonce))
+
+	req, err := http.NewRequestWithContext(state.Context, "POST", d.Url, bytes.NewReader(postData))
+
+	if err != nil {
+		return err
+	}
 
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("User-Agent", "Popplio/v7.0.0 (https://infinitybots.gg)")
@@ -342,8 +380,10 @@ func PullPending(p WebhookPullPending) {
 
 		// Send webhook
 		err = SendCustom(&WebhookSendState{
-			Url:       url,
-			Sign:      sign,
+			Url: url,
+			Sign: Secret{
+				Raw: sign,
+			},
 			Data:      data,
 			BadIntent: badIntent,
 			LogID:     id,

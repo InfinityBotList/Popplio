@@ -5,9 +5,6 @@ package bothooks
 
 import (
 	"bytes"
-	"crypto/hmac"
-	"crypto/sha512"
-	"encoding/hex"
 	"errors"
 	"math/rand"
 	"net/http"
@@ -297,11 +294,6 @@ func (w WebhookResponse) Create() error {
 		return errors.New("failed to marshal webhook payload")
 	}
 
-	// Generate HMAC token using token and request body
-	h := hmac.New(sha512.New, []byte(webhookSecret))
-	h.Write(payload)
-	finalToken := hex.EncodeToString(h.Sum(nil))
-
 	// Create a webhook entity
 	entity := sender.WebhookEntity{
 		EntityID:   w.Bot.ID,
@@ -323,11 +315,13 @@ func (w WebhookResponse) Create() error {
 			badD := &sender.WebhookSendState{
 				Tries:     3,
 				BadIntent: true,
-				Sign:      crypto.RandString(128),
-				Url:       webhookURL,
-				Data:      payload,
-				UserID:    w.Creator.ID,
-				Entity:    entity,
+				Sign: sender.Secret{
+					Raw: crypto.RandString(128),
+				},
+				Url:    webhookURL,
+				Data:   payload,
+				UserID: w.Creator.ID,
+				Entity: entity,
 			}
 
 			// Retry with bad intent
@@ -336,8 +330,10 @@ func (w WebhookResponse) Create() error {
 	}
 
 	return sender.SendCustom(&sender.WebhookSendState{
-		Url:    webhookURL,
-		Sign:   finalToken,
+		Url: webhookURL,
+		Sign: sender.Secret{
+			Raw: webhookSecret,
+		},
 		Data:   payload,
 		UserID: w.Creator.ID,
 		Entity: entity,
