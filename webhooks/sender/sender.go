@@ -141,7 +141,7 @@ func SendCustom(d *WebhookSendState) error {
 	// Create a request nonce to further randomize the signature
 	nonce := crypto.RandString(16)
 
-	// Generate HMAC token using token and request body
+	// Generate HMAC token using nonce and signed header
 	h := hmac.New(sha512.New, []byte(d.Sign))
 	h.Write([]byte(nonce))
 	finalToken := hex.EncodeToString(h.Sum(nil))
