@@ -98,7 +98,7 @@ func (st *WebhookSendState) cancelSend(saveState WebhookSaveState) {
 
 	state.Logger.Warnf("Cancelling webhook send for %s", st.LogID)
 
-	_, err := state.Pool.Exec(state.Context, "UPDATE webhooks SET state = $1 WHERE log_id = $2", saveState, st.LogID)
+	_, err := state.Pool.Exec(state.Context, "UPDATE webhook_logs SET state = $1 WHERE id = $2", saveState, st.LogID)
 
 	if err != nil {
 		state.Logger.Errorf("Failed to update webhook state for %s: %s", st.LogID, err.Error())
@@ -169,14 +169,14 @@ func SendCustom(d *WebhookSendState) error {
 		return err
 	}
 
-	postData := gcm.Seal(aesNonce, aesNonce, d.Data, nil)
+	postData := []byte(hex.EncodeToString(gcm.Seal(aesNonce, aesNonce, d.Data, nil)))
 
 	// HMAC with encrypted request body
 	tok1 := d.Sign.Sign(postData)
 
 	// Generate HMAC token using nonce and signed header for further randomization
 	nonce := crypto.RandString(16)
-	finalToken := Secret{Raw: tok1}.Sign([]byte(nonce))
+	finalToken := Secret{Raw: nonce}.Sign([]byte(tok1))
 
 	req, err := http.NewRequestWithContext(state.Context, "POST", d.Url, bytes.NewReader(postData))
 
@@ -184,7 +184,7 @@ func SendCustom(d *WebhookSendState) error {
 		return err
 	}
 
-	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Content-Type", "text/plain")
 	req.Header.Set("User-Agent", "Popplio/v7.0.0 (https://infinitybots.gg)")
 	req.Header.Set("X-Webhook-Signature", finalToken)
 	req.Header.Set("X-Webhook-Protocol", "splashtail")
@@ -249,6 +249,7 @@ func SendCustom(d *WebhookSendState) error {
 			return nil
 		} else {
 			// webhook auth is invalid, return error
+			d.cancelSend(WebhookSaveStateFailed)
 			err = notifications.PushNotification(d.UserID, types.Notification{
 				Type:    "info",
 				Message: "This webhook does not properly handle authentication at this time.",
@@ -262,9 +263,8 @@ func SendCustom(d *WebhookSendState) error {
 			return errors.New("webhook auth error")
 		}
 
-	case resp.StatusCode >= 400:
-		time.Sleep(10 * time.Minute)
-		return SendCustom(d)
+	case resp.StatusCode > 400:
+		return errors.New("webhook returned error")
 
 	case resp.StatusCode >= 200 && resp.StatusCode < 300:
 		if d.BadIntent {
