@@ -2,6 +2,9 @@ package sender
 
 import (
 	"bytes"
+	"crypto/hmac"
+	"crypto/sha512"
+	"encoding/hex"
 	"errors"
 	"net/http"
 	"popplio/notifications"
@@ -9,6 +12,8 @@ import (
 	"popplio/types"
 	"strconv"
 	"time"
+
+	"github.com/infinitybotlist/eureka/crypto"
 )
 
 // Internal structs
@@ -133,10 +138,19 @@ func SendCustom(d *WebhookSendState) error {
 		return err
 	}
 
+	// Create a request nonce to further randomize the signature
+	nonce := crypto.RandString(16)
+
+	// Generate HMAC token using token and request body
+	h := hmac.New(sha512.New, []byte(d.Sign))
+	h.Write([]byte(nonce))
+	finalToken := hex.EncodeToString(h.Sum(nil))
+
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("User-Agent", "Popplio/v7.0.0 (https://infinitybots.gg)")
-	req.Header.Set("X-Webhook-Signature", d.Sign)
+	req.Header.Set("X-Webhook-Signature", finalToken)
 	req.Header.Set("X-Webhook-Protocol", "splashtail")
+	req.Header.Set("X-Webhook-Nonce", nonce)
 
 	resp, err := client.Do(req)
 
