@@ -148,8 +148,11 @@ func SendCustom(d *WebhookSendState) error {
 		Timeout: 10 * time.Second,
 	}
 
+	// Generate HMAC token using nonce and signed header for further randomization
+	nonce := crypto.RandString(16)
+
 	keyHash := sha256.New()
-	keyHash.Write([]byte(d.Sign.Raw))
+	keyHash.Write([]byte(d.Sign.Raw + nonce))
 
 	// Encrypt request body with hashed
 	c, err := aes.NewCipher(keyHash.Sum(nil))
@@ -174,8 +177,6 @@ func SendCustom(d *WebhookSendState) error {
 	// HMAC with encrypted request body
 	tok1 := d.Sign.Sign(postData)
 
-	// Generate HMAC token using nonce and signed header for further randomization
-	nonce := crypto.RandString(16)
 	finalToken := Secret{Raw: nonce}.Sign([]byte(tok1))
 
 	req, err := http.NewRequestWithContext(state.Context, "POST", d.Url, bytes.NewReader(postData))
