@@ -97,6 +97,50 @@ func DataTask(taskId string, id string, ip string, del bool) {
 			}
 
 			if del {
+				if key.TableName == "team_members" {
+					// Ensure team is not empty
+					tmRows, err := state.Pool.Query(ctx, "SELECT COUNT(*) FROM team_members WHERE "+key.ColumnName+" = $1", id)
+
+					if err != nil {
+						state.Logger.Error(err)
+
+						state.Redis.SetArgs(ctx, taskId, "Critical:"+err.Error(), redis.SetArgs{
+							KeepTTL: true,
+						})
+
+						return
+					}
+
+					for tmRows.Next() {
+						var count int64
+
+						if err := tmRows.Scan(&count); err != nil {
+							state.Logger.Error(err)
+
+							state.Redis.SetArgs(ctx, taskId, "Critical:"+err.Error(), redis.SetArgs{
+								KeepTTL: true,
+							})
+
+							return
+						}
+
+						if count == 1 {
+							// Delete the team as well
+							_, err := state.Pool.Exec(ctx, "DELETE FROM teams WHERE id = $1", id)
+
+							if err != nil {
+								state.Logger.Error(err)
+
+								state.Redis.SetArgs(ctx, taskId, "Critical:"+err.Error(), redis.SetArgs{
+									KeepTTL: true,
+								})
+
+								return
+							}
+						}
+					}
+				}
+
 				sqlStmt = "DELETE FROM " + key.TableName + " WHERE " + key.ColumnName + "= $1"
 
 				_, err := state.Pool.Exec(ctx, sqlStmt, id)
