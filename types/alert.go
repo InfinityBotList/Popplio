@@ -3,7 +3,7 @@ package types
 import "github.com/jackc/pgx/v5/pgtype"
 
 type Alert struct {
-	ITag      string           `db:"itag" json:"itag" validate:"required"`
+	ITag      pgtype.UUID      `db:"itag" json:"itag"`
 	URL       pgtype.Text      `db:"url" json:"url"` // Optional
 	Message   string           `db:"message" json:"message" validate:"required"`
 	Type      NotificationType `db:"type" json:"type" validate:"required,oneof=success error info warning"`
