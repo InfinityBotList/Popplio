@@ -3,7 +3,6 @@ package assets
 import (
 	"context"
 	"errors"
-	"fmt"
 	"popplio/payments"
 	"popplio/state"
 	"strconv"
@@ -11,7 +10,23 @@ import (
 	"github.com/bwmarrin/discordgo"
 )
 
+type CreatePerkData struct {
+	ProductName string `json:"name" validate:"required" msg:"Product name is required."`
+	ProductID   string `json:"id" validate:"required" msg:"Product ID is required."`
+	For         string `json:"for" validate:"required" msg:"For is required."`
+}
+
+func (c CreatePerkData) Parse(userID string) PerkData {
+	return PerkData{
+		UserID:      userID,
+		ProductName: c.ProductName,
+		ProductID:   c.ProductID,
+		For:         c.For,
+	}
+}
+
 type PerkData struct {
+	UserID      string `json:"user_id" validate:"required" msg:"Internal error: endpoint must fill in UserID. Please contact support."`
 	ProductName string `json:"name" validate:"required" msg:"Product name is required."`
 	ProductID   string `json:"id" validate:"required" msg:"Product ID is required."`
 	For         string `json:"for" validate:"required" msg:"For is required."`
@@ -21,12 +36,16 @@ type PerkData struct {
 func FindPerks(ctx context.Context, payload PerkData) (*payments.Plan, error) {
 	var perk *payments.Plan
 
-	fmt.Println(payload)
+	state.Logger.Info(payload)
+
+	if payload.UserID == "" {
+		return nil, errors.New("internal error: user id is required")
+	}
 
 	switch payload.ProductID {
 	case "premium":
 		for _, plan := range payments.Plans {
-			fmt.Println(plan.ID, payload.ProductName)
+			state.Logger.Info(plan.ID, payload.ProductName)
 			if plan.ID == payload.ProductName {
 				// Ensure the bot associated with For exists
 				var count int64
@@ -74,7 +93,7 @@ func FindPerks(ctx context.Context, payload PerkData) (*payments.Plan, error) {
 	return perk, nil
 }
 
-func GivePerks(ctx context.Context, userID string, perkData PerkData) error {
+func GivePerks(ctx context.Context, perkData PerkData) error {
 	perk, err := FindPerks(ctx, perkData)
 
 	if err != nil {
@@ -97,7 +116,7 @@ func GivePerks(ctx context.Context, userID string, perkData PerkData) error {
 		}
 
 		_, err = state.Discord.ChannelMessageSendComplex(state.Config.Channels.ModLogs, &discordgo.MessageSend{
-			Content: "<@" + userID + "> has bought <@" + botID + "> premium for " + strconv.Itoa(perk.TimePeriod) + " hours.",
+			Content: "<@" + perkData.UserID + "> has bought <@" + botID + "> premium for " + strconv.Itoa(perk.TimePeriod) + " hours.",
 		})
 
 		if err != nil {

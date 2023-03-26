@@ -192,7 +192,17 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 		return api.DefaultResponse(http.StatusInternalServerError)
 	}
 
-	err = assets.GivePerks(d.Context, d.Auth.ID, product)
+	if product.UserID != d.Auth.ID {
+		return api.HttpResponse{
+			Status: http.StatusBadRequest,
+			Json: types.ApiError{
+				Error:   true,
+				Message: "Internal error: product purchaser and authorized user do not match. Please contact support if you received this error.",
+			},
+		}
+	}
+
+	err = assets.GivePerks(d.Context, product)
 
 	if err != nil {
 		// Refund the order

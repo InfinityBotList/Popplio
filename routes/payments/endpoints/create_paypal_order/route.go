@@ -29,7 +29,7 @@ func Docs() *docs.Doc {
 	return &docs.Doc{
 		Summary:     "Create Paypal Order",
 		Description: "Creates a paypal order. Not intended for public use.",
-		Req:         assets.PerkData{},
+		Req:         assets.CreatePerkData{},
 		Resp:        PaypalOrderID{},
 		Params: []docs.Parameter{
 			{
@@ -76,13 +76,15 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 		}
 	}
 
-	var payload assets.PerkData
+	var create assets.CreatePerkData
 
-	hresp, ok := api.MarshalReqWithHeaders(r, &payload, limit.Headers())
+	hresp, ok := api.MarshalReqWithHeaders(r, &create, limit.Headers())
 
 	if !ok {
 		return hresp
 	}
+
+	payload := create.Parse(d.Auth.ID)
 
 	// Validate the payload
 	err = state.Validator.Struct(payload)
