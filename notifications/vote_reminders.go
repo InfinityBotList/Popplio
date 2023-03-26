@@ -53,7 +53,7 @@ func vrCheck() {
 				continue
 			}
 
-			message := types.Notification{
+			message := types.Alert{
 				Type:    types.NotificationTypeInfo,
 				Message: "You can vote for " + botInf.Username + " now!",
 				Title:   "Vote for " + botInf.Username + "!",

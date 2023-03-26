@@ -251,7 +251,7 @@ func SendCustom(d *WebhookSendState) error {
 		} else {
 			// webhook auth is invalid, return error
 			d.cancelSend(WebhookSaveStateFailed)
-			err = notifications.PushNotification(d.UserID, types.Notification{
+			err = notifications.PushNotification(d.UserID, types.Alert{
 				Type:    "info",
 				Message: "This webhook does not properly handle authentication at this time.",
 				Title:   "Webhook Auth Error",
@@ -271,7 +271,7 @@ func SendCustom(d *WebhookSendState) error {
 		if d.BadIntent {
 			d.cancelSend(WebhookSaveStateRemoved)
 
-			err = notifications.PushNotification(d.UserID, types.Notification{
+			err = notifications.PushNotification(d.UserID, types.Alert{
 				Type:    "info",
 				Message: "This webhook does not properly handle authentication at this time.",
 				Title:   "Webhook Auth Error",
@@ -314,7 +314,7 @@ func SendCustom(d *WebhookSendState) error {
 		return err
 	}
 
-	err = notifications.PushNotification(d.UserID, types.Notification{
+	err = notifications.PushNotification(d.UserID, types.Alert{
 		Type:    "success",
 		Message: "Successfully notified " + d.Entity.EntityName + " of this action.",
 		Title:   "Webhook Send Successful!",

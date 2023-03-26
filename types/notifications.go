@@ -22,30 +22,21 @@ type UserSubscription struct {
 	Endpoint string `json:"endpoint" description:"The endpoint for the subscription returned by PushSubscription"`
 }
 
-type Notification struct {
-	Type      NotificationType `json:"type" validate:"required,oneof=success error info warning"`
-	Message   string           `json:"message" validate:"required"`
-	Title     string           `json:"title" validate:"required"`
-	Priority  int              `json:"priority"` // Optional
-	URL       string           `json:"url"`      // Optional
-	Icon      string           `json:"icon"`     // Optional
-	AlertData map[string]any   `json:"data"`     // Optional
-}
-
 // Notification
 type NotifGet struct {
-	Endpoint    string           `json:"endpoint"`
-	NotifID     string           `json:"notif_id"`
-	CreatedAt   time.Time        `json:"created_at"`
-	BrowserInfo NotifBrowserInfo `json:"browser_info"`
+	Endpoint    string           `db:"endpoint" json:"endpoint" description:"The endpoint for the subscription returned by PushSubscription"`
+	NotifID     string           `db:"notif_id" json:"notif_id" description:"The ID of the notification"`
+	CreatedAt   time.Time        `db:"created_at" json:"created_at" description:"The time the notification was created"`
+	UA          string           `db:"ua" json:"-"`                                                                                         // Must be parsed internally
+	BrowserInfo NotifBrowserInfo `db:"-" json:"browser_info" description:"information about the browser attached to the push notification"` // Must be parsed from UA internally
 }
 
 type NotifBrowserInfo struct {
 	// The OS of the browser
-	OS         string
-	Browser    string
-	BrowserVer string
-	Mobile     bool
+	OS         string `json:"os" description:"The OS of the browser"`
+	Browser    string `json:"browser" description:"The browser"`
+	BrowserVer string `json:"browser_ver" description:"The browser version"`
+	Mobile     bool   `json:"mobile" description:"Whether the browser is on mobile or not"`
 }
 
 type NotifGetList struct {

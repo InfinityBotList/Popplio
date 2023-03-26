@@ -2,18 +2,23 @@ package get_user_notifications
 
 import (
 	"net/http"
-	"time"
+	"strings"
 
 	"popplio/api"
 	"popplio/state"
 	"popplio/types"
+	"popplio/utils"
 
 	docs "github.com/infinitybotlist/doclib"
 
 	"github.com/georgysavva/scany/v2/pgxscan"
 	"github.com/go-chi/chi/v5"
 	ua "github.com/mileusna/useragent"
-	"go.uber.org/zap"
+)
+
+var (
+	notifGetCols    = utils.GetCols(types.NotifGet{})
+	notifGetColsStr = strings.Join(notifGetCols, ",")
 )
 
 func Docs() *docs.Doc {
@@ -36,60 +41,39 @@ func Docs() *docs.Doc {
 func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 	var id = chi.URLParam(r, "id")
 
-	var subscription []types.NotifGet
+	var notifications []types.NotifGet
 
-	var subscriptionDb []struct {
-		Endpoint  string    `db:"endpoint"`
-		NotifID   string    `db:"notif_id"`
-		CreatedAt time.Time `db:"created_at"`
-		UA        string    `db:"ua"`
-	}
-
-	rows, err := state.Pool.Query(d.Context, "SELECT endpoint, notif_id, created_at, ua FROM poppypaw WHERE user_id = $1", id)
+	rows, err := state.Pool.Query(d.Context, "SELECT "+notifGetColsStr+" FROM poppypaw WHERE user_id = $1", id)
 
 	if err != nil {
 		state.Logger.Error(err)
 		return api.DefaultResponse(http.StatusInternalServerError)
 	}
 
-	err = pgxscan.ScanAll(&subscriptionDb, rows)
+	err = pgxscan.ScanAll(&notifications, rows)
 
 	if err != nil {
 		state.Logger.Error(err)
 		return api.DefaultResponse(http.StatusInternalServerError)
 	}
 
-	if len(subscriptionDb) == 0 {
-		return api.DefaultResponse(http.StatusNotFound)
+	if len(notifications) == 0 {
+		notifications = []types.NotifGet{}
 	}
 
-	for _, sub := range subscriptionDb {
-		uaD := ua.Parse(sub.UA)
-		state.Logger.With(
-			zap.String("endpoint", sub.Endpoint),
-			zap.String("notif_id", sub.NotifID),
-			zap.Time("created_at", sub.CreatedAt),
-			zap.String("ua", sub.UA),
-			zap.Any("browser", uaD),
-		).Info("Parsed UA")
+	for i := range notifications {
+		uaD := ua.Parse(notifications[i].UA)
 
-		binfo := types.NotifBrowserInfo{
+		notifications[i].BrowserInfo = types.NotifBrowserInfo{
 			OS:         uaD.OS,
 			Browser:    uaD.Name,
 			BrowserVer: uaD.Version,
 			Mobile:     uaD.Mobile,
 		}
-
-		subscription = append(subscription, types.NotifGet{
-			Endpoint:    sub.Endpoint,
-			NotifID:     sub.NotifID,
-			CreatedAt:   sub.CreatedAt,
-			BrowserInfo: binfo,
-		})
 	}
 
 	sublist := types.NotifGetList{
-		Notifications: subscription,
+		Notifications: notifications,
 	}
 
 	return api.HttpResponse{

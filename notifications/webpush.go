@@ -8,7 +8,7 @@ import (
 	"github.com/SherClockHolmes/webpush-go"
 )
 
-func PushNotification(userId string, notif types.Notification) error {
+func PushNotification(userId string, notif types.Alert) error {
 	err := state.Validator.Struct(notif)
 
 	if err != nil {

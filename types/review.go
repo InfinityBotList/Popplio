@@ -14,7 +14,7 @@ type Review struct {
 	AuthorID  string                `db:"author" json:"-"`
 	Author    *dovewing.DiscordUser `db:"-" json:"author"`
 	Content   string                `db:"content" json:"content"`
-	Stars     pgtype.Int4           `db:"stars" json:"stars"`
+	Stars     int32                 `db:"stars" json:"stars"`
 	CreatedAt time.Time             `db:"created_at" json:"created_at"`
 	ParentID  pgtype.UUID           `db:"parent_id" json:"parent_id"`
 }

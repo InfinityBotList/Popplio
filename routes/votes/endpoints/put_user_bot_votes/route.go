@@ -341,28 +341,40 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 			Votes:  int(votes),
 		})
 
-		var msg types.Notification
+		var msg types.Alert
 
 		if err != nil && err.Error() == "httpUser" {
-			msg = types.Notification{
+			msg = types.Alert{
 				Type:    types.NotificationTypeWarning,
 				Title:   "Vote Rewards Deferred!",
 				Message: botObj.Username + " uses the HTTP API for votes. Vote rewards may take time to register.",
 				Icon:    botObj.Avatar,
+				URL: pgtype.Text{
+					String: "https://botlist.site/" + id + "/vote",
+					Valid:  true,
+				},
 			}
 		} else if err != nil {
-			msg = types.Notification{
+			msg = types.Alert{
 				Type:    types.NotificationTypeError,
 				Title:   "Whoa There!",
 				Message: "We couldn't notify " + botObj.Username + ": " + err.Error() + ".",
 				Icon:    botObj.Avatar,
+				URL: pgtype.Text{
+					String: "https://botlist.site/" + id + "/vote",
+					Valid:  true,
+				},
 			}
 		} else {
-			msg = types.Notification{
+			msg = types.Alert{
 				Type:    types.NotificationTypeSuccess,
 				Title:   "Bot Notified!",
 				Message: "Successfully alerted " + botObj.Username + " to your vote with ID of " + id + ".",
 				Icon:    botObj.Avatar,
+				URL: pgtype.Text{
+					String: "https://botlist.site/" + id + "/vote",
+					Valid:  true,
+				},
 			}
 		}
 
