@@ -38,7 +38,7 @@ func Docs() *docs.Doc {
 				Schema:      docs.IdSchema,
 			},
 		},
-		Resp: types.Ticket{},
+		Resp: types.AllTickets{},
 	}
 }
 

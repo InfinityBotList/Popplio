@@ -271,10 +271,11 @@ func ClearBotCache(ctx context.Context, botId string) error {
 	}
 
 	// Delete from cache
-	state.Redis.Del(ctx, "bc-"+vanity)
-	state.Redis.Del(ctx, "bc-"+botId)
-	state.Redis.Del(ctx, "bc-"+clientId)
-
+	for _, k := range []string{"bc-", "seob:"} {
+		state.Redis.Del(ctx, k+vanity)
+		state.Redis.Del(ctx, k+botId)
+		state.Redis.Del(ctx, k+clientId)
+	}
 	return nil
 }
 
@@ -337,6 +338,8 @@ func ResolveBot(ctx context.Context, name string) (string, error) {
 
 	// First check count so we can avoid expensive DB calls
 	var count int64
+
+	name = strings.ToLower(name)
 
 	err := state.Pool.QueryRow(ctx, "SELECT COUNT(*) FROM bots WHERE "+resolveBotSQL, name).Scan(&count)
 
