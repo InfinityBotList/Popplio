@@ -85,7 +85,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 
 	// Fan out notification
 	err = notifications.PushNotification(id, types.Alert{
-		Type:    types.NotificationTypeSuccess,
+		Type:    types.AlertTypeSuccess,
 		Title:   "New Subscription",
 		Message: "This is an automated message to let you know that you have successfully subscribed to push notifications!",
 	})

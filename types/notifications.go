@@ -2,15 +2,6 @@ package types
 
 import "time"
 
-type NotificationType string
-
-const (
-	NotificationTypeSuccess NotificationType = "success"
-	NotificationTypeError   NotificationType = "error"
-	NotificationTypeInfo    NotificationType = "info"
-	NotificationTypeWarning NotificationType = "warning"
-)
-
 type NotificationInfo struct {
 	PublicKey string `json:"public_key"`
 }

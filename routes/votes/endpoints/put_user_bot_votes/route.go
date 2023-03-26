@@ -345,7 +345,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 
 		if err != nil && err.Error() == "httpUser" {
 			msg = types.Alert{
-				Type:    types.NotificationTypeWarning,
+				Type:    types.AlertTypeWarning,
 				Title:   "Vote Rewards Deferred!",
 				Message: botObj.Username + " uses the HTTP API for votes. Vote rewards may take time to register.",
 				Icon:    botObj.Avatar,
@@ -356,7 +356,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 			}
 		} else if err != nil {
 			msg = types.Alert{
-				Type:    types.NotificationTypeError,
+				Type:    types.AlertTypeError,
 				Title:   "Whoa There!",
 				Message: "We couldn't notify " + botObj.Username + ": " + err.Error() + ".",
 				Icon:    botObj.Avatar,
@@ -367,7 +367,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 			}
 		} else {
 			msg = types.Alert{
-				Type:    types.NotificationTypeSuccess,
+				Type:    types.AlertTypeSuccess,
 				Title:   "Bot Notified!",
 				Message: "Successfully alerted " + botObj.Username + " to your vote with ID of " + id + ".",
 				Icon:    botObj.Avatar,
