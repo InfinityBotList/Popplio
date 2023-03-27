@@ -25,7 +25,7 @@ var compiledMessages = api.CompileValidationErrors(assets.PerkData{})
 func Docs() *docs.Doc {
 	return &docs.Doc{
 		Summary:     "Create Stripe Checkout",
-		Description: "Creates a stripe checkout session returning the URL. Not intended for public use.",
+		Description: "Creates a stripe checkout session returning the URL. Use this to initiate a new stripe order in your client.",
 		Req:         assets.CreatePerkData{},
 		Resp:        assets.RedirectUser{},
 		Params: []docs.Parameter{
@@ -60,16 +60,6 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 			},
 			Headers: limit.Headers(),
 			Status:  http.StatusTooManyRequests,
-		}
-	}
-
-	if !d.IsClient {
-		return api.HttpResponse{
-			Status: http.StatusBadRequest,
-			Json: types.ApiError{
-				Error:   true,
-				Message: "This endpoint is not available for public use",
-			},
 		}
 	}
 
