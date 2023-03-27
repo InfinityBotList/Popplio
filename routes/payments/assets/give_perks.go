@@ -16,6 +16,10 @@ type CreatePerkData struct {
 	For         string `json:"for" validate:"required" msg:"For is required."`
 }
 
+type RedirectUser struct {
+	URL string `json:"url"`
+}
+
 func (c CreatePerkData) Parse(userID string) PerkData {
 	return PerkData{
 		UserID:      userID,

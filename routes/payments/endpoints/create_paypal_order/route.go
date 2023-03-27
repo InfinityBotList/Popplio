@@ -21,16 +21,12 @@ var json = jsoniter.ConfigCompatibleWithStandardLibrary
 
 var compiledMessages = api.CompileValidationErrors(assets.PerkData{})
 
-type PaypalOrderID struct {
-	OrderID string `json:"order_id"`
-}
-
 func Docs() *docs.Doc {
 	return &docs.Doc{
 		Summary:     "Create Paypal Order",
 		Description: "Creates a paypal order. Not intended for public use.",
 		Req:         assets.CreatePerkData{},
-		Resp:        PaypalOrderID{},
+		Resp:        assets.RedirectUser{},
 		Params: []docs.Parameter{
 			{
 				Name:        "id",
@@ -150,9 +146,27 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 		return api.DefaultResponse(http.StatusInternalServerError)
 	}
 
+	var approvalLink string
+
+	for _, link := range order.Links {
+		if link.Rel == "approve" {
+			approvalLink = link.Href
+		}
+	}
+
+	if approvalLink == "" {
+		return api.HttpResponse{
+			Status: http.StatusInternalServerError,
+			Json: types.ApiError{
+				Error:   true,
+				Message: "Internal Error: Could not find approval link",
+			},
+		}
+	}
+
 	return api.HttpResponse{
-		Json: PaypalOrderID{
-			OrderID: order.ID,
+		Json: assets.RedirectUser{
+			URL: approvalLink,
 		},
 	}
 }

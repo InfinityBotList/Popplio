@@ -22,16 +22,12 @@ var json = jsoniter.ConfigCompatibleWithStandardLibrary
 
 var compiledMessages = api.CompileValidationErrors(assets.PerkData{})
 
-type StripeCheckout struct {
-	URL string `json:"url"`
-}
-
 func Docs() *docs.Doc {
 	return &docs.Doc{
 		Summary:     "Create Stripe Checkout",
 		Description: "Creates a stripe checkout session returning the URL. Not intended for public use.",
 		Req:         assets.CreatePerkData{},
-		Resp:        StripeCheckout{},
+		Resp:        assets.RedirectUser{},
 		Params: []docs.Parameter{
 			{
 				Name:        "id",
@@ -145,7 +141,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 	}
 
 	return api.HttpResponse{
-		Json: StripeCheckout{
+		Json: assets.RedirectUser{
 			URL: order.URL,
 		},
 	}
