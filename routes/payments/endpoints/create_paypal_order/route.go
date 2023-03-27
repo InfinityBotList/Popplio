@@ -139,7 +139,10 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 				},
 			},
 		},
-	}, &paypal.CreateOrderPayer{}, &paypal.ApplicationContext{})
+	}, &paypal.CreateOrderPayer{}, &paypal.ApplicationContext{
+		ReturnURL: state.Config.Sites.API + "/payments/paypal/capture",
+		CancelURL: state.Config.Sites.Frontend + "/payments/paypal/cancel",
+	})
 
 	if err != nil {
 		state.Logger.Error(err)
