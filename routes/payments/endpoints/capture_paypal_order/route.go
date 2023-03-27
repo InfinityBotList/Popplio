@@ -3,37 +3,28 @@ package capture_paypal_order
 import (
 	"net/http"
 	"popplio/api"
-	"popplio/ratelimit"
 	"popplio/routes/payments/assets"
 	"popplio/state"
 	"popplio/types"
-	"time"
 
+	"github.com/go-chi/chi/v5"
 	docs "github.com/infinitybotlist/doclib"
-
-	"github.com/go-playground/validator/v10"
-	jsoniter "github.com/json-iterator/go"
 	"github.com/plutov/paypal/v4"
+
+	jsoniter "github.com/json-iterator/go"
 )
 
 var json = jsoniter.ConfigCompatibleWithStandardLibrary
 
-type PaypalCaptureOrderReq struct {
-	ID string `json:"id" validate:"required" msg:"ID is required."`
-}
-
-var compiledMessages = api.CompileValidationErrors(PaypalCaptureOrderReq{})
-
 func Docs() *docs.Doc {
 	return &docs.Doc{
 		Summary:     "Capture Paypal Order",
-		Description: "Captures a paypal order, giving any needed perks.",
-		Req:         PaypalCaptureOrderReq{},
+		Description: "Captures a paypal order, giving any needed perks. This is an internal endpoint.",
 		Resp:        types.ApiError{},
 		Params: []docs.Parameter{
 			{
-				Name:        "id",
-				Description: "User ID",
+				Name:        "ref_id",
+				Description: "The reference ID of the order returned during paypals redirect back to us",
 				Required:    true,
 				In:          "path",
 				Schema:      docs.IdSchema,
@@ -43,60 +34,34 @@ func Docs() *docs.Doc {
 }
 
 func Route(d api.RouteData, r *http.Request) api.HttpResponse {
-	limit, err := ratelimit.Ratelimit{
-		Expiry:      1 * time.Minute,
-		MaxRequests: 5,
-		Bucket:      "payments",
-	}.Limit(d.Context, r)
+	refId := chi.URLParam(r, "ref_id")
 
-	if err != nil {
-		state.Logger.Error(err)
-		return api.DefaultResponse(http.StatusInternalServerError)
-	}
-
-	if limit.Exceeded {
-		return api.HttpResponse{
-			Json: types.ApiError{
-				Error:   true,
-				Message: "You are being ratelimited. Please try again in " + limit.TimeToReset.String(),
-			},
-			Headers: limit.Headers(),
-			Status:  http.StatusTooManyRequests,
-		}
-	}
-
-	if !d.IsClient {
+	if refId == "" {
 		return api.HttpResponse{
 			Status: http.StatusBadRequest,
 			Json: types.ApiError{
 				Error:   true,
-				Message: "This endpoint is not available for public use",
+				Message: "Missing ref_id",
 			},
 		}
 	}
 
-	var payload PaypalCaptureOrderReq
+	// Get order ID from redis
+	orderIdRedis := state.Redis.Get(d.Context, "paypal:"+refId)
 
-	hresp, ok := api.MarshalReqWithHeaders(r, &payload, limit.Headers())
-
-	if !ok {
-		return hresp
+	if orderIdRedis.Err() != nil {
+		return api.HttpResponse{
+			Status: http.StatusBadRequest,
+			Json: types.ApiError{
+				Error:   true,
+				Message: "Invalid ref_id. Please contact support if you believe this is an error.",
+			},
+		}
 	}
 
-	// Validate the payload
-	err = state.Validator.Struct(payload)
+	orderId := orderIdRedis.Val()
 
-	if err != nil {
-		errors := err.(validator.ValidationErrors)
-		return api.ValidatorErrorResponse(compiledMessages, errors)
-	}
-
-	if err != nil {
-		state.Logger.Error(err)
-		return api.DefaultResponse(http.StatusInternalServerError)
-	}
-
-	captured, err := state.Paypal.CaptureOrder(d.Context, payload.ID, paypal.CaptureOrderRequest{})
+	captured, err := state.Paypal.CaptureOrder(d.Context, orderId, paypal.CaptureOrderRequest{})
 
 	if err != nil {
 		state.Logger.Error("At capture", err)
@@ -121,7 +86,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 
 	if len(captured.PurchaseUnits) == 0 {
 		// Refund the order
-		_, err = state.Paypal.RefundCapture(d.Context, payload.ID, paypal.RefundCaptureRequest{})
+		_, err = state.Paypal.RefundCapture(d.Context, orderId, paypal.RefundCaptureRequest{})
 
 		if err != nil {
 			state.Logger.Error("At refund", err)
@@ -145,7 +110,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 
 	if len(captured.PurchaseUnits[0].Items) == 0 {
 		// Refund the order
-		_, err = state.Paypal.RefundCapture(d.Context, payload.ID, paypal.RefundCaptureRequest{})
+		_, err = state.Paypal.RefundCapture(d.Context, orderId, paypal.RefundCaptureRequest{})
 
 		if err != nil {
 			state.Logger.Error("At refund", err)
@@ -175,7 +140,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 
 	if err != nil {
 		// Refund the order
-		_, err = state.Paypal.RefundCapture(d.Context, payload.ID, paypal.RefundCaptureRequest{})
+		_, err = state.Paypal.RefundCapture(d.Context, orderId, paypal.RefundCaptureRequest{})
 
 		if err != nil {
 			state.Logger.Error("At refund", err)
@@ -192,21 +157,11 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 		return api.DefaultResponse(http.StatusInternalServerError)
 	}
 
-	if product.UserID != d.Auth.ID {
-		return api.HttpResponse{
-			Status: http.StatusBadRequest,
-			Json: types.ApiError{
-				Error:   true,
-				Message: "Internal error: product purchaser and authorized user do not match. Please contact support if you received this error.",
-			},
-		}
-	}
-
 	err = assets.GivePerks(d.Context, product)
 
 	if err != nil {
 		// Refund the order
-		_, err = state.Paypal.RefundCapture(d.Context, payload.ID, paypal.RefundCaptureRequest{})
+		_, err = state.Paypal.RefundCapture(d.Context, orderId, paypal.RefundCaptureRequest{})
 
 		if err != nil {
 			state.Logger.Error("At refund", err)
@@ -229,5 +184,9 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 		}
 	}
 
-	return api.DefaultResponse(http.StatusNoContent)
+	state.Redis.Del(d.Context, "paypal:"+refId)
+
+	return api.HttpResponse{
+		Redirect: state.Config.Sites.Frontend + "/payments/success",
+	}
 }

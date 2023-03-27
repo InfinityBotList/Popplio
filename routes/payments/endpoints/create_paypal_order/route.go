@@ -11,6 +11,7 @@ import (
 	"time"
 
 	docs "github.com/infinitybotlist/doclib"
+	"github.com/infinitybotlist/eureka/crypto"
 
 	"github.com/go-playground/validator/v10"
 	jsoniter "github.com/json-iterator/go"
@@ -112,6 +113,8 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 		return api.DefaultResponse(http.StatusInternalServerError)
 	}
 
+	refId := crypto.RandString(32) // Paypal is stupid and requires a refId
+
 	order, err := state.Paypal.CreateOrder(d.Context, "CAPTURE", []paypal.PurchaseUnitRequest{
 		{
 			Description: perk.Name,
@@ -140,8 +143,8 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 			},
 		},
 	}, &paypal.CreateOrderPayer{}, &paypal.ApplicationContext{
-		ReturnURL: state.Config.Sites.API + "/payments/paypal/capture",
-		CancelURL: state.Config.Sites.Frontend + "/payments/paypal/cancel",
+		ReturnURL: state.Config.Sites.API + "/payments/paypal/capture/" + refId,
+		CancelURL: state.Config.Sites.Frontend + "/payments/cancelled",
 	})
 
 	if err != nil {
@@ -165,6 +168,14 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 				Message: "Internal Error: Could not find approval link",
 			},
 		}
+	}
+
+	// Save the refId to redis, associated with the order ID
+	err = state.Redis.Set(d.Context, "paypal:"+refId, order.ID, 8*time.Hour).Err()
+
+	if err != nil {
+		state.Logger.Error(err)
+		return api.DefaultResponse(http.StatusInternalServerError)
 	}
 
 	return api.HttpResponse{

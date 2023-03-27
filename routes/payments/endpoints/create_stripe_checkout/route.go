@@ -129,8 +129,8 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 		ClientReferenceID: stripe.String(string(customId)),
 		Mode:              stripe.String(string(stripe.CheckoutSessionModePayment)),
 		//AutomaticTax:      &stripe.CheckoutSessionAutomaticTaxParams{Enabled: stripe.Bool(true)},
-		SuccessURL: stripe.String(state.Config.Sites.Frontend + "/stripe/success"),
-		CancelURL:  stripe.String(state.Config.Sites.Frontend + "/stripe/cancel"),
+		SuccessURL: stripe.String(state.Config.Sites.Frontend + "/payments/success"),
+		CancelURL:  stripe.String(state.Config.Sites.Frontend + "/payments/cancelled"),
 	}
 
 	order, err := session.New(params)

@@ -47,17 +47,11 @@ func (b Router) Routes(r *chi.Mux) {
 	}.Route(r)
 
 	api.Route{
-		Pattern: "/users/{id}/paypal/capture",
+		Pattern: "/payments/paypal/capture/{ref_id}",
 		OpId:    "capture_paypal_order",
-		Method:  api.POST,
+		Method:  api.GET,
 		Docs:    capture_paypal_order.Docs,
 		Handler: capture_paypal_order.Route,
-		Auth: []api.AuthType{
-			{
-				Type:   api.TargetTypeUser,
-				URLVar: "id",
-			},
-		},
 	}.Route(r)
 
 	api.Route{
