@@ -66,6 +66,68 @@ func ResolvePackVotes(ctx context.Context, url string) ([]types.PackVote, error)
 	return votes, nil
 }
 
+func ResolveTeam(ctx context.Context, teamId string) (*types.Team, error) {
+	var name string
+	var avatar string
+
+	err := state.Pool.QueryRow(ctx, "SELECT name, avatar FROM teams WHERE id = $1", teamId).Scan(&name, &avatar)
+
+	if err != nil {
+		return nil, err
+	}
+
+	// Next handle members
+	var members = []types.TeamMember{}
+
+	rows, err := state.Pool.Query(ctx, "SELECT user_id, perms, created_at FROM team_members WHERE team_id = $1", teamId)
+
+	if err != nil {
+		return nil, err
+	}
+
+	defer rows.Close()
+
+	for rows.Next() {
+		var userId string
+		var perms []teams.TeamPermission
+		var createdAt time.Time
+
+		err = rows.Scan(&userId, &perms, &createdAt)
+
+		if err != nil {
+			return nil, err
+		}
+
+		user, err := dovewing.GetDiscordUser(ctx, userId)
+
+		if err != nil {
+			return nil, err
+		}
+
+		members = append(members, types.TeamMember{
+			User:      user,
+			Perms:     teams.NewPermissionManager(perms).Perms(),
+			CreatedAt: createdAt,
+		})
+	}
+
+	// Bots
+	bots, err := ResolveTeamBots(ctx, teamId)
+
+	if err != nil {
+		state.Logger.Error(err)
+		return nil, err
+	}
+
+	return &types.Team{
+		ID:       teamId,
+		Name:     name,
+		Avatar:   avatar,
+		Members:  members,
+		UserBots: bots,
+	}, nil
+}
+
 func ResolveTeamBots(ctx context.Context, teamId string) ([]types.UserBot, error) {
 	// Gets the bots of the team so we can add it to UserBots
 	var teamBotIds []string
@@ -425,4 +487,8 @@ func ArrayCast(v any) []string {
 		return retArrInt(t)
 	}
 	return []string{}
+}
+
+func UUIDString(myUUID pgtype.UUID) string {
+	return fmt.Sprintf("%x-%x-%x-%x-%x", myUUID.Bytes[0:4], myUUID.Bytes[4:6], myUUID.Bytes[6:8], myUUID.Bytes[8:10], myUUID.Bytes[10:16])
 }

@@ -7,7 +7,6 @@ import (
 
 	"popplio/api"
 	"popplio/state"
-	"popplio/teams"
 	"popplio/types"
 	"popplio/utils"
 
@@ -27,9 +26,6 @@ var (
 
 	indexPackColsArr = utils.GetCols(types.IndexBotPack{})
 	indexPackCols    = strings.Join(indexPackColsArr, ",")
-
-	teamColsArr = utils.GetCols(types.Team{})
-	teamCols    = strings.Join(teamColsArr, ",")
 )
 
 func Docs() *docs.Doc {
@@ -159,77 +155,16 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 	var userTeams = []types.Team{}
 
 	for _, teamId := range userTeamIds {
-		var team = types.Team{}
-
-		teamRows, err := state.Pool.Query(d.Context, "SELECT "+teamCols+" FROM teams WHERE id = $1", teamId)
+		team, err := utils.ResolveTeam(d.Context, teamId)
 
 		if err != nil {
 			state.Logger.Error(err)
 			return api.DefaultResponse(http.StatusInternalServerError)
 		}
 
-		err = pgxscan.ScanOne(&team, teamRows)
-
-		if err != nil {
-			state.Logger.Error(err)
-			return api.DefaultResponse(http.StatusInternalServerError)
-		}
-
-		// Next handle members
-		var members = []types.TeamMember{}
-
-		rows, err := state.Pool.Query(d.Context, "SELECT user_id, perms, created_at FROM team_members WHERE team_id = $1", teamId)
-
-		if err != nil {
-			state.Logger.Error(err)
-			return api.DefaultResponse(http.StatusInternalServerError)
-		}
-
-		defer rows.Close()
-
-		for rows.Next() {
-			var userId string
-			var perms []teams.TeamPermission
-			var createdAt time.Time
-
-			err = rows.Scan(&userId, &perms, &createdAt)
-
-			if err != nil {
-				state.Logger.Error(err)
-				return api.DefaultResponse(http.StatusInternalServerError)
-			}
-
-			user, err := dovewing.GetDiscordUser(d.Context, userId)
-
-			if err != nil {
-				state.Logger.Error(err)
-				return api.DefaultResponse(http.StatusInternalServerError)
-			}
-
-			members = append(members, types.TeamMember{
-				User:      user,
-				Perms:     teams.NewPermissionManager(perms).Perms(),
-				CreatedAt: createdAt,
-			})
-		}
-
-		team.Members = members
-
-		// Gets the bots of the team so we can add it to UserBots
-		bots, err := utils.ResolveTeamBots(d.Context, teamId)
-
-		if err != nil {
-			state.Logger.Error(err)
-			return api.DefaultResponse(http.StatusInternalServerError)
-		}
-
-		userBots = append(userBots, bots...)
-		team.UserBots = bots
-
-		userTeams = append(userTeams, team)
+		userBots = append(userBots, team.UserBots...)
+		userTeams = append(userTeams, *team)
 	}
-
-	user.UserTeams = userTeams
 
 	/*
 
@@ -264,6 +199,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 
 	user.UserPacks = packs
 	user.UserBots = userBots
+	user.UserTeams = userTeams
 
 	return api.HttpResponse{
 		Json:      user,

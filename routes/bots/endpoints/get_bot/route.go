@@ -9,7 +9,6 @@ import (
 
 	"popplio/api"
 	"popplio/state"
-	"popplio/teams"
 	"popplio/types"
 	"popplio/utils"
 
@@ -174,72 +173,15 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 
 		bot.MainOwner = ownerUser
 	} else {
-		var team = types.Team{}
-
-		teamBotsRows, err := state.Pool.Query(d.Context, "SELECT "+teamCols+" FROM teams WHERE id = $1", bot.TeamOwnerID)
-
-		if err != nil {
-			state.Logger.Error(err)
-			return api.DefaultResponse(http.StatusInternalServerError)
-		}
-
-		err = pgxscan.ScanOne(&team, teamBotsRows)
-		if err != nil {
-			state.Logger.Error(err)
-			return api.DefaultResponse(http.StatusInternalServerError)
-		}
-
-		// Next handle members
-		var members = []types.TeamMember{}
-
-		rows, err := state.Pool.Query(d.Context, "SELECT user_id, perms, created_at FROM team_members WHERE team_id = $1", bot.TeamOwnerID)
+		// Convert pgtype.UUID to string
+		team, err := utils.ResolveTeam(d.Context, utils.UUIDString(bot.TeamOwnerID))
 
 		if err != nil {
 			state.Logger.Error(err)
-			return api.DefaultResponse(http.StatusInternalServerError)
+			return api.DefaultResponse(http.StatusNotFound)
 		}
 
-		defer rows.Close()
-
-		for rows.Next() {
-			var userId string
-			var perms []teams.TeamPermission
-			var createdAt time.Time
-
-			err = rows.Scan(&userId, &perms, &createdAt)
-
-			if err != nil {
-				state.Logger.Error(err)
-				return api.DefaultResponse(http.StatusInternalServerError)
-			}
-
-			user, err := dovewing.GetDiscordUser(d.Context, userId)
-
-			if err != nil {
-				state.Logger.Error(err)
-				return api.DefaultResponse(http.StatusInternalServerError)
-			}
-
-			members = append(members, types.TeamMember{
-				User:      user,
-				Perms:     teams.NewPermissionManager(perms).Perms(),
-				CreatedAt: createdAt,
-			})
-		}
-
-		team.Members = members
-
-		// Gets the bots of the team so we can add it to UserBots
-		bots, err := utils.ResolveTeamBots(d.Context, team.ID)
-
-		if err != nil {
-			state.Logger.Error(err)
-			return api.DefaultResponse(http.StatusInternalServerError)
-		}
-
-		team.UserBots = bots
-
-		bot.TeamOwner = &team
+		bot.TeamOwner = team
 	}
 
 	bot.PremiumPeriodLengthParsed = types.NewInterval(bot.PremiumPeriodLength)

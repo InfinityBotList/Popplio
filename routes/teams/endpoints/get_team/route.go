@@ -4,13 +4,10 @@ import (
 	"net/http"
 	"popplio/api"
 	"popplio/state"
-	"popplio/teams"
 	"popplio/types"
 	"popplio/utils"
-	"time"
 
 	docs "github.com/infinitybotlist/doclib"
-	"github.com/infinitybotlist/dovewing"
 
 	"github.com/go-chi/chi/v5"
 )
@@ -53,56 +50,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 		return api.DefaultResponse(http.StatusNotFound)
 	}
 
-	var name string
-	var avatar string
-
-	err = state.Pool.QueryRow(d.Context, "SELECT name, avatar FROM teams WHERE id = $1", id).Scan(&name, &avatar)
-
-	if err != nil {
-		state.Logger.Error(err)
-		return api.DefaultResponse(http.StatusInternalServerError)
-	}
-
-	// Next handle members
-	var members = []types.TeamMember{}
-
-	rows, err := state.Pool.Query(d.Context, "SELECT user_id, perms, created_at FROM team_members WHERE team_id = $1", id)
-
-	if err != nil {
-		state.Logger.Error(err)
-		return api.DefaultResponse(http.StatusInternalServerError)
-	}
-
-	defer rows.Close()
-
-	for rows.Next() {
-		var userId string
-		var perms []teams.TeamPermission
-		var createdAt time.Time
-
-		err = rows.Scan(&userId, &perms, &createdAt)
-
-		if err != nil {
-			state.Logger.Error(err)
-			return api.DefaultResponse(http.StatusInternalServerError)
-		}
-
-		user, err := dovewing.GetDiscordUser(d.Context, userId)
-
-		if err != nil {
-			state.Logger.Error(err)
-			return api.DefaultResponse(http.StatusInternalServerError)
-		}
-
-		members = append(members, types.TeamMember{
-			User:      user,
-			Perms:     teams.NewPermissionManager(perms).Perms(),
-			CreatedAt: createdAt,
-		})
-	}
-
-	// Bots
-	bots, err := utils.ResolveTeamBots(d.Context, id)
+	team, err := utils.ResolveTeam(d.Context, id)
 
 	if err != nil {
 		state.Logger.Error(err)
@@ -110,12 +58,6 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 	}
 
 	return api.HttpResponse{
-		Json: types.Team{
-			ID:       id,
-			Name:     name,
-			Avatar:   avatar,
-			Members:  members,
-			UserBots: bots,
-		},
+		Json: team,
 	}
 }
