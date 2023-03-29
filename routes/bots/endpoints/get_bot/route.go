@@ -24,9 +24,6 @@ import (
 var (
 	botColsArr = utils.GetCols(types.Bot{})
 	botCols    = strings.Join(botColsArr, ",")
-
-	teamColsArr = utils.GetCols(types.Team{})
-	teamCols    = strings.Join(teamColsArr, ",")
 )
 
 func Docs() *docs.Doc {
@@ -168,7 +165,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 
 		if err != nil {
 			state.Logger.Error(err)
-			return api.DefaultResponse(http.StatusNotFound)
+			return api.DefaultResponse(http.StatusInternalServerError)
 		}
 
 		bot.MainOwner = ownerUser
@@ -178,7 +175,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 
 		if err != nil {
 			state.Logger.Error(err)
-			return api.DefaultResponse(http.StatusNotFound)
+			return api.DefaultResponse(http.StatusInternalServerError)
 		}
 
 		bot.TeamOwner = team
