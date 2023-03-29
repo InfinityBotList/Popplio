@@ -22,15 +22,6 @@ type WebhookPostLegacy struct {
 	UserID string `json:"user_id" validate:"required"`
 	Test   bool   `json:"test"`
 	Votes  int    `json:"votes" validate:"required"`
-
-	// Only present on test webhook API or during sends internally
-	URL string `json:"url" validate:"required"`
-
-	// Only present on test webhook API
-	Token string `json:"token" validate:"required"`
-
-	// Only present on test webhook API
-	HMACAuth bool `json:"hmac_auth"`
 }
 
 type WebhookStateLegacy struct {
@@ -68,47 +59,36 @@ func isDiscordAPIURL(url string) (bool, string) {
 
 // Sends a webhook using the legacy v1 format
 func SendLegacy(webhook WebhookPostLegacy) error {
-	url, token := webhook.URL, webhook.Token
+	// Fetch URL from postgres
+	var webhookURL pgtype.Text
+	var webhookSecret pgtype.Text
+	var apiToken string
 
-	if utils.IsNone(url) || utils.IsNone(token) {
-		// Fetch URL from postgres
+	err := state.Pool.QueryRow(state.Context, "SELECT webhook, web_auth, api_token FROM bots WHERE bot_id = $1", webhook.BotID).Scan(&webhookURL, &webhookSecret, &apiToken)
 
-		var webhookURL pgtype.Text
-		var webhookSecret pgtype.Text
-		var apiToken string
-
-		err := state.Pool.QueryRow(state.Context, "SELECT webhook, web_auth, api_token FROM bots WHERE bot_id = $1", webhook.BotID).Scan(&webhookURL, &webhookSecret, &apiToken)
-
-		if err != nil {
-			state.Logger.Error("Failed to fetch webhook: ", err.Error())
-			return err
-		}
-
-		if webhookSecret.Valid && !utils.IsNone(webhookSecret.String) {
-			token = webhookSecret.String
-		} else {
-			token = apiToken
-		}
-
-		webhook.HMACAuth = false
-		webhook.Token = token
-
-		url = webhookURL.String
+	if err != nil {
+		state.Logger.Error("Failed to fetch webhook: ", err.Error())
+		return err
 	}
 
-	isDiscordIntegration, _ := isDiscordAPIURL(url)
+	var token string
+	if webhookSecret.Valid && !utils.IsNone(webhookSecret.String) {
+		token = webhookSecret.String
+	} else {
+		token = apiToken
+	}
+
+	isDiscordIntegration, _ := isDiscordAPIURL(webhookURL.String)
 
 	if isDiscordIntegration {
 		return errors.New("only supported on v2")
 	}
 
-	state.Logger.Info("Using hmac: ", webhook.HMACAuth)
-
-	if utils.IsNone(url) {
-		return errors.New("no webhook set, vote rewards may not work")
+	if utils.IsNone(webhookURL.String) {
+		return errors.New("no webhook set")
 	}
 
-	var dUser, err = dovewing.GetDiscordUser(state.Context, webhook.UserID)
+	dUser, err := dovewing.GetDiscordUser(state.Context, webhook.UserID)
 
 	if err != nil {
 		state.Logger.Error(err)
@@ -134,11 +114,11 @@ func SendLegacy(webhook WebhookPostLegacy) error {
 		return err
 	}
 
-	var finalToken string = webhook.Token
+	var finalToken string = token
 
 	// Create request
 	responseBody := bytes.NewBuffer(data)
-	req, err := http.NewRequestWithContext(state.Context, "POST", url, responseBody)
+	req, err := http.NewRequestWithContext(state.Context, "POST", webhookURL.String, responseBody)
 
 	if err != nil {
 		state.Logger.Error("Failed to create request")
@@ -146,7 +126,7 @@ func SendLegacy(webhook WebhookPostLegacy) error {
 	}
 
 	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("User-Agent", "popplio/legacyhandler-1")
+	req.Header.Set("User-Agent", "popplio/legacyhandler")
 	req.Header.Set("Authorization", finalToken)
 
 	// Send request

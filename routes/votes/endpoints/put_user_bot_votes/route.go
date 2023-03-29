@@ -14,7 +14,7 @@ import (
 	"popplio/types"
 	"popplio/utils"
 	"popplio/webhooks/bothooks"
-	legacyhooks "popplio/webhooks/legacy"
+	legacyhooks "popplio/webhooks/bothooks/legacy"
 
 	docs "github.com/infinitybotlist/doclib"
 	"github.com/infinitybotlist/dovewing"
