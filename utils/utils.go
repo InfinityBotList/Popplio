@@ -112,24 +112,6 @@ func ResolveTeam(ctx context.Context, teamId string) (*types.Team, error) {
 	}
 
 	// Bots
-	bots, err := ResolveTeamBots(ctx, teamId)
-
-	if err != nil {
-		state.Logger.Error(err)
-		return nil, err
-	}
-
-	return &types.Team{
-		ID:       teamId,
-		Name:     name,
-		Avatar:   avatar,
-		Members:  members,
-		UserBots: bots,
-	}, nil
-}
-
-func ResolveTeamBots(ctx context.Context, teamId string) ([]types.UserBot, error) {
-	// Gets the bots of the team so we can add it to UserBots
 	var teamBotIds []string
 	var bots = []types.UserBot{}
 
@@ -145,6 +127,7 @@ func ResolveTeamBots(ctx context.Context, teamId string) ([]types.UserBot, error
 		return nil, err
 	}
 
+	// Loop over all bot IDs and create user bots from them
 	for _, botId := range teamBotIds {
 		userBotsRows, err := state.Pool.Query(ctx, "SELECT "+userBotCols+" FROM bots WHERE bot_id = $1", botId)
 
@@ -172,7 +155,18 @@ func ResolveTeamBots(ctx context.Context, teamId string) ([]types.UserBot, error
 		bots = append(bots, userBot)
 	}
 
-	return bots, nil
+	if err != nil {
+		state.Logger.Error(err)
+		return nil, err
+	}
+
+	return &types.Team{
+		ID:       teamId,
+		Name:     name,
+		Avatar:   avatar,
+		Members:  members,
+		UserBots: bots,
+	}, nil
 }
 
 func GetDoubleVote() bool {
@@ -401,6 +395,7 @@ func ResolveBot(ctx context.Context, name string) (string, error) {
 	// First check count so we can avoid expensive DB calls
 	var count int64
 
+	// We need to take the lower of the name because lower(vanity) = $1
 	name = strings.ToLower(name)
 
 	err := state.Pool.QueryRow(ctx, "SELECT COUNT(*) FROM bots WHERE "+resolveBotSQL, name).Scan(&count)
@@ -435,58 +430,6 @@ func ResolveBot(ctx context.Context, name string) (string, error) {
 func IsValidUUID(u string) bool {
 	_, err := uuid.Parse(u)
 	return err == nil
-}
-
-func retArrInt[T comparable](t []T) []string {
-	var arr []string
-	for _, v := range t {
-		arr = append(arr, fmt.Sprint(v))
-	}
-	return arr
-}
-
-// Casts a array of type any to []string
-func ArrayCast(v any) []string {
-	switch t := v.(type) {
-	// String type
-	case []string:
-		return t
-	// Any type
-	case []any:
-		var arr []string
-		for _, v := range t {
-			arr = append(arr, v.(string))
-		}
-		return arr
-	// All the int types
-	case []int:
-		return retArrInt(t)
-	case []int8:
-		return retArrInt(t)
-	case []int16:
-		return retArrInt(t)
-	case []int32:
-		return retArrInt(t)
-	case []int64:
-		return retArrInt(t)
-	// All the uint types
-	case []uint:
-		return retArrInt(t)
-	case []uint8:
-		return retArrInt(t)
-	case []uint16:
-		return retArrInt(t)
-	case []uint32:
-		return retArrInt(t)
-	case []uint64:
-		return retArrInt(t)
-	// All the float types
-	case []float32:
-		return retArrInt(t)
-	case []float64:
-		return retArrInt(t)
-	}
-	return []string{}
 }
 
 func UUIDString(myUUID pgtype.UUID) string {

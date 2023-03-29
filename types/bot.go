@@ -27,42 +27,14 @@ type IndexBot struct {
 }
 
 // For documentation purposes
-type BotStatsDocs struct {
-	Servers   int   `json:"servers" description:"The server count"`
-	Shards    int   `json:"shards" description:"The shard count"`
-	ShardList []int `json:"shard_list" description:"The shard list"`
-	UserCount int   `json:"user_count" description:"The user count (not used in webpage)"`
-}
-
-// This uses any to allow bad stats to still work
 type BotStats struct {
-	// Fields are ordered in the way they are searched
-	// The simple servers, shards way
-	Servers *any `json:"servers"`
-	Shards  *any `json:"shards"`
-
-	// Fates List uses this (server count)
-	GuildCount *any `json:"guild_count"`
-
-	// Top.gg uses this (server count)
-	ServerCount *any `json:"server_count"`
-
-	// Top.gg and Fates List uses this (shard count)
-	ShardCount *any `json:"shard_count"`
-
-	// Rovel Discord List and dlist.gg (kinda) uses this (server count)
-	Count *any `json:"count"`
-
-	// Discordbotlist.com uses this (server count)
-	Guilds *any `json:"guilds"`
-
-	Users     *any `json:"users"`
-	UserCount *any `json:"user_count"`
-
-	ShardList []any `json:"shard_list"`
+	Servers   uint64   `json:"servers" description:"The server count"`
+	Shards    uint64   `json:"shards" description:"The shard count"`
+	Users     uint64   `json:"users" description:"The user count (not used in webpage)"`
+	ShardList []uint64 `json:"shard_list" description:"The shard list"`
 }
 
-// Bot represents a bot
+// Bot represents a bot.
 // A bot is a Discord bot that is on the infinitybotlist.
 type Bot struct {
 	ITag                      pgtype.UUID           `db:"itag" json:"itag" description:"The bot's internal ID. Not that useful and more a artifact of database migrations. May be removed in the future."`
