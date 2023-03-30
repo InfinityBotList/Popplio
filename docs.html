@@ -54,11 +54,6 @@ window.addEventListener('DOMContentLoaded', () => {
 .mobile-menu:hover {
   opacity: 0.8 !important;
 }
-
-.javascript {
-  background: #f7df1e !important;
-  content: "JavaScript";
-}
       `;
       shadow.appendChild(style);
   
@@ -143,6 +138,10 @@ window.addEventListener('DOMContentLoaded', () => {
       // Add the mobile navigation button to the main header
       shadow.appendChild(showMenuBottom);
     });
+
+    document.on("DOMNodeInserted", function() {
+      console.log("test")
+    })
 });
     </script>
   </rapi-doc>

@@ -15,13 +15,11 @@ If you need some help or think you have spotted a problem with our API you can t
 
 To parse webhooks, here is the algorithm you should/must follow:
 
-Examples are provided currently in JS but will be added for other languages in the future.
+**Examples are provided in JS as of right now**
 
 - Check the protocol version:
 	- The current protocol version is `splashtail`
 	- Check the `X-Webhook-Protocol` header and ensure that it is equal to the current protocol version
-
-<div class="javascript">
 
 ```js
   if (req.headers["x-webhook-protocol"] != supportedProtocol) {
@@ -33,11 +31,7 @@ Examples are provided currently in JS but will be added for other languages in t
   }
 ```
 
-</div>
-
 - A nonce is used to randomize the signature for retries. Ensure a nonce exists by checking the header's existence:
-
-<div class="javascript">
 
 ```js
   if (!req.headers["x-webhook-nonce"]) {
@@ -49,14 +43,10 @@ Examples are provided currently in JS but will be added for other languages in t
   }
 ```
 
-</div>
-
 - Next calculate the expected signature
 	- To do so, you must first get the body of the request
 	- Then use HMAC-SHA512 with the webhook secret as key and the body as the request body to get the ``signedBody``. Note that the format/digest should be ``hex``
 	- Then use HMAC-SHA512 with the nonce as the key and the signed body as the message to get the expected signature. Note that the format/digest should be ``hex``
-
-<div class="javascript">
 
 ```js
   let body: string = req.body;
@@ -83,13 +73,11 @@ Examples are provided currently in JS but will be added for other languages in t
     .digest("hex");
 ```
 
-</div>
-
 - Compare this value with the ``X-Webhook-Signature`` header
 	- If they are equal, the request is valid and you can continue processing it
 	- If they are not equal, the request is invalid and you should return a 403 status code
 
-<div class="javascript">
+
 
 ```js
   if (req.headers["x-webhook-signature"] != expectedTok) {
@@ -104,13 +92,9 @@ Examples are provided currently in JS but will be added for other languages in t
   }
 ```
 
-</div>
-
 - Next decrypt the request body. This is an additional security to prevent sensitive information from being leaked
 	- First hash the concatenation of the webhook secret and the nonce using SHA256
 	- Then read the body as a hex string and decrypt it using AES-256-GCM with the hashed secret as the key
-
-<div class="javascript">
 
 ```js
 	// sha256 on key
@@ -137,5 +121,3 @@ Examples are provided currently in JS but will be added for other languages in t
 	});
 	return;
 ```
-
-</div>
