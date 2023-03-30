@@ -83,6 +83,8 @@ Examples are provided currently in JS but will be added for other languages in t
     .digest("hex");
 ```
 
+</div>
+
 - Compare this value with the ``X-Webhook-Signature`` header
 	- If they are equal, the request is valid and you can continue processing it
 	- If they are not equal, the request is invalid and you should return a 403 status code
@@ -101,6 +103,8 @@ Examples are provided currently in JS but will be added for other languages in t
     return;
   }
 ```
+
+</div>
 
 - Next decrypt the request body. This is an additional security to prevent sensitive information from being leaked
 	- First hash the concatenation of the webhook secret and the nonce using SHA256
@@ -133,3 +137,5 @@ Examples are provided currently in JS but will be added for other languages in t
 	});
 	return;
 ```
+
+</div>
