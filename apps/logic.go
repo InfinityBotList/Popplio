@@ -127,7 +127,7 @@ func extraLogicCert(d api.RouteData, p Position, answers map[string]string) (add
 	var serverCount int64
 	var uniqueClicks int64
 	var webhooksV2 bool
-	err = state.Pool.QueryRow(d.Context, "SELECT servers, cardinality(unique_clicks) AS unique_clicks, webhooksV2 FROM bots WHERE bot_id = $1", botID).Scan(&serverCount, &uniqueClicks, &webhooksV2)
+	err = state.Pool.QueryRow(d.Context, "SELECT servers, cardinality(unique_clicks) AS unique_clicks, webhooks_v2 FROM bots WHERE bot_id = $1", botID).Scan(&serverCount, &uniqueClicks, &webhooksV2)
 
 	if err != nil {
 		return false, fmt.Errorf("error getting server count: %w", err)

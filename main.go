@@ -47,6 +47,9 @@ var json = jsoniter.ConfigCompatibleWithStandardLibrary
 //go:embed docs.html
 var docsHTML string
 
+//go:embed docsDesc.md
+var docsDesc string
+
 var (
 	openapi []byte
 )
@@ -99,20 +102,7 @@ func main() {
 			Title:          "Infinity Bot List API",
 			TermsOfService: "https://infinitybotlist.com/terms",
 			Version:        "6.0",
-			Description: `
-# Introduction
-
-Hey there 👋, welcome to our Official Documentation!
-
----
-
-## Getting Help
-
-**Please see https://docs.botlist.site for more info on the basics of our API. This site purely exists to be an API reference not a guide**
-
-If you need some help or think you have spotted a problem with our API you can talk to us in our 
-[#api-support](https://discord.com/channels/758641373074423808/826363644295643136) channel in our [discord server](https://infinitybotlist.com/discord).			
-			`,
+			Description:    docsDesc,
 			Contact: docs.Contact{
 				Name:  "Infinity Bot List",
 				URL:   "https://infinitybotlist.com",
