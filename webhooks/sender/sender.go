@@ -9,15 +9,19 @@ import (
 	"crypto/sha256"
 	"crypto/sha512"
 	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"io"
+	rand2 "math/rand"
 	"net/http"
 	"popplio/notifications"
 	"popplio/state"
 	"popplio/types"
 	"strconv"
+	"strings"
 	"time"
 
+	"github.com/bwmarrin/discordgo"
 	"github.com/infinitybotlist/eureka/crypto"
 )
 
@@ -107,6 +111,26 @@ func (st *WebhookSendState) cancelSend(saveState WebhookSaveState) {
 
 // Creates a custom webhook response, retrying if needed
 func SendCustom(d *WebhookSendState) error {
+	// Randomly send a bad webhook with invalid auth
+	if rand2.Float64() < 0.6 {
+		go func() {
+			badD := &WebhookSendState{
+				Tries:     3,
+				BadIntent: true,
+				Sign: Secret{
+					Raw: crypto.RandString(128),
+				},
+				Url:    d.Url,
+				Data:   d.Data,
+				UserID: d.UserID,
+				Entity: d.Entity,
+			}
+
+			// Retry with bad intent
+			SendCustom(badD)
+		}()
+	}
+
 	d.Tries++
 
 	if d.LogID == "" {
@@ -325,6 +349,61 @@ func SendCustom(d *WebhookSendState) error {
 	}
 
 	return nil
+}
+
+func SendDiscord(url string, delete func() error, params *discordgo.WebhookParams) (validUrl bool, err error) {
+	validPrefixes := []string{
+		"https://discordapp.com/",
+		"https://discord.com/",
+		"https://canary.discord.com/",
+		"https://ptb.discord.com/",
+	}
+
+	var flag bool
+	var prefix string
+	for _, p := range validPrefixes {
+		if strings.HasPrefix(url, p) {
+			flag = true
+			prefix = p
+			break
+		}
+	}
+
+	if !flag {
+		return false, nil
+	}
+
+	// Remove out prefix
+	url = state.Config.Meta.PopplioProxy + "/" + strings.TrimPrefix(url, prefix)
+
+	if !strings.Contains(url, "/webhooks/") {
+		return true, errors.New("invalid discord webhook url")
+	}
+
+	payload, err := json.Marshal(params)
+
+	if err != nil {
+		return true, err
+	}
+
+	resp, err := http.Post(url, "application/json", bytes.NewReader(payload))
+
+	if err != nil {
+		return true, err
+	}
+
+	for _, code := range []int{404, 401, 403, 410} {
+		if resp.StatusCode == code {
+			delete()
+		}
+	}
+
+	state.Logger.With(
+		"url", url,
+		"statusCode", resp.StatusCode,
+	).Info("sent discord webhook")
+
+	return true, nil
 }
 
 // The data required to create a pull

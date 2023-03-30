@@ -3,7 +3,6 @@ package test_webhook
 import (
 	"math/rand"
 	"net/http"
-	"time"
 
 	"popplio/api"
 	"popplio/state"
@@ -12,9 +11,9 @@ import (
 	"popplio/utils"
 	"popplio/webhooks/bothooks"
 	legacyhooks "popplio/webhooks/bothooks/legacy"
+	"popplio/webhooks/events"
 
 	docs "github.com/infinitybotlist/doclib"
-	"github.com/infinitybotlist/dovewing"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-playground/validator/v10"
@@ -107,33 +106,16 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 	}
 
 	if webhooksV2 {
-		bot, err := dovewing.GetDiscordUser(state.Context, id)
-
-		if err != nil {
-			state.Logger.Error(err)
-			return api.DefaultResponse(http.StatusInternalServerError)
-		}
-
-		user, err := dovewing.GetDiscordUser(state.Context, d.Auth.ID)
-
-		if err != nil {
-			state.Logger.Error(err)
-			return api.DefaultResponse(http.StatusInternalServerError)
-		}
-
-		err = bothooks.WebhookResponse{
-			Creator:   user,
-			Bot:       bot,
-			CreatedAt: int(time.Now().Unix()),
-			Type:      bothooks.WebhookTypeVote,
-			Data: bothooks.WebhookVoteData{
+		err = bothooks.CreateHook{
+			Type: events.WebhookTypeBotVote,
+			Data: events.WebhookBotVoteData{
 				Votes: payload.Votes,
 				Test:  true,
 			},
 		}.With(bothooks.With{
 			UserID: d.Auth.ID,
 			BotID:  id,
-		}).Create()
+		}).Send()
 
 		if err != nil {
 			state.Logger.Error(err)

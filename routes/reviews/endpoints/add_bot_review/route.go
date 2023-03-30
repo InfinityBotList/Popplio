@@ -9,6 +9,7 @@ import (
 	"popplio/types"
 	"popplio/utils"
 	"popplio/webhooks/bothooks"
+	"popplio/webhooks/events"
 	"strings"
 	"time"
 
@@ -177,17 +178,16 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 		return api.DefaultResponse(http.StatusInternalServerError)
 	}
 
-	err = bothooks.WebhookResponse{
-		CreatedAt: int(time.Now().Unix()),
-		Type:      bothooks.WebhookTypeNewReview,
-		Data: bothooks.WebhookNewReviewData{
+	err = bothooks.CreateHook{
+		Type: events.WebhookTypeBotNewReview,
+		Data: events.WebhookBotNewReviewData{
 			ReviewID: reviewId,
 			Content:  payload.Content,
 		},
 	}.With(bothooks.With{
 		UserID: d.Auth.ID,
 		BotID:  bot,
-	}).Create()
+	}).Send()
 
 	if err != nil {
 		state.Logger.Error(err)

@@ -15,6 +15,7 @@ import (
 	"popplio/utils"
 	"popplio/webhooks/bothooks"
 	legacyhooks "popplio/webhooks/bothooks/legacy"
+	"popplio/webhooks/events"
 
 	docs "github.com/infinitybotlist/doclib"
 	"github.com/infinitybotlist/dovewing"
@@ -316,16 +317,14 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 
 		if webhooksV2 {
 			state.Logger.Info("Sending webhook for vote (v2) for " + id)
-			err := bothooks.WebhookResponse{
-				Creator:   userObj,
-				Bot:       botObj,
-				CreatedAt: int(time.Now().Unix()),
-				Type:      bothooks.WebhookTypeVote,
-				Data: bothooks.WebhookVoteData{
+
+			err := bothooks.CreateHook{
+				Type: events.WebhookTypeBotVote,
+				Data: events.WebhookBotVoteData{
 					Votes: int(votes),
 					Test:  false,
 				},
-			}.Create()
+			}.WithCustom(userObj, botObj).Send()
 
 			if err != nil {
 				state.Logger.Error(err)
