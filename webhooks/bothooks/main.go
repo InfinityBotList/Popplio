@@ -28,12 +28,12 @@ type With struct {
 
 type CreateHook struct {
 	Type events.WebhookType
-	Data events.Data
+	Data any
 }
 
 type withCreateHook struct {
 	Type   events.WebhookType
-	Data   events.Data
+	Data   any
 	user   *dovewing.DiscordUser
 	bot    *dovewing.DiscordUser
 	entity sender.WebhookEntity
@@ -112,6 +112,7 @@ func (c withCreateHook) Send() error {
 
 	resp := &events.WebhookResponse{
 		Creator:   c.user,
+		Entity:    c.bot,
 		CreatedAt: time.Now().Unix(),
 		Type:      c.Type,
 		Data:      c.Data,
@@ -138,8 +139,6 @@ func (c withCreateHook) Send() error {
 	if err != nil {
 		return err
 	}
-
-	resp.Data = resp.Data.SetEntity(c.bot)
 
 	params := evt.CreateHookParams(resp)
 
@@ -215,130 +214,141 @@ func Setup() {
 		},
 	})
 
-	events.RegisteredEvents.AddEvent(events.WebhookTypeBotVote, events.EventData{
-		Docs: &docs.WebhookDoc{
-			Name:    "NewBotVote",
-			Summary: "New Bot Vote",
-			Tags: []string{
-				"Webhooks",
-			},
-			Description: `This webhook is sent when a user votes for a bot.
-	
-	The data of the webhook may differ based on its webhook type
-	
-	If the webhook type is WebhookTypeVote, the data will be of type WebhookVoteData`,
-			Format: events.WebhookResponse{
-				Type: events.WebhookTypeBotVote,
-				Data: events.WebhookBotVoteData{},
-			},
-			FormatName: "WebhookResponse-WebhookBotVoteData",
-		},
-		Format: events.WebhookBotVoteData{},
-		CreateHookParams: func(w *events.WebhookResponse) *discordgo.WebhookParams {
-			voteData := w.Data.(events.WebhookBotVoteData)
-
-			return &discordgo.WebhookParams{
-				Embeds: []*discordgo.MessageEmbed{
-					{
-						URL: "https://botlist.site/" + voteData.Bot.ID,
-						Thumbnail: &discordgo.MessageEmbedThumbnail{
-							URL: voteData.Bot.Avatar,
-						},
-						Title:       "🎉 Vote Count Updated!",
-						Description: ":heart:" + w.Creator.Username + "#" + w.Creator.Discriminator + " has voted for " + voteData.Bot.Username,
-						Color:       0x8A6BFD,
-						Fields: []*discordgo.MessageEmbedField{
-							{
-								Name:   "Vote Count:",
-								Value:  strconv.Itoa(int(voteData.Votes)),
-								Inline: true,
-							},
-							{
-								Name:   "User ID:",
-								Value:  w.Creator.ID,
-								Inline: true,
-							},
-							{
-								Name:   "Vote Page",
-								Value:  "[View " + voteData.Bot.Username + "](https://botlist.site/" + voteData.Bot.ID + ")",
-								Inline: true,
-							},
-							{
-								Name:   "Vote Page",
-								Value:  "[Vote for " + voteData.Bot.Username + "](https://botlist.site/" + voteData.Bot.ID + "/vote)",
-								Inline: true,
-							},
-						},
+	events.RegisteredEvents.AddEvents(
+		events.AddEvent{
+			Event: events.WebhookTypeBotVote,
+			Data: events.EventData{
+				Docs: &docs.WebhookDoc{
+					Name:    "NewBotVote",
+					Summary: "New Bot Vote",
+					Tags: []string{
+						"Webhooks",
 					},
-				},
-			}
-		},
-	})
-
-	events.RegisteredEvents.AddEvent(events.WebhookTypeBotNewReview, events.EventData{
-		Docs: &docs.WebhookDoc{
-			Name:    "NewBotReview",
-			Summary: "New Bot Review",
-			Tags: []string{
-				"Webhooks",
-			},
-			Description: `This webhook is sent when a user creates a new review on a bot.
-	
-	The data of the webhook may differ based on its webhook type
-	
-	If the webhook type is WebhookTypeNewReview, the data will be of type WebhookNewReviewData
-	`,
-			Format: events.WebhookResponse{
-				Type: events.WebhookTypeBotNewReview,
-				Data: events.WebhookBotNewReviewData{},
-			},
-			FormatName: "WebhookResponse-WebhookNewReviewData",
-		},
-		Format: events.WebhookBotNewReviewData{},
-		CreateHookParams: func(w *events.WebhookResponse) *discordgo.WebhookParams {
-			reviewData := w.Data.(events.WebhookBotNewReviewData)
-
-			return &discordgo.WebhookParams{
-				Embeds: []*discordgo.MessageEmbed{
-					{
-						URL: "https://botlist.site/" + reviewData.Bot.ID,
-						Thumbnail: &discordgo.MessageEmbedThumbnail{
-							URL: reviewData.Bot.Avatar,
-						},
-						Title:       "📝 New Review!",
-						Description: ":heart:" + w.Creator.Username + "#" + w.Creator.Discriminator + " has left a review for " + reviewData.Bot.Username,
-						Color:       0x8A6BFD,
-						Fields: []*discordgo.MessageEmbedField{
-							{
-								Name:   "Review ID:",
-								Value:  reviewData.ReviewID,
-								Inline: true,
-							},
-							{
-								Name:   "User ID:",
-								Value:  w.Creator.ID,
-								Inline: true,
-							},
-							{
-								Name: "Review Content:",
-								Value: func() string {
-									if len(reviewData.Content) > 1000 {
-										return reviewData.Content[:1000] + "..."
-									}
-
-									return reviewData.Content
-								}(),
-								Inline: true,
-							},
-							{
-								Name:   "Review Page",
-								Value:  "[View " + reviewData.Bot.Username + "](https://botlist.site/" + reviewData.Bot.ID + ")",
-								Inline: true,
-							},
-						},
+					Description: `This webhook is sent when a user votes for a bot.
+			
+			The data of the webhook may differ based on its webhook type
+			
+			If the webhook type is WebhookTypeVote, the data will be of type WebhookVoteData`,
+					Format: events.WebhookResponse{
+						Type:   events.WebhookTypeBotVote,
+						Data:   events.WebhookBotVoteData{},
+						Entity: dovewing.DiscordUser{},
 					},
+					FormatName: "WebhookResponse-WebhookBotVoteData",
 				},
-			}
+				Format: events.WebhookBotVoteData{},
+				CreateHookParams: func(w *events.WebhookResponse) *discordgo.WebhookParams {
+					voteData := w.Data.(events.WebhookBotVoteData)
+					bot := w.Entity.(*dovewing.DiscordUser)
+
+					return &discordgo.WebhookParams{
+						Embeds: []*discordgo.MessageEmbed{
+							{
+								URL: "https://botlist.site/" + bot.ID,
+								Thumbnail: &discordgo.MessageEmbedThumbnail{
+									URL: bot.Avatar,
+								},
+								Title:       "🎉 Vote Count Updated!",
+								Description: ":heart:" + w.Creator.Username + "#" + w.Creator.Discriminator + " has voted for " + bot.Username,
+								Color:       0x8A6BFD,
+								Fields: []*discordgo.MessageEmbedField{
+									{
+										Name:   "Vote Count:",
+										Value:  strconv.Itoa(int(voteData.Votes)),
+										Inline: true,
+									},
+									{
+										Name:   "User ID:",
+										Value:  w.Creator.ID,
+										Inline: true,
+									},
+									{
+										Name:   "Vote Page",
+										Value:  "[View " + bot.Username + "](https://botlist.site/" + bot.ID + ")",
+										Inline: true,
+									},
+									{
+										Name:   "Vote Page",
+										Value:  "[Vote for " + bot.Username + "](https://botlist.site/" + bot.ID + "/vote)",
+										Inline: true,
+									},
+								},
+							},
+						},
+					}
+				},
+			},
 		},
-	})
+		events.AddEvent{
+			Event: events.WebhookTypeBotNewReview,
+			Data: events.EventData{
+				Docs: &docs.WebhookDoc{
+					Name:    "NewBotReview",
+					Summary: "New Bot Review",
+					Tags: []string{
+						"Webhooks",
+					},
+					Description: `This webhook is sent when a user creates a new review on a bot.
+			
+			The data of the webhook may differ based on its webhook type
+			
+			If the webhook type is WebhookTypeNewReview, the data will be of type WebhookNewReviewData
+			`,
+					Format: events.WebhookResponse{
+						Type:   events.WebhookTypeBotNewReview,
+						Data:   events.WebhookBotNewReviewData{},
+						Entity: dovewing.DiscordUser{},
+					},
+					FormatName: "WebhookResponse-WebhookNewReviewData",
+				},
+				Format: events.WebhookBotNewReviewData{},
+				CreateHookParams: func(w *events.WebhookResponse) *discordgo.WebhookParams {
+					reviewData := w.Data.(events.WebhookBotNewReviewData)
+					bot := w.Entity.(*dovewing.DiscordUser)
+
+					return &discordgo.WebhookParams{
+						Embeds: []*discordgo.MessageEmbed{
+							{
+								URL: "https://botlist.site/" + bot.ID,
+								Thumbnail: &discordgo.MessageEmbedThumbnail{
+									URL: bot.Avatar,
+								},
+								Title:       "📝 New Review!",
+								Description: ":heart:" + w.Creator.Username + "#" + w.Creator.Discriminator + " has left a review for " + bot.Username,
+								Color:       0x8A6BFD,
+								Fields: []*discordgo.MessageEmbedField{
+									{
+										Name:   "Review ID:",
+										Value:  reviewData.ReviewID,
+										Inline: true,
+									},
+									{
+										Name:   "User ID:",
+										Value:  w.Creator.ID,
+										Inline: true,
+									},
+									{
+										Name: "Review Content:",
+										Value: func() string {
+											if len(reviewData.Content) > 1000 {
+												return reviewData.Content[:1000] + "..."
+											}
+
+											return reviewData.Content
+										}(),
+										Inline: true,
+									},
+									{
+										Name:   "Review Page",
+										Value:  "[View " + bot.Username + "](https://botlist.site/" + bot.ID + ")",
+										Inline: true,
+									},
+								},
+							},
+						},
+					}
+				},
+			},
+		},
+	)
 }

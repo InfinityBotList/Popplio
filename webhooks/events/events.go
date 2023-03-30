@@ -35,26 +35,33 @@ type Events struct {
 	eventMap map[WebhookType]EventData
 }
 
-func (e *Events) AddEvent(event WebhookType, data EventData) {
+type AddEvent struct {
+	Event WebhookType
+	Data  EventData
+}
+
+func (e *Events) AddEvents(events ...AddEvent) {
 	if len(e.eventMap) == 0 {
 		e.eventMap = make(map[WebhookType]EventData)
 	}
 
-	if data.Docs == nil {
-		panic("docs cannot be nil")
-	}
+	for _, data := range events {
+		if data.Data.Docs == nil {
+			panic("docs cannot be nil")
+		}
 
-	if data.Format == nil {
-		panic("format cannot be nil")
-	}
+		if data.Data.Format == nil {
+			panic("format cannot be nil")
+		}
 
-	if data.CreateHookParams == nil {
-		panic("createhookparams cannot be nil")
-	}
+		if data.Data.CreateHookParams == nil {
+			panic("createhookparams cannot be nil")
+		}
 
-	docs.AddWebhook(data.Docs)
-	data.formatTypeName = reflect.TypeOf(data.Format).Name()
-	e.eventMap[event] = data
+		docs.AddWebhook(data.Data.Docs)
+		data.Data.formatTypeName = reflect.TypeOf(data.Data.Format).Name()
+		e.eventMap[data.Event] = data.Data
+	}
 }
 
 var RegisteredEvents = &Events{}
