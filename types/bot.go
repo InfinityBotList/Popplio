@@ -26,7 +26,6 @@ type IndexBot struct {
 	Banner      pgtype.Text           `db:"banner" json:"banner" description:"The bot's banner URL if it has one, otherwise null"`
 }
 
-// For documentation purposes
 type BotStats struct {
 	Servers   uint64   `json:"servers" description:"The server count"`
 	Shards    uint64   `json:"shards" description:"The shard count"`
