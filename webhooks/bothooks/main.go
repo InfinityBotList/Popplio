@@ -28,12 +28,12 @@ type With struct {
 
 type CreateHook struct {
 	Type events.WebhookType
-	Data any
+	Data events.Data
 }
 
 type withCreateHook struct {
 	Type   events.WebhookType
-	Data   any
+	Data   events.Data
 	user   *dovewing.DiscordUser
 	bot    *dovewing.DiscordUser
 	entity sender.WebhookEntity
@@ -64,19 +64,19 @@ func (c CreateHook) WithCustom(user *dovewing.DiscordUser, bot *dovewing.Discord
 }
 
 // Fills in Bot and Creator from IDs
-func (c CreateHook) With(with With) *withCreateHook {
+func (c CreateHook) With(with With) withCreateHook {
 	bot, err := dovewing.GetDiscordUser(state.Context, with.BotID)
 
 	if err != nil {
 		state.Logger.Error(err)
-		return &withCreateHook{valid: false}
+		return withCreateHook{valid: false}
 	}
 
 	user, err := dovewing.GetDiscordUser(state.Context, with.UserID)
 
 	if err != nil {
 		state.Logger.Error(err)
-		return &withCreateHook{valid: false}
+		return withCreateHook{valid: false}
 	}
 
 	state.Logger.Info("Sending webhook for bot " + bot.ID)
@@ -95,7 +95,7 @@ func (c CreateHook) With(with With) *withCreateHook {
 		},
 	}
 
-	return &withCreateHook{
+	return withCreateHook{
 		Type:   c.Type,
 		Data:   c.Data,
 		user:   user,
@@ -106,6 +106,10 @@ func (c CreateHook) With(with With) *withCreateHook {
 }
 
 func (c withCreateHook) Send() error {
+	if !c.valid {
+		return errors.New("invalid webhook")
+	}
+
 	resp := &events.WebhookResponse{
 		Creator:   c.user,
 		CreatedAt: time.Now().Unix(),
@@ -113,17 +117,10 @@ func (c withCreateHook) Send() error {
 		Data:      c.Data,
 	}
 
-	// Validate webhook
-	evt, err := resp.Validate()
-
-	if err != nil {
-		return err
-	}
-
 	// Fetch the webhook url from db
 	var webhookURL string
 	var webhooksV2 bool
-	err = state.Pool.QueryRow(state.Context, "SELECT webhook, webhooks_v2 FROM bots WHERE bot_id = $1", c.bot.ID).Scan(&webhookURL, &webhooksV2)
+	err := state.Pool.QueryRow(state.Context, "SELECT webhook, webhooks_v2 FROM bots WHERE bot_id = $1", c.bot.ID).Scan(&webhookURL, &webhooksV2)
 
 	if err != nil {
 		state.Logger.Error(err)
@@ -135,6 +132,17 @@ func (c withCreateHook) Send() error {
 		return nil
 	}
 
+	// Validate webhook
+	evt, err := resp.Validate()
+
+	if err != nil {
+		return err
+	}
+
+	resp.Data = resp.Data.SetEntity(c.bot)
+
+	params := evt.CreateHookParams(resp)
+
 	ok, err := sender.SendDiscord(webhookURL, func() error {
 		_, err := state.Pool.Exec(state.Context, "UPDATE bots SET webhook = NULL WHERE bot_id = $1", c.bot.ID)
 
@@ -143,7 +151,7 @@ func (c withCreateHook) Send() error {
 		}
 
 		return nil
-	}, evt.CreateHookParams(resp))
+	}, params)
 
 	if err != nil {
 		state.Logger.Error(err)

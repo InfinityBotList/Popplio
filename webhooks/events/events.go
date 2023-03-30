@@ -1,4 +1,4 @@
-// A set of commom event handling for webhook responses
+// A set of common event handling for webhook responses
 package events
 
 import (
