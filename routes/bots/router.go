@@ -9,6 +9,7 @@ import (
 	"popplio/routes/bots/endpoints/get_bot_seo"
 	"popplio/routes/bots/endpoints/patch_bot_settings"
 	"popplio/routes/bots/endpoints/patch_bot_vanity"
+	"popplio/routes/bots/endpoints/patch_bot_webhook"
 	"popplio/routes/bots/endpoints/post_stats"
 
 	"github.com/go-chi/chi/v5"
@@ -106,6 +107,20 @@ func (b Router) Routes(r *chi.Mux) {
 		Method:  api.PATCH,
 		Docs:    patch_bot_vanity.Docs,
 		Handler: patch_bot_vanity.Route,
+		Auth: []api.AuthType{
+			{
+				URLVar: "uid",
+				Type:   api.TargetTypeUser,
+			},
+		},
+	}.Route(r)
+
+	api.Route{
+		Pattern: "/users/{uid}/bots/{bid}/webhook",
+		OpId:    "patch_bot_webhook",
+		Method:  api.PATCH,
+		Docs:    patch_bot_webhook.Docs,
+		Handler: patch_bot_webhook.Route,
 		Auth: []api.AuthType{
 			{
 				URLVar: "uid",

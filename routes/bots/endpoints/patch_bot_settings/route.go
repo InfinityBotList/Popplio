@@ -68,7 +68,7 @@ func Setup() {
 func Docs() *docs.Doc {
 	return &docs.Doc{
 		Summary:     "Update Bot Settings",
-		Description: "Updates a bots settings. Returns 204 on success",
+		Description: "Updates a bots settings. You must have 'Edit Bot Settings' in the team if the bot is in a team. Returns 204 on success",
 		Params: []docs.Parameter{
 			{
 				Name:        "uid",

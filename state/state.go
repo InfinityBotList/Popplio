@@ -56,6 +56,18 @@ func nonVulgar(fl validator.FieldLevel) bool {
 	}
 }
 
+func isHttpOrHttps(fl validator.FieldLevel) bool {
+	// get the field value
+	switch fl.Field().Kind() {
+	case reflect.String:
+		value := fl.Field().String()
+
+		return strings.HasPrefix(value, "http://") || strings.HasPrefix(value, "https://")
+	default:
+		return false
+	}
+}
+
 func isHttps(fl validator.FieldLevel) bool {
 	// get the field value
 	switch fl.Field().Kind() {
@@ -88,6 +100,7 @@ func Setup() {
 	Validator.RegisterValidation("notblank", validators.NotBlank)
 	Validator.RegisterValidation("nospaces", noSpaces)
 	Validator.RegisterValidation("https", isHttps)
+	Validator.RegisterValidation("httporhttps", isHttpOrHttps)
 
 	genconfig.GenConfig(config.Config{})
 
