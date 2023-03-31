@@ -91,38 +91,40 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 			state.Logger.Error(err)
 			return api.DefaultResponse(http.StatusInternalServerError)
 		}
-	} else {
-		if payload.WebhookURL != "" {
-			if !(strings.HasPrefix(payload.WebhookURL, "http://") || strings.HasPrefix(payload.WebhookURL, "https://")) {
-				return api.HttpResponse{
-					Status: http.StatusBadRequest,
-					Json:   types.ApiError{Message: "Webhook URL must start with http:// or https://", Error: true},
-				}
-			}
 
-			_, err = state.Pool.Exec(d.Context, "UPDATE bots SET webhook = $1 WHERE bot_id = $2", payload.WebhookURL, id)
+		return api.DefaultResponse(http.StatusNoContent)
+	}
 
-			if err != nil {
-				state.Logger.Error(err)
-				return api.DefaultResponse(http.StatusInternalServerError)
+	if payload.WebhookURL != "" {
+		if !(strings.HasPrefix(payload.WebhookURL, "http://") || strings.HasPrefix(payload.WebhookURL, "https://")) {
+			return api.HttpResponse{
+				Status: http.StatusBadRequest,
+				Json:   types.ApiError{Message: "Webhook URL must start with http:// or https://", Error: true},
 			}
 		}
 
-		if payload.WebhookSecret != "" {
-			_, err = state.Pool.Exec(d.Context, "UPDATE bots SET web_auth = $1 WHERE bot_id = $2", payload.WebhookSecret, id)
-
-			if err != nil {
-				state.Logger.Error(err)
-				return api.DefaultResponse(http.StatusInternalServerError)
-			}
-		}
-
-		_, err = state.Pool.Exec(d.Context, "UPDATE bots SET webhooks_v2 = $1 WHERE bot_id = $2", payload.WebhooksV2, id)
+		_, err = state.Pool.Exec(d.Context, "UPDATE bots SET webhook = $1 WHERE bot_id = $2", payload.WebhookURL, id)
 
 		if err != nil {
 			state.Logger.Error(err)
 			return api.DefaultResponse(http.StatusInternalServerError)
 		}
+	}
+
+	if payload.WebhookSecret != "" {
+		_, err = state.Pool.Exec(d.Context, "UPDATE bots SET web_auth = $1 WHERE bot_id = $2", payload.WebhookSecret, id)
+
+		if err != nil {
+			state.Logger.Error(err)
+			return api.DefaultResponse(http.StatusInternalServerError)
+		}
+	}
+
+	_, err = state.Pool.Exec(d.Context, "UPDATE bots SET webhooks_v2 = $1 WHERE bot_id = $2", payload.WebhooksV2, id)
+
+	if err != nil {
+		state.Logger.Error(err)
+		return api.DefaultResponse(http.StatusInternalServerError)
 	}
 
 	return api.DefaultResponse(http.StatusNoContent)
