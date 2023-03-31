@@ -7,20 +7,18 @@ import (
 	"popplio/teams"
 	"popplio/types"
 	"popplio/utils"
+	"strings"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/go-playground/validator/v10"
 	docs "github.com/infinitybotlist/doclib"
 )
 
 type PatchBotWebhook struct {
-	WebhookURL    string `json:"webhook_url" validate:"httporhttps" msg:"Webhook URL is required and must be HTTP/HTTPS"`
+	WebhookURL    string `json:"webhook_url"`
 	WebhookSecret string `json:"webhook_secret"`
 	WebhooksV2    bool   `json:"webhooks_v2"`
 	Clear         bool   `json:"clear"`
 }
-
-var compiledMessages = api.CompileValidationErrors(PatchBotWebhook{})
 
 func Docs() *docs.Doc {
 	return &docs.Doc{
@@ -85,14 +83,6 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 		return hresp
 	}
 
-	// Validate the payload
-	err = state.Validator.Struct(payload)
-
-	if err != nil {
-		errors := err.(validator.ValidationErrors)
-		return api.ValidatorErrorResponse(compiledMessages, errors)
-	}
-
 	// Update the bot
 	if payload.Clear {
 		_, err = state.Pool.Exec(d.Context, "UPDATE bots SET webhook = NULL, web_auth = NULL WHERE bot_id = $1", id)
@@ -103,6 +93,13 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 		}
 	} else {
 		if payload.WebhookURL != "" {
+			if !(strings.HasPrefix(payload.WebhookURL, "http://") || strings.HasPrefix(payload.WebhookURL, "https://")) {
+				return api.HttpResponse{
+					Status: http.StatusBadRequest,
+					Json:   types.ApiError{Message: "Webhook URL must start with http:// or https://", Error: true},
+				}
+			}
+
 			_, err = state.Pool.Exec(d.Context, "UPDATE bots SET webhook = $1 WHERE bot_id = $2", payload.WebhookURL, id)
 
 			if err != nil {
