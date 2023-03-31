@@ -111,8 +111,10 @@ func (c withCreateHook) Send() error {
 	}
 
 	resp := &events.WebhookResponse{
-		Creator:   c.user,
-		Entity:    c.bot,
+		Creator: c.user,
+		Targets: events.Target{
+			Bot: c.bot,
+		},
 		CreatedAt: time.Now().Unix(),
 		Type:      c.Type,
 		Data:      c.Data,
@@ -230,26 +232,24 @@ func Setup() {
 			
 			If the webhook type is WebhookTypeVote, the data will be of type WebhookVoteData`,
 					Format: events.WebhookResponse{
-						Type:   events.WebhookTypeBotVote,
-						Data:   events.WebhookBotVoteData{},
-						Entity: dovewing.DiscordUser{},
+						Type: events.WebhookTypeBotVote,
+						Data: events.WebhookBotVoteData{},
 					},
 					FormatName: "WebhookResponse-WebhookBotVoteData",
 				},
 				Format: events.WebhookBotVoteData{},
 				CreateHookParams: func(w *events.WebhookResponse) *discordgo.WebhookParams {
 					voteData := w.Data.(events.WebhookBotVoteData)
-					bot := w.Entity.(*dovewing.DiscordUser)
 
 					return &discordgo.WebhookParams{
 						Embeds: []*discordgo.MessageEmbed{
 							{
-								URL: "https://botlist.site/" + bot.ID,
+								URL: "https://botlist.site/" + w.Targets.Bot.ID,
 								Thumbnail: &discordgo.MessageEmbedThumbnail{
-									URL: bot.Avatar,
+									URL: w.Targets.Bot.Avatar,
 								},
 								Title:       "🎉 Vote Count Updated!",
-								Description: ":heart:" + w.Creator.Username + "#" + w.Creator.Discriminator + " has voted for " + bot.Username,
+								Description: ":heart:" + w.Creator.Username + "#" + w.Creator.Discriminator + " has voted for " + w.Targets.Bot.Username,
 								Color:       0x8A6BFD,
 								Fields: []*discordgo.MessageEmbedField{
 									{
@@ -264,12 +264,12 @@ func Setup() {
 									},
 									{
 										Name:   "Vote Page",
-										Value:  "[View " + bot.Username + "](https://botlist.site/" + bot.ID + ")",
+										Value:  "[View " + w.Targets.Bot.Username + "](https://botlist.site/" + w.Targets.Bot.ID + ")",
 										Inline: true,
 									},
 									{
 										Name:   "Vote Page",
-										Value:  "[Vote for " + bot.Username + "](https://botlist.site/" + bot.ID + "/vote)",
+										Value:  "[Vote for " + w.Targets.Bot.Username + "](https://botlist.site/" + w.Targets.Bot.ID + "/vote)",
 										Inline: true,
 									},
 								},
@@ -295,26 +295,24 @@ func Setup() {
 			If the webhook type is WebhookTypeNewReview, the data will be of type WebhookNewReviewData
 			`,
 					Format: events.WebhookResponse{
-						Type:   events.WebhookTypeBotNewReview,
-						Data:   events.WebhookBotNewReviewData{},
-						Entity: dovewing.DiscordUser{},
+						Type: events.WebhookTypeBotNewReview,
+						Data: events.WebhookBotNewReviewData{},
 					},
 					FormatName: "WebhookResponse-WebhookNewReviewData",
 				},
 				Format: events.WebhookBotNewReviewData{},
 				CreateHookParams: func(w *events.WebhookResponse) *discordgo.WebhookParams {
 					reviewData := w.Data.(events.WebhookBotNewReviewData)
-					bot := w.Entity.(*dovewing.DiscordUser)
 
 					return &discordgo.WebhookParams{
 						Embeds: []*discordgo.MessageEmbed{
 							{
-								URL: "https://botlist.site/" + bot.ID,
+								URL: "https://botlist.site/" + w.Targets.Bot.ID,
 								Thumbnail: &discordgo.MessageEmbedThumbnail{
-									URL: bot.Avatar,
+									URL: w.Targets.Bot.Avatar,
 								},
 								Title:       "📝 New Review!",
-								Description: ":heart:" + w.Creator.Username + "#" + w.Creator.Discriminator + " has left a review for " + bot.Username,
+								Description: ":heart:" + w.Creator.Username + "#" + w.Creator.Discriminator + " has left a review for " + w.Targets.Bot.Username,
 								Color:       0x8A6BFD,
 								Fields: []*discordgo.MessageEmbedField{
 									{
@@ -340,7 +338,7 @@ func Setup() {
 									},
 									{
 										Name:   "Review Page",
-										Value:  "[View " + bot.Username + "](https://botlist.site/" + bot.ID + ")",
+										Value:  "[View " + w.Targets.Bot.Username + "](https://botlist.site/" + w.Targets.Bot.ID + ")",
 										Inline: true,
 									},
 								},

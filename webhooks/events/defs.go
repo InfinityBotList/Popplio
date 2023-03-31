@@ -22,11 +22,16 @@ type WebhookBotNewReviewData struct {
 	Content  string `json:"content"`   // The content of the review
 }
 
+type Target struct {
+	Bot *dovewing.DiscordUser `json:"bot,omitempty" description:"If a bot event, the bot that the webhook is about"`
+}
+
 // IMPL
 type WebhookResponse struct {
 	Creator   *dovewing.DiscordUser `json:"creator" description:"The user who created the action/event (e.g voted for the bot or made a review)"`
 	CreatedAt int64                 `json:"created_at" description:"The time in *seconds* (unix epoch) of when the action/event was performed"`
 	Type      WebhookType           `json:"type" dynexample:"true"`
 	Data      any                   `json:"data" dynschema:"true"`
-	Entity    any                   `json:"entity" dynschema:"true" description:"The entity that the webhook is about (e.g the bot that was voted for etc)"`
+
+	Targets Target `json:"targets" description:"The target of the webhook, can be one of. or a possible combination of bot, team and server"`
 }
