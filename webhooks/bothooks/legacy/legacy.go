@@ -10,6 +10,7 @@ import (
 	"popplio/state"
 	"popplio/utils"
 
+	docs "github.com/infinitybotlist/doclib"
 	"github.com/infinitybotlist/dovewing"
 	"github.com/jackc/pgx/v5/pgtype"
 	jsoniter "github.com/json-iterator/go"
@@ -139,4 +140,17 @@ func SendLegacy(webhook WebhookPostLegacy) error {
 	}
 
 	return nil
+}
+
+func Setup() {
+	docs.AddWebhook(&docs.WebhookDoc{
+		Name:    "Legacy",
+		Summary: "Legacy Webhooks",
+		Tags: []string{
+			"Webhooks",
+		},
+		Description: `(older) v1 webhooks. Only supports Votes`,
+		Format:      WebhookDataLegacy{},
+		FormatName:  "WebhookLegacyResponse",
+	})
 }

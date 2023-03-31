@@ -3,6 +3,7 @@ package webhooks
 import (
 	"popplio/state"
 	"popplio/webhooks/bothooks"
+	"popplio/webhooks/bothooks/legacy"
 
 	docs "github.com/infinitybotlist/doclib"
 )
@@ -34,4 +35,5 @@ func Setup() {
 	}
 
 	bothooks.Setup()
+	legacy.Setup()
 }
