@@ -21,15 +21,16 @@ import (
 )
 
 type BotSettingsUpdate struct {
-	Short      string       `db:"short" json:"short" validate:"required,min=30,max=150" msg:"Short description must be between 30 and 150 characters"` // impld
-	Long       string       `db:"long" json:"long" validate:"required,min=500" msg:"Long description must be at least 500 characters"`                 // impld
-	Prefix     string       `db:"prefix" json:"prefix" validate:"required,min=1,max=10" msg:"Prefix must be between 1 and 10 characters"`              // impld
-	Invite     string       `db:"invite" json:"invite" validate:"required,https" msg:"Invite is required and must be a valid HTTPS URL"`               // impld
-	Banner     *string      `db:"banner" json:"banner" validate:"omitempty,https" msg:"Background must be a valid HTTPS URL"`                          // impld
-	Library    string       `db:"library" json:"library" validate:"required,min=1,max=50" msg:"Library must be between 1 and 50 characters"`           // impld
-	ExtraLinks []types.Link `db:"extra_links" json:"extra_links" validate:"required" msg:"Extra links must be sent"`                                   // Impld
-	Tags       []string     `db:"tags" json:"tags" validate:"required,unique,min=1,max=5,dive,min=3,max=30,notblank,nonvulgar" msg:"There must be between 1 and 5 tags without duplicates" amsg:"Each tag must be between 3 and 30 characters and alphabetic"`
-	NSFW       bool         `db:"nsfw" json:"nsfw"`
+	Short         string       `db:"short" json:"short" validate:"required,min=30,max=150" msg:"Short description must be between 30 and 150 characters"` // impld
+	Long          string       `db:"long" json:"long" validate:"required,min=500" msg:"Long description must be at least 500 characters"`                 // impld
+	Prefix        string       `db:"prefix" json:"prefix" validate:"required,min=1,max=10" msg:"Prefix must be between 1 and 10 characters"`              // impld
+	Invite        string       `db:"invite" json:"invite" validate:"required,https" msg:"Invite is required and must be a valid HTTPS URL"`               // impld
+	Banner        *string      `db:"banner" json:"banner" validate:"omitempty,https" msg:"Background must be a valid HTTPS URL"`                          // impld
+	Library       string       `db:"library" json:"library" validate:"required,min=1,max=50" msg:"Library must be between 1 and 50 characters"`           // impld
+	ExtraLinks    []types.Link `db:"extra_links" json:"extra_links" validate:"required" msg:"Extra links must be sent"`                                   // Impld
+	Tags          []string     `db:"tags" json:"tags" validate:"required,unique,min=1,max=5,dive,min=3,max=30,notblank,nonvulgar" msg:"There must be between 1 and 5 tags without duplicates" amsg:"Each tag must be between 3 and 30 characters and alphabetic"`
+	NSFW          bool         `db:"nsfw" json:"nsfw"`
+	CaptchaOptOut bool         `db:"captcha_opt_out" json:"captcha_opt_out"`
 }
 
 func updateBotsArgs(bot BotSettingsUpdate) []any {
@@ -43,6 +44,7 @@ func updateBotsArgs(bot BotSettingsUpdate) []any {
 		bot.ExtraLinks,
 		bot.Tags,
 		bot.NSFW,
+		bot.CaptchaOptOut,
 	}
 }
 

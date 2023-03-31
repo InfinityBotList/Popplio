@@ -78,6 +78,7 @@ type Bot struct {
 	WebhooksV2                bool                  `db:"webhooks_v2" json:"webhooks_v2" description:"Whether the bot is using webhooks v2 or not"`
 	TeamOwnerID               pgtype.UUID           `db:"team_owner" json:"-"`
 	TeamOwner                 *Team                 `json:"team_owner" description:"If the bot is in a team, who owns the bot. If not in a team, this will be null and owner will instead be set"` // Must be parsed internally
+	CaptchaOptOut             bool                  `db:"captcha_opt_out" json:"captcha_opt_out" description:"Whether the bot should have captchas shown if the user has captcha_sponsor_enabled"`
 }
 
 // All bots
