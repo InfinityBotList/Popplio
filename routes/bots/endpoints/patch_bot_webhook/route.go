@@ -83,6 +83,9 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 		return hresp
 	}
 
+	// Clear cache
+	utils.ClearBotCache(d.Context, id)
+
 	// Update the bot
 	if payload.Clear {
 		_, err = state.Pool.Exec(d.Context, "UPDATE bots SET webhook = NULL, web_auth = NULL WHERE bot_id = $1", id)
