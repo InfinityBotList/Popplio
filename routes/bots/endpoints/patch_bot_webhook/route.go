@@ -14,8 +14,8 @@ import (
 )
 
 type PatchBotWebhook struct {
-	WebhookURL    string `json:"webhook_url" validate:"required,httporhttps" msg:"Webhook URL is required and must be HTTP/HTTPS"`
-	WebhookSecret string `json:"webhook_secret" validate:"required" msg:"Webhook Secret is required"`
+	WebhookURL    string `json:"webhook_url" validate:"httporhttps" msg:"Webhook URL is required and must be HTTP/HTTPS"`
+	WebhookSecret string `json:"webhook_secret"`
 	WebhooksV2    bool   `json:"webhooks_v2"`
 	Clear         bool   `json:"clear"`
 }
@@ -102,7 +102,25 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 			return api.DefaultResponse(http.StatusInternalServerError)
 		}
 	} else {
-		_, err = state.Pool.Exec(d.Context, "UPDATE bots SET webhook = $1, web_auth = $2, webhooks_v2 = $3 WHERE bot_id = $4", payload.WebhookURL, payload.WebhookSecret, payload.WebhooksV2, id)
+		if payload.WebhookURL != "" {
+			_, err = state.Pool.Exec(d.Context, "UPDATE bots SET webhook = $1 WHERE bot_id = $2", payload.WebhookURL, id)
+
+			if err != nil {
+				state.Logger.Error(err)
+				return api.DefaultResponse(http.StatusInternalServerError)
+			}
+		}
+
+		if payload.WebhookSecret != "" {
+			_, err = state.Pool.Exec(d.Context, "UPDATE bots SET web_auth = $1 WHERE bot_id = $2", payload.WebhookSecret, id)
+
+			if err != nil {
+				state.Logger.Error(err)
+				return api.DefaultResponse(http.StatusInternalServerError)
+			}
+		}
+
+		_, err = state.Pool.Exec(d.Context, "UPDATE bots SET webhooks_v2 = $1 WHERE bot_id = $2", payload.WebhooksV2, id)
 
 		if err != nil {
 			state.Logger.Error(err)
