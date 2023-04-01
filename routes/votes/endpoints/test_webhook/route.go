@@ -3,8 +3,10 @@ package test_webhook
 import (
 	"math/rand"
 	"net/http"
+	"time"
 
 	"popplio/api"
+	"popplio/ratelimit"
 	"popplio/state"
 	"popplio/teams"
 	"popplio/types"
@@ -51,6 +53,28 @@ func Docs() *docs.Doc {
 }
 
 func Route(d api.RouteData, r *http.Request) api.HttpResponse {
+	limit, err := ratelimit.Ratelimit{
+		Expiry:      1 * time.Minute,
+		MaxRequests: 2,
+		Bucket:      "test_webhook",
+	}.Limit(d.Context, r)
+
+	if err != nil {
+		state.Logger.Error(err)
+		return api.DefaultResponse(http.StatusInternalServerError)
+	}
+
+	if limit.Exceeded {
+		return api.HttpResponse{
+			Json: types.ApiError{
+				Error:   true,
+				Message: "You are being ratelimited. Please try again in " + limit.TimeToReset.String(),
+			},
+			Headers: limit.Headers(),
+			Status:  http.StatusTooManyRequests,
+		}
+	}
+
 	name := chi.URLParam(r, "bid")
 
 	// Resolve bot ID
