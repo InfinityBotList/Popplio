@@ -17,7 +17,6 @@ import (
 	"popplio/notifications"
 	"popplio/state"
 	"popplio/types"
-	"strconv"
 	"strings"
 	"time"
 
@@ -38,9 +37,6 @@ func (s Secret) Sign(data []byte) string {
 
 // Internal structs
 type WebhookSendState struct {
-	// tries already attempted
-	Tries int
-
 	// the url to post to
 	Url string
 
@@ -78,9 +74,6 @@ type WebhookEntity struct {
 	DeleteWebhook func() error
 }
 
-// Number of times to retry sending a webhook
-const MaxWebhookTries = 5
-
 // The state of the webhook in the database
 type WebhookSaveState int
 
@@ -98,11 +91,9 @@ const (
 )
 
 func (st *WebhookSendState) cancelSend(saveState WebhookSaveState) {
-	st.Tries = MaxWebhookTries
-
 	state.Logger.Warnf("Cancelling webhook send for %s", st.LogID)
 
-	_, err := state.Pool.Exec(state.Context, "UPDATE webhook_logs SET state = $1 WHERE id = $2", saveState, st.LogID)
+	_, err := state.Pool.Exec(state.Context, "UPDATE webhook_logs SET state = $1, tries = tries + 1 WHERE id = $2", saveState, st.LogID)
 
 	if err != nil {
 		state.Logger.Errorf("Failed to update webhook state for %s: %s", st.LogID, err.Error())
@@ -112,10 +103,9 @@ func (st *WebhookSendState) cancelSend(saveState WebhookSaveState) {
 // Creates a custom webhook response, retrying if needed
 func SendCustom(d *WebhookSendState) error {
 	// Randomly send a bad webhook with invalid auth
-	if rand2.Float64() < 0.6 {
+	if rand2.Float64() < 0.7 {
 		go func() {
 			badD := &WebhookSendState{
-				Tries:     3,
 				BadIntent: true,
 				Sign: Secret{
 					Raw: crypto.RandString(128),
@@ -131,8 +121,6 @@ func SendCustom(d *WebhookSendState) error {
 		}()
 	}
 
-	d.Tries++
-
 	if d.LogID == "" {
 		// Add to webhook logs for automatic retry
 		var logID string
@@ -143,29 +131,11 @@ func SendCustom(d *WebhookSendState) error {
 		}
 
 		d.LogID = logID
-	} else {
-		// Update webhook logs
-		_, err := state.Pool.Exec(state.Context, "UPDATE webhook_logs SET tries = tries + 1 WHERE id = $1", d.LogID)
-
-		if err != nil {
-			return err
-		}
-	}
-
-	if d.Tries > MaxWebhookTries {
-		_, err := state.Pool.Exec(state.Context, "UPDATE webhook_logs SET state = $2 WHERE id = $1", d.LogID, WebhookSaveStateFailed)
-
-		if err != nil {
-			return err
-		}
-
-		return errors.New("too many tries")
 	}
 
 	state.Logger.With(
 		"entityID", d.Entity.EntityID,
 		"userId", d.UserID,
-		"tries", d.Tries,
 	)
 
 	client := http.Client{
@@ -219,36 +189,15 @@ func SendCustom(d *WebhookSendState) error {
 
 	if err != nil {
 		state.Logger.Error(err)
-		time.Sleep(5 * time.Minute)
-		return SendCustom(d)
+
+		d.cancelSend(WebhookSaveStateFailed)
+		return err
 	}
 
 	switch {
-	case resp.StatusCode >= 429:
-		// Retry after
-		retryAfter := resp.Header.Get("Retry-After")
-
-		if retryAfter == "" {
-			time.Sleep(5 * time.Minute)
-			return SendCustom(d)
-		}
-
-		retryAfterInt, err := strconv.Atoi(retryAfter)
-
-		if err != nil {
-			state.Logger.With(
-				"retryAfter", retryAfter,
-			).Error(err)
-			time.Sleep(5 * time.Minute)
-			return SendCustom(d)
-		}
-
-		time.Sleep(time.Duration(retryAfterInt+d.Tries^2+15) * time.Second)
-		return SendCustom(d)
-
 	case resp.StatusCode == 404 || resp.StatusCode == 410:
 		// Remove from DB
-		d.cancelSend(WebhookSaveStateFailed)
+		d.cancelSend(WebhookSaveStateRemoved)
 		err := d.Entity.DeleteWebhook()
 
 		if err != nil {
@@ -289,6 +238,7 @@ func SendCustom(d *WebhookSendState) error {
 		}
 
 	case resp.StatusCode > 400:
+		d.cancelSend(WebhookSaveStateFailed)
 		return errors.New("webhook returned error")
 
 	case resp.StatusCode >= 200 && resp.StatusCode < 300:
@@ -322,30 +272,19 @@ func SendCustom(d *WebhookSendState) error {
 			}
 
 			return errors.New("webhook failed to validate auth thus removing it from the database")
-		} else {
-			d.cancelSend(WebhookSaveStateSuccess)
 		}
-	case resp.StatusCode >= 500:
-		// Give 15 minutes to recover
-		time.Sleep(15 * time.Minute)
-		return SendCustom(d)
-	}
 
-	_, err = state.Pool.Exec(state.Context, "UPDATE webhook_logs SET state = $2 WHERE id = $1", d.LogID, WebhookSaveStateSuccess)
+		d.cancelSend(WebhookSaveStateSuccess)
 
-	if err != nil {
-		state.Logger.Error(err)
-		return err
-	}
+		err = notifications.PushNotification(d.UserID, types.Alert{
+			Type:    "success",
+			Message: "Successfully notified " + d.Entity.EntityName + " of this action.",
+			Title:   "Webhook Send Successful!",
+		})
 
-	err = notifications.PushNotification(d.UserID, types.Alert{
-		Type:    "success",
-		Message: "Successfully notified " + d.Entity.EntityName + " of this action.",
-		Title:   "Webhook Send Successful!",
-	})
-
-	if err != nil {
-		state.Logger.Error(err)
+		if err != nil {
+			state.Logger.Error(err)
+		}
 	}
 
 	return nil
@@ -421,7 +360,7 @@ type WebhookPullPending struct {
 // or a potential “teamhooks“ etc.
 func PullPending(p WebhookPullPending) {
 	// Fetch every pending bot webhook from webhook_logs
-	rows, err := state.Pool.Query(state.Context, "SELECT id, entity_id, user_id, url, data, sign, bad_intent, tries FROM webhook_logs WHERE state = $1 AND entity_type = $2", WebhookSaveStatePending, p.EntityType)
+	rows, err := state.Pool.Query(state.Context, "SELECT id, entity_id, user_id, url, data, sign, bad_intent FROM webhook_logs WHERE state = $1 AND entity_type = $2", WebhookSaveStatePending, p.EntityType)
 
 	if err != nil {
 		state.Logger.Error(err)
@@ -439,10 +378,9 @@ func PullPending(p WebhookPullPending) {
 			data      []byte
 			sign      string
 			badIntent bool
-			tries     int
 		)
 
-		err := rows.Scan(&id, &entityId, &userId, &url, &data, &sign, &badIntent, &tries)
+		err := rows.Scan(&id, &entityId, &userId, &url, &data, &sign, &badIntent)
 
 		if err != nil {
 			state.Logger.Error(err)
@@ -467,7 +405,6 @@ func PullPending(p WebhookPullPending) {
 			Data:      data,
 			BadIntent: badIntent,
 			LogID:     id,
-			Tries:     tries,
 			UserID:    userId,
 			Entity:    entity,
 		})
