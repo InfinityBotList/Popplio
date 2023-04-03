@@ -6,6 +6,7 @@ import (
 	"popplio/routes/bots/endpoints/get_all_bots"
 	"popplio/routes/bots/endpoints/get_bot"
 	"popplio/routes/bots/endpoints/get_bot_invite"
+	"popplio/routes/bots/endpoints/get_bot_meta"
 	"popplio/routes/bots/endpoints/get_bot_seo"
 	"popplio/routes/bots/endpoints/patch_bot_settings"
 	"popplio/routes/bots/endpoints/patch_bot_vanity"
@@ -40,6 +41,20 @@ func (b Router) Routes(r *chi.Mux) {
 		Method:  api.GET,
 		Docs:    get_bot.Docs,
 		Handler: get_bot.Route,
+	}.Route(r)
+
+	api.Route{
+		Pattern: "/users/{uid}/bots/{cid}/meta",
+		OpId:    "get_bot_meta",
+		Method:  api.GET,
+		Docs:    get_bot_meta.Docs,
+		Handler: get_bot_meta.Route,
+		Auth: []api.AuthType{
+			{
+				URLVar: "uid",
+				Type:   api.TargetTypeUser,
+			},
+		},
 	}.Route(r)
 
 	api.Route{

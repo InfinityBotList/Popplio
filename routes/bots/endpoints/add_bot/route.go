@@ -1,7 +1,6 @@
 package add_bot
 
 import (
-	"context"
 	"fmt"
 	"net/http"
 	"regexp"
@@ -9,6 +8,8 @@ import (
 	"time"
 
 	"popplio/api"
+	"popplio/ratelimit"
+	"popplio/routes/bots/assets"
 	"popplio/state"
 	"popplio/types"
 	"popplio/utils"
@@ -19,11 +20,7 @@ import (
 
 	"github.com/bwmarrin/discordgo"
 	"github.com/go-playground/validator/v10"
-	jsoniter "github.com/json-iterator/go"
-	"go.uber.org/zap"
 )
-
-var json = jsoniter.ConfigCompatibleWithStandardLibrary
 
 type internalData struct {
 	QueueName   *string
@@ -114,104 +111,39 @@ func Docs() *docs.Doc {
 	}
 }
 
-type Japidata struct {
-	Cached bool `json:"cached"`
-	Data   struct {
-		Application struct {
-			ID        string `json:"id"`
-			BotPublic bool   `json:"bot_public"`
-		} `json:"application"`
-		Bot struct {
-			ID                    string `json:"id"`
-			ApproximateGuildCount int    `json:"approximate_guild_count"`
-			Username              string `json:"username"`
-			AvatarURL             string `json:"avatarURL"`
-			AvatarHash            string `json:"avatarHash"`
-		} `json:"bot"`
-	} `json:"data"`
-}
-
-// Represents a response from checkBotClientId
-type checkBotClientIdResp struct {
-	guildCount int
-	botName    string
-	botAvatar  string
-}
-
-func checkBotClientId(ctx context.Context, bot *CreateBot) (*checkBotClientIdResp, error) {
-	cli := http.Client{
-		Timeout: 5 * time.Second,
-	}
-
-	req, err := http.NewRequestWithContext(ctx, "GET", "https://japi.rest/discord/v1/application/"+bot.ClientID, nil)
-
-	if err != nil {
-		return nil, err
-	}
-
-	japiKey := state.Config.JAPI.Key
-	if japiKey != "" {
-		req.Header.Set("Authorization", japiKey)
-	}
-
-	resp, err := cli.Do(req)
-
-	if err != nil {
-		return nil, err
-	}
-
-	if resp.StatusCode == http.StatusTooManyRequests {
-		return nil, fmt.Errorf("we're being ratelimited by our anti-abuse provider! Please try again in %s seconds", resp.Header.Get("Retry-After"))
-	} else if resp.StatusCode > 400 {
-		return nil, fmt.Errorf("we couldn't find a bot with that client ID! Status code: %d", resp.StatusCode)
-	}
-
-	defer resp.Body.Close()
-
-	if resp.StatusCode != 200 {
-		return nil, err
-	}
-
-	var data Japidata
-
-	err = json.NewDecoder(resp.Body).Decode(&data)
-
-	if err != nil {
-		return nil, err
-	}
-
-	if !data.Data.Application.BotPublic {
-		return nil, fmt.Errorf("bot is not public")
-	}
-
-	if !data.Cached {
-		state.Logger.With(
-			zap.String("bot_id", bot.BotID),
-			zap.String("client_id", bot.ClientID),
-		).Info("JAPI cache MISS")
-	} else {
-		state.Logger.With(
-			zap.String("bot_id", bot.BotID),
-			zap.String("client_id", bot.ClientID),
-		).Info("JAPI cache HIT")
-	}
-
-	if bot.BotID != data.Data.Bot.ID || bot.ClientID != data.Data.Application.ID {
-		return nil, fmt.Errorf("the bot ID provided does not match the bot ID found")
-	}
-
-	if data.Data.Bot.AvatarURL == "" {
-		data.Data.Bot.AvatarURL = "https://cdn.discordapp.com/avatars/" + data.Data.Bot.ID + "/" + data.Data.Bot.AvatarHash + ".png"
-	}
-
-	return &checkBotClientIdResp{
-		guildCount: data.Data.Bot.ApproximateGuildCount,
-		botName:    data.Data.Bot.Username,
-		botAvatar:  data.Data.Bot.AvatarURL,
-	}, nil
-}
-
 func Route(d api.RouteData, r *http.Request) api.HttpResponse {
+	if d.Auth.ID != "728871946456137770" {
+		return api.HttpResponse{
+			Status: http.StatusNotImplemented,
+			Json: types.ApiError{
+				Message: "This endpoint is temporarily under maintenance for some important fixups",
+				Error:   true,
+			},
+		}
+	}
+
+	limit, err := ratelimit.Ratelimit{
+		Expiry:      1 * time.Minute,
+		MaxRequests: 5,
+		Bucket:      "add_bot",
+	}.Limit(d.Context, r)
+
+	if err != nil {
+		state.Logger.Error(err)
+		return api.DefaultResponse(http.StatusInternalServerError)
+	}
+
+	if limit.Exceeded {
+		return api.HttpResponse{
+			Json: types.ApiError{
+				Error:   true,
+				Message: "You are being ratelimited. Please try again in " + limit.TimeToReset.String(),
+			},
+			Headers: limit.Headers(),
+			Status:  http.StatusTooManyRequests,
+		}
+	}
+
 	var payload CreateBot
 
 	hresp, ok := api.MarshalReq(r, &payload)
@@ -222,7 +154,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 
 	// Validate the payload
 
-	err := state.Validator.Struct(payload)
+	err = state.Validator.Struct(payload)
 
 	if err != nil {
 		errors := err.(validator.ValidationErrors)
@@ -297,13 +229,43 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 		}
 	}
 
-	resp, err := checkBotClientId(d.Context, &payload)
+	metadata, err := assets.CheckBot(payload.BotID, payload.ClientID)
 
 	if err != nil {
 		return api.HttpResponse{
 			Status: http.StatusBadRequest,
 			Json: types.ApiError{
-				Message: "Hmmm..." + err.Error(),
+				Message: err.Error(),
+				Error:   true,
+			},
+		}
+	}
+
+	if metadata.BotID != payload.BotID {
+		return api.HttpResponse{
+			Status: http.StatusBadRequest,
+			Json: types.ApiError{
+				Message: "The bot ID provided does not match the bot ID found",
+				Error:   true,
+			},
+		}
+	}
+
+	if metadata.ListType != "" {
+		return api.HttpResponse{
+			Status: http.StatusBadRequest,
+			Json: types.ApiError{
+				Message: "This bot is already in the database",
+				Error:   true,
+			},
+		}
+	}
+
+	if !metadata.BotPublic {
+		return api.HttpResponse{
+			Status: http.StatusBadRequest,
+			Json: types.ApiError{
+				Message: "Bot is not public",
 				Error:   true,
 			},
 		}
@@ -311,10 +273,10 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 
 	id := internalData{}
 
-	id.QueueName = &resp.botName
-	id.QueueAvatar = &resp.botAvatar
+	id.QueueName = &metadata.Name
+	id.QueueAvatar = &metadata.Avatar
 	id.Owner = d.Auth.ID
-	id.GuildCount = &resp.guildCount
+	id.GuildCount = &metadata.GuildCount
 
 	if payload.StaffNote == nil {
 		defNote := "No note!"
@@ -322,7 +284,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 	}
 
 	// Create initial vanity URL by removing all unicode characters and replacing spaces with dashes
-	vanity := strings.ReplaceAll(strings.ToLower(resp.botName), " ", "-")
+	vanity := strings.ReplaceAll(strings.ToLower(metadata.Name), " ", "-")
 	vanity = regexp.MustCompile("[^a-zA-Z0-9-]").ReplaceAllString(vanity, "")
 	vanity = strings.TrimSuffix(vanity, "-")
 
@@ -374,12 +336,12 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 				URL:   state.Config.Sites.Frontend + "/bots/" + payload.BotID,
 				Title: "New Bot Added",
 				Thumbnail: &discordgo.MessageEmbedThumbnail{
-					URL: resp.botAvatar,
+					URL: metadata.Avatar,
 				},
 				Fields: []*discordgo.MessageEmbedField{
 					{
 						Name:   "Name",
-						Value:  resp.botName,
+						Value:  metadata.Name,
 						Inline: true,
 					},
 					{
