@@ -134,7 +134,7 @@ func CheckBot(fallbackBotId, clientId string) (*DiscordBotMeta, error) {
 		}
 
 		if fallbackBotId == "" {
-			if cidInt > 132550911590400000 {
+			if cidInt < 132550911590400000 {
 				return nil, errors.New("fallbackNeeded")
 			}
 
