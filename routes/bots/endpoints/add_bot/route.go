@@ -112,16 +112,6 @@ func Docs() *docs.Doc {
 }
 
 func Route(d api.RouteData, r *http.Request) api.HttpResponse {
-	if d.Auth.ID != "728871946456137770" {
-		return api.HttpResponse{
-			Status: http.StatusNotImplemented,
-			Json: types.ApiError{
-				Message: "This endpoint is temporarily under maintenance for some important fixups",
-				Error:   true,
-			},
-		}
-	}
-
 	limit, err := ratelimit.Ratelimit{
 		Expiry:      1 * time.Minute,
 		MaxRequests: 5,
