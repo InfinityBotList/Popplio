@@ -72,13 +72,23 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 	cid := chi.URLParam(r, "cid")
 
 	// Get bot metadata
-	meta, err := assets.CheckBot(cid, fallbackId)
+	meta, err := assets.CheckBot(fallbackId, cid)
 
 	if err != nil {
 		return api.HttpResponse{
 			Status: http.StatusBadRequest,
 			Json: types.ApiError{
 				Message: err.Error(),
+				Error:   true,
+			},
+		}
+	}
+
+	if meta == nil {
+		return api.HttpResponse{
+			Status: http.StatusInternalServerError,
+			Json: types.ApiError{
+				Message: "Internal error: meta returned nil",
 				Error:   true,
 			},
 		}

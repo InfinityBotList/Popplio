@@ -53,7 +53,7 @@ func CheckBot(fallbackBotId, clientId string) (*DiscordBotMeta, error) {
 	cidInt, err := strconv.ParseInt(clientId, 10, 64)
 
 	if err != nil {
-		return nil, errors.New("the client id provided is not an actual bot id")
+		return nil, fmt.Errorf("error parsing client id as int: %s", clientId)
 	}
 
 	cli := http.Client{
@@ -63,7 +63,7 @@ func CheckBot(fallbackBotId, clientId string) (*DiscordBotMeta, error) {
 	req, err := http.NewRequestWithContext(state.Context, "GET", "https://japi.rest/discord/v1/application/"+clientId, nil)
 
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("error creating request: %s", err.Error())
 	}
 
 	japiKey := state.Config.JAPI.Key
@@ -74,7 +74,7 @@ func CheckBot(fallbackBotId, clientId string) (*DiscordBotMeta, error) {
 	resp, err := cli.Do(req)
 
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("error making request: %s", err.Error())
 	}
 
 	if resp.StatusCode == http.StatusTooManyRequests {
@@ -86,7 +86,7 @@ func CheckBot(fallbackBotId, clientId string) (*DiscordBotMeta, error) {
 	defer resp.Body.Close()
 
 	if resp.StatusCode != 200 {
-		return nil, err
+		return nil, errors.New("we couldn't find a bot with that client ID! Status code: " + strconv.Itoa(resp.StatusCode))
 	}
 
 	var data japidata
@@ -195,14 +195,6 @@ func CheckBot(fallbackBotId, clientId string) (*DiscordBotMeta, error) {
 			Tags:        data.Data.Application.Tags,
 			Fallback:    false,
 		}
-
-		if data.Data.Bot.AvatarURL == "" {
-			metadata.Avatar = "https://cdn.discordapp.com/avatars/" + data.Data.Bot.ID + "/" + data.Data.Bot.AvatarHash + ".png"
-		}
-	}
-
-	if metadata.Avatar == "" {
-		metadata.Avatar = "https://cdn.discordapp.com/embed/avatars/0.png"
 	}
 
 	// Check if the bot is already in the database
