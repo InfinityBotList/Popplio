@@ -44,7 +44,7 @@ func Docs() *docs.Doc {
 func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 	reqType := r.URL.Query().Get("delete")
 
-	if reqType != "true" && reqType != "false" && reqType != "" {
+	if reqType != "true" && reqType != "false" {
 		return api.HttpResponse{
 			Status: http.StatusBadRequest,
 			Json:   types.ApiError{Message: "delete must be ether 'true' or 'false'", Error: true},
