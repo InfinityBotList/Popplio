@@ -104,8 +104,6 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 			prettyName = "Reset User Token"
 		case "db":
 			prettyName = "Delete Bot"
-		case "tb":
-			prettyName = "Transfer Bot Ownership"
 		}
 
 		err = template.Must(template.New("confirm").Parse(confirmTemplate)).Execute(&templateResp, assets.ConfirmTemplate{
@@ -379,20 +377,6 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 			Status: http.StatusOK,
 			Data:   "Successfully deleted bot :)",
 		}
-	// Transfer bot ownership
-	case "tb":
-		if action.TID == "" {
-			return api.HttpResponse{
-				Status: http.StatusBadRequest,
-				Data:   "No target id set",
-			}
-		}
-
-		return api.HttpResponse{
-			Status: http.StatusOK,
-			Data:   "This is currently disabled while we transfer to teams! Please contact us if you need to transfer a bot at this time",
-		}
-
 	default:
 		return api.HttpResponse{
 			Status: http.StatusBadRequest,
