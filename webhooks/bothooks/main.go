@@ -144,15 +144,21 @@ func (c withCreateHook) Send() error {
 
 	params := evt.CreateHookParams(resp)
 
-	ok, err := sender.SendDiscord(webhookURL, func() error {
-		_, err := state.Pool.Exec(state.Context, "UPDATE bots SET webhook = NULL WHERE bot_id = $1", c.bot.ID)
+	ok, err := sender.SendDiscord(
+		c.user.ID,
+		c.bot.Username,
+		webhookURL,
+		func() error {
+			_, err := state.Pool.Exec(state.Context, "UPDATE bots SET webhook = NULL WHERE bot_id = $1", c.bot.ID)
 
-		if err != nil {
-			return err
-		}
+			if err != nil {
+				return err
+			}
 
-		return nil
-	}, params)
+			return nil
+		},
+		params,
+	)
 
 	if err != nil {
 		state.Logger.Error(err)

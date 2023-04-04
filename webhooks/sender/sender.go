@@ -11,6 +11,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	rand2 "math/rand"
 	"net/http"
@@ -213,6 +214,16 @@ func SendCustom(d *WebhookSendState) error {
 			return err
 		}
 
+		err = notifications.PushNotification(d.UserID, types.Alert{
+			Type:    types.AlertTypeWarning,
+			Message: "This bot seems to not have a working rewards system.",
+			Title:   "Whoa!",
+		})
+
+		if err != nil {
+			state.Logger.Error(err)
+		}
+
 		return errors.New("webhook returned not found thus removing it from the database")
 
 	case resp.StatusCode == 401 || resp.StatusCode == 403:
@@ -225,7 +236,7 @@ func SendCustom(d *WebhookSendState) error {
 			// webhook auth is invalid, return error
 			d.cancelSend(WebhookSaveStateFailed)
 			err = notifications.PushNotification(d.UserID, types.Alert{
-				Type:    "info",
+				Type:    types.AlertTypeInfo,
 				Message: "This webhook does not properly handle authentication at this time.",
 				Title:   "Webhook Auth Error",
 			})
@@ -239,6 +250,17 @@ func SendCustom(d *WebhookSendState) error {
 
 	case resp.StatusCode > 400:
 		d.cancelSend(WebhookSaveStateFailed)
+
+		err = notifications.PushNotification(d.UserID, types.Alert{
+			Type:    types.AlertTypeError,
+			Message: fmt.Sprintf("We were unable to notify this bot: %d", resp.StatusCode),
+			Title:   "Webhook Auth Error",
+		})
+
+		if err != nil {
+			state.Logger.Error(err)
+		}
+
 		return errors.New("webhook returned error")
 
 	case resp.StatusCode >= 200 && resp.StatusCode < 300:
@@ -246,7 +268,7 @@ func SendCustom(d *WebhookSendState) error {
 			d.cancelSend(WebhookSaveStateRemoved)
 
 			err = notifications.PushNotification(d.UserID, types.Alert{
-				Type:    "info",
+				Type:    types.AlertTypeError,
 				Message: "This webhook does not properly handle authentication at this time.",
 				Title:   "Webhook Auth Error",
 			})
@@ -277,7 +299,7 @@ func SendCustom(d *WebhookSendState) error {
 		d.cancelSend(WebhookSaveStateSuccess)
 
 		err = notifications.PushNotification(d.UserID, types.Alert{
-			Type:    "success",
+			Type:    types.AlertTypeSuccess,
 			Message: "Successfully notified " + d.Entity.EntityName + " of this action.",
 			Title:   "Webhook Send Successful!",
 		})
@@ -290,7 +312,7 @@ func SendCustom(d *WebhookSendState) error {
 	return nil
 }
 
-func SendDiscord(url string, delete func() error, params *discordgo.WebhookParams) (validUrl bool, err error) {
+func SendDiscord(userId, entityName, url string, delete func() error, params *discordgo.WebhookParams) (validUrl bool, err error) {
 	validPrefixes := []string{
 		"https://discordapp.com/",
 		"https://discord.com/",
@@ -341,6 +363,16 @@ func SendDiscord(url string, delete func() error, params *discordgo.WebhookParam
 		"url", url,
 		"statusCode", resp.StatusCode,
 	).Info("sent discord webhook")
+
+	err = notifications.PushNotification(userId, types.Alert{
+		Type:    types.AlertTypeSuccess,
+		Message: "Successfully notified " + entityName + " of this action.",
+		Title:   "Webhook Send Successful!",
+	})
+
+	if err != nil {
+		state.Logger.Error(err)
+	}
 
 	return true, nil
 }
