@@ -84,7 +84,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 		}
 	}
 
-	output := state.Redis.Get(d.Context, "data:"+taskId+"_output").Val()
+	output := state.Redis.Get(d.Context, "data:"+taskId+"_out").Val()
 
 	return api.HttpResponse{
 		Status: http.StatusOK,

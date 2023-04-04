@@ -55,7 +55,7 @@ func addStatus(taskId, status string) {
 	statuses = append(statuses, status)
 
 	// Set new status
-	bytes, err := json.MarshalToString(status)
+	bytes, err := json.MarshalToString(statuses)
 
 	if err != nil {
 		state.Logger.Error(err)
@@ -100,6 +100,8 @@ func DataTask(taskId string, id string, ip string, del bool) {
 	finalDump := make(map[string]any)
 
 	for _, key := range keys {
+		addStatus(taskId, "Fetching data for table: "+key.TableName)
+
 		if key.ForeignTable == "users" {
 			sqlStmt := "SELECT * FROM " + key.TableName + " WHERE " + key.ColumnName + "= $1"
 
