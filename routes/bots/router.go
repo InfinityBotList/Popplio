@@ -12,6 +12,7 @@ import (
 	"popplio/routes/bots/endpoints/patch_bot_vanity"
 	"popplio/routes/bots/endpoints/patch_bot_webhook"
 	"popplio/routes/bots/endpoints/post_stats"
+	"popplio/routes/bots/endpoints/reset_bot_token"
 
 	"github.com/go-chi/chi/v5"
 )
@@ -136,6 +137,20 @@ func (b Router) Routes(r *chi.Mux) {
 		Method:  api.PATCH,
 		Docs:    patch_bot_webhook.Docs,
 		Handler: patch_bot_webhook.Route,
+		Auth: []api.AuthType{
+			{
+				URLVar: "uid",
+				Type:   api.TargetTypeUser,
+			},
+		},
+	}.Route(r)
+
+	api.Route{
+		Pattern: "/users/{uid}/bots/{bid}/token",
+		OpId:    "reset_bot_token",
+		Method:  api.PATCH,
+		Docs:    reset_bot_token.Docs,
+		Handler: reset_bot_token.Route,
 		Auth: []api.AuthType{
 			{
 				URLVar: "uid",

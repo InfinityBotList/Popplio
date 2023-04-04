@@ -102,8 +102,6 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 			prettyName = "Data Deletion Request"
 		case "rtu":
 			prettyName = "Reset User Token"
-		case "rtb":
-			prettyName = "Reset Bot Token"
 		case "db":
 			prettyName = "Delete Bot"
 		case "tb":
@@ -309,36 +307,6 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 		token = crypto.RandString(128)
 
 		_, err := state.Pool.Exec(d.Context, "UPDATE users SET api_token = $1 WHERE user_id = $2", token, user.ID)
-
-		if err != nil {
-			return api.HttpResponse{
-				Status: http.StatusInternalServerError,
-				Data:   err.Error(),
-			}
-		}
-
-		return api.HttpResponse{
-			Data: "Your new API token is: " + token + "\n\nThank you and have a nice day ;)",
-		}
-	// Reset token for bots
-	case "rtb":
-		if action.TID == "" {
-			return api.HttpResponse{
-				Status: http.StatusBadRequest,
-				Data:   "No target id set",
-			}
-		}
-
-		if !perms.Has(teams.TeamPermissionResetBotTokens) {
-			return api.HttpResponse{
-				Status: http.StatusUnauthorized,
-				Data:   "You do not have permission to reset this bot's token",
-			}
-		}
-
-		token := crypto.RandString(128)
-
-		_, err := state.Pool.Exec(d.Context, "UPDATE bots SET api_token = $1 WHERE bot_id = $2", token, action.TID)
 
 		if err != nil {
 			return api.HttpResponse{
