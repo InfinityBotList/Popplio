@@ -25,9 +25,10 @@ import (
 	"popplio/routes/tickets"
 	"popplio/routes/users"
 	"popplio/routes/votes"
+	"popplio/routes/webhooks"
 	"popplio/state"
 	"popplio/types"
-	"popplio/webhooks"
+	poplhooks "popplio/webhooks"
 
 	docs "github.com/infinitybotlist/doclib"
 
@@ -115,7 +116,7 @@ func main() {
 	}
 
 	docs.Setup()
-	webhooks.Setup()
+	poplhooks.Setup()
 
 	docs.AddSecuritySchema("User", "User-Auth", "Requires a user token. Should be prefixed with `User ` in `Authorization` header.")
 	docs.AddSecuritySchema("Bot", "Bot-Auth", "Requires a bot token. Should be prefixed with `Bot ` in `Authorization` header.")
@@ -145,6 +146,7 @@ func main() {
 		users.Router{},
 		payments.Router{},
 		votes.Router{},
+		webhooks.Router{},
 		diagnostics.Router{},
 		apps.Router{},
 		reviews.Router{},

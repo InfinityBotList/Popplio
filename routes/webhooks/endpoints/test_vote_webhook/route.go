@@ -1,4 +1,4 @@
-package test_webhook
+package test_vote_webhook
 
 import (
 	"math/rand"
@@ -29,8 +29,8 @@ type WebhookAuthPost struct {
 
 func Docs() *docs.Doc {
 	return &docs.Doc{
-		Summary:     "Test Webhook",
-		Description: "Sends a test webhook to allow testing your vote system using the credentials you have set.",
+		Summary:     "Test Vote Webhook",
+		Description: "Sends a test webhook to allow testing our vote webhook system using the credentials you have set.",
 		Req:         WebhookAuthPost{},
 		Resp:        types.ApiError{},
 		Params: []docs.Parameter{

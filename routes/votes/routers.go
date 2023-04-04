@@ -7,7 +7,6 @@ import (
 	"popplio/routes/votes/endpoints/get_user_pack_votes"
 	"popplio/routes/votes/endpoints/put_user_bot_votes"
 	"popplio/routes/votes/endpoints/put_user_pack_votes"
-	"popplio/routes/votes/endpoints/test_webhook"
 
 	"github.com/go-chi/chi/v5"
 )
@@ -85,20 +84,6 @@ func (b Router) Routes(r *chi.Mux) {
 			{
 				URLVar: "uid",
 				Type:   api.TargetTypeUser,
-			},
-		},
-	}.Route(r)
-
-	api.Route{
-		Pattern: "/users/{uid}/bots/{bid}/test-webhook",
-		OpId:    "test_webhook",
-		Method:  api.POST,
-		Docs:    test_webhook.Docs,
-		Handler: test_webhook.Route,
-		Auth: []api.AuthType{
-			{
-				Type:   api.TargetTypeUser,
-				URLVar: "uid",
 			},
 		},
 	}.Route(r)
