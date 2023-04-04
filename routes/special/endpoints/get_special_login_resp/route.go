@@ -2,7 +2,6 @@ package get_special_login_resp
 
 import (
 	"bytes"
-	"fmt"
 	"html/template"
 	"io"
 	"net/http"
@@ -21,7 +20,6 @@ import (
 
 	_ "embed"
 
-	"github.com/bwmarrin/discordgo"
 	"github.com/infinitybotlist/eureka/crypto"
 	jsoniter "github.com/json-iterator/go"
 )
@@ -100,10 +98,6 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 			prettyName = "Data Request"
 		case "ddr":
 			prettyName = "Data Deletion Request"
-		case "rtu":
-			prettyName = "Reset User Token"
-		case "db":
-			prettyName = "Delete Bot"
 		}
 
 		err = template.Must(template.New("confirm").Parse(confirmTemplate)).Execute(&templateResp, assets.ConfirmTemplate{
@@ -298,84 +292,6 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 			Headers: map[string]string{
 				"X-Defer": taskId,
 			},
-		}
-	// Reset token for users
-	case "rtu":
-		var token string
-		token = crypto.RandString(128)
-
-		_, err := state.Pool.Exec(d.Context, "UPDATE users SET api_token = $1 WHERE user_id = $2", token, user.ID)
-
-		if err != nil {
-			return api.HttpResponse{
-				Status: http.StatusInternalServerError,
-				Data:   err.Error(),
-			}
-		}
-
-		return api.HttpResponse{
-			Data: "Your new API token is: " + token + "\n\nThank you and have a nice day ;)",
-		}
-	// Delete the bot
-	case "db":
-		if action.TID == "" {
-			return api.HttpResponse{
-				Status: http.StatusBadRequest,
-				Data:   "No target id set",
-			}
-		}
-
-		if !perms.Has(teams.TeamPermissionDeleteBots) {
-			return api.HttpResponse{
-				Status: http.StatusUnauthorized,
-				Data:   "You do not have permission to delete bots",
-			}
-		}
-
-		// Clear cache
-		utils.ClearBotCache(d.Context, action.TID)
-
-		// Delete bot
-		_, err = state.Pool.Exec(d.Context, "DELETE FROM bots WHERE bot_id = $1", action.TID)
-
-		if err != nil {
-			return api.HttpResponse{
-				Status: http.StatusInternalServerError,
-				Data:   err.Error(),
-			}
-		}
-
-		// Send embed to bot log channel
-		_, err = state.Discord.ChannelMessageSendComplex(state.Config.Channels.ModLogs, &discordgo.MessageSend{
-			Content: "",
-			Embeds: []*discordgo.MessageEmbed{
-				{
-					URL:   state.Config.Sites.Frontend + "/bots/" + action.TID,
-					Title: "Bot Deleted",
-					Fields: []*discordgo.MessageEmbedField{
-						{
-							Name:  "Bot ID",
-							Value: action.TID,
-						},
-						{
-							Name:  "Deleter",
-							Value: fmt.Sprintf("<@%s>", user.ID),
-						},
-					},
-				},
-			},
-		})
-
-		if err != nil {
-			return api.HttpResponse{
-				Status: http.StatusOK,
-				Data:   "Successfully deleted bot [ :) ] but we couldn't send a log message [ :( ]",
-			}
-		}
-
-		return api.HttpResponse{
-			Status: http.StatusOK,
-			Data:   "Successfully deleted bot :)",
 		}
 	default:
 		return api.HttpResponse{

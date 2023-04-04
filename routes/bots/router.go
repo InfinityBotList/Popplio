@@ -3,6 +3,7 @@ package bots
 import (
 	"popplio/api"
 	"popplio/routes/bots/endpoints/add_bot"
+	"popplio/routes/bots/endpoints/delete_bot"
 	"popplio/routes/bots/endpoints/get_all_bots"
 	"popplio/routes/bots/endpoints/get_bot"
 	"popplio/routes/bots/endpoints/get_bot_invite"
@@ -100,6 +101,20 @@ func (b Router) Routes(r *chi.Mux) {
 			},
 		},
 		Setup: add_bot.Setup,
+	}.Route(r)
+
+	api.Route{
+		Pattern: "/users/{uid}/bots/{bid}",
+		OpId:    "delete_bot",
+		Method:  api.DELETE,
+		Docs:    delete_bot.Docs,
+		Handler: delete_bot.Route,
+		Auth: []api.AuthType{
+			{
+				URLVar: "uid",
+				Type:   api.TargetTypeUser,
+			},
+		},
 	}.Route(r)
 
 	api.Route{

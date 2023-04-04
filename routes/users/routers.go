@@ -15,6 +15,7 @@ import (
 	"popplio/routes/users/endpoints/post_user_subscription"
 	"popplio/routes/users/endpoints/put_user"
 	"popplio/routes/users/endpoints/put_user_reminders"
+	"popplio/routes/users/endpoints/reset_user_token"
 
 	"github.com/go-chi/chi/v5"
 )
@@ -42,6 +43,20 @@ func (b Router) Routes(r *chi.Mux) {
 		Method:  api.PATCH,
 		Docs:    patch_user_profile.Docs,
 		Handler: patch_user_profile.Route,
+		Auth: []api.AuthType{
+			{
+				URLVar: "id",
+				Type:   api.TargetTypeUser,
+			},
+		},
+	}.Route(r)
+
+	api.Route{
+		Pattern: "/users/{id}/token",
+		OpId:    "reset_user_token",
+		Method:  api.PATCH,
+		Docs:    reset_user_token.Docs,
+		Handler: reset_user_token.Route,
 		Auth: []api.AuthType{
 			{
 				URLVar: "id",
