@@ -2,8 +2,10 @@ package users
 
 import (
 	"popplio/api"
+	"popplio/routes/users/endpoints/create_data_task"
 	"popplio/routes/users/endpoints/delete_user_notifications"
 	"popplio/routes/users/endpoints/delete_user_reminders"
+	"popplio/routes/users/endpoints/get_data_task"
 	"popplio/routes/users/endpoints/get_notification_info"
 	"popplio/routes/users/endpoints/get_user"
 	"popplio/routes/users/endpoints/get_user_alerts"
@@ -57,6 +59,34 @@ func (b Router) Routes(r *chi.Mux) {
 		Method:  api.PATCH,
 		Docs:    reset_user_token.Docs,
 		Handler: reset_user_token.Route,
+		Auth: []api.AuthType{
+			{
+				URLVar: "id",
+				Type:   api.TargetTypeUser,
+			},
+		},
+	}.Route(r)
+
+	api.Route{
+		Pattern: "/users/{id}/data/{tid}",
+		OpId:    "get_data_task",
+		Method:  api.GET,
+		Docs:    get_data_task.Docs,
+		Handler: get_data_task.Route,
+		Auth: []api.AuthType{
+			{
+				URLVar: "id",
+				Type:   api.TargetTypeUser,
+			},
+		},
+	}.Route(r)
+
+	api.Route{
+		Pattern: "/users/{id}/data",
+		OpId:    "create_data_task",
+		Method:  api.POST,
+		Docs:    create_data_task.Docs,
+		Handler: create_data_task.Route,
 		Auth: []api.AuthType{
 			{
 				URLVar: "id",

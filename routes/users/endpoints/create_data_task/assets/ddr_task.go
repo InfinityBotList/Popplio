@@ -2,10 +2,10 @@ package assets
 
 import (
 	"popplio/state"
+	"time"
 
 	"github.com/georgysavva/scany/v2/pgxscan"
 	jsoniter "github.com/json-iterator/go"
-	"github.com/redis/go-redis/v9"
 )
 
 var json = jsoniter.ConfigCompatibleWithStandardLibrary
@@ -34,12 +34,43 @@ FROM pg_constraint c
     INNER JOIN pg_attribute referenced_field ON (referenced_field.attrelid = c.confrelid AND referenced_field.attnum = conf.confkey)
 WHERE c.contype = 'f'`
 
+func addStatus(taskId, status string) {
+	// Get existing error
+	existing, err := state.Redis.Get(state.Context, taskId+"_status").Result()
+
+	if err != nil {
+		state.Logger.Error(err)
+		existing = "[]"
+	}
+
+	// Parse existing status
+	var statuses []string
+
+	if err := json.UnmarshalFromString(existing, &statuses); err != nil {
+		state.Logger.Error(err)
+		statuses = []string{}
+	}
+
+	// Append new status
+	statuses = append(statuses, status)
+
+	// Set new status
+	bytes, err := json.MarshalToString(status)
+
+	if err != nil {
+		state.Logger.Error(err)
+		return
+	}
+
+	if err := state.Redis.Set(state.Context, taskId+"_status", bytes, time.Hour*4).Err(); err != nil {
+		state.Logger.Error(err)
+	}
+}
+
 func DataTask(taskId string, id string, ip string, del bool) {
 	ctx := state.Context
 
-	state.Redis.SetArgs(ctx, taskId, "Fetching basic user data", redis.SetArgs{
-		KeepTTL: true,
-	}).Err()
+	addStatus(taskId, "Fetching basic user data")
 
 	var keys []TableStruct
 
@@ -48,20 +79,14 @@ func DataTask(taskId string, id string, ip string, del bool) {
 	if err != nil {
 		state.Logger.Error(err)
 
-		state.Redis.SetArgs(ctx, taskId, "Critical:"+err.Error(), redis.SetArgs{
-			KeepTTL: true,
-		})
-
+		addStatus(taskId, "ERROR: db error [whirlpool]: "+err.Error())
 		return
 	}
 
 	if err := pgxscan.ScanAll(&keys, data); err != nil {
 		state.Logger.Error(err)
 
-		state.Redis.SetArgs(ctx, taskId, "Critical:"+err.Error(), redis.SetArgs{
-			KeepTTL: true,
-		})
-
+		addStatus(taskId, "ERROR: db error [riptide]: "+err.Error())
 		return
 	}
 
@@ -89,10 +114,7 @@ func DataTask(taskId string, id string, ip string, del bool) {
 			if err := pgxscan.ScanAll(&rows, data); err != nil {
 				state.Logger.Error(err)
 
-				state.Redis.SetArgs(ctx, taskId, "Critical:"+err.Error(), redis.SetArgs{
-					KeepTTL: true,
-				})
-
+				addStatus(taskId, "ERROR: db error [catnip]: "+err.Error())
 				return
 			}
 
@@ -104,10 +126,7 @@ func DataTask(taskId string, id string, ip string, del bool) {
 					if err != nil {
 						state.Logger.Error(err)
 
-						state.Redis.SetArgs(ctx, taskId, "Critical:"+err.Error(), redis.SetArgs{
-							KeepTTL: true,
-						})
-
+						addStatus(taskId, "ERROR: db error [lungwort]: "+err.Error())
 						return
 					}
 
@@ -117,10 +136,7 @@ func DataTask(taskId string, id string, ip string, del bool) {
 						if err := tmRows.Scan(&count); err != nil {
 							state.Logger.Error(err)
 
-							state.Redis.SetArgs(ctx, taskId, "Critical:"+err.Error(), redis.SetArgs{
-								KeepTTL: true,
-							})
-
+							addStatus(taskId, "ERROR: db error [poppy]: "+err.Error())
 							return
 						}
 
@@ -131,10 +147,7 @@ func DataTask(taskId string, id string, ip string, del bool) {
 							if err != nil {
 								state.Logger.Error(err)
 
-								state.Redis.SetArgs(ctx, taskId, "Critical:"+err.Error(), redis.SetArgs{
-									KeepTTL: true,
-								})
-
+								addStatus(taskId, "ERROR: db error [piplup]: "+err.Error())
 								return
 							}
 						}
@@ -148,10 +161,7 @@ func DataTask(taskId string, id string, ip string, del bool) {
 				if err != nil {
 					state.Logger.Error(err)
 
-					state.Redis.SetArgs(ctx, taskId, "Critical:"+err.Error(), redis.SetArgs{
-						KeepTTL: true,
-					})
-
+					addStatus(taskId, "ERROR: db error [primrose]: "+err.Error())
 					return
 				}
 			}
@@ -186,13 +196,10 @@ func DataTask(taskId string, id string, ip string, del bool) {
 
 	if err != nil {
 		state.Logger.Error("Failed to encode data")
-		state.Redis.SetArgs(ctx, taskId, "Failed to encode data: "+err.Error(), redis.SetArgs{
-			KeepTTL: true,
-		})
+
+		addStatus(taskId, "ERROR: failed to encode data [sandstorm]: "+err.Error())
 		return
 	}
 
-	state.Redis.SetArgs(ctx, taskId, string(bytes), redis.SetArgs{
-		KeepTTL: false,
-	})
+	state.Redis.Set(ctx, taskId+"_out", string(bytes), 15*time.Minute)
 }

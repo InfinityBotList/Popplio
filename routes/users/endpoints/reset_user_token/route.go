@@ -7,7 +7,6 @@ import (
 	"popplio/types"
 	"popplio/utils"
 
-	"github.com/go-chi/chi/v5"
 	docs "github.com/infinitybotlist/doclib"
 	"github.com/infinitybotlist/eureka/crypto"
 )
@@ -30,12 +29,6 @@ func Docs() *docs.Doc {
 }
 
 func Route(d api.RouteData, r *http.Request) api.HttpResponse {
-	id := chi.URLParam(r, "id")
-
-	if id == "" {
-		return api.DefaultResponse(http.StatusBadRequest)
-	}
-
 	utils.ClearUserCache(d.Context, d.Auth.ID)
 
 	token := crypto.RandString(128)

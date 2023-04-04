@@ -20,7 +20,6 @@ import (
 	"popplio/routes/packs"
 	"popplio/routes/payments"
 	"popplio/routes/reviews"
-	"popplio/routes/special"
 	"popplio/routes/teams"
 	"popplio/routes/tickets"
 	"popplio/routes/users"
@@ -140,7 +139,6 @@ func main() {
 		duser.Router{},
 		list.Router{},
 		packs.Router{},
-		special.Router{},
 		teams.Router{},
 		tickets.Router{},
 		users.Router{},
