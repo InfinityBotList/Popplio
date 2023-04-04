@@ -3,6 +3,7 @@ package create_data_task
 import (
 	"net/http"
 	"popplio/api"
+	"popplio/ratelimit"
 	"popplio/routes/users/endpoints/create_data_task/assets"
 	"popplio/state"
 	"popplio/types"
@@ -51,18 +52,31 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 		}
 	}
 
-	taskId := crypto.RandString(196)
-
-	err := state.Redis.Set(d.Context, "data:"+taskId+"_status", "[]", time.Hour*4).Err()
+	limit, err := ratelimit.Ratelimit{
+		Expiry:      1 * time.Hour,
+		MaxRequests: 1,
+		Bucket:      "data_request",
+	}.Limit(d.Context, r)
 
 	if err != nil {
+		state.Logger.Error(err)
+		return api.DefaultResponse(http.StatusInternalServerError)
+	}
+
+	if limit.Exceeded {
 		return api.HttpResponse{
-			Status: http.StatusInternalServerError,
-			Data:   err.Error(),
+			Json: types.ApiError{
+				Error:   true,
+				Message: "You are being ratelimited. Please try again in " + limit.TimeToReset.String(),
+			},
+			Headers: limit.Headers(),
+			Status:  http.StatusTooManyRequests,
 		}
 	}
 
-	err = state.Redis.Set(d.Context, "data:"+taskId+"_owner", d.Auth.ID, time.Hour*4).Err()
+	taskId := crypto.RandString(196)
+
+	err = state.Redis.Set(d.Context, "data:"+taskId+"_status", "[]", time.Hour*4).Err()
 
 	if err != nil {
 		return api.HttpResponse{

@@ -53,15 +53,6 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 		}
 	}
 
-	owner := state.Redis.Get(d.Context, "data:"+taskId+"_owner").Val()
-
-	if owner != d.Auth.ID {
-		return api.HttpResponse{
-			Status: http.StatusForbidden,
-			Json:   types.ApiError{Message: "you don't own this task", Error: true},
-		}
-	}
-
 	// Get the tasks status output
 	statusesRaw := state.Redis.Get(d.Context, "data:"+taskId+"_status").Val()
 

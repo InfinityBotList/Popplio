@@ -73,12 +73,6 @@ func (b Router) Routes(r *chi.Mux) {
 		Method:  api.GET,
 		Docs:    get_data_task.Docs,
 		Handler: get_data_task.Route,
-		Auth: []api.AuthType{
-			{
-				URLVar: "id",
-				Type:   api.TargetTypeUser,
-			},
-		},
 	}.Route(r)
 
 	api.Route{
