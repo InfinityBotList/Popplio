@@ -9,7 +9,7 @@ var Partners = PartnerList{
 			Name:   "DBC",
 			Short:  "Get A Free Custom Discord Bot - No Ads, No Paywalls, And 200 Feature Selection",
 			UserID: "503591563046420483",
-			Image:  "https://cdn.infinitybots.xyz/images/png/discordbotconstructor-partner.png",
+			Image:  "https://cdn.infinitybots.gg/images/png/discordbotconstructor-partner.png",
 			Links: []types.Link{
 				{
 					Name:  "Discord",
@@ -22,7 +22,7 @@ var Partners = PartnerList{
 			Name:   "Discord Israel Hub",
 			Short:  "Welcome! \"Discord Israel Hub\" is Your place to unite with the Discord community and managers and grow together!",
 			UserID: "952562403751641178",
-			Image:  "https://cdn.infinitybots.xyz/images/gif/discordisraelhub-partner.gif",
+			Image:  "https://cdn.infinitybots.gg/images/gif/discordisraelhub-partner.gif",
 			Links: []types.Link{
 				{
 					Name:  "Discord",
@@ -37,7 +37,7 @@ var Partners = PartnerList{
 			Name:   "Trivia Bot",
 			Short:  "A Trivia/Quiz Discord Bot with over 90000 questions, nitro as prizes, teams, leaderboards, dashboard, and can give winners roles as rewards!",
 			UserID: "189759562910400512",
-			Image:  "https://cdn.infinitybots.xyz/images/png/triviabot-partner.png",
+			Image:  "https://cdn.infinitybots.gg/images/png/triviabot-partner.png",
 			Links: []types.Link{
 				{
 					Name:  "View Trivia",
@@ -54,7 +54,7 @@ var Partners = PartnerList{
 			Name:   "Mystic Warrior Bot",
 			Short:  "Mystic Warrior is a bot with over features like moderation, economy, games, utilities, and more! We are also constantly evolving to meet the server requirements. We have 200+ commands.",
 			UserID: "756786481808408576",
-			Image:  "https://cdn.infinitybots.xyz/images/png/mysticwarriorbot-partner.png",
+			Image:  "https://cdn.infinitybots.gg/images/png/mysticwarriorbot-partner.png",
 			Links: []types.Link{
 				{
 					Name:  "View Mystic",
@@ -71,7 +71,7 @@ var Partners = PartnerList{
 			Name:   "Anti-Raid Bot",
 			Short:  "One of the mostly good free and always improving moderation bots on Discord with over 500 servers!",
 			UserID: "775855009421066262",
-			Image:  "https://cdn.infinitybots.xyz/images/png/antiraid-partner.png",
+			Image:  "https://cdn.infinitybots.gg/images/png/antiraid-partner.png",
 			Links: []types.Link{
 				{
 					Name:  "View Website",
@@ -88,7 +88,7 @@ var Partners = PartnerList{
 			Name:   "Melon",
 			Short:  "Melon is a bot designed to keep your server safe and engage your members with limitless capabilities. Melon comes inbuilt with an advanced giveaway module, custom commands, starboard, reminders, suggestions, moderation, logging, donation logging and much more!",
 			UserID: "759180080328081450",
-			Image:  "https://cdn.infinitybots.xyz/images/png/melon-partner.png",
+			Image:  "https://cdn.infinitybots.gg/images/png/melon-partner.png",
 			Links: []types.Link{
 				{
 					Name:  "Website",
@@ -107,7 +107,7 @@ var Partners = PartnerList{
 			Name:   "Topic Bot List",
 			Short:  "Do you want to expand and improve your Discord bot? Topic Bot List is here for you!",
 			UserID: "787241442770419722",
-			Image:  "https://cdn.infinitybots.xyz/images/png/topiclist-partner.png",
+			Image:  "https://cdn.infinitybots.gg/images/png/topiclist-partner.png",
 			Links: []types.Link{
 				{
 					Name:  "Website",
