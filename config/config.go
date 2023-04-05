@@ -1,16 +1,15 @@
 package config
 
 type Config struct {
-	DiscordAuth     DiscordAuth     `yaml:"discord_auth" validate:"required"`
-	HighSecurityCtx HighSecurityCtx `yaml:"high_security_ctx" validate:"required"`
-	Sites           Sites           `yaml:"sites" validate:"required"`
-	Channels        Channels        `yaml:"channels" validate:"required"`
-	Roles           Roles           `yaml:"roles" validate:"required"`
-	JAPI            JAPI            `yaml:"japi" validate:"required"`
-	Notifications   Notifications   `yaml:"notifications" validate:"required"`
-	Servers         Servers         `yaml:"servers" validate:"required"`
-	Meta            Meta            `yaml:"meta" validate:"required"`
-	Hcaptcha        Hcaptcha        `yaml:"hcaptcha" validate:"required"`
+	DiscordAuth   DiscordAuth   `yaml:"discord_auth" validate:"required"`
+	Sites         Sites         `yaml:"sites" validate:"required"`
+	Channels      Channels      `yaml:"channels" validate:"required"`
+	Roles         Roles         `yaml:"roles" validate:"required"`
+	JAPI          JAPI          `yaml:"japi" validate:"required"`
+	Notifications Notifications `yaml:"notifications" validate:"required"`
+	Servers       Servers       `yaml:"servers" validate:"required"`
+	Meta          Meta          `yaml:"meta" validate:"required"`
+	Hcaptcha      Hcaptcha      `yaml:"hcaptcha" validate:"required"`
 }
 
 type Hcaptcha struct {
@@ -22,13 +21,6 @@ type DiscordAuth struct {
 	ClientID         string   `yaml:"client_id" default:"815553000470478850" comment:"Discord Client ID" validate:"required"`
 	ClientSecret     string   `yaml:"client_secret" comment:"Discord Client Secret" validate:"required"`
 	AllowedRedirects []string `yaml:"allowed_redirects" default:"http://localhost:3000/auth/sauron,http://localhost:8000/auth/sauron,https://reedwhisker.infinitybots.gg/auth/sauron,https://infinitybots.gg/auth/sauron,https://botlist.site/auth/sauron" validate:"required"`
-}
-
-type HighSecurityCtx struct {
-	Disabled     bool   `yaml:"disabled" default:"false" comment:"Disable high security context"`
-	ClientID     string `yaml:"client_id" default:"1046812407743385611" comment:"Client ID to use for high security operations" validate:"required"`
-	ClientSecret string `yaml:"client_secret" comment:"Client Secret to use for high security operations" validate:"required"`
-	RedirectURL  string `yaml:"redirect_url" default:"https://spider.infinitybotlist.com/cosmog" comment:"Redirect URL to use for high security operations" validate:"required"`
 }
 
 type Sites struct {
