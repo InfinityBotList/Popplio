@@ -4,6 +4,7 @@ import (
 	"popplio/state"
 	"popplio/webhooks/bothooks"
 	"popplio/webhooks/bothooks/legacy"
+	"popplio/webhooks/events"
 
 	docs "github.com/infinitybotlist/doclib"
 )
@@ -34,6 +35,7 @@ func Setup() {
 		panic(err)
 	}
 
+	events.Setup()
 	bothooks.Setup()
 	legacy.Setup()
 }

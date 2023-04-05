@@ -1,67 +1,43 @@
-// A set of common event handling for webhook responses
 package events
 
 import (
-	"errors"
-	"reflect"
-
 	"github.com/bwmarrin/discordgo"
 	docs "github.com/infinitybotlist/doclib"
+	"github.com/infinitybotlist/dovewing"
 )
 
-func (w *WebhookResponse) Validate() (*EventData, error) {
-	evd, ok := RegisteredEvents.eventMap[w.Type]
-
-	if !ok {
-		return nil, errors.New("invalid webhook type")
-	}
-
-	// Cast to evd.Format
-	if reflect.TypeOf(w.Data).Name() != evd.formatTypeName {
-		return nil, errors.New("invalid webhook data")
-	}
-
-	return &evd, nil
+// Webhook events
+type WebhookEvent interface {
+	Event() WebhookType
+	CreateHookParams(creator *dovewing.DiscordUser, targets Target) *discordgo.WebhookParams
 }
 
-type EventData struct {
-	Docs             *docs.WebhookDoc
-	Format           any
-	CreateHookParams func(w *WebhookResponse) *discordgo.WebhookParams
-	formatTypeName   string
+type WebhookType string
+
+type Target struct {
+	Bot *dovewing.DiscordUser `json:"bot,omitempty" description:"If a bot event, the bot that the webhook is about"`
 }
 
-type Events struct {
-	eventMap map[WebhookType]EventData
+// IMPL
+type WebhookResponse[E WebhookEvent] struct {
+	Creator   *dovewing.DiscordUser `json:"creator" description:"The user who created the action/event (e.g voted for the bot or made a review)"`
+	CreatedAt int64                 `json:"created_at" description:"The time in *seconds* (unix epoch) of when the action/event was performed"`
+	Type      WebhookType           `json:"type" dynexample:"true"`
+	Data      E                     `json:"data" dynschema:"true"`
+	Targets   Target                `json:"targets" description:"The target of the webhook, can be one of. or a possible combination of bot, team and server"`
 }
 
-type AddEvent struct {
-	Event WebhookType
-	Data  EventData
+// Setup docs for each event
+var eventDocs = []func(){}
+
+func AddEvent(wdoc *docs.WebhookDoc) {
+	eventDocs = append(eventDocs, func() {
+		docs.AddWebhook(wdoc)
+	})
 }
 
-func (e *Events) AddEvents(events ...AddEvent) {
-	if len(e.eventMap) == 0 {
-		e.eventMap = make(map[WebhookType]EventData)
-	}
-
-	for _, data := range events {
-		if data.Data.Docs == nil {
-			panic("docs cannot be nil")
-		}
-
-		if data.Data.Format == nil {
-			panic("format cannot be nil")
-		}
-
-		if data.Data.CreateHookParams == nil {
-			panic("createhookparams cannot be nil")
-		}
-
-		docs.AddWebhook(data.Data.Docs)
-		data.Data.formatTypeName = reflect.TypeOf(data.Data.Format).Name()
-		e.eventMap[data.Event] = data.Data
+func Setup() {
+	for _, event := range eventDocs {
+		event()
 	}
 }
-
-var RegisteredEvents = &Events{}

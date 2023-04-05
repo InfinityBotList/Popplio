@@ -130,16 +130,14 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 	}
 
 	if webhooksV2 {
-		err = bothooks.CreateHook{
-			Type: events.WebhookTypeBotVote,
+		err = bothooks.Send(bothooks.With[events.WebhookBotVoteData]{
 			Data: events.WebhookBotVoteData{
 				Votes: payload.Votes,
 				Test:  true,
 			},
-		}.With(bothooks.With{
 			UserID: d.Auth.ID,
 			BotID:  id,
-		}).Send()
+		})
 
 		if err != nil {
 			state.Logger.Error(err)

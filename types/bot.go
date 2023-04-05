@@ -36,7 +36,7 @@ type BotStats struct {
 // Bot represents a bot.
 // A bot is a Discord bot that is on the infinitybotlist.
 type Bot struct {
-	ITag                      pgtype.UUID           `db:"itag" json:"itag" description:"The bot's internal ID. Not that useful and more a artifact of database migrations. May be removed in the future."`
+	ITag                      pgtype.UUID           `db:"itag" json:"itag" description:"The bot's internal ID. An artifact of database migrations."`
 	BotID                     string                `db:"bot_id" json:"bot_id" description:"The bot's ID"`
 	ClientID                  string                `db:"client_id" json:"client_id" description:"The bot's associated client ID validated using that top-secret Oauth2 API! Used in anti-abuse measures."`
 	QueueName                 string                `db:"queue_name" json:"queue_name"` // Used purely by the queue system

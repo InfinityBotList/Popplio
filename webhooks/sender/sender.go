@@ -66,7 +66,7 @@ type WebhookEntity struct {
 	EntityID string
 
 	// the entity type
-	EntityType WebhookEntityType
+	EntityType types.WebhookEntityType
 
 	// the name of the webhook's target
 	EntityName string
@@ -75,23 +75,7 @@ type WebhookEntity struct {
 	DeleteWebhook func() error
 }
 
-// The state of the webhook in the database
-type WebhookSaveState int
-
-const (
-	WebhookSaveStatePending WebhookSaveState = iota
-	WebhookSaveStateSuccess
-	WebhookSaveStateFailed
-	WebhookSaveStateRemoved
-)
-
-type WebhookEntityType int
-
-const (
-	WebhookEntityTypeBot WebhookEntityType = iota
-)
-
-func (st *WebhookSendState) cancelSend(saveState WebhookSaveState) {
+func (st *WebhookSendState) cancelSend(saveState types.WebhookSaveState) {
 	state.Logger.Warnf("Cancelling webhook send for %s", st.LogID)
 
 	_, err := state.Pool.Exec(state.Context, "UPDATE webhook_logs SET state = $1, tries = tries + 1 WHERE id = $2", saveState, st.LogID)
@@ -191,14 +175,14 @@ func SendCustom(d *WebhookSendState) error {
 	if err != nil {
 		state.Logger.Error(err)
 
-		d.cancelSend(WebhookSaveStateFailed)
+		d.cancelSend(types.WebhookSaveStateFailed)
 		return err
 	}
 
 	switch {
 	case resp.StatusCode == 404 || resp.StatusCode == 410:
 		// Remove from DB
-		d.cancelSend(WebhookSaveStateRemoved)
+		d.cancelSend(types.WebhookSaveStateRemoved)
 		err := d.Entity.DeleteWebhook()
 
 		if err != nil {
@@ -207,7 +191,7 @@ func SendCustom(d *WebhookSendState) error {
 		}
 
 		// Remove from webhook logs
-		_, err = state.Pool.Exec(state.Context, "UPDATE webhook_logs SET state = $2 WHERE id = $1", d.LogID, WebhookSaveStateRemoved)
+		_, err = state.Pool.Exec(state.Context, "UPDATE webhook_logs SET state = $2 WHERE id = $1", d.LogID, types.WebhookSaveStateRemoved)
 
 		if err != nil {
 			state.Logger.Error(err)
@@ -229,12 +213,12 @@ func SendCustom(d *WebhookSendState) error {
 	case resp.StatusCode == 401 || resp.StatusCode == 403:
 		if d.BadIntent {
 			// webhook auth is invalid as intended,
-			d.cancelSend(WebhookSaveStateSuccess)
+			d.cancelSend(types.WebhookSaveStateSuccess)
 
 			return nil
 		} else {
 			// webhook auth is invalid, return error
-			d.cancelSend(WebhookSaveStateFailed)
+			d.cancelSend(types.WebhookSaveStateFailed)
 			err = notifications.PushNotification(d.UserID, types.Alert{
 				Type:    types.AlertTypeInfo,
 				Message: "This webhook does not properly handle authentication at this time.",
@@ -249,7 +233,7 @@ func SendCustom(d *WebhookSendState) error {
 		}
 
 	case resp.StatusCode > 400:
-		d.cancelSend(WebhookSaveStateFailed)
+		d.cancelSend(types.WebhookSaveStateFailed)
 
 		err = notifications.PushNotification(d.UserID, types.Alert{
 			Type:    types.AlertTypeError,
@@ -265,7 +249,7 @@ func SendCustom(d *WebhookSendState) error {
 
 	case resp.StatusCode >= 200 && resp.StatusCode < 300:
 		if d.BadIntent {
-			d.cancelSend(WebhookSaveStateRemoved)
+			d.cancelSend(types.WebhookSaveStateRemoved)
 
 			err = notifications.PushNotification(d.UserID, types.Alert{
 				Type:    types.AlertTypeError,
@@ -286,7 +270,7 @@ func SendCustom(d *WebhookSendState) error {
 			}
 
 			// Remove from webhook logs
-			_, err = state.Pool.Exec(state.Context, "UPDATE webhook_logs SET state = $2 WHERE id = $1", d.LogID, WebhookSaveStateRemoved)
+			_, err = state.Pool.Exec(state.Context, "UPDATE webhook_logs SET state = $2 WHERE id = $1", d.LogID, types.WebhookSaveStateRemoved)
 
 			if err != nil {
 				state.Logger.Error(err)
@@ -296,7 +280,7 @@ func SendCustom(d *WebhookSendState) error {
 			return errors.New("webhook failed to validate auth thus removing it from the database")
 		}
 
-		d.cancelSend(WebhookSaveStateSuccess)
+		d.cancelSend(types.WebhookSaveStateSuccess)
 
 		err = notifications.PushNotification(d.UserID, types.Alert{
 			Type:    types.AlertTypeSuccess,
@@ -380,7 +364,7 @@ func SendDiscord(userId, entityName, url string, delete func() error, params *di
 // The data required to create a pull
 type WebhookPullPending struct {
 	// the entity type
-	EntityType WebhookEntityType
+	EntityType types.WebhookEntityType
 
 	// delete webhook for specific id
 	GetEntity func(id string) (WebhookEntity, error)
@@ -392,7 +376,7 @@ type WebhookPullPending struct {
 // or a potential “teamhooks“ etc.
 func PullPending(p WebhookPullPending) {
 	// Fetch every pending bot webhook from webhook_logs
-	rows, err := state.Pool.Query(state.Context, "SELECT id, entity_id, user_id, url, data, sign, bad_intent FROM webhook_logs WHERE state = $1 AND entity_type = $2", WebhookSaveStatePending, p.EntityType)
+	rows, err := state.Pool.Query(state.Context, "SELECT id, entity_id, user_id, url, data, sign, bad_intent FROM webhook_logs WHERE state = $1 AND entity_type = $2", types.WebhookSaveStatePending, p.EntityType)
 
 	if err != nil {
 		state.Logger.Error(err)

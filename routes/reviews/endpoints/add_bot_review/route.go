@@ -178,16 +178,14 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 		return api.DefaultResponse(http.StatusInternalServerError)
 	}
 
-	err = bothooks.CreateHook{
-		Type: events.WebhookTypeBotNewReview,
+	err = bothooks.Send(bothooks.With[events.WebhookBotNewReviewData]{
 		Data: events.WebhookBotNewReviewData{
 			ReviewID: reviewId,
 			Content:  payload.Content,
 		},
-	}.With(bothooks.With{
 		UserID: d.Auth.ID,
 		BotID:  bot,
-	}).Send()
+	})
 
 	if err != nil {
 		state.Logger.Error(err)
