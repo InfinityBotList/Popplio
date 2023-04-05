@@ -32,8 +32,7 @@ type Sites struct {
 type Roles struct {
 	AwaitingStaff string `yaml:"awaiting_staff" default:"1029058929361174678" comment:"Awaiting Staff Role" validate:"required"`
 	Apps          string `yaml:"apps" default:"907729844605968454" comment:"Apps Role" validate:"required"`
-	CertDev       string `yaml:"cert_dev" default:"1029058929361174678" comment:"Certified Developer Role" validate:"required"`
-	CertBot       string `yaml:"cert_bot" default:"1029058929361174678" comment:"Certified Bot Role" validate:"required"`
+	CertBot       string `yaml:"cert_bot" default:"759468236999491594" comment:"Certified Bot Role" validate:"required"`
 }
 
 type Channels struct {

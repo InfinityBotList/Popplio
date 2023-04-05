@@ -194,6 +194,15 @@ func reviewLogicCert(d api.RouteData, resp AppResponse, reason string) (review b
 		return false, fmt.Errorf("error setting bot type to certified: %w", err)
 	}
 
+	// Give roles
+	go func() {
+		err = state.Discord.GuildMemberRoleAdd(state.Config.Servers.Main, botID, state.Config.Roles.CertBot)
+
+		if err != nil {
+			state.Logger.Error("error giving certified bot role to bot: %v", err)
+		}
+	}()
+
 	// Send an embed to the bot logs channel
 	_, err = state.Discord.ChannelMessageSendComplex(state.Config.Channels.BotLogs, &discordgo.MessageSend{
 		Embeds: []*discordgo.MessageEmbed{
@@ -211,6 +220,9 @@ func reviewLogicCert(d api.RouteData, resp AppResponse, reason string) (review b
 						Name:  "Reason",
 						Value: reason,
 					},
+				},
+				Footer: &discordgo.MessageEmbedFooter{
+					Text: "If you are the owner of this bot, use ibb!getbotroles to get your dev roles",
 				},
 			},
 		},
