@@ -184,13 +184,15 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 		return api.DefaultResponse(http.StatusInternalServerError)
 	}
 
+	// Clear cache
+	utils.ClearBotCache(d.Context, botId)
+
 	// Send message to mod logs
 	state.Discord.ChannelMessageSendComplex(state.Config.Channels.ModLogs, &discordgo.MessageSend{
-		Content: state.Config.Meta.UrgentMentions,
 		Embeds: []*discordgo.MessageEmbed{
 			{
 				URL:   state.Config.Sites.Frontend + "/bots/" + botId,
-				Title: "Bot Team Update (please audit!)",
+				Title: "Bot Team Update!",
 				Fields: []*discordgo.MessageEmbedField{
 					{
 						Name:   "Bot ID",
