@@ -11,6 +11,7 @@ import (
 	"popplio/routes/teams/endpoints/edit_team_member_permissions"
 	"popplio/routes/teams/endpoints/get_team"
 	"popplio/routes/teams/endpoints/get_team_permissions"
+	"popplio/routes/teams/endpoints/get_team_seo"
 	"popplio/routes/teams/endpoints/patch_bot_team"
 
 	"github.com/go-chi/chi/v5"
@@ -39,6 +40,14 @@ func (b Router) Routes(r *chi.Mux) {
 		Method:  api.GET,
 		Docs:    get_team.Docs,
 		Handler: get_team.Route,
+	}.Route(r)
+
+	api.Route{
+		Pattern: "/teams/{id}/seo",
+		OpId:    "get_team_seo",
+		Method:  api.GET,
+		Docs:    get_team_seo.Docs,
+		Handler: get_team_seo.Route,
 	}.Route(r)
 
 	api.Route{

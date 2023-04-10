@@ -131,8 +131,8 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 			return api.DefaultResponse(http.StatusInternalServerError)
 		}
 
-		// A remove is essentially the same as first converting oldPerms->managerPerms, then removing the user
-		_, err = assets.CheckPerms(managerPerms, oldPerms, managerPerms)
+		// if the user can remove all permissions of the target, then only can deleting the team member occur
+		_, err = assets.CheckPerms(managerPerms, oldPerms, []teams.TeamPermission{})
 
 		if err != nil {
 			return api.HttpResponse{

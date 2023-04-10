@@ -71,12 +71,8 @@ func corsMiddleware(next http.Handler) http.Handler {
 			r.Header.Set("Authorization", "Bot "+r.Header.Get("Bot-Auth"))
 		}
 
-		if strings.HasSuffix(r.Header.Get("Origin"), "infinitybots.gg") || strings.HasPrefix(r.Header.Get("Origin"), "localhost:") {
-			w.Header().Set("Access-Control-Allow-Origin", r.Header.Get("Origin"))
-			w.Header().Set("Access-Control-Allow-Credentials", "true")
-		} else {
-			w.Header().Set("Access-Control-Allow-Origin", "*")
-		}
+		w.Header().Set("Access-Control-Allow-Origin", r.Header.Get("Origin"))
+		w.Header().Set("Access-Control-Allow-Credentials", "true")
 		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Client")
 		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE")
 
