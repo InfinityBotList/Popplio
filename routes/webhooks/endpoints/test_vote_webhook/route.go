@@ -15,7 +15,7 @@ import (
 	legacyhooks "popplio/webhooks/bothooks/legacy"
 	"popplio/webhooks/events"
 
-	docs "github.com/infinitybotlist/doclib"
+	docs "github.com/infinitybotlist/eureka/doclib"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-playground/validator/v10"

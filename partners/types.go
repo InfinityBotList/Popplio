@@ -3,7 +3,7 @@ package partners
 import (
 	"popplio/types"
 
-	"github.com/infinitybotlist/dovewing"
+	"github.com/infinitybotlist/eureka/dovewing"
 )
 
 type Partner struct {

@@ -9,7 +9,7 @@ import (
 	"popplio/utils"
 
 	"github.com/bwmarrin/discordgo"
-	"github.com/infinitybotlist/dovewing"
+	"github.com/infinitybotlist/eureka/dovewing"
 )
 
 func extraLogicResubmit(d api.RouteData, p Position, answers map[string]string) (add bool, err error) {

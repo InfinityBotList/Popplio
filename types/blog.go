@@ -3,7 +3,7 @@ package types
 import (
 	"time"
 
-	"github.com/infinitybotlist/dovewing"
+	"github.com/infinitybotlist/eureka/dovewing"
 )
 
 type BlogPost struct {

@@ -9,7 +9,7 @@ import (
 	"strings"
 
 	"github.com/georgysavva/scany/v2/pgxscan"
-	docs "github.com/infinitybotlist/doclib"
+	docs "github.com/infinitybotlist/eureka/doclib"
 )
 
 var (

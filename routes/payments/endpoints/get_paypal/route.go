@@ -5,7 +5,7 @@ import (
 	"popplio/api"
 	"popplio/state"
 
-	docs "github.com/infinitybotlist/doclib"
+	docs "github.com/infinitybotlist/eureka/doclib"
 )
 
 type PaypalMeta struct {

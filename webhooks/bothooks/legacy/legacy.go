@@ -10,8 +10,8 @@ import (
 	"popplio/state"
 	"popplio/utils"
 
-	docs "github.com/infinitybotlist/doclib"
-	"github.com/infinitybotlist/dovewing"
+	docs "github.com/infinitybotlist/eureka/doclib"
+	"github.com/infinitybotlist/eureka/dovewing"
 	"github.com/jackc/pgx/v5/pgtype"
 	jsoniter "github.com/json-iterator/go"
 )

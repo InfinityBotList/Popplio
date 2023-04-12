@@ -1,7 +1,7 @@
 package types
 
 import (
-	"github.com/infinitybotlist/dovewing"
+	"github.com/infinitybotlist/eureka/dovewing"
 	"github.com/jackc/pgx/v5/pgtype"
 )
 

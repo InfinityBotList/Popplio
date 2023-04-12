@@ -17,8 +17,8 @@ import (
 	legacyhooks "popplio/webhooks/bothooks/legacy"
 	"popplio/webhooks/events"
 
-	docs "github.com/infinitybotlist/doclib"
-	"github.com/infinitybotlist/dovewing"
+	docs "github.com/infinitybotlist/eureka/doclib"
+	"github.com/infinitybotlist/eureka/dovewing"
 
 	"github.com/bwmarrin/discordgo"
 	"github.com/go-chi/chi/v5"

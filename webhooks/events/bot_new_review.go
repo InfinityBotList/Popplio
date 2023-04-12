@@ -2,8 +2,8 @@ package events
 
 import (
 	"github.com/bwmarrin/discordgo"
-	docs "github.com/infinitybotlist/doclib"
-	"github.com/infinitybotlist/dovewing"
+	docs "github.com/infinitybotlist/eureka/doclib"
+	"github.com/infinitybotlist/eureka/dovewing"
 )
 
 const WebhookTypeBotNewReview WebhookType = "BOT_NEW_REVIEW"

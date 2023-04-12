@@ -6,7 +6,7 @@ import (
 	"popplio/state"
 	"popplio/teams"
 
-	docs "github.com/infinitybotlist/doclib"
+	docs "github.com/infinitybotlist/eureka/doclib"
 
 	"github.com/go-playground/validator/v10"
 	"github.com/jackc/pgx/v5/pgtype"

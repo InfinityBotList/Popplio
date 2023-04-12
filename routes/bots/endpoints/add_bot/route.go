@@ -14,9 +14,9 @@ import (
 	"popplio/types"
 	"popplio/utils"
 
-	docs "github.com/infinitybotlist/doclib"
-	"github.com/infinitybotlist/dovewing"
 	"github.com/infinitybotlist/eureka/crypto"
+	docs "github.com/infinitybotlist/eureka/doclib"
+	"github.com/infinitybotlist/eureka/dovewing"
 
 	"github.com/bwmarrin/discordgo"
 	"github.com/go-playground/validator/v10"

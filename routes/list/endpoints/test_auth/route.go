@@ -7,7 +7,7 @@ import (
 	"popplio/api"
 	"popplio/types"
 
-	docs "github.com/infinitybotlist/doclib"
+	docs "github.com/infinitybotlist/eureka/doclib"
 
 	"github.com/go-chi/chi/v5"
 )

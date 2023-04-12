@@ -8,25 +8,20 @@ require (
 	github.com/getkin/kin-openapi v0.115.0 // indirect
 	github.com/go-chi/chi/v5 v5.0.8
 	github.com/google/uuid v1.3.0
-	github.com/infinitybotlist/eureka v0.0.0-20230123041109-426207f20916
+	github.com/infinitybotlist/eureka v0.0.0-20230412182118-1a102e1639eb
 	github.com/mileusna/useragent v1.2.1
 	github.com/wk8/go-ordered-map/v2 v2.1.6 // indirect
 	gopkg.in/yaml.v3 v3.0.1
 )
 
-require (
-	github.com/infinitybotlist/doclib v0.0.0-20230326140612-e96810a6d17b
-	github.com/infinitybotlist/dovewing v0.0.0-20230320150614-2d5f1c23d540
-	github.com/infinitybotlist/genconfig v0.0.0-20230312045948-20cdb56f90d3
-	github.com/stripe/stripe-go/v74 v74.13.0
-)
+require github.com/stripe/stripe-go/v74 v74.15.0
 
 require (
 	github.com/buger/jsonparser v1.1.1 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/go-playground/locales v0.14.1 // indirect
 	github.com/go-playground/universal-translator v0.18.1 // indirect
-	github.com/leodido/go-urn v1.2.2 // indirect
+	github.com/leodido/go-urn v1.2.3 // indirect
 	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
 	github.com/modern-go/reflect2 v1.0.2 // indirect
 	github.com/mohae/deepcopy v0.0.0-20170929034955-c48cc78d4826 // indirect
@@ -52,9 +47,9 @@ require (
 	github.com/lib/pq v1.10.2 // indirect
 	github.com/mailru/easyjson v0.7.7 // indirect
 	go.uber.org/atomic v1.10.0 // indirect
-	go.uber.org/multierr v1.10.0 // indirect
-	golang.org/x/crypto v0.7.0 // indirect
-	golang.org/x/text v0.8.0 // indirect
+	go.uber.org/multierr v1.11.0 // indirect
+	golang.org/x/crypto v0.8.0 // indirect
+	golang.org/x/text v0.9.0 // indirect
 )
 
 require (
@@ -63,8 +58,8 @@ require (
 	github.com/jackc/pgx/v5 v5.3.1
 	github.com/json-iterator/go v1.1.12
 	github.com/plutov/paypal/v4 v4.7.0
-	github.com/redis/go-redis/v9 v9.0.2
+	github.com/redis/go-redis/v9 v9.0.3
 	go.uber.org/zap v1.24.0
 	golang.org/x/exp v0.0.0-20230321023759-10a507213a29
-	golang.org/x/sys v0.6.0 // indirect
+	golang.org/x/sys v0.7.0 // indirect
 )

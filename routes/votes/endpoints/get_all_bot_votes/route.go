@@ -9,7 +9,7 @@ import (
 	"popplio/types"
 	"popplio/utils"
 
-	docs "github.com/infinitybotlist/doclib"
+	docs "github.com/infinitybotlist/eureka/doclib"
 )
 
 const perPage = 10

@@ -10,8 +10,8 @@ import (
 	"popplio/types"
 	"time"
 
-	docs "github.com/infinitybotlist/doclib"
 	"github.com/infinitybotlist/eureka/crypto"
+	docs "github.com/infinitybotlist/eureka/doclib"
 
 	"github.com/go-playground/validator/v10"
 	jsoniter "github.com/json-iterator/go"

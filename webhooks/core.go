@@ -6,7 +6,7 @@ import (
 	"popplio/webhooks/bothooks/legacy"
 	"popplio/webhooks/events"
 
-	docs "github.com/infinitybotlist/doclib"
+	docs "github.com/infinitybotlist/eureka/doclib"
 )
 
 // Setup code

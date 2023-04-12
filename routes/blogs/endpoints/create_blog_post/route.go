@@ -7,7 +7,7 @@ import (
 	"popplio/types"
 	"strings"
 
-	docs "github.com/infinitybotlist/doclib"
+	docs "github.com/infinitybotlist/eureka/doclib"
 
 	"github.com/go-playground/validator/v10"
 )

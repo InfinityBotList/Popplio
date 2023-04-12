@@ -5,7 +5,7 @@ import (
 	"popplio/api"
 	"popplio/payments"
 
-	docs "github.com/infinitybotlist/doclib"
+	docs "github.com/infinitybotlist/eureka/doclib"
 )
 
 type PlanList struct {

@@ -5,7 +5,7 @@ import (
 	"popplio/api"
 	"popplio/teams"
 
-	docs "github.com/infinitybotlist/doclib"
+	docs "github.com/infinitybotlist/eureka/doclib"
 )
 
 type PermissionResponse struct {

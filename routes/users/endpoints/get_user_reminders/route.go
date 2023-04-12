@@ -9,8 +9,8 @@ import (
 	"popplio/types"
 	"popplio/utils"
 
-	docs "github.com/infinitybotlist/doclib"
-	"github.com/infinitybotlist/dovewing"
+	docs "github.com/infinitybotlist/eureka/doclib"
+	"github.com/infinitybotlist/eureka/dovewing"
 
 	"github.com/georgysavva/scany/v2/pgxscan"
 	"github.com/go-chi/chi/v5"

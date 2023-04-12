@@ -3,7 +3,7 @@ package partners
 import (
 	"popplio/state"
 
-	"github.com/infinitybotlist/dovewing"
+	"github.com/infinitybotlist/eureka/dovewing"
 )
 
 func processPartner(partner *Partner) *Partner {

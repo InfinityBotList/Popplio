@@ -10,8 +10,8 @@ import (
 	"strings"
 	"time"
 
-	docs "github.com/infinitybotlist/doclib"
 	"github.com/infinitybotlist/eureka/crypto"
+	docs "github.com/infinitybotlist/eureka/doclib"
 )
 
 type DataTaskResponse struct {

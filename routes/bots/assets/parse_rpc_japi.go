@@ -9,7 +9,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/infinitybotlist/dovewing"
+	"github.com/infinitybotlist/eureka/dovewing"
 	"go.uber.org/zap"
 )
 

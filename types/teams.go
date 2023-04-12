@@ -4,7 +4,7 @@ import (
 	"popplio/teams"
 	"time"
 
-	"github.com/infinitybotlist/dovewing"
+	"github.com/infinitybotlist/eureka/dovewing"
 )
 
 type Team struct {

@@ -29,7 +29,7 @@ import (
 	"popplio/types"
 	poplhooks "popplio/webhooks"
 
-	docs "github.com/infinitybotlist/doclib"
+	docs "github.com/infinitybotlist/eureka/doclib"
 
 	_ "embed"
 

@@ -7,8 +7,8 @@ import (
 	"popplio/types"
 	"popplio/utils"
 
-	docs "github.com/infinitybotlist/doclib"
 	"github.com/infinitybotlist/eureka/crypto"
+	docs "github.com/infinitybotlist/eureka/doclib"
 )
 
 func Docs() *docs.Doc {

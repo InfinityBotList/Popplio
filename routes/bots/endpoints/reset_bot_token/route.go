@@ -9,8 +9,8 @@ import (
 	"popplio/utils"
 
 	"github.com/go-chi/chi/v5"
-	docs "github.com/infinitybotlist/doclib"
 	"github.com/infinitybotlist/eureka/crypto"
+	docs "github.com/infinitybotlist/eureka/doclib"
 )
 
 type Token struct {

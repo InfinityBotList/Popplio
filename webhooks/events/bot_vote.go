@@ -4,8 +4,8 @@ import (
 	"strconv"
 
 	"github.com/bwmarrin/discordgo"
-	docs "github.com/infinitybotlist/doclib"
-	"github.com/infinitybotlist/dovewing"
+	docs "github.com/infinitybotlist/eureka/doclib"
+	"github.com/infinitybotlist/eureka/dovewing"
 )
 
 const WebhookTypeBotVote WebhookType = "BOT_VOTE"

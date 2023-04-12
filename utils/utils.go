@@ -14,7 +14,7 @@ import (
 
 	"github.com/georgysavva/scany/v2/pgxscan"
 	"github.com/google/uuid"
-	"github.com/infinitybotlist/dovewing"
+	"github.com/infinitybotlist/eureka/dovewing"
 	"github.com/jackc/pgx/v5/pgtype"
 	"go.uber.org/zap"
 )

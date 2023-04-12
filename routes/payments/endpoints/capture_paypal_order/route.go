@@ -8,7 +8,7 @@ import (
 	"popplio/types"
 
 	"github.com/go-chi/chi/v5"
-	docs "github.com/infinitybotlist/doclib"
+	docs "github.com/infinitybotlist/eureka/doclib"
 	"github.com/plutov/paypal/v4"
 
 	jsoniter "github.com/json-iterator/go"

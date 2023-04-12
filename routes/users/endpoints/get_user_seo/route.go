@@ -8,8 +8,8 @@ import (
 	"popplio/state"
 	"popplio/types"
 
-	docs "github.com/infinitybotlist/doclib"
-	"github.com/infinitybotlist/dovewing"
+	docs "github.com/infinitybotlist/eureka/doclib"
+	"github.com/infinitybotlist/eureka/dovewing"
 
 	"github.com/go-chi/chi/v5"
 )

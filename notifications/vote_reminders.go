@@ -6,7 +6,7 @@ import (
 	"popplio/utils"
 	"time"
 
-	"github.com/infinitybotlist/dovewing"
+	"github.com/infinitybotlist/eureka/dovewing"
 	jsoniter "github.com/json-iterator/go"
 )
 

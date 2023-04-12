@@ -5,7 +5,7 @@ import (
 	"popplio/api"
 	"popplio/partners"
 
-	docs "github.com/infinitybotlist/doclib"
+	docs "github.com/infinitybotlist/eureka/doclib"
 )
 
 func Docs() *docs.Doc {
