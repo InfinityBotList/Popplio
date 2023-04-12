@@ -71,6 +71,7 @@ type Bot struct {
 	CertReason                pgtype.Text           `db:"cert_reason" json:"cert_reason" description:"The reason for the bot being certified"`
 	Uptime                    int                   `db:"uptime" json:"uptime" description:"The bot's total number of successful uptime checks"`
 	TotalUptime               int                   `db:"total_uptime" json:"total_uptime" description:"The bot's total number of uptime checks"`
+	UptimeLastChecked         pgtype.Timestamptz    `db:"uptime_last_checked" json:"uptime_last_checked" description:"The bot's last uptime check"`
 	ClaimedBy                 pgtype.Text           `db:"claimed_by" json:"claimed_by" description:"The user who claimed the bot"`
 	Note                      pgtype.Text           `db:"approval_note" json:"approval_note" description:"The note for the bot's approval"`
 	CreatedAt                 pgtype.Timestamptz    `db:"created_at" json:"created_at" description:"The bot's creation date"`
