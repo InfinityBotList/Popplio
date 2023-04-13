@@ -16,7 +16,7 @@ import (
 type PatchBotWebhook struct {
 	WebhookURL    string `json:"webhook_url"`
 	WebhookSecret string `json:"webhook_secret"`
-	WebhooksV2    bool   `json:"webhooks_v2"`
+	WebhooksV2    *bool  `json:"webhooks_v2"`
 	Clear         bool   `json:"clear"`
 }
 
@@ -123,7 +123,9 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 		}
 	}
 
-	_, err = state.Pool.Exec(d.Context, "UPDATE bots SET webhooks_v2 = $1 WHERE bot_id = $2", payload.WebhooksV2, id)
+	if payload.WebhooksV2 != nil {
+		_, err = state.Pool.Exec(d.Context, "UPDATE bots SET webhooks_v2 = $1 WHERE bot_id = $2", payload.WebhooksV2, id)
+	}
 
 	if err != nil {
 		state.Logger.Error(err)
