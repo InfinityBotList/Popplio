@@ -121,3 +121,9 @@ To parse webhooks, here is the algorithm you should/must follow:
 	});
 	return;
 ```
+
+## HTML Sanitizer
+
+We use a custom server to parse markdown (using ``pulldown-cmark``) and sanitize HTML (using ``ammonia``). This is to prevent XSS attacks and other malicious code from being injected into our site.
+
+The URL for HTML Sanitizer is ``https://hs.infinitybots.gg``. To use this for previews etc, simply POST the raw MD/HTML to this URL and it will return the sanitized HTML.
