@@ -4,7 +4,7 @@ on: [push]
 
 env:
   NO_INTERACTION: "true"
-  GOPATH: ${{ github.workspace }}
+  GOPATH: ${{ github.workspace }}/cmd/kitehelper
 
 jobs:
   build:
