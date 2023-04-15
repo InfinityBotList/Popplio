@@ -109,7 +109,7 @@ func SendCustom(d *WebhookSendState) error {
 	if d.LogID == "" {
 		// Add to webhook logs for automatic retry
 		var logID string
-		err := state.Pool.QueryRow(state.Context, "INSERT INTO webhook_logs (entity_id, entity_type, user_id, url, data, sign, bad_intent) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id", d.Entity.EntityID, d.Entity.EntityType, d.UserID, d.Url, d.Data, d.Data, d.BadIntent).Scan(&logID)
+		err := state.Pool.QueryRow(state.Context, "INSERT INTO webhook_logs (entity_id, entity_type, user_id, url, data, sign, bad_intent) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id", d.Entity.EntityID, d.Entity.EntityType, d.UserID, d.Url, d.Data, d.Sign.Raw, d.BadIntent).Scan(&logID)
 
 		if err != nil {
 			return err
