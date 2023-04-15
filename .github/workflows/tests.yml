@@ -28,7 +28,6 @@ jobs:
       - name: Tests
         run: |
           cd cmd/kitehelper
-          echo $GOPATH
           go build -v 
           ./kitehelper test
       

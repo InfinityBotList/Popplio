@@ -66,9 +66,9 @@ EXAMPLE
 var testList = testset{
 	Tests: []test{
 		{
-			name: "strings-ts-enums-sync.py",
+			name:       "team_perms_check.py",
 			cmd:        []string{"python3"},
 			customTest: "team_perms_check.py",
-		},	
+		},
 	},
 }
