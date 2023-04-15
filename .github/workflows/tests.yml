@@ -4,6 +4,7 @@ on: [push]
 
 env:
   NO_INTERACTION: "true"
+  GOPATH: ${{ github.workspace }}
 
 jobs:
   build:
