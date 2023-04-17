@@ -7,6 +7,7 @@ ENUM_NAME = "TeamPermission"
 END_ENUM = ")"
 START_DETAILS_MAP = "var TeamPermDetails = []PermDetailMap{"
 END_DETAILS_MAP = "}"
+ALLOWED_GROUPS = ["Bot", "Server", "Team", "Common", "undefined"]
 
 # Read the file
 with open(FILE, "r") as f:
@@ -49,7 +50,20 @@ for line in lines:
         enum.append(ENUM_NAME + line.replace(ENUM_NAME, "", 1).split(ENUM_NAME)[0])
 
     elif in_details_map:
+        flag = False
+        for g in ALLOWED_GROUPS:
+            # Get the group (splitting by comma and removing the trailing },
+            group = line.split(",")[3].replace("}", "").replace('"', "")
+            if group.endswith(g):
+                flag = True
+                break
+        
         line = line.split(",")[0].replace("{", "")
+
+        if not flag:
+            print(f"FATAL: Enum {line} must use the following group: ", ALLOWED_GROUPS)
+            exit(1)
+
         details_map.append(line)
 
 print("Enum: ", enum)
