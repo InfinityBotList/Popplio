@@ -1,7 +1,9 @@
 package tests
 
 import (
+	"bytes"
 	"fmt"
+	"io"
 	"kitehelper/common"
 	"os"
 	"os/exec"
@@ -59,34 +61,30 @@ func (ts testset) Run() {
 
 		statusGood(t.name, "["+strconv.Itoa(i+1)+"/"+strconv.Itoa(len(ts.Tests))+"] (in", currDir+")")
 
+		var cmdErr error
+		var cmdOut []byte
+
 		if t.goFunc != nil {
-			err := t.goFunc()
+			// Replace stderr and stdout with a buffer
+			old := os.Stdout // keep backup of the real stdout
+			r, w, _ := os.Pipe()
+			os.Stdout = w
+			os.Stderr = w
 
-			if err != nil {
-				if t.ignoreErrors != "" {
-					statusBoldErr("Test failed, but ignoring error:", t.ignoreErrors)
-					time.Sleep(1 * time.Second)
-					success = append(success, t)
-					continue
-				}
-				failed = append(failed, t)
+			cmdErr = t.goFunc()
 
-				statusBoldYellow("Test", t.name, "has failed!")
+			outC := make(chan []byte)
+			// copy the output in a separate goroutine so printing can't block indefinitely
+			go func() {
+				var buf bytes.Buffer
+				io.Copy(&buf, r)
+				outC <- buf.Bytes()
+			}()
 
-				var inp string
-				if os.Getenv("NO_INTERACTION") == "" {
-					inp = common.AskInput("Continue (y/N): ")
-				}
-				if inp == "y" || inp == "Y" {
-					continue
-				} else {
-					statusBoldYellow("Output of test", t.name, "is above.")
-					break
-				}
-			} else {
-				success = append(success, t)
-				continue
-			}
+			// back to normal state
+			w.Close()
+			os.Stdout = old // restoring the real stdout
+			cmdOut = <-outC
 		}
 
 		if t.customTest != "" {
@@ -104,24 +102,26 @@ func (ts testset) Run() {
 		}
 
 		// Run test here
-		cmd := exec.Command(t.cmd[0], t.cmd[1:]...)
+		if len(t.cmd) > 0 {
+			cmd := exec.Command(t.cmd[0], t.cmd[1:]...)
 
-		cmd.Env = os.Environ()
+			cmd.Env = os.Environ()
 
-		outp, cmdErr := cmd.CombinedOutput()
+			cmdOut, cmdErr = cmd.CombinedOutput()
 
-		if os.Getenv("DEBUG") == "1" {
-			fmt.Println(string(outp))
+			if os.Getenv("DEBUG") == "1" {
+				fmt.Println(string(cmdOut))
+			}
+
+			// Cleanup
+			err = os.RemoveAll("tmp")
+
+			if err != nil {
+				panic(err)
+			}
 		}
 
-		outputs = append(outputs, string(outp))
-
-		// Cleanup
-		err = os.RemoveAll("tmp")
-
-		if err != nil {
-			panic(err)
-		}
+		outputs = append(outputs, string(cmdOut))
 
 		if cmdErr != nil {
 			if t.ignoreErrors != "" {
@@ -133,7 +133,7 @@ func (ts testset) Run() {
 			failed = append(failed, t)
 
 			// Print last 10 lines of output
-			lines := strings.Split(string(outp), "\n")
+			lines := strings.Split(string(cmdOut), "\n")
 
 			if len(lines) > 10 {
 				lines = lines[len(lines)-10:]
@@ -153,7 +153,7 @@ func (ts testset) Run() {
 			if inp == "y" || inp == "Y" {
 				continue
 			} else {
-				fmt.Println(string(outp))
+				fmt.Println(string(cmdOut))
 				statusBoldYellow("Output of test", t.name, "is above.")
 				break
 			}

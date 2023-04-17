@@ -3,6 +3,7 @@ package tests
 
 import (
 	"embed"
+	"kitehelper/tests/gotests"
 )
 
 //go:embed custom
@@ -69,6 +70,10 @@ var testList = testset{
 			name:       "team_perms_check.py",
 			cmd:        []string{"python3"},
 			customTest: "team_perms_check.py",
+		},
+		{
+			name:   "team_perms_checks.go",
+			goFunc: gotests.TestCheck,
 		},
 	},
 }
