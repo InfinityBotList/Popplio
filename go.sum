@@ -51,6 +51,8 @@ github.com/gorilla/websocket v1.5.0 h1:PPwGk2jz7EePpoHN/+ClbZu8SPxiqlu12wZP/3sWm
 github.com/gorilla/websocket v1.5.0/go.mod h1:YR8l580nyteQvAITg2hZ9XVh4b55+EU/adAjf1fMHhE=
 github.com/infinitybotlist/eureka v0.0.0-20230418065139-7c4cdc353252 h1:xdClfz9ylq8oGFUWyA+ZdjEQ4BDPuR8ztUUNZPJH6I4=
 github.com/infinitybotlist/eureka v0.0.0-20230418065139-7c4cdc353252/go.mod h1:EncygsTKn7CRa8waGotqG+OpUDxZrwyNBTK47pvSWes=
+github.com/infinitybotlist/eureka v0.0.0-20230418073004-46abc23a53d5 h1:dP1QYZdnhH514ggpDRLXtkjmopGmFk+XhDD+md2uqhE=
+github.com/infinitybotlist/eureka v0.0.0-20230418073004-46abc23a53d5/go.mod h1:EncygsTKn7CRa8waGotqG+OpUDxZrwyNBTK47pvSWes=
 github.com/invopop/yaml v0.1.0/go.mod h1:2XuRLgs/ouIrW3XNzuNj7J3Nvu/Dig5MXvbCEdiBN3Q=
 github.com/invopop/yaml v0.2.0 h1:7zky/qH+O0DwAyoobXUqvVBwgBFRxKoQ/3FjcVpjTMY=
 github.com/invopop/yaml v0.2.0/go.mod h1:2XuRLgs/ouIrW3XNzuNj7J3Nvu/Dig5MXvbCEdiBN3Q=

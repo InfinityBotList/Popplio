@@ -15,13 +15,13 @@ import (
 	"github.com/go-playground/validator/v10/non-standard/validators"
 	"github.com/infinitybotlist/eureka/dovewing"
 	"github.com/infinitybotlist/eureka/genconfig"
+	"github.com/infinitybotlist/eureka/snippets"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/plutov/paypal/v4"
 	"github.com/redis/go-redis/v9"
 	"github.com/stripe/stripe-go/v74"
 	"github.com/stripe/stripe-go/v74/webhookendpoint"
 	"go.uber.org/zap"
-	"go.uber.org/zap/zapcore"
 	"gopkg.in/yaml.v3"
 )
 
@@ -56,51 +56,12 @@ func nonVulgar(fl validator.FieldLevel) bool {
 	}
 }
 
-func isHttpOrHttps(fl validator.FieldLevel) bool {
-	// get the field value
-	switch fl.Field().Kind() {
-	case reflect.String:
-		value := fl.Field().String()
-
-		return strings.HasPrefix(value, "http://") || strings.HasPrefix(value, "https://")
-	default:
-		return false
-	}
-}
-
-func isHttps(fl validator.FieldLevel) bool {
-	// get the field value
-	switch fl.Field().Kind() {
-	case reflect.String:
-		value := fl.Field().String()
-
-		return strings.HasPrefix(value, "https://")
-	default:
-		return false
-	}
-}
-
-func noSpaces(fl validator.FieldLevel) bool {
-	// get the field value
-	switch fl.Field().Kind() {
-	case reflect.String:
-		value := fl.Field().String()
-
-		if strings.Contains(value, " ") {
-			return false
-		}
-		return true
-	default:
-		return false
-	}
-}
-
 func Setup() {
 	Validator.RegisterValidation("nonvulgar", nonVulgar)
 	Validator.RegisterValidation("notblank", validators.NotBlank)
-	Validator.RegisterValidation("nospaces", noSpaces)
-	Validator.RegisterValidation("https", isHttps)
-	Validator.RegisterValidation("httporhttps", isHttpOrHttps)
+	Validator.RegisterValidation("nospaces", snippets.ValidatorNoSpaces)
+	Validator.RegisterValidation("https", snippets.ValidatorIsHttps)
+	Validator.RegisterValidation("httporhttps", snippets.ValidatorIsHttpOrHttps)
 
 	genconfig.GenConfig(config.Config{})
 
@@ -157,15 +118,7 @@ func Setup() {
 		}
 	}()
 
-	w := zapcore.AddSync(os.Stdout)
-
-	core := zapcore.NewCore(
-		zapcore.NewJSONEncoder(zap.NewProductionEncoderConfig()),
-		w,
-		zap.DebugLevel,
-	)
-
-	Logger = zap.New(core).Sugar()
+	Logger = snippets.CreateZap()
 
 	// Load dovewing state
 	dovewing.SetState(&dovewing.State{
