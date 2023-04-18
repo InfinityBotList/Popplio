@@ -3,12 +3,12 @@ package delete_user_reminders
 import (
 	"net/http"
 
-	"popplio/api"
 	"popplio/state"
 	"popplio/types"
 	"popplio/utils"
 
 	docs "github.com/infinitybotlist/eureka/doclib"
+	"github.com/infinitybotlist/eureka/uapi"
 
 	"github.com/go-chi/chi/v5"
 )
@@ -37,7 +37,7 @@ func Docs() *docs.Doc {
 	}
 }
 
-func Route(d api.RouteData, r *http.Request) api.HttpResponse {
+func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	name := chi.URLParam(r, "bid")
 
 	// Resolve bot ID
@@ -45,15 +45,15 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 
 	if err != nil {
 		state.Logger.Error(err)
-		return api.DefaultResponse(http.StatusInternalServerError)
+		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
 	if id == "" {
-		return api.DefaultResponse(http.StatusNotFound)
+		return uapi.DefaultResponse(http.StatusNotFound)
 	}
 
 	// Delete old
 	state.Pool.Exec(d.Context, "DELETE FROM silverpelt WHERE user_id = $1 AND bot_id = $2", d.Auth.ID, id)
 
-	return api.DefaultResponse(http.StatusNoContent)
+	return uapi.DefaultResponse(http.StatusNoContent)
 }

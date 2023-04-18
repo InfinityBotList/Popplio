@@ -3,13 +3,13 @@ package post_stats
 import (
 	"net/http"
 
-	"popplio/api"
 	"popplio/constants"
 	"popplio/state"
 	"popplio/types"
 	"popplio/utils"
 
 	docs "github.com/infinitybotlist/eureka/doclib"
+	"github.com/infinitybotlist/eureka/uapi"
 )
 
 func Docs() *docs.Doc {
@@ -32,10 +32,10 @@ print(req.json())
 	}
 }
 
-func Route(d api.RouteData, r *http.Request) api.HttpResponse {
+func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	var payload types.BotStats
 
-	resp, ok := api.MarshalReq(r, &payload)
+	resp, ok := uapi.MarshalReq(r, &payload)
 
 	if !ok {
 		return resp
@@ -46,7 +46,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 
 		if err != nil {
 			state.Logger.Error(err)
-			return api.DefaultResponse(http.StatusInternalServerError)
+			return uapi.DefaultResponse(http.StatusInternalServerError)
 		}
 	}
 
@@ -55,7 +55,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 
 		if err != nil {
 			state.Logger.Error(err)
-			return api.DefaultResponse(http.StatusInternalServerError)
+			return uapi.DefaultResponse(http.StatusInternalServerError)
 		}
 	}
 
@@ -64,7 +64,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 
 		if err != nil {
 			state.Logger.Error(err)
-			return api.DefaultResponse(http.StatusInternalServerError)
+			return uapi.DefaultResponse(http.StatusInternalServerError)
 		}
 	}
 
@@ -73,11 +73,11 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 
 		if err != nil {
 			state.Logger.Error(err)
-			return api.DefaultResponse(http.StatusInternalServerError)
+			return uapi.DefaultResponse(http.StatusInternalServerError)
 		}
 	}
 
 	utils.ClearBotCache(d.Context, d.Auth.ID)
 
-	return api.DefaultResponse(http.StatusNoContent)
+	return uapi.DefaultResponse(http.StatusNoContent)
 }

@@ -2,10 +2,10 @@ package get_apps_meta
 
 import (
 	"net/http"
-	"popplio/api"
 	"popplio/apps"
 
 	docs "github.com/infinitybotlist/eureka/doclib"
+	"github.com/infinitybotlist/eureka/uapi"
 )
 
 func Docs() *docs.Doc {
@@ -16,8 +16,8 @@ func Docs() *docs.Doc {
 	}
 }
 
-func Route(d api.RouteData, r *http.Request) api.HttpResponse {
-	return api.HttpResponse{
+func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
+	return uapi.HttpResponse{
 		Json: apps.AppMeta{
 			Positions: apps.Apps,
 			Stable:    apps.Stable,

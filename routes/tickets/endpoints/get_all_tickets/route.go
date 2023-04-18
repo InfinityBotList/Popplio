@@ -6,13 +6,13 @@ import (
 	"strconv"
 	"strings"
 
-	"popplio/api"
 	"popplio/state"
 	"popplio/types"
 	"popplio/utils"
 
 	docs "github.com/infinitybotlist/eureka/doclib"
 	"github.com/infinitybotlist/eureka/dovewing"
+	"github.com/infinitybotlist/eureka/uapi"
 
 	"github.com/bwmarrin/discordgo"
 	"github.com/georgysavva/scany/v2/pgxscan"
@@ -42,7 +42,7 @@ func Docs() *docs.Doc {
 	}
 }
 
-func Route(d api.RouteData, r *http.Request) api.HttpResponse {
+func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	// Check if user is admin
 	var admin bool
 
@@ -50,11 +50,11 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 
 	if err != nil {
 		state.Logger.Error(err)
-		return api.DefaultResponse(http.StatusInternalServerError)
+		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
 	if !admin {
-		return api.HttpResponse{
+		return uapi.HttpResponse{
 			Status: http.StatusForbidden,
 			Json: types.ApiError{
 				Message: "You do not have permission to view this ticket",
@@ -72,7 +72,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 	pageNum, err := strconv.ParseUint(page, 10, 32)
 
 	if err != nil {
-		return api.DefaultResponse(http.StatusBadRequest)
+		return uapi.DefaultResponse(http.StatusBadRequest)
 	}
 
 	limit := perPage
@@ -85,14 +85,14 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 
 	if err != nil {
 		state.Logger.Error(err)
-		return api.DefaultResponse(http.StatusInternalServerError)
+		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
 	err = pgxscan.ScanAll(&ticket, row)
 
 	if err != nil {
 		state.Logger.Error(err)
-		return api.DefaultResponse(http.StatusNotFound)
+		return uapi.DefaultResponse(http.StatusNotFound)
 	}
 
 	for i := range ticket {
@@ -100,7 +100,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 
 		if err != nil {
 			state.Logger.Error(err)
-			return api.DefaultResponse(http.StatusInternalServerError)
+			return uapi.DefaultResponse(http.StatusInternalServerError)
 		}
 
 		if ticket[i].CloseUserID.Valid && ticket[i].CloseUserID.String != "" {
@@ -108,7 +108,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 
 			if err != nil {
 				state.Logger.Error(err)
-				return api.DefaultResponse(http.StatusInternalServerError)
+				return uapi.DefaultResponse(http.StatusInternalServerError)
 			}
 		}
 
@@ -117,7 +117,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 
 			if err != nil {
 				state.Logger.Error(err)
-				return api.DefaultResponse(http.StatusInternalServerError)
+				return uapi.DefaultResponse(http.StatusInternalServerError)
 			}
 
 			// Convert snowflake ID to timestamp
@@ -125,7 +125,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 
 			if err != nil {
 				state.Logger.Error(err)
-				return api.DefaultResponse(http.StatusInternalServerError)
+				return uapi.DefaultResponse(http.StatusInternalServerError)
 			}
 		}
 	}
@@ -147,7 +147,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 
 	if err != nil {
 		state.Logger.Error(err)
-		return api.DefaultResponse(http.StatusInternalServerError)
+		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
 	var next strings.Builder
@@ -168,7 +168,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 		Next:     next.String(),
 	}
 
-	return api.HttpResponse{
+	return uapi.HttpResponse{
 		Json: data,
 	}
 }

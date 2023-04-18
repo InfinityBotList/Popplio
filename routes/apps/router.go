@@ -9,6 +9,7 @@ import (
 	"popplio/routes/apps/endpoints/manage_app"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/infinitybotlist/eureka/uapi"
 )
 
 const tagName = "Apps"
@@ -20,27 +21,27 @@ func (b Router) Tag() (string, string) {
 }
 
 func (b Router) Routes(r *chi.Mux) {
-	api.Route{
+	uapi.Route{
 		Pattern: "/apps/meta",
 		OpId:    "get_apps_meta",
-		Method:  api.GET,
+		Method:  uapi.GET,
 		Docs:    get_apps_meta.Docs,
 		Handler: get_apps_meta.Route,
 	}.Route(r)
-	api.Route{
+	uapi.Route{
 		Pattern: "/apps/{id}",
 		OpId:    "get_app",
-		Method:  api.GET,
+		Method:  uapi.GET,
 		Docs:    get_app.Docs,
 		Handler: get_app.Route,
 	}.Route(r)
-	api.Route{
+	uapi.Route{
 		Pattern: "/users/{user_id}/apps",
 		OpId:    "get_apps_list",
-		Method:  api.GET,
+		Method:  uapi.GET,
 		Docs:    get_apps_list.Docs,
 		Handler: get_apps_list.Route,
-		Auth: []api.AuthType{
+		Auth: []uapi.AuthType{
 			{
 				URLVar:       "user_id",
 				Type:         api.TargetTypeUser,
@@ -48,13 +49,13 @@ func (b Router) Routes(r *chi.Mux) {
 			},
 		},
 	}.Route(r)
-	api.Route{
+	uapi.Route{
 		Pattern: "/users/{user_id}/apps",
 		OpId:    "create_app",
-		Method:  api.POST,
+		Method:  uapi.POST,
 		Docs:    create_app.Docs,
 		Handler: create_app.Route,
-		Auth: []api.AuthType{
+		Auth: []uapi.AuthType{
 			{
 				URLVar:       "user_id",
 				Type:         api.TargetTypeUser,
@@ -62,13 +63,13 @@ func (b Router) Routes(r *chi.Mux) {
 			},
 		},
 	}.Route(r)
-	api.Route{
+	uapi.Route{
 		Pattern: "/users/{user_id}/apps/{app_id}",
 		OpId:    "manage_app",
-		Method:  api.PATCH,
+		Method:  uapi.PATCH,
 		Docs:    manage_app.Docs,
 		Handler: manage_app.Route,
-		Auth: []api.AuthType{
+		Auth: []uapi.AuthType{
 			{
 				URLVar: "user_id",
 				Type:   api.TargetTypeUser,

@@ -5,7 +5,6 @@ import (
 	"net/http"
 	"time"
 
-	"popplio/api"
 	"popplio/ratelimit"
 	"popplio/state"
 	"popplio/teams"
@@ -16,12 +15,13 @@ import (
 	"popplio/webhooks/events"
 
 	docs "github.com/infinitybotlist/eureka/doclib"
+	"github.com/infinitybotlist/eureka/uapi"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-playground/validator/v10"
 )
 
-var compiledMessages = api.CompileValidationErrors(WebhookAuthPost{})
+var compiledMessages = uapi.CompileValidationErrors(WebhookAuthPost{})
 
 type WebhookAuthPost struct {
 	Votes int `json:"votes" validate:"required"`
@@ -52,7 +52,7 @@ func Docs() *docs.Doc {
 	}
 }
 
-func Route(d api.RouteData, r *http.Request) api.HttpResponse {
+func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	name := chi.URLParam(r, "bid")
 
 	// Resolve bot ID
@@ -60,11 +60,11 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 
 	if err != nil {
 		state.Logger.Error(err)
-		return api.DefaultResponse(http.StatusInternalServerError)
+		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
 	if id == "" {
-		return api.DefaultResponse(http.StatusNotFound)
+		return uapi.DefaultResponse(http.StatusNotFound)
 	}
 
 	// Validate that they actually own this bot
@@ -72,11 +72,11 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 
 	if err != nil {
 		state.Logger.Error(err)
-		return api.DefaultResponse(http.StatusInternalServerError)
+		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
 	if !perms.Has(teams.TeamPermissionTestBotWebhooks) {
-		return api.HttpResponse{
+		return uapi.HttpResponse{
 			Status: http.StatusBadRequest,
 			Json:   types.ApiError{Message: "You do not have permission to test this bot's webhooks", Error: true},
 		}
@@ -84,7 +84,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 
 	var payload WebhookAuthPost
 
-	resp, ok := api.MarshalReq(r, &payload)
+	resp, ok := uapi.MarshalReq(r, &payload)
 
 	if !ok {
 		return resp
@@ -95,7 +95,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 
 	if err != nil {
 		errors := err.(validator.ValidationErrors)
-		return api.ValidatorErrorResponse(compiledMessages, errors)
+		return uapi.ValidatorErrorResponse(compiledMessages, errors)
 	}
 
 	var webhooksV2 bool
@@ -104,7 +104,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 
 	if err != nil {
 		state.Logger.Error(err)
-		return api.DefaultResponse(http.StatusInternalServerError)
+		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
 	limit, err := ratelimit.Ratelimit{
@@ -115,11 +115,11 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 
 	if err != nil {
 		state.Logger.Error(err)
-		return api.DefaultResponse(http.StatusInternalServerError)
+		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
 	if limit.Exceeded {
-		return api.HttpResponse{
+		return uapi.HttpResponse{
 			Json: types.ApiError{
 				Error:   true,
 				Message: "You are being ratelimited. Please try again in " + limit.TimeToReset.String(),
@@ -141,7 +141,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 
 		if err != nil {
 			state.Logger.Error(err)
-			return api.HttpResponse{
+			return uapi.HttpResponse{
 				Status: http.StatusBadRequest,
 				Json: types.ApiError{
 					Error:   true,
@@ -150,10 +150,10 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 			}
 		}
 
-		return api.DefaultResponse(http.StatusNoContent)
+		return uapi.DefaultResponse(http.StatusNoContent)
 	} else {
 		if rand.Float64() < 0.1 {
-			return api.HttpResponse{
+			return uapi.HttpResponse{
 				Status: http.StatusBadRequest,
 				Json: types.ApiError{
 					Error:   true,
@@ -172,7 +172,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 		if err != nil {
 			state.Logger.Error(err)
 
-			return api.HttpResponse{
+			return uapi.HttpResponse{
 				Status: http.StatusBadRequest,
 				Json: types.ApiError{
 					Error:   true,
@@ -182,5 +182,5 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 		}
 	}
 
-	return api.DefaultResponse(http.StatusNoContent)
+	return uapi.DefaultResponse(http.StatusNoContent)
 }

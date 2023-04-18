@@ -2,13 +2,13 @@ package capture_paypal_order
 
 import (
 	"net/http"
-	"popplio/api"
 	"popplio/routes/payments/assets"
 	"popplio/state"
 	"popplio/types"
 
 	"github.com/go-chi/chi/v5"
 	docs "github.com/infinitybotlist/eureka/doclib"
+	"github.com/infinitybotlist/eureka/uapi"
 	"github.com/plutov/paypal/v4"
 
 	jsoniter "github.com/json-iterator/go"
@@ -33,11 +33,11 @@ func Docs() *docs.Doc {
 	}
 }
 
-func Route(d api.RouteData, r *http.Request) api.HttpResponse {
+func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	refId := chi.URLParam(r, "ref_id")
 
 	if refId == "" {
-		return api.HttpResponse{
+		return uapi.HttpResponse{
 			Status: http.StatusBadRequest,
 			Json: types.ApiError{
 				Error:   true,
@@ -50,7 +50,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 	orderIdRedis := state.Redis.Get(d.Context, "paypal:"+refId)
 
 	if orderIdRedis.Err() != nil {
-		return api.HttpResponse{
+		return uapi.HttpResponse{
 			Status: http.StatusBadRequest,
 			Json: types.ApiError{
 				Error:   true,
@@ -65,7 +65,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 
 	if err != nil {
 		state.Logger.Error("At capture", err)
-		return api.HttpResponse{
+		return uapi.HttpResponse{
 			Status: http.StatusBadRequest,
 			Json: types.ApiError{
 				Error:   true,
@@ -75,7 +75,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 	}
 
 	if captured.Status == "VOIDED" {
-		return api.HttpResponse{
+		return uapi.HttpResponse{
 			Status: http.StatusBadRequest,
 			Json: types.ApiError{
 				Error:   true,
@@ -90,7 +90,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 
 		if err != nil {
 			state.Logger.Error("At refund", err)
-			return api.HttpResponse{
+			return uapi.HttpResponse{
 				Status: http.StatusBadRequest,
 				Json: types.ApiError{
 					Error:   true,
@@ -99,7 +99,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 			}
 		}
 
-		return api.HttpResponse{
+		return uapi.HttpResponse{
 			Status: http.StatusBadRequest,
 			Json: types.ApiError{
 				Error:   true,
@@ -114,7 +114,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 
 		if err != nil {
 			state.Logger.Error("At refund", err)
-			return api.HttpResponse{
+			return uapi.HttpResponse{
 				Status: http.StatusBadRequest,
 				Json: types.ApiError{
 					Error:   true,
@@ -123,7 +123,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 			}
 		}
 
-		return api.HttpResponse{
+		return uapi.HttpResponse{
 			Status: http.StatusBadRequest,
 			Json: types.ApiError{
 				Error:   true,
@@ -144,7 +144,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 
 		if err != nil {
 			state.Logger.Error("At refund", err)
-			return api.HttpResponse{
+			return uapi.HttpResponse{
 				Status: http.StatusBadRequest,
 				Json: types.ApiError{
 					Error:   true,
@@ -154,7 +154,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 		}
 
 		state.Logger.Error(err)
-		return api.DefaultResponse(http.StatusInternalServerError)
+		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
 	err = assets.GivePerks(d.Context, product)
@@ -165,7 +165,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 
 		if err != nil {
 			state.Logger.Error("At refund", err)
-			return api.HttpResponse{
+			return uapi.HttpResponse{
 				Status: http.StatusBadRequest,
 				Json: types.ApiError{
 					Error:   true,
@@ -175,7 +175,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 		}
 
 		state.Logger.Error(err)
-		return api.HttpResponse{
+		return uapi.HttpResponse{
 			Status: http.StatusBadRequest,
 			Json: types.ApiError{
 				Error:   true,
@@ -186,7 +186,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 
 	state.Redis.Del(d.Context, "paypal:"+refId)
 
-	return api.HttpResponse{
+	return uapi.HttpResponse{
 		Redirect: state.Config.Sites.Frontend + "/payments/success",
 	}
 }

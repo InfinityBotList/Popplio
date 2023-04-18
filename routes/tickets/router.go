@@ -6,6 +6,7 @@ import (
 	"popplio/routes/tickets/endpoints/get_ticket"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/infinitybotlist/eureka/uapi"
 )
 
 const tagName = "Tickets + Transcripts"
@@ -17,26 +18,26 @@ func (b Router) Tag() (string, string) {
 }
 
 func (b Router) Routes(r *chi.Mux) {
-	api.Route{
+	uapi.Route{
 		Pattern: "/tickets/all",
 		OpId:    "get_all_tickets",
-		Method:  api.GET,
+		Method:  uapi.GET,
 		Docs:    get_all_tickets.Docs,
 		Handler: get_all_tickets.Route,
-		Auth: []api.AuthType{
+		Auth: []uapi.AuthType{
 			{
 				Type: api.TargetTypeUser,
 			},
 		},
 	}.Route(r)
 
-	api.Route{
+	uapi.Route{
 		Pattern: "/tickets/{id}",
 		OpId:    "get_ticket",
-		Method:  api.GET,
+		Method:  uapi.GET,
 		Docs:    get_ticket.Docs,
 		Handler: get_ticket.Route,
-		Auth: []api.AuthType{
+		Auth: []uapi.AuthType{
 			{
 				Type: api.TargetTypeUser,
 			},

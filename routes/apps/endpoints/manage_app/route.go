@@ -3,7 +3,6 @@ package manage_app
 import (
 	"fmt"
 	"net/http"
-	"popplio/api"
 	"popplio/apps"
 	"popplio/state"
 	"popplio/types"
@@ -11,6 +10,7 @@ import (
 	"strings"
 
 	docs "github.com/infinitybotlist/eureka/doclib"
+	"github.com/infinitybotlist/eureka/uapi"
 
 	"github.com/bwmarrin/discordgo"
 	"github.com/georgysavva/scany/v2/pgxscan"
@@ -24,7 +24,7 @@ type ManageApp struct {
 }
 
 var (
-	compiledMessages = api.CompileValidationErrors(ManageApp{})
+	compiledMessages = uapi.CompileValidationErrors(ManageApp{})
 	appColsArr       = utils.GetCols(apps.AppResponse{})
 	appCols          = strings.Join(appColsArr, ",")
 )
@@ -54,7 +54,7 @@ func Docs() *docs.Doc {
 	}
 }
 
-func Route(d api.RouteData, r *http.Request) api.HttpResponse {
+func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	// Check if the user has the permission to approve/deny the app
 	var iblhdev bool
 	var hadmin bool
@@ -63,7 +63,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 
 	if err != nil {
 		state.Logger.Error(err)
-		return api.HttpResponse{
+		return uapi.HttpResponse{
 			Status: http.StatusInternalServerError,
 			Json: types.ApiError{
 				Error:   true,
@@ -73,7 +73,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 	}
 
 	if !iblhdev && !hadmin {
-		return api.HttpResponse{
+		return uapi.HttpResponse{
 			Status: http.StatusForbidden,
 			Json: types.ApiError{
 				Error:   true,
@@ -84,7 +84,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 
 	var payload ManageApp
 
-	hresp, ok := api.MarshalReq(r, &payload)
+	hresp, ok := uapi.MarshalReq(r, &payload)
 
 	if !ok {
 		return hresp
@@ -96,7 +96,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 
 	if err != nil {
 		errors := err.(validator.ValidationErrors)
-		return api.ValidatorErrorResponse(compiledMessages, errors)
+		return uapi.ValidatorErrorResponse(compiledMessages, errors)
 	}
 
 	// Fetch app info such as the position from database
@@ -108,11 +108,11 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 	err = state.Pool.QueryRow(d.Context, "SELECT COUNT(*) FROM apps WHERE app_id = $1", appId).Scan(&count)
 
 	if err != nil {
-		return api.DefaultResponse(http.StatusInternalServerError)
+		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
 	if count == 0 {
-		return api.DefaultResponse(http.StatusNotFound)
+		return uapi.DefaultResponse(http.StatusNotFound)
 	}
 
 	var app apps.AppResponse
@@ -121,18 +121,18 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 
 	if err != nil {
 		state.Logger.Error(err)
-		return api.DefaultResponse(http.StatusInternalServerError)
+		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
 	err = pgxscan.ScanOne(&app, rows)
 
 	if err != nil {
 		state.Logger.Error(err)
-		return api.DefaultResponse(http.StatusInternalServerError)
+		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
 	if app.State != "pending" {
-		return api.HttpResponse{
+		return uapi.HttpResponse{
 			Status: http.StatusBadRequest,
 			Json: types.ApiError{
 				Error:   true,
@@ -149,10 +149,10 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 
 		if err != nil {
 			state.Logger.Error(err)
-			return api.DefaultResponse(http.StatusInternalServerError)
+			return uapi.DefaultResponse(http.StatusInternalServerError)
 		}
 
-		return api.HttpResponse{
+		return uapi.HttpResponse{
 			Status: http.StatusBadRequest,
 			Json: types.ApiError{
 				Error:   true,
@@ -169,7 +169,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 
 			if err != nil {
 				state.Logger.Error(err)
-				return api.HttpResponse{
+				return uapi.HttpResponse{
 					Json: types.ApiError{
 						Error:   true,
 						Message: "Error: " + err.Error(),
@@ -179,7 +179,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 			}
 
 			if !add {
-				return api.DefaultResponse(http.StatusNoContent)
+				return uapi.DefaultResponse(http.StatusNoContent)
 			}
 		}
 
@@ -187,7 +187,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 
 		if err != nil {
 			state.Logger.Error(err)
-			return api.DefaultResponse(http.StatusInternalServerError)
+			return uapi.DefaultResponse(http.StatusInternalServerError)
 		}
 
 		embeds = []*discordgo.MessageEmbed{
@@ -230,7 +230,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 
 		if err != nil {
 			state.Logger.Error(err)
-			return api.DefaultResponse(http.StatusInternalServerError)
+			return uapi.DefaultResponse(http.StatusInternalServerError)
 		}
 
 		embeds = []*discordgo.MessageEmbed{
@@ -275,7 +275,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 
 	if err != nil {
 		state.Logger.Error(err)
-		return api.DefaultResponse(http.StatusInternalServerError)
+		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
 	// Send message to user if in main server
@@ -286,7 +286,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 
 		if err != nil {
 			state.Logger.Error(err)
-			return api.HttpResponse{
+			return uapi.HttpResponse{
 				Json: types.ApiError{
 					Error:   true,
 					Message: "Could not send DM, but app was updated successfully",
@@ -298,7 +298,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 
 		if err != nil {
 			state.Logger.Error(err)
-			return api.HttpResponse{
+			return uapi.HttpResponse{
 				Json: types.ApiError{
 					Error:   true,
 					Message: "Could not send DM, but app was updated successfully",
@@ -306,5 +306,5 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 			}
 		}
 	}
-	return api.DefaultResponse(http.StatusNoContent)
+	return uapi.DefaultResponse(http.StatusNoContent)
 }

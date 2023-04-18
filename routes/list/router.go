@@ -1,7 +1,6 @@
 package list
 
 import (
-	"popplio/api"
 	"popplio/routes/list/endpoints/current_status"
 	"popplio/routes/list/endpoints/get_list_index"
 	"popplio/routes/list/endpoints/get_list_stats"
@@ -12,6 +11,7 @@ import (
 	"popplio/routes/list/endpoints/test_auth"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/infinitybotlist/eureka/uapi"
 )
 
 const tagName = "List Stats"
@@ -23,67 +23,67 @@ func (b Router) Tag() (string, string) {
 }
 
 func (b Router) Routes(r *chi.Mux) {
-	api.Route{
+	uapi.Route{
 		Pattern: "/list/index",
 		OpId:    "get_list_index",
-		Method:  api.GET,
+		Method:  uapi.GET,
 		Docs:    get_list_index.Docs,
 		Handler: get_list_index.Route,
 	}.Route(r)
 
-	api.Route{
+	uapi.Route{
 		Pattern: "/list/random-bots",
 		OpId:    "get_random_bots",
-		Method:  api.GET,
+		Method:  uapi.GET,
 		Docs:    get_random_bots.Docs,
 		Handler: get_random_bots.Route,
 	}.Route(r)
 
-	api.Route{
+	uapi.Route{
 		Pattern: "/list/search",
 		OpId:    "search_list",
-		Method:  api.POST,
+		Method:  uapi.POST,
 		Docs:    search_list.Docs,
 		Handler: search_list.Route,
 		Setup:   search_list.Setup,
 	}.Route(r)
 
-	api.Route{
+	uapi.Route{
 		Pattern: "/list/stats",
 		OpId:    "get_list_stats",
-		Method:  api.GET,
+		Method:  uapi.GET,
 		Docs:    get_list_stats.Docs,
 		Handler: get_list_stats.Route,
 	}.Route(r)
 
-	api.Route{
+	uapi.Route{
 		Pattern: "/list/auth-test",
 		OpId:    "test_auth",
-		Method:  api.POST,
+		Method:  uapi.POST,
 		Docs:    test_auth.Docs,
 		Handler: test_auth.Route,
 	}.Route(r)
 
-	api.Route{
+	uapi.Route{
 		Pattern: "/list/partners",
 		OpId:    "get_partners",
-		Method:  api.GET,
+		Method:  uapi.GET,
 		Docs:    get_partners.Docs,
 		Handler: get_partners.Route,
 	}.Route(r)
 
-	api.Route{
+	uapi.Route{
 		Pattern: "/list/team",
 		OpId:    "get_list_team",
-		Method:  api.GET,
+		Method:  uapi.GET,
 		Docs:    get_list_team.Docs,
 		Handler: get_list_team.Route,
 	}.Route(r)
 
-	api.Route{
+	uapi.Route{
 		Pattern: "/list/current-status",
 		OpId:    "current_status",
-		Method:  api.GET,
+		Method:  uapi.GET,
 		Docs:    current_status.Docs,
 		Handler: current_status.Route,
 	}.Route(r)

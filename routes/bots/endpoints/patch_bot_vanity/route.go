@@ -5,13 +5,13 @@ import (
 	"strings"
 	"unicode"
 
-	"popplio/api"
 	"popplio/state"
 	"popplio/teams"
 	"popplio/types"
 	"popplio/utils"
 
 	docs "github.com/infinitybotlist/eureka/doclib"
+	"github.com/infinitybotlist/eureka/uapi"
 
 	"github.com/go-chi/chi/v5"
 )
@@ -45,7 +45,7 @@ func Docs() *docs.Doc {
 	}
 }
 
-func Route(d api.RouteData, r *http.Request) api.HttpResponse {
+func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	name := chi.URLParam(r, "bid")
 
 	// Resolve bot ID
@@ -53,22 +53,22 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 
 	if err != nil {
 		state.Logger.Error(err)
-		return api.DefaultResponse(http.StatusInternalServerError)
+		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
 	if id == "" {
-		return api.DefaultResponse(http.StatusNotFound)
+		return uapi.DefaultResponse(http.StatusNotFound)
 	}
 
 	perms, err := utils.GetUserBotPerms(d.Context, d.Auth.ID, id)
 
 	if err != nil {
 		state.Logger.Error(err)
-		return api.DefaultResponse(http.StatusInternalServerError)
+		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
 	if !perms.Has(teams.TeamPermissionSetBotVanity) {
-		return api.HttpResponse{
+		return uapi.HttpResponse{
 			Status: http.StatusForbidden,
 			Json:   types.ApiError{Message: "You do not have permission to set bot vanity", Error: true},
 		}
@@ -77,7 +77,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 	// Read vanity from body
 	var vanity VanityUpdate
 
-	hresp, ok := api.MarshalReq(r, &vanity)
+	hresp, ok := uapi.MarshalReq(r, &vanity)
 
 	if !ok {
 		return hresp
@@ -92,14 +92,14 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 	}, vanity.Vanity)
 
 	if vanity.Vanity == "" {
-		return api.HttpResponse{
+		return uapi.HttpResponse{
 			Status: http.StatusBadRequest,
 			Json:   types.ApiError{Message: "Vanity cannot be empty", Error: true},
 		}
 	}
 
 	if vanity.Vanity == "undefined" || vanity.Vanity == "null" || vanity.Vanity == "blog" || vanity.Vanity == "help" {
-		return api.HttpResponse{
+		return uapi.HttpResponse{
 			Status: http.StatusBadRequest,
 			Json:   types.ApiError{Message: "Vanity cannot be undefined, blog, help or null", Error: true},
 		}
@@ -118,11 +118,11 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 
 	if err != nil {
 		state.Logger.Error(err)
-		return api.DefaultResponse(http.StatusInternalServerError)
+		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
 	if count > 0 {
-		return api.HttpResponse{
+		return uapi.HttpResponse{
 			Status: http.StatusBadRequest,
 			Json:   types.ApiError{Message: "Vanity is already taken", Error: true},
 		}
@@ -133,10 +133,10 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 
 	if err != nil {
 		state.Logger.Error(err)
-		return api.DefaultResponse(http.StatusInternalServerError)
+		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
 	utils.ClearBotCache(d.Context, id)
 
-	return api.DefaultResponse(http.StatusNoContent)
+	return uapi.DefaultResponse(http.StatusNoContent)
 }

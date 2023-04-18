@@ -2,18 +2,18 @@ package patch_pack
 
 import (
 	"net/http"
-	"popplio/api"
 	"popplio/state"
 	"popplio/types"
 
 	docs "github.com/infinitybotlist/eureka/doclib"
 	"github.com/infinitybotlist/eureka/dovewing"
+	"github.com/infinitybotlist/eureka/uapi"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-playground/validator/v10"
 )
 
-var compiledMessages = api.CompileValidationErrors(PatchPack{})
+var compiledMessages = uapi.CompileValidationErrors(PatchPack{})
 
 type PatchPack struct {
 	Name  string   `json:"name" validate:"required,min=3,max=20" msg:"Name must be between 3 and 20 characters"`
@@ -47,10 +47,10 @@ func Docs() *docs.Doc {
 	}
 }
 
-func Route(d api.RouteData, r *http.Request) api.HttpResponse {
+func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	var payload PatchPack
 
-	hresp, ok := api.MarshalReq(r, &payload)
+	hresp, ok := uapi.MarshalReq(r, &payload)
 
 	if !ok {
 		return hresp
@@ -61,7 +61,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 
 	if err != nil {
 		errors := err.(validator.ValidationErrors)
-		return api.ValidatorErrorResponse(compiledMessages, errors)
+		return uapi.ValidatorErrorResponse(compiledMessages, errors)
 	}
 
 	var id = chi.URLParam(r, "id")
@@ -72,11 +72,11 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 	err = state.Pool.QueryRow(d.Context, "SELECT COUNT(*) FROM packs WHERE url = $1", id).Scan(&count)
 
 	if err != nil {
-		return api.DefaultResponse(http.StatusInternalServerError)
+		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
 	if count == 0 {
-		return api.DefaultResponse(http.StatusNotFound)
+		return uapi.DefaultResponse(http.StatusNotFound)
 	}
 
 	// Check that the user is the owner of the pack
@@ -85,11 +85,11 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 	err = state.Pool.QueryRow(d.Context, "SELECT owner FROM packs WHERE url = $1", id).Scan(&owner)
 
 	if err != nil {
-		return api.DefaultResponse(http.StatusInternalServerError)
+		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
 	if owner != d.Auth.ID {
-		return api.HttpResponse{
+		return uapi.HttpResponse{
 			Status: http.StatusForbidden,
 			Json: types.ApiError{
 				Message: "You are not the owner of this pack",
@@ -103,7 +103,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 		botUser, err := dovewing.GetDiscordUser(d.Context, bot)
 
 		if err != nil {
-			return api.HttpResponse{
+			return uapi.HttpResponse{
 				Status: http.StatusBadRequest,
 				Json: types.ApiError{
 					Message: "One of the bot you wish to add does not exist [" + bot + "]: " + err.Error(),
@@ -113,7 +113,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 		}
 
 		if !botUser.Bot {
-			return api.HttpResponse{
+			return uapi.HttpResponse{
 				Status: http.StatusBadRequest,
 				Json: types.ApiError{
 					Message: "One of the bot you wish to add is not actually a bot [" + bot + "]",
@@ -127,8 +127,8 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 	_, err = state.Pool.Exec(d.Context, "UPDATE packs SET name = $1, short = $2, tags = $3, bots = $4 WHERE url = $5", payload.Name, payload.Short, payload.Tags, payload.Bots, id)
 
 	if err != nil {
-		return api.DefaultResponse(http.StatusInternalServerError)
+		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
-	return api.DefaultResponse(http.StatusNoContent)
+	return uapi.DefaultResponse(http.StatusNoContent)
 }

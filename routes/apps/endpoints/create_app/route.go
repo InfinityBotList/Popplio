@@ -2,12 +2,12 @@ package create_app
 
 import (
 	"net/http"
-	"popplio/api"
 	"popplio/apps"
 	"popplio/state"
 	"popplio/types"
 
 	docs "github.com/infinitybotlist/eureka/doclib"
+	"github.com/infinitybotlist/eureka/uapi"
 
 	"github.com/bwmarrin/discordgo"
 	"github.com/go-playground/validator/v10"
@@ -19,7 +19,7 @@ type CreateApp struct {
 	Answers  map[string]string `json:"answers" validate:"required,dive,required"`
 }
 
-var compiledMessages = api.CompileValidationErrors(CreateApp{})
+var compiledMessages = uapi.CompileValidationErrors(CreateApp{})
 
 func Docs() *docs.Doc {
 	return &docs.Doc{
@@ -39,10 +39,10 @@ func Docs() *docs.Doc {
 	}
 }
 
-func Route(d api.RouteData, r *http.Request) api.HttpResponse {
+func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	var payload CreateApp
 
-	hresp, ok := api.MarshalReq(r, &payload)
+	hresp, ok := uapi.MarshalReq(r, &payload)
 
 	if !ok {
 		return hresp
@@ -54,13 +54,13 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 
 	if err != nil {
 		errors := err.(validator.ValidationErrors)
-		return api.ValidatorErrorResponse(compiledMessages, errors)
+		return uapi.ValidatorErrorResponse(compiledMessages, errors)
 	}
 
 	position, ok := apps.Apps[payload.Position]
 
 	if !ok {
-		return api.HttpResponse{
+		return uapi.HttpResponse{
 			Json: types.ApiError{
 				Error:   true,
 				Message: "Invalid position",
@@ -70,7 +70,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 	}
 
 	if d.Auth.Banned && !position.AllowedForBanned {
-		return api.HttpResponse{
+		return uapi.HttpResponse{
 			Json: types.ApiError{
 				Error:   true,
 				Message: "Banned users are not allowed to apply for this position",
@@ -80,7 +80,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 	}
 
 	if !d.Auth.Banned && position.BannedOnly {
-		return api.HttpResponse{
+		return uapi.HttpResponse{
 			Json: types.ApiError{
 				Error:   true,
 				Message: "You are not banned? Why are you appealing?",
@@ -90,7 +90,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 	}
 
 	if position.Closed {
-		return api.HttpResponse{
+		return uapi.HttpResponse{
 			Json: types.ApiError{
 				Error:   true,
 				Message: "This position is currently closed. Please check back later.",
@@ -105,11 +105,11 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 
 	if err != nil {
 		state.Logger.Error(err)
-		return api.DefaultResponse(http.StatusInternalServerError)
+		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
 	if userApps > 0 {
-		return api.HttpResponse{
+		return uapi.HttpResponse{
 			Json: types.ApiError{
 				Error:   true,
 				Message: "You already have a pending application for this position",
@@ -124,7 +124,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 		ans, ok := payload.Answers[question.ID]
 
 		if !ok {
-			return api.HttpResponse{
+			return uapi.HttpResponse{
 				Json: types.ApiError{
 					Error:   true,
 					Message: "Missing answer for question " + question.ID,
@@ -134,7 +134,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 		}
 
 		if ans == "" {
-			return api.HttpResponse{
+			return uapi.HttpResponse{
 				Json: types.ApiError{
 					Error:   true,
 					Message: "Answer for question " + question.ID + " cannot be empty",
@@ -145,7 +145,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 
 		if question.Short {
 			if len(ans) > 4096 {
-				return api.HttpResponse{
+				return uapi.HttpResponse{
 					Json: types.ApiError{
 						Error:   true,
 						Message: "Answer for question " + question.ID + " is too long",
@@ -155,7 +155,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 			}
 		} else {
 			if len(ans) < 50 {
-				return api.HttpResponse{
+				return uapi.HttpResponse{
 					Json: types.ApiError{
 						Error:   true,
 						Message: "Answer for question " + question.ID + " is too short",
@@ -165,7 +165,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 			}
 
 			if len(ans) > 10000 {
-				return api.HttpResponse{
+				return uapi.HttpResponse{
 					Json: types.ApiError{
 						Error:   true,
 						Message: "Answer for question " + question.ID + " is too long",
@@ -183,7 +183,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 
 		if err != nil {
 			state.Logger.Error(err)
-			return api.HttpResponse{
+			return uapi.HttpResponse{
 				Json: types.ApiError{
 					Error:   true,
 					Message: "Error: " + err.Error(),
@@ -193,7 +193,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 		}
 
 		if !add {
-			return api.DefaultResponse(http.StatusNoContent)
+			return uapi.DefaultResponse(http.StatusNoContent)
 		}
 	}
 
@@ -211,7 +211,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 
 	if err != nil {
 		state.Logger.Error(err)
-		return api.DefaultResponse(http.StatusInternalServerError)
+		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
 	// Send a message to APPS channel
@@ -256,8 +256,8 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 
 	if err != nil {
 		state.Logger.Error(err)
-		return api.DefaultResponse(http.StatusInternalServerError)
+		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
-	return api.DefaultResponse(http.StatusNoContent)
+	return uapi.DefaultResponse(http.StatusNoContent)
 }

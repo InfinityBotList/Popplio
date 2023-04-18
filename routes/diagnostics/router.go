@@ -1,10 +1,10 @@
 package diagnostics
 
 import (
-	"popplio/api"
 	"popplio/routes/diagnostics/endpoints/ping"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/infinitybotlist/eureka/uapi"
 )
 
 const tagName = "Diagnostics"
@@ -16,10 +16,10 @@ func (b Router) Tag() (string, string) {
 }
 
 func (b Router) Routes(r *chi.Mux) {
-	api.Route{
+	uapi.Route{
 		Pattern: "/",
 		OpId:    "ping",
-		Method:  api.GET,
+		Method:  uapi.GET,
 		Docs:    ping.Docs,
 		Handler: ping.Route,
 		Setup:   ping.Setup,

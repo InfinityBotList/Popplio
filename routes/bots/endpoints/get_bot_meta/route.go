@@ -2,7 +2,6 @@ package get_bot_meta
 
 import (
 	"net/http"
-	"popplio/api"
 	"popplio/ratelimit"
 	"popplio/routes/bots/assets"
 	"popplio/state"
@@ -11,6 +10,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	docs "github.com/infinitybotlist/eureka/doclib"
+	"github.com/infinitybotlist/eureka/uapi"
 )
 
 func Docs() *docs.Doc {
@@ -45,7 +45,7 @@ func Docs() *docs.Doc {
 	}
 }
 
-func Route(d api.RouteData, r *http.Request) api.HttpResponse {
+func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	limit, err := ratelimit.Ratelimit{
 		Expiry:      1 * time.Minute,
 		MaxRequests: 3,
@@ -54,11 +54,11 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 
 	if err != nil {
 		state.Logger.Error(err)
-		return api.DefaultResponse(http.StatusInternalServerError)
+		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
 	if limit.Exceeded {
-		return api.HttpResponse{
+		return uapi.HttpResponse{
 			Json: types.ApiError{
 				Error:   true,
 				Message: "You are being ratelimited. Please try again in " + limit.TimeToReset.String(),
@@ -75,7 +75,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 	meta, err := assets.CheckBot(fallbackId, cid)
 
 	if err != nil {
-		return api.HttpResponse{
+		return uapi.HttpResponse{
 			Status: http.StatusBadRequest,
 			Json: types.ApiError{
 				Message: err.Error(),
@@ -85,7 +85,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 	}
 
 	if meta == nil {
-		return api.HttpResponse{
+		return uapi.HttpResponse{
 			Status: http.StatusInternalServerError,
 			Json: types.ApiError{
 				Message: "Internal error: meta returned nil",
@@ -94,7 +94,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 		}
 	}
 
-	return api.HttpResponse{
+	return uapi.HttpResponse{
 		Status: http.StatusOK,
 		Json:   meta,
 	}

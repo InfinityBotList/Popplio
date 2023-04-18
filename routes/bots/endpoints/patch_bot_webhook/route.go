@@ -2,7 +2,6 @@ package patch_bot_webhook
 
 import (
 	"net/http"
-	"popplio/api"
 	"popplio/state"
 	"popplio/teams"
 	"popplio/types"
@@ -11,6 +10,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	docs "github.com/infinitybotlist/eureka/doclib"
+	"github.com/infinitybotlist/eureka/uapi"
 )
 
 type PatchBotWebhook struct {
@@ -45,7 +45,7 @@ func Docs() *docs.Doc {
 	}
 }
 
-func Route(d api.RouteData, r *http.Request) api.HttpResponse {
+func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	name := chi.URLParam(r, "bid")
 
 	// Resolve bot ID
@@ -53,22 +53,22 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 
 	if err != nil {
 		state.Logger.Error(err)
-		return api.DefaultResponse(http.StatusInternalServerError)
+		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
 	if id == "" {
-		return api.DefaultResponse(http.StatusNotFound)
+		return uapi.DefaultResponse(http.StatusNotFound)
 	}
 
 	perms, err := utils.GetUserBotPerms(d.Context, d.Auth.ID, id)
 
 	if err != nil {
 		state.Logger.Error(err)
-		return api.DefaultResponse(http.StatusInternalServerError)
+		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
 	if !perms.Has(teams.TeamPermissionEditBotWebhooks) {
-		return api.HttpResponse{
+		return uapi.HttpResponse{
 			Status: http.StatusForbidden,
 			Json:   types.ApiError{Message: "You do not have permission to edit bot webhooks", Error: true},
 		}
@@ -77,7 +77,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 	// Read payload from body
 	var payload PatchBotWebhook
 
-	hresp, ok := api.MarshalReq(r, &payload)
+	hresp, ok := uapi.MarshalReq(r, &payload)
 
 	if !ok {
 		return hresp
@@ -92,15 +92,15 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 
 		if err != nil {
 			state.Logger.Error(err)
-			return api.DefaultResponse(http.StatusInternalServerError)
+			return uapi.DefaultResponse(http.StatusInternalServerError)
 		}
 
-		return api.DefaultResponse(http.StatusNoContent)
+		return uapi.DefaultResponse(http.StatusNoContent)
 	}
 
 	if payload.WebhookURL != "" {
 		if !(strings.HasPrefix(payload.WebhookURL, "http://") || strings.HasPrefix(payload.WebhookURL, "https://")) {
-			return api.HttpResponse{
+			return uapi.HttpResponse{
 				Status: http.StatusBadRequest,
 				Json:   types.ApiError{Message: "Webhook URL must start with http:// or https://", Error: true},
 			}
@@ -110,7 +110,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 
 		if err != nil {
 			state.Logger.Error(err)
-			return api.DefaultResponse(http.StatusInternalServerError)
+			return uapi.DefaultResponse(http.StatusInternalServerError)
 		}
 	}
 
@@ -119,7 +119,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 
 		if err != nil {
 			state.Logger.Error(err)
-			return api.DefaultResponse(http.StatusInternalServerError)
+			return uapi.DefaultResponse(http.StatusInternalServerError)
 		}
 	}
 
@@ -129,8 +129,8 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 
 	if err != nil {
 		state.Logger.Error(err)
-		return api.DefaultResponse(http.StatusInternalServerError)
+		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
-	return api.DefaultResponse(http.StatusNoContent)
+	return uapi.DefaultResponse(http.StatusNoContent)
 }

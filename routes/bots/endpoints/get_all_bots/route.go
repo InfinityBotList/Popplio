@@ -7,13 +7,13 @@ import (
 	"strings"
 	"time"
 
-	"popplio/api"
 	"popplio/state"
 	"popplio/types"
 	"popplio/utils"
 
 	docs "github.com/infinitybotlist/eureka/doclib"
 	"github.com/infinitybotlist/eureka/dovewing"
+	"github.com/infinitybotlist/eureka/uapi"
 
 	"github.com/georgysavva/scany/v2/pgxscan"
 )
@@ -42,7 +42,7 @@ func Docs() *docs.Doc {
 	}
 }
 
-func Route(d api.RouteData, r *http.Request) api.HttpResponse {
+func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	page := r.URL.Query().Get("page")
 
 	if page == "" {
@@ -52,13 +52,13 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 	pageNum, err := strconv.ParseUint(page, 10, 32)
 
 	if err != nil {
-		return api.DefaultResponse(http.StatusBadRequest)
+		return uapi.DefaultResponse(http.StatusBadRequest)
 	}
 
 	// Check cache, this is how we can avoid hefty ratelimits
 	cache := state.Redis.Get(d.Context, "allbots-"+strconv.FormatUint(pageNum, 10)).Val()
 	if cache != "" {
-		return api.HttpResponse{
+		return uapi.HttpResponse{
 			Data: cache,
 			Headers: map[string]string{
 				"X-Popplio-Cached": "true",
@@ -73,7 +73,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 
 	if err != nil {
 		state.Logger.Error(err)
-		return api.DefaultResponse(http.StatusInternalServerError)
+		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
 	var bots []types.IndexBot
@@ -82,7 +82,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 
 	if err != nil {
 		state.Logger.Error(err)
-		return api.DefaultResponse(http.StatusInternalServerError)
+		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
 	// Set the user for each bot
@@ -90,7 +90,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 		botUser, err := dovewing.GetDiscordUser(d.Context, bot.BotID)
 
 		if err != nil {
-			return api.DefaultResponse(http.StatusInternalServerError)
+			return uapi.DefaultResponse(http.StatusInternalServerError)
 		}
 
 		bots[i].User = botUser
@@ -113,7 +113,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 
 	if err != nil {
 		state.Logger.Error(err)
-		return api.DefaultResponse(http.StatusInternalServerError)
+		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
 	var next strings.Builder
@@ -134,7 +134,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 		Next:     next.String(),
 	}
 
-	return api.HttpResponse{
+	return uapi.HttpResponse{
 		Json:      data,
 		CacheKey:  "allbots-" + strconv.FormatUint(pageNum, 10),
 		CacheTime: 10 * time.Minute,

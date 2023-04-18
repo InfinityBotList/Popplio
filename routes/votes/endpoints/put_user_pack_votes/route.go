@@ -3,11 +3,11 @@ package put_user_pack_votes
 import (
 	"net/http"
 
-	"popplio/api"
 	"popplio/state"
 	"popplio/types"
 
 	docs "github.com/infinitybotlist/eureka/doclib"
+	"github.com/infinitybotlist/eureka/uapi"
 
 	"github.com/go-chi/chi/v5"
 )
@@ -44,7 +44,7 @@ This updates any existing vote or creates a new one if none exist.  Returns 204 
 	}
 }
 
-func Route(d api.RouteData, r *http.Request) api.HttpResponse {
+func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	var userId = d.Auth.ID
 
 	var voteBannedState bool
@@ -53,11 +53,11 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 
 	if err != nil {
 		state.Logger.Error(err)
-		return api.DefaultResponse(http.StatusInternalServerError)
+		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
 	if voteBannedState {
-		return api.HttpResponse{
+		return uapi.HttpResponse{
 			Status: http.StatusForbidden,
 			Json: types.ApiError{
 				Message: "You are banned from voting right now! Contact support if you think this is a mistake",
@@ -70,7 +70,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 
 	var vote CreatePackVote
 
-	var resp, ok = api.MarshalReq(r, &vote)
+	var resp, ok = uapi.MarshalReq(r, &vote)
 
 	if !ok {
 		return resp
@@ -82,11 +82,11 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 
 	if err != nil {
 		state.Logger.Error(err)
-		return api.DefaultResponse(http.StatusInternalServerError)
+		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
 	if count == 0 {
-		return api.DefaultResponse(http.StatusNotFound)
+		return uapi.DefaultResponse(http.StatusNotFound)
 	}
 
 	if vote.Clear {
@@ -94,10 +94,10 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 
 		if err != nil {
 			state.Logger.Error(err)
-			return api.DefaultResponse(http.StatusInternalServerError)
+			return uapi.DefaultResponse(http.StatusInternalServerError)
 		}
 
-		return api.DefaultResponse(http.StatusNoContent)
+		return uapi.DefaultResponse(http.StatusNoContent)
 	}
 
 	// Check if the user has already voted and if so update the vote
@@ -107,7 +107,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 
 	if err != nil {
 		state.Logger.Error(err)
-		return api.DefaultResponse(http.StatusInternalServerError)
+		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
 	if packVotes == 0 {
@@ -116,7 +116,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 
 		if err != nil {
 			state.Logger.Error(err)
-			return api.DefaultResponse(http.StatusInternalServerError)
+			return uapi.DefaultResponse(http.StatusInternalServerError)
 		}
 	} else {
 		var upvote bool
@@ -125,7 +125,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 
 		if err != nil {
 			state.Logger.Error(err)
-			return api.DefaultResponse(http.StatusInternalServerError)
+			return uapi.DefaultResponse(http.StatusInternalServerError)
 		}
 
 		if upvote == vote.Upvote {
@@ -135,7 +135,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 				msg = "You have already downvoted this bot"
 			}
 
-			return api.HttpResponse{
+			return uapi.HttpResponse{
 				Status: http.StatusBadRequest,
 				Json: types.ApiError{
 					Message: msg,
@@ -149,9 +149,9 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 
 		if err != nil {
 			state.Logger.Error(err)
-			return api.DefaultResponse(http.StatusInternalServerError)
+			return uapi.DefaultResponse(http.StatusInternalServerError)
 		}
 	}
 
-	return api.DefaultResponse(http.StatusNoContent)
+	return uapi.DefaultResponse(http.StatusNoContent)
 }

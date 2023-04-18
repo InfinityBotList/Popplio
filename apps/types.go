@@ -1,13 +1,14 @@
 package apps
 
 import (
-	"popplio/api"
 	"time"
+
+	"github.com/infinitybotlist/eureka/uapi"
 )
 
-type LogicFunc = func(d api.RouteData, p Position, answers map[string]string) (add bool, err error)
-type PositionDescriptionFunc = func(d api.RouteData, p Position) string
-type ReviewFunc = func(d api.RouteData, resp AppResponse, reason string) (review bool, err error)
+type LogicFunc = func(d uapi.RouteData, p Position, answers map[string]string) (add bool, err error)
+type PositionDescriptionFunc = func(d uapi.RouteData, p Position) string
+type ReviewFunc = func(d uapi.RouteData, resp AppResponse, reason string) (review bool, err error)
 
 type Question struct {
 	ID          string `json:"id" validate:"required"`

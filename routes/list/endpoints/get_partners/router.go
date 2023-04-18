@@ -2,10 +2,10 @@ package get_partners
 
 import (
 	"net/http"
-	"popplio/api"
 	"popplio/partners"
 
 	docs "github.com/infinitybotlist/eureka/doclib"
+	"github.com/infinitybotlist/eureka/uapi"
 )
 
 func Docs() *docs.Doc {
@@ -16,8 +16,8 @@ func Docs() *docs.Doc {
 	}
 }
 
-func Route(d api.RouteData, r *http.Request) api.HttpResponse {
-	return api.HttpResponse{
+func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
+	return uapi.HttpResponse{
 		Status: http.StatusOK,
 		Json:   partners.Partners,
 	}

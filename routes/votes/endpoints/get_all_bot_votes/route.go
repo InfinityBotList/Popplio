@@ -4,12 +4,12 @@ import (
 	"net/http"
 	"strconv"
 
-	"popplio/api"
 	"popplio/state"
 	"popplio/types"
 	"popplio/utils"
 
 	docs "github.com/infinitybotlist/eureka/doclib"
+	"github.com/infinitybotlist/eureka/uapi"
 )
 
 const perPage = 10
@@ -38,7 +38,7 @@ func Docs() *docs.Doc {
 	}
 }
 
-func Route(d api.RouteData, r *http.Request) api.HttpResponse {
+func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	page := r.URL.Query().Get("page")
 
 	if page == "" {
@@ -48,7 +48,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 	pageNum, err := strconv.ParseUint(page, 10, 32)
 
 	if err != nil {
-		return api.DefaultResponse(http.StatusBadRequest)
+		return uapi.DefaultResponse(http.StatusBadRequest)
 	}
 
 	limit := perPage
@@ -58,7 +58,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 
 	if err != nil {
 		state.Logger.Error(err)
-		return api.DefaultResponse(http.StatusInternalServerError)
+		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
 	defer rows.Close()
@@ -71,14 +71,14 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 
 		if err != nil {
 			state.Logger.Error(err)
-			return api.DefaultResponse(http.StatusInternalServerError)
+			return uapi.DefaultResponse(http.StatusInternalServerError)
 		}
 
 		voteData, err := utils.GetVoteData(d.Context, userId, d.Auth.ID, false)
 
 		if err != nil {
 			state.Logger.Error(err)
-			return api.DefaultResponse(http.StatusInternalServerError)
+			return uapi.DefaultResponse(http.StatusInternalServerError)
 		}
 
 		voteParsed = append(voteParsed, *voteData)
@@ -90,10 +90,10 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 
 	if err != nil {
 		state.Logger.Error(err)
-		return api.DefaultResponse(http.StatusInternalServerError)
+		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
-	return api.HttpResponse{
+	return uapi.HttpResponse{
 		Json: types.AllVotes{
 			Votes:      voteParsed,
 			Count:      count,

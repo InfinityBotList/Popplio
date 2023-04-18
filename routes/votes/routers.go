@@ -9,6 +9,7 @@ import (
 	"popplio/routes/votes/endpoints/put_user_pack_votes"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/infinitybotlist/eureka/uapi"
 )
 
 const tagName = "Votes"
@@ -20,13 +21,13 @@ func (b Router) Tag() (string, string) {
 }
 
 func (b Router) Routes(r *chi.Mux) {
-	api.Route{
+	uapi.Route{
 		Pattern: "/bots/{id}/votes",
 		OpId:    "get_all_bot_votes",
-		Method:  api.GET,
+		Method:  uapi.GET,
 		Docs:    get_all_bot_votes.Docs,
 		Handler: get_all_bot_votes.Route,
-		Auth: []api.AuthType{
+		Auth: []uapi.AuthType{
 			{
 				URLVar: "id",
 				Type:   api.TargetTypeBot,
@@ -34,13 +35,13 @@ func (b Router) Routes(r *chi.Mux) {
 		},
 	}.Route(r)
 
-	api.Route{
+	uapi.Route{
 		Pattern: "/users/{uid}/bots/{bid}/votes",
 		OpId:    "get_user_bot_votes",
-		Method:  api.GET,
+		Method:  uapi.GET,
 		Docs:    get_user_bot_votes.Docs,
 		Handler: get_user_bot_votes.Route,
-		Auth: []api.AuthType{
+		Auth: []uapi.AuthType{
 			{
 				URLVar: "uid",
 				Type:   api.TargetTypeUser,
@@ -52,13 +53,13 @@ func (b Router) Routes(r *chi.Mux) {
 		},
 	}.Route(r)
 
-	api.Route{
+	uapi.Route{
 		Pattern: "/users/{uid}/bots/{bid}/votes",
 		OpId:    "put_user_bot_votes",
-		Method:  api.PUT,
+		Method:  uapi.PUT,
 		Docs:    put_user_bot_votes.Docs,
 		Handler: put_user_bot_votes.Route,
-		Auth: []api.AuthType{
+		Auth: []uapi.AuthType{
 			{
 				URLVar: "uid",
 				Type:   api.TargetTypeUser,
@@ -66,21 +67,21 @@ func (b Router) Routes(r *chi.Mux) {
 		},
 	}.Route(r)
 
-	api.Route{
+	uapi.Route{
 		Pattern: "/users/{uid}/packs/{url}/votes",
 		OpId:    "get_user_pack_votes",
-		Method:  api.GET,
+		Method:  uapi.GET,
 		Docs:    get_user_pack_votes.Docs,
 		Handler: get_user_pack_votes.Route,
 	}.Route(r)
 
-	api.Route{
+	uapi.Route{
 		Pattern: "/users/{uid}/packs/{url}/votes",
 		OpId:    "put_user_pack_votes",
-		Method:  api.PUT,
+		Method:  uapi.PUT,
 		Docs:    put_user_pack_votes.Docs,
 		Handler: put_user_pack_votes.Route,
-		Auth: []api.AuthType{
+		Auth: []uapi.AuthType{
 			{
 				URLVar: "uid",
 				Type:   api.TargetTypeUser,

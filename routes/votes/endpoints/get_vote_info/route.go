@@ -3,11 +3,11 @@ package get_vote_info
 import (
 	"net/http"
 
-	"popplio/api"
 	"popplio/types"
 	"popplio/utils"
 
 	docs "github.com/infinitybotlist/eureka/doclib"
+	"github.com/infinitybotlist/eureka/uapi"
 )
 
 func Docs() *docs.Doc {
@@ -18,13 +18,13 @@ func Docs() *docs.Doc {
 	}
 }
 
-func Route(d api.RouteData, r *http.Request) api.HttpResponse {
+func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	var payload = types.VoteInfo{
 		Weekend:  utils.GetDoubleVote(),
 		VoteTime: utils.GetVoteTime(),
 	}
 
-	return api.HttpResponse{
+	return uapi.HttpResponse{
 		Json: payload,
 	}
 }

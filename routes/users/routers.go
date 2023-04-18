@@ -20,6 +20,7 @@ import (
 	"popplio/routes/users/endpoints/reset_user_token"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/infinitybotlist/eureka/uapi"
 )
 
 const tagName = "Users"
@@ -31,21 +32,21 @@ func (b Router) Tag() (string, string) {
 }
 
 func (b Router) Routes(r *chi.Mux) {
-	api.Route{
+	uapi.Route{
 		Pattern: "/users/{id}",
 		OpId:    "get_user",
-		Method:  api.GET,
+		Method:  uapi.GET,
 		Docs:    get_user.Docs,
 		Handler: get_user.Route,
 	}.Route(r)
 
-	api.Route{
+	uapi.Route{
 		Pattern: "/users/{id}",
 		OpId:    "patch_user_profile",
-		Method:  api.PATCH,
+		Method:  uapi.PATCH,
 		Docs:    patch_user_profile.Docs,
 		Handler: patch_user_profile.Route,
-		Auth: []api.AuthType{
+		Auth: []uapi.AuthType{
 			{
 				URLVar: "id",
 				Type:   api.TargetTypeUser,
@@ -53,13 +54,13 @@ func (b Router) Routes(r *chi.Mux) {
 		},
 	}.Route(r)
 
-	api.Route{
+	uapi.Route{
 		Pattern: "/users/{id}/token",
 		OpId:    "reset_user_token",
-		Method:  api.PATCH,
+		Method:  uapi.PATCH,
 		Docs:    reset_user_token.Docs,
 		Handler: reset_user_token.Route,
-		Auth: []api.AuthType{
+		Auth: []uapi.AuthType{
 			{
 				URLVar: "id",
 				Type:   api.TargetTypeUser,
@@ -67,21 +68,21 @@ func (b Router) Routes(r *chi.Mux) {
 		},
 	}.Route(r)
 
-	api.Route{
+	uapi.Route{
 		Pattern: "/users/{id}/data/{tid}",
 		OpId:    "get_data_task",
-		Method:  api.GET,
+		Method:  uapi.GET,
 		Docs:    get_data_task.Docs,
 		Handler: get_data_task.Route,
 	}.Route(r)
 
-	api.Route{
+	uapi.Route{
 		Pattern: "/users/{id}/data",
 		OpId:    "create_data_task",
-		Method:  api.POST,
+		Method:  uapi.POST,
 		Docs:    create_data_task.Docs,
 		Handler: create_data_task.Route,
-		Auth: []api.AuthType{
+		Auth: []uapi.AuthType{
 			{
 				URLVar: "id",
 				Type:   api.TargetTypeUser,
@@ -89,45 +90,45 @@ func (b Router) Routes(r *chi.Mux) {
 		},
 	}.Route(r)
 
-	api.Route{
+	uapi.Route{
 		Pattern: "/users",
 		OpId:    "put_user",
-		Method:  api.PUT,
+		Method:  uapi.PUT,
 		Docs:    put_user.Docs,
 		Handler: put_user.Route,
 	}.Route(r)
 
-	api.Route{
+	uapi.Route{
 		Pattern: "/users/{id}/seo",
 		OpId:    "get_user_seo",
-		Method:  api.GET,
+		Method:  uapi.GET,
 		Docs:    get_user_seo.Docs,
 		Handler: get_user_seo.Route,
 	}.Route(r)
 
-	api.Route{
+	uapi.Route{
 		Pattern: "/users/{id}/perms",
 		OpId:    "get_user_perms",
-		Method:  api.GET,
+		Method:  uapi.GET,
 		Docs:    get_user_perms.Docs,
 		Handler: get_user_perms.Route,
 	}.Route(r)
 
-	api.Route{
+	uapi.Route{
 		Pattern: "/users/notifications/info",
 		OpId:    "get_notification_info",
-		Method:  api.GET,
+		Method:  uapi.GET,
 		Docs:    get_notification_info.Docs,
 		Handler: get_notification_info.Route,
 	}.Route(r)
 
-	api.Route{
+	uapi.Route{
 		Pattern: "/users/{id}/notifications",
 		OpId:    "get_user_notifications",
-		Method:  api.GET,
+		Method:  uapi.GET,
 		Docs:    get_user_notifications.Docs,
 		Handler: get_user_notifications.Route,
-		Auth: []api.AuthType{
+		Auth: []uapi.AuthType{
 			{
 				URLVar: "id",
 				Type:   api.TargetTypeUser,
@@ -135,13 +136,13 @@ func (b Router) Routes(r *chi.Mux) {
 		},
 	}.Route(r)
 
-	api.Route{
+	uapi.Route{
 		Pattern: "/users/{id}/notification",
 		OpId:    "delete_user_notifications",
-		Method:  api.DELETE,
+		Method:  uapi.DELETE,
 		Docs:    delete_user_notifications.Docs,
 		Handler: delete_user_notifications.Route,
-		Auth: []api.AuthType{
+		Auth: []uapi.AuthType{
 			{
 				URLVar: "id",
 				Type:   api.TargetTypeUser,
@@ -149,13 +150,13 @@ func (b Router) Routes(r *chi.Mux) {
 		},
 	}.Route(r)
 
-	api.Route{
+	uapi.Route{
 		Pattern: "/users/{id}/alerts",
 		OpId:    "get_user_alerts",
-		Method:  api.GET,
+		Method:  uapi.GET,
 		Docs:    get_user_alerts.Docs,
 		Handler: get_user_alerts.Route,
-		Auth: []api.AuthType{
+		Auth: []uapi.AuthType{
 			{
 				URLVar: "id",
 				Type:   api.TargetTypeUser,
@@ -163,13 +164,13 @@ func (b Router) Routes(r *chi.Mux) {
 		},
 	}.Route(r)
 
-	api.Route{
+	uapi.Route{
 		Pattern: "/users/{id}/reminders",
 		OpId:    "get_user_reminders",
-		Method:  api.GET,
+		Method:  uapi.GET,
 		Docs:    get_user_reminders.Docs,
 		Handler: get_user_reminders.Route,
-		Auth: []api.AuthType{
+		Auth: []uapi.AuthType{
 			{
 				URLVar: "id",
 				Type:   api.TargetTypeUser,
@@ -177,13 +178,13 @@ func (b Router) Routes(r *chi.Mux) {
 		},
 	}.Route(r)
 
-	api.Route{
+	uapi.Route{
 		Pattern: "/users/{uid}/reminders/{bid}",
 		OpId:    "put_user_reminders",
-		Method:  api.PUT,
+		Method:  uapi.PUT,
 		Docs:    put_user_reminders.Docs,
 		Handler: put_user_reminders.Route,
-		Auth: []api.AuthType{
+		Auth: []uapi.AuthType{
 			{
 				URLVar: "uid",
 				Type:   api.TargetTypeUser,
@@ -191,13 +192,13 @@ func (b Router) Routes(r *chi.Mux) {
 		},
 	}.Route(r)
 
-	api.Route{
+	uapi.Route{
 		Pattern: "/users/{uid}/reminders/{bid}",
 		OpId:    "delete_user_reminders",
-		Method:  api.DELETE,
+		Method:  uapi.DELETE,
 		Docs:    delete_user_reminders.Docs,
 		Handler: delete_user_reminders.Route,
-		Auth: []api.AuthType{
+		Auth: []uapi.AuthType{
 			{
 				URLVar: "uid",
 				Type:   api.TargetTypeUser,
@@ -205,13 +206,13 @@ func (b Router) Routes(r *chi.Mux) {
 		},
 	}.Route(r)
 
-	api.Route{
+	uapi.Route{
 		Pattern: "/users/{id}/sub",
 		OpId:    "post_user_subscription",
-		Method:  api.POST,
+		Method:  uapi.POST,
 		Docs:    post_user_subscription.Docs,
 		Handler: post_user_subscription.Route,
-		Auth: []api.AuthType{
+		Auth: []uapi.AuthType{
 			{
 				URLVar: "id",
 				Type:   api.TargetTypeUser,

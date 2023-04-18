@@ -3,7 +3,6 @@ package patch_bot_settings
 import (
 	"fmt"
 	"net/http"
-	"popplio/api"
 	"popplio/state"
 	"popplio/teams"
 	"popplio/types"
@@ -14,6 +13,7 @@ import (
 
 	docs "github.com/infinitybotlist/eureka/doclib"
 	"github.com/infinitybotlist/eureka/dovewing"
+	"github.com/infinitybotlist/eureka/uapi"
 
 	"github.com/bwmarrin/discordgo"
 	"github.com/go-chi/chi/v5"
@@ -49,7 +49,7 @@ func updateBotsArgs(bot BotSettingsUpdate) []any {
 }
 
 var (
-	compiledMessages = api.CompileValidationErrors(BotSettingsUpdate{})
+	compiledMessages = uapi.CompileValidationErrors(BotSettingsUpdate{})
 	updateSql        = []string{}
 	updateSqlStr     string
 )
@@ -90,7 +90,7 @@ func Docs() *docs.Doc {
 	}
 }
 
-func Route(d api.RouteData, r *http.Request) api.HttpResponse {
+func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	name := chi.URLParam(r, "bid")
 
 	// Resolve bot ID
@@ -98,22 +98,22 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 
 	if err != nil {
 		state.Logger.Error(err)
-		return api.DefaultResponse(http.StatusInternalServerError)
+		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
 	if id == "" {
-		return api.DefaultResponse(http.StatusNotFound)
+		return uapi.DefaultResponse(http.StatusNotFound)
 	}
 
 	perms, err := utils.GetUserBotPerms(d.Context, d.Auth.ID, id)
 
 	if err != nil {
 		state.Logger.Error(err)
-		return api.DefaultResponse(http.StatusInternalServerError)
+		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
 	if !perms.Has(teams.TeamPermissionEditBotSettings) {
-		return api.HttpResponse{
+		return uapi.HttpResponse{
 			Status: http.StatusForbidden,
 			Json:   types.ApiError{Message: "You do not have permission to edit bot settings", Error: true},
 		}
@@ -122,7 +122,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 	// Read payload from body
 	var payload BotSettingsUpdate
 
-	hresp, ok := api.MarshalReq(r, &payload)
+	hresp, ok := uapi.MarshalReq(r, &payload)
 
 	if !ok {
 		return hresp
@@ -134,13 +134,13 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 
 	if err != nil {
 		errors := err.(validator.ValidationErrors)
-		return api.ValidatorErrorResponse(compiledMessages, errors)
+		return uapi.ValidatorErrorResponse(compiledMessages, errors)
 	}
 
 	err = utils.ValidateExtraLinks(payload.ExtraLinks)
 
 	if err != nil {
-		return api.HttpResponse{
+		return uapi.HttpResponse{
 			Status: http.StatusBadRequest,
 			Json: types.ApiError{
 				Message: err.Error(),
@@ -153,7 +153,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 	botUser, err := dovewing.GetDiscordUser(d.Context, id)
 
 	if err != nil {
-		return api.HttpResponse{
+		return uapi.HttpResponse{
 			Status: http.StatusInternalServerError,
 			Json: types.ApiError{
 				Message: "Internal Error: Failed to get bot user",
@@ -167,7 +167,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 	botArgs := updateBotsArgs(payload)
 
 	if len(updateSql) != len(botArgs) {
-		return api.HttpResponse{
+		return uapi.HttpResponse{
 			Status: http.StatusInternalServerError,
 			Json: types.ApiError{
 				Message: "Internal Error: The number of columns and arguments do not match",
@@ -184,7 +184,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 
 	if err != nil {
 		state.Logger.Error(err)
-		return api.DefaultResponse(http.StatusInternalServerError)
+		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
 	// Clear cache
@@ -220,5 +220,5 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 			},
 		},
 	})
-	return api.DefaultResponse(http.StatusNoContent)
+	return uapi.DefaultResponse(http.StatusNoContent)
 }

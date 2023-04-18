@@ -4,12 +4,12 @@ import (
 	"net/http"
 	"time"
 
-	"popplio/api"
 	"popplio/state"
 	"popplio/types"
 	"popplio/utils"
 
 	docs "github.com/infinitybotlist/eureka/doclib"
+	"github.com/infinitybotlist/eureka/uapi"
 
 	"github.com/go-chi/chi/v5"
 )
@@ -31,12 +31,12 @@ func Docs() *docs.Doc {
 	}
 }
 
-func Route(d api.RouteData, r *http.Request) api.HttpResponse {
+func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	tid := chi.URLParam(r, "id")
 
 	cache := state.Redis.Get(d.Context, "seot:"+tid).Val()
 	if cache != "" {
-		return api.HttpResponse{
+		return uapi.HttpResponse{
 			Data: cache,
 			Headers: map[string]string{
 				"X-Popplio-Cached": "true",
@@ -46,7 +46,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 
 	// Convert ID to UUID
 	if !utils.IsValidUUID(tid) {
-		return api.DefaultResponse(http.StatusNotFound)
+		return uapi.DefaultResponse(http.StatusNotFound)
 	}
 
 	var id string
@@ -56,7 +56,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 
 	if err != nil {
 		state.Logger.Error(err)
-		return api.DefaultResponse(http.StatusNotFound)
+		return uapi.DefaultResponse(http.StatusNotFound)
 	}
 
 	seoData := types.SEO{
@@ -66,7 +66,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 		Short:    "View the team " + name + " on Infinity Bot List",
 	}
 
-	return api.HttpResponse{
+	return uapi.HttpResponse{
 		Json:      seoData,
 		CacheKey:  "seot:" + name,
 		CacheTime: 2 * time.Minute,

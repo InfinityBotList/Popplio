@@ -30,6 +30,7 @@ import (
 	poplhooks "popplio/webhooks"
 
 	docs "github.com/infinitybotlist/eureka/doclib"
+	"github.com/infinitybotlist/eureka/uapi"
 
 	_ "embed"
 
@@ -116,6 +117,8 @@ func main() {
 	docs.AddSecuritySchema("User", "User-Auth", "Requires a user token. Should be prefixed with `User ` in `Authorization` header.")
 	docs.AddSecuritySchema("Bot", "Bot-Auth", "Requires a bot token. Should be prefixed with `Bot ` in `Authorization` header.")
 
+	api.Setup()
+
 	r := chi.NewRouter()
 
 	// A good base middleware stack
@@ -128,7 +131,7 @@ func main() {
 		middleware.Timeout(30*time.Second),
 	)
 
-	routers := []api.APIRouter{
+	routers := []uapi.APIRouter{
 		// Use same order as routes folder
 		blogs.Router{},
 		bots.Router{},
@@ -150,7 +153,7 @@ func main() {
 		name, desc := router.Tag()
 		if name != "" {
 			docs.AddTag(name, desc)
-			api.CurrentTag = name
+			uapi.CurrentTag = name
 		} else {
 			panic("Router tag name cannot be empty")
 		}

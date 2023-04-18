@@ -2,17 +2,17 @@ package create_blog_post
 
 import (
 	"net/http"
-	"popplio/api"
 	"popplio/state"
 	"popplio/types"
 	"strings"
 
 	docs "github.com/infinitybotlist/eureka/doclib"
+	"github.com/infinitybotlist/eureka/uapi"
 
 	"github.com/go-playground/validator/v10"
 )
 
-var compiledMessages = api.CompileValidationErrors(types.CreateBlogPost{})
+var compiledMessages = uapi.CompileValidationErrors(types.CreateBlogPost{})
 
 func Docs() *docs.Doc {
 	return &docs.Doc{
@@ -32,7 +32,7 @@ func Docs() *docs.Doc {
 	}
 }
 
-func Route(d api.RouteData, r *http.Request) api.HttpResponse {
+func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	// Check if user is iblhdev or hadmin
 	var iblhdev bool
 	var hadmin bool
@@ -41,11 +41,11 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 
 	if err != nil {
 		state.Logger.Error(err)
-		return api.DefaultResponse(http.StatusInternalServerError)
+		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
 	if !iblhdev && !hadmin {
-		return api.HttpResponse{
+		return uapi.HttpResponse{
 			Status: http.StatusForbidden,
 			Json: types.ApiError{
 				Message: "You do not have permission to create a blog post",
@@ -56,7 +56,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 
 	var payload types.CreateBlogPost
 
-	hresp, ok := api.MarshalReq(r, &payload)
+	hresp, ok := uapi.MarshalReq(r, &payload)
 
 	if !ok {
 		return hresp
@@ -68,11 +68,11 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 
 	if err != nil {
 		errors := err.(validator.ValidationErrors)
-		return api.ValidatorErrorResponse(compiledMessages, errors)
+		return uapi.ValidatorErrorResponse(compiledMessages, errors)
 	}
 
 	if strings.Contains(payload.Slug, " ") {
-		return api.HttpResponse{
+		return uapi.HttpResponse{
 			Status: http.StatusBadRequest,
 			Json: types.ApiError{
 				Message: "Slug cannot contain spaces",
@@ -88,11 +88,11 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 
 	if err != nil {
 		state.Logger.Error(err)
-		return api.DefaultResponse(http.StatusInternalServerError)
+		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
 	if slugExists {
-		return api.HttpResponse{
+		return uapi.HttpResponse{
 			Status: http.StatusBadRequest,
 			Json: types.ApiError{
 				Message: "Slug already exists",
@@ -116,8 +116,8 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 
 	if err != nil {
 		state.Logger.Error(err)
-		return api.DefaultResponse(http.StatusInternalServerError)
+		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
-	return api.DefaultResponse(http.StatusNoContent)
+	return uapi.DefaultResponse(http.StatusNoContent)
 }

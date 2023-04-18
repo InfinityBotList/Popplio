@@ -13,6 +13,7 @@ import (
 	"popplio/types"
 
 	docs "github.com/infinitybotlist/eureka/doclib"
+	"github.com/infinitybotlist/eureka/uapi"
 
 	"github.com/bwmarrin/discordgo"
 	"github.com/go-playground/validator/v10"
@@ -25,7 +26,7 @@ import (
 
 var (
 	json             = jsoniter.ConfigCompatibleWithStandardLibrary
-	compiledMessages = api.CompileValidationErrors(AuthorizeRequest{})
+	compiledMessages = uapi.CompileValidationErrors(AuthorizeRequest{})
 )
 
 func Docs() *docs.Doc {
@@ -132,7 +133,7 @@ func sendAuthLog(user types.OauthUser, req AuthorizeRequest, new bool) {
 	}
 }
 
-func Route(d api.RouteData, r *http.Request) api.HttpResponse {
+func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	limit, err := ratelimit.Ratelimit{
 		Expiry:      1 * time.Minute,
 		MaxRequests: 2,
@@ -141,11 +142,11 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 
 	if err != nil {
 		state.Logger.Error(err)
-		return api.DefaultResponse(http.StatusInternalServerError)
+		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
 	if limit.Exceeded {
-		return api.HttpResponse{
+		return uapi.HttpResponse{
 			Json: types.ApiError{
 				Error:   true,
 				Message: "You are being ratelimited. Please try again in " + limit.TimeToReset.String(),
@@ -155,8 +156,8 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 		}
 	}
 
-	if !d.IsClient {
-		return api.HttpResponse{
+	if !api.IsClient(r) {
+		return uapi.HttpResponse{
 			Status: http.StatusBadRequest,
 			Json: types.ApiError{
 				Error:   true,
@@ -167,7 +168,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 
 	var req AuthorizeRequest
 
-	hresp, ok := api.MarshalReqWithHeaders(r, &req, limit.Headers())
+	hresp, ok := uapi.MarshalReqWithHeaders(r, &req, limit.Headers())
 
 	if !ok {
 		return hresp
@@ -178,11 +179,11 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 
 	if err != nil {
 		errors := err.(validator.ValidationErrors)
-		return api.ValidatorErrorResponse(compiledMessages, errors)
+		return uapi.ValidatorErrorResponse(compiledMessages, errors)
 	}
 
 	if !slices.Contains(state.Config.DiscordAuth.AllowedRedirects, req.RedirectURI) {
-		return api.HttpResponse{
+		return uapi.HttpResponse{
 			Json: types.ApiError{
 				Error:   true,
 				Message: "Malformed redirect_uri",
@@ -193,7 +194,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 	}
 
 	if req.Nonce != "protozoa" {
-		return api.HttpResponse{
+		return uapi.HttpResponse{
 			Json: types.ApiError{
 				Error:   true,
 				Message: "Your client is outdated and is not supported. Please update your client.",
@@ -204,7 +205,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 	}
 
 	if req.ClientID != state.Config.DiscordAuth.ClientID {
-		return api.HttpResponse{
+		return uapi.HttpResponse{
 			Json: types.ApiError{
 				Error:   true,
 				Message: "Misconfigured client! Client id is incorrect",
@@ -215,7 +216,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 	}
 
 	if state.Redis.Exists(d.Context, "codecache:"+req.Code).Val() == 1 {
-		return api.HttpResponse{
+		return uapi.HttpResponse{
 			Json: types.ApiError{
 				Error:   true,
 				Message: "Code has been clearly used before and is as such invalid",
@@ -238,7 +239,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 
 	if err != nil {
 		state.Logger.Error(err)
-		return api.HttpResponse{
+		return uapi.HttpResponse{
 			Json: types.ApiError{
 				Error:   true,
 				Message: "Failed to send token request to Discord",
@@ -254,7 +255,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 
 	if err != nil {
 		state.Logger.Error(err)
-		return api.HttpResponse{
+		return uapi.HttpResponse{
 			Json: types.ApiError{
 				Error:   true,
 				Message: "Failed to read token response from Discord",
@@ -272,7 +273,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 
 	if err != nil {
 		state.Logger.Error(err)
-		return api.HttpResponse{
+		return uapi.HttpResponse{
 			Json: types.ApiError{
 				Error:   true,
 				Message: "Failed to parse token response from Discord",
@@ -284,7 +285,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 
 	if token.AccessToken == "" {
 		state.Logger.Error(err)
-		return api.HttpResponse{
+		return uapi.HttpResponse{
 			Json: types.ApiError{
 				Error:   true,
 				Message: "No access token provided by Discord",
@@ -301,7 +302,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 
 	if err != nil {
 		state.Logger.Error(err)
-		return api.HttpResponse{
+		return uapi.HttpResponse{
 			Json: types.ApiError{
 				Error:   true,
 				Message: "Failed to create request to Discord to fetch user info",
@@ -317,7 +318,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 
 	if err != nil {
 		state.Logger.Error(err)
-		return api.HttpResponse{
+		return uapi.HttpResponse{
 			Json: types.ApiError{
 				Error:   true,
 				Message: "Failed to send oauth2 request to Discord",
@@ -333,7 +334,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 
 	if err != nil {
 		state.Logger.Error(err)
-		return api.HttpResponse{
+		return uapi.HttpResponse{
 			Json: types.ApiError{
 				Error:   true,
 				Message: "Failed to read oauth2 response from Discord",
@@ -349,7 +350,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 
 	if err != nil {
 		state.Logger.Error(err)
-		return api.HttpResponse{
+		return uapi.HttpResponse{
 			Json: types.ApiError{
 				Error:   true,
 				Message: "Failed to parse oauth2 response from Discord",
@@ -361,7 +362,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 
 	if user.ID == "" {
 		state.Logger.Error(err)
-		return api.HttpResponse{
+		return uapi.HttpResponse{
 			Json: types.ApiError{
 				Error:   true,
 				Message: "No user ID provided by Discord. Invalid code/access token?",
@@ -378,7 +379,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 
 	if err != nil {
 		state.Logger.Error(err)
-		return api.HttpResponse{
+		return uapi.HttpResponse{
 			Json: types.ApiError{
 				Error:   true,
 				Message: "Failed to check if user exists on database",
@@ -392,7 +393,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 
 	if err != nil {
 		state.Logger.Error(err)
-		return api.HttpResponse{
+		return uapi.HttpResponse{
 			Json: types.ApiError{
 				Error:   true,
 				Message: "Failed to get user from Discord",
@@ -414,7 +415,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 
 		if err != nil {
 			state.Logger.Error(err)
-			return api.HttpResponse{
+			return uapi.HttpResponse{
 				Json: types.ApiError{
 					Error:   true,
 					Message: "Failed to create user on database",
@@ -434,7 +435,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 
 		if err != nil {
 			state.Logger.Error(err)
-			return api.HttpResponse{
+			return uapi.HttpResponse{
 				Json: types.ApiError{
 					Error:   true,
 					Message: "Failed to get API token from database",
@@ -455,7 +456,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 
 			if err != nil {
 				state.Logger.Error(err)
-				return api.HttpResponse{
+				return uapi.HttpResponse{
 					Json: types.ApiError{
 						Error:   true,
 						Message: "Failed to update API token on database",
@@ -469,7 +470,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 		}
 
 		if banned && req.Scope != "ban_exempt" {
-			return api.HttpResponse{
+			return uapi.HttpResponse{
 				Json: types.ApiError{
 					Error:   true,
 					Message: "You are banned from the list. If you think this is a mistake, please contact support.",
@@ -480,7 +481,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 		}
 
 		if !banned && req.Scope == "ban_exempt" {
-			return api.HttpResponse{
+			return uapi.HttpResponse{
 				Json: types.ApiError{
 					Error:   true,
 					Message: "The selected scope is not allowed for unbanned users [ban_exempt].",
@@ -501,7 +502,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 
 			if err != nil {
 				state.Logger.Error(err)
-				return api.HttpResponse{
+				return uapi.HttpResponse{
 					Json: types.ApiError{
 						Error:   true,
 						Message: "Failed to update API token on database",
@@ -521,7 +522,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 		Token:  apiToken,
 	}
 
-	return api.HttpResponse{
+	return uapi.HttpResponse{
 		Json:    authUser,
 		Headers: limit.Headers(),
 	}

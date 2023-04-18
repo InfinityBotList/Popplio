@@ -3,13 +3,13 @@ package add_bot_to_team
 import (
 	"fmt"
 	"net/http"
-	"popplio/api"
 	"popplio/state"
 	"popplio/teams"
 	"popplio/types"
 	"popplio/utils"
 
 	docs "github.com/infinitybotlist/eureka/doclib"
+	"github.com/infinitybotlist/eureka/uapi"
 
 	"github.com/bwmarrin/discordgo"
 	"github.com/go-chi/chi/v5"
@@ -22,7 +22,7 @@ type AddBotTeam struct {
 }
 
 var (
-	compiledMessages = api.CompileValidationErrors(AddBotTeam{})
+	compiledMessages = uapi.CompileValidationErrors(AddBotTeam{})
 )
 
 func Docs() *docs.Doc {
@@ -60,12 +60,12 @@ Returns a 204 on success`,
 	}
 }
 
-func Route(d api.RouteData, r *http.Request) api.HttpResponse {
+func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	botId := chi.URLParam(r, "bid")
 
 	var payload AddBotTeam
 
-	hresp, ok := api.MarshalReq(r, &payload)
+	hresp, ok := uapi.MarshalReq(r, &payload)
 
 	if !ok {
 		return hresp
@@ -76,7 +76,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 
 	if err != nil {
 		errors := err.(validator.ValidationErrors)
-		return api.ValidatorErrorResponse(compiledMessages, errors)
+		return uapi.ValidatorErrorResponse(compiledMessages, errors)
 	}
 
 	// Check linked main owner
@@ -87,25 +87,25 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 
 	if err != nil {
 		state.Logger.Error(err)
-		return api.DefaultResponse(http.StatusInternalServerError)
+		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
 	err = state.Pool.QueryRow(d.Context, "SELECT team_owner FROM bots WHERE bot_id = $1", botId).Scan(&teamOwner)
 
 	if err != nil {
 		state.Logger.Error(err)
-		return api.DefaultResponse(http.StatusInternalServerError)
+		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
 	if teamOwner.Valid {
-		return api.HttpResponse{
+		return uapi.HttpResponse{
 			Status: http.StatusForbidden,
 			Json:   types.ApiError{Message: "This bot is already in a team", Error: true},
 		}
 	}
 
 	if linkedOwnerId.Valid && linkedOwnerId.String != d.Auth.ID {
-		return api.HttpResponse{
+		return uapi.HttpResponse{
 			Status: http.StatusForbidden,
 			Json:   types.ApiError{Message: "You must be the owner to transfer a bot to a team", Error: true},
 		}
@@ -113,7 +113,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 
 	// Convert ID to UUID
 	if !utils.IsValidUUID(payload.TeamID) {
-		return api.HttpResponse{
+		return uapi.HttpResponse{
 			Status: http.StatusBadRequest,
 			Json:   types.ApiError{Message: "Team ID must be a valid UUID", Error: true},
 		}
@@ -125,11 +125,11 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 
 	if err != nil {
 		state.Logger.Error(err)
-		return api.DefaultResponse(http.StatusInternalServerError)
+		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
 	if count == 0 {
-		return api.HttpResponse{
+		return uapi.HttpResponse{
 			Status: http.StatusNotFound,
 			Json:   types.ApiError{Message: "Team not found", Error: true},
 		}
@@ -142,11 +142,11 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 
 	if err != nil {
 		state.Logger.Error(err)
-		return api.DefaultResponse(http.StatusInternalServerError)
+		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
 	if managerCount == 0 {
-		return api.HttpResponse{
+		return uapi.HttpResponse{
 			Status: http.StatusForbidden,
 			Json:   types.ApiError{Message: "You are not a member of this team", Error: true},
 		}
@@ -157,13 +157,13 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 
 	if err != nil {
 		state.Logger.Error(err)
-		return api.DefaultResponse(http.StatusInternalServerError)
+		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
 	mp := teams.NewPermissionManager(managerPerms)
 
 	if !mp.Has(teams.TeamPermissionAddNewBots) {
-		return api.HttpResponse{
+		return uapi.HttpResponse{
 			Status: http.StatusForbidden,
 			Json:   types.ApiError{Message: "You do not have permission to add new bots", Error: true},
 		}
@@ -171,7 +171,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 
 	// Check if bot is already in the team
 	if teamOwner.String == payload.TeamID {
-		return api.HttpResponse{
+		return uapi.HttpResponse{
 			Status: http.StatusConflict,
 			Json:   types.ApiError{Message: "This bot is already in the team", Error: true},
 		}
@@ -182,7 +182,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 
 	if err != nil {
 		state.Logger.Error(err)
-		return api.DefaultResponse(http.StatusInternalServerError)
+		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
 	// Send message to mod logs
@@ -213,5 +213,5 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 		},
 	})
 
-	return api.DefaultResponse(http.StatusNoContent)
+	return uapi.DefaultResponse(http.StatusNoContent)
 }

@@ -6,13 +6,13 @@ import (
 	"strings"
 	"text/template"
 
-	"popplio/api"
 	"popplio/state"
 	"popplio/types"
 	"popplio/utils"
 
 	docs "github.com/infinitybotlist/eureka/doclib"
 	"github.com/infinitybotlist/eureka/dovewing"
+	"github.com/infinitybotlist/eureka/uapi"
 
 	"github.com/georgysavva/scany/v2/pgxscan"
 	"github.com/go-playground/validator/v10"
@@ -27,7 +27,7 @@ var (
 
 	botSqlTemplate *template.Template
 
-	compiledMessages = api.CompileValidationErrors(SearchQuery{})
+	compiledMessages = uapi.CompileValidationErrors(SearchQuery{})
 )
 
 type searchSqlTemplateCtx struct {
@@ -78,10 +78,10 @@ func Docs() *docs.Doc {
 	}
 }
 
-func Route(d api.RouteData, r *http.Request) api.HttpResponse {
+func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	var payload SearchQuery
 
-	hresp, ok := api.MarshalReq(r, &payload)
+	hresp, ok := uapi.MarshalReq(r, &payload)
 
 	if !ok {
 		return hresp
@@ -91,11 +91,11 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 
 	if err != nil {
 		errors := err.(validator.ValidationErrors)
-		return api.ValidatorErrorResponse(compiledMessages, errors)
+		return uapi.ValidatorErrorResponse(compiledMessages, errors)
 	}
 
 	if payload.Query == "" && len(payload.TagFilter.Tags) == 0 {
-		return api.HttpResponse{
+		return uapi.HttpResponse{
 			Json: SearchResponse{
 				Bots: []types.IndexBot{},
 			},
@@ -103,7 +103,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 	}
 
 	if payload.TagFilter.TagMode != TagModeAll && payload.TagFilter.TagMode != TagModeAny {
-		return api.HttpResponse{
+		return uapi.HttpResponse{
 			Status: http.StatusBadRequest,
 			Json: types.ApiError{
 				Message: "Invalid tag mode",
@@ -124,7 +124,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 
 	if err != nil {
 		state.Logger.Error(err)
-		return api.DefaultResponse(http.StatusInternalServerError)
+		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
 	args := []any{}
@@ -153,27 +153,27 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 
 	if err != nil {
 		state.Logger.Error(err)
-		return api.DefaultResponse(http.StatusInternalServerError)
+		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
 	err = pgxscan.ScanAll(&indexBots, rows)
 
 	if err != nil {
 		state.Logger.Error(err)
-		return api.DefaultResponse(http.StatusInternalServerError)
+		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
 	for i, bot := range indexBots {
 		botUser, err := dovewing.GetDiscordUser(d.Context, bot.BotID)
 
 		if err != nil {
-			return api.DefaultResponse(http.StatusInternalServerError)
+			return uapi.DefaultResponse(http.StatusInternalServerError)
 		}
 
 		indexBots[i].User = botUser
 	}
 
-	return api.HttpResponse{
+	return uapi.HttpResponse{
 		Json: SearchResponse{
 			Bots: indexBots,
 		},

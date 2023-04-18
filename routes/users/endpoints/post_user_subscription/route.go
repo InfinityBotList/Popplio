@@ -4,12 +4,12 @@ import (
 	"io"
 	"net/http"
 
-	"popplio/api"
 	"popplio/notifications"
 	"popplio/state"
 	"popplio/types"
 
 	docs "github.com/infinitybotlist/eureka/doclib"
+	"github.com/infinitybotlist/eureka/uapi"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/infinitybotlist/eureka/crypto"
@@ -36,7 +36,7 @@ func Docs() *docs.Doc {
 	}
 }
 
-func Route(d api.RouteData, r *http.Request) api.HttpResponse {
+func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	var subscription types.UserSubscription
 
 	var id = chi.URLParam(r, "id")
@@ -47,18 +47,18 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 
 	if err != nil {
 		state.Logger.Error(err)
-		return api.DefaultResponse(http.StatusInternalServerError)
+		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
 	err = json.Unmarshal(bodyBytes, &subscription)
 
 	if err != nil {
 		state.Logger.Error(err)
-		return api.DefaultResponse(http.StatusInternalServerError)
+		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
 	if subscription.Auth == "" || subscription.P256dh == "" {
-		return api.DefaultResponse(http.StatusBadRequest)
+		return uapi.DefaultResponse(http.StatusBadRequest)
 	}
 
 	// Store new subscription
@@ -94,5 +94,5 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 		state.Logger.Error(err)
 	}
 
-	return api.DefaultResponse(http.StatusNoContent)
+	return uapi.DefaultResponse(http.StatusNoContent)
 }

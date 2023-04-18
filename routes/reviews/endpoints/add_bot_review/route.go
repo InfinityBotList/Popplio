@@ -2,7 +2,6 @@ package add_bot_review
 
 import (
 	"net/http"
-	"popplio/api"
 	"popplio/ratelimit"
 	"popplio/routes/reviews/assets"
 	"popplio/state"
@@ -14,6 +13,7 @@ import (
 	"time"
 
 	docs "github.com/infinitybotlist/eureka/doclib"
+	"github.com/infinitybotlist/eureka/uapi"
 
 	"github.com/georgysavva/scany/v2/pgxscan"
 	"github.com/go-chi/chi/v5"
@@ -27,7 +27,7 @@ type CreateReview struct {
 }
 
 var (
-	compiledMessages = api.CompileValidationErrors(CreateReview{})
+	compiledMessages = uapi.CompileValidationErrors(CreateReview{})
 
 	reviewColsArr = utils.GetCols(types.Review{})
 	reviewCols    = strings.Join(reviewColsArr, ",")
@@ -58,7 +58,7 @@ func Docs() *docs.Doc {
 	}
 }
 
-func Route(d api.RouteData, r *http.Request) api.HttpResponse {
+func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	limit, err := ratelimit.Ratelimit{
 		Expiry:      1 * time.Minute,
 		MaxRequests: 2,
@@ -67,11 +67,11 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 
 	if err != nil {
 		state.Logger.Error(err)
-		return api.DefaultResponse(http.StatusInternalServerError)
+		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
 	if limit.Exceeded {
-		return api.HttpResponse{
+		return uapi.HttpResponse{
 			Json: types.ApiError{
 				Error:   true,
 				Message: "You are being ratelimited. Please try again in " + limit.TimeToReset.String(),
@@ -83,7 +83,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 
 	var payload CreateReview
 
-	hresp, ok := api.MarshalReq(r, &payload)
+	hresp, ok := uapi.MarshalReq(r, &payload)
 
 	if !ok {
 		return hresp
@@ -95,7 +95,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 
 	if err != nil {
 		errors := err.(validator.ValidationErrors)
-		return api.ValidatorErrorResponse(compiledMessages, errors)
+		return uapi.ValidatorErrorResponse(compiledMessages, errors)
 	}
 
 	botId := chi.URLParam(r, "bid")
@@ -104,11 +104,11 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 
 	if err != nil {
 		state.Logger.Error(err)
-		return api.DefaultResponse(http.StatusInternalServerError)
+		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
 	if bot == "" {
-		return api.DefaultResponse(http.StatusNotFound)
+		return uapi.DefaultResponse(http.StatusNotFound)
 	}
 
 	// Check if the user has already made a 'root' review for this bot
@@ -119,11 +119,11 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 
 		if err != nil {
 			state.Logger.Error(err)
-			return api.DefaultResponse(http.StatusInternalServerError)
+			return uapi.DefaultResponse(http.StatusInternalServerError)
 		}
 
 		if count > 0 {
-			return api.HttpResponse{
+			return uapi.HttpResponse{
 				Status: http.StatusConflict,
 				Json: types.ApiError{
 					Message: "You have already made a root review for this bot",
@@ -141,11 +141,11 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 
 		if err != nil {
 			state.Logger.Error(err)
-			return api.DefaultResponse(http.StatusInternalServerError)
+			return uapi.DefaultResponse(http.StatusInternalServerError)
 		}
 
 		if count == 0 {
-			return api.HttpResponse{
+			return uapi.HttpResponse{
 				Status: http.StatusBadRequest,
 				Json: types.ApiError{
 					Message: "Parent review not found",
@@ -155,7 +155,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 		}
 
 		if assets.Nest(d.Context, payload.ParentID) > 2 {
-			return api.HttpResponse{
+			return uapi.HttpResponse{
 				Status: http.StatusBadRequest,
 				Json: types.ApiError{
 					Message: "Maximum nesting for reviews reached",
@@ -175,7 +175,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 
 	if err != nil {
 		state.Logger.Error(err)
-		return api.DefaultResponse(http.StatusInternalServerError)
+		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
 	err = bothooks.Send(bothooks.With[events.WebhookBotNewReviewData]{
@@ -216,5 +216,5 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 		}
 	}()
 
-	return api.DefaultResponse(http.StatusNoContent)
+	return uapi.DefaultResponse(http.StatusNoContent)
 }

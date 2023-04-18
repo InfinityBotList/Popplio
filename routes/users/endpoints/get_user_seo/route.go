@@ -4,12 +4,12 @@ import (
 	"net/http"
 	"time"
 
-	"popplio/api"
 	"popplio/state"
 	"popplio/types"
 
 	docs "github.com/infinitybotlist/eureka/doclib"
 	"github.com/infinitybotlist/eureka/dovewing"
+	"github.com/infinitybotlist/eureka/uapi"
 
 	"github.com/go-chi/chi/v5"
 )
@@ -31,12 +31,12 @@ func Docs() *docs.Doc {
 	}
 }
 
-func Route(d api.RouteData, r *http.Request) api.HttpResponse {
+func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	name := chi.URLParam(r, "id")
 
 	cache := state.Redis.Get(d.Context, "seou:"+name).Val()
 	if cache != "" {
-		return api.HttpResponse{
+		return uapi.HttpResponse{
 			Data: cache,
 			Headers: map[string]string{
 				"X-Popplio-Cached": "true",
@@ -50,14 +50,14 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 
 	if err != nil {
 		state.Logger.Error(err)
-		return api.DefaultResponse(http.StatusNotFound)
+		return uapi.DefaultResponse(http.StatusNotFound)
 	}
 
 	user, err := dovewing.GetDiscordUser(d.Context, userId)
 
 	if err != nil {
 		state.Logger.Error(err)
-		return api.DefaultResponse(http.StatusInternalServerError)
+		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
 	seo := types.SEO{
@@ -67,7 +67,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 		Short:    about,
 	}
 
-	return api.HttpResponse{
+	return uapi.HttpResponse{
 		Json:      seo,
 		CacheKey:  "seou:" + name,
 		CacheTime: 30 * time.Minute,

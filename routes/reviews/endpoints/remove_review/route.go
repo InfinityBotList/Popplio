@@ -2,7 +2,6 @@ package remove_review
 
 import (
 	"net/http"
-	"popplio/api"
 	"popplio/routes/reviews/assets"
 	"popplio/state"
 	"popplio/types"
@@ -10,6 +9,7 @@ import (
 	"strings"
 
 	docs "github.com/infinitybotlist/eureka/doclib"
+	"github.com/infinitybotlist/eureka/uapi"
 
 	"github.com/georgysavva/scany/v2/pgxscan"
 	"github.com/go-chi/chi/v5"
@@ -44,7 +44,7 @@ func Docs() *docs.Doc {
 	}
 }
 
-func Route(d api.RouteData, r *http.Request) api.HttpResponse {
+func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	rid := chi.URLParam(r, "rid")
 
 	var author string
@@ -54,11 +54,11 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 
 	if err != nil {
 		state.Logger.Error(err)
-		return api.DefaultResponse(http.StatusNotFound)
+		return uapi.DefaultResponse(http.StatusNotFound)
 	}
 
 	if author != d.Auth.ID {
-		return api.HttpResponse{
+		return uapi.HttpResponse{
 			Status: http.StatusForbidden,
 			Json: types.ApiError{
 				Error:   true,
@@ -71,7 +71,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 
 	if err != nil {
 		state.Logger.Error(err)
-		return api.DefaultResponse(http.StatusInternalServerError)
+		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
 	// Trigger a garbage collection step to remove any orphaned reviews
@@ -99,5 +99,5 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 
 	state.Redis.Del(d.Context, "rv-"+botId)
 
-	return api.DefaultResponse(http.StatusNoContent)
+	return uapi.DefaultResponse(http.StatusNoContent)
 }

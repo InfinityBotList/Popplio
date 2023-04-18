@@ -10,6 +10,7 @@ import (
 	"popplio/routes/blogs/endpoints/publish_blog_post"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/infinitybotlist/eureka/uapi"
 )
 
 const tagName = "Blog"
@@ -21,13 +22,13 @@ func (b Router) Tag() (string, string) {
 }
 
 func (b Router) Routes(r *chi.Mux) {
-	api.Route{
+	uapi.Route{
 		Pattern: "/users/{user_id}/blog",
 		OpId:    "create_blog_post",
-		Method:  api.POST,
+		Method:  uapi.POST,
 		Docs:    create_blog_post.Docs,
 		Handler: create_blog_post.Route,
-		Auth: []api.AuthType{
+		Auth: []uapi.AuthType{
 			{
 				URLVar: "user_id",
 				Type:   api.TargetTypeUser,
@@ -35,13 +36,13 @@ func (b Router) Routes(r *chi.Mux) {
 		},
 	}.Route(r)
 
-	api.Route{
+	uapi.Route{
 		Pattern: "/users/{user_id}/blog/{slug}",
 		OpId:    "edit_blog_post",
-		Method:  api.PATCH,
+		Method:  uapi.PATCH,
 		Docs:    edit_blog_post.Docs,
 		Handler: edit_blog_post.Route,
-		Auth: []api.AuthType{
+		Auth: []uapi.AuthType{
 			{
 				URLVar: "user_id",
 				Type:   api.TargetTypeUser,
@@ -49,13 +50,13 @@ func (b Router) Routes(r *chi.Mux) {
 		},
 	}.Route(r)
 
-	api.Route{
+	uapi.Route{
 		Pattern: "/users/{user_id}/blog/{slug}/draft",
 		OpId:    "publish_blog_post",
-		Method:  api.PATCH,
+		Method:  uapi.PATCH,
 		Docs:    publish_blog_post.Docs,
 		Handler: publish_blog_post.Route,
-		Auth: []api.AuthType{
+		Auth: []uapi.AuthType{
 			{
 				URLVar: "user_id",
 				Type:   api.TargetTypeUser,
@@ -63,13 +64,13 @@ func (b Router) Routes(r *chi.Mux) {
 		},
 	}.Route(r)
 
-	api.Route{
+	uapi.Route{
 		Pattern: "/users/{user_id}/blog/{slug}",
 		OpId:    "delete_blog_post",
-		Method:  api.DELETE,
+		Method:  uapi.DELETE,
 		Docs:    delete_blog_post.Docs,
 		Handler: delete_blog_post.Route,
-		Auth: []api.AuthType{
+		Auth: []uapi.AuthType{
 			{
 				URLVar: "user_id",
 				Type:   api.TargetTypeUser,
@@ -77,18 +78,18 @@ func (b Router) Routes(r *chi.Mux) {
 		},
 	}.Route(r)
 
-	api.Route{
+	uapi.Route{
 		Pattern: "/blog",
 		OpId:    "get_blog_list",
-		Method:  api.GET,
+		Method:  uapi.GET,
 		Docs:    get_blog_list.Docs,
 		Handler: get_blog_list.Route,
 	}.Route(r)
 
-	api.Route{
+	uapi.Route{
 		Pattern: "/blog/{slug}",
 		OpId:    "get_blog_post",
-		Method:  api.GET,
+		Method:  uapi.GET,
 		Docs:    get_blog_post.Docs,
 		Handler: get_blog_post.Route,
 	}.Route(r)

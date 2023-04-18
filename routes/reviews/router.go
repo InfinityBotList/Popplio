@@ -8,6 +8,7 @@ import (
 	"popplio/routes/reviews/endpoints/remove_review"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/infinitybotlist/eureka/uapi"
 )
 
 const (
@@ -21,21 +22,21 @@ func (b Router) Tag() (string, string) {
 }
 
 func (b Router) Routes(r *chi.Mux) {
-	api.Route{
+	uapi.Route{
 		Pattern: "/bots/{id}/reviews",
 		OpId:    "get_bot_reviews",
-		Method:  api.GET,
+		Method:  uapi.GET,
 		Docs:    get_bot_reviews.Docs,
 		Handler: get_bot_reviews.Route,
 	}.Route(r)
 
-	api.Route{
+	uapi.Route{
 		Pattern: "/users/{uid}/bots/{bid}/reviews",
 		OpId:    "add_bot_review",
-		Method:  api.POST,
+		Method:  uapi.POST,
 		Docs:    add_bot_review.Docs,
 		Handler: add_bot_review.Route,
-		Auth: []api.AuthType{
+		Auth: []uapi.AuthType{
 			{
 				Type:   api.TargetTypeUser,
 				URLVar: "uid",
@@ -43,13 +44,13 @@ func (b Router) Routes(r *chi.Mux) {
 		},
 	}.Route(r)
 
-	api.Route{
+	uapi.Route{
 		Pattern: "/users/{uid}/reviews/{rid}",
 		OpId:    "edit_review",
-		Method:  api.PATCH,
+		Method:  uapi.PATCH,
 		Docs:    edit_review.Docs,
 		Handler: edit_review.Route,
-		Auth: []api.AuthType{
+		Auth: []uapi.AuthType{
 			{
 				Type:   api.TargetTypeUser,
 				URLVar: "uid",
@@ -57,13 +58,13 @@ func (b Router) Routes(r *chi.Mux) {
 		},
 	}.Route(r)
 
-	api.Route{
+	uapi.Route{
 		Pattern: "/users/{uid}/reviews/{rid}",
 		OpId:    "remove_review",
-		Method:  api.DELETE,
+		Method:  uapi.DELETE,
 		Docs:    remove_review.Docs,
 		Handler: remove_review.Route,
-		Auth: []api.AuthType{
+		Auth: []uapi.AuthType{
 			{
 				Type:   api.TargetTypeUser,
 				URLVar: "uid",

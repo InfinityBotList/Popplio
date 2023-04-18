@@ -2,10 +2,10 @@ package get_stripe
 
 import (
 	"net/http"
-	"popplio/api"
 	"popplio/state"
 
 	docs "github.com/infinitybotlist/eureka/doclib"
+	"github.com/infinitybotlist/eureka/uapi"
 )
 
 type StripeMeta struct {
@@ -20,8 +20,8 @@ func Docs() *docs.Doc {
 	}
 }
 
-func Route(d api.RouteData, r *http.Request) api.HttpResponse {
-	return api.HttpResponse{
+func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
+	return uapi.HttpResponse{
 		Json: StripeMeta{
 			StripePublicKey: state.Config.Meta.StripePublicKey,
 		},

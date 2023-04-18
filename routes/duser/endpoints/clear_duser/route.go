@@ -4,12 +4,12 @@ import (
 	"net/http"
 	"time"
 
-	"popplio/api"
 	"popplio/ratelimit"
 	"popplio/state"
 	"popplio/types"
 
 	docs "github.com/infinitybotlist/eureka/doclib"
+	"github.com/infinitybotlist/eureka/uapi"
 
 	"github.com/go-chi/chi/v5"
 )
@@ -31,7 +31,7 @@ func Docs() *docs.Doc {
 	}
 }
 
-func Route(d api.RouteData, r *http.Request) api.HttpResponse {
+func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	id := chi.URLParam(r, "id")
 	state.Redis.Del(d.Context, "uobj:"+id)
 
@@ -43,11 +43,11 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 
 	if err != nil {
 		state.Logger.Error(err)
-		return api.DefaultResponse(http.StatusInternalServerError)
+		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
 	if limit.Exceeded {
-		return api.HttpResponse{
+		return uapi.HttpResponse{
 			Json: types.ApiError{
 				Error:   true,
 				Message: "You are being ratelimited. Please try again in " + limit.TimeToReset.String(),
@@ -60,7 +60,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 	// Delete from internal_user_cache
 	state.Pool.Exec(d.Context, "DELETE FROM internal_user_cache WHERE id = $1", id)
 
-	return api.HttpResponse{
+	return uapi.HttpResponse{
 		Json: types.ApiError{
 			Error:   false,
 			Message: "Successfully cleared cache",

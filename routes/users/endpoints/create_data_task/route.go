@@ -2,7 +2,6 @@ package create_data_task
 
 import (
 	"net/http"
-	"popplio/api"
 	"popplio/ratelimit"
 	"popplio/routes/users/endpoints/create_data_task/assets"
 	"popplio/state"
@@ -12,6 +11,7 @@ import (
 
 	"github.com/infinitybotlist/eureka/crypto"
 	docs "github.com/infinitybotlist/eureka/doclib"
+	"github.com/infinitybotlist/eureka/uapi"
 )
 
 type DataTaskResponse struct {
@@ -42,11 +42,11 @@ func Docs() *docs.Doc {
 	}
 }
 
-func Route(d api.RouteData, r *http.Request) api.HttpResponse {
+func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	reqType := r.URL.Query().Get("delete")
 
 	if reqType != "true" && reqType != "false" {
-		return api.HttpResponse{
+		return uapi.HttpResponse{
 			Status: http.StatusBadRequest,
 			Json:   types.ApiError{Message: "delete must be ether 'true' or 'false'", Error: true},
 		}
@@ -60,11 +60,11 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 
 	if err != nil {
 		state.Logger.Error(err)
-		return api.DefaultResponse(http.StatusInternalServerError)
+		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
 	if limit.Exceeded {
-		return api.HttpResponse{
+		return uapi.HttpResponse{
 			Json: types.ApiError{
 				Error:   true,
 				Message: "You are being ratelimited. Please try again in " + limit.TimeToReset.String(),
@@ -79,7 +79,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 	err = state.Redis.Set(d.Context, "data:"+taskId+"_status", "[]", time.Hour*4).Err()
 
 	if err != nil {
-		return api.HttpResponse{
+		return uapi.HttpResponse{
 			Status: http.StatusInternalServerError,
 			Data:   err.Error(),
 		}
@@ -89,7 +89,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 
 	go assets.DataTask("data:"+taskId, d.Auth.ID, remoteIp[0], reqType == "true")
 
-	return api.HttpResponse{
+	return uapi.HttpResponse{
 		Json: DataTaskResponse{TaskID: taskId},
 	}
 }

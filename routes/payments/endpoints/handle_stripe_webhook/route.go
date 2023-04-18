@@ -4,13 +4,13 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"popplio/api"
 	"popplio/notifications"
 	"popplio/routes/payments/assets"
 	"popplio/state"
 	"popplio/types"
 
 	docs "github.com/infinitybotlist/eureka/doclib"
+	"github.com/infinitybotlist/eureka/uapi"
 
 	jsoniter "github.com/json-iterator/go"
 	"github.com/stripe/stripe-go/v74"
@@ -28,9 +28,9 @@ func Docs() *docs.Doc {
 	}
 }
 
-func Route(d api.RouteData, r *http.Request) api.HttpResponse {
+func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	if state.StripeWebhSecret == "" {
-		return api.HttpResponse{
+		return uapi.HttpResponse{
 			Status: http.StatusFailedDependency,
 			Json: types.ApiError{
 				Error:   true,
@@ -42,7 +42,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 	// Get request IP
 	if !slices.Contains(state.StripeWebhIPList, r.RemoteAddr) {
 		state.Logger.Error("IP " + r.RemoteAddr + " is not allowed to access this endpoint")
-		return api.HttpResponse{
+		return uapi.HttpResponse{
 			Status: http.StatusForbidden,
 			Json: types.ApiError{
 				Error:   true,
@@ -54,7 +54,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
 		state.Logger.Error(err)
-		return api.HttpResponse{
+		return uapi.HttpResponse{
 			Status: http.StatusBadRequest,
 			Json: types.ApiError{
 				Error:   true,
@@ -69,7 +69,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 
 	if err != nil {
 		state.Logger.Error(err)
-		return api.HttpResponse{
+		return uapi.HttpResponse{
 			Status: http.StatusBadRequest,
 			Json: types.ApiError{
 				Error:   true,
@@ -86,12 +86,12 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 		err := json.Unmarshal(event.Data.Raw, &s)
 		if err != nil {
 			state.Logger.Error(err)
-			return api.DefaultResponse(http.StatusInternalServerError)
+			return uapi.DefaultResponse(http.StatusInternalServerError)
 		}
 
 		if s.PaymentStatus != stripe.CheckoutSessionPaymentStatusPaid {
 			state.Logger.Error("Payment status is not paid")
-			return api.HttpResponse{
+			return uapi.HttpResponse{
 				Status: http.StatusOK,
 				Data:   "Payment status is not paid yet!",
 			}
@@ -101,7 +101,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 		err := json.Unmarshal(event.Data.Raw, &s)
 		if err != nil {
 			state.Logger.Error(err)
-			return api.DefaultResponse(http.StatusInternalServerError)
+			return uapi.DefaultResponse(http.StatusInternalServerError)
 		}
 
 	case "checkout.session.async_payment_failed":
@@ -109,14 +109,14 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 		err := json.Unmarshal(event.Data.Raw, &s)
 		if err != nil {
 			state.Logger.Error(err)
-			return api.DefaultResponse(http.StatusInternalServerError)
+			return uapi.DefaultResponse(http.StatusInternalServerError)
 		}
 
 		failed = true
 
 	default:
 		state.Logger.Error("Unknown event type:" + event.Type)
-		return api.HttpResponse{
+		return uapi.HttpResponse{
 			Status: http.StatusOK,
 			Data:   "Unknown event type: " + event.Type,
 		}
@@ -129,7 +129,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 
 	if err != nil {
 		state.Logger.Error(err)
-		return api.HttpResponse{
+		return uapi.HttpResponse{
 			Status: http.StatusOK,
 			Data:   "Failed to unmarshal client reference id: " + err.Error(),
 		}
@@ -146,7 +146,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 			Priority: types.AlertPriorityHigh,
 		})
 
-		return api.HttpResponse{
+		return uapi.HttpResponse{
 			Status: http.StatusOK,
 			Data:   "Payment failed for user " + payload.UserID + " for product " + payload.ProductID + "( " + payload.ProductName + " )" + " for " + payload.For,
 		}
@@ -169,5 +169,5 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 		}
 	}()
 
-	return api.DefaultResponse(http.StatusNoContent)
+	return uapi.DefaultResponse(http.StatusNoContent)
 }

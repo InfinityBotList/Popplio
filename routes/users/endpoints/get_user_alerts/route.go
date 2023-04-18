@@ -2,7 +2,6 @@ package get_user_alerts
 
 import (
 	"net/http"
-	"popplio/api"
 	"popplio/state"
 	"popplio/types"
 	"popplio/utils"
@@ -10,6 +9,7 @@ import (
 
 	"github.com/georgysavva/scany/v2/pgxscan"
 	docs "github.com/infinitybotlist/eureka/doclib"
+	"github.com/infinitybotlist/eureka/uapi"
 )
 
 var (
@@ -34,12 +34,12 @@ func Docs() *docs.Doc {
 	}
 }
 
-func Route(d api.RouteData, r *http.Request) api.HttpResponse {
+func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	rows, err := state.Pool.Query(d.Context, "SELECT "+alertColsStr+" FROM alerts WHERE user_id = $1", d.Auth.ID)
 
 	if err != nil {
 		state.Logger.Error(err)
-		return api.DefaultResponse(http.StatusInternalServerError)
+		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
 	var alerts []types.Alert
@@ -48,14 +48,14 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 
 	if err != nil {
 		state.Logger.Error(err)
-		return api.DefaultResponse(http.StatusInternalServerError)
+		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
 	if len(alerts) == 0 {
 		alerts = []types.Alert{}
 	}
 
-	return api.HttpResponse{
+	return uapi.HttpResponse{
 		Json: types.AlertList{
 			Alerts: alerts,
 		},

@@ -1,11 +1,11 @@
 package duser
 
 import (
-	"popplio/api"
 	"popplio/routes/duser/endpoints/clear_duser"
 	"popplio/routes/duser/endpoints/get_duser"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/infinitybotlist/eureka/uapi"
 )
 
 const tagName = "Discord User"
@@ -17,18 +17,18 @@ func (b Router) Tag() (string, string) {
 }
 
 func (b Router) Routes(r *chi.Mux) {
-	api.Route{
+	uapi.Route{
 		Pattern: "/_duser/{id}",
 		OpId:    "get_duser",
-		Method:  api.GET,
+		Method:  uapi.GET,
 		Docs:    get_duser.Docs,
 		Handler: get_duser.Route,
 	}.Route(r)
 
-	api.Route{
+	uapi.Route{
 		Pattern: "/_duser/{id}",
 		OpId:    "clear_duser",
-		Method:  api.DELETE,
+		Method:  uapi.DELETE,
 		Docs:    clear_duser.Docs,
 		Handler: clear_duser.Route,
 	}.Route(r)

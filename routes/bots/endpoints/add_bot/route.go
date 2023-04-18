@@ -7,7 +7,6 @@ import (
 	"strings"
 	"time"
 
-	"popplio/api"
 	"popplio/ratelimit"
 	"popplio/routes/bots/assets"
 	"popplio/state"
@@ -17,6 +16,7 @@ import (
 	"github.com/infinitybotlist/eureka/crypto"
 	docs "github.com/infinitybotlist/eureka/doclib"
 	"github.com/infinitybotlist/eureka/dovewing"
+	"github.com/infinitybotlist/eureka/uapi"
 
 	"github.com/bwmarrin/discordgo"
 	"github.com/go-playground/validator/v10"
@@ -75,7 +75,7 @@ func createBotsArgs(bot CreateBot, id internalData) []any {
 }
 
 var (
-	compiledMessages = api.CompileValidationErrors(CreateBot{})
+	compiledMessages = uapi.CompileValidationErrors(CreateBot{})
 
 	createBotsColsArr = utils.GetCols(CreateBot{})
 	createBotsCols    = strings.Join(createBotsColsArr, ", ")
@@ -111,7 +111,7 @@ func Docs() *docs.Doc {
 	}
 }
 
-func Route(d api.RouteData, r *http.Request) api.HttpResponse {
+func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	limit, err := ratelimit.Ratelimit{
 		Expiry:      1 * time.Minute,
 		MaxRequests: 5,
@@ -120,11 +120,11 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 
 	if err != nil {
 		state.Logger.Error(err)
-		return api.DefaultResponse(http.StatusInternalServerError)
+		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
 	if limit.Exceeded {
-		return api.HttpResponse{
+		return uapi.HttpResponse{
 			Json: types.ApiError{
 				Error:   true,
 				Message: "You are being ratelimited. Please try again in " + limit.TimeToReset.String(),
@@ -136,7 +136,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 
 	var payload CreateBot
 
-	hresp, ok := api.MarshalReq(r, &payload)
+	hresp, ok := uapi.MarshalReq(r, &payload)
 
 	if !ok {
 		return hresp
@@ -148,13 +148,13 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 
 	if err != nil {
 		errors := err.(validator.ValidationErrors)
-		return api.ValidatorErrorResponse(compiledMessages, errors)
+		return uapi.ValidatorErrorResponse(compiledMessages, errors)
 	}
 
 	err = utils.ValidateExtraLinks(payload.ExtraLinks)
 
 	if err != nil {
-		return api.HttpResponse{
+		return uapi.HttpResponse{
 			Status: http.StatusBadRequest,
 			Json: types.ApiError{
 				Message: err.Error(),
@@ -170,11 +170,11 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 
 	if err != nil {
 		state.Logger.Error(err)
-		return api.DefaultResponse(http.StatusInternalServerError)
+		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
 	if count > 0 {
-		return api.HttpResponse{
+		return uapi.HttpResponse{
 			Status: http.StatusConflict,
 			Json: types.ApiError{
 				Message: "This bot is already in the database",
@@ -187,7 +187,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 	bot, err := dovewing.GetDiscordUser(d.Context, payload.BotID)
 
 	if err != nil {
-		return api.HttpResponse{
+		return uapi.HttpResponse{
 			Status: http.StatusBadRequest,
 			Json: types.ApiError{
 				Message: "This bot does not exist: " + err.Error(),
@@ -197,7 +197,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 	}
 
 	if !bot.Bot {
-		return api.HttpResponse{
+		return uapi.HttpResponse{
 			Status: http.StatusBadRequest,
 			Json: types.ApiError{
 				Message: "This user is not a bot",
@@ -210,7 +210,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 	_, err = dovewing.GetDiscordUser(d.Context, d.Auth.ID)
 
 	if err != nil {
-		return api.HttpResponse{
+		return uapi.HttpResponse{
 			Status: http.StatusBadRequest,
 			Json: types.ApiError{
 				Message: "The main owner of this bot somehow does not exist: " + err.Error(),
@@ -222,7 +222,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 	metadata, err := assets.CheckBot(payload.BotID, payload.ClientID)
 
 	if err != nil {
-		return api.HttpResponse{
+		return uapi.HttpResponse{
 			Status: http.StatusBadRequest,
 			Json: types.ApiError{
 				Message: err.Error(),
@@ -232,7 +232,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 	}
 
 	if metadata.BotID != payload.BotID {
-		return api.HttpResponse{
+		return uapi.HttpResponse{
 			Status: http.StatusBadRequest,
 			Json: types.ApiError{
 				Message: "The bot ID provided does not match the bot ID found",
@@ -242,7 +242,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 	}
 
 	if metadata.ListType != "" {
-		return api.HttpResponse{
+		return uapi.HttpResponse{
 			Status: http.StatusBadRequest,
 			Json: types.ApiError{
 				Message: "This bot is already in the database",
@@ -252,7 +252,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 	}
 
 	if !metadata.BotPublic {
-		return api.HttpResponse{
+		return uapi.HttpResponse{
 			Status: http.StatusBadRequest,
 			Json: types.ApiError{
 				Message: "Bot is not public",
@@ -285,7 +285,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 
 	if err != nil {
 		state.Logger.Error(err)
-		return api.DefaultResponse(http.StatusInternalServerError)
+		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
 	if vanityCount > 0 {
@@ -300,7 +300,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 
 	if len(createBotsColsArr) != len(botArgs) {
 		state.Logger.Error(botArgs, createBotsColsArr)
-		return api.HttpResponse{
+		return uapi.HttpResponse{
 			Status: http.StatusInternalServerError,
 			Json: types.ApiError{
 				Message: "Internal Error: The number of columns and arguments do not match",
@@ -314,7 +314,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 
 	if err != nil {
 		state.Logger.Error(err)
-		return api.DefaultResponse(http.StatusInternalServerError)
+		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
 	utils.ClearUserCache(d.Context, d.Auth.ID)
@@ -349,5 +349,5 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 		},
 	})
 
-	return api.DefaultResponse(http.StatusNoContent)
+	return uapi.DefaultResponse(http.StatusNoContent)
 }

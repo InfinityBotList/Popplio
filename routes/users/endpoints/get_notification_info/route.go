@@ -3,11 +3,11 @@ package get_notification_info
 import (
 	"net/http"
 
-	"popplio/api"
 	"popplio/state"
 	"popplio/types"
 
 	docs "github.com/infinitybotlist/eureka/doclib"
+	"github.com/infinitybotlist/eureka/uapi"
 )
 
 func Docs() *docs.Doc {
@@ -18,12 +18,12 @@ func Docs() *docs.Doc {
 	}
 }
 
-func Route(d api.RouteData, r *http.Request) api.HttpResponse {
+func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	data := types.NotificationInfo{
 		PublicKey: state.Config.Notifications.VapidPublicKey,
 	}
 
-	return api.HttpResponse{
+	return uapi.HttpResponse{
 		Json: data,
 	}
 }

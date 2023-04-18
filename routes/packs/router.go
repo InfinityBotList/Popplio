@@ -9,6 +9,7 @@ import (
 	"popplio/routes/packs/endpoints/patch_pack"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/infinitybotlist/eureka/uapi"
 )
 
 const (
@@ -22,29 +23,29 @@ func (b Router) Tag() (string, string) {
 }
 
 func (b Router) Routes(r *chi.Mux) {
-	api.Route{
+	uapi.Route{
 		Pattern: "/packs/{id}",
 		OpId:    "get_pack",
-		Method:  api.GET,
+		Method:  uapi.GET,
 		Docs:    get_pack.Docs,
 		Handler: get_pack.Route,
 	}.Route(r)
 
-	api.Route{
+	uapi.Route{
 		Pattern: "/packs/all",
 		OpId:    "get_all_packs",
-		Method:  api.GET,
+		Method:  uapi.GET,
 		Docs:    get_all_packs.Docs,
 		Handler: get_all_packs.Route,
 	}.Route(r)
 
-	api.Route{
+	uapi.Route{
 		Pattern: "/users/{id}/packs",
 		OpId:    "add_pack",
-		Method:  api.PUT,
+		Method:  uapi.PUT,
 		Docs:    add_pack.Docs,
 		Handler: add_pack.Route,
-		Auth: []api.AuthType{
+		Auth: []uapi.AuthType{
 			{
 				URLVar: "id",
 				Type:   api.TargetTypeUser,
@@ -52,13 +53,13 @@ func (b Router) Routes(r *chi.Mux) {
 		},
 	}.Route(r)
 
-	api.Route{
+	uapi.Route{
 		Pattern: "/users/{uid}/packs/{id}",
 		OpId:    "patch_pack",
-		Method:  api.PATCH,
+		Method:  uapi.PATCH,
 		Docs:    patch_pack.Docs,
 		Handler: patch_pack.Route,
-		Auth: []api.AuthType{
+		Auth: []uapi.AuthType{
 			{
 				URLVar: "uid",
 				Type:   api.TargetTypeUser,
@@ -66,13 +67,13 @@ func (b Router) Routes(r *chi.Mux) {
 		},
 	}.Route(r)
 
-	api.Route{
+	uapi.Route{
 		Pattern: "/users/{uid}/packs/{id}",
 		OpId:    "delete_pack",
-		Method:  api.DELETE,
+		Method:  uapi.DELETE,
 		Docs:    delete_pack.Docs,
 		Handler: delete_pack.Route,
-		Auth: []api.AuthType{
+		Auth: []uapi.AuthType{
 			{
 				URLVar: "uid",
 				Type:   api.TargetTypeUser,

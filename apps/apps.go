@@ -2,8 +2,9 @@
 package apps
 
 import (
-	"popplio/api"
 	"popplio/state"
+
+	"github.com/infinitybotlist/eureka/uapi"
 )
 
 var Apps = map[string]Position{
@@ -234,7 +235,7 @@ You can only have up to one ban appeal at any given point of time. Abusing the s
 		Channel: func() string {
 			return state.Config.Channels.BanAppeals
 		},
-		PositionDescription: func(d api.RouteData, p Position) string {
+		PositionDescription: func(d uapi.RouteData, p Position) string {
 			return "User <@" + d.Auth.ID + "> wants to be unbanned now? :thinking:"
 		},
 		AllowedForBanned: true,

@@ -8,14 +8,15 @@ import (
 	"popplio/types"
 
 	docs "github.com/infinitybotlist/eureka/doclib"
+	"github.com/infinitybotlist/eureka/uapi"
 
 	"github.com/go-chi/chi/v5"
 )
 
 type TestAuth struct {
-	AuthType api.TargetType `json:"auth_type"`
-	TargetID string         `json:"target_id"`
-	Token    string         `json:"token"`
+	AuthType string `json:"auth_type"`
+	TargetID string `json:"target_id"`
+	Token    string `json:"token"`
 }
 
 func Docs() *docs.Doc {
@@ -23,21 +24,21 @@ func Docs() *docs.Doc {
 		Summary:     "Test Auth",
 		Description: "Test your authentication",
 		Req:         TestAuth{},
-		Resp:        api.AuthData{},
+		Resp:        uapi.AuthData{},
 	}
 }
 
-func Route(d api.RouteData, r *http.Request) api.HttpResponse {
+func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	var payload TestAuth
 
-	hresp, ok := api.MarshalReq(r, &payload)
+	hresp, ok := uapi.MarshalReq(r, &payload)
 
 	if !ok {
 		return hresp
 	}
 
 	if payload.TargetID == "" {
-		return api.HttpResponse{
+		return uapi.HttpResponse{
 			Status: http.StatusBadRequest,
 			Json:   types.ApiError{Message: "Target ID is required", Error: true},
 		}
@@ -48,7 +49,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 	ctx := chi.NewRouteContext()
 	ctx.URLParams.Add("test", payload.TargetID)
 	rctx = context.WithValue(rctx, chi.RouteCtxKey, ctx)
-	authType := []api.AuthType{
+	authType := []uapi.AuthType{
 		{
 			URLVar: "test",
 			Type:   payload.AuthType,
@@ -60,15 +61,15 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 	r.Header.Set("Authorization", payload.Token)
 
 	// Check auth
-	authData, hr, ok := api.Route{
+	authData, hr, ok := api.Authorize(uapi.Route{
 		Auth: authType,
-	}.Authorize(reqCtxd)
+	}, reqCtxd)
 
 	if !ok {
 		return hr
 	}
 
-	return api.HttpResponse{
+	return uapi.HttpResponse{
 		Json: authData,
 	}
 }

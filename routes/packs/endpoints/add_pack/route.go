@@ -2,18 +2,18 @@ package add_pack
 
 import (
 	"net/http"
-	"popplio/api"
 	"popplio/state"
 	"popplio/types"
 	"popplio/utils"
 
 	docs "github.com/infinitybotlist/eureka/doclib"
 	"github.com/infinitybotlist/eureka/dovewing"
+	"github.com/infinitybotlist/eureka/uapi"
 
 	"github.com/go-playground/validator/v10"
 )
 
-var compiledMessages = api.CompileValidationErrors(CreatePack{})
+var compiledMessages = uapi.CompileValidationErrors(CreatePack{})
 
 type CreatePack struct {
 	Name  string   `json:"name" validate:"required,min=3,max=20" msg:"Name must be between 3 and 20 characters"`
@@ -41,10 +41,10 @@ func Docs() *docs.Doc {
 	}
 }
 
-func Route(d api.RouteData, r *http.Request) api.HttpResponse {
+func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	var payload CreatePack
 
-	hresp, ok := api.MarshalReq(r, &payload)
+	hresp, ok := uapi.MarshalReq(r, &payload)
 
 	if !ok {
 		return hresp
@@ -55,7 +55,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 
 	if err != nil {
 		errors := err.(validator.ValidationErrors)
-		return api.ValidatorErrorResponse(compiledMessages, errors)
+		return uapi.ValidatorErrorResponse(compiledMessages, errors)
 	}
 
 	// Check that all bots exist
@@ -63,7 +63,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 		botUser, err := dovewing.GetDiscordUser(d.Context, bot)
 
 		if err != nil {
-			return api.HttpResponse{
+			return uapi.HttpResponse{
 				Status: http.StatusBadRequest,
 				Json: types.ApiError{
 					Message: "One of the bot you wish to add does not exist [" + bot + "]: " + err.Error(),
@@ -73,7 +73,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 		}
 
 		if !botUser.Bot {
-			return api.HttpResponse{
+			return uapi.HttpResponse{
 				Status: http.StatusBadRequest,
 				Json: types.ApiError{
 					Message: "One of the bot you wish to add is not actually a bot [" + bot + "]",
@@ -88,7 +88,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 	err = state.Pool.QueryRow(d.Context, "SELECT COUNT(*) FROM packs WHERE url = $1", payload.URL).Scan(&count)
 
 	if err != nil {
-		return api.HttpResponse{
+		return uapi.HttpResponse{
 			Status: http.StatusBadRequest,
 			Json: types.ApiError{
 				Message: err.Error(),
@@ -98,7 +98,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 	}
 
 	if count > 0 {
-		return api.HttpResponse{
+		return uapi.HttpResponse{
 			Status: http.StatusBadRequest,
 			Json: types.ApiError{
 				Message: "A pack with that URL already exists",
@@ -120,7 +120,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 	)
 
 	if err != nil {
-		return api.HttpResponse{
+		return uapi.HttpResponse{
 			Status: http.StatusBadRequest,
 			Json: types.ApiError{
 				Message: err.Error(),
@@ -131,5 +131,5 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 
 	utils.ClearUserCache(d.Context, d.Auth.ID)
 
-	return api.DefaultResponse(http.StatusNoContent)
+	return uapi.DefaultResponse(http.StatusNoContent)
 }

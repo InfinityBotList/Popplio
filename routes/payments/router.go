@@ -11,6 +11,7 @@ import (
 	"popplio/routes/payments/endpoints/handle_stripe_webhook"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/infinitybotlist/eureka/uapi"
 )
 
 const (
@@ -24,21 +25,21 @@ func (b Router) Tag() (string, string) {
 }
 
 func (b Router) Routes(r *chi.Mux) {
-	api.Route{
+	uapi.Route{
 		Pattern: "/payments/paypal",
 		OpId:    "get_paypal",
-		Method:  api.GET,
+		Method:  uapi.GET,
 		Docs:    get_paypal.Docs,
 		Handler: get_paypal.Route,
 	}.Route(r)
 
-	api.Route{
+	uapi.Route{
 		Pattern: "/users/{id}/paypal",
 		OpId:    "create_paypal_order",
-		Method:  api.POST,
+		Method:  uapi.POST,
 		Docs:    create_paypal_order.Docs,
 		Handler: create_paypal_order.Route,
-		Auth: []api.AuthType{
+		Auth: []uapi.AuthType{
 			{
 				Type:   api.TargetTypeUser,
 				URLVar: "id",
@@ -46,29 +47,29 @@ func (b Router) Routes(r *chi.Mux) {
 		},
 	}.Route(r)
 
-	api.Route{
+	uapi.Route{
 		Pattern: "/payments/paypal/capture/{ref_id}",
 		OpId:    "capture_paypal_order",
-		Method:  api.GET,
+		Method:  uapi.GET,
 		Docs:    capture_paypal_order.Docs,
 		Handler: capture_paypal_order.Route,
 	}.Route(r)
 
-	api.Route{
+	uapi.Route{
 		Pattern: "/payments/stripe",
 		OpId:    "get_stripe",
-		Method:  api.GET,
+		Method:  uapi.GET,
 		Docs:    get_stripe.Docs,
 		Handler: get_stripe.Route,
 	}.Route(r)
 
-	api.Route{
+	uapi.Route{
 		Pattern: "/users/{id}/stripe",
 		OpId:    "create_stripe_checkout",
-		Method:  api.POST,
+		Method:  uapi.POST,
 		Docs:    create_stripe_checkout.Docs,
 		Handler: create_stripe_checkout.Route,
-		Auth: []api.AuthType{
+		Auth: []uapi.AuthType{
 			{
 				Type:   api.TargetTypeUser,
 				URLVar: "id",
@@ -76,18 +77,18 @@ func (b Router) Routes(r *chi.Mux) {
 		},
 	}.Route(r)
 
-	api.Route{
+	uapi.Route{
 		Pattern: "/payments/stripe/webhook",
 		OpId:    "handle_stripe_webhook",
-		Method:  api.POST,
+		Method:  uapi.POST,
 		Docs:    handle_stripe_webhook.Docs,
 		Handler: handle_stripe_webhook.Route,
 	}.Route(r)
 
-	api.Route{
+	uapi.Route{
 		Pattern: "/payments/premium/plans",
 		OpId:    "get_premium_plans",
-		Method:  api.GET,
+		Method:  uapi.GET,
 		Docs:    get_premium_plans.Docs,
 		Handler: get_premium_plans.Route,
 	}.Route(r)

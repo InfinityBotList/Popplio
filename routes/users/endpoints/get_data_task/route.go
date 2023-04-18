@@ -2,12 +2,12 @@ package get_data_task
 
 import (
 	"net/http"
-	"popplio/api"
 	"popplio/state"
 	"popplio/types"
 
 	"github.com/go-chi/chi/v5"
 	docs "github.com/infinitybotlist/eureka/doclib"
+	"github.com/infinitybotlist/eureka/uapi"
 	jsoniter "github.com/json-iterator/go"
 )
 
@@ -42,12 +42,12 @@ func Docs() *docs.Doc {
 	}
 }
 
-func Route(d api.RouteData, r *http.Request) api.HttpResponse {
+func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	// Check that the user owns the task
 	taskId := chi.URLParam(r, "tid")
 
 	if taskId == "" {
-		return api.HttpResponse{
+		return uapi.HttpResponse{
 			Status: http.StatusBadRequest,
 			Json:   types.ApiError{Message: "task id is required", Error: true},
 		}
@@ -57,7 +57,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 	statusesRaw := state.Redis.Get(d.Context, "data:"+taskId+"_status").Val()
 
 	if statusesRaw == "" {
-		return api.HttpResponse{
+		return uapi.HttpResponse{
 			Status: http.StatusNotFound,
 			Json:   types.ApiError{Message: "Task has invalid status", Error: true},
 		}
@@ -69,7 +69,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 	err := json.Unmarshal([]byte(statusesRaw), &statuses)
 
 	if err != nil {
-		return api.HttpResponse{
+		return uapi.HttpResponse{
 			Status: http.StatusInternalServerError,
 			Data:   err.Error(),
 		}
@@ -77,7 +77,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 
 	output := state.Redis.Get(d.Context, "data:"+taskId+"_out").Val()
 
-	return api.HttpResponse{
+	return uapi.HttpResponse{
 		Status: http.StatusOK,
 		Json: DataTask{
 			Statuses: statuses,

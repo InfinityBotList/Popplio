@@ -8,7 +8,6 @@ import (
 	"strconv"
 	"time"
 
-	"popplio/api"
 	"popplio/notifications"
 	"popplio/state"
 	"popplio/types"
@@ -19,6 +18,7 @@ import (
 
 	docs "github.com/infinitybotlist/eureka/doclib"
 	"github.com/infinitybotlist/eureka/dovewing"
+	"github.com/infinitybotlist/eureka/uapi"
 
 	"github.com/bwmarrin/discordgo"
 	"github.com/go-chi/chi/v5"
@@ -99,7 +99,7 @@ func hcaptcha(b []byte) {
 	}
 }
 
-func Route(d api.RouteData, r *http.Request) api.HttpResponse {
+func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	// Try reading body if its there to handle hcaptcha
 	bytes, err := io.ReadAll(r.Body)
 
@@ -111,11 +111,11 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 
 	if err != nil {
 		state.Logger.Error(err)
-		return api.DefaultResponse(http.StatusInternalServerError)
+		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
 	if id == "" {
-		return api.DefaultResponse(http.StatusNotFound)
+		return uapi.DefaultResponse(http.StatusNotFound)
 	}
 
 	userId := chi.URLParam(r, "uid")
@@ -126,11 +126,11 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 
 	if err != nil {
 		state.Logger.Error(err)
-		return api.DefaultResponse(http.StatusInternalServerError)
+		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
 	if voteBannedState {
-		return api.HttpResponse{
+		return uapi.HttpResponse{
 			Status: http.StatusForbidden,
 			Json: types.ApiError{
 				Message: "You are banned from voting right now! Contact support if you think this is a mistake",
@@ -146,11 +146,11 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 
 	if err != nil {
 		state.Logger.Error(err)
-		return api.DefaultResponse(http.StatusInternalServerError)
+		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
 	if voteBannedBotsState {
-		return api.HttpResponse{
+		return uapi.HttpResponse{
 			Status: http.StatusForbidden,
 			Json: types.ApiError{
 				Message: "This bot is banned from being voted on right now! Contact support if you think this is a mistake",
@@ -160,7 +160,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 	}
 
 	if botType.String != "approved" && botType.String != "certified" {
-		return api.HttpResponse{
+		return uapi.HttpResponse{
 			Status: http.StatusBadRequest,
 			Json: types.ApiError{
 				Message: "Woah there, this bot needs to be approved before you can vote for it!",
@@ -173,7 +173,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 
 	if err != nil {
 		state.Logger.Error(err)
-		return api.DefaultResponse(http.StatusInternalServerError)
+		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
 	if voteParsed.HasVoted {
@@ -195,7 +195,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 			Error:   true,
 		}
 
-		return api.HttpResponse{
+		return uapi.HttpResponse{
 			Status: http.StatusBadRequest,
 			Json:   alreadyVotedMsg,
 		}
@@ -209,7 +209,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 		// Revert vote
 		_, err := state.Pool.Exec(d.Context, "DELETE FROM votes WHERE itag = $1", itag)
 		state.Logger.Error(err)
-		return api.DefaultResponse(http.StatusInternalServerError)
+		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
 	var oldVotes pgtype.Int4
@@ -221,7 +221,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 		_, err := state.Pool.Exec(d.Context, "DELETE FROM votes WHERE itag = $1", itag)
 
 		state.Logger.Error(err)
-		return api.DefaultResponse(http.StatusInternalServerError)
+		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
 	var incr = 1
@@ -241,7 +241,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 		_, err := state.Pool.Exec(d.Context, "DELETE FROM votes WHERE itag = $1", itag)
 
 		state.Logger.Error(err)
-		return api.DefaultResponse(http.StatusInternalServerError)
+		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
 	userObj, err := dovewing.GetDiscordUser(d.Context, userId)
@@ -251,7 +251,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 		_, err := state.Pool.Exec(d.Context, "DELETE FROM votes WHERE itag = $1", itag)
 
 		state.Logger.Error(err)
-		return api.DefaultResponse(http.StatusInternalServerError)
+		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
 	botObj, err := dovewing.GetDiscordUser(d.Context, id)
@@ -261,7 +261,7 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 		_, err := state.Pool.Exec(d.Context, "DELETE FROM votes WHERE itag = $1", itag)
 
 		state.Logger.Error(err)
-		return api.DefaultResponse(http.StatusInternalServerError)
+		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
 	_, err = state.Discord.ChannelMessageSendComplex(state.Config.Channels.VoteLogs, &discordgo.MessageSend{
@@ -385,5 +385,5 @@ func Route(d api.RouteData, r *http.Request) api.HttpResponse {
 		}
 	}()
 
-	return api.DefaultResponse(http.StatusNoContent)
+	return uapi.DefaultResponse(http.StatusNoContent)
 }

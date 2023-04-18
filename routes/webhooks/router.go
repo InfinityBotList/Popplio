@@ -5,6 +5,7 @@ import (
 	"popplio/routes/webhooks/endpoints/test_vote_webhook"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/infinitybotlist/eureka/uapi"
 )
 
 const tagName = "Webhooks"
@@ -16,13 +17,13 @@ func (b Router) Tag() (string, string) {
 }
 
 func (b Router) Routes(r *chi.Mux) {
-	api.Route{
+	uapi.Route{
 		Pattern: "/users/{uid}/bots/{bid}/webhooks/test-vote",
 		OpId:    "test_vote_webhook",
-		Method:  api.POST,
+		Method:  uapi.POST,
 		Docs:    test_vote_webhook.Docs,
 		Handler: test_vote_webhook.Route,
-		Auth: []api.AuthType{
+		Auth: []uapi.AuthType{
 			{
 				Type:   api.TargetTypeUser,
 				URLVar: "uid",
