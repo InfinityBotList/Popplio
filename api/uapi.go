@@ -144,7 +144,7 @@ func IsClient(r *http.Request) bool {
 	clientHeader := r.Header.Get("X-Client")
 
 	if clientHeader != "" {
-		return clientHeader != state.Config.Meta.CliNonce
+		return clientHeader == state.Config.Meta.CliNonce
 	}
 
 	return false
