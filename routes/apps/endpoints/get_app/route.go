@@ -2,8 +2,8 @@ package get_app
 
 import (
 	"net/http"
-	"popplio/apps"
 	"popplio/state"
+	"popplio/types"
 	"popplio/utils"
 	"strings"
 
@@ -15,7 +15,7 @@ import (
 )
 
 var (
-	appColsArr = utils.GetCols(apps.AppResponse{})
+	appColsArr = utils.GetCols(types.AppResponse{})
 	appCols    = strings.Join(appColsArr, ",")
 )
 
@@ -32,7 +32,7 @@ func Docs() *docs.Doc {
 				Schema:      docs.IdSchema,
 			},
 		},
-		Resp: apps.AppResponse{},
+		Resp: types.AppResponse{},
 	}
 }
 
@@ -56,7 +56,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		return uapi.DefaultResponse(http.StatusNotFound)
 	}
 
-	var app apps.AppResponse
+	var app types.AppResponse
 
 	row, err := state.Pool.Query(d.Context, "SELECT "+appCols+" FROM apps WHERE app_id = $1", appId)
 

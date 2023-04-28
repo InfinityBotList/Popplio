@@ -3,11 +3,12 @@ package apps
 
 import (
 	"popplio/state"
+	"popplio/types"
 
 	"github.com/infinitybotlist/eureka/uapi"
 )
 
-var Apps = map[string]Position{
+var Apps = map[string]types.Position{
 	"staff": {
 		Order: 1,
 		Info: `Join the Infinity Staff Team and help us Approve, Deny and Certify Discord Bots. 
@@ -16,7 +17,7 @@ We are a welcoming and laid back team who is always willing to give new people a
 		Name:        "Staff Team",
 		Tags:        []string{"Staff", "Bot Reviewing"},
 		ReviewLogic: reviewLogicStaff,
-		Questions: []Question{
+		Questions: []types.Question{
 			{
 				ID:          "experience",
 				Question:    "Past server experience",
@@ -79,7 +80,7 @@ Some experience in PostgreSQL and at least one of the below languages is require
 - Go/Golang`,
 		Name: "Dev Team",
 		Tags: []string{"Golang", "Rust"},
-		Questions: []Question{
+		Questions: []types.Question{
 			{
 				ID:          "sql-basics-1",
 				Question:    "Write a SQL expression to select from a table named 'shop' the columns price (float) and quantity (integer) limited to 6 rows, ordered by the price in descending order",
@@ -150,7 +151,7 @@ Some points to note:
 		Name:   "Partners",
 		Tags:   []string{"Advertising", "Business"},
 		Closed: true,
-		Questions: []Question{
+		Questions: []types.Question{
 			{
 				ID:          "what",
 				Question:    "What are you looking to partner with us for?",
@@ -196,7 +197,7 @@ Some points to note:
 		ExtraLogic: extraLogicResubmit,
 		Dummy:      true,
 		Tags:       []string{"Resubmissions"},
-		Questions: []Question{
+		Questions: []types.Question{
 			{
 				ID:          "id",
 				Question:    "Bot ID?",
@@ -235,12 +236,12 @@ You can only have up to one ban appeal at any given point of time. Abusing the s
 		Channel: func() string {
 			return state.Config.Channels.BanAppeals
 		},
-		PositionDescription: func(d uapi.RouteData, p Position) string {
+		PositionDescription: func(d uapi.RouteData, p types.Position) string {
 			return "User <@" + d.Auth.ID + "> wants to be unbanned now? :thinking:"
 		},
 		AllowedForBanned: true,
 		BannedOnly:       true,
-		Questions: []Question{
+		Questions: []types.Question{
 			{
 				ID:          "reason",
 				Question:    "Why were you banned?",
@@ -276,7 +277,7 @@ You can only have one certification application at a time. If you have already a
 		ExtraLogic:  extraLogicCert,
 		ReviewLogic: reviewLogicCert,
 		Tags:        []string{"Certification"},
-		Questions: []Question{
+		Questions: []types.Question{
 			{
 				ID:          "id",
 				Question:    "Bot ID?",

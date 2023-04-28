@@ -1,9 +1,7 @@
 package tests
 
 import (
-	"bytes"
 	"fmt"
-	"io"
 	"kitehelper/common"
 	"os"
 	"os/exec"
@@ -29,7 +27,6 @@ type test struct {
 	cwd          string
 	ignoreErrors string
 	customTest   string
-	goFunc       func() error // use a go function as a test
 }
 
 type testset struct {
@@ -37,6 +34,36 @@ type testset struct {
 }
 
 func (ts testset) Run() {
+	// Unpack all custom tests
+	customTestsFsd, err := customTests.ReadDir("custom")
+
+	if err != nil {
+		panic(err)
+	}
+
+	// Write to temp folder
+	tmpFolder, err := os.MkdirTemp("", "tmp")
+
+	if err != nil {
+		panic(err)
+	}
+
+	defer os.RemoveAll(tmpFolder)
+
+	for _, t := range customTestsFsd {
+		testFile, err := customTests.ReadFile("custom/" + t.Name())
+
+		if err != nil {
+			panic(err)
+		}
+
+		err = os.WriteFile(tmpFolder+"/"+t.Name(), testFile, 0644)
+
+		if err != nil {
+			panic(err)
+		}
+	}
+
 	failed := []test{}
 	success := []test{}
 	outputs := []string{}
@@ -64,41 +91,8 @@ func (ts testset) Run() {
 		var cmdErr error
 		var cmdOut []byte
 
-		if t.goFunc != nil {
-			// Replace stderr and stdout with a buffer
-			old := os.Stdout // keep backup of the real stdout
-			r, w, _ := os.Pipe()
-			os.Stdout = w
-			os.Stderr = w
-
-			cmdErr = t.goFunc()
-
-			outC := make(chan []byte)
-			// copy the output in a separate goroutine so printing can't block indefinitely
-			go func() {
-				var buf bytes.Buffer
-				io.Copy(&buf, r)
-				outC <- buf.Bytes()
-			}()
-
-			// back to normal state
-			w.Close()
-			os.Stdout = old // restoring the real stdout
-			cmdOut = <-outC
-		}
-
 		if t.customTest != "" {
-			// Unpack custom test
-			testFile, err := customTests.ReadFile("custom/" + t.customTest)
-
-			if err != nil {
-				panic(err)
-			}
-
-			os.Mkdir("tmp", 0755)
-			os.WriteFile("tmp/"+t.customTest, testFile, 0600)
-
-			t.cmd = append(t.cmd, "tmp/"+t.customTest)
+			t.cmd = append(t.cmd, tmpFolder+"/"+t.customTest)
 		}
 
 		// Run test here
@@ -111,13 +105,6 @@ func (ts testset) Run() {
 
 			if os.Getenv("DEBUG") == "1" {
 				fmt.Println(string(cmdOut))
-			}
-
-			// Cleanup
-			err = os.RemoveAll("tmp")
-
-			if err != nil {
-				panic(err)
 			}
 		}
 

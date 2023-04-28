@@ -2,7 +2,6 @@ package get_apps_list
 
 import (
 	"net/http"
-	"popplio/apps"
 	"popplio/state"
 	"popplio/types"
 	"popplio/utils"
@@ -16,7 +15,7 @@ import (
 )
 
 var (
-	appColsArr = utils.GetCols(apps.AppResponse{})
+	appColsArr = utils.GetCols(types.AppResponse{})
 	appCols    = strings.Join(appColsArr, ",")
 )
 
@@ -40,7 +39,7 @@ func Docs() *docs.Doc {
 				Schema:      docs.IdSchema,
 			},
 		},
-		Resp: apps.AppListResponse{},
+		Resp: types.AppListResponse{},
 	}
 }
 
@@ -51,7 +50,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		full = "false"
 	}
 
-	var app []apps.AppResponse
+	var app []types.AppResponse
 
 	var row pgx.Rows
 	var err error
@@ -100,7 +99,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	}
 
 	return uapi.HttpResponse{
-		Json: apps.AppListResponse{
+		Json: types.AppListResponse{
 			Apps: app,
 		},
 	}

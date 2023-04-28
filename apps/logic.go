@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"popplio/state"
 	"popplio/teams"
+	"popplio/types"
 	"popplio/utils"
 
 	"github.com/bwmarrin/discordgo"
@@ -12,7 +13,7 @@ import (
 	"github.com/infinitybotlist/eureka/uapi"
 )
 
-func extraLogicResubmit(d uapi.RouteData, p Position, answers map[string]string) (add bool, err error) {
+func extraLogicResubmit(d uapi.RouteData, p types.Position, answers map[string]string) (add bool, err error) {
 	// Get the bot ID
 	botID, ok := answers["id"]
 
@@ -92,7 +93,7 @@ func extraLogicResubmit(d uapi.RouteData, p Position, answers map[string]string)
 	return false, nil
 }
 
-func extraLogicCert(d uapi.RouteData, p Position, answers map[string]string) (add bool, err error) {
+func extraLogicCert(d uapi.RouteData, p types.Position, answers map[string]string) (add bool, err error) {
 	// Get the bot ID
 	botID, ok := answers["id"]
 
@@ -143,7 +144,7 @@ func extraLogicCert(d uapi.RouteData, p Position, answers map[string]string) (ad
 	return true, nil
 }
 
-func reviewLogicBanAppeal(d uapi.RouteData, resp AppResponse, reason string) (review bool, err error) {
+func reviewLogicBanAppeal(d uapi.RouteData, resp types.AppResponse, reason string) (review bool, err error) {
 	// Unban user
 
 	if len(reason) > 384 {
@@ -163,7 +164,7 @@ func reviewLogicBanAppeal(d uapi.RouteData, resp AppResponse, reason string) (re
 	return true, nil
 }
 
-func reviewLogicCert(d uapi.RouteData, resp AppResponse, reason string) (review bool, err error) {
+func reviewLogicCert(d uapi.RouteData, resp types.AppResponse, reason string) (review bool, err error) {
 	// Get the bot ID
 	botID, ok := resp.Answers["id"]
 
@@ -235,7 +236,7 @@ func reviewLogicCert(d uapi.RouteData, resp AppResponse, reason string) (review 
 	return true, nil
 }
 
-func reviewLogicStaff(d uapi.RouteData, resp AppResponse, reason string) (review bool, err error) {
+func reviewLogicStaff(d uapi.RouteData, resp types.AppResponse, reason string) (review bool, err error) {
 	err = state.Discord.GuildMemberRoleAdd(state.Config.Servers.Main, resp.UserID, state.Config.Roles.AwaitingStaff)
 
 	if err != nil {

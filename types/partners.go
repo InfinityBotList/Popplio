@@ -1,18 +1,16 @@
-package partners
+package types
 
 import (
-	"popplio/types"
-
 	"github.com/infinitybotlist/eureka/dovewing"
 )
 
 type Partner struct {
-	ID     string       `json:"id" validate:"required"`
-	Name   string       `json:"name" validate:"required"`
-	Image  string       `json:"image" validate:"required"`
-	Short  string       `json:"short" validate:"required"`
-	Links  []types.Link `json:"links" validate:"required,min=1,max=2"`
-	UserID string       `json:"-" validate:"required,numeric"`
+	ID     string `json:"id" validate:"required"`
+	Name   string `json:"name" validate:"required"`
+	Image  string `json:"image" validate:"required"`
+	Short  string `json:"short" validate:"required"`
+	Links  []Link `json:"links" validate:"required,min=1,max=2"`
+	UserID string `json:"-" validate:"required,numeric"`
 
 	// Internal field
 	User *dovewing.DiscordUser `json:"user"`

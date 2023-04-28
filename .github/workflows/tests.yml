@@ -24,6 +24,7 @@ jobs:
       - name: Install python dependencies
         run: |
           python -m pip install --upgrade pip
+          pip install pydantic # Some tests require this
 
       - name: Tests
         run: |

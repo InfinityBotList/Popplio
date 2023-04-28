@@ -2,11 +2,16 @@ package partners
 
 import (
 	"popplio/state"
+	"popplio/types"
 
 	"github.com/infinitybotlist/eureka/dovewing"
 )
 
-func processPartner(partner *Partner) *Partner {
+func processPartner(partner *types.Partner) *types.Partner {
+	if partner.User != nil {
+		return partner
+	}
+
 	u, err := dovewing.GetDiscordUser(state.Context, partner.UserID)
 
 	if err != nil {

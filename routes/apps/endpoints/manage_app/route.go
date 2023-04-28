@@ -25,7 +25,7 @@ type ManageApp struct {
 
 var (
 	compiledMessages = uapi.CompileValidationErrors(ManageApp{})
-	appColsArr       = utils.GetCols(apps.AppResponse{})
+	appColsArr       = utils.GetCols(types.AppResponse{})
 	appCols          = strings.Join(appColsArr, ",")
 )
 
@@ -115,7 +115,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		return uapi.DefaultResponse(http.StatusNotFound)
 	}
 
-	var app apps.AppResponse
+	var app types.AppResponse
 
 	rows, err := state.Pool.Query(d.Context, "SELECT "+appCols+" FROM apps WHERE app_id = $1", appId)
 
