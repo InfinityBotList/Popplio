@@ -25,7 +25,7 @@ class SchemaList(pydantic.BaseModel):
 
         return None
 
-print("Fetching CI seed")
+print("Fetching CI seed...")
 
 ci_seed = requests.get("https://cdn.infinitybots.gg/dev/seed-ci.json")
 
@@ -98,7 +98,7 @@ for struct_name, struct in structs.items():
             continue
         
         found = ci_schema.column_name in field_db_col_names
-        
+
         if not ci_schema.secret and not found:
             print(f"FATAL: {ci_schema.table_name}.{ci_schema.column_name} is missing from {struct_name}")
             exit(1)
