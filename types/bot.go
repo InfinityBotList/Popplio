@@ -7,9 +7,12 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+// @ci table=bots, unfilled=1
+//
+// Represents a 'index bot' (a small subset of the bot object for use in cards etc.)
 type IndexBot struct {
 	BotID       string                `db:"bot_id" json:"bot_id" description:"The bot's ID"`
-	User        *dovewing.DiscordUser `db:"-" json:"user" description:"The bot's user information"`
+	User        *dovewing.DiscordUser `db:"-" json:"user" description:"The bot's user information" ci:"internal"` // Must be parsed internally
 	Short       string                `db:"short" json:"short" description:"The bot's short description"`
 	Long        string                `db:"long" json:"long" description:"The bot's long description in raw format (HTML/markdown etc. based on the bots settings)"`
 	Type        string                `db:"type" json:"type" description:"The bot's type (e.g. pending/approved/certified/denied etc.)"`
@@ -33,6 +36,8 @@ type BotStats struct {
 	ShardList []uint64 `json:"shard_list" description:"The shard list"`
 }
 
+// @ci table=bots
+//
 // Bot represents a bot.
 type Bot struct {
 	ITag                      pgtype.UUID           `db:"itag" json:"itag" description:"The bot's internal ID. An artifact of database migrations."`
@@ -43,9 +48,9 @@ type Bot struct {
 	ExtraLinks                []Link                `db:"extra_links" json:"extra_links" description:"The bot's links that it wishes to advertise"`
 	Tags                      []string              `db:"tags" json:"tags" description:"The bot's tags (e.g. music, moderation, etc.)"`
 	Prefix                    string                `db:"prefix" json:"prefix" description:"The bot's prefix"`
-	User                      *dovewing.DiscordUser `json:"user" description:"The bot's user information"` // Must be parsed internally
+	User                      *dovewing.DiscordUser `json:"user" description:"The bot's user information" ci:"internal"` // Must be parsed internally
 	Owner                     pgtype.Text           `db:"owner" json:"-"`
-	MainOwner                 *dovewing.DiscordUser `json:"owner" description:"The bot owner's user information. If in a team, this will be null and team_owner will instead be set"` // Must be parsed internally
+	MainOwner                 *dovewing.DiscordUser `json:"owner" description:"The bot owner's user information. If in a team, this will be null and team_owner will instead be set" ci:"internal"` // Must be parsed internally
 	Short                     string                `db:"short" json:"short" description:"The bot's short description"`
 	Long                      string                `db:"long" json:"long" description:"The bot's long description in raw format (HTML/markdown etc. based on the bots settings)"`
 	Library                   string                `db:"library" json:"library" description:"The bot's library"`
@@ -57,7 +62,7 @@ type Bot struct {
 	Users                     int                   `db:"users" json:"users" description:"The bot's user count"`
 	Votes                     int                   `db:"votes" json:"votes" description:"The bot's vote count"`
 	Views                     int                   `db:"clicks" json:"clicks" description:"The bot's total click count"`
-	UniqueClicks              int64                 `json:"unique_clicks" description:"The bot's unique click count based on SHA256 hashed IPs"` // Must be parsed internally
+	UniqueClicks              int64                 `json:"unique_clicks" description:"The bot's unique click count based on SHA256 hashed IPs" ci:"internal"` // Must be parsed internally
 	InviteClicks              int                   `db:"invite_clicks" json:"invite_clicks" description:"The bot's invite click count (via users inviting the bot from IBL)"`
 	Banner                    pgtype.Text           `db:"banner" json:"banner" description:"The bot's banner URL if it has one, otherwise null"`
 	Invite                    string                `db:"invite" json:"invite" description:"The bot's invite URL. Must be present"`
@@ -66,7 +71,7 @@ type Bot struct {
 	VoteBanned                bool                  `db:"vote_banned" json:"vote_banned" description:"Whether the bot is vote banned or not"`
 	StartPeriod               pgtype.Timestamptz    `db:"start_premium_period" json:"start_premium_period"`
 	PremiumPeriodLength       time.Duration         `db:"premium_period_length" json:"-"`
-	PremiumPeriodLengthParsed Interval              `db:"-" json:"premium_period_length" description:"The period of premium for the bot"` // Must be parsed internally
+	PremiumPeriodLengthParsed Interval              `db:"-" json:"premium_period_length" description:"The period of premium for the bot" ci:"internal"` // Must be parsed internally
 	CertReason                pgtype.Text           `db:"cert_reason" json:"cert_reason" description:"The reason for the bot being certified"`
 	Uptime                    int                   `db:"uptime" json:"uptime" description:"The bot's total number of successful uptime checks"`
 	TotalUptime               int                   `db:"total_uptime" json:"total_uptime" description:"The bot's total number of uptime checks"`
@@ -77,7 +82,7 @@ type Bot struct {
 	LastClaimed               pgtype.Timestamptz    `db:"last_claimed" json:"last_claimed" description:"The bot's last claimed date"`
 	WebhooksV2                bool                  `db:"webhooks_v2" json:"webhooks_v2" description:"Whether the bot is using webhooks v2 or not"`
 	TeamOwnerID               pgtype.UUID           `db:"team_owner" json:"-"`
-	TeamOwner                 *Team                 `json:"team_owner" description:"If the bot is in a team, who owns the bot. If not in a team, this will be null and owner will instead be set"` // Must be parsed internally
+	TeamOwner                 *Team                 `json:"team_owner" description:"If the bot is in a team, who owns the bot. If not in a team, this will be null and owner will instead be set" ci:"internal"` // Must be parsed internally
 	CaptchaOptOut             bool                  `db:"captcha_opt_out" json:"captcha_opt_out" description:"Whether the bot should have captchas shown if the user has captcha_sponsor_enabled"`
 }
 

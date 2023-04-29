@@ -51,6 +51,10 @@ func (ts testset) Run() {
 	defer os.RemoveAll(tmpFolder)
 
 	for _, t := range customTestsFsd {
+		if t.IsDir() {
+			continue
+		}
+
 		testFile, err := customTests.ReadFile("custom/" + t.Name())
 
 		if err != nil {
