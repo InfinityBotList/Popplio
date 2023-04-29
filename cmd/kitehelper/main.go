@@ -5,7 +5,25 @@ import (
 	"kitehelper/migrate"
 	"kitehelper/tests"
 	"os"
+	"runtime/debug"
 )
+
+var GitCommit string
+
+func init() {
+	// Use runtime/debug vcs.revision to get the git commit hash
+	if info, ok := debug.ReadBuildInfo(); ok {
+		for _, setting := range info.Settings {
+			if setting.Key == "vcs.revision" {
+				GitCommit = setting.Value
+			}
+		}
+	}
+
+	if GitCommit == "" {
+		GitCommit = "unknown"
+	}
+}
 
 type command struct {
 	Func func(progname string, args []string)
@@ -46,6 +64,8 @@ func main() {
 		cmdList()
 		os.Exit(1)
 	}
+
+	fmt.Printf("Kitehelper (commit: %s)\n", GitCommit)
 
 	cmd.Func(progname, args[1:])
 }
