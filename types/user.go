@@ -27,7 +27,7 @@ type User struct {
 	StaffOnboardLastStartTime pgtype.Timestamptz    `db:"staff_onboard_last_start_time" json:"staff_onboard_last_start_time"`
 	StaffOnboardGuild         pgtype.Text           `db:"staff_onboard_guild" json:"staff_onboard_guild"`
 	StaffRPCLastVerify        pgtype.Timestamptz    `db:"staff_rpc_last_verify" json:"staff_rpc_last_verify"`
-	StaffOnboardSessionCode   string                `db:"staff_onboard_session_code" json:"staff_onboard_session_code" description:"The session code for the staff onboarding"`
+	StaffOnboardSessionCode   pgtype.Text           `db:"staff_onboard_session_code" json:"-" ci:"internal"`
 	Staff                     bool                  `db:"staff" json:"staff"`
 	Admin                     bool                  `db:"admin" json:"admin"`
 	HAdmin                    bool                  `db:"hadmin" json:"hadmin"`
