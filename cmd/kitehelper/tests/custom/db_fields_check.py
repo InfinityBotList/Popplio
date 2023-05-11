@@ -2,7 +2,7 @@ import pydantic
 import requests
 import typing
 import pathlib
-from __libast import Struct, parse_file_structs
+from __libast import Struct, parse_file_structs, debug
 
 # Schema
 class Schema(pydantic.BaseModel):
@@ -66,15 +66,19 @@ print("Check 1: Check fields to ensure they actually exist on db")
 
 for struct_name, struct in structs.items():
     for field in struct.fields:
+        col_name = field.tags.get("db") or field.tags.get("pdb")
+        
         if field.internal():
+            if col_name not in ["", "-", None]:
+                print(f"FATAL: Field {struct_name}.{field.name} is internal but has a db tag")
+                exit(1)
+
             # One thing to check is for a comment
             if not field.comment:
                 print(f"FATAL: Field {struct_name}.{field.name} is internal but has no comment as to why")
                 exit(1)
 
             continue
-
-        col_name = field.tags.get("db")
 
         if not col_name or col_name == "-":
             print(f"FATAL: Field {struct_name}.{field.name} has no db tag. If it is internal, mark it using ci:\"internal\"")
@@ -92,7 +96,22 @@ for struct_name, struct in structs.items():
     if struct.attrs.get("unfilled") == "1":
         continue
 
-    field_db_col_names = list(map(lambda x: x.tags["db"], filter(lambda x: not x.internal(), struct.fields)))
+    field_db_col_names = []
+
+    for field in struct.fields:
+        col_name = field.tags.get("db") or field.tags.get("pdb")
+
+        if not col_name or col_name == "-":
+            continue
+
+        if not field.tags.get("json") and not field.internal():
+            print(f"FATAL: Field {struct_name}.{field.name} has no json tag. If it is internal, mark it using ci:\"internal\"")
+            exit(1)
+
+        field_db_col_names.append(col_name)
+
+    debug(field_db_col_names)
+
     for ci_schema in ci_data.schemas:
         if struct.attrs["table"] != ci_schema.table_name:
             continue

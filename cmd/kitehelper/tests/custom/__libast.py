@@ -26,8 +26,8 @@ class Struct(pydantic.BaseModel):
     fields: list[StructField]
 
 def debug(*args):
-    if os.environ.get("DEBUG"):
-        debug(*args)
+    if os.environ.get("DEBUG") == "true":
+        print(*args)
 
 def parse_go_struct_field(field: str) -> dict[str, str]:
     field = field.replace("`", "").replace(":", "=").split("//")[0]
