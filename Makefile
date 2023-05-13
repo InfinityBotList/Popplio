@@ -5,4 +5,5 @@ all:
 tests:
 	CGO_ENABLED=0 go test -v -coverprofile=coverage.out ./...
 ts:
+	rm -rvf /iblcdn/public/dev/bindings/popplio
 	~/go/bin/tygo generate
