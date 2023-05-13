@@ -7,3 +7,4 @@ tests:
 ts:
 	rm -rvf /iblcdn/public/dev/bindings/popplio
 	~/go/bin/tygo generate
+	ibl genenums
