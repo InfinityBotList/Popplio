@@ -3,7 +3,7 @@ packages:
     output_path: "/iblcdn/public/dev/bindings/popplio/types.ts"
     frontmatter: |
       import { DiscordUser } from "./eureka-dovewing"
-      import { TeamPermissions } from "../teamPerms"
+      import { TeamPermissions } from "./team-perms"
     type_mappings:
       time.Time: "string /* RFC3339 */"
       pgtype.Text: "string | null /* nullable */"
