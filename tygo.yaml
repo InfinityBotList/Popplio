@@ -10,12 +10,12 @@ packages:
       pgtype.UUID: "string /* uuid */"
       dovewing.DiscordUser: DiscordUser /* from eureka-dovewing.ts */
       teams.TeamPermission: TeamPermissions /* from teamPerms.ts */
+      pgtype.Timestamptz: "string | null /* RFC3339, nullable */"
 
   - path: "github.com/infinitybotlist/eureka/dovewing"
     output_path: "/iblcdn/public/dev/bindings/popplio/eureka-dovewing.ts"
     type_mappings:
       time.Time: "string /* RFC3339 */"
-      pgtype.Timestamptz: "string | null /* RFC3339, nullable */"
       pgtype.Text: "string | null /* nullable */"
       pgtype.UUID: "string /* uuid */"
       discordgo.Status: "string /* discord status */"
