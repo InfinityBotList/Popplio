@@ -6,10 +6,6 @@ import (
 	"github.com/infinitybotlist/eureka/uapi"
 )
 
-type LogicFunc = func(d uapi.RouteData, p Position, answers map[string]string) (add bool, err error)
-type PositionDescriptionFunc = func(d uapi.RouteData, p Position) string
-type ReviewFunc = func(d uapi.RouteData, resp AppResponse, reason string) (review bool, err error)
-
 type Question struct {
 	ID          string `json:"id" validate:"required"`
 	Question    string `json:"question" validate:"required"`
@@ -28,13 +24,13 @@ type Position struct {
 	Closed    bool       `json:"closed"`
 
 	// Internal fields
-	Channel             func() string           `json:"-"`
-	ExtraLogic          LogicFunc               `json:"-"`
-	PositionDescription PositionDescriptionFunc `json:"-"` // Used for custom position descriptions
-	AllowedForBanned    bool                    `json:"-"` // If true, banned users can apply for this position
-	BannedOnly          bool                    `json:"-"` // If true, only banned users can apply for this position
-	Dummy               bool                    `json:"-"` // If true, the position does not actually persist to the database. This is just a marker and ExtraLogic is required to enforce this
-	ReviewLogic         ReviewFunc              `json:"-"` // If set, this function will be called when the position is reviewed. If it returns true, the app will be approved/denied
+	Channel             func() string                                                                       `json:"-"`
+	ExtraLogic          func(d uapi.RouteData, p Position, answers map[string]string) (add bool, err error) `json:"-"`
+	PositionDescription func(d uapi.RouteData, p Position) string                                           `json:"-"` // Used for custom position descriptions
+	AllowedForBanned    bool                                                                                `json:"-"` // If true, banned users can apply for this position
+	BannedOnly          bool                                                                                `json:"-"` // If true, only banned users can apply for this position
+	Dummy               bool                                                                                `json:"-"` // If true, the position does not actually persist to the database. This is just a marker and ExtraLogic is required to enforce this
+	ReviewLogic         func(d uapi.RouteData, resp AppResponse, reason string) (review bool, err error)    `json:"-"` // If set, this function will be called when the position is reviewed. If it returns true, the app will be approved/denied
 }
 
 type AppMeta struct {
