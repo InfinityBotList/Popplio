@@ -25,6 +25,8 @@ require (
 	github.com/modern-go/reflect2 v1.0.2 // indirect
 	github.com/mohae/deepcopy v0.0.0-20170929034955-c48cc78d4826 // indirect
 	github.com/perimeterx/marshmallow v1.1.4 // indirect
+	github.com/tkrajina/go-reflector v0.5.5 // indirect
+	github.com/tkrajina/typescriptify-golang-structs v0.1.10 // indirect
 	golang.org/x/sync v0.1.0 // indirect
 )
 
