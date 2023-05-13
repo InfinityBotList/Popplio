@@ -1,7 +1,17 @@
 packages:
   - path: "popplio/types"
     output_path: "/iblcdn/public/dev/bindings/popplio/types.ts"
+    frontmatter: import { DiscordUser } from "./eureka-dovewing"
     type_mappings:
       time.Time: "string /* RFC3339 */"
       pgtype.Text: "string | null /* nullable */"
       pgtype.UUID: "string /* uuid */"
+      dovewing.DiscordUser: DiscordUser /* from eureka-dovewing.ts */
+
+  - path: "github.com/infinitybotlist/eureka/dovewing"
+    output_path: "/iblcdn/public/dev/bindings/popplio/eureka-dovewing.ts"
+    type_mappings:
+      time.Time: "string /* RFC3339 */"
+      pgtype.Text: "string | null /* nullable */"
+      pgtype.UUID: "string /* uuid */"
+      discordgo.Status: "string /* discord status */"
