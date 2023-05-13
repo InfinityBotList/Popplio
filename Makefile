@@ -4,3 +4,5 @@ all:
 	CGO_ENABLED=0 go build -v 
 tests:
 	CGO_ENABLED=0 go test -v -coverprofile=coverage.out ./...
+ts:
+	~/go/bin/tygo generate

@@ -1,0 +1,7 @@
+packages:
+  - path: "popplio/types"
+    output_path: "/iblcdn/public/dev/bindings/popplio/types.ts"
+    type_mappings:
+      time.Time: "string /* RFC3339 */"
+      pgtype.Text: "string | null /* nullable */"
+      pgtype.UUID: "string /* uuid */"
