@@ -29,6 +29,25 @@ type IndexBot struct {
 	Banner      pgtype.Text           `db:"banner" json:"banner" description:"The bot's banner URL if it has one, otherwise null"`
 }
 
+// @ci table=bots, unfilled=1
+//
+// Queue bots are similar to index bots but specifically for the bot queue, they do not have all the information needed to be a `IndexBot`
+// and neither does `IndexBot` provide all the information needed to be a `QueueBot`
+type QueueBot struct {
+	BotID       string                `db:"bot_id" json:"bot_id" description:"The bot's ID"`
+	User        *dovewing.DiscordUser `db:"-" json:"user" description:"The bot's user information" ci:"internal"` // Must be parsed internally
+	Short       string                `db:"short" json:"short" description:"The bot's short description"`
+	Long        string                `db:"long" json:"long" description:"The bot's long description in raw format (HTML/markdown etc. based on the bots settings)"`
+	Type        string                `db:"type" json:"type" description:"The bot's type (e.g. pending/approved/certified/denied etc.)"`
+	NSFW        bool                  `db:"nsfw" json:"nsfw" description:"Whether the bot is NSFW or not"`
+	Tags        []string              `db:"tags" json:"tags" description:"The bot's tags (e.g. music, moderation, etc.)"`
+	Premium     bool                  `db:"premium" json:"premium" description:"Whether the bot is a premium bot or not"`
+	Views       int                   `db:"clicks" json:"clicks" description:"The bot's view count"`
+	ClaimedByID pgtype.Text           `db:"claimed_by" json:"-" ci:"internal"`                                            // Must be parsed internally
+	ClaimedBy   *dovewing.DiscordUser `db:"-" json:"claimed_by" description:"The user who claimed the bot" ci:"internal"` // Must be parsed internally
+	Banner      pgtype.Text           `db:"banner" json:"banner" description:"The bot's banner URL if it has one, otherwise null"`
+}
+
 type BotStats struct {
 	Servers   uint64   `json:"servers" description:"The server count"`
 	Shards    uint64   `json:"shards" description:"The shard count"`
@@ -93,6 +112,10 @@ type AllBots struct {
 	Next     string     `json:"next"`
 	Previous string     `json:"previous"`
 	Results  []IndexBot `json:"bots"`
+}
+
+type QueueBots struct {
+	Bots []QueueBot `json:"bots"`
 }
 
 type Invite struct {

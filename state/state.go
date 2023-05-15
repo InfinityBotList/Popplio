@@ -56,6 +56,18 @@ func nonVulgar(fl validator.FieldLevel) bool {
 	}
 }
 
+func updateDb(u *dovewing.DiscordUser) error {
+	if u.Bot {
+		_, err := Pool.Exec(Context, "UPDATE bots SET queue_name = $1, queue_avatar = $2 WHERE bot_id = $3", u.Username, u.Avatar, u.ID)
+
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
 func Setup() {
 	Validator.RegisterValidation("nonvulgar", nonVulgar)
 	Validator.RegisterValidation("notblank", validators.NotBlank)
@@ -128,6 +140,7 @@ func Setup() {
 		PreferredGuild: Config.Servers.Main,
 		Context:        Context,
 		Redis:          Redis,
+		UpdateCache:    updateDb,
 	})
 
 	c, err := paypal.NewClient(Config.Meta.PaypalClientID, Config.Meta.PaypalSecret, func() string {

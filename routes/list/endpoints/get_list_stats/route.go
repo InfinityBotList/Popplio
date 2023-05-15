@@ -13,57 +13,43 @@ import (
 func Docs() *docs.Doc {
 	return &docs.Doc{
 		Summary:     "Get List Statistics",
-		Description: "Gets the statistics of the list",
-		Resp: types.ListStats{
-			Bots: []types.ListStatsBot{},
-		},
+		Description: "Gets basic statistics of the list",
+		Resp:        types.ListStats{},
 	}
 }
 
 func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
-	listStats := types.ListStats{}
-
-	bots, err := state.Pool.Query(d.Context, "SELECT bot_id, vanity, short, type, queue_name FROM bots")
-
-	if err != nil {
-		state.Logger.Error(err)
-		return uapi.DefaultResponse(http.StatusInternalServerError)
-	}
-
-	defer bots.Close()
-
-	for bots.Next() {
-		var botId string
-		var vanity string
-		var short string
-		var typeStr string
-		var queueName string
-
-		err := bots.Scan(&botId, &vanity, &short, &typeStr, &queueName)
-
-		if err != nil {
-			state.Logger.Error(err)
-			return uapi.DefaultResponse(http.StatusInternalServerError)
-		}
-
-		listStats.Bots = append(listStats.Bots, types.ListStatsBot{
-			BotID:     botId,
-			Vanity:    vanity,
-			Short:     short,
-			Type:      typeStr,
-			QueueName: queueName,
-		})
-	}
-
-	var activeStaff int64
-	err = state.Pool.QueryRow(d.Context, "SELECT COUNT(*) FROM users WHERE staff = true").Scan(&activeStaff)
+	var totalBots int64
+	err := state.Pool.QueryRow(d.Context, "SELECT COUNT(*) FROM bots").Scan(&totalBots)
 
 	if err != nil {
 		state.Logger.Error(err)
 		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
-	listStats.TotalStaff = activeStaff
+	var totalApprovedBots int64
+	err = state.Pool.QueryRow(d.Context, "SELECT COUNT(*) FROM bots WHERE type = 'approved'").Scan(&totalApprovedBots)
+
+	if err != nil {
+		state.Logger.Error(err)
+		return uapi.DefaultResponse(http.StatusInternalServerError)
+	}
+
+	var totalCertifiedBots int64
+	err = state.Pool.QueryRow(d.Context, "SELECT COUNT(*) FROM bots WHERE type = 'certified'").Scan(&totalCertifiedBots)
+
+	if err != nil {
+		state.Logger.Error(err)
+		return uapi.DefaultResponse(http.StatusInternalServerError)
+	}
+
+	var totalStaff int64
+	err = state.Pool.QueryRow(d.Context, "SELECT COUNT(*) FROM users WHERE staff = true").Scan(&totalStaff)
+
+	if err != nil {
+		state.Logger.Error(err)
+		return uapi.DefaultResponse(http.StatusInternalServerError)
+	}
 
 	var totalUsers int64
 	err = state.Pool.QueryRow(d.Context, "SELECT COUNT(*) FROM users").Scan(&totalUsers)
@@ -73,8 +59,6 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
-	listStats.TotalUsers = totalUsers
-
 	var totalVotes int64
 	err = state.Pool.QueryRow(d.Context, "SELECT SUM(votes) FROM bots").Scan(&totalVotes)
 
@@ -82,8 +66,6 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		state.Logger.Error(err)
 		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
-
-	listStats.TotalVotes = totalVotes
 
 	var totalPacks int64
 	err = state.Pool.QueryRow(d.Context, "SELECT COUNT(*) FROM packs").Scan(&totalPacks)
@@ -93,8 +75,6 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
-	listStats.TotalPacks = totalPacks
-
 	var totalTickets int64
 	err = state.Pool.QueryRow(d.Context, "SELECT COUNT(*) FROM tickets").Scan(&totalTickets)
 
@@ -103,9 +83,16 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
-	listStats.TotalTickets = totalTickets
-
 	return uapi.HttpResponse{
-		Json: listStats,
+		Json: types.ListStats{
+			TotalBots:          totalBots,
+			TotalApprovedBots:  totalApprovedBots,
+			TotalCertifiedBots: totalCertifiedBots,
+			TotalStaff:         totalStaff,
+			TotalUsers:         totalUsers,
+			TotalVotes:         totalVotes,
+			TotalPacks:         totalPacks,
+			TotalTickets:       totalTickets,
+		},
 	}
 }

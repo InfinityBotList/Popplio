@@ -14,6 +14,7 @@ import (
 	docs "github.com/infinitybotlist/eureka/doclib"
 	"github.com/infinitybotlist/eureka/dovewing"
 	"github.com/infinitybotlist/eureka/uapi"
+	"github.com/jackc/pgx/v5"
 
 	"github.com/georgysavva/scany/v2/pgxscan"
 )
@@ -28,12 +29,19 @@ var (
 func Docs() *docs.Doc {
 	return &docs.Doc{
 		Summary:     "Get All Bots",
-		Description: "Gets all bots on the list. Returns a ``Index`` object",
+		Description: "Gets all bots on the list. Returns a set of paginated ``IndexBot`` objects",
 		Resp:        types.AllBots{},
 		Params: []docs.Parameter{
 			{
 				Name:        "page",
 				Description: "The page number",
+				Required:    false,
+				In:          "query",
+				Schema:      docs.IdSchema,
+			},
+			{
+				Name:        "filter",
+				Description: "Filter bots by name. Slow and limited to only `bot_id` and `username` filter",
 				Required:    false,
 				In:          "query",
 				Schema:      docs.IdSchema,
@@ -55,8 +63,10 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		return uapi.DefaultResponse(http.StatusBadRequest)
 	}
 
+	filter := r.URL.Query().Get("filter")
+
 	// Check cache, this is how we can avoid hefty ratelimits
-	cache := state.Redis.Get(d.Context, "allbots-"+strconv.FormatUint(pageNum, 10)).Val()
+	cache := state.Redis.Get(d.Context, "allbots-"+strconv.FormatUint(pageNum, 10)+"-"+filter).Val()
 	if cache != "" {
 		return uapi.HttpResponse{
 			Data: cache,
@@ -69,7 +79,13 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	limit := perPage
 	offset := (pageNum - 1) * perPage
 
-	rows, err := state.Pool.Query(d.Context, "SELECT "+indexBotCols+" FROM bots ORDER BY created_at DESC LIMIT $1 OFFSET $2", limit, offset)
+	var rows pgx.Rows
+
+	if filter != "" {
+		rows, err = state.Pool.Query(d.Context, "SELECT "+indexBotCols+" FROM bots WHERE (queue_name ILIKE $1 OR bot_id ILIKE $1) ORDER BY created_at DESC LIMIT $2 OFFSET $3", "%"+filter+"%", limit, offset)
+	} else {
+		rows, err = state.Pool.Query(d.Context, "SELECT "+indexBotCols+" FROM bots ORDER BY created_at DESC LIMIT $1 OFFSET $2", limit, offset)
+	}
 
 	if err != nil {
 		state.Logger.Error(err)
@@ -96,47 +112,50 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		bots[i].User = botUser
 	}
 
-	var previous strings.Builder
+	var previous string
 
 	// More optimized string concat
-	previous.WriteString(state.Config.Sites.API)
-	previous.WriteString("/bots/all?page=")
-	previous.WriteString(strconv.FormatUint(pageNum-1, 10))
+	if pageNum > 2 {
+		previous = state.Config.Sites.API + "/bots/all?page=" + strconv.FormatUint(pageNum-1, 10)
 
-	if pageNum-1 < 1 || pageNum == 0 {
-		previous.Reset()
+		if filter != "" {
+			previous += "&filter=" + filter
+		}
 	}
 
 	var count uint64
 
-	err = state.Pool.QueryRow(d.Context, "SELECT COUNT(*) FROM bots").Scan(&count)
+	if filter != "" {
+		err = state.Pool.QueryRow(d.Context, "SELECT COUNT(*) FROM bots WHERE (queue_name ILIKE $1 OR bot_id ILIKE $1)", "%"+filter+"%").Scan(&count)
+	} else {
+		err = state.Pool.QueryRow(d.Context, "SELECT COUNT(*) FROM bots").Scan(&count)
+	}
 
 	if err != nil {
 		state.Logger.Error(err)
 		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
-	var next strings.Builder
+	var next string
+	if float64(pageNum+1) <= math.Ceil(float64(count)/perPage) {
+		next = state.Config.Sites.API + "/bots/all?page=" + strconv.FormatUint(pageNum+1, 10)
 
-	next.WriteString(state.Config.Sites.API)
-	next.WriteString("/bots/all?page=")
-	next.WriteString(strconv.FormatUint(pageNum+1, 10))
-
-	if float64(pageNum+1) > math.Ceil(float64(count)/perPage) {
-		next.Reset()
+		if filter != "" {
+			next += "&filter=" + filter
+		}
 	}
 
 	data := types.AllBots{
 		Count:    count,
 		Results:  bots,
 		PerPage:  perPage,
-		Previous: previous.String(),
-		Next:     next.String(),
+		Previous: previous,
+		Next:     next,
 	}
 
 	return uapi.HttpResponse{
 		Json:      data,
-		CacheKey:  "allbots-" + strconv.FormatUint(pageNum, 10),
+		CacheKey:  "allbots-" + strconv.FormatUint(pageNum, 10) + "-" + filter,
 		CacheTime: 10 * time.Minute,
 	}
 }

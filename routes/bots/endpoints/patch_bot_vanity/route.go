@@ -105,6 +105,13 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		}
 	}
 
+	if strings.Contains(vanity.Vanity, "@") {
+		return uapi.HttpResponse{
+			Status: http.StatusBadRequest,
+			Json:   types.ApiError{Message: "Vanity cannot contain @", Error: true},
+		}
+	}
+
 	vanity.Vanity = strings.TrimSuffix(vanity.Vanity, "-")
 
 	vanity.Vanity = strings.ToLower(vanity.Vanity)
