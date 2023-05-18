@@ -25,6 +25,7 @@ import (
 	"popplio/routes/users"
 	"popplio/routes/votes"
 	"popplio/routes/webhooks"
+	"popplio/stafftemplates"
 	"popplio/state"
 	"popplio/types"
 	poplhooks "popplio/webhooks"
@@ -189,6 +190,7 @@ func main() {
 	})
 
 	poplapps.Setup()
+	stafftemplates.Setup()
 	partners.Setup()
 
 	go notifications.VrLoop()
