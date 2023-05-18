@@ -43,7 +43,7 @@ type QueueBot struct {
 	Tags        []string              `db:"tags" json:"tags" description:"The bot's tags (e.g. music, moderation, etc.)"`
 	Premium     bool                  `db:"premium" json:"premium" description:"Whether the bot is a premium bot or not"`
 	Views       int                   `db:"clicks" json:"clicks" description:"The bot's view count"`
-	ClaimedByID pgtype.Text           `db:"claimed_by" json:"-" ci:"internal"`                                            // Must be parsed internally
+	ClaimedByID pgtype.Text           `db:"claimed_by" json:"-"`                                                          // Must be parsed internally
 	ClaimedBy   *dovewing.DiscordUser `db:"-" json:"claimed_by" description:"The user who claimed the bot" ci:"internal"` // Must be parsed internally
 	Banner      pgtype.Text           `db:"banner" json:"banner" description:"The bot's banner URL if it has one, otherwise null"`
 }

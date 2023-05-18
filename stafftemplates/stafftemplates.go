@@ -289,9 +289,9 @@ Please be sure that your bot isnt running on multiple instances prior to resubmi
 					Name:  "Youtube",
 					Emoji: "📺",
 					Tags:  []string{"Youtube", "Music"},
-					Description: `Alright so, pretty much everyone got to express their opinion recently regarding YouTube based music bots and we decided on not allowing them anymore period!
+					Description: `Youtube bots are no longer allowed and is a good way to get your bot unverified/denied verification by Discord.
 
-Our rules have been updated both on the website and in our main server to reflect this decision. Youtube bots are no longer allowed and is a good way to get your bot unverified/denied verification by Discord
+Our rules have been updated both on the website and in our main server to reflect this decision
 
 Exceptions:
 
