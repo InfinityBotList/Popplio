@@ -13,7 +13,7 @@ import (
 	"popplio/types"
 	"popplio/utils"
 	"popplio/webhooks/bothooks"
-	legacyhooks "popplio/webhooks/bothooks/legacy"
+	"popplio/webhooks/bothooks_legacy"
 	"popplio/webhooks/events"
 
 	docs "github.com/infinitybotlist/eureka/doclib"
@@ -335,7 +335,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 			return
 		}
 
-		err = legacyhooks.SendLegacy(legacyhooks.WebhookPostLegacy{
+		err = bothooks_legacy.SendLegacy(bothooks_legacy.WebhookPostLegacy{
 			BotID:  id,
 			UserID: userId,
 			Votes:  int(votes),

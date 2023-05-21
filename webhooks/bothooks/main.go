@@ -1,4 +1,4 @@
-// Package bothooks contains the webhook handlers for bots.
+// Package bothooks implements a webhook driver for bots.
 //
 // A new webhook handler for a different entity such as a team can be created by creating a new folder here
 package bothooks
@@ -6,7 +6,6 @@ package bothooks
 import (
 	"errors"
 	"popplio/state"
-	"popplio/types"
 	"popplio/webhooks/events"
 	"popplio/webhooks/sender"
 	"time"
@@ -15,6 +14,8 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 	jsoniter "github.com/json-iterator/go"
 )
+
+const EntityType = "BOT"
 
 var json = jsoniter.ConfigCompatibleWithStandardLibrary
 
@@ -124,7 +125,7 @@ func Send[T events.WebhookEvent](with With[T]) error {
 		return errors.New("failed to marshal webhook payload")
 	}
 
-	return sender.SendCustom(&sender.WebhookSendState{
+	return sender.Send(&sender.WebhookSendState{
 		Url: webhookURL,
 		Sign: sender.Secret{
 			Raw: webhookSecret.String,
@@ -132,33 +133,5 @@ func Send[T events.WebhookEvent](with With[T]) error {
 		Data:   payload,
 		UserID: resp.Creator.ID,
 		Entity: entity,
-	})
-}
-
-func Setup() {
-	go sender.PullPending(sender.WebhookPullPending{
-		EntityType: types.WebhookEntityTypeBot,
-		GetEntity: func(id string) (sender.WebhookEntity, error) {
-			bot, err := dovewing.GetDiscordUser(state.Context, id)
-
-			if err != nil {
-				return sender.WebhookEntity{}, err
-			}
-
-			return sender.WebhookEntity{
-				EntityID:   bot.ID,
-				EntityName: bot.Username,
-				EntityType: types.WebhookEntityTypeBot,
-				DeleteWebhook: func() error {
-					_, err := state.Pool.Exec(state.Context, "UPDATE bots SET webhook = NULL WHERE bot_id = $1", bot.ID)
-
-					if err != nil {
-						return err
-					}
-
-					return nil
-				},
-			}, nil
-		},
 	})
 }

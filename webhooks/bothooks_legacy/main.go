@@ -1,20 +1,22 @@
-package legacy
+package bothooks_legacy
 
 import (
 	"bytes"
 	"errors"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 
 	"popplio/state"
 	"popplio/utils"
 
-	docs "github.com/infinitybotlist/eureka/doclib"
 	"github.com/infinitybotlist/eureka/dovewing"
 	"github.com/jackc/pgx/v5/pgtype"
 	jsoniter "github.com/json-iterator/go"
 )
+
+const EntityType = "BOT_LEGACY"
 
 var json = jsoniter.ConfigCompatibleWithStandardLibrary
 
@@ -56,6 +58,16 @@ func isDiscordAPIURL(url string) (bool, string) {
 	}
 
 	return false, ""
+}
+
+func cancelSend(logID string, saveState string) {
+	state.Logger.Warnf("Cancelling webhook send for %s", logID)
+
+	_, err := state.Pool.Exec(state.Context, "UPDATE webhook_logs SET state = $1, tries = tries + 1 WHERE id = $2", saveState, logID)
+
+	if err != nil {
+		state.Logger.Errorf("Failed to update webhook state for %s: %s", logID, err.Error())
+	}
 }
 
 // Sends a webhook using the legacy v1 format
@@ -115,7 +127,25 @@ func SendLegacy(webhook WebhookPostLegacy) error {
 		return err
 	}
 
-	var finalToken string = token
+	// Save request to webhook logs
+	var logID string
+	err = state.Pool.QueryRow(
+		state.Context,
+		"INSERT INTO webhook_logs (entity_id, entity_type, user_id, url, data, sign, bad_intent) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id",
+		webhook.BotID,
+		EntityType,
+		webhook.UserID,
+		webhookURL.String,
+		data,
+		"@apiToken",
+		false,
+	).Scan(&logID)
+
+	if err != nil {
+		return err
+	}
+
+	state.Logger.Info("Saved webhook log: ", logID)
 
 	// Create request
 	responseBody := bytes.NewBuffer(data)
@@ -128,29 +158,23 @@ func SendLegacy(webhook WebhookPostLegacy) error {
 
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("User-Agent", "popplio/legacyhandler")
-	req.Header.Set("Authorization", finalToken)
+	req.Header.Set("Authorization", token)
 
 	// Send request
 	client := &http.Client{Timeout: time.Second * 5}
-	_, err = client.Do(req)
+	resp, err := client.Do(req)
 
 	if err != nil {
 		state.Logger.Error("Failed to send request")
+		cancelSend(logID, "REQUEST_SEND_FAILURE")
 		return err
 	}
 
-	return nil
-}
+	if resp.StatusCode >= 200 && resp.StatusCode < 300 {
+		cancelSend(logID, "SUCCESS")
+	} else {
+		cancelSend(logID, "RESPONSE_"+strconv.Itoa(resp.StatusCode))
+	}
 
-func Setup() {
-	docs.AddWebhook(&docs.WebhookDoc{
-		Name:    "Legacy",
-		Summary: "Legacy Webhooks",
-		Tags: []string{
-			"Webhooks",
-		},
-		Description: `(older) v1 webhooks. Only supports Votes`,
-		Format:      WebhookDataLegacy{},
-		FormatName:  "WebhookLegacyResponse",
-	})
+	return nil
 }
