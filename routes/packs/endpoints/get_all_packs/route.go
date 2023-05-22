@@ -1,7 +1,6 @@
 package get_all_packs
 
 import (
-	"math"
 	"net/http"
 	"strconv"
 	"strings"
@@ -28,7 +27,7 @@ func Docs() *docs.Doc {
 	return &docs.Doc{
 		Summary:     "Get All Packs",
 		Description: "Gets all packs on the list. Returns a ``Index`` object",
-		Resp:        types.AllPacks{},
+		Resp:        types.PagedResult[types.IndexBotPack]{},
 	}
 }
 
@@ -84,17 +83,6 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		}
 	}
 
-	var previous strings.Builder
-
-	// More optimized string concat
-	previous.WriteString(state.Config.Sites.API)
-	previous.WriteString("/packs/all?page=")
-	previous.WriteString(strconv.FormatUint(pageNum-1, 10))
-
-	if pageNum-1 < 1 || pageNum == 0 {
-		previous.Reset()
-	}
-
 	var count uint64
 
 	err = state.Pool.QueryRow(d.Context, "SELECT COUNT(*) FROM packs").Scan(&count)
@@ -104,23 +92,13 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
-	var next strings.Builder
-
-	next.WriteString(state.Config.Sites.API)
-	next.WriteString("/packs/all?page=")
-	next.WriteString(strconv.FormatUint(pageNum+1, 10))
-
-	if float64(pageNum+1) > math.Ceil(float64(count)/perPage) {
-		next.Reset()
-	}
-
-	data := types.AllPacks{
-		Count:    count,
-		Results:  packs,
-		PerPage:  perPage,
-		Previous: previous.String(),
-		Next:     next.String(),
-	}
+	data := utils.CreatePage(utils.CreatePagedResult[types.IndexBotPack]{
+		Count:   count,
+		Page:    pageNum,
+		PerPage: perPage,
+		Path:    "/bots/all",
+		Results: packs,
+	})
 
 	return uapi.HttpResponse{
 		Json:      data,

@@ -45,3 +45,12 @@ type OauthUser struct {
 	Username string `json:"username" description:"The user's username"`
 	Disc     string `json:"discriminator" description:"The user's discriminator"`
 }
+
+// Paged result common
+type PagedResult[T any] struct {
+	Count    uint64 `json:"count"`
+	PerPage  uint64 `json:"per_page"`
+	Next     string `json:"next"`
+	Previous string `json:"previous"`
+	Results  []T    `json:"results"`
+}

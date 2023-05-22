@@ -32,11 +32,3 @@ type Message struct {
 	Author      *dovewing.DiscordUser          `json:"author"`
 	Attachments []*discordgo.MessageAttachment `json:"attachments"`
 }
-
-type AllTickets struct {
-	Count    uint64   `json:"count"`
-	PerPage  uint64   `json:"per_page"`
-	Next     string   `json:"next"`
-	Previous string   `json:"previous"`
-	Results  []Ticket `json:"tickets"`
-}

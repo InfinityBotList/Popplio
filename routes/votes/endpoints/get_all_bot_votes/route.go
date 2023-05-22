@@ -34,7 +34,7 @@ func Docs() *docs.Doc {
 				Schema:      docs.IdSchema,
 			},
 		},
-		Resp: types.AllVotes{},
+		Resp: types.PagedResult[types.UserVote]{},
 	}
 }
 
@@ -93,12 +93,15 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
+	data := utils.CreatePage(utils.CreatePagedResult[types.UserVote]{
+		Count:   count,
+		Page:    pageNum,
+		PerPage: perPage,
+		Path:    "/bots/all",
+		Results: voteParsed,
+	})
+
 	return uapi.HttpResponse{
-		Json: types.AllVotes{
-			Votes:      voteParsed,
-			Count:      count,
-			PerPage:    perPage,
-			TotalPages: uint64((count / perPage) + 1),
-		},
+		Json: data,
 	}
 }

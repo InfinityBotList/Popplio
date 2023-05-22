@@ -1,7 +1,6 @@
 package get_all_bots
 
 import (
-	"math"
 	"net/http"
 	"strconv"
 	"strings"
@@ -30,7 +29,7 @@ func Docs() *docs.Doc {
 	return &docs.Doc{
 		Summary:     "Get All Bots",
 		Description: "Gets all bots on the list. Returns a set of paginated ``IndexBot`` objects",
-		Resp:        types.AllBots{},
+		Resp:        types.PagedResult[types.IndexBot]{},
 		Params: []docs.Parameter{
 			{
 				Name:        "page",
@@ -112,17 +111,6 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		bots[i].User = botUser
 	}
 
-	var previous string
-
-	// More optimized string concat
-	if pageNum > 2 {
-		previous = state.Config.Sites.API + "/bots/all?page=" + strconv.FormatUint(pageNum-1, 10)
-
-		if filter != "" {
-			previous += "&filter=" + filter
-		}
-	}
-
 	var count uint64
 
 	if filter != "" {
@@ -136,22 +124,14 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
-	var next string
-	if float64(pageNum+1) <= math.Ceil(float64(count)/perPage) {
-		next = state.Config.Sites.API + "/bots/all?page=" + strconv.FormatUint(pageNum+1, 10)
-
-		if filter != "" {
-			next += "&filter=" + filter
-		}
-	}
-
-	data := types.AllBots{
-		Count:    count,
-		Results:  bots,
-		PerPage:  perPage,
-		Previous: previous,
-		Next:     next,
-	}
+	data := utils.CreatePage(utils.CreatePagedResult[types.IndexBot]{
+		Count:   count,
+		Page:    pageNum,
+		PerPage: perPage,
+		Path:    "/bots/all",
+		Query:   []string{"filter=" + filter},
+		Results: bots,
+	})
 
 	return uapi.HttpResponse{
 		Json:      data,

@@ -105,15 +105,6 @@ type Bot struct {
 	CaptchaOptOut             bool                  `db:"captcha_opt_out" json:"captcha_opt_out" description:"Whether the bot should have captchas shown if the user has captcha_sponsor_enabled"`
 }
 
-// All bots
-type AllBots struct {
-	Count    uint64     `json:"count"`
-	PerPage  uint64     `json:"per_page"`
-	Next     string     `json:"next"`
-	Previous string     `json:"previous"`
-	Results  []IndexBot `json:"bots"`
-}
-
 type QueueBots struct {
 	Bots []QueueBot `json:"bots"`
 }

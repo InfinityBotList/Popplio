@@ -1,7 +1,6 @@
 package get_all_tickets
 
 import (
-	"math"
 	"net/http"
 	"strconv"
 	"strings"
@@ -38,7 +37,7 @@ func Docs() *docs.Doc {
 				Schema:      docs.IdSchema,
 			},
 		},
-		Resp: types.AllTickets{},
+		Resp: types.PagedResult[types.Ticket]{},
 	}
 }
 
@@ -79,7 +78,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	offset := (pageNum - 1) * perPage
 
 	// Get ticket
-	var ticket []types.Ticket
+	var tickets []types.Ticket
 
 	row, err := state.Pool.Query(d.Context, "SELECT "+ticketCols+" FROM tickets WHERE open = false LIMIT $1 OFFSET $2", limit, offset)
 
@@ -88,23 +87,23 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
-	err = pgxscan.ScanAll(&ticket, row)
+	err = pgxscan.ScanAll(&tickets, row)
 
 	if err != nil {
 		state.Logger.Error(err)
 		return uapi.DefaultResponse(http.StatusNotFound)
 	}
 
-	for i := range ticket {
-		ticket[i].Author, err = dovewing.GetDiscordUser(d.Context, ticket[i].UserID)
+	for i := range tickets {
+		tickets[i].Author, err = dovewing.GetDiscordUser(d.Context, tickets[i].UserID)
 
 		if err != nil {
 			state.Logger.Error(err)
 			return uapi.DefaultResponse(http.StatusInternalServerError)
 		}
 
-		if ticket[i].CloseUserID.Valid && ticket[i].CloseUserID.String != "" {
-			ticket[i].CloseUser, err = dovewing.GetDiscordUser(d.Context, ticket[i].CloseUserID.String)
+		if tickets[i].CloseUserID.Valid && tickets[i].CloseUserID.String != "" {
+			tickets[i].CloseUser, err = dovewing.GetDiscordUser(d.Context, tickets[i].CloseUserID.String)
 
 			if err != nil {
 				state.Logger.Error(err)
@@ -112,8 +111,8 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 			}
 		}
 
-		for j := range ticket[i].Messages {
-			ticket[i].Messages[j].Author, err = dovewing.GetDiscordUser(d.Context, ticket[i].Messages[j].AuthorID)
+		for j := range tickets[i].Messages {
+			tickets[i].Messages[j].Author, err = dovewing.GetDiscordUser(d.Context, tickets[i].Messages[j].AuthorID)
 
 			if err != nil {
 				state.Logger.Error(err)
@@ -121,24 +120,13 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 			}
 
 			// Convert snowflake ID to timestamp
-			ticket[i].Messages[j].Timestamp, err = discordgo.SnowflakeTimestamp(ticket[i].Messages[j].ID)
+			tickets[i].Messages[j].Timestamp, err = discordgo.SnowflakeTimestamp(tickets[i].Messages[j].ID)
 
 			if err != nil {
 				state.Logger.Error(err)
 				return uapi.DefaultResponse(http.StatusInternalServerError)
 			}
 		}
-	}
-
-	var previous strings.Builder
-
-	// More optimized string concat
-	previous.WriteString(state.Config.Sites.API)
-	previous.WriteString("/bots/all?page=")
-	previous.WriteString(strconv.FormatUint(pageNum-1, 10))
-
-	if pageNum-1 < 1 || pageNum == 0 {
-		previous.Reset()
 	}
 
 	var count uint64
@@ -150,23 +138,13 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
-	var next strings.Builder
-
-	next.WriteString(state.Config.Sites.API)
-	next.WriteString("/bots/all?page=")
-	next.WriteString(strconv.FormatUint(pageNum+1, 10))
-
-	if float64(pageNum+1) > math.Ceil(float64(count)/perPage) {
-		next.Reset()
-	}
-
-	data := types.AllTickets{
-		Count:    count,
-		Results:  ticket,
-		PerPage:  perPage,
-		Previous: previous.String(),
-		Next:     next.String(),
-	}
+	data := utils.CreatePage(utils.CreatePagedResult[types.Ticket]{
+		Count:   count,
+		Page:    pageNum,
+		PerPage: perPage,
+		Path:    "/bots/all",
+		Results: tickets,
+	})
 
 	return uapi.HttpResponse{
 		Json: data,

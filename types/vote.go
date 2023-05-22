@@ -14,10 +14,3 @@ type UserVote struct {
 	VoteInfo     VoteInfo `json:"vote_info"`
 	PremiumBot   bool     `json:"premium_bot"`
 }
-
-type AllVotes struct {
-	Votes      []UserVote `json:"votes"`
-	Count      uint64     `json:"count"`
-	PerPage    uint64     `json:"per_page"`
-	TotalPages uint64     `json:"total_pages"`
-}

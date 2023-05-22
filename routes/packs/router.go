@@ -32,7 +32,7 @@ func (b Router) Routes(r *chi.Mux) {
 	}.Route(r)
 
 	uapi.Route{
-		Pattern: "/packs/all",
+		Pattern: "/packs/@all",
 		OpId:    "get_all_packs",
 		Method:  uapi.GET,
 		Docs:    get_all_packs.Docs,

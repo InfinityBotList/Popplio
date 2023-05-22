@@ -53,12 +53,3 @@ type PackVote struct {
 	Upvote    bool      `json:"upvote"`
 	CreatedAt time.Time `json:"created_at"`
 }
-
-// All packs
-type AllPacks struct {
-	Count    uint64         `json:"count"`
-	PerPage  uint64         `json:"per_page"`
-	Next     string         `json:"next"`
-	Previous string         `json:"previous"`
-	Results  []IndexBotPack `json:"packs"`
-}

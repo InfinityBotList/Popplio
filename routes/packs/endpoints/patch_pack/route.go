@@ -27,7 +27,7 @@ func Docs() *docs.Doc {
 		Summary:     "Patch Pack",
 		Description: "Edits a pack you are owner of based on the URL only. Returns 204 on success",
 		Req:         PatchPack{},
-		Resp:        types.AllPacks{},
+		Resp:        types.ApiError{},
 		Params: []docs.Parameter{
 			{
 				Name:        "uid",
