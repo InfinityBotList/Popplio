@@ -28,7 +28,8 @@ import (
 
 // The Secret
 type Secret struct {
-	Raw string
+	UseInsecure bool // whether to use insecure mode (no encryption), used by legacy webhooks
+	Raw         string
 }
 
 func (s Secret) Sign(data []byte) string {
@@ -45,7 +46,7 @@ type WebhookSendState struct {
 	// the data to send
 	Data []byte
 
-	// the hmac512 signed header to send
+	// the signature header to send
 	Sign Secret
 
 	// is it a bad intent: intentionally bad auth to trigger 401 check
@@ -94,7 +95,8 @@ func Send(d *WebhookSendState) error {
 			badD := &WebhookSendState{
 				BadIntent: true,
 				Sign: Secret{
-					Raw: crypto.RandString(128),
+					Raw:         crypto.RandString(128),
+					UseInsecure: d.Sign.UseInsecure,
 				},
 				Url:    d.Url,
 				Data:   d.Data,
@@ -110,7 +112,7 @@ func Send(d *WebhookSendState) error {
 	if d.LogID == "" {
 		// Add to webhook logs for automatic retry
 		var logID string
-		err := state.Pool.QueryRow(state.Context, "INSERT INTO webhook_logs (entity_id, entity_type, user_id, url, data, sign, bad_intent) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id", d.Entity.EntityID, d.Entity.EntityType, d.UserID, d.Url, d.Data, d.Sign.Raw, d.BadIntent).Scan(&logID)
+		err := state.Pool.QueryRow(state.Context, "INSERT INTO webhook_logs (entity_id, entity_type, user_id, url, data, sign, bad_intent, use_insecure) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id", d.Entity.EntityID, d.Entity.EntityType, d.UserID, d.Url, d.Data, d.Sign.Raw, d.BadIntent, d.Sign.UseInsecure).Scan(&logID)
 
 		if err != nil {
 			return err
@@ -128,48 +130,63 @@ func Send(d *WebhookSendState) error {
 		Timeout: 10 * time.Second,
 	}
 
-	// Generate HMAC token using nonce and signed header for further randomization
-	nonce := crypto.RandString(16)
+	var req *http.Request
+	var err error
 
-	keyHash := sha256.New()
-	keyHash.Write([]byte(d.Sign.Raw + nonce))
+	if d.Sign.UseInsecure {
+		req, err = http.NewRequestWithContext(state.Context, "POST", d.Url, bytes.NewReader(d.Data))
 
-	// Encrypt request body with hashed
-	c, err := aes.NewCipher(keyHash.Sum(nil))
+		if err != nil {
+			return err
+		}
 
-	if err != nil {
-		return err
-	}
+		req.Header.Set("Authorization", d.Sign.Raw)
+		req.Header.Set("X-Webhook-Protocol", "legacy-insecure")
+	} else {
+		// Generate HMAC token using nonce and signed header for further randomization
+		nonce := crypto.RandString(16)
 
-	gcm, err := cipher.NewGCM(c)
+		keyHash := sha256.New()
+		keyHash.Write([]byte(d.Sign.Raw + nonce))
 
-	if err != nil {
-		return err
-	}
+		// Encrypt request body with hashed
+		c, err := aes.NewCipher(keyHash.Sum(nil))
 
-	aesNonce := make([]byte, gcm.NonceSize())
-	if _, err = io.ReadFull(rand.Reader, aesNonce); err != nil {
-		return err
-	}
+		if err != nil {
+			return err
+		}
 
-	postData := []byte(hex.EncodeToString(gcm.Seal(aesNonce, aesNonce, d.Data, nil)))
+		gcm, err := cipher.NewGCM(c)
 
-	// HMAC with encrypted request body
-	tok1 := d.Sign.Sign(postData)
+		if err != nil {
+			return err
+		}
 
-	finalToken := Secret{Raw: nonce}.Sign([]byte(tok1))
+		aesNonce := make([]byte, gcm.NonceSize())
+		if _, err = io.ReadFull(rand.Reader, aesNonce); err != nil {
+			return err
+		}
 
-	req, err := http.NewRequestWithContext(state.Context, "POST", d.Url, bytes.NewReader(postData))
+		postData := []byte(hex.EncodeToString(gcm.Seal(aesNonce, aesNonce, d.Data, nil)))
 
-	if err != nil {
-		return err
+		// HMAC with encrypted request body
+		tok1 := d.Sign.Sign(postData)
+
+		finalToken := Secret{Raw: nonce}.Sign([]byte(tok1))
+
+		req, err = http.NewRequestWithContext(state.Context, "POST", d.Url, bytes.NewReader(postData))
+
+		if err != nil {
+			return err
+		}
+
+		req.Header.Set("X-Webhook-Signature", finalToken)
+		req.Header.Set("X-Webhook-Protocol", "splashtail")
+		req.Header.Set("X-Webhook-Nonce", nonce)
 	}
 
 	req.Header.Set("Content-Type", "text/plain")
 	req.Header.Set("User-Agent", "Popplio/v7.0.0 (https://infinitybots.gg)")
-	req.Header.Set("X-Webhook-Signature", finalToken)
-	req.Header.Set("X-Webhook-Protocol", "splashtail")
-	req.Header.Set("X-Webhook-Nonce", nonce)
 
 	resp, err := client.Do(req)
 
@@ -379,7 +396,7 @@ func PullPending(p WebhookPullPending) {
 	}
 
 	// Fetch every pending bot webhook from webhook_logs
-	rows, err := state.Pool.Query(state.Context, "SELECT id, entity_id, user_id, url, data, sign, bad_intent FROM webhook_logs WHERE state = $1 AND entity_type = $2", "PENDING", p.EntityType)
+	rows, err := state.Pool.Query(state.Context, "SELECT id, entity_id, user_id, url, data, sign, bad_intent, use_insecure FROM webhook_logs WHERE state = $1 AND entity_type = $2", "PENDING", p.EntityType)
 
 	if err != nil {
 		state.Logger.Error(err)
@@ -390,16 +407,17 @@ func PullPending(p WebhookPullPending) {
 
 	for rows.Next() {
 		var (
-			id        string
-			entityId  string
-			userId    string
-			url       string
-			data      []byte
-			sign      string
-			badIntent bool
+			id          string
+			entityId    string
+			userId      string
+			url         string
+			data        []byte
+			sign        string
+			badIntent   bool
+			useInsecure bool
 		)
 
-		err := rows.Scan(&id, &entityId, &userId, &url, &data, &sign, &badIntent)
+		err := rows.Scan(&id, &entityId, &userId, &url, &data, &sign, &badIntent, &useInsecure)
 
 		if err != nil {
 			state.Logger.Error(err)
@@ -419,7 +437,8 @@ func PullPending(p WebhookPullPending) {
 		err = Send(&WebhookSendState{
 			Url: url,
 			Sign: Secret{
-				Raw: sign,
+				Raw:         sign,
+				UseInsecure: useInsecure,
 			},
 			Data:      data,
 			BadIntent: badIntent,

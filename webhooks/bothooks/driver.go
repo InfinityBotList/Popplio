@@ -40,17 +40,5 @@ func (d Driver) PullPending() *sender.WebhookPullPending {
 				},
 			}, nil
 		},
-		SupportsPulls: func(id string) (bool, error) {
-			// Bots only support pulls if webhooks_v2 is enabled
-			var webhooksV2 bool
-
-			err := state.Pool.QueryRow(state.Context, "SELECT webhooks_v2 FROM bots WHERE bot_id = $1", id).Scan(&webhooksV2)
-
-			if err != nil {
-				return false, err
-			}
-
-			return webhooksV2, nil
-		},
 	}
 }

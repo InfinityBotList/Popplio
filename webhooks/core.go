@@ -3,7 +3,6 @@ package webhooks
 import (
 	"popplio/state"
 	"popplio/webhooks/bothooks"
-	"popplio/webhooks/bothooks_legacy"
 	"popplio/webhooks/events"
 	"popplio/webhooks/sender"
 
@@ -21,8 +20,7 @@ type WebhookDriver interface {
 }
 
 var RegisteredDrivers = map[string]WebhookDriver{
-	bothooks.EntityType:        bothooks.Driver{},
-	bothooks_legacy.EntityType: bothooks_legacy.Driver{},
+	bothooks.EntityType: bothooks.Driver{},
 }
 
 // Setup code
@@ -44,7 +42,8 @@ func Setup() {
 		created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), 
 		state TEXT NOT NULL DEFAULT 'PENDING', 
 		tries INTEGER NOT NULL DEFAULT 0, 
-		last_try TIMESTAMPTZ NOT NULL DEFAULT NOW()
+		last_try TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+		use_insecure BOOLEAN NOT NULL DEFAULT FALSE
 	)`)
 
 	if err != nil {
