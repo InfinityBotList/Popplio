@@ -15,7 +15,7 @@ type Question struct {
 }
 
 type Position struct {
-	Order     int        `json:"order" validate:"required"`
+	ID        string     `json:"id" validate:"required"`
 	Tags      []string   `json:"tags" validate:"required"`
 	Info      string     `json:"info" validate:"required"`
 	Name      string     `json:"name" validate:"required"`
@@ -34,8 +34,8 @@ type Position struct {
 }
 
 type AppMeta struct {
-	Positions map[string]Position `json:"positions"`
-	Stable    bool                `json:"stable"` // Stable means that the list of apps is not pending big changes
+	Positions []Position `json:"positions"`
+	Stable    bool       `json:"stable"` // Stable means that the list of apps is not pending big changes
 }
 
 type AppResponse struct {

@@ -141,9 +141,9 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		}
 	}
 
-	positionData, ok := apps.Apps[app.Position]
+	position := apps.FindPosition(app.Position)
 
-	if !ok {
+	if position == nil {
 		// Delete the app from the database
 		_, err = state.Pool.Exec(d.Context, "DELETE FROM apps WHERE app_id = $1", appId)
 
@@ -164,8 +164,8 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	var embeds []*discordgo.MessageEmbed
 
 	if payload.Approved {
-		if positionData.ReviewLogic != nil {
-			add, err := positionData.ReviewLogic(d, app, payload.Reason)
+		if position.ReviewLogic != nil {
+			add, err := position.ReviewLogic(d, app, payload.Reason)
 
 			if err != nil {
 				state.Logger.Error(err)

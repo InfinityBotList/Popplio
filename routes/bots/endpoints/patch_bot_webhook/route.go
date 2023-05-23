@@ -13,18 +13,11 @@ import (
 	"github.com/infinitybotlist/eureka/uapi"
 )
 
-type PatchBotWebhook struct {
-	WebhookURL    string `json:"webhook_url"`
-	WebhookSecret string `json:"webhook_secret"`
-	WebhooksV2    *bool  `json:"webhooks_v2"`
-	Clear         bool   `json:"clear"`
-}
-
 func Docs() *docs.Doc {
 	return &docs.Doc{
 		Summary:     "Patch Bot Webhook",
 		Description: "Edits the webhook information for a bot. You must have 'Edit Bot Webhooks' in the team if the bot is in a team. Set `clear` to `true` to clear webhook settings. Returns 204 on success",
-		Req:         PatchBotWebhook{},
+		Req:         types.PatchBotWebhook{},
 		Resp:        types.ApiError{},
 		Params: []docs.Parameter{
 			{
@@ -75,7 +68,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	}
 
 	// Read payload from body
-	var payload PatchBotWebhook
+	var payload types.PatchBotWebhook
 
 	hresp, ok := uapi.MarshalReq(r, &payload)
 

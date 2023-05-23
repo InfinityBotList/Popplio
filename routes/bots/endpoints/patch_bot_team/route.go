@@ -65,7 +65,19 @@ Returns a 204 on success`,
 }
 
 func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
-	botId := chi.URLParam(r, "bid")
+	botName := chi.URLParam(r, "bid")
+
+	// Resolve bot ID
+	id, err := utils.ResolveBot(state.Context, botName)
+
+	if err != nil {
+		state.Logger.Error("Resolve Error", err)
+		return uapi.DefaultResponse(http.StatusInternalServerError)
+	}
+
+	if id == "" {
+		return uapi.DefaultResponse(http.StatusNotFound)
+	}
 
 	var payload PatchBotTeam
 
@@ -76,7 +88,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	}
 
 	// Validate the payload
-	err := state.Validator.Struct(payload)
+	err = state.Validator.Struct(payload)
 
 	if err != nil {
 		errors := err.(validator.ValidationErrors)
@@ -86,7 +98,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	// Get current team of bot
 	var currentBotTeam pgtype.UUID
 
-	err = state.Pool.QueryRow(d.Context, "SELECT team_owner FROM bots WHERE bot_id = $1", botId).Scan(&currentBotTeam)
+	err = state.Pool.QueryRow(d.Context, "SELECT team_owner FROM bots WHERE bot_id = $1", id).Scan(&currentBotTeam)
 
 	if err != nil {
 		state.Logger.Error(err)
@@ -177,7 +189,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	}
 
 	// Transfer bot
-	_, err = state.Pool.Exec(d.Context, "UPDATE bots SET team_owner = $1, owner = NULL WHERE bot_id = $2", payload.TeamID, botId)
+	_, err = state.Pool.Exec(d.Context, "UPDATE bots SET team_owner = $1, owner = NULL WHERE bot_id = $2", payload.TeamID, id)
 
 	if err != nil {
 		state.Logger.Error(err)
@@ -185,18 +197,18 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	}
 
 	// Clear cache
-	utils.ClearBotCache(d.Context, botId)
+	utils.ClearBotCache(d.Context, id)
 
 	// Send message to mod logs
 	state.Discord.ChannelMessageSendComplex(state.Config.Channels.ModLogs, &discordgo.MessageSend{
 		Embeds: []*discordgo.MessageEmbed{
 			{
-				URL:   state.Config.Sites.Frontend + "/bots/" + botId,
+				URL:   state.Config.Sites.Frontend + "/bots/" + id,
 				Title: "Bot Team Update!",
 				Fields: []*discordgo.MessageEmbedField{
 					{
 						Name:   "Bot ID",
-						Value:  botId,
+						Value:  id,
 						Inline: true,
 					},
 					{

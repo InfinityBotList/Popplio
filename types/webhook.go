@@ -20,3 +20,10 @@ type WebhookLog struct {
 	Tries      int         `db:"tries" json:"tries" description:"The number of send tries attempted on this webhook."`
 	LastTry    time.Time   `db:"last_try" json:"last_try" description:"The time of the last send try."`
 }
+
+type PatchBotWebhook struct {
+	WebhookURL    string `json:"webhook_url"`
+	WebhookSecret string `json:"webhook_secret"`
+	WebhooksV2    *bool  `json:"webhooks_v2"`
+	Clear         bool   `json:"clear"`
+}

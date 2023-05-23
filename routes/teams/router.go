@@ -2,7 +2,6 @@ package teams
 
 import (
 	"popplio/api"
-	"popplio/routes/teams/endpoints/add_bot_to_team"
 	"popplio/routes/teams/endpoints/add_team_member"
 	"popplio/routes/teams/endpoints/create_team"
 	"popplio/routes/teams/endpoints/delete_team"
@@ -12,7 +11,6 @@ import (
 	"popplio/routes/teams/endpoints/get_team"
 	"popplio/routes/teams/endpoints/get_team_permissions"
 	"popplio/routes/teams/endpoints/get_team_seo"
-	"popplio/routes/teams/endpoints/patch_bot_team"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/infinitybotlist/eureka/uapi"
@@ -127,34 +125,6 @@ func (b Router) Routes(r *chi.Mux) {
 		Method:  uapi.DELETE,
 		Docs:    delete_team_member.Docs,
 		Handler: delete_team_member.Route,
-		Auth: []uapi.AuthType{
-			{
-				Type:   api.TargetTypeUser,
-				URLVar: "uid",
-			},
-		},
-	}.Route(r)
-
-	uapi.Route{
-		Pattern: "/users/{uid}/bots/{bid}/teams",
-		OpId:    "add_bot_to_team",
-		Method:  uapi.PUT,
-		Docs:    add_bot_to_team.Docs,
-		Handler: add_bot_to_team.Route,
-		Auth: []uapi.AuthType{
-			{
-				Type:   api.TargetTypeUser,
-				URLVar: "uid",
-			},
-		},
-	}.Route(r)
-
-	uapi.Route{
-		Pattern: "/users/{uid}/bots/{bid}/teams",
-		OpId:    "patch_bot_team",
-		Method:  uapi.PATCH,
-		Docs:    patch_bot_team.Docs,
-		Handler: patch_bot_team.Route,
 		Auth: []uapi.AuthType{
 			{
 				Type:   api.TargetTypeUser,

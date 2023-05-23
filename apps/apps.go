@@ -8,9 +8,9 @@ import (
 	"github.com/infinitybotlist/eureka/uapi"
 )
 
-var Apps = map[string]types.Position{
-	"staff": {
-		Order: 1,
+var Apps = []types.Position{
+	{
+		ID: "staff",
 		Info: `Join the Infinity Staff Team and help us Approve, Deny and Certify Discord Bots. 
 
 We are a welcoming and laid back team who is always willing to give new people an opportunity!`,
@@ -69,8 +69,8 @@ We are a welcoming and laid back team who is always willing to give new people a
 			},
 		},
 	},
-	"dev": {
-		Order: 2,
+	{
+		ID: "dev",
 		Info: `Join our Dev Team and help us update, manage and maintain all of the Infinity Services!.
 
 Some experience in PostgreSQL and at least one of the below languages is required:
@@ -139,8 +139,8 @@ Some experience in PostgreSQL and at least one of the below languages is require
 			},
 		},
 	},
-	"partners": {
-		Order: 3,
+	{
+		ID: "partners",
 		Info: `Partner your Discord Bot, Discord Server or Business today! It's easier than ever before!
 
 Some points to note:
@@ -189,8 +189,8 @@ Some points to note:
 			},
 		},
 	},
-	"resubmit": {
-		Order:      4,
+	{
+		ID:         "resubmit",
 		Info:       `Resubmit your denied bot to the list!`,
 		Name:       "Bot Resubmission",
 		Hidden:     true, // Mostly done by ibl next
@@ -214,8 +214,8 @@ Some points to note:
 			},
 		},
 	},
-	"banappeal": {
-		Order: 5,
+	{
+		ID: "banappeal",
 		Info: `<h3 class="text-2xl font-semibold">Hello There, Welcome</h3>
 If you find yourself browsing or using this site, you should be disappointed. 
 
@@ -263,9 +263,9 @@ You can only have up to one ban appeal at any given point of time. Abusing the s
 			},
 		},
 	},
-	"certification": {
-		Name:  "Certification",
-		Order: 6,
+	{
+		ID:   "certification",
+		Name: "Certification",
 		Info: `So you want to apply for certification, eh?
 
 Firstly, read the <a class="text-themable-400" href="/help/programs/certification" target="_blank">rules</a> to see if you qualify.

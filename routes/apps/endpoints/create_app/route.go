@@ -57,9 +57,9 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		return uapi.ValidatorErrorResponse(compiledMessages, errors)
 	}
 
-	position, ok := apps.Apps[payload.Position]
+	position := apps.FindPosition(payload.Position)
 
-	if !ok {
+	if position == nil {
 		return uapi.HttpResponse{
 			Json: types.ApiError{
 				Error:   true,
@@ -179,7 +179,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	}
 
 	if position.ExtraLogic != nil {
-		add, err := position.ExtraLogic(d, position, answerMap)
+		add, err := position.ExtraLogic(d, *position, answerMap)
 
 		if err != nil {
 			state.Logger.Error(err)
@@ -217,7 +217,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	// Send a message to APPS channel
 	var desc = "User <@" + d.Auth.ID + "> has applied for " + payload.Position + "."
 	if position.PositionDescription != nil {
-		desc = position.PositionDescription(d, position)
+		desc = position.PositionDescription(d, *position)
 	}
 
 	var channel = state.Config.Channels.Apps
