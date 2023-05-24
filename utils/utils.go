@@ -79,7 +79,7 @@ func ResolveTeam(ctx context.Context, teamId string) (*types.Team, error) {
 	// Next handle members
 	var members = []types.TeamMember{}
 
-	rows, err := state.Pool.Query(ctx, "SELECT user_id, perms, created_at FROM team_members WHERE team_id = $1", teamId)
+	rows, err := state.Pool.Query(ctx, "SELECT user_id, perms, created_at FROM team_members WHERE team_id = $1 ORDER BY created_at ASC", teamId)
 
 	if err != nil {
 		return nil, err

@@ -122,6 +122,7 @@ func SendLegacy(webhook WebhookPostLegacy) error {
 	// Send webhook
 	entity := sender.WebhookEntity{
 		EntityID:   webhook.BotID,
+		EntityType: EntityType,
 		EntityName: dBot.Username,
 		DeleteWebhook: func() error {
 			_, err := state.Pool.Exec(state.Context, "UPDATE bots SET webhook = NULL WHERE bot_id = $1", webhook.BotID)

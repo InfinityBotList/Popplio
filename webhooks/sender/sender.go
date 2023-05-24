@@ -77,6 +77,10 @@ type WebhookEntity struct {
 	DeleteWebhook func() error
 }
 
+func (e WebhookEntity) Validate() bool {
+	return e.EntityID != "" && e.EntityType != "" && e.EntityName != "" && e.DeleteWebhook != nil
+}
+
 func (st *WebhookSendState) cancelSend(saveState string) {
 	state.Logger.Warnf("Cancelling webhook send for %s", st.LogID)
 
@@ -89,6 +93,10 @@ func (st *WebhookSendState) cancelSend(saveState string) {
 
 // Creates a webhook response, retrying if needed
 func Send(d *WebhookSendState) error {
+	if !d.Entity.Validate() {
+		panic("invalid webhook entity")
+	}
+
 	// Randomly send a bad webhook with invalid auth
 	if rand2.Float64() < 0.7 {
 		go func() {
@@ -220,7 +228,7 @@ func Send(d *WebhookSendState) error {
 
 		return errors.New("webhook returned not found thus removing it from the database")
 
-	case resp.StatusCode == 401 || resp.StatusCode == 403:
+	case resp.StatusCode == 401 || resp.StatusCode == 403 || resp.StatusCode == 418:
 		if d.BadIntent {
 			// webhook auth is invalid as intended,
 			d.cancelSend("SUCCESS")

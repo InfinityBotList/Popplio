@@ -15,25 +15,31 @@ const (
 	TeamPermissionUndefined TeamPermission = ""
 
 	// Bot permissions
-	TeamPermissionEditBotSettings TeamPermission = "EDIT_BOT_SETTINGS"
-	TeamPermissionAddNewBots      TeamPermission = "ADD_NEW_BOTS"
-	TeamPermissionResubmitBots    TeamPermission = "RESUBMIT_BOTS"
-	TeamPermissionCertifyBots     TeamPermission = "CERTIFY_BOTS"
-	TeamPermissionResetBotTokens  TeamPermission = "RESET_BOT_TOKEN"
-	TeamPermissionEditBotWebhooks TeamPermission = "EDIT_BOT_WEBHOOKS"
-	TeamPermissionTestBotWebhooks TeamPermission = "TEST_BOT_WEBHOOKS"
-	TeamPermissionSetBotVanity    TeamPermission = "SET_BOT_VANITY"
-	TeamPermissionDeleteBots      TeamPermission = "DELETE_BOTS"
+	TeamPermissionEditBotSettings      TeamPermission = "EDIT_BOT_SETTINGS"
+	TeamPermissionAddNewBots           TeamPermission = "ADD_NEW_BOTS"
+	TeamPermissionResubmitBots         TeamPermission = "RESUBMIT_BOTS"
+	TeamPermissionCertifyBots          TeamPermission = "CERTIFY_BOTS"
+	TeamPermissionResetBotTokens       TeamPermission = "RESET_BOT_TOKEN"
+	TeamPermissionEditBotWebhooks      TeamPermission = "EDIT_BOT_WEBHOOKS"
+	TeamPermissionTestBotWebhooks      TeamPermission = "TEST_BOT_WEBHOOKS"
+	TeamPermissionGetBotWebhookLogs    TeamPermission = "GET_BOT_WEBHOOK_LOGS"
+	TeamPermissionRetryBotWebhookLogs  TeamPermission = "RETRY_BOT_WEBHOOK_LOGS"
+	TeamPermissionDeleteBotWebhookLogs TeamPermission = "DELETE_BOT_WEBHOOK_LOGS"
+	TeamPermissionSetBotVanity         TeamPermission = "SET_BOT_VANITY"
+	TeamPermissionDeleteBots           TeamPermission = "DELETE_BOTS"
 
 	// Server permissions
-	TeamPermissionEditServerSettings TeamPermission = "EDIT_SERVER_SETTINGS"
-	TeamPermissionAddNewServers      TeamPermission = "ADD_NEW_SERVERS"
-	TeamPermissionCertifyServers     TeamPermission = "CERTIFY_SERVERS"
-	TeamPermissionResetServerTokens  TeamPermission = "RESET_SERVER_TOKEN"
-	TeamPermissionEditServerWebhooks TeamPermission = "EDIT_SERVER_WEBHOOKS"
-	TeamPermissionTestServerWebhooks TeamPermission = "TEST_SERVER_WEBHOOKS"
-	TeamPermissionSetServerVanity    TeamPermission = "SET_SERVER_VANITY"
-	TeamPermissionDeleteServers      TeamPermission = "DELETE_SERVERS"
+	TeamPermissionEditServerSettings      TeamPermission = "EDIT_SERVER_SETTINGS"
+	TeamPermissionAddNewServers           TeamPermission = "ADD_NEW_SERVERS"
+	TeamPermissionCertifyServers          TeamPermission = "CERTIFY_SERVERS"
+	TeamPermissionResetServerTokens       TeamPermission = "RESET_SERVER_TOKEN"
+	TeamPermissionEditServerWebhooks      TeamPermission = "EDIT_SERVER_WEBHOOKS"
+	TeamPermissionTestServerWebhooks      TeamPermission = "TEST_SERVER_WEBHOOKS"
+	TeamPermissionGetServerWebhookLogs    TeamPermission = "GET_SERVER_WEBHOOK_LOGS"
+	TeamPermissionRetryServerWebhookLogs  TeamPermission = "RETRY_SERVER_WEBHOOK_LOGS"
+	TeamPermissionDeleteServerWebhookLogs TeamPermission = "DELETE_SERVER_WEBHOOK_LOGS"
+	TeamPermissionSetServerVanity         TeamPermission = "SET_SERVER_VANITY"
+	TeamPermissionDeleteServers           TeamPermission = "DELETE_SERVERS"
 
 	// Common permissions
 	TeamPermissionEditTeamInfo              TeamPermission = "EDIT_TEAM_INFO"
@@ -63,6 +69,9 @@ var TeamPermDetails = []PermDetailMap{
 	{TeamPermissionResetBotTokens, "Reset Bot Tokens", "Reset the API token of bots on the team", "Bot"},
 	{TeamPermissionEditBotWebhooks, "Edit Bot Webhooks", "Edit bot webhook settings. Note that 'Test Bot Webhooks' is a separate permission and is required to test webhooks.", "Bot"},
 	{TeamPermissionTestBotWebhooks, "Test Bot Webhooks", "Test bot webhooks. Note that this is a separate permission from 'Edit Bot Webhooks' and is required to test webhooks.", "Bot"},
+	{TeamPermissionGetBotWebhookLogs, "Get Bot Webhook Logs", "Get bot webhook logs. Note that executing webhooks from webhook logs as well as deleting them are seperate permissions..", "Bot"},
+	{TeamPermissionRetryBotWebhookLogs, "Retry Bot Webhook Logs", "Retry execution of bot webhook logs. Usually requires 'Get Bot Webhook Logs' to be useful.", "Bot"},
+	{TeamPermissionDeleteBotWebhookLogs, "Delete Bot Webhook Logs", "Delete bot webhook logs. Usually requires 'Get Bot Webhook Logs' to be useful.", "Bot"},
 	{TeamPermissionSetBotVanity, "Set Bot Vanity", "Set vanity URLs for bots on the team", "Bot"},
 	{TeamPermissionDeleteBots, "Delete Bots", "Delete bots from the team. This is a very dangerous permission and should usually never be given to anyone.", "Bot"},
 
@@ -73,6 +82,9 @@ var TeamPermDetails = []PermDetailMap{
 	{TeamPermissionResetServerTokens, "Reset Server Tokens", "Reset the API token of servers on the team", "Server"},
 	{TeamPermissionEditServerWebhooks, "Edit Server Webhooks", "Edit server webhook settings. Note that 'Test Server Webhooks' is a separate permission and is required to test webhooks.", "Server"},
 	{TeamPermissionTestServerWebhooks, "Test Server Webhooks", "Test server webhooks. Note that this is a separate permission from 'Edit Server Webhooks' and is required to test webhooks.", "Server"},
+	{TeamPermissionGetServerWebhookLogs, "Get Server Webhook Logs", "Get server webhook logs. Note that executing webhooks from webhook logs as well as deleting them are seperate permissions..", "Server"},
+	{TeamPermissionRetryServerWebhookLogs, "Retry Server Webhook Logs", "Retry execution of server webhook logs. Usually requires 'Get Server Webhook Logs' to be useful.", "Server"},
+	{TeamPermissionDeleteServerWebhookLogs, "Delete Server Webhook Logs", "Delete server webhook logs. Usually requires 'Get Server Webhook Logs' to be useful.", "Server"},
 	{TeamPermissionSetServerVanity, "Set Server Vanity", "Set vanity URLs for servers on the team", "Server"},
 	{TeamPermissionDeleteServers, "Delete Servers", "Delete servers from the team. This is a very dangerous permission and should usually never be given to anyone.", "Server"},
 
