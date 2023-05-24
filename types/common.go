@@ -48,9 +48,7 @@ type OauthUser struct {
 
 // Paged result common
 type PagedResult[T any] struct {
-	Count    uint64 `json:"count"`
-	PerPage  uint64 `json:"per_page"`
-	Next     string `json:"next"`
-	Previous string `json:"previous"`
-	Results  []T    `json:"results"`
+	Count   uint64 `json:"count"`
+	PerPage uint64 `json:"per_page"`
+	Results []T    `json:"results"`
 }

@@ -93,13 +93,11 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
-	data := utils.CreatePage(utils.CreatePagedResult[types.UserVote]{
+	data := types.PagedResult[types.UserVote]{
 		Count:   count,
-		Page:    pageNum,
 		PerPage: perPage,
-		Path:    "/bots/all",
 		Results: voteParsed,
-	})
+	}
 
 	return uapi.HttpResponse{
 		Json: data,

@@ -3,6 +3,7 @@ package webhooks
 import (
 	"popplio/state"
 	"popplio/webhooks/bothooks"
+	"popplio/webhooks/bothooks_legacy"
 	"popplio/webhooks/events"
 	"popplio/webhooks/sender"
 
@@ -61,4 +62,20 @@ func Setup() {
 			go sender.PullPending(*pullPending)
 		}
 	}
+
+	legacyDocs()
+}
+
+// UNFORTUNATELY needed
+func legacyDocs() {
+	docs.AddWebhook(&docs.WebhookDoc{
+		Name:    "Legacy",
+		Summary: "Legacy Webhooks",
+		Tags: []string{
+			"Webhooks",
+		},
+		Description: `(older) v1 webhooks. Only supports Votes`,
+		Format:      bothooks_legacy.WebhookDataLegacy{},
+		FormatName:  "WebhookLegacyResponse",
+	})
 }

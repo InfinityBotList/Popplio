@@ -92,13 +92,11 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
-	data := utils.CreatePage(utils.CreatePagedResult[types.IndexBotPack]{
+	data := types.PagedResult[types.IndexBotPack]{
 		Count:   count,
-		Page:    pageNum,
 		PerPage: perPage,
-		Path:    "/bots/all",
 		Results: packs,
-	})
+	}
 
 	return uapi.HttpResponse{
 		Json:      data,

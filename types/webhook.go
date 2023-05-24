@@ -7,7 +7,7 @@ import (
 )
 
 // Webhook log
-type WebhookLog struct {
+type WebhookLogEntry struct {
 	ID         pgtype.UUID `db:"id" json:"id" description:"The ID of the webhook log."`
 	EntityID   pgtype.UUID `db:"entity_id" json:"entity_id" description:"The entities ID."`
 	EntityType string      `db:"entity_type" json:"entity_type" description:"The type of the entity."`

@@ -2,6 +2,7 @@ package webhooks
 
 import (
 	"popplio/api"
+	"popplio/routes/webhooks/endpoints/get_webhook_logs"
 	"popplio/routes/webhooks/endpoints/test_vote_webhook"
 
 	"github.com/go-chi/chi/v5"
@@ -17,6 +18,20 @@ func (b Router) Tag() (string, string) {
 }
 
 func (b Router) Routes(r *chi.Mux) {
+	uapi.Route{
+		Pattern: "/users/{uid}/webhooks",
+		OpId:    "get_webhook_logs",
+		Method:  uapi.POST,
+		Docs:    get_webhook_logs.Docs,
+		Handler: get_webhook_logs.Route,
+		Auth: []uapi.AuthType{
+			{
+				Type:   api.TargetTypeUser,
+				URLVar: "uid",
+			},
+		},
+	}.Route(r)
+
 	uapi.Route{
 		Pattern: "/users/{uid}/bots/{bid}/webhooks/test-vote",
 		OpId:    "test_vote_webhook",
