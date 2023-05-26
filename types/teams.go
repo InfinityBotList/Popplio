@@ -30,3 +30,7 @@ type CreateTeam struct {
 type CreateTeamResponse struct {
 	TeamID pgtype.UUID `json:"team_id"`
 }
+
+type PermissionResponse struct {
+	Perms []teams.PermDetailMap `json:"perms"`
+}

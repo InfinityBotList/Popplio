@@ -19,15 +19,11 @@ var (
 	userPermCols    = strings.Join(userPermColsArr, ",")
 )
 
-type StaffTeam struct {
-	Members []types.UserPerm `json:"members"`
-}
-
 func Docs() *docs.Doc {
 	return &docs.Doc{
 		Summary:     "Get List Team",
 		Description: "Gets an up to date listing of the staff team of the list",
-		Resp:        StaffTeam{},
+		Resp:        types.StaffTeam{},
 	}
 }
 
@@ -61,7 +57,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 
 	return uapi.HttpResponse{
 		Status: http.StatusOK,
-		Json: StaffTeam{
+		Json: types.StaffTeam{
 			Members: users,
 		},
 	}
