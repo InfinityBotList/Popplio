@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/infinitybotlist/eureka/dovewing"
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 type Team struct {
@@ -19,4 +20,13 @@ type TeamMember struct {
 	User      *dovewing.DiscordUser  `json:"user"`
 	Perms     []teams.TeamPermission `json:"perms"`
 	CreatedAt time.Time              `json:"created_at"`
+}
+
+type CreateTeam struct {
+	Name   string `json:"name" validate:"required,nonvulgar,min=3,max=32" msg:"Team name must be between 3 and 32 characters long"`
+	Avatar string `json:"avatar" validate:"required,https" msg:"Avatar must be a valid HTTPS URL"`
+}
+
+type CreateTeamResponse struct {
+	TeamID pgtype.UUID `json:"team_id"`
 }

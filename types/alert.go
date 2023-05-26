@@ -20,7 +20,7 @@ const (
 )
 
 type Alert struct {
-	ITag      pgtype.UUID        `db:"itag" json:"itag" description:"The alerts internal ID. An artifact of database migrations."`
+	ITag      pgtype.UUID        `db:"itag" json:"itag" description:"The alerts ID, while this was originally a db migration artifact, it is now the de-facto ID."`
 	URL       pgtype.Text        `db:"url" json:"url" description:"The URL to send the alert to"` // Optional
 	Message   string             `db:"message" json:"message" validate:"required"`
 	Type      AlertType          `db:"type" json:"type" validate:"required,oneof=success error info warning"`

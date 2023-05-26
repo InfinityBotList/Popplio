@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"popplio/state"
 	"popplio/teams"
+	"popplio/types"
 
 	docs "github.com/infinitybotlist/eureka/doclib"
 	"github.com/infinitybotlist/eureka/uapi"
@@ -12,17 +13,8 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-type CreateTeam struct {
-	Name   string `json:"name" validate:"required,nonvulgar,min=3,max=32" msg:"Team name must be between 3 and 32 characters long"`
-	Avatar string `json:"avatar" validate:"required,https" msg:"Avatar must be a valid HTTPS URL"`
-}
-
-type CreateTeamResponse struct {
-	TeamID pgtype.UUID `json:"team_id"`
-}
-
 var (
-	compiledMessages = uapi.CompileValidationErrors(CreateTeam{})
+	compiledMessages = uapi.CompileValidationErrors(types.CreateTeam{})
 )
 
 func Docs() *docs.Doc {
@@ -38,13 +30,13 @@ func Docs() *docs.Doc {
 				Schema:      docs.IdSchema,
 			},
 		},
-		Req:  CreateTeam{},
-		Resp: CreateTeamResponse{},
+		Req:  types.CreateTeam{},
+		Resp: types.CreateTeamResponse{},
 	}
 }
 
 func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
-	var payload CreateTeam
+	var payload types.CreateTeam
 
 	hresp, ok := uapi.MarshalReq(r, &payload)
 
@@ -95,7 +87,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 
 	return uapi.HttpResponse{
 		Status: http.StatusCreated,
-		Json: CreateTeamResponse{
+		Json: types.CreateTeamResponse{
 			TeamID: teamId,
 		},
 	}

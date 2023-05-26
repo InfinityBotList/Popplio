@@ -11,7 +11,7 @@ packages:
       dovewing.DiscordUser: DiscordUser /* from eureka-dovewing.ts */
       teams.TeamPermission: TeamPermissions /* from teamPerms.ts */
       pgtype.Timestamptz: "string | null /* RFC3339, nullable */"
-
+      
   - path: "github.com/infinitybotlist/eureka/dovewing"
     output_path: "/iblcdn/public/dev/bindings/popplio/eureka-dovewing.ts"
     type_mappings:

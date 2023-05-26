@@ -9,7 +9,7 @@ import (
 
 // Represents a Bot Pack
 type BotPack struct {
-	Owner         string                `db:"owner" json:"owner_id"`
+	Owner         string                `db:"owner" json:"-" ci:"internal"`
 	ResolvedOwner *dovewing.DiscordUser `db:"-" json:"owner"`
 	Name          string                `db:"name" json:"name"`
 	Short         string                `db:"short" json:"short"`

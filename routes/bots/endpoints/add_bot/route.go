@@ -30,29 +30,7 @@ type internalData struct {
 	GuildCount  *int
 }
 
-type CreateBot struct {
-	BotID      string       `db:"bot_id" json:"bot_id" validate:"required,numeric" msg:"Bot ID must be numeric"`                                       // impld
-	ClientID   string       `db:"client_id" json:"client_id" validate:"required,numeric" msg:"Client ID must be numeric"`                              // impld
-	Short      string       `db:"short" json:"short" validate:"required,min=30,max=150" msg:"Short description must be between 30 and 150 characters"` // impld
-	Long       string       `db:"long" json:"long" validate:"required,min=500" msg:"Long description must be at least 500 characters"`                 // impld
-	Prefix     string       `db:"prefix" json:"prefix" validate:"required,min=1,max=10" msg:"Prefix must be between 1 and 10 characters"`              // impld
-	Invite     string       `db:"invite" json:"invite" validate:"required,https" msg:"Invite is required and must be a valid HTTPS URL"`               // impld
-	Banner     *string      `db:"banner" json:"banner" validate:"omitempty,https" msg:"Background must be a valid HTTPS URL"`                          // impld
-	Library    string       `db:"library" json:"library" validate:"required,min=1,max=50" msg:"Library must be between 1 and 50 characters"`           // impld
-	ExtraLinks []types.Link `db:"extra_links" json:"extra_links" validate:"required" msg:"Extra links must be sent"`                                   // Impld
-	Tags       []string     `db:"tags" json:"tags" validate:"required,unique,min=1,max=5,dive,min=3,max=30,notblank,nonvulgar" msg:"There must be between 1 and 5 tags without duplicates" amsg:"Each tag must be between 3 and 30 characters and alphabetic"`
-	NSFW       bool         `db:"nsfw" json:"nsfw"`
-	StaffNote  *string      `db:"approval_note" json:"staff_note" validate:"omitempty,max=512" msg:"Staff note must be less than 512 characters if sent"` // impld
-
-	// Not needed to send
-	QueueName   *string `db:"queue_name" json:"-"`
-	QueueAvatar *string `db:"queue_avatar" json:"-"`
-	Owner       string  `db:"owner" json:"-"`
-	Vanity      *string `db:"vanity" json:"-"`
-	GuildCount  *int    `db:"servers" json:"-"`
-}
-
-func createBotsArgs(bot CreateBot, id internalData) []any {
+func createBotsArgs(bot types.CreateBot, id internalData) []any {
 	return []any{
 		bot.BotID,
 		bot.ClientID,
@@ -75,9 +53,9 @@ func createBotsArgs(bot CreateBot, id internalData) []any {
 }
 
 var (
-	compiledMessages = uapi.CompileValidationErrors(CreateBot{})
+	compiledMessages = uapi.CompileValidationErrors(types.CreateBot{})
 
-	createBotsColsArr = utils.GetCols(CreateBot{})
+	createBotsColsArr = utils.GetCols(types.CreateBot{})
 	createBotsCols    = strings.Join(createBotsColsArr, ", ")
 
 	// $1, $2, $3, etc, using the length of the array
@@ -97,7 +75,7 @@ func Docs() *docs.Doc {
 	return &docs.Doc{
 		Summary:     "Create Bot",
 		Description: "Adds a bot to the database. The main owner will be the user who created the bot. Returns 204 on success",
-		Req:         CreateBot{},
+		Req:         types.CreateBot{},
 		Resp:        types.ApiError{},
 		Params: []docs.Parameter{
 			{
@@ -134,7 +112,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		}
 	}
 
-	var payload CreateBot
+	var payload types.CreateBot
 
 	hresp, ok := uapi.MarshalReq(r, &payload)
 

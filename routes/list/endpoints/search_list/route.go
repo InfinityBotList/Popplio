@@ -27,42 +27,13 @@ var (
 
 	botSqlTemplate *template.Template
 
-	compiledMessages = uapi.CompileValidationErrors(SearchQuery{})
+	compiledMessages = uapi.CompileValidationErrors(types.SearchQuery{})
 )
 
 type searchSqlTemplateCtx struct {
 	Query   string
-	TagMode TagMode
+	TagMode types.TagMode
 	Cols    string
-}
-
-type SearchFilter struct {
-	From uint32 `json:"from"`
-	To   uint32 `json:"to"`
-}
-
-type TagMode string
-
-const (
-	TagModeAll TagMode = "@>"
-	TagModeAny TagMode = "&&"
-)
-
-type TagFilter struct {
-	Tags    []string `json:"tags" validate:"required"`
-	TagMode TagMode  `json:"tag_mode" validate:"required"`
-}
-
-type SearchQuery struct {
-	Query     string        `json:"query"`
-	Servers   *SearchFilter `json:"servers" validate:"required" msg:"Servers must be a valid filter"`
-	Votes     *SearchFilter `json:"votes" validate:"required" msg:"Votes must be a valid filter"`
-	Shards    *SearchFilter `json:"shards" validate:"required" msg:"Shards must be a valid filter"`
-	TagFilter *TagFilter    `json:"tags" validate:"required" msg:"Tags must be a valid filter"`
-}
-
-type SearchResponse struct {
-	Bots []types.IndexBot `json:"bots"`
 }
 
 func Setup() {
@@ -73,13 +44,13 @@ func Docs() *docs.Doc {
 	return &docs.Doc{
 		Summary:     "Search List",
 		Description: "Searches the list. This replaces arcadias tetanus API",
-		Req:         SearchQuery{},
-		Resp:        SearchResponse{},
+		Req:         types.SearchQuery{},
+		Resp:        types.SearchResponse{},
 	}
 }
 
 func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
-	var payload SearchQuery
+	var payload types.SearchQuery
 
 	hresp, ok := uapi.MarshalReq(r, &payload)
 
@@ -96,13 +67,22 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 
 	if payload.Query == "" && len(payload.TagFilter.Tags) == 0 {
 		return uapi.HttpResponse{
-			Json: SearchResponse{
+			Json: types.SearchResponse{
 				Bots: []types.IndexBot{},
 			},
 		}
 	}
 
-	if payload.TagFilter.TagMode != TagModeAll && payload.TagFilter.TagMode != TagModeAny {
+	// Default, if not specified
+	if payload.TagFilter.TagMode == "" {
+		payload.TagFilter.TagMode = types.TagModeAny
+	}
+
+	if len(payload.TagFilter.Tags) == 0 {
+		payload.TagFilter.Tags = []string{}
+	}
+
+	if payload.TagFilter.TagMode != types.TagModeAll && payload.TagFilter.TagMode != types.TagModeAny {
 		return uapi.HttpResponse{
 			Status: http.StatusBadRequest,
 			Json: types.ApiError{
@@ -174,7 +154,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	}
 
 	return uapi.HttpResponse{
-		Json: SearchResponse{
+		Json: types.SearchResponse{
 			Bots: indexBots,
 		},
 	}

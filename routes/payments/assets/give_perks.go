@@ -3,8 +3,8 @@ package assets
 import (
 	"context"
 	"errors"
-	"popplio/payments"
 	"popplio/state"
+	"popplio/types"
 	"strconv"
 
 	"github.com/bwmarrin/discordgo"
@@ -37,8 +37,8 @@ type PerkData struct {
 }
 
 // Finds and validates the associated perm for the given payload. ProductID is still needed to determine whats being purchased.
-func FindPerks(ctx context.Context, payload PerkData) (*payments.Plan, error) {
-	var perk *payments.Plan
+func FindPerks(ctx context.Context, payload PerkData) (*types.PaymentPlan, error) {
+	var perk *types.PaymentPlan
 
 	state.Logger.Info(payload)
 
@@ -48,7 +48,7 @@ func FindPerks(ctx context.Context, payload PerkData) (*payments.Plan, error) {
 
 	switch payload.ProductID {
 	case "premium":
-		for _, plan := range payments.Plans {
+		for _, plan := range Plans {
 			state.Logger.Info(plan.ID, payload.ProductName)
 			if plan.ID == payload.ProductName {
 				// Ensure the bot associated with For exists
