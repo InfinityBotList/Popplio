@@ -10,6 +10,7 @@ import (
 	"popplio/ratelimit"
 	"popplio/routes/bots/assets"
 	"popplio/state"
+	"popplio/teams"
 	"popplio/types"
 	"popplio/utils"
 
@@ -288,7 +289,86 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	}
 
 	// Save the bot to the database
-	_, err = state.Pool.Exec(d.Context, "INSERT INTO bots ("+createBotsCols+") VALUES ("+createBotsParams+")", botArgs...)
+	tx, err := state.Pool.Begin(d.Context)
+
+	if err != nil {
+		state.Logger.Error(err)
+		return uapi.DefaultResponse(http.StatusInternalServerError)
+	}
+
+	defer tx.Rollback(d.Context)
+
+	_, err = tx.Exec(d.Context, "INSERT INTO bots ("+createBotsCols+") VALUES ("+createBotsParams+")", botArgs...)
+
+	if err != nil {
+		state.Logger.Error(err)
+		return uapi.DefaultResponse(http.StatusInternalServerError)
+	}
+
+	// Check team owner here, to avoid a race condition
+	if payload.TeamOwner != "" {
+		// Since the bot isn't already in a team, many checks of add_bot_to_team are not needed
+		// The only check needed is that the team itself exists and the user has TeamPermissionAddNewBots
+
+		var count int
+
+		err = tx.QueryRow(d.Context, "SELECT COUNT(*) FROM teams WHERE id = $1", payload.TeamOwner).Scan(&count)
+
+		if err != nil {
+			state.Logger.Error(err)
+			return uapi.DefaultResponse(http.StatusInternalServerError)
+		}
+
+		if count == 0 {
+			return uapi.HttpResponse{
+				Status: http.StatusNotFound,
+				Json:   types.ApiError{Message: "Team not found", Error: true},
+			}
+		}
+
+		// Ensure manager is a member of the team
+		var managerCount int
+
+		err = tx.QueryRow(d.Context, "SELECT COUNT(*) FROM team_members WHERE team_id = $1 AND user_id = $2", payload.TeamOwner, d.Auth.ID).Scan(&managerCount)
+
+		if err != nil {
+			state.Logger.Error(err)
+			return uapi.DefaultResponse(http.StatusInternalServerError)
+		}
+
+		if managerCount == 0 {
+			return uapi.HttpResponse{
+				Status: http.StatusForbidden,
+				Json:   types.ApiError{Message: "You are not a member of this team", Error: true},
+			}
+		}
+
+		var managerPerms []teams.TeamPermission
+		err = tx.QueryRow(d.Context, "SELECT perms FROM team_members WHERE team_id = $1 AND user_id = $2", payload.TeamOwner, d.Auth.ID).Scan(&managerPerms)
+
+		if err != nil {
+			state.Logger.Error(err)
+			return uapi.DefaultResponse(http.StatusInternalServerError)
+		}
+
+		mp := teams.NewPermissionManager(managerPerms)
+
+		if !mp.Has(teams.TeamPermissionAddNewBots) {
+			return uapi.HttpResponse{
+				Status: http.StatusForbidden,
+				Json:   types.ApiError{Message: "You do not have permission to add new bots", Error: true},
+			}
+		}
+
+		_, err = tx.Exec(d.Context, "UPDATE bots SET team_owner = $1, owner = NULL WHERE bot_id = $2", payload.TeamOwner, payload.BotID)
+
+		if err != nil {
+			state.Logger.Error(err)
+			return uapi.DefaultResponse(http.StatusInternalServerError)
+		}
+	}
+
+	err = tx.Commit(d.Context)
 
 	if err != nil {
 		state.Logger.Error(err)
@@ -318,8 +398,13 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 						Inline: true,
 					},
 					{
-						Name:   "Main Owner",
-						Value:  fmt.Sprintf("<@%s>", d.Auth.ID),
+						Name: "Owner",
+						Value: func() string {
+							if payload.TeamOwner != "" {
+								return fmt.Sprintf("[Team %s](%s/teams/%s)", payload.TeamOwner, state.Config.Sites.Frontend, payload.TeamOwner)
+							}
+							return fmt.Sprintf("<@%s>", d.Auth.ID)
+						}(),
 						Inline: true,
 					},
 				},

@@ -77,6 +77,9 @@ def parse_file_structs(lines: list[str]) -> dict[str, Struct] | None:
     for line in lines:
         if not line.strip().strip("\t"):
             continue
+    
+        if line.strip().strip("\t").startswith("//"):
+            continue
 
         if line.startswith("type") and " struct" in line:
             struct_name = line.split(" ")[1]
