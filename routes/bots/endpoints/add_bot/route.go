@@ -356,7 +356,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		if !mp.Has(teams.TeamPermissionAddNewBots) {
 			return uapi.HttpResponse{
 				Status: http.StatusForbidden,
-				Json:   types.ApiError{Message: "You do not have permission to add new bots", Error: true},
+				Json:   types.ApiError{Message: "You do not have permission to add new bots to this team", Error: true},
 			}
 		}
 
