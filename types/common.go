@@ -52,3 +52,7 @@ type PagedResult[T any] struct {
 	PerPage uint64 `json:"per_page"`
 	Results []T    `json:"results"`
 }
+
+type TokenResetResponse struct {
+	Token string `json:"token"`
+}

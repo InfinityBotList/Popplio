@@ -8,6 +8,7 @@ import (
 
 	"popplio/api"
 	poplapps "popplio/apps"
+	"popplio/changelogs"
 	"popplio/constants"
 	"popplio/notifications"
 	"popplio/partners"
@@ -192,6 +193,7 @@ func main() {
 	poplapps.Setup()
 	stafftemplates.Setup()
 	partners.Setup()
+	changelogs.Setup()
 
 	go notifications.VrLoop()
 

@@ -1,4 +1,4 @@
-package reset_bot_token
+package patch_bot_token
 
 import (
 	"net/http"
@@ -13,15 +13,11 @@ import (
 	"github.com/infinitybotlist/eureka/uapi"
 )
 
-type Token struct {
-	Token string `json:"token"`
-}
-
 func Docs() *docs.Doc {
 	return &docs.Doc{
 		Summary:     "Patch Bot Webhook",
 		Description: "Resets a bots token. You must have 'Reset Bot Tokens' in the team if the bot is in a team. Returns the new token on success. Will never be shown again",
-		Resp:        Token{},
+		Resp:        types.TokenResetResponse{},
 		Params: []docs.Parameter{
 			{
 				Name:        "uid",
@@ -81,6 +77,6 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 
 	return uapi.HttpResponse{
 		Status: http.StatusOK,
-		Json:   Token{Token: token},
+		Json:   types.TokenResetResponse{Token: token},
 	}
 }

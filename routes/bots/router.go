@@ -14,10 +14,10 @@ import (
 	"popplio/routes/bots/endpoints/get_random_bots"
 	"popplio/routes/bots/endpoints/patch_bot_settings"
 	"popplio/routes/bots/endpoints/patch_bot_team"
+	"popplio/routes/bots/endpoints/patch_bot_token"
 	"popplio/routes/bots/endpoints/patch_bot_vanity"
 	"popplio/routes/bots/endpoints/patch_bot_webhook"
 	"popplio/routes/bots/endpoints/post_stats"
-	"popplio/routes/bots/endpoints/reset_bot_token"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/infinitybotlist/eureka/uapi"
@@ -183,10 +183,10 @@ func (b Router) Routes(r *chi.Mux) {
 
 	uapi.Route{
 		Pattern: "/users/{uid}/bots/{bid}/token",
-		OpId:    "reset_bot_token",
+		OpId:    "patch_bot_token",
 		Method:  uapi.PATCH,
-		Docs:    reset_bot_token.Docs,
-		Handler: reset_bot_token.Route,
+		Docs:    patch_bot_token.Docs,
+		Handler: patch_bot_token.Route,
 		Auth: []uapi.AuthType{
 			{
 				URLVar: "uid",

@@ -4,10 +4,10 @@ import "popplio/state"
 
 func Setup() {
 	for _, templ := range StaffTemplates.Templates {
-		appValidator := state.Validator.Struct(templ)
+		templValidator := state.Validator.Struct(templ)
 
-		if appValidator != nil {
-			panic("App validation failed: " + appValidator.Error())
+		if templValidator != nil {
+			panic("Template validation failed: " + templValidator.Error())
 		}
 	}
 }
