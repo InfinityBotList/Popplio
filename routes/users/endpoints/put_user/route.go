@@ -4,7 +4,6 @@ import (
 	"io"
 	"net/http"
 	"net/url"
-	"strings"
 	"time"
 
 	"popplio/api"
@@ -26,27 +25,19 @@ import (
 
 var (
 	json             = jsoniter.ConfigCompatibleWithStandardLibrary
-	compiledMessages = uapi.CompileValidationErrors(AuthorizeRequest{})
+	compiledMessages = uapi.CompileValidationErrors(types.AuthorizeRequest{})
 )
 
 func Docs() *docs.Doc {
 	return &docs.Doc{
 		Summary:     "Login User",
 		Description: "Takes in a ``code`` query parameter and returns a user ``token``. **Cannot be used outside of the site for security reasons but documented in case we wish to allow its use in the future.**",
-		Req:         AuthorizeRequest{},
+		Req:         types.AuthorizeRequest{},
 		Resp:        types.UserLogin{},
 	}
 }
 
-type AuthorizeRequest struct {
-	ClientID    string `json:"client_id" validate:"required"`
-	Code        string `json:"code" validate:"required,min=5"`
-	RedirectURI string `json:"redirect_uri" validate:"required"`
-	Nonce       string `json:"nonce" validate:"required"` // Just to identify and block older clients from vulns
-	Scope       string `json:"scope" validate:"required,oneof=normal ban_exempt"`
-}
-
-func sendAuthLog(user types.OauthUser, req AuthorizeRequest, new bool) {
+func sendAuthLog(user types.OauthUser, req types.AuthorizeRequest, new bool) {
 	var banned bool
 	var voteBanned bool
 
@@ -156,17 +147,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		}
 	}
 
-	if !api.IsClient(r) {
-		return uapi.HttpResponse{
-			Status: http.StatusBadRequest,
-			Json: types.ApiError{
-				Error:   true,
-				Message: "This endpoint is not available for public use",
-			},
-		}
-	}
-
-	var req AuthorizeRequest
+	var req types.AuthorizeRequest
 
 	hresp, ok := uapi.MarshalReqWithHeaders(r, &req, limit.Headers())
 
@@ -182,22 +163,38 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		return uapi.ValidatorErrorResponse(compiledMessages, errors)
 	}
 
+	if req.Scope != "external_auth" {
+		if !api.IsClient(r) {
+			return uapi.HttpResponse{
+				Status: http.StatusBadRequest,
+				Json: types.ApiError{
+					Error:   true,
+					Message: "In order to use this API publicly, please set the scope to external_auth",
+				},
+			}
+		}
+
+		if req.Nonce != "protozoa" {
+			return uapi.HttpResponse{
+				Json: types.ApiError{
+					Error:   true,
+					Message: "Your client is outdated and is not supported. Please update your client.",
+				},
+				Status:  http.StatusBadRequest,
+				Headers: limit.Headers(),
+			}
+		}
+	}
+
+	if req.Scope == "external_auth" {
+		req.RedirectURI = "http://localhost:3000/auth/sauron" // Currently, only this specific redirect URL is allowed. TODO: Custom clients (in the future)
+	}
+
 	if !slices.Contains(state.Config.DiscordAuth.AllowedRedirects, req.RedirectURI) {
 		return uapi.HttpResponse{
 			Json: types.ApiError{
 				Error:   true,
 				Message: "Malformed redirect_uri",
-			},
-			Status:  http.StatusBadRequest,
-			Headers: limit.Headers(),
-		}
-	}
-
-	if req.Nonce != "protozoa" {
-		return uapi.HttpResponse{
-			Json: types.ApiError{
-				Error:   true,
-				Message: "Your client is outdated and is not supported. Please update your client.",
 			},
 			Status:  http.StatusBadRequest,
 			Headers: limit.Headers(),
@@ -447,28 +444,6 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 
 		go sendAuthLog(user, req, false)
 
-		// Handle scope
-		if req.Scope != "normal" {
-			// Create new token
-			newApiToken := req.Scope + "." + crypto.RandString(128)
-
-			_, err = state.Pool.Exec(d.Context, "UPDATE users SET api_token = $1 WHERE user_id = $2", newApiToken, user.ID)
-
-			if err != nil {
-				state.Logger.Error(err)
-				return uapi.HttpResponse{
-					Json: types.ApiError{
-						Error:   true,
-						Message: "Failed to update API token on database",
-					},
-					Status:  http.StatusInternalServerError,
-					Headers: limit.Headers(),
-				}
-			}
-
-			tokenStr.String = newApiToken
-		}
-
 		if banned && req.Scope != "ban_exempt" {
 			return uapi.HttpResponse{
 				Json: types.ApiError{
@@ -492,28 +467,6 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		}
 
 		apiToken = tokenStr.String
-
-		// Ensure api token has no dots in it due to scope
-		if strings.Contains(apiToken, ".") {
-			// Create new token
-			newApiToken := crypto.RandString(128)
-
-			_, err = state.Pool.Exec(d.Context, "UPDATE users SET api_token = $1 WHERE user_id = $2", newApiToken, user.ID)
-
-			if err != nil {
-				state.Logger.Error(err)
-				return uapi.HttpResponse{
-					Json: types.ApiError{
-						Error:   true,
-						Message: "Failed to update API token on database",
-					},
-					Status:  http.StatusInternalServerError,
-					Headers: limit.Headers(),
-				}
-			}
-
-			apiToken = newApiToken
-		}
 	}
 
 	// Create authUser and send

@@ -6,6 +6,7 @@ import (
 	"popplio/routes/list/endpoints/get_list_index"
 	"popplio/routes/list/endpoints/get_list_stats"
 	"popplio/routes/list/endpoints/get_list_team"
+	"popplio/routes/list/endpoints/get_oauth_url"
 	"popplio/routes/list/endpoints/get_partners"
 	"popplio/routes/list/endpoints/get_staff_templates"
 	"popplio/routes/list/endpoints/search_list"
@@ -95,5 +96,13 @@ func (b Router) Routes(r *chi.Mux) {
 		Method:  uapi.GET,
 		Docs:    get_changelog.Docs,
 		Handler: get_changelog.Route,
+	}.Route(r)
+
+	uapi.Route{
+		Pattern: "/list/oauth2",
+		OpId:    "get_oauth_url",
+		Method:  uapi.GET,
+		Docs:    get_oauth_url.Docs,
+		Handler: get_oauth_url.Route,
 	}.Route(r)
 }

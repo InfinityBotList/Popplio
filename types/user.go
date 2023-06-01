@@ -11,11 +11,6 @@ const (
 	ServerListingUserExperiment UserExperiment = "SERVER_LISTING"
 )
 
-type UserLogin struct {
-	Token  string `json:"token" description:"The users token"`
-	UserID string `json:"user_id" description:"The users ID"`
-}
-
 // @ci table=users
 type User struct {
 	ITag                             pgtype.UUID           `db:"itag" json:"itag" description:"The user's internal ID. An artifact of database migrations."`
