@@ -21,7 +21,8 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	return uapi.HttpResponse{
 		Status: http.StatusOK,
 		Json: types.OauthMeta{
-			URL: "https://discord.com/api/oauth2/authorize?client_id=" + state.Config.DiscordAuth.ClientID + "&scope=identify%20guilds&response_type=code&redirect_uri=%REDIRECT_URL%",
+			ClientID: state.Config.DiscordAuth.ClientID,
+			URL:      "https://discord.com/api/oauth2/authorize?client_id=" + state.Config.DiscordAuth.ClientID + "&scope=identify%20guilds&response_type=code&redirect_uri=%REDIRECT_URL%/auth/sauron",
 		},
 	}
 }

@@ -163,7 +163,19 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		return uapi.ValidatorErrorResponse(compiledMessages, errors)
 	}
 
-	if req.Scope != "external_auth" {
+	if req.Scope == "external_auth" {
+		// For now, until proper custom client support
+		if req.RedirectURI != "http://localhost:3000/auth/sauron" {
+			return uapi.HttpResponse{
+				Json: types.ApiError{
+					Error:   true,
+					Message: "Currently, only localhost:3000 is allowed as a redirect_uri for external_auth. This may be changed in the future",
+				},
+				Status:  http.StatusBadRequest,
+				Headers: limit.Headers(),
+			}
+		}
+	} else {
 		if !api.IsClient(r) {
 			return uapi.HttpResponse{
 				Status: http.StatusBadRequest,
@@ -184,10 +196,6 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 				Headers: limit.Headers(),
 			}
 		}
-	}
-
-	if req.Scope == "external_auth" {
-		req.RedirectURI = "http://localhost:3000/auth/sauron" // Currently, only this specific redirect URL is allowed. TODO: Custom clients (in the future)
 	}
 
 	if !slices.Contains(state.Config.DiscordAuth.AllowedRedirects, req.RedirectURI) {

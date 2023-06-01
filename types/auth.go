@@ -14,5 +14,6 @@ type UserLogin struct {
 }
 
 type OauthMeta struct {
-	URL string `json:"url" description:"The URL to redirect the user to for discord oauth2"`
+	ClientID string `json:"client_id" description:"The client ID"`
+	URL      string `json:"url" description:"The URL to redirect the user to for discord oauth2"`
 }
