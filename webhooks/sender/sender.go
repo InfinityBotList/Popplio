@@ -263,7 +263,7 @@ func Send(d *WebhookSendState) error {
 			state.Logger.Error(err)
 		}
 
-		return errors.New("webhook returned error")
+		return errors.New("webhook returned error: " + strconv.Itoa(resp.StatusCode))
 
 	case resp.StatusCode >= 200 && resp.StatusCode < 300:
 		if d.BadIntent {
