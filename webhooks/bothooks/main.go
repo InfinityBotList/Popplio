@@ -47,6 +47,7 @@ func Send[T events.WebhookEvent](with With[T]) error {
 	entity := sender.WebhookEntity{
 		EntityID:   bot.ID,
 		EntityName: bot.Username,
+		EntityType: EntityType,
 		DeleteWebhook: func() error {
 			_, err := state.Pool.Exec(state.Context, "UPDATE bots SET webhook = NULL WHERE bot_id = $1", bot.ID)
 
