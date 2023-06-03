@@ -7,4 +7,15 @@ tests:
 ts:
 	rm -rvf /iblcdn/public/dev/bindings/popplio
 	~/go/bin/tygo generate
+
+	# Because tygo cant replace all instances of TeamPermission and other useful modifications
+	sed -i 's:export type TeamPermission = string; //:// Note that:g' /iblcdn/public/dev/bindings/popplio/types.ts
+
+	# Two steps to replace all instances of TeamPermission with TeamPermissions while keeping TeamPermissions intact	
+	sed -i 's:TeamPermissions:TeamPermission:g' /iblcdn/public/dev/bindings/popplio/types.ts
+
+	sed -i 's:TeamPermission:TeamPermissions:g' /iblcdn/public/dev/bindings/popplio/types.ts
+
 	ibl genenums
+	mkdir /iblcdn/public/dev/bindings/popplio/go
+	cp -rf types /iblcdn/public/dev/bindings/popplio/go

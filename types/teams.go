@@ -1,12 +1,20 @@
 package types
 
 import (
-	"popplio/teams"
 	"time"
 
 	"github.com/infinitybotlist/eureka/dovewing"
 	"github.com/jackc/pgx/v5/pgtype"
 )
+
+type TeamPermission string // TeamPermission is a permission that a team can have
+
+type PermDetailMap struct {
+	ID    TeamPermission `json:"id"`
+	Name  string         `json:"name"`
+	Desc  string         `json:"desc"`
+	Group string         `json:"group"`
+}
 
 type Team struct {
 	ID       string       `db:"id" json:"id"`
@@ -17,9 +25,9 @@ type Team struct {
 }
 
 type TeamMember struct {
-	User      *dovewing.DiscordUser  `json:"user"`
-	Perms     []teams.TeamPermission `json:"perms"`
-	CreatedAt time.Time              `json:"created_at"`
+	User      *dovewing.DiscordUser `json:"user"`
+	Perms     []TeamPermission      `json:"perms"`
+	CreatedAt time.Time             `json:"created_at"`
 }
 
 type CreateTeam struct {
@@ -32,5 +40,5 @@ type CreateTeamResponse struct {
 }
 
 type PermissionResponse struct {
-	Perms []teams.PermDetailMap `json:"perms"`
+	Perms []PermDetailMap `json:"perms"`
 }

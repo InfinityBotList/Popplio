@@ -1,8 +1,10 @@
 package teams
 
-import "golang.org/x/exp/slices"
+import (
+	"popplio/types"
 
-type TeamPermission string // TeamPermission is a permission that a team can have
+	"golang.org/x/exp/slices"
+)
 
 /*
 TODO:
@@ -12,93 +14,86 @@ TODO:
 */
 
 const (
-	TeamPermissionUndefined TeamPermission = ""
+	TeamPermissionUndefined types.TeamPermission = ""
 
 	// Bot permissions
-	TeamPermissionEditBotSettings      TeamPermission = "EDIT_BOT_SETTINGS"
-	TeamPermissionAddNewBots           TeamPermission = "ADD_NEW_BOTS"
-	TeamPermissionResubmitBots         TeamPermission = "RESUBMIT_BOTS"
-	TeamPermissionCertifyBots          TeamPermission = "CERTIFY_BOTS"
-	TeamPermissionResetBotTokens       TeamPermission = "RESET_BOT_TOKEN"
-	TeamPermissionEditBotWebhooks      TeamPermission = "EDIT_BOT_WEBHOOKS"
-	TeamPermissionTestBotWebhooks      TeamPermission = "TEST_BOT_WEBHOOKS"
-	TeamPermissionGetBotWebhookLogs    TeamPermission = "GET_BOT_WEBHOOK_LOGS"
-	TeamPermissionRetryBotWebhookLogs  TeamPermission = "RETRY_BOT_WEBHOOK_LOGS"
-	TeamPermissionDeleteBotWebhookLogs TeamPermission = "DELETE_BOT_WEBHOOK_LOGS"
-	TeamPermissionSetBotVanity         TeamPermission = "SET_BOT_VANITY"
-	TeamPermissionDeleteBots           TeamPermission = "DELETE_BOTS"
+	TeamPermissionEditBotSettings      types.TeamPermission = "EDIT_BOT_SETTINGS"
+	TeamPermissionAddNewBots           types.TeamPermission = "ADD_NEW_BOTS"
+	TeamPermissionResubmitBots         types.TeamPermission = "RESUBMIT_BOTS"
+	TeamPermissionCertifyBots          types.TeamPermission = "CERTIFY_BOTS"
+	TeamPermissionResetBotTokens       types.TeamPermission = "RESET_BOT_TOKEN"
+	TeamPermissionEditBotWebhooks      types.TeamPermission = "EDIT_BOT_WEBHOOKS"
+	TeamPermissionTestBotWebhooks      types.TeamPermission = "TEST_BOT_WEBHOOKS"
+	TeamPermissionGetBotWebhookLogs    types.TeamPermission = "GET_BOT_WEBHOOK_LOGS"
+	TeamPermissionRetryBotWebhookLogs  types.TeamPermission = "RETRY_BOT_WEBHOOK_LOGS"
+	TeamPermissionDeleteBotWebhookLogs types.TeamPermission = "DELETE_BOT_WEBHOOK_LOGS"
+	TeamPermissionSetBotVanity         types.TeamPermission = "SET_BOT_VANITY"
+	TeamPermissionDeleteBots           types.TeamPermission = "DELETE_BOTS"
 
 	// Server permissions
-	TeamPermissionEditServerSettings      TeamPermission = "EDIT_SERVER_SETTINGS"
-	TeamPermissionAddNewServers           TeamPermission = "ADD_NEW_SERVERS"
-	TeamPermissionCertifyServers          TeamPermission = "CERTIFY_SERVERS"
-	TeamPermissionResetServerTokens       TeamPermission = "RESET_SERVER_TOKEN"
-	TeamPermissionEditServerWebhooks      TeamPermission = "EDIT_SERVER_WEBHOOKS"
-	TeamPermissionTestServerWebhooks      TeamPermission = "TEST_SERVER_WEBHOOKS"
-	TeamPermissionGetServerWebhookLogs    TeamPermission = "GET_SERVER_WEBHOOK_LOGS"
-	TeamPermissionRetryServerWebhookLogs  TeamPermission = "RETRY_SERVER_WEBHOOK_LOGS"
-	TeamPermissionDeleteServerWebhookLogs TeamPermission = "DELETE_SERVER_WEBHOOK_LOGS"
-	TeamPermissionSetServerVanity         TeamPermission = "SET_SERVER_VANITY"
-	TeamPermissionDeleteServers           TeamPermission = "DELETE_SERVERS"
+	TeamPermissionEditServerSettings      types.TeamPermission = "EDIT_SERVER_SETTINGS"
+	TeamPermissionAddNewServers           types.TeamPermission = "ADD_NEW_SERVERS"
+	TeamPermissionCertifyServers          types.TeamPermission = "CERTIFY_SERVERS"
+	TeamPermissionResetServerTokens       types.TeamPermission = "RESET_SERVER_TOKEN"
+	TeamPermissionEditServerWebhooks      types.TeamPermission = "EDIT_SERVER_WEBHOOKS"
+	TeamPermissionTestServerWebhooks      types.TeamPermission = "TEST_SERVER_WEBHOOKS"
+	TeamPermissionGetServerWebhookLogs    types.TeamPermission = "GET_SERVER_WEBHOOK_LOGS"
+	TeamPermissionRetryServerWebhookLogs  types.TeamPermission = "RETRY_SERVER_WEBHOOK_LOGS"
+	TeamPermissionDeleteServerWebhookLogs types.TeamPermission = "DELETE_SERVER_WEBHOOK_LOGS"
+	TeamPermissionSetServerVanity         types.TeamPermission = "SET_SERVER_VANITY"
+	TeamPermissionDeleteServers           types.TeamPermission = "DELETE_SERVERS"
 
 	// Common permissions
-	TeamPermissionEditTeamInfo              TeamPermission = "EDIT_TEAM_INFO"
-	TeamPermissionAddTeamMembers            TeamPermission = "ADD_TEAM_MEMBERS"
-	TeamPermissionRemoveTeamMembers         TeamPermission = "REMOVE_TEAM_MEMBERS"
-	TeamPermissionEditTeamMemberPermissions TeamPermission = "EDIT_TEAM_MEMBER_PERMISSIONS"
+	TeamPermissionEditTeamInfo              types.TeamPermission = "EDIT_TEAM_INFO"
+	TeamPermissionAddTeamMembers            types.TeamPermission = "ADD_TEAM_MEMBERS"
+	TeamPermissionRemoveTeamMembers         types.TeamPermission = "REMOVE_TEAM_MEMBERS"
+	TeamPermissionEditTeamMemberPermissions types.TeamPermission = "EDIT_TEAM_MEMBER_PERMISSIONS"
 
 	// Owner permission
-	TeamPermissionOwner TeamPermission = "OWNER"
+	TeamPermissionOwner types.TeamPermission = "OWNER"
 )
 
-type PermDetailMap struct {
-	ID    TeamPermission `json:"id"`
-	Name  string         `json:"name"`
-	Desc  string         `json:"desc"`
-	Group string         `json:"group"`
-}
-
-var TeamPermDetails = []PermDetailMap{
-	{TeamPermissionUndefined, "Undefined", "Undefined", "undefined"},
+var TeamPermDetails = []types.PermDetailMap{
+	{ID: TeamPermissionUndefined, Name: "Undefined", Desc: "Undefined", Group: "undefined"},
 
 	// Bot permissions
-	{TeamPermissionEditBotSettings, "Edit Bot Settings", "Edit bot settings for bots on the team", "Bot"},
-	{TeamPermissionAddNewBots, "Add New Bots", "Add new bots to the team or allow transferring bots to this team", "Bot"},
-	{TeamPermissionResubmitBots, "Resubmit Bots", "Resubmit bots on the team", "Bot"},
-	{TeamPermissionCertifyBots, "Certify Bots", "Request certification for bots on the team", "Bot"},
-	{TeamPermissionResetBotTokens, "Reset Bot Tokens", "Reset the API token of bots on the team", "Bot"},
-	{TeamPermissionEditBotWebhooks, "Edit Bot Webhooks", "Edit bot webhook settings. Note that 'Test Bot Webhooks' is a separate permission and is required to test webhooks.", "Bot"},
-	{TeamPermissionTestBotWebhooks, "Test Bot Webhooks", "Test bot webhooks. Note that this is a separate permission from 'Edit Bot Webhooks' and is required to test webhooks.", "Bot"},
-	{TeamPermissionGetBotWebhookLogs, "Get Bot Webhook Logs", "Get bot webhook logs. Note that executing webhooks from webhook logs as well as deleting them are seperate permissions..", "Bot"},
-	{TeamPermissionRetryBotWebhookLogs, "Retry Bot Webhook Logs", "Retry execution of bot webhook logs. Usually requires 'Get Bot Webhook Logs' to be useful.", "Bot"},
-	{TeamPermissionDeleteBotWebhookLogs, "Delete Bot Webhook Logs", "Delete bot webhook logs. Usually requires 'Get Bot Webhook Logs' to be useful.", "Bot"},
-	{TeamPermissionSetBotVanity, "Set Bot Vanity", "Set vanity URLs for bots on the team", "Bot"},
-	{TeamPermissionDeleteBots, "Delete Bots", "Delete bots from the team. This is a very dangerous permission and should usually never be given to anyone.", "Bot"},
+	{ID: TeamPermissionEditBotSettings, Name: "Edit Bot Settings", Desc: "Edit bot settings for bots on the team", Group: "Bot"},
+	{ID: TeamPermissionAddNewBots, Name: "Add New Bots", Desc: "Add new bots to the team or allow transferring bots to this team", Group: "Bot"},
+	{ID: TeamPermissionResubmitBots, Name: "Resubmit Bots", Desc: "Resubmit bots on the team", Group: "Bot"},
+	{ID: TeamPermissionCertifyBots, Name: "Certify Bots", Desc: "Request certification for bots on the team", Group: "Bot"},
+	{ID: TeamPermissionResetBotTokens, Name: "Reset Bot Tokens", Desc: "Reset the API token of bots on the team", Group: "Bot"},
+	{ID: TeamPermissionEditBotWebhooks, Name: "Edit Bot Webhooks", Desc: "Edit bot webhook settings. Note that 'Test Bot Webhooks' is a separate permission and is required to test webhooks.", Group: "Bot"},
+	{ID: TeamPermissionTestBotWebhooks, Name: "Test Bot Webhooks", Desc: "Test bot webhooks. Note that this is a separate permission from 'Edit Bot Webhooks' and is required to test webhooks.", Group: "Bot"},
+	{ID: TeamPermissionGetBotWebhookLogs, Name: "Get Bot Webhook Logs", Desc: "Get bot webhook logs. Note that executing webhooks from webhook logs as well as deleting them are seperate permissions..", Group: "Bot"},
+	{ID: TeamPermissionRetryBotWebhookLogs, Name: "Retry Bot Webhook Logs", Desc: "Retry execution of bot webhook logs. Usually requires 'Get Bot Webhook Logs' to be useful.", Group: "Bot"},
+	{ID: TeamPermissionDeleteBotWebhookLogs, Name: "Delete Bot Webhook Logs", Desc: "Delete bot webhook logs. Usually requires 'Get Bot Webhook Logs' to be useful.", Group: "Bot"},
+	{ID: TeamPermissionSetBotVanity, Name: "Set Bot Vanity", Desc: "Set vanity URLs for bots on the team", Group: "Bot"},
+	{ID: TeamPermissionDeleteBots, Name: "Delete Bots", Desc: "Delete bots from the team. This is a very dangerous permission and should usually never be given to anyone.", Group: "Bot"},
 
 	// Server permissions
-	{TeamPermissionEditServerSettings, "Edit Server Settings", "Edit server settings for servers on the team", "Server"},
-	{TeamPermissionAddNewServers, "Add New Servers", "Add new servers to the team or allow transferring servers to this team", "Server"},
-	{TeamPermissionCertifyServers, "Certify Servers", "Request certification for servers on the team", "Server"},
-	{TeamPermissionResetServerTokens, "Reset Server Tokens", "Reset the API token of servers on the team", "Server"},
-	{TeamPermissionEditServerWebhooks, "Edit Server Webhooks", "Edit server webhook settings. Note that 'Test Server Webhooks' is a separate permission and is required to test webhooks.", "Server"},
-	{TeamPermissionTestServerWebhooks, "Test Server Webhooks", "Test server webhooks. Note that this is a separate permission from 'Edit Server Webhooks' and is required to test webhooks.", "Server"},
-	{TeamPermissionGetServerWebhookLogs, "Get Server Webhook Logs", "Get server webhook logs. Note that executing webhooks from webhook logs as well as deleting them are seperate permissions..", "Server"},
-	{TeamPermissionRetryServerWebhookLogs, "Retry Server Webhook Logs", "Retry execution of server webhook logs. Usually requires 'Get Server Webhook Logs' to be useful.", "Server"},
-	{TeamPermissionDeleteServerWebhookLogs, "Delete Server Webhook Logs", "Delete server webhook logs. Usually requires 'Get Server Webhook Logs' to be useful.", "Server"},
-	{TeamPermissionSetServerVanity, "Set Server Vanity", "Set vanity URLs for servers on the team", "Server"},
-	{TeamPermissionDeleteServers, "Delete Servers", "Delete servers from the team. This is a very dangerous permission and should usually never be given to anyone.", "Server"},
+	{ID: TeamPermissionEditServerSettings, Name: "Edit Server Settings", Desc: "Edit server settings for servers on the team", Group: "Server"},
+	{ID: TeamPermissionAddNewServers, Name: "Add New Servers", Desc: "Add new servers to the team or allow transferring servers to this team", Group: "Server"},
+	{ID: TeamPermissionCertifyServers, Name: "Certify Servers", Desc: "Request certification for servers on the team", Group: "Server"},
+	{ID: TeamPermissionResetServerTokens, Name: "Reset Server Tokens", Desc: "Reset the API token of servers on the team", Group: "Server"},
+	{ID: TeamPermissionEditServerWebhooks, Name: "Edit Server Webhooks", Desc: "Edit server webhook settings. Note that 'Test Server Webhooks' is a separate permission and is required to test webhooks.", Group: "Server"},
+	{ID: TeamPermissionTestServerWebhooks, Name: "Test Server Webhooks", Desc: "Test server webhooks. Note that this is a separate permission from 'Edit Server Webhooks' and is required to test webhooks.", Group: "Server"},
+	{ID: TeamPermissionGetServerWebhookLogs, Name: "Get Server Webhook Logs", Desc: "Get server webhook logs. Note that executing webhooks from webhook logs as well as deleting them are seperate permissions..", Group: "Server"},
+	{ID: TeamPermissionRetryServerWebhookLogs, Name: "Retry Server Webhook Logs", Desc: "Retry execution of server webhook logs. Usually requires 'Get Server Webhook Logs' to be useful.", Group: "Server"},
+	{ID: TeamPermissionDeleteServerWebhookLogs, Name: "Delete Server Webhook Logs", Desc: "Delete server webhook logs. Usually requires 'Get Server Webhook Logs' to be useful.", Group: "Server"},
+	{ID: TeamPermissionSetServerVanity, Name: "Set Server Vanity", Desc: "Set vanity URLs for servers on the team", Group: "Server"},
+	{ID: TeamPermissionDeleteServers, Name: "Delete Servers", Desc: "Delete servers from the team. This is a very dangerous permission and should usually never be given to anyone.", Group: "Server"},
 
 	// Team permissions
-	{TeamPermissionEditTeamInfo, "Edit Team Information", "Edit the team's name and avatar", "Team"},
-	{TeamPermissionAddTeamMembers, "Add Team Members", "Add team members to the team. Also needs 'Edit Team Member Permissions'", "Team"},
-	{TeamPermissionRemoveTeamMembers, "Remove Team Members", "Remove team members from the team if they have all the permissions of the user they are removing. Does **NOT** need 'Edit Team Member Permissions'", "Team"},
-	{TeamPermissionEditTeamMemberPermissions, "Edit Team Member Permissions", "Edit team members' permissions", "Team"},
+	{ID: TeamPermissionEditTeamInfo, Name: "Edit Team Information", Desc: "Edit the team's name and avatar", Group: "Team"},
+	{ID: TeamPermissionAddTeamMembers, Name: "Add Team Members", Desc: "Add team members to the team. Also needs 'Edit Team Member Permissions'", Group: "Team"},
+	{ID: TeamPermissionRemoveTeamMembers, Name: "Remove Team Members", Desc: "Remove team members from the team if they have all the permissions of the user they are removing. Does **NOT** need 'Edit Team Member Permissions'", Group: "Team"},
+	{ID: TeamPermissionEditTeamMemberPermissions, Name: "Edit Team Member Permissions", Desc: "Edit team members' permissions", Group: "Team"},
 
 	// Common permission
-	{TeamPermissionOwner, "Owner", "Do everything (as they're owner). This is a very dangerous permission and should usually never be given to anyone.", "Common"},
+	{ID: TeamPermissionOwner, Name: "Owner", Desc: "Do everything (as they're owner). This is a very dangerous permission and should usually never be given to anyone.", Group: "Common"},
 }
 
-func isValidPerm(perm TeamPermission) bool {
+func isValidPerm(perm types.TeamPermission) bool {
 	for _, p := range TeamPermDetails {
 		if p.ID == perm {
 			return true
@@ -110,13 +105,13 @@ func isValidPerm(perm TeamPermission) bool {
 
 // PermissionManager is a manager for team permissions
 type PermissionManager struct {
-	perms []TeamPermission
+	perms []types.TeamPermission
 }
 
 // NewPermissionManager creates a new permission manager from a list of permissions
 // It will remove duplicates and undefined permissions
-func NewPermissionManager(perms []TeamPermission) *PermissionManager {
-	var uniquePerms []TeamPermission
+func NewPermissionManager(perms []types.TeamPermission) *PermissionManager {
+	var uniquePerms []types.TeamPermission
 
 	for _, perm := range perms {
 		if perm == TeamPermissionUndefined || !isValidPerm(perm) {
@@ -132,12 +127,12 @@ func NewPermissionManager(perms []TeamPermission) *PermissionManager {
 }
 
 // Has returns whether the team member has the specified permission
-func (m *PermissionManager) Has(perm TeamPermission) bool {
+func (m *PermissionManager) Has(perm types.TeamPermission) bool {
 	return slices.Contains(m.perms, perm) || slices.Contains(m.perms, TeamPermissionOwner)
 }
 
 // Perms returns the list of permissions the team member has
-func (m *PermissionManager) Perms() []TeamPermission {
+func (m *PermissionManager) Perms() []types.TeamPermission {
 	return m.perms
 }
 

@@ -102,7 +102,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	}
 
 	// Get the manager's permissions
-	var managerPerms []teams.TeamPermission
+	var managerPerms []types.TeamPermission
 	err = state.Pool.QueryRow(d.Context, "SELECT perms FROM team_members WHERE team_id = $1 AND user_id = $2", teamId, d.Auth.ID).Scan(&managerPerms)
 
 	if err != nil {
@@ -122,7 +122,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		}
 
 		// Get the old permissions of the user
-		var oldPerms []teams.TeamPermission
+		var oldPerms []types.TeamPermission
 
 		err = state.Pool.QueryRow(d.Context, "SELECT perms FROM team_members WHERE team_id = $1 AND user_id = $2", teamId, userId).Scan(&oldPerms)
 
@@ -132,7 +132,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		}
 
 		// if the user can remove all permissions of the target, then only can deleting the team member occur
-		_, err = assets.CheckPerms(managerPerms, oldPerms, []teams.TeamPermission{})
+		_, err = assets.CheckPerms(managerPerms, oldPerms, []types.TeamPermission{})
 
 		if err != nil {
 			return uapi.HttpResponse{
@@ -146,7 +146,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	if mp.Has(teams.TeamPermissionOwner) {
 		var ownerCount int
 
-		err = state.Pool.QueryRow(d.Context, "SELECT COUNT(*) FROM team_members WHERE team_id = $1 AND user_id != $2 AND perms && $3", teamId, userId, []teams.TeamPermission{teams.TeamPermissionOwner}).Scan(&ownerCount)
+		err = state.Pool.QueryRow(d.Context, "SELECT COUNT(*) FROM team_members WHERE team_id = $1 AND user_id != $2 AND perms && $3", teamId, userId, []types.TeamPermission{teams.TeamPermissionOwner}).Scan(&ownerCount)
 
 		if err != nil {
 			state.Logger.Error(err)

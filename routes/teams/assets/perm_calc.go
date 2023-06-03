@@ -3,11 +3,12 @@ package assets
 import (
 	"errors"
 	"popplio/teams"
+	"popplio/types"
 )
 
 // Returns the unique elements between two arrays
-func diffArray(a []teams.TeamPermission, b []teams.TeamPermission) []teams.TeamPermission {
-	var diff = []teams.TeamPermission{}
+func diffArray(a []types.TeamPermission, b []types.TeamPermission) []types.TeamPermission {
+	var diff = []types.TeamPermission{}
 
 	// Get unique elements in a that are not in b
 	for _, aVal := range a {
@@ -43,7 +44,7 @@ func diffArray(a []teams.TeamPermission, b []teams.TeamPermission) []teams.TeamP
 }
 
 // Checks that the perms selected can be added with the perms the manager has
-func CheckPerms(managerPerms []teams.TeamPermission, oldPerms []teams.TeamPermission, newPerms []teams.TeamPermission) ([]teams.TeamPermission, error) {
+func CheckPerms(managerPerms []types.TeamPermission, oldPerms []types.TeamPermission, newPerms []types.TeamPermission) ([]types.TeamPermission, error) {
 	var userPerms = teams.NewPermissionManager(newPerms).Perms()
 	var managerPermsManager = teams.NewPermissionManager(managerPerms)
 

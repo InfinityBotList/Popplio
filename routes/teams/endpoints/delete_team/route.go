@@ -76,7 +76,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	}
 
 	// Get the manager's permissions
-	var managerPerms []teams.TeamPermission
+	var managerPerms []types.TeamPermission
 	err = state.Pool.QueryRow(d.Context, "SELECT perms FROM team_members WHERE team_id = $1 AND user_id = $2", teamId, d.Auth.ID).Scan(&managerPerms)
 
 	if err != nil {

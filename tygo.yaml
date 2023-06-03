@@ -4,24 +4,14 @@ packages:
     frontmatter: |
       import { DiscordUser } from "./eureka-dovewing"
       import { TeamPermissions } from "./team-perms"
-      import { PermDetailMap } from "./teams-misc"
     type_mappings:
       time.Time: "string /* RFC3339 */"
       pgtype.Text: "string | null /* nullable */"
       pgtype.UUID: "string /* uuid */"
       dovewing.DiscordUser: DiscordUser /* from eureka-dovewing.ts */
-      teams.TeamPermission: TeamPermissions /* from teamPerms.ts */
       teams.PermDetailMap: PermDetailMap /* from teams-misc.ts */
       pgtype.Timestamptz: "string | null /* RFC3339, nullable */"
-  
-  - path: "popplio/teams"
-    output_path: "/iblcdn/public/dev/bindings/popplio/teams-misc.ts"
-    type_mappings:
-      time.Time: "string /* RFC3339 */"
-      pgtype.Text: "string | null /* nullable */"
-      pgtype.UUID: "string /* uuid */"
-      pgtype.Timestamptz: "string | null /* RFC3339, nullable */"
-      
+        
   - path: "github.com/infinitybotlist/eureka/dovewing"
     output_path: "/iblcdn/public/dev/bindings/popplio/eureka-dovewing.ts"
     type_mappings:

@@ -17,7 +17,7 @@ import (
 
 type AddTeamMember struct {
 	UserID string                 `json:"user_id" validate:"required" msg:"User ID must be a valid snowflake"`
-	Perms  []teams.TeamPermission `json:"perms" validate:"required" msg:"Permissions must be a valid array of strings"`
+	Perms  []types.TeamPermission `json:"perms" validate:"required" msg:"Permissions must be a valid array of strings"`
 }
 
 var (
@@ -103,7 +103,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		}
 	}
 
-	var managerPerms []teams.TeamPermission
+	var managerPerms []types.TeamPermission
 	err = state.Pool.QueryRow(d.Context, "SELECT perms FROM team_members WHERE team_id = $1 AND user_id = $2", teamId, d.Auth.ID).Scan(&managerPerms)
 
 	if err != nil {
@@ -127,7 +127,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		}
 	}
 
-	perms, err := assets.CheckPerms(managerPerms, []teams.TeamPermission{}, payload.Perms)
+	perms, err := assets.CheckPerms(managerPerms, []types.TeamPermission{}, payload.Perms)
 
 	if err != nil {
 		return uapi.HttpResponse{

@@ -89,7 +89,7 @@ func ResolveTeam(ctx context.Context, teamId string) (*types.Team, error) {
 
 	for rows.Next() {
 		var userId string
-		var perms []teams.TeamPermission
+		var perms []types.TeamPermission
 		var createdAt time.Time
 
 		err = rows.Scan(&userId, &perms, &createdAt)
@@ -290,7 +290,7 @@ func GetUserBotPerms(ctx context.Context, userID string, botID string) (*teams.P
 	// Handle teams
 	if teamOwner.Valid && teamOwner.String != "" {
 		// Get the team member from the team
-		var teamPerms []teams.TeamPermission
+		var teamPerms []types.TeamPermission
 
 		err = state.Pool.QueryRow(ctx, "SELECT perms FROM team_members WHERE team_id = $1 AND user_id = $2", teamOwner, userID).Scan(&teamPerms)
 
@@ -302,10 +302,10 @@ func GetUserBotPerms(ctx context.Context, userID string, botID string) (*teams.P
 	}
 
 	if owner.String == userID {
-		return teams.NewPermissionManager([]teams.TeamPermission{teams.TeamPermissionOwner}), nil
+		return teams.NewPermissionManager([]types.TeamPermission{teams.TeamPermissionOwner}), nil
 	}
 
-	return teams.NewPermissionManager([]teams.TeamPermission{}), nil
+	return teams.NewPermissionManager([]types.TeamPermission{}), nil
 }
 
 func ClearUserCache(ctx context.Context, userId string) error {

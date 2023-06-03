@@ -21,7 +21,7 @@ in_details_map = False
 
 for line in lines:
     # Ignore comments and empty lines
-    line = line.replace("\t", "").replace(" ", "")
+    line = line.replace("types.", "").replace("ID: ", "").replace("\t", "").replace(" ", "")
     if line.startswith("//") or line.startswith("/*") or not line:
         continue
 
