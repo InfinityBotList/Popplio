@@ -17,3 +17,9 @@ type OauthMeta struct {
 	ClientID string `json:"client_id" description:"The client ID"`
 	URL      string `json:"url" description:"The URL to redirect the user to for discord oauth2"`
 }
+
+type TestAuth struct {
+        AuthType string `json:"auth_type"`
+        TargetID string `json:"target_id"`
+        Token    string `json:"token"`
+}

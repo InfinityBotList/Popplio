@@ -13,23 +13,17 @@ import (
 	"github.com/go-chi/chi/v5"
 )
 
-type TestAuth struct {
-	AuthType string `json:"auth_type"`
-	TargetID string `json:"target_id"`
-	Token    string `json:"token"`
-}
-
 func Docs() *docs.Doc {
 	return &docs.Doc{
 		Summary:     "Test Auth",
 		Description: "Test your authentication",
-		Req:         TestAuth{},
+		Req:         types.TestAuth{},
 		Resp:        uapi.AuthData{},
 	}
 }
 
 func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
-	var payload TestAuth
+	var payload types.TestAuth
 
 	hresp, ok := uapi.MarshalReq(r, &payload)
 
