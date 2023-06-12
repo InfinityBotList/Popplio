@@ -53,6 +53,6 @@ type PagedResult[T any] struct {
 	Results []T    `json:"results"`
 }
 
-type TokenResetResponse struct {
+type TokenResponse struct {
 	Token string `json:"token"`
 }

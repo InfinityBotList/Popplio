@@ -1,4 +1,4 @@
-package patch_bot_token
+package get_bot_token
 
 import (
 	"net/http"
@@ -8,15 +8,14 @@ import (
 	"popplio/utils"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/infinitybotlist/eureka/crypto"
 	docs "github.com/infinitybotlist/eureka/doclib"
 	"github.com/infinitybotlist/eureka/uapi"
 )
 
 func Docs() *docs.Doc {
 	return &docs.Doc{
-		Summary:     "Patch Bot Webhook",
-		Description: "Resets a bots token. You must have 'Reset Bot Tokens' in the team if the bot is in a team. Returns the new token on success",
+		Summary:     "Get Bot Webhook",
+		Description: "Gets the API token of a bot. You must have 'View Existing Bot Tokens' in the team if the bot is in a team.",
 		Resp:        types.TokenResponse{},
 		Params: []docs.Parameter{
 			{
@@ -59,16 +58,16 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
-	if !perms.Has(teams.TeamPermissionResetBotTokens) {
+	if !perms.Has(teams.TeamPermissionViewExistingBotTokens) {
 		return uapi.HttpResponse{
 			Status: http.StatusForbidden,
-			Json:   types.ApiError{Message: "You do not have permission to reset this bots token", Error: true},
+			Json:   types.ApiError{Message: "You do not have permission to view existing tokens of this bot", Error: true},
 		}
 	}
 
-	token := crypto.RandString(128)
+	var token string
 
-	_, err = state.Pool.Exec(d.Context, "UPDATE bots SET api_token = $1 WHERE bot_id = $2", token, id)
+	err = state.Pool.QueryRow(d.Context, "SELECT api_token FROM bots WHERE bot_id = $1", id).Scan(&token)
 
 	if err != nil {
 		state.Logger.Error(err)
