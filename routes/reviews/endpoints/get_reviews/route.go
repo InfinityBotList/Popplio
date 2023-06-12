@@ -1,4 +1,4 @@
-package get_bot_reviews
+package get_reviews
 
 import (
 	"net/http"
@@ -24,14 +24,21 @@ var (
 
 func Docs() *docs.Doc {
 	return &docs.Doc{
-		Summary:     "Get Bot Reviews",
+		Summary:     "Get Reviews",
 		Description: "Gets the reviews of a bot by its ID or vanity.",
 		Params: []docs.Parameter{
 			{
-				Name:        "id",
-				Description: "The bots ID or vanity",
+				Name:        "target_id",
+				Description: "The target id (currently only bot ID)",
 				Required:    true,
 				In:          "path",
+				Schema:      docs.IdSchema,
+			},
+			{
+				Name:        "target_type",
+				Description: "The target type (currently only bot)",
+				Required:    true,
+				In:          "query",
 				Schema:      docs.IdSchema,
 			},
 		},
@@ -40,19 +47,11 @@ func Docs() *docs.Doc {
 }
 
 func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
-	id, err := utils.ResolveBot(d.Context, chi.URLParam(r, "id"))
-
-	if err != nil {
-		state.Logger.Error(err)
-		return uapi.DefaultResponse(http.StatusInternalServerError)
-	}
-
-	if id == "" {
-		return uapi.DefaultResponse(http.StatusNotFound)
-	}
+	targetId := chi.URLParam(r, "target_id")
+	targetType := r.URL.Query().Get("target_type")
 
 	// Check cache, this is how we can avoid hefty ratelimits
-	cache := state.Redis.Get(d.Context, "rv-"+id).Val()
+	cache := state.Redis.Get(d.Context, "rv-"+targetId+"-"+targetType).Val()
 	if cache != "" {
 		return uapi.HttpResponse{
 			Data: cache,
@@ -62,7 +61,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		}
 	}
 
-	rows, err := state.Pool.Query(d.Context, "SELECT "+reviewCols+" FROM reviews WHERE bot_id = $1 ORDER BY created_at ASC", id)
+	rows, err := state.Pool.Query(d.Context, "SELECT "+reviewCols+" FROM reviews WHERE target_id = $1 AND target_type = $2 ORDER BY created_at ASC", targetId, targetType)
 
 	if err != nil {
 		state.Logger.Error(err)
@@ -95,7 +94,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 
 	return uapi.HttpResponse{
 		Json:      allReviews,
-		CacheKey:  "rv-" + id,
+		CacheKey:  "rv-" + targetId + "-" + targetType,
 		CacheTime: time.Minute * 3,
 	}
 }

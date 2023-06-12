@@ -4,7 +4,39 @@ import (
 	"context"
 	"popplio/state"
 	"popplio/types"
+	"popplio/utils"
+	"strings"
+
+	"github.com/georgysavva/scany/v2/pgxscan"
 )
+
+var (
+	reviewColsArr = utils.GetCols(types.Review{})
+	reviewCols    = strings.Join(reviewColsArr, ",")
+)
+
+// Helper function to trigger a GC
+func GCTrigger(targetId, targetType string) {
+	rows, err := state.Pool.Query(state.Context, "SELECT "+reviewCols+" FROM reviews WHERE target_id = $1 AND target_type = $2 ORDER BY created_at ASC", targetId, targetType)
+
+	if err != nil {
+		state.Logger.Error(err)
+	}
+
+	var reviews []types.Review = []types.Review{}
+
+	err = pgxscan.ScanAll(&reviews, rows)
+
+	if err != nil {
+		state.Logger.Error(err)
+	}
+
+	err = GarbageCollect(state.Context, reviews)
+
+	if err != nil {
+		state.Logger.Error(err)
+	}
+}
 
 // The GC step is needed to kill any reviews whose parent has been deleted etc.
 func GarbageCollect(ctx context.Context, reviews []types.Review) error {

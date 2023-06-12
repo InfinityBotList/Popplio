@@ -5,13 +5,12 @@ import (
 	"popplio/routes/reviews/assets"
 	"popplio/state"
 	"popplio/types"
-	"popplio/utils"
-	"strings"
+	"popplio/webhooks/bothooks"
+	"popplio/webhooks/events"
 
 	docs "github.com/infinitybotlist/eureka/doclib"
 	"github.com/infinitybotlist/eureka/uapi"
 
-	"github.com/georgysavva/scany/v2/pgxscan"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-playground/validator/v10"
 )
@@ -21,12 +20,7 @@ type EditReview struct {
 	Stars   int32  `db:"stars" json:"stars" validate:"required,min=1,max=5" msg:"Stars must be between 1 and 5 stars"`
 }
 
-var (
-	compiledMessages = uapi.CompileValidationErrors(EditReview{})
-
-	reviewColsArr = utils.GetCols(types.Review{})
-	reviewCols    = strings.Join(reviewColsArr, ",")
-)
+var compiledMessages = uapi.CompileValidationErrors(EditReview{})
 
 func Docs() *docs.Doc {
 	return &docs.Doc{
@@ -63,7 +57,6 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	}
 
 	// Validate the payload
-
 	err := state.Validator.Struct(payload)
 
 	if err != nil {
@@ -74,9 +67,11 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	rid := chi.URLParam(r, "rid")
 
 	var author string
-	var botId string
+	var targetId string
+	var targetType string
+	var content string
 
-	err = state.Pool.QueryRow(d.Context, "SELECT author, bot_id FROM reviews WHERE id = $1", rid).Scan(&author, &botId)
+	err = state.Pool.QueryRow(d.Context, "SELECT author, target_id, target_type, content FROM reviews WHERE id = $1", rid).Scan(&author, &targetId, &targetType, &content)
 
 	if err != nil {
 		state.Logger.Error(err)
@@ -100,30 +95,29 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
+	switch targetType {
+	case "bot":
+		err = bothooks.Send(bothooks.With[events.WebhookBotEditReviewData]{
+			Data: events.WebhookBotEditReviewData{
+				ReviewID:   rid,
+				OldContent: content,
+				NewContent: payload.Content,
+			},
+			UserID: d.Auth.ID,
+			BotID:  targetId,
+		})
+
+		if err != nil {
+			state.Logger.Error(err)
+		}
+	default:
+		state.Logger.Error("Unknown target type: " + targetType)
+	}
+
 	// Trigger a garbage collection step to remove any orphaned reviews
-	go func() {
-		rows, err := state.Pool.Query(state.Context, "SELECT "+reviewCols+" FROM reviews WHERE bot_id = $1 ORDER BY created_at ASC", botId)
+	go assets.GCTrigger(targetId, targetType)
 
-		if err != nil {
-			state.Logger.Error(err)
-		}
-
-		var reviews []types.Review = []types.Review{}
-
-		err = pgxscan.ScanAll(&reviews, rows)
-
-		if err != nil {
-			state.Logger.Error(err)
-		}
-
-		err = assets.GarbageCollect(state.Context, reviews)
-
-		if err != nil {
-			state.Logger.Error(err)
-		}
-	}()
-
-	state.Redis.Del(d.Context, "rv-"+botId)
+	state.Redis.Del(d.Context, "rv-"+targetId+"-"+targetType)
 
 	return uapi.DefaultResponse(http.StatusNoContent)
 }

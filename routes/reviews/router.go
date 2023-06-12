@@ -2,9 +2,9 @@ package reviews
 
 import (
 	"popplio/api"
-	"popplio/routes/reviews/endpoints/add_bot_review"
+	"popplio/routes/reviews/endpoints/add_review"
 	"popplio/routes/reviews/endpoints/edit_review"
-	"popplio/routes/reviews/endpoints/get_bot_reviews"
+	"popplio/routes/reviews/endpoints/get_reviews"
 	"popplio/routes/reviews/endpoints/remove_review"
 
 	"github.com/go-chi/chi/v5"
@@ -23,19 +23,19 @@ func (b Router) Tag() (string, string) {
 
 func (b Router) Routes(r *chi.Mux) {
 	uapi.Route{
-		Pattern: "/bots/{id}/reviews",
-		OpId:    "get_bot_reviews",
+		Pattern: "/reviews/{target_id}",
+		OpId:    "get_reviews",
 		Method:  uapi.GET,
-		Docs:    get_bot_reviews.Docs,
-		Handler: get_bot_reviews.Route,
+		Docs:    get_reviews.Docs,
+		Handler: get_reviews.Route,
 	}.Route(r)
 
 	uapi.Route{
-		Pattern: "/users/{uid}/bots/{bid}/reviews",
-		OpId:    "add_bot_review",
+		Pattern: "/users/{uid}/reviews/{target_id}",
+		OpId:    "add_review",
 		Method:  uapi.POST,
-		Docs:    add_bot_review.Docs,
-		Handler: add_bot_review.Route,
+		Docs:    add_review.Docs,
+		Handler: add_review.Route,
 		Auth: []uapi.AuthType{
 			{
 				Type:   api.TargetTypeUser,

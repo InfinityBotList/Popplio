@@ -1,4 +1,4 @@
-package add_bot_review
+package add_review
 
 import (
 	"net/http"
@@ -6,16 +6,13 @@ import (
 	"popplio/routes/reviews/assets"
 	"popplio/state"
 	"popplio/types"
-	"popplio/utils"
 	"popplio/webhooks/bothooks"
 	"popplio/webhooks/events"
-	"strings"
 	"time"
 
 	docs "github.com/infinitybotlist/eureka/doclib"
 	"github.com/infinitybotlist/eureka/uapi"
 
-	"github.com/georgysavva/scany/v2/pgxscan"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-playground/validator/v10"
 )
@@ -26,17 +23,12 @@ type CreateReview struct {
 	ParentID string `db:"parent_id" json:"parent_id" validate:"omitempty,uuid" msg:"Parent ID must be a valid UUID if provided"`
 }
 
-var (
-	compiledMessages = uapi.CompileValidationErrors(CreateReview{})
-
-	reviewColsArr = utils.GetCols(types.Review{})
-	reviewCols    = strings.Join(reviewColsArr, ",")
-)
+var compiledMessages = uapi.CompileValidationErrors(CreateReview{})
 
 func Docs() *docs.Doc {
 	return &docs.Doc{
 		Summary:     "Create Bot Review",
-		Description: "Creates a new users review of a bot. A user may have only one `root review` per bot. Triggers a garbage collection step to remove any orphaned reviews afterwards. Returns 204 on success",
+		Description: "Creates a new review for an entity. A user may have only one `root review` per entity. Triggers a garbage collection step to remove any orphaned reviews afterwards. Returns 204 on success",
 		Params: []docs.Parameter{
 			{
 				Name:        "uid",
@@ -46,10 +38,17 @@ func Docs() *docs.Doc {
 				Schema:      docs.IdSchema,
 			},
 			{
-				Name:        "bid",
-				Description: "The bots ID or vanity",
+				Name:        "target_id",
+				Description: "The target id (bot/server ID)",
 				Required:    true,
 				In:          "path",
+				Schema:      docs.IdSchema,
+			},
+			{
+				Name:        "target_type",
+				Description: "The target type (bot/server)",
+				Required:    true,
+				In:          "query",
 				Schema:      docs.IdSchema,
 			},
 		},
@@ -98,24 +97,45 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		return uapi.ValidatorErrorResponse(compiledMessages, errors)
 	}
 
-	botId := chi.URLParam(r, "bid")
+	targetId := chi.URLParam(r, "target_id")
+	targetType := r.URL.Query().Get("target_type")
 
-	bot, err := utils.ResolveBot(d.Context, botId)
+	switch targetType {
+	case "bot":
+		// Check if the bot exists
+		var count int64
 
-	if err != nil {
-		state.Logger.Error(err)
-		return uapi.DefaultResponse(http.StatusInternalServerError)
-	}
+		err = state.Pool.QueryRow(d.Context, "SELECT COUNT(*) FROM bots WHERE bot_id = $1", targetId).Scan(&count)
 
-	if bot == "" {
-		return uapi.DefaultResponse(http.StatusNotFound)
+		if err != nil {
+			state.Logger.Error(err)
+			return uapi.DefaultResponse(http.StatusInternalServerError)
+		}
+
+		if count == 0 {
+			return uapi.HttpResponse{
+				Status: http.StatusBadRequest,
+				Json: types.ApiError{
+					Message: "Bot not found",
+					Error:   true,
+				},
+			}
+		}
+	default:
+		return uapi.HttpResponse{
+			Status: http.StatusBadRequest,
+			Json: types.ApiError{
+				Message: "Invalid target type",
+				Error:   true,
+			},
+		}
 	}
 
 	// Check if the user has already made a 'root' review for this bot
 	if payload.ParentID == "" {
 		var count int
 
-		err = state.Pool.QueryRow(d.Context, "SELECT COUNT(*) FROM reviews WHERE author = $1 AND bot_id = $2 AND parent_id IS NULL", d.Auth.ID, bot).Scan(&count)
+		err = state.Pool.QueryRow(d.Context, "SELECT COUNT(*) FROM reviews WHERE author = $1 AND target_id = $2 AND target_type = $3 AND parent_id IS NULL", d.Auth.ID, targetId, targetType).Scan(&count)
 
 		if err != nil {
 			state.Logger.Error(err)
@@ -126,7 +146,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 			return uapi.HttpResponse{
 				Status: http.StatusConflict,
 				Json: types.ApiError{
-					Message: "You have already made a root review for this bot",
+					Message: "You have already made a root review for this " + targetType,
 					Error:   true,
 				},
 			}
@@ -168,9 +188,9 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	// Create the review
 	var reviewId string
 	if payload.ParentID == "" {
-		err = state.Pool.QueryRow(d.Context, "INSERT INTO reviews (author, bot_id, content, stars) VALUES ($1, $2, $3, $4) RETURNING id", d.Auth.ID, bot, payload.Content, payload.Stars).Scan(&reviewId)
+		err = state.Pool.QueryRow(d.Context, "INSERT INTO reviews (author, target_id, target_type, content, stars) VALUES ($1, $2, $3, $4, $5) RETURNING id", d.Auth.ID, targetId, targetType, payload.Content, payload.Stars).Scan(&reviewId)
 	} else {
-		err = state.Pool.QueryRow(d.Context, "INSERT INTO reviews (author, bot_id, content, stars, parent_id) VALUES ($1, $2, $3, $4, $5) RETURNING id", d.Auth.ID, bot, payload.Content, payload.Stars, payload.ParentID).Scan(&reviewId)
+		err = state.Pool.QueryRow(d.Context, "INSERT INTO reviews (author, target_id, target_type, content, stars, parent_id) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id", d.Auth.ID, targetId, targetType, payload.Content, payload.Stars, payload.ParentID).Scan(&reviewId)
 	}
 
 	if err != nil {
@@ -178,43 +198,28 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
-	err = bothooks.Send(bothooks.With[events.WebhookBotNewReviewData]{
-		Data: events.WebhookBotNewReviewData{
-			ReviewID: reviewId,
-			Content:  payload.Content,
-		},
-		UserID: d.Auth.ID,
-		BotID:  bot,
-	})
+	switch targetType {
+	case "bot":
+		err = bothooks.Send(bothooks.With[events.WebhookBotNewReviewData]{
+			Data: events.WebhookBotNewReviewData{
+				ReviewID: reviewId,
+				Content:  payload.Content,
+			},
+			UserID: d.Auth.ID,
+			BotID:  targetId,
+		})
 
-	if err != nil {
-		state.Logger.Error(err)
+		if err != nil {
+			state.Logger.Error(err)
+		}
+	default:
+		state.Logger.Error("Unknown target type: " + targetType)
 	}
 
-	state.Redis.Del(d.Context, "rv-"+bot)
+	state.Redis.Del(d.Context, "rv-"+targetId+"-"+targetType)
 
 	// Trigger a garbage collection step to remove any orphaned reviews
-	go func() {
-		rows, err := state.Pool.Query(state.Context, "SELECT "+reviewCols+" FROM reviews WHERE bot_id = $1 ORDER BY created_at ASC", bot)
-
-		if err != nil {
-			state.Logger.Error(err)
-		}
-
-		var reviews []types.Review = []types.Review{}
-
-		err = pgxscan.ScanAll(&reviews, rows)
-
-		if err != nil {
-			state.Logger.Error(err)
-		}
-
-		err = assets.GarbageCollect(state.Context, reviews)
-
-		if err != nil {
-			state.Logger.Error(err)
-		}
-	}()
+	go assets.GCTrigger(targetId, targetType)
 
 	return uapi.DefaultResponse(http.StatusNoContent)
 }

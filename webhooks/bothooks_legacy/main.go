@@ -78,7 +78,7 @@ func SendLegacy(webhook WebhookPostLegacy) error {
 	isDiscordIntegration, _ := isDiscordAPIURL(webhookURL.String)
 
 	if isDiscordIntegration {
-		return errors.New("only supported on v2")
+		return errors.New("only supported in webhooks v2")
 	}
 
 	if utils.IsNone(webhookURL.String) {

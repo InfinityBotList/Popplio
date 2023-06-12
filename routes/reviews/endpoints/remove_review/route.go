@@ -5,19 +5,11 @@ import (
 	"popplio/routes/reviews/assets"
 	"popplio/state"
 	"popplio/types"
-	"popplio/utils"
-	"strings"
 
 	docs "github.com/infinitybotlist/eureka/doclib"
 	"github.com/infinitybotlist/eureka/uapi"
 
-	"github.com/georgysavva/scany/v2/pgxscan"
 	"github.com/go-chi/chi/v5"
-)
-
-var (
-	reviewColsArr = utils.GetCols(types.Review{})
-	reviewCols    = strings.Join(reviewColsArr, ",")
 )
 
 func Docs() *docs.Doc {
@@ -48,9 +40,10 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	rid := chi.URLParam(r, "rid")
 
 	var author string
-	var botId string
+	var targetId string
+	var targetType string
 
-	err := state.Pool.QueryRow(d.Context, "SELECT author, bot_id FROM reviews WHERE id = $1", rid).Scan(&author, &botId)
+	err := state.Pool.QueryRow(d.Context, "SELECT author, target_id, target_type FROM reviews WHERE id = $1", rid).Scan(&author, &targetId, &targetType)
 
 	if err != nil {
 		state.Logger.Error(err)
@@ -75,29 +68,9 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	}
 
 	// Trigger a garbage collection step to remove any orphaned reviews
-	go func() {
-		rows, err := state.Pool.Query(state.Context, "SELECT "+reviewCols+" FROM reviews WHERE bot_id = $1 ORDER BY created_at ASC", botId)
+	go assets.GCTrigger(targetId, targetType)
 
-		if err != nil {
-			state.Logger.Error(err)
-		}
-
-		var reviews []types.Review = []types.Review{}
-
-		err = pgxscan.ScanAll(&reviews, rows)
-
-		if err != nil {
-			state.Logger.Error(err)
-		}
-
-		err = assets.GarbageCollect(state.Context, reviews)
-
-		if err != nil {
-			state.Logger.Error(err)
-		}
-	}()
-
-	state.Redis.Del(d.Context, "rv-"+botId)
+	state.Redis.Del(d.Context, "rv-"+targetId+"-"+targetType)
 
 	return uapi.DefaultResponse(http.StatusNoContent)
 }

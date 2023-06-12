@@ -6,7 +6,7 @@ import (
 	"github.com/infinitybotlist/eureka/dovewing"
 )
 
-const WebhookTypeBotNewReview WebhookType = "BOT_NEW_REVIEW"
+const webhookTypeBotNewReview WebhookType = "BOT_NEW_REVIEW"
 
 type WebhookBotNewReviewData struct {
 	ReviewID string `json:"review_id"` // The ID of the review
@@ -14,7 +14,7 @@ type WebhookBotNewReviewData struct {
 }
 
 func (n WebhookBotNewReviewData) Event() WebhookType {
-	return WebhookTypeBotNewReview
+	return webhookTypeBotNewReview
 }
 
 func (n WebhookBotNewReviewData) CreateHookParams(creator *dovewing.DiscordUser, targets Target) *discordgo.WebhookParams {
@@ -40,7 +40,7 @@ func (n WebhookBotNewReviewData) CreateHookParams(creator *dovewing.DiscordUser,
 						Inline: true,
 					},
 					{
-						Name: "Review Content:",
+						Name: "Review Content",
 						Value: func() string {
 							if len(n.Content) > 1000 {
 								return n.Content[:1000] + "..."

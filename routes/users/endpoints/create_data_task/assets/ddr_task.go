@@ -102,74 +102,77 @@ func DataTask(taskId string, id string, ip string, del bool) {
 	for _, key := range keys {
 		addStatus(taskId, "Fetching data for table: "+key.TableName)
 
-		if key.ForeignTable == "users" {
-			sqlStmt := "SELECT * FROM " + key.TableName + " WHERE " + key.ColumnName + "= $1"
+		if key.ForeignTable != "users" {
+			addStatus(taskId, "Skipping table: "+key.TableName)
+			continue
+		}
 
-			data, err := state.Pool.Query(ctx, sqlStmt, id)
+		sqlStmt := "SELECT * FROM " + key.TableName + " WHERE " + key.ColumnName + "= $1"
 
-			if err != nil {
-				state.Logger.Error(err)
-			}
+		data, err := state.Pool.Query(ctx, sqlStmt, id)
 
-			var rows []map[string]any
+		if err != nil {
+			state.Logger.Error(err)
+		}
 
-			if err := pgxscan.ScanAll(&rows, data); err != nil {
-				state.Logger.Error(err)
+		var rows []map[string]any
 
-				addStatus(taskId, "ERROR: db error [catnip]: "+err.Error())
-				return
-			}
+		if err := pgxscan.ScanAll(&rows, data); err != nil {
+			state.Logger.Error(err)
 
-			if del {
-				if key.TableName == "team_members" {
-					// Ensure team is not empty
-					tmRows, err := state.Pool.Query(ctx, "SELECT COUNT(*) FROM team_members WHERE "+key.ColumnName+" = $1", id)
+			addStatus(taskId, "ERROR: db error [catnip]: "+err.Error())
+			return
+		}
 
-					if err != nil {
-						state.Logger.Error(err)
-
-						addStatus(taskId, "ERROR: db error [lungwort]: "+err.Error())
-						return
-					}
-
-					for tmRows.Next() {
-						var count int64
-
-						if err := tmRows.Scan(&count); err != nil {
-							state.Logger.Error(err)
-
-							addStatus(taskId, "ERROR: db error [poppy]: "+err.Error())
-							return
-						}
-
-						if count == 1 {
-							// Delete the team as well
-							_, err := state.Pool.Exec(ctx, "DELETE FROM teams WHERE id = $1", id)
-
-							if err != nil {
-								state.Logger.Error(err)
-
-								addStatus(taskId, "ERROR: db error [piplup]: "+err.Error())
-								return
-							}
-						}
-					}
-				}
-
-				sqlStmt = "DELETE FROM " + key.TableName + " WHERE " + key.ColumnName + "= $1"
-
-				_, err := state.Pool.Exec(ctx, sqlStmt, id)
+		if del {
+			if key.TableName == "team_members" {
+				// Ensure team is not empty
+				tmRows, err := state.Pool.Query(ctx, "SELECT COUNT(*) FROM team_members WHERE "+key.ColumnName+" = $1", id)
 
 				if err != nil {
 					state.Logger.Error(err)
 
-					addStatus(taskId, "ERROR: db error [primrose]: "+err.Error())
+					addStatus(taskId, "ERROR: db error [lungwort]: "+err.Error())
 					return
+				}
+
+				for tmRows.Next() {
+					var count int64
+
+					if err := tmRows.Scan(&count); err != nil {
+						state.Logger.Error(err)
+
+						addStatus(taskId, "ERROR: db error [poppy]: "+err.Error())
+						return
+					}
+
+					if count == 1 {
+						// Delete the team as well
+						_, err := state.Pool.Exec(ctx, "DELETE FROM teams WHERE id = $1", id)
+
+						if err != nil {
+							state.Logger.Error(err)
+
+							addStatus(taskId, "ERROR: db error [piplup]: "+err.Error())
+							return
+						}
+					}
 				}
 			}
 
-			finalDump[key.TableName] = rows
+			sqlStmt = "DELETE FROM " + key.TableName + " WHERE " + key.ColumnName + "= $1"
+
+			_, err := state.Pool.Exec(ctx, sqlStmt, id)
+
+			if err != nil {
+				state.Logger.Error(err)
+
+				addStatus(taskId, "ERROR: db error [primrose]: "+err.Error())
+				return
+			}
 		}
+
+		finalDump[key.TableName] = rows
 	}
 
 	// Delete from psql user_cache if `del` is true
