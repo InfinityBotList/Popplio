@@ -10,6 +10,7 @@ import (
 	"popplio/routes/bots/endpoints/get_bot_invite"
 	"popplio/routes/bots/endpoints/get_bot_meta"
 	"popplio/routes/bots/endpoints/get_bot_seo"
+	"popplio/routes/bots/endpoints/get_bot_token"
 	"popplio/routes/bots/endpoints/get_queue_bots"
 	"popplio/routes/bots/endpoints/get_random_bots"
 	"popplio/routes/bots/endpoints/patch_bot_settings"
@@ -173,6 +174,20 @@ func (b Router) Routes(r *chi.Mux) {
 		Method:  uapi.PATCH,
 		Docs:    patch_bot_webhook.Docs,
 		Handler: patch_bot_webhook.Route,
+		Auth: []uapi.AuthType{
+			{
+				URLVar: "uid",
+				Type:   api.TargetTypeUser,
+			},
+		},
+	}.Route(r)
+
+	uapi.Route{
+		Pattern: "/users/{uid}/bots/{bid}/token",
+		OpId:    "get_bot_token",
+		Method:  uapi.PATCH,
+		Docs:    get_bot_token.Docs,
+		Handler: get_bot_token.Route,
 		Auth: []uapi.AuthType{
 			{
 				URLVar: "uid",

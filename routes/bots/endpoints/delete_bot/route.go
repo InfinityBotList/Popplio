@@ -71,7 +71,31 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	utils.ClearBotCache(d.Context, id)
 
 	// Delete bot
-	_, err = state.Pool.Exec(d.Context, "DELETE FROM bots WHERE bot_id = $1", id)
+	tx, err := state.Pool.Begin(d.Context)
+
+	defer tx.Rollback(d.Context)
+
+	if err != nil {
+		state.Logger.Error(err)
+		return uapi.DefaultResponse(http.StatusInternalServerError)
+	}
+
+	_, err = tx.Exec(d.Context, "DELETE FROM bots WHERE bot_id = $1", id)
+
+	if err != nil {
+		state.Logger.Error(err)
+		return uapi.DefaultResponse(http.StatusInternalServerError)
+	}
+
+	// Delete generic entities
+	_, err = tx.Exec(d.Context, "DELETE FROM reviews WHERE target_id = $1 AND target_type = 'bot'", id)
+
+	if err != nil {
+		state.Logger.Error(err)
+		return uapi.DefaultResponse(http.StatusInternalServerError)
+	}
+
+	err = tx.Commit(d.Context)
 
 	if err != nil {
 		state.Logger.Error(err)
