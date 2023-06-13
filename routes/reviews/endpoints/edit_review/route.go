@@ -99,9 +99,11 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	case "bot":
 		err = bothooks.Send(bothooks.With[events.WebhookBotEditReviewData]{
 			Data: events.WebhookBotEditReviewData{
-				ReviewID:   rid,
-				OldContent: content,
-				NewContent: payload.Content,
+				ReviewID: rid,
+				Content: events.Changeset[string]{
+					Old: content,
+					New: payload.Content,
+				},
 			},
 			UserID: d.Auth.ID,
 			BotID:  targetId,

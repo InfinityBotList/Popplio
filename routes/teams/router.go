@@ -11,6 +11,7 @@ import (
 	"popplio/routes/teams/endpoints/get_team"
 	"popplio/routes/teams/endpoints/get_team_permissions"
 	"popplio/routes/teams/endpoints/get_team_seo"
+	"popplio/routes/teams/endpoints/patch_team_webhook"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/infinitybotlist/eureka/uapi"
@@ -83,6 +84,20 @@ func (b Router) Routes(r *chi.Mux) {
 		Method:  uapi.DELETE,
 		Docs:    delete_team.Docs,
 		Handler: delete_team.Route,
+		Auth: []uapi.AuthType{
+			{
+				Type:   api.TargetTypeUser,
+				URLVar: "uid",
+			},
+		},
+	}.Route(r)
+
+	uapi.Route{
+		Pattern: "/users/{uid}/teams/{tid}/webhook",
+		OpId:    "patch_team_webhook",
+		Method:  uapi.PATCH,
+		Docs:    patch_team_webhook.Docs,
+		Handler: patch_team_webhook.Route,
 		Auth: []uapi.AuthType{
 			{
 				Type:   api.TargetTypeUser,

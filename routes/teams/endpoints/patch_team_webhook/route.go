@@ -1,11 +1,10 @@
-package patch_bot_webhook
+package patch_team_webhook
 
 import (
 	"net/http"
 	"popplio/state"
 	"popplio/teams"
 	"popplio/types"
-	"popplio/utils"
 	"strings"
 
 	"github.com/go-chi/chi/v5"
@@ -15,9 +14,9 @@ import (
 
 func Docs() *docs.Doc {
 	return &docs.Doc{
-		Summary:     "Patch Bot Webhook",
-		Description: "Edits the webhook information for a bot. You must have 'Edit Bot Webhooks' in the team if the bot is in a team. Set `clear` to `true` to clear webhook settings. Returns 204 on success",
-		Req:         types.PatchBotWebhook{},
+		Summary:     "Patch Team Webhook",
+		Description: "Edits the webhook information for a team. You must have 'Edit Team Webhooks' in the team. Set `clear` to `true` to clear webhook settings. Returns 204 on success",
+		Req:         types.PatchTeamWebhook{},
 		Resp:        types.ApiError{},
 		Params: []docs.Parameter{
 			{
@@ -28,8 +27,8 @@ func Docs() *docs.Doc {
 				Schema:      docs.IdSchema,
 			},
 			{
-				Name:        "bid",
-				Description: "Bot ID",
+				Name:        "tid",
+				Description: "Team ID",
 				Required:    true,
 				In:          "path",
 				Schema:      docs.IdSchema,
@@ -39,36 +38,59 @@ func Docs() *docs.Doc {
 }
 
 func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
-	name := chi.URLParam(r, "bid")
+	teamId := chi.URLParam(r, "tid")
 
-	// Resolve bot ID
-	id, err := utils.ResolveBot(state.Context, name)
+	// Check team
+	var count int
+
+	err := state.Pool.QueryRow(d.Context, "SELECT COUNT(*) FROM teams WHERE id = $1", teamId).Scan(&count)
 
 	if err != nil {
 		state.Logger.Error(err)
 		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
-	if id == "" {
+	if count == 0 {
 		return uapi.DefaultResponse(http.StatusNotFound)
 	}
 
-	perms, err := utils.GetUserBotPerms(d.Context, d.Auth.ID, id)
+	// Ensure manager is a member of the team
+	var managerCount int
+
+	err = state.Pool.QueryRow(d.Context, "SELECT COUNT(*) FROM team_members WHERE team_id = $1 AND user_id = $2", teamId, d.Auth.ID).Scan(&managerCount)
 
 	if err != nil {
 		state.Logger.Error(err)
 		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
-	if !perms.Has(teams.TeamPermissionEditBotWebhooks) {
+	if managerCount == 0 {
 		return uapi.HttpResponse{
 			Status: http.StatusForbidden,
-			Json:   types.ApiError{Message: "You do not have permission to edit bot webhooks", Error: true},
+			Json:   types.ApiError{Message: "You are not a member of this team", Error: true},
+		}
+	}
+
+	// Get the manager's permissions
+	var managerPerms []types.TeamPermission
+	err = state.Pool.QueryRow(d.Context, "SELECT perms FROM team_members WHERE team_id = $1 AND user_id = $2", teamId, d.Auth.ID).Scan(&managerPerms)
+
+	if err != nil {
+		state.Logger.Error(err)
+		return uapi.DefaultResponse(http.StatusInternalServerError)
+	}
+
+	mp := teams.NewPermissionManager(managerPerms)
+
+	if !mp.Has(teams.TeamPermissionEditTeamWebhooks) {
+		return uapi.HttpResponse{
+			Status: http.StatusForbidden,
+			Json:   types.ApiError{Message: "You do not have permission to edit team webhooks", Error: true},
 		}
 	}
 
 	// Read payload from body
-	var payload types.PatchBotWebhook
+	var payload types.PatchTeamWebhook
 
 	hresp, ok := uapi.MarshalReq(r, &payload)
 
@@ -76,12 +98,9 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		return hresp
 	}
 
-	// Clear cache
-	utils.ClearBotCache(d.Context, id)
-
-	// Update the bot
+	// Update the team
 	if payload.Clear {
-		_, err = state.Pool.Exec(d.Context, "UPDATE bots SET webhook = NULL, web_auth = NULL WHERE bot_id = $1", id)
+		_, err = state.Pool.Exec(d.Context, "UPDATE teams SET webhook = NULL, web_auth = NULL WHERE id = $1", teamId)
 
 		if err != nil {
 			state.Logger.Error(err)
@@ -99,7 +118,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 			}
 		}
 
-		_, err = state.Pool.Exec(d.Context, "UPDATE bots SET webhook = $1 WHERE bot_id = $2", payload.WebhookURL, id)
+		_, err = state.Pool.Exec(d.Context, "UPDATE teams SET webhook = $1 WHERE id = $2", payload.WebhookURL, teamId)
 
 		if err != nil {
 			state.Logger.Error(err)
@@ -108,16 +127,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	}
 
 	if payload.WebhookSecret != "" {
-		_, err = state.Pool.Exec(d.Context, "UPDATE bots SET web_auth = $1 WHERE bot_id = $2", payload.WebhookSecret, id)
-
-		if err != nil {
-			state.Logger.Error(err)
-			return uapi.DefaultResponse(http.StatusInternalServerError)
-		}
-	}
-
-	if payload.WebhooksV2 != nil {
-		_, err = state.Pool.Exec(d.Context, "UPDATE bots SET webhooks_v2 = $1 WHERE bot_id = $2", payload.WebhooksV2, id)
+		_, err = state.Pool.Exec(d.Context, "UPDATE teams SET web_auth = $1 WHERE id = $2", payload.WebhookSecret, teamId)
 
 		if err != nil {
 			state.Logger.Error(err)

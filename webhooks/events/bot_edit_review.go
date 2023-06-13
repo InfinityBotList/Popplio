@@ -9,9 +9,8 @@ import (
 const webhookTypeBotEditReview WebhookType = "BOT_EDIT_REVIEW"
 
 type WebhookBotEditReviewData struct {
-	ReviewID   string `json:"review_id"`   // The ID of the review
-	OldContent string `json:"old_content"` // The old content of the review
-	NewContent string `json:"new_content"` // The new content of the review
+	ReviewID string            `json:"review_id"` // The ID of the review
+	Content  Changeset[string] `json:"content"`   // The content of the review
 }
 
 func (n WebhookBotEditReviewData) Event() WebhookType {
@@ -43,22 +42,22 @@ func (n WebhookBotEditReviewData) CreateHookParams(creator *dovewing.DiscordUser
 					{
 						Name: "Old Content",
 						Value: func() string {
-							if len(n.OldContent) > 1000 {
-								return n.OldContent[:1000] + "..."
+							if len(n.Content.Old) > 1000 {
+								return n.Content.Old[:1000] + "..."
 							}
 
-							return n.OldContent
+							return n.Content.Old
 						}(),
 						Inline: true,
 					},
 					{
 						Name: "New Content",
 						Value: func() string {
-							if len(n.NewContent) > 1000 {
-								return n.NewContent[:1000] + "..."
+							if len(n.Content.New) > 1000 {
+								return n.Content.New[:1000] + "..."
 							}
 
-							return n.NewContent
+							return n.Content.New
 						}(),
 						Inline: true,
 					},
@@ -80,12 +79,7 @@ func init() {
 		Tags: []string{
 			"Webhooks",
 		},
-		Description: `This webhook is sent when a user edits an existing review on a bot.
-
-The data of the webhook may differ based on its webhook type
-
-If the webhook type is WebhookTypeEditReview, the data will be of type WebhookEditReviewData
-`,
+		Description: `This webhook is sent when a user edits an existing review on a bot.`,
 		Format: WebhookResponse[WebhookBotEditReviewData]{
 			Type: WebhookBotEditReviewData{}.Event(),
 			Data: WebhookBotEditReviewData{},

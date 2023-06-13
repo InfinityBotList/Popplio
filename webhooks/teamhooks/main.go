@@ -1,11 +1,12 @@
-// Package bothooks implements a webhook driver for bots.
+// Package teamhooks implements a webhook driver for teams.
 //
 // A new webhook handler for a different entity can be created by creating a new folder here
-package bothooks
+package teamhooks
 
 import (
 	"errors"
 	"popplio/state"
+	"popplio/utils"
 	"popplio/webhooks/events"
 	"popplio/webhooks/sender"
 	"strings"
@@ -16,24 +17,24 @@ import (
 	jsoniter "github.com/json-iterator/go"
 )
 
-const EntityType = "BOT"
+const EntityType = "TEAM"
 
 var json = jsoniter.ConfigCompatibleWithStandardLibrary
 
 // Simple ergonomic webhook builder
 type With[T events.WebhookEvent] struct {
 	UserID string
-	BotID  string
+	TeamID string
 	Data   T
 }
 
-// Fills in Bot and Creator from IDs
+// Fills in Team and Creator from IDs
 func Send[T events.WebhookEvent](with With[T]) error {
 	if !strings.HasPrefix(string(with.Data.Event()), EntityType) {
 		return errors.New("invalid event type")
 	}
 
-	bot, err := dovewing.GetDiscordUser(state.Context, with.BotID)
+	team, err := utils.ResolveTeam(state.Context, with.TeamID)
 
 	if err != nil {
 		state.Logger.Error(err)
@@ -47,14 +48,14 @@ func Send[T events.WebhookEvent](with With[T]) error {
 		return err
 	}
 
-	state.Logger.Info("Sending webhook for bot " + bot.ID)
+	state.Logger.Info("Sending webhook for team " + team.ID)
 
 	entity := sender.WebhookEntity{
-		EntityID:   bot.ID,
-		EntityName: bot.Username,
+		EntityID:   team.ID,
+		EntityName: team.Name,
 		EntityType: EntityType,
 		DeleteWebhook: func() error {
-			_, err := state.Pool.Exec(state.Context, "UPDATE bots SET webhook = NULL WHERE bot_id = $1", bot.ID)
+			_, err := state.Pool.Exec(state.Context, "UPDATE teams SET webhook = NULL WHERE id = $1", with.TeamID)
 
 			if err != nil {
 				return err
@@ -67,7 +68,7 @@ func Send[T events.WebhookEvent](with With[T]) error {
 	resp := &events.WebhookResponse[T]{
 		Creator: user,
 		Targets: events.Target{
-			Bot: bot,
+			Team: team,
 		},
 		CreatedAt: time.Now().Unix(),
 		Type:      with.Data.Event(),
@@ -76,27 +77,21 @@ func Send[T events.WebhookEvent](with With[T]) error {
 
 	// Fetch the webhook url from db
 	var webhookURL string
-	var webhooksV2 bool
-	err = state.Pool.QueryRow(state.Context, "SELECT webhook, webhooks_v2 FROM bots WHERE bot_id = $1", bot.ID).Scan(&webhookURL, &webhooksV2)
+	err = state.Pool.QueryRow(state.Context, "SELECT webhook FROM teams WHERE id = $1", team.ID).Scan(&webhookURL)
 
 	if err != nil {
 		state.Logger.Error(err)
 		return errors.New("failed to fetch webhook url")
 	}
 
-	if !webhooksV2 {
-		state.Logger.Warn("webhooks v2 is not enabled for this bot, ignoring")
-		return nil
-	}
-
 	params := with.Data.CreateHookParams(resp.Creator, resp.Targets)
 
 	ok, err := sender.SendDiscord(
 		user.ID,
-		bot.Username,
+		team.Name,
 		webhookURL,
 		func() error {
-			_, err := state.Pool.Exec(state.Context, "UPDATE bots SET webhook = NULL WHERE bot_id = $1", bot.ID)
+			_, err := state.Pool.Exec(state.Context, "UPDATE teams SET webhook = NULL WHERE id = $1", team.ID)
 
 			if err != nil {
 				return err
@@ -117,7 +112,7 @@ func Send[T events.WebhookEvent](with With[T]) error {
 	}
 
 	var webhookSecret pgtype.Text
-	err = state.Pool.QueryRow(state.Context, "SELECT web_auth FROM bots WHERE bot_id = $1", bot.ID).Scan(&webhookSecret)
+	err = state.Pool.QueryRow(state.Context, "SELECT web_auth FROM teams WHERE id = $1", team.ID).Scan(&webhookSecret)
 
 	if err != nil {
 		state.Logger.Error(err)

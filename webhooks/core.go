@@ -6,6 +6,7 @@ import (
 	"popplio/webhooks/bothooks_legacy"
 	"popplio/webhooks/events"
 	"popplio/webhooks/sender"
+	"popplio/webhooks/teamhooks"
 
 	docs "github.com/infinitybotlist/eureka/doclib"
 )
@@ -21,7 +22,8 @@ type WebhookDriver interface {
 }
 
 var RegisteredDrivers = map[string]WebhookDriver{
-	bothooks.EntityType: bothooks.Driver{},
+	bothooks.EntityType:  bothooks.Driver{},
+	teamhooks.EntityType: teamhooks.Driver{},
 }
 
 // Setup code

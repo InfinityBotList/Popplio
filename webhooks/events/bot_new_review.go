@@ -68,12 +68,7 @@ func init() {
 		Tags: []string{
 			"Webhooks",
 		},
-		Description: `This webhook is sent when a user creates a new review on a bot.
-
-The data of the webhook may differ based on its webhook type
-
-If the webhook type is WebhookTypeNewReview, the data will be of type WebhookNewReviewData
-`,
+		Description: `This webhook is sent when a user creates a new review on a bot.`,
 		Format: WebhookResponse[WebhookBotNewReviewData]{
 			Type: WebhookBotNewReviewData{}.Event(),
 			Data: WebhookBotNewReviewData{},

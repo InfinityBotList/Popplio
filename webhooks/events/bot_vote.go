@@ -64,11 +64,7 @@ func init() {
 		Tags: []string{
 			"Webhooks",
 		},
-		Description: `This webhook is sent when a user votes for a bot.
-
-The data of the webhook may differ based on its webhook type
-
-If the webhook type is WebhookTypeVote, the data will be of type WebhookVoteData`,
+		Description: `This webhook is sent when a user votes for a bot.`,
 		Format: WebhookResponse[WebhookBotVoteData]{
 			Type: WebhookBotVoteData{}.Event(),
 			Data: WebhookBotVoteData{},

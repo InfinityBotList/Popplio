@@ -27,3 +27,9 @@ type PatchBotWebhook struct {
 	WebhooksV2    *bool  `json:"webhooks_v2"`
 	Clear         bool   `json:"clear"`
 }
+
+type PatchTeamWebhook struct {
+	WebhookURL    string `json:"webhook_url"`
+	WebhookSecret string `json:"webhook_secret"`
+	Clear         bool   `json:"clear"`
+}

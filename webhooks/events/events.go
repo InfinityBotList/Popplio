@@ -1,6 +1,8 @@
 package events
 
 import (
+	"popplio/types"
+
 	"github.com/bwmarrin/discordgo"
 	docs "github.com/infinitybotlist/eureka/doclib"
 	"github.com/infinitybotlist/eureka/dovewing"
@@ -14,8 +16,10 @@ type WebhookEvent interface {
 
 type WebhookType string
 
+// You can add targets here to extend the webhook system
 type Target struct {
-	Bot *dovewing.DiscordUser `json:"bot,omitempty" description:"If a bot event, the bot that the webhook is about"`
+	Bot  *dovewing.DiscordUser `json:"bot,omitempty" description:"If a bot event, the bot that the webhook is about"`
+	Team *types.Team           `json:"team,omitempty" description:"If a team event, the team that the webhook is about"`
 }
 
 // IMPL
@@ -40,4 +44,11 @@ func Setup() {
 	for _, event := range eventDocs {
 		event()
 	}
+}
+
+// Core structs
+// A changeset represents a change in a value
+type Changeset[T any] struct {
+	Old T `json:"old"`
+	New T `json:"new"`
 }
