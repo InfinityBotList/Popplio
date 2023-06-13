@@ -52,13 +52,10 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 
 	var app []types.AppResponse
 
-	var row pgx.Rows
-	var err error
-
 	// Check if the user is an admin
 	var admin bool
 
-	err = state.Pool.QueryRow(d.Context, "SELECT admin FROM users WHERE user_id = $1", d.Auth.ID).Scan(&admin)
+	err := state.Pool.QueryRow(d.Context, "SELECT admin FROM users WHERE user_id = $1", d.Auth.ID).Scan(&admin)
 
 	if err != nil {
 		state.Logger.Error(err)
@@ -85,16 +82,6 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 			state.Logger.Error(err)
 			return uapi.DefaultResponse(http.StatusInternalServerError)
 		}
-
-		if count == 0 {
-			return uapi.HttpResponse{
-				Json: types.AppListResponse{
-					Apps: []types.AppResponse{},
-				},
-			}
-		}
-
-		row, err = state.Pool.Query(d.Context, "SELECT "+appCols+" FROM apps")
 	} else {
 		err = state.Pool.QueryRow(d.Context, "SELECT COUNT(*) FROM apps WHERE user_id = $1", d.Auth.ID).Scan(&count)
 
@@ -102,15 +89,20 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 			state.Logger.Error(err)
 			return uapi.DefaultResponse(http.StatusInternalServerError)
 		}
+	}
 
-		if count == 0 {
-			return uapi.HttpResponse{
-				Json: types.AppListResponse{
-					Apps: []types.AppResponse{},
-				},
-			}
+	if count == 0 {
+		return uapi.HttpResponse{
+			Json: types.AppListResponse{
+				Apps: []types.AppResponse{},
+			},
 		}
+	}
 
+	var row pgx.Rows
+	if full == "true" {
+		row, err = state.Pool.Query(d.Context, "SELECT "+appCols+" FROM apps")
+	} else {
 		row, err = state.Pool.Query(d.Context, "SELECT "+appCols+" FROM apps WHERE user_id = $1", d.Auth.ID)
 	}
 
