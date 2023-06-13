@@ -76,9 +76,41 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		}
 	}
 
+	var count int64
+
 	if full == "true" {
+		err = state.Pool.QueryRow(d.Context, "SELECT COUNT(*) FROM apps").Scan(&count)
+
+		if err != nil {
+			state.Logger.Error(err)
+			return uapi.DefaultResponse(http.StatusInternalServerError)
+		}
+
+		if count == 0 {
+			return uapi.HttpResponse{
+				Json: types.AppListResponse{
+					Apps: []types.AppResponse{},
+				},
+			}
+		}
+
 		row, err = state.Pool.Query(d.Context, "SELECT "+appCols+" FROM apps")
 	} else {
+		err = state.Pool.QueryRow(d.Context, "SELECT COUNT(*) FROM apps WHERE user_id = $1", d.Auth.ID).Scan(&count)
+
+		if err != nil {
+			state.Logger.Error(err)
+			return uapi.DefaultResponse(http.StatusInternalServerError)
+		}
+
+		if count == 0 {
+			return uapi.HttpResponse{
+				Json: types.AppListResponse{
+					Apps: []types.AppResponse{},
+				},
+			}
+		}
+
 		row, err = state.Pool.Query(d.Context, "SELECT "+appCols+" FROM apps WHERE user_id = $1", d.Auth.ID)
 	}
 

@@ -17,12 +17,6 @@ import (
 
 var json = jsoniter.ConfigCompatibleWithStandardLibrary
 
-type ProfileUpdate struct {
-	About                 string       `json:"bio"`
-	ExtraLinks            []types.Link `json:"extra_links"`
-	CaptchaSponsorEnabled *bool        `json:"captcha_sponsor_enabled"`
-}
-
 func Docs() *docs.Doc {
 	return &docs.Doc{
 		Summary:     "Update User Profile",
@@ -36,7 +30,7 @@ func Docs() *docs.Doc {
 				Schema:      docs.IdSchema,
 			},
 		},
-		Req:  ProfileUpdate{},
+		Req:  types.ProfileUpdate{},
 		Resp: types.ApiError{},
 	}
 }
@@ -45,7 +39,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	id := chi.URLParam(r, "id")
 
 	// Fetch profile update from body
-	var profile ProfileUpdate
+	var profile types.ProfileUpdate
 
 	bodyBytes, err := io.ReadAll(r.Body)
 

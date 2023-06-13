@@ -74,3 +74,9 @@ type UserPerm struct {
 	IBLHDev               bool                  `db:"iblhdev" json:"iblhdev"`
 	Owner                 bool                  `db:"owner" json:"owner"`
 }
+
+type ProfileUpdate struct {
+	About                 string `json:"about"`
+	ExtraLinks            []Link `json:"extra_links"`
+	CaptchaSponsorEnabled *bool  `json:"captcha_sponsor_enabled"`
+}
