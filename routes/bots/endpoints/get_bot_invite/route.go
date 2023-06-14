@@ -32,7 +32,7 @@ Gets a bot invite by id or name
 				Schema:      docs.IdSchema,
 			},
 		},
-		Resp: types.Bot{},
+		Resp: types.Invite{},
 	}
 }
 
