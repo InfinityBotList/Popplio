@@ -93,7 +93,7 @@ var TeamPermDetails = []types.PermDetailMap{
 
 	// Team permissions
 	{ID: TeamPermissionEditTeamInfo, Name: "Edit Team Information", Desc: "Edit the team's name and avatar", Group: "Team"},
-	{ID: TeamPermissionAddTeamMembers, Name: "Add Team Members", Desc: "Add team members to the team. Also needs 'Edit Team Member Permissions'", Group: "Team"},
+	{ID: TeamPermissionAddTeamMembers, Name: "Add Team Members", Desc: "Add team members to the team. Does **NOT** need 'Edit Team Member Permissions'", Group: "Team"},
 	{ID: TeamPermissionRemoveTeamMembers, Name: "Remove Team Members", Desc: "Remove team members from the team if they have all the permissions of the user they are removing. Does **NOT** need 'Edit Team Member Permissions'", Group: "Team"},
 	{ID: TeamPermissionEditTeamMemberPermissions, Name: "Edit Team Member Permissions", Desc: "Edit team members' permissions", Group: "Team"},
 	{ID: TeamPermissionEditTeamWebhooks, Name: "Edit Team Webhooks", Desc: "Edit team webhook settings. Note that 'Test Team Webhooks' is a separate permission and is required to test webhooks.", Group: "Team"},

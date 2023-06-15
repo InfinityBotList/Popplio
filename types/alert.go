@@ -33,5 +33,12 @@ type Alert struct {
 }
 
 type AlertList struct {
-	Alerts []Alert `json:"alerts" description:"List of alerts"`
+	UnackedCount uint64  `json:"unacked_count" description:"The number of unacknowledged alerts"`
+	Alerts       []Alert `json:"alerts" description:"List of alerts"`
+}
+
+type FeaturedUserAlerts struct {
+	UnackedCount uint64  `json:"unacked_count" description:"The number of unacknowledged alerts"`
+	Unacked      []Alert `json:"unacked" description:"List of featured unacknowledged alerts"`
+	Acked        []Alert `json:"acked" description:"List of featured acknowledged alerts"`
 }

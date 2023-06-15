@@ -27,7 +27,7 @@ func Docs() *docs.Doc {
 	return &docs.Doc{
 		Summary:     "Get All Packs",
 		Description: "Gets all packs on the list. Returns a ``Index`` object",
-		Resp:        types.PagedResult[types.IndexBotPack]{},
+		Resp:        types.PagedResult[[]types.IndexBotPack]{},
 	}
 }
 
@@ -92,7 +92,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
-	data := types.PagedResult[types.IndexBotPack]{
+	data := types.PagedResult[[]types.IndexBotPack]{
 		Count:   count,
 		PerPage: perPage,
 		Results: packs,

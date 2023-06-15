@@ -34,7 +34,7 @@ func Docs() *docs.Doc {
 				Schema:      docs.IdSchema,
 			},
 		},
-		Resp: types.PagedResult[types.UserVote]{},
+		Resp: types.PagedResult[[]types.UserVote]{},
 	}
 }
 
@@ -93,7 +93,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
-	data := types.PagedResult[types.UserVote]{
+	data := types.PagedResult[[]types.UserVote]{
 		Count:   count,
 		PerPage: perPage,
 		Results: voteParsed,

@@ -19,7 +19,7 @@ func (b Router) Tag() (string, string) {
 
 func (b Router) Routes(r *chi.Mux) {
 	uapi.Route{
-		Pattern: "/users/{uid}/webhooks",
+		Pattern: "/users/{uid}/webhooks/{target_id}",
 		OpId:    "get_webhook_logs",
 		Method:  uapi.POST,
 		Docs:    get_webhook_logs.Docs,

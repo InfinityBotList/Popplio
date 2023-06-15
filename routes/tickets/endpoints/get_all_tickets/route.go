@@ -37,7 +37,7 @@ func Docs() *docs.Doc {
 				Schema:      docs.IdSchema,
 			},
 		},
-		Resp: types.PagedResult[types.Ticket]{},
+		Resp: types.PagedResult[[]types.Ticket]{},
 	}
 }
 
@@ -138,7 +138,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
-	data := types.PagedResult[types.Ticket]{
+	data := types.PagedResult[[]types.Ticket]{
 		Count:   count,
 		PerPage: perPage,
 		Results: tickets,

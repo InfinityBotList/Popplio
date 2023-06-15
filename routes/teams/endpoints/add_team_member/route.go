@@ -120,13 +120,6 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		}
 	}
 
-	if !mp.Has(teams.TeamPermissionEditTeamMemberPermissions) {
-		return uapi.HttpResponse{
-			Status: http.StatusForbidden,
-			Json:   types.ApiError{Message: "You do not have permission to edi member permissions which is needed to add members", Error: true},
-		}
-	}
-
 	perms, err := assets.CheckPerms(managerPerms, []types.TeamPermission{}, payload.Perms)
 
 	if err != nil {

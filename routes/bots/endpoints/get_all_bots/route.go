@@ -29,7 +29,7 @@ func Docs() *docs.Doc {
 	return &docs.Doc{
 		Summary:     "Get All Bots",
 		Description: "Gets all bots on the list. Returns a set of paginated ``IndexBot`` objects",
-		Resp:        types.PagedResult[types.IndexBot]{},
+		Resp:        types.PagedResult[[]types.IndexBot]{},
 		Params: []docs.Parameter{
 			{
 				Name:        "page",
@@ -124,7 +124,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
-	data := types.PagedResult[types.IndexBot]{
+	data := types.PagedResult[[]types.IndexBot]{
 		Count:   count,
 		Results: bots,
 		PerPage: perPage,

@@ -50,7 +50,7 @@ type OauthUser struct {
 type PagedResult[T any] struct {
 	Count   uint64 `json:"count"`
 	PerPage uint64 `json:"per_page"`
-	Results []T    `json:"results"`
+	Results T      `json:"results"`
 }
 
 type TokenResponse struct {

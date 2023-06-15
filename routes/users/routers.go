@@ -8,7 +8,6 @@ import (
 	"popplio/routes/users/endpoints/get_data_task"
 	"popplio/routes/users/endpoints/get_notification_info"
 	"popplio/routes/users/endpoints/get_user"
-	"popplio/routes/users/endpoints/get_user_alerts"
 	"popplio/routes/users/endpoints/get_user_notifications"
 	"popplio/routes/users/endpoints/get_user_perms"
 	"popplio/routes/users/endpoints/get_user_reminders"
@@ -142,20 +141,6 @@ func (b Router) Routes(r *chi.Mux) {
 		Method:  uapi.DELETE,
 		Docs:    delete_user_notifications.Docs,
 		Handler: delete_user_notifications.Route,
-		Auth: []uapi.AuthType{
-			{
-				URLVar: "id",
-				Type:   api.TargetTypeUser,
-			},
-		},
-	}.Route(r)
-
-	uapi.Route{
-		Pattern: "/users/{id}/alerts",
-		OpId:    "get_user_alerts",
-		Method:  uapi.GET,
-		Docs:    get_user_alerts.Docs,
-		Handler: get_user_alerts.Route,
 		Auth: []uapi.AuthType{
 			{
 				URLVar: "id",

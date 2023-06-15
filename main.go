@@ -12,6 +12,7 @@ import (
 	"popplio/constants"
 	"popplio/notifications"
 	"popplio/partners"
+	"popplio/routes/alerts"
 	"popplio/routes/apps"
 	"popplio/routes/blogs"
 	"popplio/routes/bots"
@@ -77,7 +78,7 @@ func corsMiddleware(next http.Handler) http.Handler {
 
 		w.Header().Set("Access-Control-Allow-Origin", r.Header.Get("Origin"))
 		w.Header().Set("Access-Control-Allow-Credentials", "true")
-		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Client")
+		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Client, X-Client-Compat")
 		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE")
 
 		if r.Method == "OPTIONS" {
@@ -151,6 +152,7 @@ func main() {
 		apps.Router{},
 		reviews.Router{},
 		platform.Router{},
+		alerts.Router{},
 	}
 
 	for _, router := range routers {
