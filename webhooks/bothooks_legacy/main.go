@@ -26,15 +26,15 @@ type WebhookPostLegacy struct {
 }
 
 type WebhookDataLegacy struct {
-	Votes        int                   `json:"votes"`
-	UserID       string                `json:"user"`
-	UserObj      *dovewing.DiscordUser `json:"userObj"`
-	BotObj       *dovewing.DiscordUser `json:"botObj"`
-	BotID        string                `json:"bot"`
-	UserIDLegacy string                `json:"userID"`
-	BotIDLegacy  string                `json:"botID"`
-	Test         bool                  `json:"test"`
-	Time         int64                 `json:"time"`
+	Votes        int                    `json:"votes"`
+	UserID       string                 `json:"user"`
+	UserObj      *dovewing.PlatformUser `json:"userObj"`
+	BotObj       *dovewing.PlatformUser `json:"botObj"`
+	BotID        string                 `json:"bot"`
+	UserIDLegacy string                 `json:"userID"`
+	BotIDLegacy  string                 `json:"botID"`
+	Test         bool                   `json:"test"`
+	Time         int64                  `json:"time"`
 }
 
 func isDiscordAPIURL(url string) (bool, string) {

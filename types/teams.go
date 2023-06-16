@@ -25,9 +25,9 @@ type Team struct {
 }
 
 type TeamMember struct {
-	User      *dovewing.DiscordUser `json:"user"`
-	Perms     []TeamPermission      `json:"perms"`
-	CreatedAt time.Time             `json:"created_at"`
+	User      *dovewing.PlatformUser `json:"user"`
+	Perms     []TeamPermission       `json:"perms"`
+	CreatedAt time.Time              `json:"created_at"`
 }
 
 type CreateTeam struct {

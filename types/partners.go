@@ -13,7 +13,7 @@ type Partner struct {
 	UserID string `json:"-" validate:"required,numeric"`
 
 	// Internal field
-	User *dovewing.DiscordUser `json:"user"`
+	User *dovewing.PlatformUser `json:"user"`
 }
 
 type PartnerList struct {

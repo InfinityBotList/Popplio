@@ -17,7 +17,7 @@ func (n WebhookTeamEditData) Event() WebhookType {
 	return webhookTypeTeamEdit
 }
 
-func (n WebhookTeamEditData) CreateHookParams(creator *dovewing.DiscordUser, targets Target) *discordgo.WebhookParams {
+func (n WebhookTeamEditData) CreateHookParams(creator *dovewing.PlatformUser, targets Target) *discordgo.WebhookParams {
 	return &discordgo.WebhookParams{
 		Embeds: []*discordgo.MessageEmbed{
 			{
@@ -26,7 +26,7 @@ func (n WebhookTeamEditData) CreateHookParams(creator *dovewing.DiscordUser, tar
 					URL: targets.Team.Avatar,
 				},
 				Title:       "📝 Team Update!",
-				Description: ":heart:" + creator.Username + "#" + creator.Discriminator + " has updated the name/description of your team " + targets.Team.Name,
+				Description: ":heart: " + creator.DisplayName + " has updated the name/description of your team " + targets.Team.Name,
 				Color:       0x8A6BFD,
 				Fields: []*discordgo.MessageEmbedField{
 					{

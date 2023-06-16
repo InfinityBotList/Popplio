@@ -33,7 +33,7 @@ func Docs() *docs.Doc {
 				Schema:      docs.IdSchema,
 			},
 		},
-		Resp: dovewing.DiscordUser{},
+		Resp: dovewing.PlatformUser{},
 	}
 }
 

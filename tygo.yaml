@@ -2,13 +2,13 @@ packages:
   - path: "popplio/types"
     output_path: "/iblcdn/public/dev/bindings/popplio/types.ts"
     frontmatter: |
-      import { DiscordUser } from "./eureka-dovewing"
+      import { PlatformUser } from "./eureka-dovewing"
       import { TeamPermissions } from "./team-perms"
     type_mappings:
       time.Time: "string /* RFC3339 */"
       pgtype.Text: "string | null /* nullable */"
       pgtype.UUID: "string /* uuid */"
-      dovewing.DiscordUser: DiscordUser /* from eureka-dovewing.ts */
+      dovewing.PlatformUser: PlatformUser /* from eureka-dovewing.ts */
       teams.PermDetailMap: PermDetailMap /* from teams-misc.ts */
       pgtype.Timestamptz: "string | null /* RFC3339, nullable */"
         

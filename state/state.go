@@ -56,7 +56,7 @@ func nonVulgar(fl validator.FieldLevel) bool {
 	}
 }
 
-func updateDb(u *dovewing.DiscordUser) error {
+func updateDb(u *dovewing.PlatformUser) error {
 	if u.Bot {
 		_, err := Pool.Exec(Context, "UPDATE bots SET queue_name = $1, queue_avatar = $2 WHERE bot_id = $3", u.Username, u.Avatar, u.ID)
 
@@ -134,13 +134,15 @@ func Setup() {
 
 	// Load dovewing state
 	dovewing.SetState(&dovewing.State{
-		Discord:        Discord,
+		Discord: &dovewing.DiscordState{
+			Session:     Discord,
+			UpdateCache: updateDb,
+		},
 		Pool:           Pool,
 		Logger:         Logger,
 		PreferredGuild: Config.Servers.Main,
 		Context:        Context,
 		Redis:          Redis,
-		UpdateCache:    updateDb,
 	})
 
 	c, err := paypal.NewClient(Config.Meta.PaypalClientID, Config.Meta.PaypalSecret, func() string {

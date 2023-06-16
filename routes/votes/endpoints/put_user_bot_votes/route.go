@@ -272,7 +272,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 					URL: botObj.Avatar,
 				},
 				Title:       "🎉 Vote Count Updated!",
-				Description: ":heart:" + userObj.Username + "#" + userObj.Discriminator + " has voted for " + botObj.Username,
+				Description: ":heart:" + userObj.DisplayName + " has voted for " + botObj.Username,
 				Color:       0x8A6BFD,
 				Fields: []*discordgo.MessageEmbedField{
 					{

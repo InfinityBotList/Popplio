@@ -73,7 +73,7 @@ func extraLogicResubmit(d uapi.RouteData, p types.Position, answers map[string]s
 					},
 					{
 						Name:  "Bot Name",
-						Value: user.Username + "#" + user.Discriminator + " (" + user.ID + ")",
+						Value: user.DisplayName + " (" + user.ID + ")",
 					},
 					{
 						Name:   "Reason",

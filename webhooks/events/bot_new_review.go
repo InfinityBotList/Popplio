@@ -17,7 +17,7 @@ func (n WebhookBotNewReviewData) Event() WebhookType {
 	return webhookTypeBotNewReview
 }
 
-func (n WebhookBotNewReviewData) CreateHookParams(creator *dovewing.DiscordUser, targets Target) *discordgo.WebhookParams {
+func (n WebhookBotNewReviewData) CreateHookParams(creator *dovewing.PlatformUser, targets Target) *discordgo.WebhookParams {
 	return &discordgo.WebhookParams{
 		Embeds: []*discordgo.MessageEmbed{
 			{
@@ -26,7 +26,7 @@ func (n WebhookBotNewReviewData) CreateHookParams(creator *dovewing.DiscordUser,
 					URL: targets.Bot.Avatar,
 				},
 				Title:       "📝 New Review!",
-				Description: ":heart:" + creator.Username + "#" + creator.Discriminator + " has left a review for " + targets.Bot.Username,
+				Description: ":heart: " + creator.DisplayName + " has left a review for " + targets.Bot.Username,
 				Color:       0x8A6BFD,
 				Fields: []*discordgo.MessageEmbedField{
 					{
