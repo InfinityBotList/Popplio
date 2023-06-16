@@ -1,6 +1,7 @@
 package current_status
 
 import (
+	"fmt"
 	"net/http"
 	"net/url"
 	"popplio/state"
@@ -96,6 +97,11 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		if err != nil {
 			return uapi.DefaultResponse(http.StatusInternalServerError)
 		}
+
+		// Get type of monitor key
+		monitorType := listStatus["monitors"].([]interface{})
+
+		fmt.Println(monitorType)
 	default:
 		return uapi.HttpResponse{
 			Status: http.StatusBadRequest,
