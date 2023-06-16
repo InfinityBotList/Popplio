@@ -1,4 +1,4 @@
-package get_bot_seo
+package get_pack_seo
 
 import (
 	"net/http"
@@ -6,10 +6,8 @@ import (
 
 	"popplio/state"
 	"popplio/types"
-	"popplio/utils"
 
 	docs "github.com/infinitybotlist/eureka/doclib"
-	"github.com/infinitybotlist/eureka/dovewing"
 	"github.com/infinitybotlist/eureka/uapi"
 
 	"github.com/go-chi/chi/v5"
@@ -17,13 +15,13 @@ import (
 
 func Docs() *docs.Doc {
 	return &docs.Doc{
-		Summary:     "Get Bot SEO Info",
-		Description: "Gets the minimal SEO information about a bot for embed/search purposes. Used by v4 website for meta tags",
+		Summary:     "Get Pack SEO Info",
+		Description: "Gets the minimal SEO information about a pack for embed/search purposes. Used by v4 website for meta tags",
 		Resp:        types.SEO{},
 		Params: []docs.Parameter{
 			{
 				Name:        "id",
-				Description: "The bots ID, name or vanity",
+				Description: "The packs ID, name or vanity",
 				Required:    true,
 				In:          "path",
 				Schema:      docs.IdSchema,
@@ -33,9 +31,9 @@ func Docs() *docs.Doc {
 }
 
 func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
-	name := chi.URLParam(r, "id")
+	id := chi.URLParam(r, "id")
 
-	cache := state.Redis.Get(d.Context, "seob:"+name).Val()
+	cache := state.Redis.Get(d.Context, "seop:"+id).Val()
 	if cache != "" {
 		return uapi.HttpResponse{
 			Data: cache,
@@ -45,43 +43,39 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		}
 	}
 
-	id, err := utils.ResolveBot(state.Context, name)
+	var count int64
+
+	err := state.Pool.QueryRow(d.Context, "SELECT COUNT(*) FROM packs WHERE url = $1", id).Scan(&count)
 
 	if err != nil {
 		state.Logger.Error(err)
 		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
-	if id == "" {
+	if count == 0 {
 		return uapi.DefaultResponse(http.StatusNotFound)
 	}
 
 	var short string
-	err = state.Pool.QueryRow(d.Context, "SELECT short FROM bots WHERE bot_id = $1", id).Scan(&short)
+	var packName string
+	err = state.Pool.QueryRow(d.Context, "SELECT name, short FROM packs WHERE url = $1", id).Scan(&packName, &short)
 
 	if err != nil {
 		state.Logger.Error(err)
 		return uapi.DefaultResponse(http.StatusNotFound)
 	}
 
-	bot, err := dovewing.GetDiscordUser(d.Context, id)
-
-	if err != nil {
-		state.Logger.Error(err)
-		return uapi.DefaultResponse(http.StatusInternalServerError)
-	}
-
 	seoData := types.SEO{
-		ID:             bot.ID,
-		Name:           bot.DisplayName,
-		UsernameLegacy: bot.DisplayName,
-		Avatar:         bot.Avatar,
+		ID:             id,
+		Name:           packName,
+		UsernameLegacy: packName,
+		Avatar:         "",
 		Short:          short,
 	}
 
 	return uapi.HttpResponse{
 		Json:      seoData,
-		CacheKey:  "seob:" + name,
+		CacheKey:  "seop:" + id,
 		CacheTime: 30 * time.Minute,
 	}
 }

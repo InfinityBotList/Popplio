@@ -61,10 +61,11 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	}
 
 	seo := types.SEO{
-		ID:       user.ID,
-		Username: user.Username,
-		Avatar:   user.Avatar,
-		Short:    about,
+		ID:             user.ID,
+		Name:           user.DisplayName,
+		UsernameLegacy: user.DisplayName,
+		Avatar:         user.Avatar,
+		Short:          about,
 	}
 
 	return uapi.HttpResponse{

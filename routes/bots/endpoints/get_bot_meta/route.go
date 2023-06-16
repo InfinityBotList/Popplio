@@ -17,8 +17,7 @@ func Docs() *docs.Doc {
 	return &docs.Doc{
 		Summary:     "Get Bot Metadata",
 		Description: "Gets the metadata of a bot such as whether it is already in the database/bot id checks",
-		Req:         assets.DiscordBotMeta{},
-		Resp:        types.ApiError{},
+		Resp:        assets.DiscordBotMeta{},
 		Params: []docs.Parameter{
 			{
 				Name:        "uid",

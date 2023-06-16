@@ -26,10 +26,11 @@ func NewInterval(d time.Duration) Interval {
 
 // SEO object (minified bot/user/server for seo purposes)
 type SEO struct {
-	Username string `json:"username" description:"Username of the entity"`
-	ID       string `json:"id" description:"ID of the entity"`
-	Avatar   string `json:"avatar" description:"The entities resolved avatar URL (not just hash)"`
-	Short    string `json:"short" description:"Short description of the entity"`
+	Name           string `json:"name" description:"Name of the entity"`
+	UsernameLegacy string `json:"username" description:"Legacy Field, to be removed"`
+	ID             string `json:"id" description:"ID of the entity"`
+	Avatar         string `json:"avatar" description:"The entities resolved avatar URL (not just hash)"`
+	Short          string `json:"short" description:"Short description of the entity"`
 }
 
 // This represents a IBL Popplio API Error

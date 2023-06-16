@@ -6,6 +6,7 @@ import (
 	"popplio/routes/packs/endpoints/delete_pack"
 	"popplio/routes/packs/endpoints/get_all_packs"
 	"popplio/routes/packs/endpoints/get_pack"
+	"popplio/routes/packs/endpoints/get_pack_seo"
 	"popplio/routes/packs/endpoints/patch_pack"
 
 	"github.com/go-chi/chi/v5"
@@ -29,6 +30,14 @@ func (b Router) Routes(r *chi.Mux) {
 		Method:  uapi.GET,
 		Docs:    get_pack.Docs,
 		Handler: get_pack.Route,
+	}.Route(r)
+
+	uapi.Route{
+		Pattern: "/packs/{id}/seo",
+		OpId:    "get_pack_seo",
+		Method:  uapi.GET,
+		Docs:    get_pack_seo.Docs,
+		Handler: get_pack_seo.Route,
 	}.Route(r)
 
 	uapi.Route{
