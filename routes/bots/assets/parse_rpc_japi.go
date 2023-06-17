@@ -6,26 +6,13 @@ import (
 	"fmt"
 	"net/http"
 	"popplio/state"
+	"popplio/types"
 	"strconv"
 	"time"
 
 	"github.com/infinitybotlist/eureka/dovewing"
 	"go.uber.org/zap"
 )
-
-type DiscordBotMeta struct {
-	BotID       string   `json:"bot_id" description:"The bot's ID"`
-	ClientID    string   `json:"client_id" description:"The bot's client ID"`
-	Name        string   `json:"name" description:"The bot's name"`
-	Avatar      string   `json:"avatar" description:"The bot's avatar"`
-	ListType    string   `json:"list_type" description:"If this is empty, then it is not on the list"`
-	GuildCount  int      `json:"guild_count" description:"The bot's guild count"`
-	BotPublic   bool     `json:"bot_public" description:"Whether or not the bot is public"`
-	Flags       []string `json:"flags" description:"The bot's flags"`
-	Description string   `json:"description" description:"The suggested description for the bot"`
-	Tags        []string `json:"tags" description:"The suggested tags for the bot"`
-	Fallback    bool     `json:"fallback" description:"Whether or not we had to fallback to RPC from JAPI.rest"`
-}
 
 type japidata struct {
 	Cached bool `json:"cached"`
@@ -48,7 +35,7 @@ type japidata struct {
 	} `json:"data"`
 }
 
-func CheckBot(fallbackBotId, clientId string) (*DiscordBotMeta, error) {
+func CheckBot(fallbackBotId, clientId string) (*types.DiscordBotMeta, error) {
 	// Convert client id to int
 	cidInt, err := strconv.ParseInt(clientId, 10, 64)
 
@@ -97,7 +84,7 @@ func CheckBot(fallbackBotId, clientId string) (*DiscordBotMeta, error) {
 		return nil, err
 	}
 
-	var metadata *DiscordBotMeta
+	var metadata *types.DiscordBotMeta
 
 	if data.Data.Message != "" {
 		// Fallback to RPC, but this is less accurate
@@ -148,7 +135,7 @@ func CheckBot(fallbackBotId, clientId string) (*DiscordBotMeta, error) {
 			return nil, errors.New("the client id provided is not an actual bot id")
 		}
 
-		metadata = &DiscordBotMeta{
+		metadata = &types.DiscordBotMeta{
 			BotID:     fallbackBotId,
 			ClientID:  clientId,
 			Name:      user.Username,
@@ -183,7 +170,7 @@ func CheckBot(fallbackBotId, clientId string) (*DiscordBotMeta, error) {
 			return nil, errors.New("please contact support, an error has occured while trying to fetch basic info")
 		}
 
-		metadata = &DiscordBotMeta{
+		metadata = &types.DiscordBotMeta{
 			BotID:       data.Data.Bot.ID,
 			ClientID:    clientId,
 			Name:        user.Username,

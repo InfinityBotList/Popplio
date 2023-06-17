@@ -45,8 +45,9 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	rctx = context.WithValue(rctx, chi.RouteCtxKey, ctx)
 	authType := []uapi.AuthType{
 		{
-			URLVar: "test",
-			Type:   payload.AuthType,
+			URLVar:       "test",
+			Type:         payload.AuthType,
+			AllowedScope: "ban_exempt",
 		},
 	}
 
