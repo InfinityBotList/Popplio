@@ -186,7 +186,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	}
 
 	// Send message to mod logs
-	state.Discord.ChannelMessageSendComplex(state.Config.Channels.ModLogs, &discordgo.MessageSend{
+	state.Discord.Session.ChannelMessageSendComplex(state.Config.Channels.ModLogs, &discordgo.MessageSend{
 		Content: state.Config.Meta.UrgentMentions,
 		Embeds: []*discordgo.MessageEmbed{
 			{

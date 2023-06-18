@@ -33,14 +33,14 @@ func Send[T events.WebhookEvent](with With[T]) error {
 		return errors.New("invalid event type")
 	}
 
-	bot, err := dovewing.GetDiscordUser(state.Context, with.BotID)
+	bot, err := dovewing.GetUser(state.Context, with.BotID, state.Discord)
 
 	if err != nil {
 		state.Logger.Error(err)
 		return err
 	}
 
-	user, err := dovewing.GetDiscordUser(state.Context, with.UserID)
+	user, err := dovewing.GetUser(state.Context, with.UserID, state.Discord)
 
 	if err != nil {
 		state.Logger.Error(err)

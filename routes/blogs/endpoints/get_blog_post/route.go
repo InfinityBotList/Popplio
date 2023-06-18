@@ -68,7 +68,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
-	blogPost.Author, err = dovewing.GetDiscordUser(d.Context, blogPost.UserID)
+	blogPost.Author, err = dovewing.GetUser(d.Context, blogPost.UserID, state.Discord)
 
 	if err != nil {
 		state.Logger.Error(err)

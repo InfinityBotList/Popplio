@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/infinitybotlist/eureka/dovewing"
+	"github.com/jackc/pgx/v5/pgtype"
 	jsoniter "github.com/json-iterator/go"
 )
 
@@ -46,7 +47,7 @@ func vrCheck() {
 		}
 
 		if !voteParsed.HasVoted {
-			botInf, err := dovewing.GetDiscordUser(state.Context, botId)
+			botInf, err := dovewing.GetUser(state.Context, botId, state.Discord)
 
 			if err != nil {
 				state.Logger.Error("Error finding bot info:", err)
@@ -55,6 +56,7 @@ func vrCheck() {
 
 			message := types.Alert{
 				Type:    types.AlertTypeInfo,
+				URL:     pgtype.Text{String: "https://infinitybotlist.com/bot/" + botId + "/vote", Valid: true},
 				Message: "You can vote for " + botInf.Username + " now!",
 				Title:   "Vote for " + botInf.Username + "!",
 				Icon:    botInf.Avatar,

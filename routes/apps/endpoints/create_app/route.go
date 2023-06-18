@@ -225,7 +225,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		channel = position.Channel()
 	}
 
-	_, err = state.Discord.ChannelMessageSendComplex(channel, &discordgo.MessageSend{
+	_, err = state.Discord.Session.ChannelMessageSendComplex(channel, &discordgo.MessageSend{
 		Content: "<@&" + state.Config.Roles.Apps + ">",
 		Embeds: []*discordgo.MessageEmbed{
 			{

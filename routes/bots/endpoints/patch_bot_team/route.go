@@ -200,7 +200,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	utils.ClearBotCache(d.Context, id)
 
 	// Send message to mod logs
-	state.Discord.ChannelMessageSendComplex(state.Config.Channels.ModLogs, &discordgo.MessageSend{
+	state.Discord.Session.ChannelMessageSendComplex(state.Config.Channels.ModLogs, &discordgo.MessageSend{
 		Embeds: []*discordgo.MessageEmbed{
 			{
 				URL:   state.Config.Sites.Frontend + "/bots/" + id,

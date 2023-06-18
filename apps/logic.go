@@ -51,14 +51,14 @@ func extraLogicResubmit(d uapi.RouteData, p types.Position, answers map[string]s
 		return false, fmt.Errorf("error setting bot type to pending: %w", err)
 	}
 
-	user, err := dovewing.GetDiscordUser(d.Context, botID)
+	user, err := dovewing.GetUser(d.Context, botID, state.Discord)
 
 	if err != nil {
 		return false, fmt.Errorf("error getting discord user: %w", err)
 	}
 
 	// Send an embed to the bot logs channel
-	_, err = state.Discord.ChannelMessageSendComplex(state.Config.Channels.BotLogs, &discordgo.MessageSend{
+	_, err = state.Discord.Session.ChannelMessageSendComplex(state.Config.Channels.BotLogs, &discordgo.MessageSend{
 		Content: state.Config.Meta.UrgentMentions,
 		Embeds: []*discordgo.MessageEmbed{
 			{
@@ -151,7 +151,7 @@ func reviewLogicBanAppeal(d uapi.RouteData, resp types.AppResponse, reason strin
 		return false, errors.New("reason must be less than 384 characters")
 	}
 
-	err = state.Discord.GuildBanDelete(
+	err = state.Discord.Session.GuildBanDelete(
 		state.Config.Servers.Main,
 		resp.UserID,
 		discordgo.WithAuditLogReason("Ban appeal accepted by "+d.Auth.ID+" | "+reason),
@@ -197,7 +197,7 @@ func reviewLogicCert(d uapi.RouteData, resp types.AppResponse, reason string) (r
 
 	// Give roles
 	go func() {
-		err = state.Discord.GuildMemberRoleAdd(state.Config.Servers.Main, botID, state.Config.Roles.CertBot)
+		err = state.Discord.Session.GuildMemberRoleAdd(state.Config.Servers.Main, botID, state.Config.Roles.CertBot)
 
 		if err != nil {
 			state.Logger.Error("error giving certified bot role to bot: %v", err)
@@ -205,7 +205,7 @@ func reviewLogicCert(d uapi.RouteData, resp types.AppResponse, reason string) (r
 	}()
 
 	// Send an embed to the bot logs channel
-	_, err = state.Discord.ChannelMessageSendComplex(state.Config.Channels.BotLogs, &discordgo.MessageSend{
+	_, err = state.Discord.Session.ChannelMessageSendComplex(state.Config.Channels.BotLogs, &discordgo.MessageSend{
 		Embeds: []*discordgo.MessageEmbed{
 			{
 				Title:       "Bot Certified!",
@@ -237,7 +237,7 @@ func reviewLogicCert(d uapi.RouteData, resp types.AppResponse, reason string) (r
 }
 
 func reviewLogicStaff(d uapi.RouteData, resp types.AppResponse, reason string) (review bool, err error) {
-	err = state.Discord.GuildMemberRoleAdd(state.Config.Servers.Main, resp.UserID, state.Config.Roles.AwaitingStaff)
+	err = state.Discord.Session.GuildMemberRoleAdd(state.Config.Servers.Main, resp.UserID, state.Config.Roles.AwaitingStaff)
 
 	if err != nil {
 		return false, err

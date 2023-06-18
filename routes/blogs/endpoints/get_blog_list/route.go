@@ -46,7 +46,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	}
 
 	for i := range blogPosts {
-		blogPosts[i].Author, err = dovewing.GetDiscordUser(d.Context, blogPosts[i].UserID)
+		blogPosts[i].Author, err = dovewing.GetUser(d.Context, blogPosts[i].UserID, state.Discord)
 
 		if err != nil {
 			state.Logger.Error(err)

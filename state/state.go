@@ -7,6 +7,7 @@ import (
 	"os"
 	"reflect"
 	"strings"
+	"time"
 
 	"popplio/config"
 
@@ -29,7 +30,7 @@ var (
 	Pool      *pgxpool.Pool
 	Paypal    *paypal.Client
 	Redis     *redis.Client
-	Discord   *discordgo.Session
+	Discord   *dovewing.DiscordState
 	Logger    *zap.SugaredLogger
 	Context   = context.Background()
 	Validator = validator.New()
@@ -109,21 +110,21 @@ func Setup() {
 
 	Redis = redis.NewClient(rOptions)
 
-	Discord, err = discordgo.New("Bot " + Config.DiscordAuth.Token)
+	discord, err := discordgo.New("Bot " + Config.DiscordAuth.Token)
 
 	if err != nil {
 		panic(err)
 	}
 
-	Discord.Identify.Intents = discordgo.IntentsGuilds | discordgo.IntentGuildPresences | discordgo.IntentsGuildMembers
+	discord.Identify.Intents = discordgo.IntentsGuilds | discordgo.IntentGuildPresences | discordgo.IntentsGuildMembers
 
 	go func() {
-		err = Discord.Open()
+		err = discord.Open()
 		if err != nil {
 			panic(err)
 		}
 
-		err = Discord.UpdateWatchStatus(0, Config.Sites.Frontend)
+		err = discord.UpdateWatchStatus(0, Config.Sites.Frontend)
 
 		if err != nil {
 			panic(err)
@@ -133,17 +134,19 @@ func Setup() {
 	Logger = snippets.CreateZap()
 
 	// Load dovewing state
-	dovewing.SetState(&dovewing.State{
-		Discord: &dovewing.DiscordState{
-			Session:     Discord,
-			UpdateCache: updateDb,
-		},
+	dovewing.SetGlobalState(&dovewing.State{
 		Pool:           Pool,
 		Logger:         Logger,
-		PreferredGuild: Config.Servers.Main,
 		Context:        Context,
 		Redis:          Redis,
+		OnUpdate:       updateDb,
+		UserExpiryTime: 8 * time.Hour,
 	})
+
+	Discord = &dovewing.DiscordState{
+		Session:        discord,
+		PreferredGuild: Config.Servers.Main,
+	}
 
 	c, err := paypal.NewClient(Config.Meta.PaypalClientID, Config.Meta.PaypalSecret, func() string {
 		if Config.Meta.PaypalUseSandbox {

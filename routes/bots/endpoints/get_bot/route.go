@@ -162,7 +162,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	}
 
 	if bot.Owner.Valid {
-		ownerUser, err := dovewing.GetDiscordUser(d.Context, bot.Owner.String)
+		ownerUser, err := dovewing.GetUser(d.Context, bot.Owner.String, state.Discord)
 
 		if err != nil {
 			state.Logger.Error(err)
@@ -184,7 +184,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 
 	bot.PremiumPeriodLengthParsed = types.NewInterval(bot.PremiumPeriodLength)
 
-	botUser, err := dovewing.GetDiscordUser(d.Context, bot.BotID)
+	botUser, err := dovewing.GetUser(d.Context, bot.BotID, state.Discord)
 
 	if err != nil {
 		state.Logger.Error(err)

@@ -53,10 +53,10 @@ func sendAuthLog(user types.OauthUser, req types.AuthorizeRequest, new bool) {
 	state.Logger.With(
 		zap.String("user_id", user.ID),
 		zap.String("channel_id", state.Config.Channels.AuthLogs),
-		zap.String("bot_info", state.Discord.State.User.String()),
+		zap.String("bot_info", state.Discord.Session.State.User.String()),
 	).Info("Channel Info")
 
-	_, err := state.Discord.ChannelMessageSendComplex(state.Config.Channels.AuthLogs, &discordgo.MessageSend{
+	_, err := state.Discord.Session.ChannelMessageSendComplex(state.Config.Channels.AuthLogs, &discordgo.MessageSend{
 		Embeds: []*discordgo.MessageEmbed{
 			{
 				Title: "User Login Attempt",

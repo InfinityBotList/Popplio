@@ -129,7 +129,7 @@ func CheckBot(fallbackBotId, clientId string) (*types.DiscordBotMeta, error) {
 		}
 
 		// Check that the client id is also a bot (or rather, hope)
-		user, err := dovewing.GetDiscordUser(state.Context, fallbackBotId)
+		user, err := dovewing.GetUser(state.Context, fallbackBotId, state.Discord)
 
 		if err != nil {
 			return nil, errors.New("the client id provided is not an actual bot id")
@@ -164,7 +164,7 @@ func CheckBot(fallbackBotId, clientId string) (*types.DiscordBotMeta, error) {
 			return nil, errors.New("woah there, we found an application with no associated bot?")
 		}
 
-		user, err := dovewing.GetDiscordUser(state.Context, data.Data.Bot.ID)
+		user, err := dovewing.GetUser(state.Context, data.Data.Bot.ID, state.Discord)
 
 		if err != nil {
 			return nil, errors.New("please contact support, an error has occured while trying to fetch basic info")

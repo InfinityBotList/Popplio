@@ -89,7 +89,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 }
 
 func ResolveBotPack(ctx context.Context, pack *types.BotPack) error {
-	ownerUser, err := dovewing.GetDiscordUser(ctx, pack.Owner)
+	ownerUser, err := dovewing.GetUser(ctx, pack.Owner, state.Discord)
 
 	if err != nil {
 		return err
@@ -125,7 +125,7 @@ func ResolveBotPack(ctx context.Context, pack *types.BotPack) error {
 			return err
 		}
 
-		botUser, err := dovewing.GetDiscordUser(ctx, botId)
+		botUser, err := dovewing.GetUser(ctx, botId, state.Discord)
 
 		if err != nil {
 			return err

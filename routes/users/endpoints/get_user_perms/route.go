@@ -57,7 +57,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		return uapi.DefaultResponse(http.StatusNotFound)
 	}
 
-	user, err := dovewing.GetDiscordUser(d.Context, id)
+	user, err := dovewing.GetUser(d.Context, id, state.Discord)
 
 	if err != nil {
 		state.Logger.Error(err)

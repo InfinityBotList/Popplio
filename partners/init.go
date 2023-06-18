@@ -12,7 +12,7 @@ func processPartner(partner *types.Partner) *types.Partner {
 		return partner
 	}
 
-	u, err := dovewing.GetDiscordUser(state.Context, partner.UserID)
+	u, err := dovewing.GetUser(state.Context, partner.UserID, state.Discord)
 
 	if err != nil {
 		panic("Error getting discord user: " + err.Error())

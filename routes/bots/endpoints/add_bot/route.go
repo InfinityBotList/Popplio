@@ -163,7 +163,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	}
 
 	// Ensure the bot actually exists right now
-	bot, err := dovewing.GetDiscordUser(d.Context, payload.BotID)
+	bot, err := dovewing.GetUser(d.Context, payload.BotID, state.Discord)
 
 	if err != nil {
 		return uapi.HttpResponse{
@@ -186,7 +186,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	}
 
 	// Ensure the main owner exists
-	_, err = dovewing.GetDiscordUser(d.Context, d.Auth.ID)
+	_, err = dovewing.GetUser(d.Context, d.Auth.ID, state.Discord)
 
 	if err != nil {
 		return uapi.HttpResponse{
@@ -377,7 +377,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 
 	utils.ClearUserCache(d.Context, d.Auth.ID)
 
-	state.Discord.ChannelMessageSendComplex(state.Config.Channels.BotLogs, &discordgo.MessageSend{
+	state.Discord.Session.ChannelMessageSendComplex(state.Config.Channels.BotLogs, &discordgo.MessageSend{
 		Content: state.Config.Meta.UrgentMentions,
 		Embeds: []*discordgo.MessageEmbed{
 			{

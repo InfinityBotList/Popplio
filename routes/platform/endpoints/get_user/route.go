@@ -43,7 +43,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 
 	switch platform {
 	case "discord":
-		user, err := dovewing.GetDiscordUser(d.Context, id)
+		user, err := dovewing.GetUser(d.Context, id, state.Discord)
 
 		if err != nil {
 			state.Logger.Error(err)

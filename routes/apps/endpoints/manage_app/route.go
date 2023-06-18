@@ -271,7 +271,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	}
 
 	// Send message to apps channel
-	_, err = state.Discord.ChannelMessageSendEmbeds(state.Config.Channels.Apps, embeds)
+	_, err = state.Discord.Session.ChannelMessageSendEmbeds(state.Config.Channels.Apps, embeds)
 
 	if err != nil {
 		state.Logger.Error(err)
@@ -279,10 +279,10 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	}
 
 	// Send message to user if in main server
-	_, err = state.Discord.State.Member(state.Config.Servers.Main, app.UserID)
+	_, err = state.Discord.Session.State.Member(state.Config.Servers.Main, app.UserID)
 
 	if err == nil {
-		dm, err := state.Discord.UserChannelCreate(app.UserID)
+		dm, err := state.Discord.Session.UserChannelCreate(app.UserID)
 
 		if err != nil {
 			state.Logger.Error(err)
@@ -294,7 +294,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 			}
 		}
 
-		_, err = state.Discord.ChannelMessageSendEmbeds(dm.ID, embeds)
+		_, err = state.Discord.Session.ChannelMessageSendEmbeds(dm.ID, embeds)
 
 		if err != nil {
 			state.Logger.Error(err)

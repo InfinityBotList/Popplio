@@ -10,7 +10,7 @@ https://spider.infinitybots.gg/docs
 
 **Quick Note**
 
-- Whenever you need to fetch a user from discord, always use ``dovewing.GetDiscordUser`` as that also handles caching (both gateway and redis and internal caches)
+- Whenever you need to fetch a user from discord, always use ``dovewing.GetUser`` as that also handles caching (both gateway and redis and internal caches)
 
 ## Creating a config
 

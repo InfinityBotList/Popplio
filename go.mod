@@ -8,7 +8,7 @@ require (
 	github.com/getkin/kin-openapi v0.118.0 // indirect
 	github.com/go-chi/chi/v5 v5.0.8
 	github.com/google/uuid v1.3.0
-	github.com/infinitybotlist/eureka v0.0.0-20230616112512-04fa7d5b8922
+	github.com/infinitybotlist/eureka v0.0.0-20230618182243-05756f05a15b
 	github.com/mileusna/useragent v1.3.3
 	github.com/wk8/go-ordered-map/v2 v2.1.7 // indirect
 	gopkg.in/yaml.v3 v3.0.1
@@ -54,7 +54,7 @@ require (
 require (
 	github.com/SherClockHolmes/webpush-go v1.2.0
 	github.com/go-playground/validator/v10 v10.14.1
-	github.com/jackc/pgx/v5 v5.4.0
+	github.com/jackc/pgx/v5 v5.4.1
 	github.com/json-iterator/go v1.1.12
 	github.com/plutov/paypal/v4 v4.7.0
 	github.com/redis/go-redis/v9 v9.0.5

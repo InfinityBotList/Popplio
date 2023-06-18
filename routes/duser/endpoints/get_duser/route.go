@@ -32,7 +32,7 @@ func Docs() *docs.Doc {
 func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	var id = chi.URLParam(r, "id")
 
-	user, err := dovewing.GetDiscordUser(d.Context, id)
+	user, err := dovewing.GetUser(d.Context, id, state.Discord)
 
 	if err != nil {
 		state.Logger.Error(err)

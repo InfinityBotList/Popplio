@@ -93,7 +93,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		user.About.String = ""
 	}
 
-	userObj, err := dovewing.GetDiscordUser(d.Context, user.ID)
+	userObj, err := dovewing.GetUser(d.Context, user.ID, state.Discord)
 
 	if err != nil {
 		state.Logger.Error(err)
@@ -119,7 +119,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	}
 
 	for i := range userBots {
-		userObj, err := dovewing.GetDiscordUser(d.Context, userBots[i].BotID)
+		userObj, err := dovewing.GetUser(d.Context, userBots[i].BotID, state.Discord)
 
 		if err != nil {
 			state.Logger.Error(err)

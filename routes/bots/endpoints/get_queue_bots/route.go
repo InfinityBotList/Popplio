@@ -47,7 +47,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 
 	// Set the user for each bot
 	for i, bot := range bots {
-		botUser, err := dovewing.GetDiscordUser(d.Context, bot.BotID)
+		botUser, err := dovewing.GetUser(d.Context, bot.BotID, state.Discord)
 
 		if err != nil {
 			return uapi.DefaultResponse(http.StatusInternalServerError)
@@ -56,7 +56,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		bots[i].User = botUser
 
 		if bots[i].ClaimedByID.Valid {
-			claimedByUser, err := dovewing.GetDiscordUser(d.Context, bots[i].ClaimedByID.String)
+			claimedByUser, err := dovewing.GetUser(d.Context, bots[i].ClaimedByID.String, state.Discord)
 
 			if err != nil {
 				return uapi.DefaultResponse(http.StatusInternalServerError)
