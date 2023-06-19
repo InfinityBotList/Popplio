@@ -27,13 +27,14 @@ import (
 )
 
 var (
-	Pool      *pgxpool.Pool
-	Paypal    *paypal.Client
-	Redis     *redis.Client
-	Discord   *dovewing.DiscordState
-	Logger    *zap.SugaredLogger
-	Context   = context.Background()
-	Validator = validator.New()
+	Pool                    *pgxpool.Pool
+	Paypal                  *paypal.Client
+	Redis                   *redis.Client
+	DovewingPlatformDiscord *dovewing.DiscordState
+	Discord                 *discordgo.Session
+	Logger                  *zap.SugaredLogger
+	Context                 = context.Background()
+	Validator               = validator.New()
 
 	Config           *config.Config
 	StripeWebhSecret string
@@ -110,21 +111,21 @@ func Setup() {
 
 	Redis = redis.NewClient(rOptions)
 
-	discord, err := discordgo.New("Bot " + Config.DiscordAuth.Token)
+	Discord, err = discordgo.New("Bot " + Config.DiscordAuth.Token)
 
 	if err != nil {
 		panic(err)
 	}
 
-	discord.Identify.Intents = discordgo.IntentsGuilds | discordgo.IntentGuildPresences | discordgo.IntentsGuildMembers
+	Discord.Identify.Intents = discordgo.IntentsGuilds | discordgo.IntentGuildPresences | discordgo.IntentsGuildMembers
 
 	go func() {
-		err = discord.Open()
+		err = Discord.Open()
 		if err != nil {
 			panic(err)
 		}
 
-		err = discord.UpdateWatchStatus(0, Config.Sites.Frontend)
+		err = Discord.UpdateWatchStatus(0, Config.Sites.Frontend)
 
 		if err != nil {
 			panic(err)
@@ -143,9 +144,13 @@ func Setup() {
 		UserExpiryTime: 8 * time.Hour,
 	})
 
-	Discord = &dovewing.DiscordState{
-		Session:        discord,
+	DovewingPlatformDiscord, err = dovewing.DiscordStateConfig{
+		Session:        Discord,
 		PreferredGuild: Config.Servers.Main,
+	}.New()
+
+	if err != nil {
+		panic(err)
 	}
 
 	c, err := paypal.NewClient(Config.Meta.PaypalClientID, Config.Meta.PaypalSecret, func() string {

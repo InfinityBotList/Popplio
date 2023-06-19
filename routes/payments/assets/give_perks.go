@@ -119,7 +119,7 @@ func GivePerks(ctx context.Context, perkData PerkData) error {
 			return errors.New("our database broke, please try again later")
 		}
 
-		_, err = state.Discord.Session.ChannelMessageSendComplex(state.Config.Channels.ModLogs, &discordgo.MessageSend{
+		_, err = state.Discord.ChannelMessageSendComplex(state.Config.Channels.ModLogs, &discordgo.MessageSend{
 			Content: "<@" + perkData.UserID + "> has bought <@" + botID + "> premium for " + strconv.Itoa(perk.TimePeriod) + " hours.",
 		})
 

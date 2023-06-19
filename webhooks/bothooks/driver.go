@@ -19,7 +19,7 @@ func (d Driver) PullPending() *sender.WebhookPullPending {
 	return &sender.WebhookPullPending{
 		EntityType: EntityType,
 		GetEntity: func(id string) (sender.WebhookEntity, error) {
-			bot, err := dovewing.GetUser(state.Context, id, state.Discord)
+			bot, err := dovewing.GetUser(state.Context, id, state.DovewingPlatformDiscord)
 
 			if err != nil {
 				return sender.WebhookEntity{}, err

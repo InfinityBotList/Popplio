@@ -95,7 +95,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	}
 
 	for i := range tickets {
-		tickets[i].Author, err = dovewing.GetUser(d.Context, tickets[i].UserID, state.Discord)
+		tickets[i].Author, err = dovewing.GetUser(d.Context, tickets[i].UserID, state.DovewingPlatformDiscord)
 
 		if err != nil {
 			state.Logger.Error(err)
@@ -103,7 +103,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		}
 
 		if tickets[i].CloseUserID.Valid && tickets[i].CloseUserID.String != "" {
-			tickets[i].CloseUser, err = dovewing.GetUser(d.Context, tickets[i].CloseUserID.String, state.Discord)
+			tickets[i].CloseUser, err = dovewing.GetUser(d.Context, tickets[i].CloseUserID.String, state.DovewingPlatformDiscord)
 
 			if err != nil {
 				state.Logger.Error(err)
@@ -112,7 +112,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		}
 
 		for j := range tickets[i].Messages {
-			tickets[i].Messages[j].Author, err = dovewing.GetUser(d.Context, tickets[i].Messages[j].AuthorID, state.Discord)
+			tickets[i].Messages[j].Author, err = dovewing.GetUser(d.Context, tickets[i].Messages[j].AuthorID, state.DovewingPlatformDiscord)
 
 			if err != nil {
 				state.Logger.Error(err)

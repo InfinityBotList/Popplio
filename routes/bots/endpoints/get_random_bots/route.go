@@ -52,7 +52,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	}
 
 	for i, bot := range indexBots {
-		botUser, err := dovewing.GetUser(d.Context, bot.BotID, state.Discord)
+		botUser, err := dovewing.GetUser(d.Context, bot.BotID, state.DovewingPlatformDiscord)
 
 		if err != nil {
 			return uapi.DefaultResponse(http.StatusInternalServerError)

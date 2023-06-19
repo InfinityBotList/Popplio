@@ -100,7 +100,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 
 	// Check that all bots exist
 	for _, bot := range payload.Bots {
-		botUser, err := dovewing.GetUser(d.Context, bot, state.Discord)
+		botUser, err := dovewing.GetUser(d.Context, bot, state.DovewingPlatformDiscord)
 
 		if err != nil {
 			return uapi.HttpResponse{

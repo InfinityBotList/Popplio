@@ -98,7 +98,7 @@ func ResolveTeam(ctx context.Context, teamId string) (*types.Team, error) {
 			return nil, err
 		}
 
-		user, err := dovewing.GetUser(ctx, userId, state.Discord)
+		user, err := dovewing.GetUser(ctx, userId, state.DovewingPlatformDiscord)
 
 		if err != nil {
 			return nil, err
@@ -143,7 +143,7 @@ func ResolveTeam(ctx context.Context, teamId string) (*types.Team, error) {
 			return nil, err
 		}
 
-		userObj, err := dovewing.GetUser(ctx, userBot.BotID, state.Discord)
+		userObj, err := dovewing.GetUser(ctx, userBot.BotID, state.DovewingPlatformDiscord)
 
 		if err != nil {
 			state.Logger.Error(err)

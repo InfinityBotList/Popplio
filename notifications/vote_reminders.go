@@ -47,7 +47,7 @@ func vrCheck() {
 		}
 
 		if !voteParsed.HasVoted {
-			botInf, err := dovewing.GetUser(state.Context, botId, state.Discord)
+			botInf, err := dovewing.GetUser(state.Context, botId, state.DovewingPlatformDiscord)
 
 			if err != nil {
 				state.Logger.Error("Error finding bot info:", err)

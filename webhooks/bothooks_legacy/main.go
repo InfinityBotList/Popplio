@@ -85,14 +85,14 @@ func SendLegacy(webhook WebhookPostLegacy) error {
 		return errors.New("no webhook set")
 	}
 
-	dUser, err := dovewing.GetUser(state.Context, webhook.UserID, state.Discord)
+	dUser, err := dovewing.GetUser(state.Context, webhook.UserID, state.DovewingPlatformDiscord)
 
 	if err != nil {
 		state.Logger.Error(err)
 		return err
 	}
 
-	dBot, err := dovewing.GetUser(state.Context, webhook.BotID, state.Discord)
+	dBot, err := dovewing.GetUser(state.Context, webhook.BotID, state.DovewingPlatformDiscord)
 
 	if err != nil {
 		state.Logger.Error(err)

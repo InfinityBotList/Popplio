@@ -137,7 +137,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	}
 
 	// Get bot discord user
-	botUser, err := dovewing.GetUser(d.Context, id, state.Discord)
+	botUser, err := dovewing.GetUser(d.Context, id, state.DovewingPlatformDiscord)
 
 	if err != nil {
 		return uapi.HttpResponse{
@@ -178,7 +178,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	utils.ClearBotCache(d.Context, id)
 
 	// Send a message to the bot logs channel
-	state.Discord.Session.ChannelMessageSendComplex(state.Config.Channels.BotLogs, &discordgo.MessageSend{
+	state.Discord.ChannelMessageSendComplex(state.Config.Channels.BotLogs, &discordgo.MessageSend{
 		Content: "",
 		Embeds: []*discordgo.MessageEmbed{
 			{

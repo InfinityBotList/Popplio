@@ -244,7 +244,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
-	userObj, err := dovewing.GetUser(d.Context, userId, state.Discord)
+	userObj, err := dovewing.GetUser(d.Context, userId, state.DovewingPlatformDiscord)
 
 	if err != nil {
 		// Revert vote
@@ -254,7 +254,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
-	botObj, err := dovewing.GetUser(d.Context, id, state.Discord)
+	botObj, err := dovewing.GetUser(d.Context, id, state.DovewingPlatformDiscord)
 
 	if err != nil {
 		// Revert vote
@@ -264,7 +264,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
-	_, err = state.Discord.Session.ChannelMessageSendComplex(state.Config.Channels.VoteLogs, &discordgo.MessageSend{
+	_, err = state.Discord.ChannelMessageSendComplex(state.Config.Channels.VoteLogs, &discordgo.MessageSend{
 		Embeds: []*discordgo.MessageEmbed{
 			{
 				URL: "https://botlist.site/" + id,

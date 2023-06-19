@@ -58,7 +58,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 	for i, bot := range listIndex.Certified {
-		botUser, err := dovewing.GetUser(d.Context, bot.BotID, state.Discord)
+		botUser, err := dovewing.GetUser(d.Context, bot.BotID, state.DovewingPlatformDiscord)
 
 		if err != nil {
 			return uapi.DefaultResponse(http.StatusInternalServerError)
@@ -79,7 +79,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 	for i, bot := range listIndex.Premium {
-		botUser, err := dovewing.GetUser(d.Context, bot.BotID, state.Discord)
+		botUser, err := dovewing.GetUser(d.Context, bot.BotID, state.DovewingPlatformDiscord)
 
 		if err != nil {
 			return uapi.DefaultResponse(http.StatusInternalServerError)
@@ -100,7 +100,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 	for i, bot := range listIndex.MostViewed {
-		botUser, err := dovewing.GetUser(d.Context, bot.BotID, state.Discord)
+		botUser, err := dovewing.GetUser(d.Context, bot.BotID, state.DovewingPlatformDiscord)
 
 		if err != nil {
 			return uapi.DefaultResponse(http.StatusInternalServerError)
@@ -121,7 +121,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 	for i, bot := range listIndex.RecentlyAdded {
-		botUser, err := dovewing.GetUser(d.Context, bot.BotID, state.Discord)
+		botUser, err := dovewing.GetUser(d.Context, bot.BotID, state.DovewingPlatformDiscord)
 
 		if err != nil {
 			return uapi.DefaultResponse(http.StatusInternalServerError)
@@ -142,7 +142,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 	for i, bot := range listIndex.TopVoted {
-		botUser, err := dovewing.GetUser(d.Context, bot.BotID, state.Discord)
+		botUser, err := dovewing.GetUser(d.Context, bot.BotID, state.DovewingPlatformDiscord)
 
 		if err != nil {
 			return uapi.DefaultResponse(http.StatusInternalServerError)

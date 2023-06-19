@@ -41,7 +41,7 @@ func Send[T events.WebhookEvent](with With[T]) error {
 		return err
 	}
 
-	user, err := dovewing.GetUser(state.Context, with.UserID, state.Discord)
+	user, err := dovewing.GetUser(state.Context, with.UserID, state.DovewingPlatformDiscord)
 
 	if err != nil {
 		state.Logger.Error(err)

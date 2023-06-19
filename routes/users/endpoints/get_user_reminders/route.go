@@ -65,7 +65,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	for i, reminder := range reminders {
 		// Try resolving the bot from discord API
 		var resolvedBot types.ResolvedReminderBot
-		bot, err := dovewing.GetUser(d.Context, reminder.BotID, state.Discord)
+		bot, err := dovewing.GetUser(d.Context, reminder.BotID, state.DovewingPlatformDiscord)
 
 		if err != nil {
 			resolvedBot = types.ResolvedReminderBot{
