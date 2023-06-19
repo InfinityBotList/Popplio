@@ -41,18 +41,11 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	var id = chi.URLParam(r, "id")
 	var platform = r.URL.Query().Get("platform")
 
+	var dovewingPlatform dovewing.Platform
+
 	switch platform {
 	case "discord":
-		user, err := dovewing.GetUser(d.Context, id, state.DovewingPlatformDiscord)
-
-		if err != nil {
-			state.Logger.Error(err)
-			return uapi.DefaultResponse(http.StatusNotFound)
-		}
-
-		return uapi.HttpResponse{
-			Json: user,
-		}
+		dovewingPlatform = state.DovewingPlatformDiscord
 	default:
 		return uapi.HttpResponse{
 			Status: http.StatusUnsupportedMediaType,
@@ -61,5 +54,16 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 				Message: "Unsupported platform. Only `discord` is supported at this time as a platform.",
 			},
 		}
+	}
+
+	user, err := dovewing.GetUser(d.Context, id, dovewingPlatform)
+
+	if err != nil {
+		state.Logger.Error(err)
+		return uapi.DefaultResponse(http.StatusNotFound)
+	}
+
+	return uapi.HttpResponse{
+		Json: user,
 	}
 }

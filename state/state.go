@@ -135,18 +135,19 @@ func Setup() {
 	Logger = snippets.CreateZap()
 
 	// Load dovewing state
-	dovewing.SetGlobalState(&dovewing.State{
+	baseDovewingState := dovewing.BaseState{
 		Pool:           Pool,
 		Logger:         Logger,
 		Context:        Context,
 		Redis:          Redis,
 		OnUpdate:       updateDb,
 		UserExpiryTime: 8 * time.Hour,
-	})
+	}
 
 	DovewingPlatformDiscord, err = dovewing.DiscordStateConfig{
 		Session:        Discord,
 		PreferredGuild: Config.Servers.Main,
+		BaseState: &baseDovewingState,
 	}.New()
 
 	if err != nil {

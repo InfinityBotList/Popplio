@@ -8,6 +8,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	docs "github.com/infinitybotlist/eureka/doclib"
+	"github.com/infinitybotlist/eureka/dovewing"
 	"github.com/infinitybotlist/eureka/uapi"
 )
 
@@ -31,7 +32,7 @@ func Docs() *docs.Doc {
 				Schema:      docs.IdSchema,
 			},
 		},
-		Resp: types.ApiError{},
+		Resp: dovewing.ClearUserInfo{},
 	}
 }
 
@@ -39,14 +40,11 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	var id = chi.URLParam(r, "id")
 	var platform = r.URL.Query().Get("platform")
 
+	var dovewingPlatform dovewing.Platform
+
 	switch platform {
 	case "discord":
-		state.Redis.Del(d.Context, "uobj:"+id)
-
-		// Delete from internal_user_cache
-		state.Pool.Exec(d.Context, "DELETE FROM internal_user_cache WHERE id = $1", id)
-
-		return uapi.HttpResponse{}
+		dovewingPlatform = state.DovewingPlatformDiscord
 	default:
 		return uapi.HttpResponse{
 			Status: http.StatusUnsupportedMediaType,
@@ -55,5 +53,16 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 				Message: "Unsupported platform. Only `discord` is supported at this time as a platform.",
 			},
 		}
+	}
+
+	res, err := dovewing.ClearUser(d.Context, id, dovewingPlatform, dovewing.ClearUserReq{})
+
+	if err != nil {
+		state.Logger.Error(err)
+		return uapi.DefaultResponse(http.StatusNotFound)
+	}
+
+	return uapi.HttpResponse{
+		Json: res,
 	}
 }
