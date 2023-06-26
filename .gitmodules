@@ -1,0 +1,3 @@
+[submodule "submodules/discordgo"]
+	path = submodules/discordgo
+	url = https://github.com/infinitybotlist/discordgo
