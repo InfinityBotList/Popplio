@@ -22,7 +22,7 @@ var (
 	indexBotColsArr = utils.GetCols(types.IndexBot{})
 	indexBotCols    = strings.Join(indexBotColsArr, ",")
 
-	//go:embed sql/bots.sql
+	//go:embed sql/bots.tmpl
 	botsSql string
 
 	botSqlTemplate *template.Template
@@ -31,9 +31,10 @@ var (
 )
 
 type searchSqlTemplateCtx struct {
-	Query   string
-	TagMode types.TagMode
-	Cols    string
+	Query          string
+	TagMode        types.TagMode
+	Cols           string
+	PlatformTables []string
 }
 
 func Setup() {
@@ -100,7 +101,12 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		Query:   payload.Query,
 		TagMode: payload.TagFilter.TagMode,
 		Cols:    indexBotCols,
+		PlatformTables: []string{
+			dovewing.TableName(state.DovewingPlatformDiscord),
+		},
 	})
+
+	state.Logger.Error(sqlString.String())
 
 	if err != nil {
 		state.Logger.Error(err)
