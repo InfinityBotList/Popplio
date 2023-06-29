@@ -62,7 +62,7 @@ func vrCheck() {
 
 			message := types.Alert{
 				Type:    types.AlertTypeInfo,
-				URL:     pgtype.Text{String: "https://infinitybotlist.com/bot/" + botId + "/vote", Valid: true},
+				URL:     pgtype.Text{String: "/bot/" + botId + "/vote", Valid: true},
 				Message: "You can vote for " + botInf.Username + " now!",
 				Title:   "Vote for " + botInf.Username + "!",
 				Icon:    botInf.Avatar,
