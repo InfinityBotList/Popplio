@@ -62,7 +62,7 @@ type DiscordAuth struct {
 
 type Sites struct {
 	Frontend string `yaml:"frontend" default:"https://reedwhisker.infinitybots.gg" comment:"Frontend URL" validate:"required"`
-	API      string `yaml:"api" default:"https://spider.infinitybots.gg" comment:"API URL" validate:"required"`
+	API      Differs[string] `yaml:"api" default:"https://spider.infinitybots.gg" comment:"API URL" validate:"required"`
 	AppSite  string `yaml:"app_site" default:"https://ptb.botlist.app" comment:"App Site" validate:"required"`
 }
 

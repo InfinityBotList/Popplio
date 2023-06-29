@@ -95,7 +95,7 @@ func main() {
 	state.Setup()
 
 	docs.DocsSetupData = &docs.SetupData{
-		URL:         state.Config.Sites.API,
+		URL:         state.Config.Sites.API.Parse(),
 		ErrorStruct: types.ApiError{},
 		Info: docs.Info{
 			Title:          "Infinity Bot List API",

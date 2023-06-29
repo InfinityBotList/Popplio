@@ -191,7 +191,7 @@ func Setup() {
 
 		// Add/update stripe webhook
 		params := &stripe.WebhookEndpointParams{
-			URL: stripe.String(Config.Sites.API + "/payments/stripe/webhook"),
+			URL: stripe.String(Config.Sites.API.Parse() + "/payments/stripe/webhook"),
 			EnabledEvents: stripe.StringSlice([]string{
 				"checkout.session.completed",
 				"checkout.session.async_payment_succeeded",

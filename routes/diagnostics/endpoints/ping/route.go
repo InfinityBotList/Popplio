@@ -29,7 +29,7 @@ var helloWorld []byte
 var helloWorldB Hello
 
 func Setup() {
-	var docsSite string = state.Config.Sites.API + "/docs"
+	var docsSite string = state.Config.Sites.API.Parse() + "/docs"
 
 	// This is done here to avoid constant remarshalling
 	helloWorldB = Hello{

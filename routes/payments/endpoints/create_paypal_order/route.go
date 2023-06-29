@@ -133,7 +133,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 			},
 		},
 	}, &paypal.CreateOrderPayer{}, &paypal.ApplicationContext{
-		ReturnURL: state.Config.Sites.API + "/payments/paypal/capture/" + refId,
+		ReturnURL: state.Config.Sites.API.Parse() + "/payments/paypal/capture/" + refId,
 		CancelURL: state.Config.Sites.Frontend + "/payments/cancelled",
 	})
 
