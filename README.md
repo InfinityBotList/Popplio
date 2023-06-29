@@ -15,3 +15,4 @@ https://spider.infinitybots.gg/docs
 ## Creating a config
 
 You can use ``./popplio --cmd genconfig`` to create a configuration file for Popplio
+
