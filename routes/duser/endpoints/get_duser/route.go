@@ -39,7 +39,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 				Error:   true,
 				Message: "Deprecated endpoint, please use Platform APIs instead",
 				Context: map[string]string{
-					"try": "https://reedwhisker.infinitybots.gg",
+					"try": "https://spider-staging.infinitybots.gg/platform/user/{id}",
 				},
 			},
 		}
