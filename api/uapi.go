@@ -150,20 +150,6 @@ func IsClient(r *http.Request) bool {
 	return false
 }
 
-// Only used during development, should only be used when rewriting
-// endpoints itself
-func ClientSupports(r *http.Request, feature string) bool {
-	features := r.Header.Get("X-Client-Compat")
-
-	if features == "" {
-		return false
-	}
-
-	featuresArr := strings.Split(features, ",")
-
-	return slices.Contains(featuresArr, feature)
-}
-
 func Setup() {
 	uapi.SetupState(uapi.UAPIState{
 		Logger:    state.Logger,

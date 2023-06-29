@@ -1,5 +1,42 @@
 package config
 
+import (
+	_ "embed"
+	"strings"
+)
+
+const (
+	CurrentEnvProd    = "prod"
+	CurrentEnvStaging = "staging"
+)
+
+//go:embed current-env
+var CurrentEnv string
+
+func init() {
+	CurrentEnv = strings.TrimSpace(CurrentEnv)
+
+	if CurrentEnv != CurrentEnvProd && CurrentEnv != CurrentEnvStaging {
+		panic("invalid environment")
+	}
+}
+
+// Common struct for values that differ between staging and production environments
+type Differs[T any] struct {
+	Staging T `yaml:"staging" comment:"Staging value" validate:"required"`
+	Prod    T `yaml:"prod" comment:"Production value" validate:"required"`
+}
+
+func (d *Differs[T]) Parse() T {
+	if CurrentEnv == CurrentEnvProd {
+		return d.Prod
+	} else if CurrentEnv == CurrentEnvStaging {
+		return d.Staging
+	} else {
+		panic("invalid environment")
+	}
+}
+
 type Config struct {
 	DiscordAuth   DiscordAuth   `yaml:"discord_auth" validate:"required"`
 	Sites         Sites         `yaml:"sites" validate:"required"`
@@ -58,18 +95,18 @@ type Servers struct {
 }
 
 type Meta struct {
-	PostgresURL         string   `yaml:"postgres_url" default:"postgresql:///infinity" comment:"Postgres URL" validate:"required"`
-	RedisURL            string   `yaml:"redis_url" default:"redis://localhost:6379" comment:"Redis URL" validate:"required"`
-	Port                string   `yaml:"port" default:":8081" comment:"Port to run the server on" validate:"required"`
-	VulgarList          []string `yaml:"vulgar_list" default:"fuck,suck,shit,kill" validate:"required"`
-	AllowedHTMLTags     []string `yaml:"allowed_html_tags" default:"a,i,button,span,img,video,iframe,style,span,p,br,center,div,h1,h2,h3,h4,h5,section,article,lang,code,pre,strong,em" validate:"required"`
-	CliNonce            string   `yaml:"cli_nonce" default:"" comment:"CLI Nonce" validate:"required"`
-	UrgentMentions      string   `yaml:"urgent_mentions" default:"<@&1061643797315993701>" comment:"Urgent mentions" validate:"required"`
-	PaypalClientID      string   `yaml:"paypal_client_id" default:"" comment:"Paypal Client ID" validate:"required"`
-	PaypalSecret        string   `yaml:"paypal_secret" default:"" comment:"Paypal Secret" validate:"required"`
-	PaypalUseSandbox    bool     `yaml:"paypal_use_sandbox" default:"true" comment:"Use Paypal Sandbox"`
-	StripePublicKey     string   `yaml:"stripe_public_key" default:"" comment:"Stripe Public Key" validate:"required"`
-	StripeSecretKey     string   `yaml:"stripe_secret_key" default:"" comment:"Stripe Public Key" validate:"required"`
-	UptimeRobotROAPIKey string   `yaml:"uptime_robot_ro_api_key" default:"" comment:"Uptime Robot Read-Only API Key" validate:"required"`
-	PopplioProxy        string   `yaml:"popplio_proxy" default:"http://100.104.199.117:3219" comment:"Popplio Proxy URL" validate:"required"`
+	PostgresURL         string          `yaml:"postgres_url" default:"postgresql:///infinity" comment:"Postgres URL" validate:"required"`
+	RedisURL            string          `yaml:"redis_url" default:"redis://localhost:6379" comment:"Redis URL" validate:"required"`
+	Port                Differs[string] `yaml:"port" default:":8081" comment:"Port to run the server on" validate:"required"`
+	VulgarList          []string        `yaml:"vulgar_list" default:"fuck,suck,shit,kill" validate:"required"`
+	AllowedHTMLTags     []string        `yaml:"allowed_html_tags" default:"a,i,button,span,img,video,iframe,style,span,p,br,center,div,h1,h2,h3,h4,h5,section,article,lang,code,pre,strong,em" validate:"required"`
+	CliNonce            string          `yaml:"cli_nonce" default:"" comment:"CLI Nonce" validate:"required"`
+	UrgentMentions      string          `yaml:"urgent_mentions" default:"<@&1061643797315993701>" comment:"Urgent mentions" validate:"required"`
+	PaypalClientID      string          `yaml:"paypal_client_id" default:"" comment:"Paypal Client ID" validate:"required"`
+	PaypalSecret        string          `yaml:"paypal_secret" default:"" comment:"Paypal Secret" validate:"required"`
+	PaypalUseSandbox    bool            `yaml:"paypal_use_sandbox" default:"true" comment:"Use Paypal Sandbox"`
+	StripePublicKey     string          `yaml:"stripe_public_key" default:"" comment:"Stripe Public Key" validate:"required"`
+	StripeSecretKey     string          `yaml:"stripe_secret_key" default:"" comment:"Stripe Public Key" validate:"required"`
+	UptimeRobotROAPIKey string          `yaml:"uptime_robot_ro_api_key" default:"" comment:"Uptime Robot Read-Only API Key" validate:"required"`
+	PopplioProxy        string          `yaml:"popplio_proxy" default:"http://100.104.199.117:3219" comment:"Popplio Proxy URL" validate:"required"`
 }

@@ -24,3 +24,10 @@ ts:
 
 	# Patch to change package name to 'popltypes'
 	sed -i 's:package types:package popltypes:g' /iblcdn/public/dev/bindings/popplio/go/types/*
+
+promoteprod:
+	rm -rf ../prod2
+	cd .. && cp -rf staging prod2
+	echo "prod" > ../prod2/config/current-env
+	cd ../prod2 && make && rm -rf ../prod && mv -vf ../prod2 ../prod && systemctl restart popplio-prod
+	rm -rf ../prod/.git # Neutralize git

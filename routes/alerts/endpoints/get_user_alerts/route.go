@@ -2,7 +2,7 @@ package get_user_alerts
 
 import (
 	"net/http"
-	"popplio/api"
+	"popplio/config"
 	"popplio/state"
 	"popplio/types"
 	"popplio/utils"
@@ -46,12 +46,12 @@ func Docs() *docs.Doc {
 const perPage = 20
 
 func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
-	if !api.ClientSupports(r, "ALERTS_V2") {
+	if config.CurrentEnv == config.CurrentEnvProd {
 		return uapi.HttpResponse{
 			Status: http.StatusUnsupportedMediaType,
 			Json: types.ApiError{
 				Error:   true,
-				Message: "Alerts is currently being rewritten and as such cannot be used at this time by this client.",
+				Message: "Alerts is currently being rewritten and as such is disabled.",
 				Context: map[string]string{
 					"try": "https://reedwhisker.infinitybots.gg",
 				},

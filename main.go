@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"net/http"
 	"strings"
 	"time"
@@ -78,7 +77,7 @@ func corsMiddleware(next http.Handler) http.Handler {
 
 		w.Header().Set("Access-Control-Allow-Origin", r.Header.Get("Origin"))
 		w.Header().Set("Access-Control-Allow-Credentials", "true")
-		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Client, X-Client-Compat")
+		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Client")
 		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE")
 
 		if r.Method == "OPTIONS" {
@@ -201,9 +200,9 @@ func main() {
 
 	go notifications.VrLoop()
 
-	err = http.ListenAndServe(state.Config.Meta.Port, r)
+	err = http.ListenAndServe(state.Config.Meta.Port.Parse(), r)
 
 	if err != nil {
-		fmt.Println(err)
+		state.Logger.Fatal(err)
 	}
 }
