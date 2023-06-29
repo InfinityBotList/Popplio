@@ -203,7 +203,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	state.Discord.ChannelMessageSendComplex(state.Config.Channels.ModLogs, &discordgo.MessageSend{
 		Embeds: []*discordgo.MessageEmbed{
 			{
-				URL:   state.Config.Sites.Frontend + "/bots/" + id,
+				URL:   state.Config.Sites.Frontend.Production() + "/bots/" + id,
 				Title: "Bot Team Update!",
 				Fields: []*discordgo.MessageEmbedField{
 					{

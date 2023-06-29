@@ -63,7 +63,7 @@ func extraLogicResubmit(d uapi.RouteData, p types.Position, answers map[string]s
 		Embeds: []*discordgo.MessageEmbed{
 			{
 				Title:       "Bot Resubmitted!",
-				URL:         state.Config.Sites.Frontend + "/bots/" + botID,
+				URL:         state.Config.Sites.Frontend.Parse() + "/bots/" + botID,
 				Description: "User <@" + d.Auth.ID + "> has resubmitted their bot",
 				Color:       0x00ff00,
 				Fields: []*discordgo.MessageEmbedField{
@@ -209,7 +209,7 @@ func reviewLogicCert(d uapi.RouteData, resp types.AppResponse, reason string) (r
 		Embeds: []*discordgo.MessageEmbed{
 			{
 				Title:       "Bot Certified!",
-				URL:         state.Config.Sites.Frontend + "/bots/" + botID,
+				URL:         state.Config.Sites.Frontend.Parse() + "/bots/" + botID,
 				Description: "<@" + d.Auth.ID + "> has certified bot <@" + botID + ">",
 				Color:       0x00ff00,
 				Fields: []*discordgo.MessageEmbedField{

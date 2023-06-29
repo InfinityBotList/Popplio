@@ -381,7 +381,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		Content: state.Config.Meta.UrgentMentions,
 		Embeds: []*discordgo.MessageEmbed{
 			{
-				URL:   state.Config.Sites.Frontend + "/bots/" + payload.BotID,
+				URL:   state.Config.Sites.Frontend.Production() + "/bots/" + payload.BotID,
 				Title: "New Bot Added",
 				Thumbnail: &discordgo.MessageEmbedThumbnail{
 					URL: metadata.Avatar,

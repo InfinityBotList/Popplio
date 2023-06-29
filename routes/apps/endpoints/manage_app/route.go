@@ -193,7 +193,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		embeds = []*discordgo.MessageEmbed{
 			{
 				Title:       "Application Approved",
-				URL:         state.Config.Sites.AppSite + "/panel/apps",
+				URL:         state.Config.Sites.Frontend.Production() + "/admin/panel",
 				Description: fmt.Sprintf("<@%s> has approved an application by <@%s> for the position of %s", d.Auth.ID, app.UserID, app.Position),
 				Color:       0x00ff00,
 				Fields: []*discordgo.MessageEmbedField{
@@ -236,7 +236,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		embeds = []*discordgo.MessageEmbed{
 			{
 				Title:       "Application Denied",
-				URL:         state.Config.Sites.AppSite + "/panel/apps",
+				URL:         state.Config.Sites.Frontend.Production() + "/admin/panel",
 				Description: fmt.Sprintf("<@%s> has denied an application by <@%s> for the position of %s", d.Auth.ID, app.UserID, app.Position),
 				Color:       0xff0000,
 				Fields: []*discordgo.MessageEmbedField{

@@ -187,6 +187,6 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	state.Redis.Del(d.Context, "paypal:"+refId)
 
 	return uapi.HttpResponse{
-		Redirect: state.Config.Sites.Frontend + "/payments/success",
+		Redirect: state.Config.Sites.Frontend.Parse() + "/payments/success",
 	}
 }

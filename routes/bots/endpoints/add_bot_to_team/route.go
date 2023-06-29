@@ -190,7 +190,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		Content: state.Config.Meta.UrgentMentions,
 		Embeds: []*discordgo.MessageEmbed{
 			{
-				URL:   state.Config.Sites.Frontend + "/bots/" + botId,
+				URL:   state.Config.Sites.Frontend.Production() + "/bots/" + botId,
 				Title: "Bot Moved To Team (please audit!)",
 				Fields: []*discordgo.MessageEmbedField{
 					{

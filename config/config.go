@@ -37,6 +37,10 @@ func (d *Differs[T]) Parse() T {
 	}
 }
 
+func (d *Differs[T]) Production() T {
+	return d.Prod
+}
+
 type Config struct {
 	DiscordAuth   DiscordAuth   `yaml:"discord_auth" validate:"required"`
 	Sites         Sites         `yaml:"sites" validate:"required"`
@@ -61,9 +65,8 @@ type DiscordAuth struct {
 }
 
 type Sites struct {
-	Frontend string `yaml:"frontend" default:"https://reedwhisker.infinitybots.gg" comment:"Frontend URL" validate:"required"`
+	Frontend Differs[string] `yaml:"frontend" default:"https://reedwhisker.infinitybots.gg" comment:"Frontend URL" validate:"required"`
 	API      Differs[string] `yaml:"api" default:"https://spider.infinitybots.gg" comment:"API URL" validate:"required"`
-	AppSite  string `yaml:"app_site" default:"https://ptb.botlist.app" comment:"App Site" validate:"required"`
 }
 
 type Roles struct {
@@ -99,7 +102,6 @@ type Meta struct {
 	RedisURL            string          `yaml:"redis_url" default:"redis://localhost:6379" comment:"Redis URL" validate:"required"`
 	Port                Differs[string] `yaml:"port" default:":8081" comment:"Port to run the server on" validate:"required"`
 	VulgarList          []string        `yaml:"vulgar_list" default:"fuck,suck,shit,kill" validate:"required"`
-	AllowedHTMLTags     []string        `yaml:"allowed_html_tags" default:"a,i,button,span,img,video,iframe,style,span,p,br,center,div,h1,h2,h3,h4,h5,section,article,lang,code,pre,strong,em" validate:"required"`
 	CliNonce            string          `yaml:"cli_nonce" default:"" comment:"CLI Nonce" validate:"required"`
 	UrgentMentions      string          `yaml:"urgent_mentions" default:"<@&1061643797315993701>" comment:"Urgent mentions" validate:"required"`
 	PaypalClientID      Differs[string] `yaml:"paypal_client_id" default:"" comment:"Paypal Client ID" validate:"required"`

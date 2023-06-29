@@ -107,7 +107,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		Content: "",
 		Embeds: []*discordgo.MessageEmbed{
 			{
-				URL:   state.Config.Sites.Frontend + "/bots/" + id,
+				URL:   state.Config.Sites.Frontend.Production() + "/bots/" + id,
 				Title: "Bot Deleted",
 				Color: 0xff0000,
 				Fields: []*discordgo.MessageEmbedField{

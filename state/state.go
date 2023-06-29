@@ -125,10 +125,12 @@ func Setup() {
 			panic(err)
 		}
 
-		err = Discord.UpdateWatchStatus(0, Config.Sites.Frontend)
+		if config.CurrentEnv == config.CurrentEnvProd {
+			err = Discord.UpdateWatchStatus(0, Config.Sites.Frontend.Parse())
 
-		if err != nil {
-			panic(err)
+			if err != nil {
+				panic(err)
+			}
 		}
 	}()
 

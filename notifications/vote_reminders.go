@@ -1,6 +1,7 @@
 package notifications
 
 import (
+	"popplio/config"
 	"popplio/state"
 	"popplio/types"
 	"popplio/utils"
@@ -14,6 +15,11 @@ import (
 var json = jsoniter.ConfigCompatibleWithStandardLibrary
 
 func VrLoop() {
+	if config.CurrentEnv != config.CurrentEnvProd {
+		state.Logger.Info("Skipping vrCheck due to non-prod environment")
+		return
+	}
+
 	for {
 		//state.Logger.Debug("Running vrCheck")
 		vrCheck()
@@ -74,6 +80,7 @@ func vrCheck() {
 				state.Logger.Error("Error updating reminder: %s", err)
 				continue
 			}
+
 		}
 	}
 }
