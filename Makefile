@@ -31,5 +31,7 @@ promoteprod:
 	cd .. && cp -rf staging prod2
 	echo "prod" > ../prod2/config/current-env
 	cd ../prod2 && make && rm -rf ../prod && mv -vf ../prod2 ../prod && systemctl restart popplio-prod
-	rm -rf ../prod/.git # Neutralize git
 	cd ../prod && make ts
+
+	# Git push to "current-prod" branch
+	cd ../prod && git branch current-prod && git add . && git commit -m "Promote staging to prod" && git push -u origin current-prod
