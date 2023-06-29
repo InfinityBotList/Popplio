@@ -102,11 +102,10 @@ type Meta struct {
 	AllowedHTMLTags     []string        `yaml:"allowed_html_tags" default:"a,i,button,span,img,video,iframe,style,span,p,br,center,div,h1,h2,h3,h4,h5,section,article,lang,code,pre,strong,em" validate:"required"`
 	CliNonce            string          `yaml:"cli_nonce" default:"" comment:"CLI Nonce" validate:"required"`
 	UrgentMentions      string          `yaml:"urgent_mentions" default:"<@&1061643797315993701>" comment:"Urgent mentions" validate:"required"`
-	PaypalClientID      string          `yaml:"paypal_client_id" default:"" comment:"Paypal Client ID" validate:"required"`
-	PaypalSecret        string          `yaml:"paypal_secret" default:"" comment:"Paypal Secret" validate:"required"`
-	PaypalUseSandbox    bool            `yaml:"paypal_use_sandbox" default:"true" comment:"Use Paypal Sandbox"`
-	StripePublicKey     string          `yaml:"stripe_public_key" default:"" comment:"Stripe Public Key" validate:"required"`
-	StripeSecretKey     string          `yaml:"stripe_secret_key" default:"" comment:"Stripe Public Key" validate:"required"`
+	PaypalClientID      Differs[string] `yaml:"paypal_client_id" default:"" comment:"Paypal Client ID" validate:"required"`
+	PaypalSecret        Differs[string] `yaml:"paypal_secret" default:"" comment:"Paypal Secret" validate:"required"`
+	StripePublicKey     Differs[string] `yaml:"stripe_public_key" default:"" comment:"Stripe Public Key" validate:"required"`
+	StripeSecretKey     Differs[string] `yaml:"stripe_secret_key" default:"" comment:"Stripe Public Key" validate:"required"`
 	UptimeRobotROAPIKey string          `yaml:"uptime_robot_ro_api_key" default:"" comment:"Uptime Robot Read-Only API Key" validate:"required"`
 	PopplioProxy        string          `yaml:"popplio_proxy" default:"http://100.104.199.117:3219" comment:"Popplio Proxy URL" validate:"required"`
 }

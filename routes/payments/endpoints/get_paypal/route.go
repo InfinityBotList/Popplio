@@ -23,7 +23,7 @@ func Docs() *docs.Doc {
 func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	return uapi.HttpResponse{
 		Json: PaypalMeta{
-			PaypalClientID: state.Config.Meta.PaypalClientID,
+			PaypalClientID: state.Config.Meta.PaypalClientID.Parse(),
 		},
 	}
 }

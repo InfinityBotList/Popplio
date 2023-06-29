@@ -34,4 +34,4 @@ promoteprod:
 	cd ../prod && make ts
 
 	# Git push to "current-prod" branch
-	cd ../prod && git branch current-prod && git add . && git commit -m "Promote staging to prod" && git push -u origin current-prod
+	cd ../prod && git branch current-prod && git add -v . && git commit -m "Promote staging to prod" && git push -u origin HEAD:current-prod --force

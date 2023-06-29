@@ -23,7 +23,7 @@ func Docs() *docs.Doc {
 func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	return uapi.HttpResponse{
 		Json: StripeMeta{
-			StripePublicKey: state.Config.Meta.StripePublicKey,
+			StripePublicKey: state.Config.Meta.StripePublicKey.Parse(),
 		},
 	}
 }

@@ -154,8 +154,8 @@ func Setup() {
 		panic(err)
 	}
 
-	c, err := paypal.NewClient(Config.Meta.PaypalClientID, Config.Meta.PaypalSecret, func() string {
-		if Config.Meta.PaypalUseSandbox {
+	c, err := paypal.NewClient(Config.Meta.PaypalClientID.Parse(), Config.Meta.PaypalSecret.Parse(), func() string {
+		if config.CurrentEnv == config.CurrentEnvStaging {
 			return paypal.APIBaseSandBox
 		} else {
 			return paypal.APIBaseLive
@@ -174,7 +174,7 @@ func Setup() {
 
 	Paypal = c
 
-	stripe.Key = Config.Meta.StripeSecretKey
+	stripe.Key = Config.Meta.StripeSecretKey.Parse()
 
 	go func() {
 		// Get all current webhooks
