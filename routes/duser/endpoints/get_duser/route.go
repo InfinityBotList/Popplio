@@ -3,7 +3,9 @@ package get_duser
 import (
 	"net/http"
 
+	"popplio/config"
 	"popplio/state"
+	"popplio/types"
 
 	docs "github.com/infinitybotlist/eureka/doclib"
 	"github.com/infinitybotlist/eureka/dovewing"
@@ -30,6 +32,19 @@ func Docs() *docs.Doc {
 }
 
 func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
+	if config.CurrentEnv == config.CurrentEnvStaging {
+		return uapi.HttpResponse{
+			Status: http.StatusUnsupportedMediaType,
+			Json: types.ApiError{
+				Error:   true,
+				Message: "Deprecated endpoint, please use Platform APIs instead",
+				Context: map[string]string{
+					"try": "https://reedwhisker.infinitybots.gg",
+				},
+			},
+		}
+	}
+
 	var id = chi.URLParam(r, "id")
 
 	user, err := dovewing.GetUser(d.Context, id, state.DovewingPlatformDiscord)

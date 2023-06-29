@@ -31,3 +31,4 @@ promoteprod:
 	echo "prod" > ../prod2/config/current-env
 	cd ../prod2 && make && rm -rf ../prod && mv -vf ../prod2 ../prod && systemctl restart popplio-prod
 	rm -rf ../prod/.git # Neutralize git
+	cd ../prod && make ts
