@@ -24,6 +24,7 @@ func Docs() *docs.Doc {
 		Summary:     "Get User Alerts",
 		Description: "Gets a users alerts.\n\nAll alerts are also sent via push notifications if the user has subscribed to them.",
 		Resp:        types.PagedResult[types.AlertList]{},
+		RespName:    "PagedResultAlertList",
 		Params: []docs.Parameter{
 			{
 				Name:        "id",

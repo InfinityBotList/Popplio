@@ -28,6 +28,8 @@ func Docs() *docs.Doc {
 	return &docs.Doc{
 		Summary:     "Get All Tickets",
 		Description: "Gets a support ticket. Requires admin permissions",
+		Resp:        types.PagedResult[[]types.Ticket]{},
+		RespName:    "PagedResultTicket",
 		Params: []docs.Parameter{
 			{
 				Name:        "page",
@@ -37,7 +39,6 @@ func Docs() *docs.Doc {
 				Schema:      docs.IdSchema,
 			},
 		},
-		Resp: types.PagedResult[[]types.Ticket]{},
 	}
 }
 

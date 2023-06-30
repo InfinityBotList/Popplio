@@ -19,6 +19,7 @@ func Docs() *docs.Doc {
 		Summary:     "Get Webhook Logs",
 		Description: "Gets logs of a specific entity. The entity type is determined by the auth type used. Paginated to 50 at a time. **Requires authentication**",
 		Resp:        types.PagedResult[types.WebhookLogEntry]{},
+		RespName:    "PagedResultWebhookLogEntry",
 		Params: []docs.Parameter{
 			{
 				Name:        "uid",

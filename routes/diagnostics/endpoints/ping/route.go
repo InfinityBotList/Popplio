@@ -14,16 +14,10 @@ import (
 var json = jsoniter.ConfigCompatibleWithStandardLibrary
 
 type Hello struct {
-	Message string `json:"message"`
-	Docs    string `json:"docs"`
-	OurSite string `json:"our_site"`
-	Status  string `json:"status"`
+	Message     string `json:"message"`
+	Docs        string `json:"docs"`
+	FrontendURL string `json:"frontend_url"`
 }
-
-const (
-	mainSite   = "https://infinitybotlist.com"
-	statusPage = "https://status.botlist.site"
-)
 
 var helloWorld []byte
 var helloWorldB Hello
@@ -33,10 +27,9 @@ func Setup() {
 
 	// This is done here to avoid constant remarshalling
 	helloWorldB = Hello{
-		Message: "Hello world from IBL API v6!",
-		Docs:    docsSite,
-		OurSite: mainSite,
-		Status:  statusPage,
+		Message:     "Hello world from IBL API v6!",
+		Docs:        docsSite,
+		FrontendURL: state.Config.Sites.Frontend.Parse(),
 	}
 
 	var err error

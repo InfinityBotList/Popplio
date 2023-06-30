@@ -18,6 +18,8 @@ func Docs() *docs.Doc {
 	return &docs.Doc{
 		Summary:     "Get All Bot Votes",
 		Description: "Gets all votes (paginated by 100) which can be used as an alternative to webhooks. **Requires authentication**",
+		Resp:        types.PagedResult[[]types.UserVote]{},
+		RespName:    "PagedResultUserVote",
 		Params: []docs.Parameter{
 			{
 				Name:        "id",
@@ -34,7 +36,6 @@ func Docs() *docs.Doc {
 				Schema:      docs.IdSchema,
 			},
 		},
-		Resp: types.PagedResult[[]types.UserVote]{},
 	}
 }
 

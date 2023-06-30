@@ -28,6 +28,16 @@ func Docs() *docs.Doc {
 		Summary:     "Get All Packs",
 		Description: "Gets all packs on the list. Returns a ``Index`` object",
 		Resp:        types.PagedResult[[]types.IndexBotPack]{},
+		RespName:    "PagedResultIndexBotPack",
+		Params: []docs.Parameter{
+			{
+				Name:        "page",
+				Description: "The page number",
+				Required:    false,
+				In:          "query",
+				Schema:      docs.IdSchema,
+			},
+		},
 	}
 }
 
