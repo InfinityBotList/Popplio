@@ -395,7 +395,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 						Name: "Owner",
 						Value: func() string {
 							if payload.TeamOwner != "" {
-								return fmt.Sprintf("[Team %s](%s/teams/%s)", payload.TeamOwner, state.Config.Sites.Frontend, payload.TeamOwner)
+								return fmt.Sprintf("[Team %s](%s/teams/%s)", payload.TeamOwner, state.Config.Sites.Frontend.Parse(), payload.TeamOwner)
 							}
 							return fmt.Sprintf("<@%s>", d.Auth.ID)
 						}(),
