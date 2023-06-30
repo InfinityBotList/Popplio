@@ -27,6 +27,9 @@ ts:
 	sed -i 's:package types:package popltypes:g' /iblcdn/public/dev/bindings/popplio/go/types/*
 
 promoteprod:
+	# Block promoteprod for now
+	echo "Disabled for now" && exit 1
+	
 	rm -rf ../prod2
 	cd .. && cp -rf staging prod2
 	echo "prod" > ../prod2/config/current-env

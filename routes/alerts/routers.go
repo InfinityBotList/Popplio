@@ -5,6 +5,7 @@ import (
 	"popplio/routes/alerts/endpoints/get_featured_user_alerts"
 	"popplio/routes/alerts/endpoints/get_user_alert_by_itag"
 	"popplio/routes/alerts/endpoints/get_user_alerts"
+	"popplio/routes/alerts/endpoints/patch_user_alerts"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/infinitybotlist/eureka/uapi"
@@ -25,6 +26,20 @@ func (b Router) Routes(r *chi.Mux) {
 		Method:  uapi.GET,
 		Docs:    get_user_alerts.Docs,
 		Handler: get_user_alerts.Route,
+		Auth: []uapi.AuthType{
+			{
+				URLVar: "id",
+				Type:   api.TargetTypeUser,
+			},
+		},
+	}.Route(r)
+
+	uapi.Route{
+		Pattern: "/users/{id}/alerts",
+		OpId:    "patch_user_alerts",
+		Method:  uapi.PATCH,
+		Docs:    patch_user_alerts.Docs,
+		Handler: patch_user_alerts.Route,
 		Auth: []uapi.AuthType{
 			{
 				URLVar: "id",

@@ -42,3 +42,12 @@ type FeaturedUserAlerts struct {
 	Unacked      []Alert `json:"unacked" description:"List of featured unacknowledged alerts"`
 	Acked        []Alert `json:"acked" description:"List of featured acknowledged alerts"`
 }
+
+type AlertPatch struct {
+	Patches []AlertPatchItem `json:"patches" validate:"required" description:"List of patches to apply to alerts"`
+}
+
+type AlertPatchItem struct {
+	ITag  string `json:"itag" validate:"required" description:"The alert's ID"`
+	Patch string `json:"patch" validate:"required,oneof=ack unack delete" description:"The patch to apply to the alert, ack=mark as read, unack=unmark as read, delete=delete the alert"`
+}
