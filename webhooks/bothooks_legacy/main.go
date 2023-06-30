@@ -10,6 +10,7 @@ import (
 	"popplio/webhooks/sender"
 
 	"github.com/infinitybotlist/eureka/dovewing"
+	"github.com/infinitybotlist/eureka/dovewing/dovetypes"
 	"github.com/jackc/pgx/v5/pgtype"
 	jsoniter "github.com/json-iterator/go"
 )
@@ -26,15 +27,15 @@ type WebhookPostLegacy struct {
 }
 
 type WebhookDataLegacy struct {
-	Votes        int                    `json:"votes"`
-	UserID       string                 `json:"user"`
-	UserObj      *dovewing.PlatformUser `json:"userObj"`
-	BotObj       *dovewing.PlatformUser `json:"botObj"`
-	BotID        string                 `json:"bot"`
-	UserIDLegacy string                 `json:"userID"`
-	BotIDLegacy  string                 `json:"botID"`
-	Test         bool                   `json:"test"`
-	Time         int64                  `json:"time"`
+	Votes        int                     `json:"votes"`
+	UserID       string                  `json:"user"`
+	UserObj      *dovetypes.PlatformUser `json:"userObj"`
+	BotObj       *dovetypes.PlatformUser `json:"botObj"`
+	BotID        string                  `json:"bot"`
+	UserIDLegacy string                  `json:"userID"`
+	BotIDLegacy  string                  `json:"botID"`
+	Test         bool                    `json:"test"`
+	Time         int64                   `json:"time"`
 }
 
 func isDiscordAPIURL(url string) (bool, string) {

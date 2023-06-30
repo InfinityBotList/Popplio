@@ -8,6 +8,7 @@ import (
 
 	docs "github.com/infinitybotlist/eureka/doclib"
 	"github.com/infinitybotlist/eureka/dovewing"
+	"github.com/infinitybotlist/eureka/dovewing/dovetypes"
 	"github.com/infinitybotlist/eureka/uapi"
 
 	"github.com/go-chi/chi/v5"
@@ -33,7 +34,7 @@ func Docs() *docs.Doc {
 				Schema:      docs.IdSchema,
 			},
 		},
-		Resp: dovewing.PlatformUser{},
+		Resp: dovetypes.PlatformUser{},
 	}
 }
 

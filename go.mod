@@ -8,13 +8,13 @@ require (
 	github.com/getkin/kin-openapi v0.118.0 // indirect
 	github.com/go-chi/chi/v5 v5.0.8
 	github.com/google/uuid v1.3.0
-	github.com/infinitybotlist/eureka v0.0.0-20230626131311-5df96416b5a0
+	github.com/infinitybotlist/eureka v0.0.0-20230630081818-9b293f96a798
 	github.com/mileusna/useragent v1.3.3
-	github.com/wk8/go-ordered-map/v2 v2.1.7 // indirect
+	github.com/wk8/go-ordered-map/v2 v2.1.8 // indirect
 	gopkg.in/yaml.v3 v3.0.1
 )
 
-require github.com/stripe/stripe-go/v74 v74.23.0
+require github.com/stripe/stripe-go/v74 v74.24.0
 
 require (
 	github.com/buger/jsonparser v1.1.1 // indirect
@@ -59,7 +59,7 @@ require (
 	github.com/plutov/paypal/v4 v4.7.0
 	github.com/redis/go-redis/v9 v9.0.5
 	go.uber.org/zap v1.24.0
-	golang.org/x/exp v0.0.0-20230522175609-2e198f4a06a1
+	golang.org/x/exp v0.0.0-20230626212559-97b1e661b5df
 	golang.org/x/sys v0.9.0 // indirect
 )
 

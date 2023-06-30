@@ -3,7 +3,7 @@ package events
 import (
 	"github.com/bwmarrin/discordgo"
 	docs "github.com/infinitybotlist/eureka/doclib"
-	"github.com/infinitybotlist/eureka/dovewing"
+	"github.com/infinitybotlist/eureka/dovewing/dovetypes"
 )
 
 const webhookTypeTeamEdit WebhookType = "TEAM_EDIT"
@@ -17,7 +17,7 @@ func (n WebhookTeamEditData) Event() WebhookType {
 	return webhookTypeTeamEdit
 }
 
-func (n WebhookTeamEditData) CreateHookParams(creator *dovewing.PlatformUser, targets Target) *discordgo.WebhookParams {
+func (n WebhookTeamEditData) CreateHookParams(creator *dovetypes.PlatformUser, targets Target) *discordgo.WebhookParams {
 	return &discordgo.WebhookParams{
 		Embeds: []*discordgo.MessageEmbed{
 			{

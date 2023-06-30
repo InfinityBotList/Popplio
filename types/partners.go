@@ -1,8 +1,6 @@
 package types
 
-import (
-	"github.com/infinitybotlist/eureka/dovewing"
-)
+import "github.com/infinitybotlist/eureka/dovewing/dovetypes"
 
 type Partner struct {
 	ID     string `json:"id" validate:"required"`
@@ -13,7 +11,7 @@ type Partner struct {
 	UserID string `json:"-" validate:"required,numeric"`
 
 	// Internal field
-	User *dovewing.PlatformUser `json:"user"`
+	User *dovetypes.PlatformUser `json:"user"`
 }
 
 type PartnerList struct {

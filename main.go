@@ -16,7 +16,6 @@ import (
 	"popplio/routes/blogs"
 	"popplio/routes/bots"
 	"popplio/routes/diagnostics"
-	"popplio/routes/duser"
 	"popplio/routes/list"
 	"popplio/routes/packs"
 	"popplio/routes/payments"
@@ -138,7 +137,6 @@ func main() {
 		// Use same order as routes folder
 		blogs.Router{},
 		bots.Router{},
-		duser.Router{},
 		list.Router{},
 		packs.Router{},
 		teams.Router{},

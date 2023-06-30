@@ -24,11 +24,9 @@ import (
 )
 
 type internalData struct {
-	QueueName   *string
-	QueueAvatar *string
-	Owner       string
-	Vanity      *string
-	GuildCount  *int
+	Owner      string
+	Vanity     *string
+	GuildCount *int
 }
 
 func createBotsArgs(bot types.CreateBot, id internalData) []any {
@@ -45,8 +43,6 @@ func createBotsArgs(bot types.CreateBot, id internalData) []any {
 		bot.Tags,
 		bot.NSFW,
 		bot.StaffNote,
-		id.QueueName,
-		id.QueueAvatar,
 		id.Owner,
 		id.Vanity,
 		id.GuildCount,
@@ -242,8 +238,6 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 
 	id := internalData{}
 
-	id.QueueName = &metadata.Name
-	id.QueueAvatar = &metadata.Avatar
 	id.Owner = d.Auth.ID
 	id.GuildCount = &metadata.GuildCount
 

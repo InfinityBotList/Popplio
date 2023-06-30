@@ -8,15 +8,9 @@ packages:
       time.Time: "string /* RFC3339 */"
       pgtype.Text: "string | null /* nullable */"
       pgtype.UUID: "string /* uuid */"
-      dovewing.PlatformUser: PlatformUser /* from eureka-dovewing.ts */
+      dovetypes.PlatformUser: PlatformUser /* from eureka-dovewing.ts */
       teams.PermDetailMap: PermDetailMap /* from teams-misc.ts */
       pgtype.Timestamptz: "string | null /* RFC3339, nullable */"
         
-  - path: "github.com/infinitybotlist/eureka/dovewing"
+  - path: "github.com/infinitybotlist/eureka/dovewing/dovetypes"
     output_path: "/iblcdn/public/dev/bindings/popplio/eureka-dovewing.ts"
-    type_mappings:
-      time.Time: "string /* RFC3339 */"
-      pgtype.Text: "string | null /* nullable */"
-      pgtype.UUID: "string /* uuid */"
-      discordgo.Status: "string /* discord status */"
-  

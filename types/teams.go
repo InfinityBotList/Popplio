@@ -3,7 +3,7 @@ package types
 import (
 	"time"
 
-	"github.com/infinitybotlist/eureka/dovewing"
+	"github.com/infinitybotlist/eureka/dovewing/dovetypes"
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
@@ -25,9 +25,9 @@ type Team struct {
 }
 
 type TeamMember struct {
-	User      *dovewing.PlatformUser `json:"user"`
-	Perms     []TeamPermission       `json:"perms"`
-	CreatedAt time.Time              `json:"created_at"`
+	User      *dovetypes.PlatformUser `json:"user"`
+	Perms     []TeamPermission        `json:"perms"`
+	CreatedAt time.Time               `json:"created_at"`
 }
 
 type CreateTeam struct {

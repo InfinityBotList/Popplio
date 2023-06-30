@@ -5,7 +5,7 @@ import (
 
 	"github.com/bwmarrin/discordgo"
 	docs "github.com/infinitybotlist/eureka/doclib"
-	"github.com/infinitybotlist/eureka/dovewing"
+	"github.com/infinitybotlist/eureka/dovewing/dovetypes"
 )
 
 const webhookTypeBotVote WebhookType = "BOT_VOTE"
@@ -19,7 +19,7 @@ func (v WebhookBotVoteData) Event() WebhookType {
 	return webhookTypeBotVote
 }
 
-func (v WebhookBotVoteData) CreateHookParams(creator *dovewing.PlatformUser, targets Target) *discordgo.WebhookParams {
+func (v WebhookBotVoteData) CreateHookParams(creator *dovetypes.PlatformUser, targets Target) *discordgo.WebhookParams {
 	return &discordgo.WebhookParams{
 		Embeds: []*discordgo.MessageEmbed{
 			{

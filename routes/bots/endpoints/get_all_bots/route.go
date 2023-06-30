@@ -38,13 +38,6 @@ func Docs() *docs.Doc {
 				In:          "query",
 				Schema:      docs.IdSchema,
 			},
-			{
-				Name:        "filter",
-				Description: "Filter bots by name. Slow and limited to only `bot_id` and `username` filter",
-				Required:    false,
-				In:          "query",
-				Schema:      docs.IdSchema,
-			},
 		},
 	}
 }
@@ -62,10 +55,8 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		return uapi.DefaultResponse(http.StatusBadRequest)
 	}
 
-	filter := r.URL.Query().Get("filter")
-
 	// Check cache, this is how we can avoid hefty ratelimits
-	cache := state.Redis.Get(d.Context, "allbots-"+strconv.FormatUint(pageNum, 10)+"-"+filter).Val()
+	cache := state.Redis.Get(d.Context, "allbots-"+strconv.FormatUint(pageNum, 10)).Val()
 	if cache != "" {
 		return uapi.HttpResponse{
 			Data: cache,
@@ -80,11 +71,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 
 	var rows pgx.Rows
 
-	if filter != "" {
-		rows, err = state.Pool.Query(d.Context, "SELECT "+indexBotCols+" FROM bots WHERE (queue_name ILIKE $1 OR bot_id ILIKE $1) ORDER BY created_at DESC LIMIT $2 OFFSET $3", "%"+filter+"%", limit, offset)
-	} else {
-		rows, err = state.Pool.Query(d.Context, "SELECT "+indexBotCols+" FROM bots ORDER BY created_at DESC LIMIT $1 OFFSET $2", limit, offset)
-	}
+	rows, err = state.Pool.Query(d.Context, "SELECT "+indexBotCols+" FROM bots ORDER BY created_at DESC LIMIT $1 OFFSET $2", limit, offset)
 
 	if err != nil {
 		state.Logger.Error(err)
@@ -113,11 +100,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 
 	var count uint64
 
-	if filter != "" {
-		err = state.Pool.QueryRow(d.Context, "SELECT COUNT(*) FROM bots WHERE (queue_name ILIKE $1 OR bot_id ILIKE $1)", "%"+filter+"%").Scan(&count)
-	} else {
-		err = state.Pool.QueryRow(d.Context, "SELECT COUNT(*) FROM bots").Scan(&count)
-	}
+	err = state.Pool.QueryRow(d.Context, "SELECT COUNT(*) FROM bots").Scan(&count)
 
 	if err != nil {
 		state.Logger.Error(err)
@@ -132,7 +115,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 
 	return uapi.HttpResponse{
 		Json:      data,
-		CacheKey:  "allbots-" + strconv.FormatUint(pageNum, 10) + "-" + filter,
+		CacheKey:  "allbots-" + strconv.FormatUint(pageNum, 10),
 		CacheTime: 10 * time.Minute,
 	}
 }

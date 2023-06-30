@@ -15,6 +15,7 @@ import (
 	"github.com/go-playground/validator/v10"
 	"github.com/go-playground/validator/v10/non-standard/validators"
 	"github.com/infinitybotlist/eureka/dovewing"
+	"github.com/infinitybotlist/eureka/dovewing/dovetypes"
 	"github.com/infinitybotlist/eureka/genconfig"
 	"github.com/infinitybotlist/eureka/snippets"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -58,15 +59,7 @@ func nonVulgar(fl validator.FieldLevel) bool {
 	}
 }
 
-func updateDb(u *dovewing.PlatformUser) error {
-	if u.Bot {
-		_, err := Pool.Exec(Context, "UPDATE bots SET queue_name = $1, queue_avatar = $2 WHERE bot_id = $3", u.Username, u.Avatar, u.ID)
-
-		if err != nil {
-			return err
-		}
-	}
-
+func updateDb(u *dovetypes.PlatformUser) error {
 	return nil
 }
 

@@ -1,8 +1,8 @@
 package types
 
 type SearchFilter struct {
-	From uint32 `json:"from"`
-	To   uint32 `json:"to"`
+	From int64 `json:"from" validate:"min=0"`
+	To   int64 `json:"to" validate:"min=0"`
 }
 
 type TagMode string

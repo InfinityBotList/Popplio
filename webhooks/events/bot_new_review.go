@@ -3,7 +3,7 @@ package events
 import (
 	"github.com/bwmarrin/discordgo"
 	docs "github.com/infinitybotlist/eureka/doclib"
-	"github.com/infinitybotlist/eureka/dovewing"
+	"github.com/infinitybotlist/eureka/dovewing/dovetypes"
 )
 
 const webhookTypeBotNewReview WebhookType = "BOT_NEW_REVIEW"
@@ -17,7 +17,7 @@ func (n WebhookBotNewReviewData) Event() WebhookType {
 	return webhookTypeBotNewReview
 }
 
-func (n WebhookBotNewReviewData) CreateHookParams(creator *dovewing.PlatformUser, targets Target) *discordgo.WebhookParams {
+func (n WebhookBotNewReviewData) CreateHookParams(creator *dovetypes.PlatformUser, targets Target) *discordgo.WebhookParams {
 	return &discordgo.WebhookParams{
 		Embeds: []*discordgo.MessageEmbed{
 			{
