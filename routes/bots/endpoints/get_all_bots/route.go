@@ -30,6 +30,7 @@ func Docs() *docs.Doc {
 		Summary:     "Get All Bots",
 		Description: "Gets all bots on the list. Returns a set of paginated ``IndexBot`` objects",
 		Resp:        types.PagedResult[[]types.IndexBot]{},
+		RespName:    "PagedResultIndexBot",
 		Params: []docs.Parameter{
 			{
 				Name:        "page",
