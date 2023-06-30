@@ -2,6 +2,7 @@ package alerts
 
 import (
 	"popplio/api"
+	"popplio/routes/alerts/endpoints/delete_all_user_alerts"
 	"popplio/routes/alerts/endpoints/get_featured_user_alerts"
 	"popplio/routes/alerts/endpoints/get_user_alert_by_itag"
 	"popplio/routes/alerts/endpoints/get_user_alerts"
@@ -40,6 +41,20 @@ func (b Router) Routes(r *chi.Mux) {
 		Method:  uapi.PATCH,
 		Docs:    patch_user_alerts.Docs,
 		Handler: patch_user_alerts.Route,
+		Auth: []uapi.AuthType{
+			{
+				URLVar: "id",
+				Type:   api.TargetTypeUser,
+			},
+		},
+	}.Route(r)
+
+	uapi.Route{
+		Pattern: "/users/{id}/alerts",
+		OpId:    "delete_all_user_alerts",
+		Method:  uapi.DELETE,
+		Docs:    delete_all_user_alerts.Docs,
+		Handler: delete_all_user_alerts.Route,
 		Auth: []uapi.AuthType{
 			{
 				URLVar: "id",
