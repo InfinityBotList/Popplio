@@ -47,10 +47,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	if !iblhdev && !hadmin {
 		return uapi.HttpResponse{
 			Status: http.StatusForbidden,
-			Json: types.ApiError{
-				Message: "You do not have permission to create a blog post",
-				Error:   true,
-			},
+			Json:   types.ApiError{Message: "You do not have permission to create a blog post"},
 		}
 	}
 
@@ -74,10 +71,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	if strings.Contains(payload.Slug, " ") {
 		return uapi.HttpResponse{
 			Status: http.StatusBadRequest,
-			Json: types.ApiError{
-				Message: "Slug cannot contain spaces",
-				Error:   true,
-			},
+			Json:   types.ApiError{Message: "Slug cannot contain spaces"},
 		}
 	}
 
@@ -94,10 +88,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	if slugExists {
 		return uapi.HttpResponse{
 			Status: http.StatusBadRequest,
-			Json: types.ApiError{
-				Message: "Slug already exists",
-				Error:   true,
-			},
+			Json:   types.ApiError{Message: "Slug already exists"},
 		}
 	}
 

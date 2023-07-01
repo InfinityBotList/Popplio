@@ -68,7 +68,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	botName := chi.URLParam(r, "bid")
 
 	// Resolve bot ID
-	id, err := utils.ResolveBot(state.Context, botName)
+	id, err := utils.ResolveBot(d.Context, botName)
 
 	if err != nil {
 		state.Logger.Error("Resolve Error", err)
@@ -108,7 +108,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	if !currentBotTeam.Valid {
 		return uapi.HttpResponse{
 			Status: http.StatusNotFound,
-			Json:   types.ApiError{Message: "This bot is not in a team?", Error: true},
+			Json:   types.ApiError{Message: "This bot is not in a team?"},
 		}
 	}
 
@@ -126,7 +126,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	if managerCount == 0 {
 		return uapi.HttpResponse{
 			Status: http.StatusForbidden,
-			Json:   types.ApiError{Message: "You are not a member of this team", Error: true},
+			Json:   types.ApiError{Message: "You are not a member of this team"},
 		}
 	}
 
@@ -143,7 +143,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	if !utils.IsValidUUID(payload.TeamID) {
 		return uapi.HttpResponse{
 			Status: http.StatusBadRequest,
-			Json:   types.ApiError{Message: "Team ID must be a valid UUID", Error: true},
+			Json:   types.ApiError{Message: "Team ID must be a valid UUID"},
 		}
 	}
 
@@ -160,7 +160,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	if count == 0 {
 		return uapi.HttpResponse{
 			Status: http.StatusNotFound,
-			Json:   types.ApiError{Message: "Team not found", Error: true},
+			Json:   types.ApiError{Message: "Team not found"},
 		}
 	}
 
@@ -177,14 +177,14 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	if !teams.NewPermissionManager(managerPerms).Has(teams.TeamPermissionDeleteBots) {
 		return uapi.HttpResponse{
 			Status: http.StatusForbidden,
-			Json:   types.ApiError{Message: "You must be able to delete bots on the current team", Error: true},
+			Json:   types.ApiError{Message: "You must be able to delete bots on the current team"},
 		}
 	}
 
 	if !teams.NewPermissionManager(newTeamPerms).Has(teams.TeamPermissionAddNewBots) {
 		return uapi.HttpResponse{
 			Status: http.StatusForbidden,
-			Json:   types.ApiError{Message: "You must be able to add new bots on the new team", Error: true},
+			Json:   types.ApiError{Message: "You must be able to add new bots on the new team"},
 		}
 	}
 

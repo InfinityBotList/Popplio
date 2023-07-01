@@ -67,7 +67,6 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		return uapi.HttpResponse{
 			Status: http.StatusForbidden,
 			Json: types.ApiError{
-				Error:   true,
 				Message: "Only admins may use the 'full' query parameter.",
 			},
 		}

@@ -54,7 +54,6 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		return uapi.HttpResponse{
 			Status: http.StatusForbidden,
 			Json: types.ApiError{
-				Error:   true,
 				Message: "You are not the author of this review",
 			},
 		}

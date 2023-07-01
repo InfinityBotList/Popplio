@@ -63,10 +63,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	if owner != d.Auth.ID {
 		return uapi.HttpResponse{
 			Status: http.StatusForbidden,
-			Json: types.ApiError{
-				Message: "You are not the owner of this pack",
-				Error:   true,
-			},
+			Json:   types.ApiError{Message: "You are not the owner of this pack"},
 		}
 	}
 

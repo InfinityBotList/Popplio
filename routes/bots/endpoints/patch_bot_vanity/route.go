@@ -49,7 +49,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	name := chi.URLParam(r, "bid")
 
 	// Resolve bot ID
-	id, err := utils.ResolveBot(state.Context, name)
+	id, err := utils.ResolveBot(d.Context, name)
 
 	if err != nil {
 		state.Logger.Error(err)
@@ -70,7 +70,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	if !perms.Has(teams.TeamPermissionSetBotVanity) {
 		return uapi.HttpResponse{
 			Status: http.StatusForbidden,
-			Json:   types.ApiError{Message: "You do not have permission to set bot vanity", Error: true},
+			Json:   types.ApiError{Message: "You do not have permission to set bot vanity"},
 		}
 	}
 
@@ -94,21 +94,21 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	if vanity.Vanity == "" {
 		return uapi.HttpResponse{
 			Status: http.StatusBadRequest,
-			Json:   types.ApiError{Message: "Vanity cannot be empty", Error: true},
+			Json:   types.ApiError{Message: "Vanity cannot be empty"},
 		}
 	}
 
 	if vanity.Vanity == "undefined" || vanity.Vanity == "null" || vanity.Vanity == "blog" || vanity.Vanity == "help" {
 		return uapi.HttpResponse{
 			Status: http.StatusBadRequest,
-			Json:   types.ApiError{Message: "Vanity cannot be undefined, blog, help or null", Error: true},
+			Json:   types.ApiError{Message: "Vanity cannot be undefined, blog, help or null"},
 		}
 	}
 
 	if strings.Contains(vanity.Vanity, "@") {
 		return uapi.HttpResponse{
 			Status: http.StatusBadRequest,
-			Json:   types.ApiError{Message: "Vanity cannot contain @", Error: true},
+			Json:   types.ApiError{Message: "Vanity cannot contain @"},
 		}
 	}
 
@@ -131,7 +131,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	if count > 0 {
 		return uapi.HttpResponse{
 			Status: http.StatusBadRequest,
-			Json:   types.ApiError{Message: "Vanity is already taken", Error: true},
+			Json:   types.ApiError{Message: "Vanity is already taken"},
 		}
 	}
 

@@ -66,7 +66,6 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		return uapi.HttpResponse{
 			Status: http.StatusInternalServerError,
 			Json: types.ApiError{
-				Error:   true,
 				Message: "An error occurred while fetching the user from the database.",
 			},
 		}
@@ -76,7 +75,6 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		return uapi.HttpResponse{
 			Status: http.StatusForbidden,
 			Json: types.ApiError{
-				Error:   true,
 				Message: "You do not have permission to approve/deny apps.",
 			},
 		}
@@ -135,7 +133,6 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		return uapi.HttpResponse{
 			Status: http.StatusBadRequest,
 			Json: types.ApiError{
-				Error:   true,
 				Message: "This app is not pending approval",
 			},
 		}
@@ -155,7 +152,6 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		return uapi.HttpResponse{
 			Status: http.StatusBadRequest,
 			Json: types.ApiError{
-				Error:   true,
 				Message: "This position doesn't exist and so the app has been deleted.",
 			},
 		}
@@ -171,7 +167,6 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 				state.Logger.Error(err)
 				return uapi.HttpResponse{
 					Json: types.ApiError{
-						Error:   true,
 						Message: "Error: " + err.Error(),
 					},
 					Status: http.StatusBadRequest,
@@ -288,7 +283,6 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 			state.Logger.Error(err)
 			return uapi.HttpResponse{
 				Json: types.ApiError{
-					Error:   true,
 					Message: "Could not send DM, but app was updated successfully",
 				},
 			}
@@ -300,7 +294,6 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 			state.Logger.Error(err)
 			return uapi.HttpResponse{
 				Json: types.ApiError{
-					Error:   true,
 					Message: "Could not send DM, but app was updated successfully",
 				},
 			}

@@ -95,7 +95,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	if managerCount == 0 {
 		return uapi.HttpResponse{
 			Status: http.StatusForbidden,
-			Json:   types.ApiError{Message: "You are not a member of this team", Error: true},
+			Json:   types.ApiError{Message: "You are not a member of this team"},
 		}
 	}
 
@@ -114,7 +114,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	if !mp.Has(teams.TeamPermissionEditTeamInfo) {
 		return uapi.HttpResponse{
 			Status: http.StatusForbidden,
-			Json:   types.ApiError{Message: "You don't have permission to edit team information", Error: true},
+			Json:   types.ApiError{Message: "You don't have permission to edit team information"},
 		}
 	}
 

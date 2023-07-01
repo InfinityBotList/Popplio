@@ -34,7 +34,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	if payload.TargetID == "" {
 		return uapi.HttpResponse{
 			Status: http.StatusBadRequest,
-			Json:   types.ApiError{Message: "Target ID is required", Error: true},
+			Json:   types.ApiError{Message: "Target ID is required"},
 		}
 	}
 

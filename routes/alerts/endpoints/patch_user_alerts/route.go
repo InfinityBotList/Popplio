@@ -54,11 +54,11 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	for _, patch := range payload.Patches {
 		switch patch.Patch {
 		case "ack":
-			_, err = tx.Exec(state.Context, "UPDATE alerts SET acked = true WHERE user_id = $1 AND itag = $2", d.Auth.ID, patch.ITag)
+			_, err = tx.Exec(d.Context, "UPDATE alerts SET acked = true WHERE user_id = $1 AND itag = $2", d.Auth.ID, patch.ITag)
 		case "unack":
-			_, err = tx.Exec(state.Context, "UPDATE alerts SET acked = false WHERE user_id = $1 AND itag = $2", d.Auth.ID, patch.ITag)
+			_, err = tx.Exec(d.Context, "UPDATE alerts SET acked = false WHERE user_id = $1 AND itag = $2", d.Auth.ID, patch.ITag)
 		case "delete":
-			_, err = tx.Exec(state.Context, "DELETE FROM alerts WHERE user_id = $1 AND itag = $2", d.Auth.ID, patch.ITag)
+			_, err = tx.Exec(d.Context, "DELETE FROM alerts WHERE user_id = $1 AND itag = $2", d.Auth.ID, patch.ITag)
 		}
 
 		if err != nil {

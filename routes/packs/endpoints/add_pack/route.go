@@ -65,20 +65,14 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		if err != nil {
 			return uapi.HttpResponse{
 				Status: http.StatusBadRequest,
-				Json: types.ApiError{
-					Message: "One of the bot you wish to add does not exist [" + bot + "]: " + err.Error(),
-					Error:   true,
-				},
+				Json:   types.ApiError{Message: "One of the bot you wish to add does not exist [" + bot + "]: " + err.Error()},
 			}
 		}
 
 		if !botUser.Bot {
 			return uapi.HttpResponse{
 				Status: http.StatusBadRequest,
-				Json: types.ApiError{
-					Message: "One of the bot you wish to add is not actually a bot [" + bot + "]",
-					Error:   true,
-				},
+				Json:   types.ApiError{Message: "One of the bot you wish to add is not actually a bot [" + bot + "]"},
 			}
 		}
 	}
@@ -90,20 +84,14 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	if err != nil {
 		return uapi.HttpResponse{
 			Status: http.StatusBadRequest,
-			Json: types.ApiError{
-				Message: err.Error(),
-				Error:   true,
-			},
+			Json:   types.ApiError{Message: err.Error()},
 		}
 	}
 
 	if count > 0 {
 		return uapi.HttpResponse{
 			Status: http.StatusBadRequest,
-			Json: types.ApiError{
-				Message: "A pack with that URL already exists",
-				Error:   true,
-			},
+			Json:   types.ApiError{Message: "A pack with that URL already exists"},
 		}
 	}
 
@@ -122,10 +110,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	if err != nil {
 		return uapi.HttpResponse{
 			Status: http.StatusBadRequest,
-			Json: types.ApiError{
-				Message: err.Error(),
-				Error:   true,
-			},
+			Json:   types.ApiError{Message: err.Error()},
 		}
 	}
 

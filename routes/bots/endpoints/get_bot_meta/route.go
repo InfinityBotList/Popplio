@@ -59,7 +59,6 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	if limit.Exceeded {
 		return uapi.HttpResponse{
 			Json: types.ApiError{
-				Error:   true,
 				Message: "You are being ratelimited. Please try again in " + limit.TimeToReset.String(),
 			},
 			Headers: limit.Headers(),
@@ -71,25 +70,19 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	cid := chi.URLParam(r, "cid")
 
 	// Get bot metadata
-	meta, err := assets.CheckBot(fallbackId, cid)
+	meta, err := assets.CheckBot(d.Context, fallbackId, cid)
 
 	if err != nil {
 		return uapi.HttpResponse{
 			Status: http.StatusBadRequest,
-			Json: types.ApiError{
-				Message: err.Error(),
-				Error:   true,
-			},
+			Json:   types.ApiError{Message: err.Error()},
 		}
 	}
 
 	if meta == nil {
 		return uapi.HttpResponse{
 			Status: http.StatusInternalServerError,
-			Json: types.ApiError{
-				Message: "Internal error: meta returned nil",
-				Error:   true,
-			},
+			Json:   types.ApiError{Message: "Internal error: meta returned nil"},
 		}
 	}
 

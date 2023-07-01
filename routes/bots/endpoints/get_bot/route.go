@@ -1,6 +1,7 @@
 package get_bot
 
 import (
+	"context"
 	"crypto/sha256"
 	"fmt"
 	"net/http"
@@ -47,9 +48,9 @@ Gets a bot by id or name
 	}
 }
 
-func updateClicks(r *http.Request, name string) {
+func updateClicks(ctx context.Context, r *http.Request, name string) {
 	// Resolve bot ID
-	id, err := utils.ResolveBot(state.Context, name)
+	id, err := utils.ResolveBot(ctx, name)
 
 	if err != nil {
 		state.Logger.Error(err)
@@ -64,16 +65,16 @@ func updateClicks(r *http.Request, name string) {
 	hashedIp := fmt.Sprintf("%x", sha256.Sum256([]byte(r.RemoteAddr)))
 
 	// Create transaction
-	tx, err := state.Pool.Begin(state.Context)
+	tx, err := state.Pool.Begin(ctx)
 
 	if err != nil {
 		state.Logger.Error(err)
 		return
 	}
 
-	defer tx.Rollback(state.Context)
+	defer tx.Rollback(ctx)
 
-	_, err = tx.Exec(state.Context, "UPDATE bots SET clicks = clicks + 1")
+	_, err = tx.Exec(ctx, "UPDATE bots SET clicks = clicks + 1")
 
 	if err != nil {
 		state.Logger.Error(err)
@@ -83,7 +84,7 @@ func updateClicks(r *http.Request, name string) {
 	// Check if the IP has already clicked the bot by checking the unique_clicks row
 	var hasClicked bool
 
-	err = tx.QueryRow(state.Context, "SELECT $1 = ANY(unique_clicks) FROM bots WHERE bot_id = $2", hashedIp, id).Scan(&hasClicked)
+	err = tx.QueryRow(ctx, "SELECT $1 = ANY(unique_clicks) FROM bots WHERE bot_id = $2", hashedIp, id).Scan(&hasClicked)
 
 	if err != nil {
 		state.Logger.Error("Error checking", err)
@@ -93,7 +94,7 @@ func updateClicks(r *http.Request, name string) {
 	if !hasClicked {
 		// If not, add it to the array
 		state.Logger.Info("Adding click for " + id)
-		_, err = tx.Exec(state.Context, "UPDATE bots SET unique_clicks = array_append(unique_clicks, $1) WHERE bot_id = $2", hashedIp, id)
+		_, err = tx.Exec(ctx, "UPDATE bots SET unique_clicks = array_append(unique_clicks, $1) WHERE bot_id = $2", hashedIp, id)
 
 		if err != nil {
 			state.Logger.Error("Error adding:", err)
@@ -102,7 +103,7 @@ func updateClicks(r *http.Request, name string) {
 	}
 
 	// Commit transaction
-	err = tx.Commit(state.Context)
+	err = tx.Commit(ctx)
 
 	if err != nil {
 		state.Logger.Error(err)
@@ -114,7 +115,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	name := chi.URLParam(r, "id")
 
 	// Resolve bot ID
-	id, err := utils.ResolveBot(state.Context, name)
+	id, err := utils.ResolveBot(d.Context, name)
 
 	if err != nil {
 		state.Logger.Error("Resolve Error", err)
@@ -129,7 +130,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	cache := state.Redis.Get(d.Context, "bc-"+id).Val()
 	if cache != "" {
 		if api.IsClient(r) {
-			go updateClicks(r, name)
+			updateClicks(d.Context, r, name)
 		}
 
 		return uapi.HttpResponse{
@@ -204,7 +205,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	bot.UniqueClicks = uniqueClicks
 
 	if api.IsClient(r) {
-		go updateClicks(r, name)
+		updateClicks(d.Context, r, name)
 	}
 
 	return uapi.HttpResponse{

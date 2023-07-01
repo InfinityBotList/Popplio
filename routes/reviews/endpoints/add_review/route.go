@@ -72,7 +72,6 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	if limit.Exceeded {
 		return uapi.HttpResponse{
 			Json: types.ApiError{
-				Error:   true,
 				Message: "You are being ratelimited. Please try again in " + limit.TimeToReset.String(),
 			},
 			Headers: limit.Headers(),
@@ -115,19 +114,13 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		if count == 0 {
 			return uapi.HttpResponse{
 				Status: http.StatusBadRequest,
-				Json: types.ApiError{
-					Message: "Bot not found",
-					Error:   true,
-				},
+				Json:   types.ApiError{Message: "Bot not found"},
 			}
 		}
 	default:
 		return uapi.HttpResponse{
 			Status: http.StatusBadRequest,
-			Json: types.ApiError{
-				Message: "Invalid target type",
-				Error:   true,
-			},
+			Json:   types.ApiError{Message: "Invalid target type"},
 		}
 	}
 
@@ -145,10 +138,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		if count > 0 {
 			return uapi.HttpResponse{
 				Status: http.StatusConflict,
-				Json: types.ApiError{
-					Message: "You have already made a root review for this " + targetType,
-					Error:   true,
-				},
+				Json:   types.ApiError{Message: "You have already made a root review for this " + targetType},
 			}
 		}
 	}
@@ -167,20 +157,14 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		if count == 0 {
 			return uapi.HttpResponse{
 				Status: http.StatusBadRequest,
-				Json: types.ApiError{
-					Message: "Parent review not found",
-					Error:   true,
-				},
+				Json:   types.ApiError{Message: "Parent review not found"},
 			}
 		}
 
 		if assets.Nest(d.Context, payload.ParentID) > 2 {
 			return uapi.HttpResponse{
 				Status: http.StatusBadRequest,
-				Json: types.ApiError{
-					Message: "Maximum nesting for reviews reached",
-					Error:   true,
-				},
+				Json:   types.ApiError{Message: "Maximum nesting for reviews reached"},
 			}
 		}
 	}

@@ -56,10 +56,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	if !admin {
 		return uapi.HttpResponse{
 			Status: http.StatusForbidden,
-			Json: types.ApiError{
-				Message: "You do not have permission to view this ticket",
-				Error:   true,
-			},
+			Json:   types.ApiError{Message: "You do not have permission to view this ticket"},
 		}
 	}
 

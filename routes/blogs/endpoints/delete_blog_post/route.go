@@ -50,10 +50,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	if !iblhdev && !hadmin {
 		return uapi.HttpResponse{
 			Status: http.StatusForbidden,
-			Json: types.ApiError{
-				Message: "You do not have permission to delete a blog post",
-				Error:   true,
-			},
+			Json:   types.ApiError{Message: "You do not have permission to delete a blog post"},
 		}
 	}
 

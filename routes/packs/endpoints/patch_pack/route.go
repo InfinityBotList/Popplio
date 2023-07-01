@@ -91,10 +91,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	if owner != d.Auth.ID {
 		return uapi.HttpResponse{
 			Status: http.StatusForbidden,
-			Json: types.ApiError{
-				Message: "You are not the owner of this pack",
-				Error:   true,
-			},
+			Json:   types.ApiError{Message: "You are not the owner of this pack"},
 		}
 	}
 
@@ -105,20 +102,14 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		if err != nil {
 			return uapi.HttpResponse{
 				Status: http.StatusBadRequest,
-				Json: types.ApiError{
-					Message: "One of the bot you wish to add does not exist [" + bot + "]: " + err.Error(),
-					Error:   true,
-				},
+				Json:   types.ApiError{Message: "One of the bot you wish to add does not exist [" + bot + "]: " + err.Error()},
 			}
 		}
 
 		if !botUser.Bot {
 			return uapi.HttpResponse{
 				Status: http.StatusBadRequest,
-				Json: types.ApiError{
-					Message: "One of the bot you wish to add is not actually a bot [" + bot + "]",
-					Error:   true,
-				},
+				Json:   types.ApiError{Message: "One of the bot you wish to add is not actually a bot [" + bot + "]"},
 			}
 		}
 	}

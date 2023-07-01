@@ -100,14 +100,14 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	if teamOwner.Valid {
 		return uapi.HttpResponse{
 			Status: http.StatusForbidden,
-			Json:   types.ApiError{Message: "This bot is already in a team", Error: true},
+			Json:   types.ApiError{Message: "This bot is already in a team"},
 		}
 	}
 
 	if linkedOwnerId.Valid && linkedOwnerId.String != d.Auth.ID {
 		return uapi.HttpResponse{
 			Status: http.StatusForbidden,
-			Json:   types.ApiError{Message: "You must be the owner to transfer a bot to a team", Error: true},
+			Json:   types.ApiError{Message: "You must be the owner to transfer a bot to a team"},
 		}
 	}
 
@@ -115,7 +115,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	if !utils.IsValidUUID(payload.TeamID) {
 		return uapi.HttpResponse{
 			Status: http.StatusBadRequest,
-			Json:   types.ApiError{Message: "Team ID must be a valid UUID", Error: true},
+			Json:   types.ApiError{Message: "Team ID must be a valid UUID"},
 		}
 	}
 
@@ -131,7 +131,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	if count == 0 {
 		return uapi.HttpResponse{
 			Status: http.StatusNotFound,
-			Json:   types.ApiError{Message: "Team not found", Error: true},
+			Json:   types.ApiError{Message: "Team not found"},
 		}
 	}
 
@@ -148,7 +148,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	if managerCount == 0 {
 		return uapi.HttpResponse{
 			Status: http.StatusForbidden,
-			Json:   types.ApiError{Message: "You are not a member of this team", Error: true},
+			Json:   types.ApiError{Message: "You are not a member of this team"},
 		}
 	}
 
@@ -165,7 +165,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	if !mp.Has(teams.TeamPermissionAddNewBots) {
 		return uapi.HttpResponse{
 			Status: http.StatusForbidden,
-			Json:   types.ApiError{Message: "You do not have permission to add new bots", Error: true},
+			Json:   types.ApiError{Message: "You do not have permission to add new bots"},
 		}
 	}
 
@@ -173,7 +173,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	if teamOwner.String == payload.TeamID {
 		return uapi.HttpResponse{
 			Status: http.StatusConflict,
-			Json:   types.ApiError{Message: "This bot is already in the team", Error: true},
+			Json:   types.ApiError{Message: "This bot is already in the team"},
 		}
 	}
 

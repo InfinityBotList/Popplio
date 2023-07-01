@@ -40,7 +40,6 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		return uapi.HttpResponse{
 			Status: http.StatusBadRequest,
 			Json: types.ApiError{
-				Error:   true,
 				Message: "Missing ref_id",
 			},
 		}
@@ -53,7 +52,6 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		return uapi.HttpResponse{
 			Status: http.StatusBadRequest,
 			Json: types.ApiError{
-				Error:   true,
 				Message: "Invalid ref_id. Please contact support if you believe this is an error.",
 			},
 		}
@@ -68,7 +66,6 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		return uapi.HttpResponse{
 			Status: http.StatusBadRequest,
 			Json: types.ApiError{
-				Error:   true,
 				Message: err.Error(),
 			},
 		}
@@ -78,7 +75,6 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		return uapi.HttpResponse{
 			Status: http.StatusBadRequest,
 			Json: types.ApiError{
-				Error:   true,
 				Message: "Order is voided. Please contact support if you believe this is an error.",
 			},
 		}
@@ -93,7 +89,6 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 			return uapi.HttpResponse{
 				Status: http.StatusBadRequest,
 				Json: types.ApiError{
-					Error:   true,
 					Message: "Failed to refund order.",
 				},
 			}
@@ -102,7 +97,6 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		return uapi.HttpResponse{
 			Status: http.StatusBadRequest,
 			Json: types.ApiError{
-				Error:   true,
 				Message: "No purchase units found. Please contact support if you believe this is an error.",
 			},
 		}
@@ -117,7 +111,6 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 			return uapi.HttpResponse{
 				Status: http.StatusBadRequest,
 				Json: types.ApiError{
-					Error:   true,
 					Message: "Failed to refund order.",
 				},
 			}
@@ -126,7 +119,6 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		return uapi.HttpResponse{
 			Status: http.StatusBadRequest,
 			Json: types.ApiError{
-				Error:   true,
 				Message: "No purchase items found. Please contact support if you believe this is an error.",
 			},
 		}
@@ -147,7 +139,6 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 			return uapi.HttpResponse{
 				Status: http.StatusBadRequest,
 				Json: types.ApiError{
-					Error:   true,
 					Message: "Failed to refund order.",
 				},
 			}
@@ -168,7 +159,6 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 			return uapi.HttpResponse{
 				Status: http.StatusBadRequest,
 				Json: types.ApiError{
-					Error:   true,
 					Message: "Failed to refund order.",
 				},
 			}
@@ -178,7 +168,6 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		return uapi.HttpResponse{
 			Status: http.StatusBadRequest,
 			Json: types.ApiError{
-				Error:   true,
 				Message: "Error: " + err.Error(),
 			},
 		}

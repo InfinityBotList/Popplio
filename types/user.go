@@ -80,3 +80,8 @@ type ProfileUpdate struct {
 	ExtraLinks            []Link `json:"extra_links"`
 	CaptchaSponsorEnabled *bool  `json:"captcha_sponsor_enabled"`
 }
+
+type BoosterStatus struct {
+	Remark    string `json:"remark,omitempty" description:"Any issues found when checking booster status"`
+	IsBooster bool   `json:"is_booster" description:"Whether the user is a booster"`
+}

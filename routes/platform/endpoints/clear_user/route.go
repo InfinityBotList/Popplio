@@ -49,7 +49,6 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		return uapi.HttpResponse{
 			Status: http.StatusUnsupportedMediaType,
 			Json: types.ApiError{
-				Error:   true,
 				Message: "Unsupported platform. Only `discord` is supported at this time as a platform.",
 			},
 		}

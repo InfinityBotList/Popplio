@@ -67,7 +67,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	if managerCount == 0 {
 		return uapi.HttpResponse{
 			Status: http.StatusForbidden,
-			Json:   types.ApiError{Message: "You are not a member of this team", Error: true},
+			Json:   types.ApiError{Message: "You are not a member of this team"},
 		}
 	}
 
@@ -85,7 +85,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	if !mp.Has(teams.TeamPermissionEditTeamWebhooks) {
 		return uapi.HttpResponse{
 			Status: http.StatusForbidden,
-			Json:   types.ApiError{Message: "You do not have permission to edit team webhooks", Error: true},
+			Json:   types.ApiError{Message: "You do not have permission to edit team webhooks"},
 		}
 	}
 
@@ -114,7 +114,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		if !(strings.HasPrefix(payload.WebhookURL, "http://") || strings.HasPrefix(payload.WebhookURL, "https://")) {
 			return uapi.HttpResponse{
 				Status: http.StatusBadRequest,
-				Json:   types.ApiError{Message: "Webhook URL must start with http:// or https://", Error: true},
+				Json:   types.ApiError{Message: "Webhook URL must start with http:// or https://"},
 			}
 		}
 

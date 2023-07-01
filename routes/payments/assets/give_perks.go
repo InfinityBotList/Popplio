@@ -3,9 +3,9 @@ package assets
 import (
 	"context"
 	"errors"
-	"popplio/config"
 	"popplio/state"
 	"popplio/types"
+	"popplio/utils"
 	"strconv"
 
 	"github.com/bwmarrin/discordgo"
@@ -47,23 +47,10 @@ func FindPerks(ctx context.Context, payload PerkData) (*types.PaymentPlan, error
 		return nil, errors.New("internal error: user id is required")
 	}
 
-	// For staging, ensure user is a hdev or owner
-	//
-	// This is because staging uses test keys
-	if config.CurrentEnv == config.CurrentEnvStaging {
-		var hdev bool
-		var owner bool
+	err := utils.StagingCheckSensitive(ctx, payload.UserID)
 
-		err := state.Pool.QueryRow(ctx, "SELECT iblhdev, owner FROM users WHERE user_id = $1", payload.UserID).Scan(&hdev, &owner)
-
-		if err != nil {
-			state.Logger.Error(err)
-			return nil, errors.New("unable to determine if user is staff")
-		}
-
-		if !hdev && !owner {
-			return nil, errors.New("user is not a hdev/owner while being in a staging/test environment")
-		}
+	if err != nil {
+		return nil, err
 	}
 
 	switch payload.ProductID {

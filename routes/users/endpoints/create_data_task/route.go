@@ -48,7 +48,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	if reqType != "true" && reqType != "false" {
 		return uapi.HttpResponse{
 			Status: http.StatusBadRequest,
-			Json:   types.ApiError{Message: "delete must be ether 'true' or 'false'", Error: true},
+			Json:   types.ApiError{Message: "delete must be ether 'true' or 'false'"},
 		}
 	}
 
@@ -66,7 +66,6 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	if limit.Exceeded {
 		return uapi.HttpResponse{
 			Json: types.ApiError{
-				Error:   true,
 				Message: "You are being ratelimited. Please try again in " + limit.TimeToReset.String(),
 			},
 			Headers: limit.Headers(),

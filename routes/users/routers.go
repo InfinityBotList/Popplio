@@ -2,6 +2,7 @@ package users
 
 import (
 	"popplio/api"
+	"popplio/routes/users/endpoints/check_booster_status"
 	"popplio/routes/users/endpoints/create_data_task"
 	"popplio/routes/users/endpoints/delete_user_notifications"
 	"popplio/routes/users/endpoints/delete_user_reminders"
@@ -51,6 +52,14 @@ func (b Router) Routes(r *chi.Mux) {
 				Type:   api.TargetTypeUser,
 			},
 		},
+	}.Route(r)
+
+	uapi.Route{
+		Pattern: "/users/{id}/booster",
+		OpId:    "check_booster_status",
+		Method:  uapi.GET,
+		Docs:    check_booster_status.Docs,
+		Handler: check_booster_status.Route,
 	}.Route(r)
 
 	uapi.Route{

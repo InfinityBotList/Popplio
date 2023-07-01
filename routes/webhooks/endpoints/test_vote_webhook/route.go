@@ -78,7 +78,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	if !perms.Has(teams.TeamPermissionTestBotWebhooks) {
 		return uapi.HttpResponse{
 			Status: http.StatusBadRequest,
-			Json:   types.ApiError{Message: "You do not have permission to test this bot's webhooks", Error: true},
+			Json:   types.ApiError{Message: "You do not have permission to test this bot's webhooks"},
 		}
 	}
 
@@ -121,7 +121,6 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	if limit.Exceeded {
 		return uapi.HttpResponse{
 			Json: types.ApiError{
-				Error:   true,
 				Message: "You are being ratelimited. Please try again in " + limit.TimeToReset.String(),
 			},
 			Headers: limit.Headers(),
@@ -144,7 +143,6 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 			return uapi.HttpResponse{
 				Status: http.StatusBadRequest,
 				Json: types.ApiError{
-					Error:   true,
 					Message: err.Error(),
 				},
 			}
@@ -156,7 +154,6 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 			return uapi.HttpResponse{
 				Status: http.StatusBadRequest,
 				Json: types.ApiError{
-					Error:   true,
 					Message: "webhooks v1 is deprecated and so this endpoint will error sometimes to ensure visibility",
 				},
 			}
@@ -175,7 +172,6 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 			return uapi.HttpResponse{
 				Status: http.StatusBadRequest,
 				Json: types.ApiError{
-					Error:   true,
 					Message: err.Error(),
 				},
 			}

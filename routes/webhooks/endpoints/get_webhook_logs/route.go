@@ -82,7 +82,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		if !perms.Has(teams.TeamPermissionGetBotWebhookLogs) {
 			return uapi.HttpResponse{
 				Status: http.StatusForbidden,
-				Json:   types.ApiError{Message: "You do not have permission to get bot webhook logs", Error: true},
+				Json:   types.ApiError{Message: "You do not have permission to get bot webhook logs"},
 			}
 		}
 	case "team":
@@ -112,7 +112,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		if managerCount == 0 {
 			return uapi.HttpResponse{
 				Status: http.StatusForbidden,
-				Json:   types.ApiError{Message: "You are not a member of this team", Error: true},
+				Json:   types.ApiError{Message: "You are not a member of this team"},
 			}
 		}
 
@@ -129,19 +129,19 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		if !mp.Has(teams.TeamPermissionGetTeamWebhookLogs) {
 			return uapi.HttpResponse{
 				Status: http.StatusForbidden,
-				Json:   types.ApiError{Message: "You do not have permission to get team webhook logs", Error: true},
+				Json:   types.ApiError{Message: "You do not have permission to get team webhook logs"},
 			}
 		}
 
 	default:
 		return uapi.HttpResponse{
 			Status: http.StatusNotImplemented,
-			Json:   types.ApiError{Message: "This entity type is not supported yet", Error: true},
+			Json:   types.ApiError{Message: "This entity type is not supported yet"},
 		}
 	}
 
 	return uapi.HttpResponse{
 		Status: http.StatusNotImplemented,
-		Json:   types.ApiError{Message: "This endpoint is not implemented yet", Error: true},
+		Json:   types.ApiError{Message: "This endpoint is not implemented yet"},
 	}
 }

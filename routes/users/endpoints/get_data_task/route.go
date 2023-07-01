@@ -49,7 +49,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	if taskId == "" {
 		return uapi.HttpResponse{
 			Status: http.StatusBadRequest,
-			Json:   types.ApiError{Message: "task id is required", Error: true},
+			Json:   types.ApiError{Message: "task id is required"},
 		}
 	}
 
@@ -59,7 +59,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	if statusesRaw == "" {
 		return uapi.HttpResponse{
 			Status: http.StatusNotFound,
-			Json:   types.ApiError{Message: "Task has invalid status", Error: true},
+			Json:   types.ApiError{Message: "Task has invalid status"},
 		}
 	}
 

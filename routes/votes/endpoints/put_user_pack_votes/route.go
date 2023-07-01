@@ -59,10 +59,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	if voteBannedState {
 		return uapi.HttpResponse{
 			Status: http.StatusForbidden,
-			Json: types.ApiError{
-				Message: "You are banned from voting right now! Contact support if you think this is a mistake",
-				Error:   true,
-			},
+			Json:   types.ApiError{Message: "You are banned from voting right now! Contact support if you think this is a mistake"},
 		}
 	}
 
@@ -137,10 +134,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 
 			return uapi.HttpResponse{
 				Status: http.StatusBadRequest,
-				Json: types.ApiError{
-					Message: msg,
-					Error:   true,
-				},
+				Json:   types.ApiError{Message: msg},
 			}
 		}
 

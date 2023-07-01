@@ -81,7 +81,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	name := chi.URLParam(r, "bid")
 
 	// Resolve bot ID
-	id, err := utils.ResolveBot(state.Context, name)
+	id, err := utils.ResolveBot(d.Context, name)
 
 	if err != nil {
 		state.Logger.Error(err)
@@ -102,7 +102,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	if !perms.Has(teams.TeamPermissionEditBotSettings) {
 		return uapi.HttpResponse{
 			Status: http.StatusForbidden,
-			Json:   types.ApiError{Message: "You do not have permission to edit bot settings", Error: true},
+			Json:   types.ApiError{Message: "You do not have permission to edit bot settings"},
 		}
 	}
 
@@ -129,10 +129,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	if err != nil {
 		return uapi.HttpResponse{
 			Status: http.StatusBadRequest,
-			Json: types.ApiError{
-				Message: err.Error(),
-				Error:   true,
-			},
+			Json:   types.ApiError{Message: err.Error()},
 		}
 	}
 
@@ -142,10 +139,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	if err != nil {
 		return uapi.HttpResponse{
 			Status: http.StatusInternalServerError,
-			Json: types.ApiError{
-				Message: "Internal Error: Failed to get bot user",
-				Error:   true,
-			},
+			Json:   types.ApiError{Message: "Internal Error: Failed to get bot user"},
 		}
 	}
 
@@ -156,10 +150,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	if len(updateSql) != len(botArgs) {
 		return uapi.HttpResponse{
 			Status: http.StatusInternalServerError,
-			Json: types.ApiError{
-				Message: "Internal Error: The number of columns and arguments do not match",
-				Error:   true,
-			},
+			Json:   types.ApiError{Message: "Internal Error: The number of columns and arguments do not match"},
 		}
 	}
 

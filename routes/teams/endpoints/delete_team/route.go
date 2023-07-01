@@ -71,7 +71,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	if managerCount == 0 {
 		return uapi.HttpResponse{
 			Status: http.StatusForbidden,
-			Json:   types.ApiError{Message: "You are not a member of this team", Error: true},
+			Json:   types.ApiError{Message: "You are not a member of this team"},
 		}
 	}
 
@@ -90,7 +90,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	if !mp.Has(teams.TeamPermissionOwner) {
 		return uapi.HttpResponse{
 			Status: http.StatusForbidden,
-			Json:   types.ApiError{Message: "Only owners can delete teams", Error: true},
+			Json:   types.ApiError{Message: "Only owners can delete teams"},
 		}
 	}
 
@@ -106,7 +106,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	if botCount > 0 {
 		return uapi.HttpResponse{
 			Status: http.StatusBadRequest,
-			Json:   types.ApiError{Message: "You cannot delete a team with bots on it", Error: true},
+			Json:   types.ApiError{Message: "You cannot delete a team with bots on it"},
 		}
 	}
 

@@ -80,7 +80,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	if managerCount == 0 {
 		return uapi.HttpResponse{
 			Status: http.StatusForbidden,
-			Json:   types.ApiError{Message: "You are not a member of this team", Error: true},
+			Json:   types.ApiError{Message: "You are not a member of this team"},
 		}
 	}
 
@@ -97,7 +97,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	if userCount == 0 {
 		return uapi.HttpResponse{
 			Status: http.StatusForbidden,
-			Json:   types.ApiError{Message: "User is not a member of this team", Error: true},
+			Json:   types.ApiError{Message: "User is not a member of this team"},
 		}
 	}
 
@@ -117,7 +117,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		if !mp.Has(teams.TeamPermissionRemoveTeamMembers) {
 			return uapi.HttpResponse{
 				Status: http.StatusForbidden,
-				Json:   types.ApiError{Message: "You do not have permission to remove team members", Error: true},
+				Json:   types.ApiError{Message: "You do not have permission to remove team members"},
 			}
 		}
 
@@ -137,7 +137,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		if err != nil {
 			return uapi.HttpResponse{
 				Status: http.StatusBadRequest,
-				Json:   types.ApiError{Message: err.Error(), Error: true},
+				Json:   types.ApiError{Message: err.Error()},
 			}
 		}
 	}
@@ -156,7 +156,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		if ownerCount == 0 {
 			return uapi.HttpResponse{
 				Status: http.StatusBadRequest,
-				Json:   types.ApiError{Message: "There needs to be one other owner before you can remove yourself from owner", Error: true},
+				Json:   types.ApiError{Message: "There needs to be one other owner before you can remove yourself from owner"},
 			}
 		}
 	}

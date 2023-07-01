@@ -1,6 +1,7 @@
 package assets
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -35,7 +36,7 @@ type japidata struct {
 	} `json:"data"`
 }
 
-func CheckBot(fallbackBotId, clientId string) (*types.DiscordBotMeta, error) {
+func CheckBot(ctx context.Context, fallbackBotId, clientId string) (*types.DiscordBotMeta, error) {
 	// Convert client id to int
 	cidInt, err := strconv.ParseInt(clientId, 10, 64)
 
@@ -47,7 +48,7 @@ func CheckBot(fallbackBotId, clientId string) (*types.DiscordBotMeta, error) {
 		Timeout: 5 * time.Second,
 	}
 
-	req, err := http.NewRequestWithContext(state.Context, "GET", "https://japi.rest/discord/v1/application/"+clientId, nil)
+	req, err := http.NewRequestWithContext(ctx, "GET", "https://japi.rest/discord/v1/application/"+clientId, nil)
 
 	if err != nil {
 		return nil, fmt.Errorf("error creating request: %s", err.Error())
@@ -88,7 +89,7 @@ func CheckBot(fallbackBotId, clientId string) (*types.DiscordBotMeta, error) {
 
 	if data.Data.Message != "" {
 		// Fallback to RPC, but this is less accurate
-		req, err := http.NewRequestWithContext(state.Context, "GET", state.Config.Meta.PopplioProxy+"/api/v10/applications/"+clientId+"/rpc", nil)
+		req, err := http.NewRequestWithContext(ctx, "GET", state.Config.Meta.PopplioProxy+"/api/v10/applications/"+clientId+"/rpc", nil)
 
 		if err != nil {
 			return nil, err
@@ -129,7 +130,7 @@ func CheckBot(fallbackBotId, clientId string) (*types.DiscordBotMeta, error) {
 		}
 
 		// Check that the client id is also a bot (or rather, hope)
-		user, err := dovewing.GetUser(state.Context, fallbackBotId, state.DovewingPlatformDiscord)
+		user, err := dovewing.GetUser(ctx, fallbackBotId, state.DovewingPlatformDiscord)
 
 		if err != nil {
 			return nil, errors.New("the client id provided is not an actual bot id")
@@ -164,7 +165,7 @@ func CheckBot(fallbackBotId, clientId string) (*types.DiscordBotMeta, error) {
 			return nil, errors.New("woah there, we found an application with no associated bot?")
 		}
 
-		user, err := dovewing.GetUser(state.Context, data.Data.Bot.ID, state.DovewingPlatformDiscord)
+		user, err := dovewing.GetUser(ctx, data.Data.Bot.ID, state.DovewingPlatformDiscord)
 
 		if err != nil {
 			return nil, errors.New("please contact support, an error has occured while trying to fetch basic info")
@@ -187,7 +188,7 @@ func CheckBot(fallbackBotId, clientId string) (*types.DiscordBotMeta, error) {
 	// Check if the bot is already in the database
 	var count int
 
-	err = state.Pool.QueryRow(state.Context, "SELECT COUNT(*) FROM bots WHERE bot_id = $1", metadata.BotID).Scan(&count)
+	err = state.Pool.QueryRow(ctx, "SELECT COUNT(*) FROM bots WHERE bot_id = $1", metadata.BotID).Scan(&count)
 
 	if err != nil {
 		return nil, errors.New("failed to check if bot is already in the database")
@@ -197,7 +198,7 @@ func CheckBot(fallbackBotId, clientId string) (*types.DiscordBotMeta, error) {
 		// Get bot type
 		var listType string
 
-		err = state.Pool.QueryRow(state.Context, "SELECT type FROM bots WHERE bot_id = $1", metadata.BotID).Scan(&listType)
+		err = state.Pool.QueryRow(ctx, "SELECT type FROM bots WHERE bot_id = $1", metadata.BotID).Scan(&listType)
 
 		if err != nil {
 			return nil, errors.New("failed to get bot type")

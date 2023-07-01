@@ -55,7 +55,6 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	if limit.Exceeded {
 		return uapi.HttpResponse{
 			Json: types.ApiError{
-				Error:   true,
 				Message: "You are being ratelimited. Please try again in " + limit.TimeToReset.String(),
 			},
 			Headers: limit.Headers(),
@@ -88,7 +87,6 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		return uapi.HttpResponse{
 			Status: http.StatusBadRequest,
 			Json: types.ApiError{
-				Error:   true,
 				Message: "Error: " + err.Error(),
 			},
 		}

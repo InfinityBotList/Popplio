@@ -42,7 +42,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	name := chi.URLParam(r, "bid")
 
 	// Resolve bot ID
-	id, err := utils.ResolveBot(state.Context, name)
+	id, err := utils.ResolveBot(d.Context, name)
 
 	if err != nil {
 		state.Logger.Error(err)
@@ -63,7 +63,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	if !perms.Has(teams.TeamPermissionEditBotWebhooks) {
 		return uapi.HttpResponse{
 			Status: http.StatusForbidden,
-			Json:   types.ApiError{Message: "You do not have permission to edit bot webhooks", Error: true},
+			Json:   types.ApiError{Message: "You do not have permission to edit bot webhooks"},
 		}
 	}
 
@@ -95,7 +95,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		if !(strings.HasPrefix(payload.WebhookURL, "http://") || strings.HasPrefix(payload.WebhookURL, "https://")) {
 			return uapi.HttpResponse{
 				Status: http.StatusBadRequest,
-				Json:   types.ApiError{Message: "Webhook URL must start with http:// or https://", Error: true},
+				Json:   types.ApiError{Message: "Webhook URL must start with http:// or https://"},
 			}
 		}
 

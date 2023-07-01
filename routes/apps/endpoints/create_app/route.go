@@ -62,7 +62,6 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	if position == nil {
 		return uapi.HttpResponse{
 			Json: types.ApiError{
-				Error:   true,
 				Message: "Invalid position",
 			},
 			Status: http.StatusBadRequest,
@@ -72,7 +71,6 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	if d.Auth.Banned && !position.AllowedForBanned {
 		return uapi.HttpResponse{
 			Json: types.ApiError{
-				Error:   true,
 				Message: "Banned users are not allowed to apply for this position",
 			},
 			Status: http.StatusBadRequest,
@@ -82,7 +80,6 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	if !d.Auth.Banned && position.BannedOnly {
 		return uapi.HttpResponse{
 			Json: types.ApiError{
-				Error:   true,
 				Message: "You are not banned? Why are you appealing?",
 			},
 			Status: http.StatusBadRequest,
@@ -92,7 +89,6 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	if position.Closed {
 		return uapi.HttpResponse{
 			Json: types.ApiError{
-				Error:   true,
 				Message: "This position is currently closed. Please check back later.",
 			},
 			Status: http.StatusBadRequest,
@@ -111,7 +107,6 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	if userApps > 0 {
 		return uapi.HttpResponse{
 			Json: types.ApiError{
-				Error:   true,
 				Message: "You already have a pending application for this position",
 			},
 			Status: http.StatusBadRequest,
@@ -126,7 +121,6 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		if !ok {
 			return uapi.HttpResponse{
 				Json: types.ApiError{
-					Error:   true,
 					Message: "Missing answer for question " + question.ID,
 				},
 				Status: http.StatusBadRequest,
@@ -136,7 +130,6 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		if ans == "" {
 			return uapi.HttpResponse{
 				Json: types.ApiError{
-					Error:   true,
 					Message: "Answer for question " + question.ID + " cannot be empty",
 				},
 				Status: http.StatusBadRequest,
@@ -147,7 +140,6 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 			if len(ans) > 4096 {
 				return uapi.HttpResponse{
 					Json: types.ApiError{
-						Error:   true,
 						Message: "Answer for question " + question.ID + " is too long",
 					},
 					Status: http.StatusBadRequest,
@@ -157,7 +149,6 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 			if len(ans) < 50 {
 				return uapi.HttpResponse{
 					Json: types.ApiError{
-						Error:   true,
 						Message: "Answer for question " + question.ID + " is too short",
 					},
 					Status: http.StatusBadRequest,
@@ -167,7 +158,6 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 			if len(ans) > 10000 {
 				return uapi.HttpResponse{
 					Json: types.ApiError{
-						Error:   true,
 						Message: "Answer for question " + question.ID + " is too long",
 					},
 					Status: http.StatusBadRequest,
@@ -185,7 +175,6 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 			state.Logger.Error(err)
 			return uapi.HttpResponse{
 				Json: types.ApiError{
-					Error:   true,
 					Message: "Error: " + err.Error(),
 				},
 				Status: http.StatusBadRequest,

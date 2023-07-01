@@ -66,10 +66,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 			state.Logger.Error(err)
 			return uapi.HttpResponse{
 				Status: http.StatusInternalServerError,
-				Json: types.ApiError{
-					Message: "Failed to update invite clicks",
-					Error:   true,
-				},
+				Json:   types.ApiError{Message: "Failed to update invite clicks"},
 			}
 		}
 	}

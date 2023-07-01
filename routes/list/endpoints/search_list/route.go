@@ -86,10 +86,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	if payload.TagFilter.TagMode != types.TagModeAll && payload.TagFilter.TagMode != types.TagModeAny {
 		return uapi.HttpResponse{
 			Status: http.StatusBadRequest,
-			Json: types.ApiError{
-				Message: "Invalid tag mode",
-				Error:   true,
-			},
+			Json:   types.ApiError{Message: "Invalid tag mode"},
 		}
 	}
 

@@ -51,10 +51,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	if !iblhdev && !hadmin {
 		return uapi.HttpResponse{
 			Status: http.StatusForbidden,
-			Json: types.ApiError{
-				Message: "You do not have permission to publish a blog post",
-				Error:   true,
-			},
+			Json:   types.ApiError{Message: "You do not have permission to publish a blog post"},
 		}
 	}
 
@@ -81,10 +78,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	if !slugExists {
 		return uapi.HttpResponse{
 			Status: http.StatusBadRequest,
-			Json: types.ApiError{
-				Message: "The slug does not exist",
-				Error:   true,
-			},
+			Json:   types.ApiError{Message: "The slug does not exist"},
 		}
 	}
 

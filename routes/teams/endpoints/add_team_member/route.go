@@ -99,7 +99,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	if managerCount == 0 {
 		return uapi.HttpResponse{
 			Status: http.StatusForbidden,
-			Json:   types.ApiError{Message: "You are not a member of this team", Error: true},
+			Json:   types.ApiError{Message: "You are not a member of this team"},
 		}
 	}
 
@@ -116,7 +116,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	if !mp.Has(teams.TeamPermissionAddTeamMembers) {
 		return uapi.HttpResponse{
 			Status: http.StatusForbidden,
-			Json:   types.ApiError{Message: "You do not have permission to add team members", Error: true},
+			Json:   types.ApiError{Message: "You do not have permission to add team members"},
 		}
 	}
 
@@ -125,7 +125,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	if err != nil {
 		return uapi.HttpResponse{
 			Status: http.StatusBadRequest,
-			Json:   types.ApiError{Message: err.Error(), Error: true},
+			Json:   types.ApiError{Message: err.Error()},
 		}
 	}
 
@@ -142,7 +142,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	if !userExists {
 		return uapi.HttpResponse{
 			Status: http.StatusBadRequest,
-			Json:   types.ApiError{Message: "User must login here at least once before you can add them", Error: true},
+			Json:   types.ApiError{Message: "User must login here at least once before you can add them"},
 		}
 	}
 
@@ -159,7 +159,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	if memberExists {
 		return uapi.HttpResponse{
 			Status: http.StatusBadRequest,
-			Json:   types.ApiError{Message: "User is already a member of this team", Error: true},
+			Json:   types.ApiError{Message: "User is already a member of this team"},
 		}
 	}
 

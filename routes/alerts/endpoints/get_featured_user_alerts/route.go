@@ -60,7 +60,6 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		return uapi.HttpResponse{
 			Status: http.StatusBadRequest,
 			Json: types.ApiError{
-				Error:   true,
 				Message: "acked_count must be less than or equal to 20",
 			},
 		}
@@ -76,7 +75,6 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		return uapi.HttpResponse{
 			Status: http.StatusBadRequest,
 			Json: types.ApiError{
-				Error:   true,
 				Message: "unacked_count must be less than or equal to 20",
 			},
 		}

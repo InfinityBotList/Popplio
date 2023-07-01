@@ -33,7 +33,6 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		return uapi.HttpResponse{
 			Status: http.StatusFailedDependency,
 			Json: types.ApiError{
-				Error:   true,
 				Message: "Stripe webhooks are not configured yet! Please try again in a few moments?",
 			},
 		}
@@ -45,7 +44,6 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		return uapi.HttpResponse{
 			Status: http.StatusForbidden,
 			Json: types.ApiError{
-				Error:   true,
 				Message: "You are not allowed to access this endpoint",
 			},
 		}
@@ -57,7 +55,6 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		return uapi.HttpResponse{
 			Status: http.StatusBadRequest,
 			Json: types.ApiError{
-				Error:   true,
 				Message: "Invalid request body",
 			},
 		}
@@ -72,7 +69,6 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		return uapi.HttpResponse{
 			Status: http.StatusBadRequest,
 			Json: types.ApiError{
-				Error:   true,
 				Message: "Invalid request body",
 			},
 		}

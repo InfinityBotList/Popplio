@@ -86,7 +86,6 @@ To parse webhooks, here is the algorithm you should/must follow:
     );
     reply.status(403).send({
       message: "Invalid signature",
-      error: true,
     });
     return;
   }

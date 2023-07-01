@@ -37,7 +37,6 @@ type SEO struct {
 type ApiError struct {
 	Context map[string]string `json:"context,omitempty" description:"Context of the error. Usually used for validation error contexts"`
 	Message string            `json:"message" description:"Message of the error"`
-	Error   bool              `json:"error" description:"Whether or not this is an error"`
 }
 
 // OauthInfo struct for oauth2 info

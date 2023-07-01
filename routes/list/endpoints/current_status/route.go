@@ -106,7 +106,6 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		return uapi.HttpResponse{
 			Status: http.StatusBadRequest,
 			Json: types.ApiError{
-				Error:   true,
 				Message: "Invalid source. Valid sources are instatus and uptime-robot",
 			},
 		}

@@ -101,7 +101,6 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	if limit.Exceeded {
 		return uapi.HttpResponse{
 			Json: types.ApiError{
-				Error:   true,
 				Message: "You are being ratelimited. Please try again in " + limit.TimeToReset.String(),
 			},
 			Headers: limit.Headers(),
@@ -131,10 +130,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	if err != nil {
 		return uapi.HttpResponse{
 			Status: http.StatusBadRequest,
-			Json: types.ApiError{
-				Message: err.Error(),
-				Error:   true,
-			},
+			Json:   types.ApiError{Message: err.Error()},
 		}
 	}
 
@@ -151,10 +147,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	if count > 0 {
 		return uapi.HttpResponse{
 			Status: http.StatusConflict,
-			Json: types.ApiError{
-				Message: "This bot is already in the database",
-				Error:   true,
-			},
+			Json:   types.ApiError{Message: "This bot is already in the database"},
 		}
 	}
 
@@ -164,20 +157,14 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	if err != nil {
 		return uapi.HttpResponse{
 			Status: http.StatusBadRequest,
-			Json: types.ApiError{
-				Message: "This bot does not exist: " + err.Error(),
-				Error:   true,
-			},
+			Json:   types.ApiError{Message: "This bot does not exist: " + err.Error()},
 		}
 	}
 
 	if !bot.Bot {
 		return uapi.HttpResponse{
 			Status: http.StatusBadRequest,
-			Json: types.ApiError{
-				Message: "This user is not a bot",
-				Error:   true,
-			},
+			Json:   types.ApiError{Message: "This user is not a bot"},
 		}
 	}
 
@@ -187,52 +174,37 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	if err != nil {
 		return uapi.HttpResponse{
 			Status: http.StatusBadRequest,
-			Json: types.ApiError{
-				Message: "The main owner of this bot somehow does not exist: " + err.Error(),
-				Error:   true,
-			},
+			Json:   types.ApiError{Message: "The main owner of this bot somehow does not exist: " + err.Error()},
 		}
 	}
 
-	metadata, err := assets.CheckBot(payload.BotID, payload.ClientID)
+	metadata, err := assets.CheckBot(d.Context, payload.BotID, payload.ClientID)
 
 	if err != nil {
 		return uapi.HttpResponse{
 			Status: http.StatusBadRequest,
-			Json: types.ApiError{
-				Message: err.Error(),
-				Error:   true,
-			},
+			Json:   types.ApiError{Message: err.Error()},
 		}
 	}
 
 	if metadata.BotID != payload.BotID {
 		return uapi.HttpResponse{
 			Status: http.StatusBadRequest,
-			Json: types.ApiError{
-				Message: "The bot ID provided does not match the bot ID found",
-				Error:   true,
-			},
+			Json:   types.ApiError{Message: "The bot ID provided does not match the bot ID found"},
 		}
 	}
 
 	if metadata.ListType != "" {
 		return uapi.HttpResponse{
 			Status: http.StatusBadRequest,
-			Json: types.ApiError{
-				Message: "This bot is already in the database",
-				Error:   true,
-			},
+			Json:   types.ApiError{Message: "This bot is already in the database"},
 		}
 	}
 
 	if !metadata.BotPublic {
 		return uapi.HttpResponse{
 			Status: http.StatusBadRequest,
-			Json: types.ApiError{
-				Message: "Bot is not public",
-				Error:   true,
-			},
+			Json:   types.ApiError{Message: "Bot is not public"},
 		}
 	}
 
@@ -275,10 +247,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		state.Logger.Error(botArgs, createBotsColsArr)
 		return uapi.HttpResponse{
 			Status: http.StatusInternalServerError,
-			Json: types.ApiError{
-				Message: "Internal Error: The number of columns and arguments do not match",
-				Error:   true,
-			},
+			Json:   types.ApiError{Message: "Internal Error: The number of columns and arguments do not match"},
 		}
 	}
 
@@ -316,7 +285,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		if count == 0 {
 			return uapi.HttpResponse{
 				Status: http.StatusNotFound,
-				Json:   types.ApiError{Message: "Team not found", Error: true},
+				Json:   types.ApiError{Message: "Team not found"},
 			}
 		}
 
@@ -333,7 +302,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		if managerCount == 0 {
 			return uapi.HttpResponse{
 				Status: http.StatusForbidden,
-				Json:   types.ApiError{Message: "You are not a member of this team", Error: true},
+				Json:   types.ApiError{Message: "You are not a member of this team"},
 			}
 		}
 
@@ -350,7 +319,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		if !mp.Has(teams.TeamPermissionAddNewBots) {
 			return uapi.HttpResponse{
 				Status: http.StatusForbidden,
-				Json:   types.ApiError{Message: "You do not have permission to add new bots to this team", Error: true},
+				Json:   types.ApiError{Message: "You do not have permission to add new bots to this team"},
 			}
 		}
 

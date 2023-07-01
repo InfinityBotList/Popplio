@@ -42,7 +42,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	name := chi.URLParam(r, "bid")
 
 	// Resolve bot ID
-	id, err := utils.ResolveBot(state.Context, name)
+	id, err := utils.ResolveBot(d.Context, name)
 
 	if err != nil {
 		state.Logger.Error(err)
@@ -63,7 +63,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	if !perms.Has(teams.TeamPermissionDeleteBots) {
 		return uapi.HttpResponse{
 			Status: http.StatusForbidden,
-			Json:   types.ApiError{Message: "You do not have permission to delete this bot", Error: true},
+			Json:   types.ApiError{Message: "You do not have permission to delete this bot"},
 		}
 	}
 

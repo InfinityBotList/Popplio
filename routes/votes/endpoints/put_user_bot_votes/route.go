@@ -132,10 +132,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	if voteBannedState {
 		return uapi.HttpResponse{
 			Status: http.StatusForbidden,
-			Json: types.ApiError{
-				Message: "You are banned from voting right now! Contact support if you think this is a mistake",
-				Error:   true,
-			},
+			Json:   types.ApiError{Message: "You are banned from voting right now! Contact support if you think this is a mistake"},
 		}
 	}
 
@@ -152,20 +149,14 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	if voteBannedBotsState {
 		return uapi.HttpResponse{
 			Status: http.StatusForbidden,
-			Json: types.ApiError{
-				Message: "This bot is banned from being voted on right now! Contact support if you think this is a mistake",
-				Error:   true,
-			},
+			Json:   types.ApiError{Message: "This bot is banned from being voted on right now! Contact support if you think this is a mistake"},
 		}
 	}
 
 	if botType.String != "approved" && botType.String != "certified" {
 		return uapi.HttpResponse{
 			Status: http.StatusBadRequest,
-			Json: types.ApiError{
-				Message: "Woah there, this bot needs to be approved before you can vote for it!",
-				Error:   true,
-			},
+			Json:   types.ApiError{Message: "Woah there, this bot needs to be approved before you can vote for it!"},
 		}
 	}
 
@@ -190,10 +181,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 
 		timeStr := fmt.Sprintf("%02d hours, %02d minutes. %02d seconds", hours, mins, secs)
 
-		var alreadyVotedMsg = types.ApiError{
-			Message: "Please wait " + timeStr + " before voting again",
-			Error:   true,
-		}
+		var alreadyVotedMsg = types.ApiError{Message: "Please wait " + timeStr + " before voting again"}
 
 		return uapi.HttpResponse{
 			Status: http.StatusBadRequest,
