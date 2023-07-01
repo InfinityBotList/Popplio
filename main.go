@@ -123,7 +123,6 @@ func main() {
 
 	r := chi.NewRouter()
 
-	// A good base middleware stack
 	r.Use(
 		middleware.Recoverer,
 		middleware.RealIP,

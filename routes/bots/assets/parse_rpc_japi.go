@@ -145,6 +145,14 @@ func CheckBot(ctx context.Context, fallbackBotId, clientId string) (*types.Disco
 			Fallback:  true,
 		}
 	} else {
+		if data.Data.Bot == nil || data.Data.Application == nil {
+			return nil, errors.New("woah there, we found an application with no associated bot?")
+		}
+
+		if data.Data.Bot.ID == "" {
+			return nil, errors.New("woah there, we found an application with no associated bot?")
+		}
+
 		if !data.Cached {
 			state.Logger.With(
 				zap.String("bot_id", data.Data.Bot.ID),
@@ -155,14 +163,6 @@ func CheckBot(ctx context.Context, fallbackBotId, clientId string) (*types.Disco
 				zap.String("bot_id", data.Data.Bot.ID),
 				zap.String("client_id", clientId),
 			).Info("JAPI cache HIT")
-		}
-
-		if data.Data.Bot == nil || data.Data.Application == nil {
-			return nil, errors.New("woah there, we found an application with no associated bot?")
-		}
-
-		if data.Data.Bot.ID == "" {
-			return nil, errors.New("woah there, we found an application with no associated bot?")
 		}
 
 		user, err := dovewing.GetUser(ctx, data.Data.Bot.ID, state.DovewingPlatformDiscord)
