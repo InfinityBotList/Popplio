@@ -97,6 +97,8 @@ github.com/infinitybotlist/eureka v0.0.0-20230630084246-7d9ece29fed8 h1:9swyQKcE
 github.com/infinitybotlist/eureka v0.0.0-20230630084246-7d9ece29fed8/go.mod h1:W2sJbZywcaMfd1aaW6kJxKBD+Z1oSKjH1hxSabY22BM=
 github.com/infinitybotlist/eureka v0.0.0-20230701165215-05f7f1a61113 h1:C8gOnZid/GBBb80FnVb66q9ubcZXUGc/awUwcXNrje4=
 github.com/infinitybotlist/eureka v0.0.0-20230701165215-05f7f1a61113/go.mod h1:W2sJbZywcaMfd1aaW6kJxKBD+Z1oSKjH1hxSabY22BM=
+github.com/infinitybotlist/eureka v0.0.0-20230701173919-c46a912122f9 h1:g+snKzNxhhXnMQvtxGWetAc31tf9l3EewvKPgp3bSig=
+github.com/infinitybotlist/eureka v0.0.0-20230701173919-c46a912122f9/go.mod h1:W2sJbZywcaMfd1aaW6kJxKBD+Z1oSKjH1hxSabY22BM=
 github.com/invopop/yaml v0.1.0/go.mod h1:2XuRLgs/ouIrW3XNzuNj7J3Nvu/Dig5MXvbCEdiBN3Q=
 github.com/invopop/yaml v0.2.0 h1:7zky/qH+O0DwAyoobXUqvVBwgBFRxKoQ/3FjcVpjTMY=
 github.com/invopop/yaml v0.2.0/go.mod h1:2XuRLgs/ouIrW3XNzuNj7J3Nvu/Dig5MXvbCEdiBN3Q=

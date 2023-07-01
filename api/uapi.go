@@ -4,6 +4,7 @@ package api
 import (
 	"errors"
 	"net/http"
+	"popplio/constants"
 	"popplio/state"
 	"popplio/types"
 	"strings"
@@ -19,6 +20,15 @@ const (
 	TargetTypeBot    = "bot"
 	TargetTypeServer = "server"
 )
+
+type ErrorStructGen struct{}
+
+func (e ErrorStructGen) New(err string, ctx map[string]string) any {
+	return types.ApiError{
+		Message: err,
+		Context: ctx,
+	}
+}
 
 // Authorizes a request
 func Authorize(r uapi.Route, req *http.Request) (uapi.AuthData, uapi.HttpResponse, bool) {
@@ -159,5 +169,16 @@ func Setup() {
 		RouteDataMiddleware: RouteDataMiddleware,
 		Redis:               state.Redis,
 		Context:             state.Context,
+		Constants: &uapi.UAPIConstants{
+			NotFound:         constants.NotFound,
+			NotFoundPage:     constants.NotFoundPage,
+			BadRequest:       constants.BadRequest,
+			Forbidden:        constants.Forbidden,
+			Unauthorized:     constants.Unauthorized,
+			InternalError:    constants.InternalError,
+			MethodNotAllowed: constants.MethodNotAllowed,
+			BodyRequired:     constants.BodyRequired,
+		},
+		UAPIErrorType: ErrorStructGen{},
 	})
 }
