@@ -105,6 +105,12 @@ func FindPerks(ctx context.Context, payload PerkData) (*types.PaymentPlan, error
 }
 
 func GivePerks(ctx context.Context, perkData PerkData) error {
+	err := utils.StagingCheckSensitive(ctx, perkData.UserID)
+
+	if err != nil {
+		return err
+	}
+
 	perk, err := FindPerks(ctx, perkData)
 
 	if err != nil {

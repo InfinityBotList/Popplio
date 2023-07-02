@@ -9,6 +9,7 @@ import (
 	"popplio/routes/payments/endpoints/get_premium_plans"
 	"popplio/routes/payments/endpoints/get_stripe"
 	"popplio/routes/payments/endpoints/handle_stripe_webhook"
+	"popplio/routes/payments/endpoints/redeem_payment_offer"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/infinitybotlist/eureka/uapi"
@@ -91,5 +92,19 @@ func (b Router) Routes(r *chi.Mux) {
 		Method:  uapi.GET,
 		Docs:    get_premium_plans.Docs,
 		Handler: get_premium_plans.Route,
+	}.Route(r)
+
+	uapi.Route{
+		Pattern: "/users/{id}/redeem-payment-offer",
+		OpId:    "redeem_payment_offer",
+		Method:  uapi.POST,
+		Docs:    redeem_payment_offer.Docs,
+		Handler: redeem_payment_offer.Route,
+		Auth: []uapi.AuthType{
+			{
+				Type:   api.TargetTypeUser,
+				URLVar: "id",
+			},
+		},
 	}.Route(r)
 }
