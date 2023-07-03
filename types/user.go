@@ -38,26 +38,9 @@ type User struct {
 	About                            pgtype.Text             `db:"about" json:"about"`
 	VoteBanned                       bool                    `db:"vote_banned" json:"vote_banned"`
 	Banned                           bool                    `db:"banned" json:"banned"`
-	UserBots                         []UserBot               `json:"user_bots" ci:"internal"`  // Must be handled internally
+	UserBots                         []IndexBot              `json:"user_bots" ci:"internal"`  // Must be handled internally
 	UserTeams                        []Team                  `json:"user_teams" ci:"internal"` // Must be handled internally
 	UserPacks                        []IndexBotPack          `json:"user_packs" ci:"internal"` // Must be handled internally
-}
-
-type UserBot struct {
-	BotID        string                  `db:"bot_id" json:"bot_id"`
-	User         *dovetypes.PlatformUser `db:"-" json:"user"`
-	Short        string                  `db:"short" json:"short"`
-	Type         string                  `db:"type" json:"type"`
-	Vanity       string                  `db:"vanity" json:"vanity"`
-	Votes        int                     `db:"votes" json:"votes"`
-	Shards       int                     `db:"shards" json:"shards"`
-	Library      string                  `db:"library" json:"library"`
-	InviteClicks int                     `db:"invite_clicks" json:"invite_clicks"`
-	Views        int                     `db:"clicks" json:"clicks"`
-	Servers      int                     `db:"servers" json:"servers"`
-	NSFW         bool                    `db:"nsfw" json:"nsfw"`
-	Tags         []string                `db:"tags" json:"tags"`
-	Premium      bool                    `db:"premium" json:"premium"`
 }
 
 type UserPerm struct {

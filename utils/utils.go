@@ -22,8 +22,8 @@ import (
 )
 
 var (
-	userBotColsArr = GetCols(types.UserBot{})
-	userBotCols    = strings.Join(userBotColsArr, ",")
+	indexBotColsArr = GetCols(types.IndexBot{})
+	indexBotCols    = strings.Join(indexBotColsArr, ",")
 )
 
 // Returns if a string is empty/null or not. Used throughout the codebase
@@ -115,7 +115,7 @@ func ResolveTeam(ctx context.Context, teamId string) (*types.Team, error) {
 
 	// Bots
 	var teamBotIds []string
-	var bots = []types.UserBot{}
+	var bots = []types.IndexBot{}
 
 	teamBotRows, err := state.Pool.Query(ctx, "SELECT bot_id FROM bots WHERE team_owner = $1", teamId)
 
@@ -131,30 +131,30 @@ func ResolveTeam(ctx context.Context, teamId string) (*types.Team, error) {
 
 	// Loop over all bot IDs and create user bots from them
 	for _, botId := range teamBotIds {
-		userBotsRows, err := state.Pool.Query(ctx, "SELECT "+userBotCols+" FROM bots WHERE bot_id = $1", botId)
+		indexBotsRows, err := state.Pool.Query(ctx, "SELECT "+indexBotCols+" FROM bots WHERE bot_id = $1", botId)
 
 		if err != nil {
 			return nil, err
 		}
 
-		var userBot = types.UserBot{}
+		var indexBot = types.IndexBot{}
 
-		err = pgxscan.ScanOne(&userBot, userBotsRows)
+		err = pgxscan.ScanOne(&indexBot, indexBotsRows)
 
 		if err != nil {
 			return nil, err
 		}
 
-		userObj, err := dovewing.GetUser(ctx, userBot.BotID, state.DovewingPlatformDiscord)
+		userObj, err := dovewing.GetUser(ctx, indexBot.BotID, state.DovewingPlatformDiscord)
 
 		if err != nil {
 			state.Logger.Error(err)
 			continue
 		}
 
-		userBot.User = userObj
+		indexBot.User = userObj
 
-		bots = append(bots, userBot)
+		bots = append(bots, indexBot)
 	}
 
 	if err != nil {

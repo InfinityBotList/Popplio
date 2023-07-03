@@ -21,8 +21,8 @@ var (
 	userColsArr = utils.GetCols(types.User{})
 	userCols    = strings.Join(userColsArr, ",")
 
-	userBotColsArr = utils.GetCols(types.UserBot{})
-	userBotCols    = strings.Join(userBotColsArr, ",")
+	indexBotColsArr = utils.GetCols(types.IndexBot{})
+	indexBotCols    = strings.Join(indexBotColsArr, ",")
 
 	indexPackColsArr = utils.GetCols(types.IndexBotPack{})
 	indexPackCols    = strings.Join(indexPackColsArr, ",")
@@ -102,37 +102,32 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 
 	user.User = userObj
 
-	userBotsRows, err := state.Pool.Query(d.Context, "SELECT "+userBotCols+" FROM bots WHERE owner = $1", user.ID)
+	indexBotRows, err := state.Pool.Query(d.Context, "SELECT "+indexBotCols+" FROM bots WHERE owner = $1", user.ID)
 
 	if err != nil {
 		state.Logger.Error(err)
 		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
-	var userBots = []types.UserBot{}
+	var indexBots = []types.IndexBot{}
 
-	err = pgxscan.ScanAll(&userBots, userBotsRows)
+	err = pgxscan.ScanAll(&indexBots, indexBotRows)
 
 	if err != nil {
 		state.Logger.Error(err)
 		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
-	for i := range userBots {
-		userObj, err := dovewing.GetUser(d.Context, userBots[i].BotID, state.DovewingPlatformDiscord)
+	for i := range indexBots {
+		userObj, err := dovewing.GetUser(d.Context, indexBots[i].BotID, state.DovewingPlatformDiscord)
 
 		if err != nil {
 			state.Logger.Error(err)
 			continue
 		}
 
-		userBots[i].User = userObj
+		indexBots[i].User = userObj
 	}
-
-	/*
-
-
-	 */
 
 	// Get user teams
 	// Teams the user is a member in
@@ -162,14 +157,9 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 			return uapi.DefaultResponse(http.StatusInternalServerError)
 		}
 
-		userBots = append(userBots, team.UserBots...)
+		indexBots = append(indexBots, team.UserBots...)
 		userTeams = append(userTeams, *team)
 	}
-
-	/*
-
-
-	 */
 
 	// Packs
 	packsRows, err := state.Pool.Query(d.Context, "SELECT "+indexPackCols+" FROM packs WHERE owner = $1 ORDER BY created_at DESC", user.ID)
@@ -198,7 +188,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	}
 
 	user.UserPacks = packs
-	user.UserBots = userBots
+	user.UserBots = indexBots
 	user.UserTeams = userTeams
 
 	return uapi.HttpResponse{

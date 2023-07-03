@@ -14,18 +14,17 @@ type IndexBot struct {
 	BotID       string                  `db:"bot_id" json:"bot_id" description:"The bot's ID"`
 	User        *dovetypes.PlatformUser `db:"-" json:"user" description:"The bot's user information" ci:"internal"` // Must be parsed internally
 	Short       string                  `db:"short" json:"short" description:"The bot's short description"`
-	Long        string                  `db:"long" json:"long" description:"The bot's long description in raw format (HTML/markdown etc. based on the bots settings)"`
 	Type        string                  `db:"type" json:"type" description:"The bot's type (e.g. pending/approved/certified/denied etc.)"`
 	Vanity      string                  `db:"vanity" json:"vanity" description:"The bot's vanity URL if it has one, otherwise null"`
 	Votes       int                     `db:"votes" json:"votes" description:"The bot's vote count"`
 	Shards      int                     `db:"shards" json:"shards" description:"The bot's shard count"`
 	Library     string                  `db:"library" json:"library" description:"The bot's library"`
 	InviteClick int                     `db:"invite_clicks" json:"invite_clicks" description:"The bot's invite click count (via users inviting the bot from IBL)"`
+	Views       int                     `db:"clicks" json:"clicks" description:"The bot's view count"`
 	Servers     int                     `db:"servers" json:"servers" description:"The bot's server count"`
 	NSFW        bool                    `db:"nsfw" json:"nsfw" description:"Whether the bot is NSFW or not"`
 	Tags        []string                `db:"tags" json:"tags" description:"The bot's tags (e.g. music, moderation, etc.)"`
 	Premium     bool                    `db:"premium" json:"premium" description:"Whether the bot is a premium bot or not"`
-	Views       int                     `db:"clicks" json:"clicks" description:"The bot's view count"`
 	Banner      pgtype.Text             `db:"banner" json:"banner" description:"The bot's banner URL if it has one, otherwise null"`
 }
 
