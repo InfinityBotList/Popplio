@@ -3,7 +3,6 @@ package bots
 import (
 	"popplio/api"
 	"popplio/routes/bots/endpoints/add_bot"
-	"popplio/routes/bots/endpoints/add_bot_to_team"
 	"popplio/routes/bots/endpoints/delete_bot"
 	"popplio/routes/bots/endpoints/get_all_bots"
 	"popplio/routes/bots/endpoints/get_bot"
@@ -19,6 +18,7 @@ import (
 	"popplio/routes/bots/endpoints/patch_bot_vanity"
 	"popplio/routes/bots/endpoints/patch_bot_webhook"
 	"popplio/routes/bots/endpoints/post_stats"
+	"popplio/routes/bots/endpoints/transfer_bot_to_team"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/infinitybotlist/eureka/uapi"
@@ -212,10 +212,10 @@ func (b Router) Routes(r *chi.Mux) {
 
 	uapi.Route{
 		Pattern: "/users/{uid}/bots/{bid}/teams",
-		OpId:    "add_bot_to_team",
+		OpId:    "transfer_bot_to_team",
 		Method:  uapi.PUT,
-		Docs:    add_bot_to_team.Docs,
-		Handler: add_bot_to_team.Route,
+		Docs:    transfer_bot_to_team.Docs,
+		Handler: transfer_bot_to_team.Route,
 		Auth: []uapi.AuthType{
 			{
 				Type:   api.TargetTypeUser,

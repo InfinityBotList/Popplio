@@ -1,4 +1,4 @@
-package add_bot_to_team
+package transfer_bot_to_team
 
 import (
 	"fmt"
@@ -27,7 +27,7 @@ var (
 
 func Docs() *docs.Doc {
 	return &docs.Doc{
-		Summary: "Add Bot To Team",
+		Summary: "Transfer Bot To Team",
 		Description: `Transfers a bot owned by a user. 
 
 The below are the requirements for this:
