@@ -5,6 +5,22 @@ import "popplio/types"
 var Changelog = types.Changelog{
 	Entries: []types.ChangelogEntry{
 		{
+			Version: "4.5.2",
+			Added:   []string{},
+			Updated: []string{
+				"Dummy release to fix up CI",
+			},
+			Removed: []string{},
+		},
+		{
+			Version: "4.5.1",
+			Added:   []string{},
+			Updated: []string{
+				"Hotfix to fix errors in fetching blog posts due to a regression in 4.4.0 and 4.5.0",
+			},
+			Removed: []string{},
+		},
+		{
 			Version: "4.5.0",
 			Added:   []string{},
 			Updated: []string{
