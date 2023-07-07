@@ -3,22 +3,26 @@ package types
 import (
 	"time"
 
+	"github.com/infinitybotlist/eureka/dovewing/dovetypes"
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+// @ci table=webhook_logs
+//
 // Webhook log
 type WebhookLogEntry struct {
-	ID         pgtype.UUID `db:"id" json:"id" description:"The ID of the webhook log."`
-	EntityID   pgtype.UUID `db:"entity_id" json:"entity_id" description:"The entities ID."`
-	EntityType string      `db:"entity_type" json:"entity_type" description:"The type of the entity."`
-	UserID     pgtype.UUID `db:"user_id" json:"user_id" description:"The user ID triggering the hook"`
-	URL        string      `db:"url" json:"url" description:"The URL of the webhook."`
-	Data       string      `db:"data" json:"data" description:"The data of the webhook."`
-	Sign       string      `db:"sign" json:"sign" description:"The auth secret of the webhook."`
-	CreatedAt  time.Time   `db:"created_at" json:"created_at" description:"The time when the webhook was created."`
-	State      string      `db:"state" json:"state" description:"The state of the webhook."`
-	Tries      int         `db:"tries" json:"tries" description:"The number of send tries attempted on this webhook."`
-	LastTry    time.Time   `db:"last_try" json:"last_try" description:"The time of the last send try."`
+	ID         pgtype.UUID             `db:"id" json:"id" description:"The ID of the webhook log."`
+	TargetID   string                  `db:"target_id" json:"target_id" description:"The target ID."`
+	TargetType string                  `db:"target_type" json:"target_type" description:"The target type (bot/team etc.)."`
+	UserID     string                  `db:"user_id" json:"-"`
+	User       *dovetypes.PlatformUser `json:"user" description:"User ID the webhook is intended for" ci:"internal"` // Must be parsed internally
+	URL        string                  `db:"url" json:"url" description:"The URL of the webhook."`
+	Data       map[string]any          `db:"data" json:"data" description:"The data of the webhook."`
+	Sign       string                  `db:"sign" json:"sign" description:"The auth secret of the webhook."`
+	CreatedAt  time.Time               `db:"created_at" json:"created_at" description:"The time when the webhook was created."`
+	State      string                  `db:"state" json:"state" description:"The state of the webhook."`
+	Tries      int                     `db:"tries" json:"tries" description:"The number of send tries attempted on this webhook."`
+	LastTry    time.Time               `db:"last_try" json:"last_try" description:"The time of the last send try."`
 }
 
 type PatchBotWebhook struct {

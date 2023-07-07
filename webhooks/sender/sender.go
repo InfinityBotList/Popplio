@@ -120,7 +120,7 @@ func Send(d *WebhookSendState) error {
 	if d.LogID == "" {
 		// Add to webhook logs for automatic retry
 		var logID string
-		err := state.Pool.QueryRow(state.Context, "INSERT INTO webhook_logs (entity_id, entity_type, user_id, url, data, sign, bad_intent, use_insecure) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id", d.Entity.EntityID, d.Entity.EntityType, d.UserID, d.Url, d.Data, d.Sign.Raw, d.BadIntent, d.Sign.UseInsecure).Scan(&logID)
+		err := state.Pool.QueryRow(state.Context, "INSERT INTO webhook_logs (target_id, target_type, user_id, url, data, sign, bad_intent, use_insecure) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id", d.Entity.EntityID, d.Entity.EntityType, d.UserID, d.Url, d.Data, d.Sign.Raw, d.BadIntent, d.Sign.UseInsecure).Scan(&logID)
 
 		if err != nil {
 			return err
@@ -404,7 +404,7 @@ func PullPending(p WebhookPullPending) {
 	}
 
 	// Fetch every pending bot webhook from webhook_logs
-	rows, err := state.Pool.Query(state.Context, "SELECT id, entity_id, user_id, url, data, sign, bad_intent, use_insecure FROM webhook_logs WHERE state = $1 AND entity_type = $2", "PENDING", p.EntityType)
+	rows, err := state.Pool.Query(state.Context, "SELECT id, target_id, user_id, url, data, sign, bad_intent, use_insecure FROM webhook_logs WHERE state = $1 AND target_type = $2", "PENDING", p.EntityType)
 
 	if err != nil {
 		state.Logger.Error(err)
@@ -416,7 +416,7 @@ func PullPending(p WebhookPullPending) {
 	for rows.Next() {
 		var (
 			id          string
-			entityId    string
+			targetId    string
 			userId      string
 			url         string
 			data        []byte
@@ -425,14 +425,14 @@ func PullPending(p WebhookPullPending) {
 			useInsecure bool
 		)
 
-		err := rows.Scan(&id, &entityId, &userId, &url, &data, &sign, &badIntent, &useInsecure)
+		err := rows.Scan(&id, &targetId, &userId, &url, &data, &sign, &badIntent, &useInsecure)
 
 		if err != nil {
 			state.Logger.Error(err)
 			continue
 		}
 
-		entity, err := p.GetEntity(entityId)
+		entity, err := p.GetEntity(targetId)
 
 		if err != nil {
 			state.Logger.Error(err)
