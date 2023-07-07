@@ -2,8 +2,8 @@ package get_webhook_logs
 
 import (
 	"net/http"
+	"popplio/routes/webhooks/assets"
 	"popplio/state"
-	"popplio/teams"
 	"popplio/types"
 	"popplio/utils"
 	"strconv"
@@ -80,87 +80,10 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	limit := perPage
 	offset := (pageNum - 1) * perPage
 
-	switch targetType {
-	case "bot":
-		var count int
+	resp, ok := assets.CheckWebhookLogPermissions(d.Context, targetId, targetType, d.Auth.ID)
 
-		err := state.Pool.QueryRow(d.Context, "SELECT COUNT(*) FROM bots WHERE bot_id = $1", targetId).Scan(&count)
-
-		if err != nil {
-			state.Logger.Error(err)
-			return uapi.DefaultResponse(http.StatusInternalServerError)
-		}
-
-		if count == 0 {
-			return uapi.DefaultResponse(http.StatusNotFound)
-		}
-
-		perms, err := utils.GetUserBotPerms(d.Context, d.Auth.ID, targetId)
-
-		if err != nil {
-			state.Logger.Error(err)
-			return uapi.DefaultResponse(http.StatusInternalServerError)
-		}
-
-		if !perms.Has(teams.TeamPermissionGetBotWebhookLogs) {
-			return uapi.HttpResponse{
-				Status: http.StatusForbidden,
-				Json:   types.ApiError{Message: "You do not have permission to get bot webhook logs"},
-			}
-		}
-	case "team":
-		var count int
-
-		err := state.Pool.QueryRow(d.Context, "SELECT COUNT(*) FROM teams WHERE id = $1", targetId).Scan(&count)
-
-		if err != nil {
-			state.Logger.Error(err)
-			return uapi.DefaultResponse(http.StatusInternalServerError)
-		}
-
-		if count == 0 {
-			return uapi.DefaultResponse(http.StatusNotFound)
-		}
-
-		// Ensure manager is a member of the team
-		var managerCount int
-
-		err = state.Pool.QueryRow(d.Context, "SELECT COUNT(*) FROM team_members WHERE team_id = $1 AND user_id = $2", targetId, d.Auth.ID).Scan(&managerCount)
-
-		if err != nil {
-			state.Logger.Error(err)
-			return uapi.DefaultResponse(http.StatusInternalServerError)
-		}
-
-		if managerCount == 0 {
-			return uapi.HttpResponse{
-				Status: http.StatusForbidden,
-				Json:   types.ApiError{Message: "You are not a member of this team"},
-			}
-		}
-
-		var managerPerms []types.TeamPermission
-		err = state.Pool.QueryRow(d.Context, "SELECT perms FROM team_members WHERE team_id = $1 AND user_id = $2", targetId, d.Auth.ID).Scan(&managerPerms)
-
-		if err != nil {
-			state.Logger.Error(err)
-			return uapi.DefaultResponse(http.StatusInternalServerError)
-		}
-
-		mp := teams.NewPermissionManager(managerPerms)
-
-		if !mp.Has(teams.TeamPermissionGetTeamWebhookLogs) {
-			return uapi.HttpResponse{
-				Status: http.StatusForbidden,
-				Json:   types.ApiError{Message: "You do not have permission to get team webhook logs"},
-			}
-		}
-
-	default:
-		return uapi.HttpResponse{
-			Status: http.StatusNotImplemented,
-			Json:   types.ApiError{Message: "This entity type is not supported yet"},
-		}
+	if !ok {
+		return resp
 	}
 
 	rows, err := state.Pool.Query(d.Context, "SELECT "+webhookLogCols+" FROM webhook_logs WHERE target_id = $1 AND target_type = $2 ORDER BY created_at DESC LIMIT $3 OFFSET $4", targetId, targetType, limit, offset)
