@@ -5,6 +5,33 @@ import "popplio/types"
 var Changelog = types.Changelog{
 	Entries: []types.ChangelogEntry{
 		{
+			Version: "4.5.0",
+			Added:   []string{},
+			Updated: []string{
+				"htmlsanitize no longer sends the entire long description for sanitization, but instead now uses RPC queries to minimize bandwidth usage",
+				"New layout, the new layout wastes less space and is less hacky layout wise (less use of absolute positioning)",
+				"General bug fixes and improvements",
+			},
+			Removed: []string{
+				"Small snippets under servers and shards. They were a waste of space and broke the new layout as well",
+			},
+		},
+		{
+			Version: "4.4.0",
+			Added: []string{
+				"Team webhooks have been added to Team Settings",
+				"Alerts can now be managed through User Settings",
+			},
+			Updated: []string{
+				"Refactored/rewrote the data fetching code for the site to make it more performant with less hacks and issues",
+				"User settings is now tabbed using next/dynamic to reduce load/download times",
+				"TypeScript has been added to most of the site",
+				"Reviews has been refactored internally, no user-facing changes",
+				"General bug fixes and improvements",
+			},
+			Removed: []string{},
+		},
+		{
 			Version:          "4.3.0",
 			Prerelease:       true,
 			ExtraDescription: "This version is mostly revamping existing code and systems!",
