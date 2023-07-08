@@ -80,7 +80,13 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	limit := perPage
 	offset := (pageNum - 1) * perPage
 
-	resp, ok := assets.CheckWebhookLogPermissions(d.Context, targetId, targetType, d.Auth.ID)
+	resp, ok := assets.CheckWebhookPermissions(
+		d.Context,
+		targetId,
+		targetType,
+		d.Auth.ID,
+		assets.OpWebhookLogs,
+	)
 
 	if !ok {
 		return resp

@@ -11,12 +11,45 @@ import (
 	"github.com/infinitybotlist/eureka/uapi"
 )
 
-func CheckWebhookLogPermissions(
+type Operation int
+
+const (
+	OpWebhookLogs Operation = iota
+)
+
+type perm struct {
+	botPerm  types.TeamPermission `validate:"required"`
+	teamPerm types.TeamPermission `validate:"required"`
+}
+
+func (o Operation) Perms() perm {
+	switch o {
+	case OpWebhookLogs:
+		return perm{
+			botPerm:  teams.TeamPermissionGetBotWebhookLogs,
+			teamPerm: teams.TeamPermissionGetTeamWebhookLogs,
+		}
+	default:
+		return perm{}
+	}
+}
+
+func CheckWebhookPermissions(
 	ctx context.Context,
 	targetId,
 	targetType,
 	userId string,
+	o Operation,
 ) (resp uapi.HttpResponse, ok bool) {
+	p := o.Perms()
+
+	err := state.Validator.Struct(p)
+
+	if err != nil {
+		state.Logger.Error(err)
+		return uapi.DefaultResponse(http.StatusInternalServerError), false
+	}
+
 	switch targetType {
 	case "bot":
 		var count int
@@ -39,7 +72,7 @@ func CheckWebhookLogPermissions(
 			return uapi.DefaultResponse(http.StatusInternalServerError), false
 		}
 
-		if !perms.Has(teams.TeamPermissionGetBotWebhookLogs) {
+		if !perms.Has(p.botPerm) {
 			return uapi.HttpResponse{
 				Status: http.StatusForbidden,
 				Json:   types.ApiError{Message: "You do not have permission to get bot webhook logs"},
@@ -86,7 +119,7 @@ func CheckWebhookLogPermissions(
 
 		mp := teams.NewPermissionManager(managerPerms)
 
-		if !mp.Has(teams.TeamPermissionGetTeamWebhookLogs) {
+		if !mp.Has(p.teamPerm) {
 			return uapi.HttpResponse{
 				Status: http.StatusForbidden,
 				Json:   types.ApiError{Message: "You do not have permission to get team webhook logs"},
