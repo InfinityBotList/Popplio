@@ -120,7 +120,7 @@ func Send(d *WebhookSendState) error {
 	if d.LogID == "" {
 		// Add to webhook logs for automatic retry
 		var logID string
-		err := state.Pool.QueryRow(state.Context, "INSERT INTO webhook_logs (target_id, target_type, user_id, url, data, sign, bad_intent, use_insecure) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id", d.Entity.EntityID, d.Entity.EntityType, d.UserID, d.Url, d.Data, d.Sign.Raw, d.BadIntent, d.Sign.UseInsecure).Scan(&logID)
+		err := state.Pool.QueryRow(state.Context, "INSERT INTO webhook_logs (target_id, target_type, user_id, url, data, bad_intent) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id", d.Entity.EntityID, d.Entity.EntityType, d.UserID, d.Url, d.Data, d.BadIntent).Scan(&logID)
 
 		if err != nil {
 			return err
@@ -379,6 +379,9 @@ type WebhookPullPending struct {
 	// delete webhook for specific id
 	GetEntity func(id string) (WebhookEntity, error)
 
+	// returns the secret of an entity
+	GetSecret func(id string) (Secret, error)
+
 	// If a entity may not support pulls, implement this function to determine if it does
 	// If this function is not implemented, it will be assumed that the entity supports pulls
 	SupportsPulls func(id string) (bool, error)
@@ -404,7 +407,7 @@ func PullPending(p WebhookPullPending) {
 	}
 
 	// Fetch every pending bot webhook from webhook_logs
-	rows, err := state.Pool.Query(state.Context, "SELECT id, target_id, user_id, url, data, sign, bad_intent, use_insecure FROM webhook_logs WHERE state = $1 AND target_type = $2", "PENDING", p.EntityType)
+	rows, err := state.Pool.Query(state.Context, "SELECT id, target_id, user_id, url, data, bad_intent FROM webhook_logs WHERE state = $1 AND target_type = $2", "PENDING", p.EntityType)
 
 	if err != nil {
 		state.Logger.Error(err)
@@ -415,17 +418,15 @@ func PullPending(p WebhookPullPending) {
 
 	for rows.Next() {
 		var (
-			id          string
-			targetId    string
-			userId      string
-			url         string
-			data        []byte
-			sign        string
-			badIntent   bool
-			useInsecure bool
+			id        string
+			targetId  string
+			userId    string
+			url       string
+			data      []byte
+			badIntent bool
 		)
 
-		err := rows.Scan(&id, &targetId, &userId, &url, &data, &sign, &badIntent, &useInsecure)
+		err := rows.Scan(&id, &targetId, &userId, &url, &data, &badIntent)
 
 		if err != nil {
 			state.Logger.Error(err)
@@ -439,15 +440,19 @@ func PullPending(p WebhookPullPending) {
 			continue
 		}
 
+		secret, err := p.GetSecret(targetId)
+
+		if err != nil {
+			state.Logger.Error(err)
+			continue
+		}
+
 		entity.EntityType = p.EntityType
 
 		// Send webhook
 		err = Send(&WebhookSendState{
-			Url: url,
-			Sign: Secret{
-				Raw:         sign,
-				UseInsecure: useInsecure,
-			},
+			Url:       url,
+			Sign:      secret,
 			Data:      data,
 			BadIntent: badIntent,
 			LogID:     id,

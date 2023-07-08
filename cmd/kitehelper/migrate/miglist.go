@@ -25,13 +25,11 @@ var migs = []migration{
 		user_id TEXT NOT NULL REFERENCES users(user_id), 
 		url TEXT NOT NULL, 
 		data JSONB NOT NULL, 
-		sign TEXT NOT NULL, 
 		bad_intent BOOLEAN NOT NULL, 
 		created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), 
 		state TEXT NOT NULL DEFAULT 'PENDING', 
 		tries INTEGER NOT NULL DEFAULT 0, 
 		last_try TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-		use_insecure BOOLEAN NOT NULL DEFAULT FALSE
 	)`)
 
 			if err != nil {

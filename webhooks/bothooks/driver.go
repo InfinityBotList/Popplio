@@ -2,10 +2,12 @@
 package bothooks
 
 import (
+	"errors"
 	"popplio/state"
 	"popplio/webhooks/sender"
 
 	"github.com/infinitybotlist/eureka/dovewing"
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 type Driver struct {
@@ -18,6 +20,24 @@ func (d Driver) Register() {
 func (d Driver) PullPending() *sender.WebhookPullPending {
 	return &sender.WebhookPullPending{
 		EntityType: EntityType,
+		GetSecret: func(id string) (sender.Secret, error) {
+			var sign pgtype.Text
+			var webhooksV2 bool
+			err := state.Pool.QueryRow(state.Context, "SELECT web_auth, webhooks_v2 FROM bots WHERE bot_id = $1", id).Scan(&sign, &webhooksV2)
+
+			if err != nil {
+				return sender.Secret{}, err
+			}
+
+			if !sign.Valid {
+				return sender.Secret{}, errors.New("webhook secret is not set")
+			}
+
+			return sender.Secret{
+				Raw:         sign.String,
+				UseInsecure: !webhooksV2,
+			}, nil
+		},
 		GetEntity: func(id string) (sender.WebhookEntity, error) {
 			bot, err := dovewing.GetUser(state.Context, id, state.DovewingPlatformDiscord)
 
