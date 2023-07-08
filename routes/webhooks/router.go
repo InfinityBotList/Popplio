@@ -21,7 +21,7 @@ func (b Router) Routes(r *chi.Mux) {
 	uapi.Route{
 		Pattern: "/users/{uid}/webhooks/{target_id}",
 		OpId:    "get_webhook_logs",
-		Method:  uapi.POST,
+		Method:  uapi.GET,
 		Docs:    get_webhook_logs.Docs,
 		Handler: get_webhook_logs.Route,
 		Auth: []uapi.AuthType{
