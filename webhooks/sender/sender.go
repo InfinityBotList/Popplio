@@ -247,7 +247,7 @@ func Send(d *WebhookSendState) error {
 				state.Logger.Error(err)
 			}
 
-			return errors.New("webhook auth error")
+			return errors.New("webhook auth error:" + strconv.Itoa(resp.StatusCode))
 		}
 
 	case resp.StatusCode > 400:

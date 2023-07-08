@@ -30,7 +30,7 @@ type With[T events.WebhookEvent] struct {
 
 // Fills in Team and Creator from IDs
 func Send[T events.WebhookEvent](with With[T]) error {
-	if !strings.HasPrefix(string(with.Data.Event()), EntityType) {
+	if !strings.HasPrefix(string(with.Data.Event()), strings.ToUpper(EntityType)) {
 		return errors.New("invalid event type")
 	}
 
