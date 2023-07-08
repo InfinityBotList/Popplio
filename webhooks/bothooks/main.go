@@ -16,7 +16,7 @@ import (
 	jsoniter "github.com/json-iterator/go"
 )
 
-const EntityType = "BOT"
+const EntityType = "bot"
 
 var json = jsoniter.ConfigCompatibleWithStandardLibrary
 
