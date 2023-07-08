@@ -205,6 +205,22 @@ func Send(d *WebhookSendState) error {
 		return err
 	}
 
+	// Only read a maximum of 1kb, with timeout of 65 seconds
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(io.LimitReader(resp.Body, 1024))
+
+	if err != nil {
+		body = []byte("Failed to read body: " + err.Error())
+	}
+
+	// Set response to body
+	_, err = state.Pool.Exec(state.Context, "UPDATE webhook_logs SET response = $1 WHERE id = $2", body, d.LogID)
+
+	if err != nil {
+		state.Logger.Error(err)
+	}
+
 	switch {
 	case resp.StatusCode == 404 || resp.StatusCode == 410:
 		// Remove from DB

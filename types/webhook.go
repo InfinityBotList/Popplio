@@ -18,6 +18,7 @@ type WebhookLogEntry struct {
 	User       *dovetypes.PlatformUser `json:"user" description:"User ID the webhook is intended for" ci:"internal"` // Must be parsed internally
 	URL        string                  `db:"url" json:"url" description:"The URL of the webhook."`
 	Data       map[string]any          `db:"data" json:"data" description:"The data of the webhook."`
+	Response   pgtype.Text             `db:"response" json:"response" description:"The response of the webhook request."`
 	CreatedAt  time.Time               `db:"created_at" json:"created_at" description:"The time when the webhook was created."`
 	State      string                  `db:"state" json:"state" description:"The state of the webhook."`
 	Tries      int                     `db:"tries" json:"tries" description:"The number of send tries attempted on this webhook."`
