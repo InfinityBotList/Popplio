@@ -45,6 +45,19 @@ func Docs() *docs.Doc {
 func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	itag := chi.URLParam(r, "itag")
 
+	var count int64
+
+	err := state.Pool.QueryRow(d.Context, "SELECT COUNT(*) FROM alerts WHERE user_id = $1 AND itag = $2", d.Auth.ID, itag).Scan(&count)
+
+	if err != nil {
+		state.Logger.Error(err)
+		return uapi.DefaultResponse(http.StatusInternalServerError)
+	}
+
+	if count == 0 {
+		return uapi.DefaultResponse(http.StatusNotFound)
+	}
+
 	rows, err := state.Pool.Query(d.Context, "SELECT "+alertColsStr+" FROM alerts WHERE user_id = $1 AND itag = $2", d.Auth.ID, itag)
 
 	if err != nil {
