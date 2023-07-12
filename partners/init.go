@@ -24,6 +24,8 @@ func processPartner(partner *types.Partner) *types.Partner {
 }
 
 func Setup() {
+	setupPartnerList()
+
 	err := state.Validator.Struct(Partners)
 
 	if err != nil {

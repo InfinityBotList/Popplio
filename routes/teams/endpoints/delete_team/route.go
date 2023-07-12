@@ -110,6 +110,22 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		}
 	}
 
+	var serverCount int
+
+	err = state.Pool.QueryRow(d.Context, "SELECT COUNT(*) FROM servers WHERE team_owner = $1", teamId).Scan(&serverCount)
+
+	if err != nil {
+		state.Logger.Error(err)
+		return uapi.DefaultResponse(http.StatusInternalServerError)
+	}
+
+	if serverCount > 0 {
+		return uapi.HttpResponse{
+			Status: http.StatusBadRequest,
+			Json:   types.ApiError{Message: "You cannot delete a team with servers on it"},
+		}
+	}
+
 	_, err = state.Pool.Exec(d.Context, "DELETE FROM teams WHERE id = $1", teamId)
 
 	if err != nil {

@@ -67,6 +67,7 @@ type DiscordAuth struct {
 type Sites struct {
 	Frontend Differs[string] `yaml:"frontend" default:"https://reedwhisker.infinitybots.gg" comment:"Frontend URL" validate:"required"`
 	API      Differs[string] `yaml:"api" default:"https://spider.infinitybots.gg" comment:"API URL" validate:"required"`
+	CDN      string          `yaml:"cdn" default:"https://cdn.infinitybots.gg" comment:"CDN URL" validate:"required"`
 }
 
 type Roles struct {
