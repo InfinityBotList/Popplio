@@ -65,6 +65,7 @@ type RssItem struct {
 	Author      string `xml:"author"`
 	Category    string `xml:"category"`
 	Guid        string `xml:"guid"`
+	PubDate     string `xml:"pubDate"`
 }
 
 type RssLink struct {
@@ -173,7 +174,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	}
 
 	// Get all bots
-	rows, err := state.Pool.Query(d.Context, "SELECT bot_id, short, owner, team_owner FROM bots ORDER BY created_at DESC LIMIT $1 OFFSET $2", limit, offset)
+	rows, err := state.Pool.Query(d.Context, "SELECT bot_id, short, owner, team_owner, created_at FROM bots ORDER BY created_at DESC LIMIT $1 OFFSET $2", limit, offset)
 
 	if err != nil {
 		state.Logger.Error(err)
@@ -187,8 +188,9 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		var short string
 		var owner pgtype.Text
 		var teamOwner pgtype.Text
+		var createdAt time.Time
 
-		err = rows.Scan(&botID, &short, &owner, &teamOwner)
+		err = rows.Scan(&botID, &short, &owner, &teamOwner, &createdAt)
 
 		if err != nil {
 			state.Logger.Error(err)
@@ -215,6 +217,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 			}(),
 			Category: "Bots",
 			Guid:     botID,
+			PubDate:  createdAt.Format(time.RFC822),
 		})
 	}
 
