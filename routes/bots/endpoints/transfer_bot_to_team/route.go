@@ -195,7 +195,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 				Fields: []*discordgo.MessageEmbedField{
 					{
 						Name:   "Team",
-						Value:  fmt.Sprintf("[View Team](%s/team/%s)", state.Config.Sites.Frontend, payload.TeamID),
+						Value:  fmt.Sprintf("[View Team](%s/team/%s)", state.Config.Sites.Frontend.Production(), payload.TeamID),
 						Inline: true,
 					},
 					{

@@ -15,7 +15,7 @@ import (
 	"github.com/infinitybotlist/eureka/uapi"
 )
 
-const perPage = 50
+const perPage = 10
 
 var (
 	webhookLogColsArr = utils.GetCols(types.WebhookLogEntry{})
