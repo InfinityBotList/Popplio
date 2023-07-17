@@ -26,6 +26,9 @@ ts:
 	# Patch to change package name to 'popltypes'
 	sed -i 's:package types:package popltypes:g' /iblcdn/public/dev/bindings/popplio/go/types/*
 
+genenums-staging:
+	STAGING_API=true DEBUG=true ibl genenums
+
 promoteprod:
 	rm -rf ../prod2
 	cd .. && cp -rf staging prod2
