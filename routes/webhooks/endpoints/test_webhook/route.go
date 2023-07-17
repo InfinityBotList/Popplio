@@ -1,4 +1,4 @@
-package test_vote_webhook
+package test_webhook
 
 import (
 	"math/rand"
@@ -15,6 +15,7 @@ import (
 	"popplio/webhooks/events"
 
 	docs "github.com/infinitybotlist/eureka/doclib"
+	"github.com/infinitybotlist/eureka/dovewing/dovetypes"
 	"github.com/infinitybotlist/eureka/uapi"
 
 	"github.com/go-chi/chi/v5"
@@ -24,12 +25,13 @@ import (
 var compiledMessages = uapi.CompileValidationErrors(WebhookAuthPost{})
 
 type WebhookAuthPost struct {
-	Votes int `json:"votes" validate:"required"`
+	Votes int                     `json:"votes"`
+	User  *dovetypes.PlatformUser `json:"user" description:"The user to use for testing webhooks"`
 }
 
 func Docs() *docs.Doc {
 	return &docs.Doc{
-		Summary:     "Test Vote Webhook",
+		Summary:     "Test Webhook",
 		Description: "Sends a test webhook to allow testing our vote webhook system using the credentials you have set.",
 		Req:         WebhookAuthPost{},
 		Resp:        types.ApiError{},
@@ -42,10 +44,17 @@ func Docs() *docs.Doc {
 				Schema:      docs.IdSchema,
 			},
 			{
-				Name:        "bid",
-				Description: "The bots ID, name or vanity",
+				Name:        "target_id",
+				Description: "The target ID to return webhook logs for",
 				Required:    true,
 				In:          "path",
+				Schema:      docs.IdSchema,
+			},
+			{
+				Name:        "target_type",
+				Description: "The entity type to return logs for. Must be `bot` or `team` (other entity types coming soon)",
+				Required:    true,
+				In:          "query",
 				Schema:      docs.IdSchema,
 			},
 		},
@@ -53,6 +62,11 @@ func Docs() *docs.Doc {
 }
 
 func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
+	return uapi.HttpResponse{
+		Status: http.StatusNotImplemented,
+		Json:   types.ApiError{Message: "This endpoint is not yet implemented"},
+	}
+
 	name := chi.URLParam(r, "bid")
 
 	// Resolve bot ID
@@ -132,10 +146,12 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		err = bothooks.Send(bothooks.With[events.WebhookBotVoteData]{
 			Data: events.WebhookBotVoteData{
 				Votes: payload.Votes,
-				Test:  true,
 			},
 			UserID: d.Auth.ID,
 			BotID:  id,
+			Metadata: &events.WebhookMetadata{
+				Test: true,
+			},
 		})
 
 		if err != nil {
@@ -150,11 +166,11 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 
 		return uapi.DefaultResponse(http.StatusNoContent)
 	} else {
-		if rand.Float64() < 0.1 {
+		if rand.Float64() < 0.2 {
 			return uapi.HttpResponse{
 				Status: http.StatusBadRequest,
 				Json: types.ApiError{
-					Message: "webhooks v1 is deprecated and so this endpoint will error sometimes to ensure visibility",
+					Message: "webhooks v1 is deprecated and so this endpoint will error randomly to ensure visibility",
 				},
 			}
 		}

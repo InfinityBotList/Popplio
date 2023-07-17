@@ -6,15 +6,15 @@ import (
 	"github.com/infinitybotlist/eureka/dovewing/dovetypes"
 )
 
-const webhookTypeBotEditReview WebhookType = "BOT_EDIT_REVIEW"
+const WebhookTypeBotEditReview WebhookType = "BOT_EDIT_REVIEW"
 
 type WebhookBotEditReviewData struct {
-	ReviewID string            `json:"review_id"` // The ID of the review
-	Content  Changeset[string] `json:"content"`   // The content of the review
+	ReviewID string            `json:"review_id" description:"The ID of the review"`
+	Content  Changeset[string] `json:"content" description:"The content of the review"`
 }
 
 func (n WebhookBotEditReviewData) Event() WebhookType {
-	return webhookTypeBotEditReview
+	return WebhookTypeBotEditReview
 }
 
 func (n WebhookBotEditReviewData) CreateHookParams(creator *dovetypes.PlatformUser, targets Target) *discordgo.WebhookParams {

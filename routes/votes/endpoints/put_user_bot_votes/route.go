@@ -311,7 +311,6 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 				BotID:  id,
 				Data: events.WebhookBotVoteData{
 					Votes: int(votes),
-					Test:  false,
 				},
 			})
 

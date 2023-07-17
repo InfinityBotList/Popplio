@@ -22,9 +22,10 @@ var json = jsoniter.ConfigCompatibleWithStandardLibrary
 
 // Simple ergonomic webhook builder
 type With[T events.WebhookEvent] struct {
-	UserID string
-	BotID  string
-	Data   T
+	UserID   string
+	BotID    string
+	Metadata *events.WebhookMetadata
+	Data     T
 }
 
 // Fills in Bot and Creator from IDs
@@ -72,6 +73,7 @@ func Send[T events.WebhookEvent](with With[T]) error {
 		CreatedAt: time.Now().Unix(),
 		Type:      with.Data.Event(),
 		Data:      with.Data,
+		Metadata:  events.ParseWebhookMetadata(with.Metadata),
 	}
 
 	// Fetch the webhook url from db

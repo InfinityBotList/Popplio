@@ -3,7 +3,7 @@ package webhooks
 import (
 	"popplio/api"
 	"popplio/routes/webhooks/endpoints/get_webhook_logs"
-	"popplio/routes/webhooks/endpoints/test_vote_webhook"
+	"popplio/routes/webhooks/endpoints/test_webhook"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/infinitybotlist/eureka/uapi"
@@ -33,11 +33,11 @@ func (b Router) Routes(r *chi.Mux) {
 	}.Route(r)
 
 	uapi.Route{
-		Pattern: "/users/{uid}/bots/{bid}/webhooks/test-vote",
-		OpId:    "test_vote_webhook",
+		Pattern: "/users/{uid}/webhooks/{target_id}/test",
+		OpId:    "test_webhook",
 		Method:  uapi.POST,
-		Docs:    test_vote_webhook.Docs,
-		Handler: test_vote_webhook.Route,
+		Docs:    test_webhook.Docs,
+		Handler: test_webhook.Route,
 		Auth: []uapi.AuthType{
 			{
 				Type:   api.TargetTypeUser,

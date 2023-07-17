@@ -6,15 +6,15 @@ import (
 	"github.com/infinitybotlist/eureka/dovewing/dovetypes"
 )
 
-const webhookTypeTeamEdit WebhookType = "TEAM_EDIT"
+const WebhookTypeTeamEdit WebhookType = "TEAM_EDIT"
 
 type WebhookTeamEditData struct {
-	Name   Changeset[string] `json:"name"`   // The changeset of the name
-	Avatar Changeset[string] `json:"avatar"` // The changeset of the avatar
+	Name   Changeset[string] `json:"name" description:"The changeset of the name"`
+	Avatar Changeset[string] `json:"avatar" description:"The changeset of the avatar"`
 }
 
 func (n WebhookTeamEditData) Event() WebhookType {
-	return webhookTypeTeamEdit
+	return WebhookTypeTeamEdit
 }
 
 func (n WebhookTeamEditData) CreateHookParams(creator *dovetypes.PlatformUser, targets Target) *discordgo.WebhookParams {

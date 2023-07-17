@@ -14,7 +14,8 @@ import (
 type Operation int
 
 const (
-	OpWebhookLogs Operation = iota
+	OpWebhookLogs  Operation = iota
+	OpTestWebhooks Operation = iota
 )
 
 type perm struct {
@@ -28,6 +29,11 @@ func (o Operation) Perms() perm {
 		return perm{
 			botPerm:  teams.TeamPermissionGetBotWebhookLogs,
 			teamPerm: teams.TeamPermissionGetTeamWebhookLogs,
+		}
+	case OpTestWebhooks:
+		return perm{
+			botPerm:  teams.TeamPermissionTestBotWebhooks,
+			teamPerm: teams.TeamPermissionTestTeamWebhooks,
 		}
 	default:
 		return perm{}

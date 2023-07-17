@@ -8,15 +8,14 @@ import (
 	"github.com/infinitybotlist/eureka/dovewing/dovetypes"
 )
 
-const webhookTypeBotVote WebhookType = "BOT_VOTE"
+const WebhookTypeBotVote WebhookType = "BOT_VOTE"
 
 type WebhookBotVoteData struct {
-	Votes int  `json:"votes"` // The amount of votes the bot received
-	Test  bool `json:"test"`  // Whether the vote was a test vote or not
+	Votes int `json:"votes" description:"The number of votes the bot received"`
 }
 
 func (v WebhookBotVoteData) Event() WebhookType {
-	return webhookTypeBotVote
+	return WebhookTypeBotVote
 }
 
 func (v WebhookBotVoteData) CreateHookParams(creator *dovetypes.PlatformUser, targets Target) *discordgo.WebhookParams {

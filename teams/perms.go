@@ -51,6 +51,7 @@ const (
 	TeamPermissionRemoveTeamMembers         types.TeamPermission = "REMOVE_TEAM_MEMBERS"
 	TeamPermissionEditTeamMemberPermissions types.TeamPermission = "EDIT_TEAM_MEMBER_PERMISSIONS"
 	TeamPermissionEditTeamWebhooks          types.TeamPermission = "EDIT_TEAM_WEBHOOKS"
+	TeamPermissionTestTeamWebhooks          types.TeamPermission = "TEST_TEAM_WEBHOOKS"
 	TeamPermissionGetTeamWebhookLogs        types.TeamPermission = "GET_TEAM_WEBHOOK_LOGS"
 	TeamPermissionRetryTeamWebhookLogs      types.TeamPermission = "RETRY_TEAM_WEBHOOK_LOGS"
 	TeamPermissionDeleteTeamWebhookLogs     types.TeamPermission = "DELETE_TEAM_WEBHOOK_LOGS"
@@ -96,6 +97,7 @@ var TeamPermDetails = []types.PermDetailMap{
 	{ID: TeamPermissionAddTeamMembers, Name: "Add Team Members", Desc: "Add team members to the team. Does **NOT** need 'Edit Team Member Permissions'", Group: "Team"},
 	{ID: TeamPermissionRemoveTeamMembers, Name: "Remove Team Members", Desc: "Remove team members from the team if they have all the permissions of the user they are removing. Does **NOT** need 'Edit Team Member Permissions'", Group: "Team"},
 	{ID: TeamPermissionEditTeamMemberPermissions, Name: "Edit Team Member Permissions", Desc: "Edit team members' permissions", Group: "Team"},
+	{ID: TeamPermissionEditTeamWebhooks, Name: "Test Team Webhooks", Desc: "Test team webhooks. Note that this is a separate permission from 'Edit Test Webhooks' and is required to test webhooks.", Group: "Team"},
 	{ID: TeamPermissionEditTeamWebhooks, Name: "Edit Team Webhooks", Desc: "Edit team webhook settings. Note that 'Test Team Webhooks' is a separate permission and is required to test webhooks.", Group: "Team"},
 	{ID: TeamPermissionGetTeamWebhookLogs, Name: "Get Team Webhook Logs", Desc: "Get team webhook logs. Note that executing webhooks from webhook logs as well as deleting them are seperate permissions..", Group: "Team"},
 	{ID: TeamPermissionRetryTeamWebhookLogs, Name: "Retry Team Webhook Logs", Desc: "Retry execution of team webhook logs. Usually requires 'Get Team Webhook Logs' to be useful.", Group: "Team"},

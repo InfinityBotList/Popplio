@@ -38,3 +38,19 @@ type PatchTeamWebhook struct {
 	WebhookSecret string `json:"webhook_secret"`
 	Clear         bool   `json:"clear"`
 }
+
+type GetTestWebhookMeta struct {
+	Types []TestWebhookType `json:"data"`
+}
+
+type TestWebhookType struct {
+	Type string `json:"type" description:"The type of webhook to test."`
+	Data []TestWebhookVariables
+}
+
+type TestWebhookVariables struct {
+	ID    string `json:"id" description:"The ID of the variable."`
+	Name  string `json:"name" description:"The name of the variable."`
+	Value string `json:"value" description:"The default value of the variable."`
+	Type  string `json:"type" description:"The type of the variable."`
+}
