@@ -215,7 +215,7 @@ func Send(d *WebhookSendState) error {
 	}
 
 	// Set response to body
-	_, err = state.Pool.Exec(state.Context, "UPDATE webhook_logs SET response = $1 WHERE id = $2", body, d.LogID)
+	_, err = state.Pool.Exec(state.Context, "UPDATE webhook_logs SET response = $1, status_code = $2 WHERE id = $3", body, resp.StatusCode, d.LogID)
 
 	if err != nil {
 		state.Logger.Error(err)

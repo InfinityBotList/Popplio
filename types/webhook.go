@@ -24,6 +24,7 @@ type WebhookLogEntry struct {
 	Tries      int                     `db:"tries" json:"tries" description:"The number of send tries attempted on this webhook."`
 	LastTry    time.Time               `db:"last_try" json:"last_try" description:"The time of the last send try."`
 	BadIntent  bool                    `db:"bad_intent" json:"bad_intent" description:"Whether the webhook was sent with bad intent."`
+	StatusCode int                     `db:"status_code" json:"status_code" description:"The status code of the webhook request."`
 }
 
 type PatchBotWebhook struct {
