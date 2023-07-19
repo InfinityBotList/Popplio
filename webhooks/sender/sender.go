@@ -98,23 +98,25 @@ func Send(d *WebhookSendState) error {
 	}
 
 	// Randomly send a bad webhook with invalid auth
-	if rand2.Float64() < 0.7 {
-		go func() {
-			badD := &WebhookSendState{
-				BadIntent: true,
-				Sign: Secret{
-					Raw:         crypto.RandString(128),
-					UseInsecure: d.Sign.UseInsecure,
-				},
-				Url:    d.Url,
-				Data:   d.Data,
-				UserID: d.UserID,
-				Entity: d.Entity,
-			}
+	if !d.BadIntent {
+		if rand2.Float64() < 0.4 {
+			go func() {
+				badD := &WebhookSendState{
+					BadIntent: true,
+					Sign: Secret{
+						Raw:         crypto.RandString(128),
+						UseInsecure: d.Sign.UseInsecure,
+					},
+					Url:    d.Url,
+					Data:   d.Data,
+					UserID: d.UserID,
+					Entity: d.Entity,
+				}
 
-			// Retry with bad intent
-			Send(badD)
-		}()
+				// Retry with bad intent
+				Send(badD)
+			}()
+		}
 	}
 
 	if d.LogID == "" {
