@@ -12,6 +12,7 @@ import (
 	"github.com/georgysavva/scany/v2/pgxscan"
 	"github.com/go-chi/chi/v5"
 	docs "github.com/infinitybotlist/eureka/doclib"
+	"github.com/infinitybotlist/eureka/dovewing"
 	"github.com/infinitybotlist/eureka/uapi"
 )
 
@@ -110,6 +111,15 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 
 	if len(webhooks) == 0 {
 		webhooks = []types.WebhookLogEntry{}
+	}
+
+	for i, webhook := range webhooks {
+		webhooks[i].User, err = dovewing.GetUser(d.Context, webhook.UserID, state.DovewingPlatformDiscord)
+
+		if err != nil {
+			state.Logger.Error(err)
+			return uapi.DefaultResponse(http.StatusInternalServerError)
+		}
 	}
 
 	var count uint64

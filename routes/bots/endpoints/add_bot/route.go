@@ -70,7 +70,7 @@ func Setup() {
 
 func Docs() *docs.Doc {
 	return &docs.Doc{
-		Summary:     "Create Bot",
+		Summary:     "Add Bot",
 		Description: "Adds a bot to the database. The main owner will be the user who created the bot. Returns 204 on success",
 		Req:         types.CreateBot{},
 		Resp:        types.ApiError{},
