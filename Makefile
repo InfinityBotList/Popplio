@@ -17,7 +17,7 @@ ts:
 
 	sed -i 's:TeamPermission:TeamPermissions:g' /iblcdn/public/dev/bindings/popplio/types.ts
 
-	ibl genenums
+	STAGING_API=true DEBUG=true ibl genenums
 
 	# Copy over go types
 	mkdir /iblcdn/public/dev/bindings/popplio/go
