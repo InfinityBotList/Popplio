@@ -3,8 +3,8 @@ package get_test_webhook_meta
 import (
 	"net/http"
 
+	"popplio/config"
 	"popplio/routes/webhooks/assets"
-	"popplio/state"
 	"popplio/types"
 
 	docs "github.com/infinitybotlist/eureka/doclib"
@@ -64,19 +64,16 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 
 	switch targetType {
 	case "bot":
-		// Check if webhooks v2
-		var webhooksV2 bool
-
-		err := state.Pool.QueryRow(d.Context, "SELECT webhooks_v2 FROM bots WHERE bot_id = $1", targetId).Scan(&webhooksV2)
-
-		if err != nil {
-			state.Logger.Error(err)
-			return uapi.DefaultResponse(http.StatusInternalServerError)
+		if config.UseLegacyWebhooks(targetId) {
+			return uapi.HttpResponse{
+				Status: http.StatusNotImplemented,
+				Json:   types.ApiError{Message: "Legacy webhook users cannot test their bots webhooks and must instead manually vote"},
+			}
 		}
 
-		data = assets.GetTestMeta(targetId, targetType, webhooksV2)
+		data = assets.GetTestMeta(targetId, targetType)
 	default:
-		data = assets.GetTestMeta(targetId, targetType, false)
+		data = assets.GetTestMeta(targetId, targetType)
 	}
 
 	if data == nil {

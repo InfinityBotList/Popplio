@@ -1,7 +1,6 @@
 package test_webhook
 
 import (
-	"math/rand"
 	"net/http"
 	"time"
 
@@ -11,7 +10,6 @@ import (
 	"popplio/types"
 	"popplio/utils"
 	"popplio/webhooks/bothooks"
-	"popplio/webhooks/bothooks_legacy"
 	"popplio/webhooks/events"
 
 	docs "github.com/infinitybotlist/eureka/doclib"
@@ -112,15 +110,6 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		return uapi.ValidatorErrorResponse(compiledMessages, errors)
 	}
 
-	var webhooksV2 bool
-
-	err = state.Pool.QueryRow(d.Context, "SELECT webhooks_v2 FROM bots WHERE bot_id = $1", id).Scan(&webhooksV2)
-
-	if err != nil {
-		state.Logger.Error(err)
-		return uapi.DefaultResponse(http.StatusInternalServerError)
-	}
-
 	limit, err := ratelimit.Ratelimit{
 		Expiry:      1 * time.Minute,
 		MaxRequests: 3,
@@ -142,55 +131,24 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		}
 	}
 
-	if webhooksV2 {
-		err = bothooks.Send(bothooks.With[events.WebhookBotVoteData]{
-			Data: events.WebhookBotVoteData{
-				Votes: payload.Votes,
+	err = bothooks.Send(bothooks.With[events.WebhookBotVoteData]{
+		Data: events.WebhookBotVoteData{
+			Votes: payload.Votes,
+		},
+		UserID: d.Auth.ID,
+		BotID:  id,
+		Metadata: &events.WebhookMetadata{
+			Test: true,
+		},
+	})
+
+	if err != nil {
+		state.Logger.Error(err)
+		return uapi.HttpResponse{
+			Status: http.StatusBadRequest,
+			Json: types.ApiError{
+				Message: err.Error(),
 			},
-			UserID: d.Auth.ID,
-			BotID:  id,
-			Metadata: &events.WebhookMetadata{
-				Test: true,
-			},
-		})
-
-		if err != nil {
-			state.Logger.Error(err)
-			return uapi.HttpResponse{
-				Status: http.StatusBadRequest,
-				Json: types.ApiError{
-					Message: err.Error(),
-				},
-			}
-		}
-
-		return uapi.DefaultResponse(http.StatusNoContent)
-	} else {
-		if rand.Float64() < 0.2 {
-			return uapi.HttpResponse{
-				Status: http.StatusBadRequest,
-				Json: types.ApiError{
-					Message: "webhooks v1 is deprecated and so this endpoint will error randomly to ensure visibility",
-				},
-			}
-		}
-
-		err = bothooks_legacy.SendLegacy(bothooks_legacy.WebhookPostLegacy{
-			UserID: d.Auth.ID,
-			BotID:  id,
-			Votes:  payload.Votes,
-			Test:   true,
-		})
-
-		if err != nil {
-			state.Logger.Error(err)
-
-			return uapi.HttpResponse{
-				Status: http.StatusBadRequest,
-				Json: types.ApiError{
-					Message: err.Error(),
-				},
-			}
 		}
 	}
 

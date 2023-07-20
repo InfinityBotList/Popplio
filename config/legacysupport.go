@@ -1,6 +1,6 @@
 package config
 
-var legacyWebhooks = []string{
+var legacyWebhooks = [...]string{
 	"580159619415146506",  // Emoji Generator, builderb
 	"371789181954818050",  // Hangman, builderb
 	"325892959130222592",  // Starboat, builderb
@@ -16,6 +16,12 @@ var legacyWebhooks = []string{
 	"187636089073172481",  // DuckHunt, canarduck (Canarde/EyesOfCreeper)
 }
 
-func LegacyWebhooks() []string {
-	return legacyWebhooks
+func UseLegacyWebhooks(botId string) bool {
+	for _, id := range legacyWebhooks {
+		if id == botId {
+			return true
+		}
+	}
+
+	return false
 }

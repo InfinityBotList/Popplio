@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"popplio/api"
+	"popplio/config"
 	"popplio/state"
 	"popplio/types"
 	"popplio/utils"
@@ -207,6 +208,8 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	if api.IsClient(r) {
 		updateClicks(d.Context, r, name)
 	}
+
+	bot.LegacyWebhooks = config.UseLegacyWebhooks(bot.BotID)
 
 	return uapi.HttpResponse{
 		Json:      bot,

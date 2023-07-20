@@ -5,6 +5,7 @@ package bothooks
 
 import (
 	"errors"
+	"popplio/config"
 	"popplio/state"
 	"popplio/webhooks/events"
 	"popplio/webhooks/sender"
@@ -78,15 +79,14 @@ func Send[T events.WebhookEvent](with With[T]) error {
 
 	// Fetch the webhook url from db
 	var webhookURL string
-	var webhooksV2 bool
-	err = state.Pool.QueryRow(state.Context, "SELECT webhook, webhooks_v2 FROM bots WHERE bot_id = $1", bot.ID).Scan(&webhookURL, &webhooksV2)
+	err = state.Pool.QueryRow(state.Context, "SELECT webhook FROM bots WHERE bot_id = $1", bot.ID).Scan(&webhookURL)
 
 	if err != nil {
 		state.Logger.Error(err)
 		return errors.New("failed to fetch webhook url")
 	}
 
-	if !webhooksV2 {
+	if config.UseLegacyWebhooks(bot.ID) {
 		state.Logger.Warn("webhooks v2 is not enabled for this bot, ignoring")
 		return nil
 	}

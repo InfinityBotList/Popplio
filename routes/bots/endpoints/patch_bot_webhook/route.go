@@ -11,7 +11,6 @@ import (
 	"github.com/go-chi/chi/v5"
 	docs "github.com/infinitybotlist/eureka/doclib"
 	"github.com/infinitybotlist/eureka/uapi"
-	"golang.org/x/exp/slices"
 )
 
 func Docs() *docs.Doc {
@@ -110,36 +109,6 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 
 	if payload.WebhookSecret != "" {
 		_, err = state.Pool.Exec(d.Context, "UPDATE bots SET web_auth = $1 WHERE bot_id = $2", payload.WebhookSecret, id)
-
-		if err != nil {
-			state.Logger.Error(err)
-			return uapi.DefaultResponse(http.StatusInternalServerError)
-		}
-	}
-
-	if payload.WebhooksV2 != nil {
-		val := *payload.WebhooksV2
-
-		if !val {
-			// Check that AllowLegacyWebhooks flag is set
-			var flags []types.BotFlags
-
-			err = state.Pool.QueryRow(d.Context, "SELECT flags FROM bots WHERE bot_id = $1", id).Scan(&flags)
-
-			if err != nil {
-				state.Logger.Error(err)
-				return uapi.DefaultResponse(http.StatusInternalServerError)
-			}
-
-			if !slices.Contains(flags, types.BotFlagAllowLegacyWebhooks) {
-				return uapi.HttpResponse{
-					Status: http.StatusBadRequest,
-					Json:   types.ApiError{Message: "You must contact support with *valid* reason and have your bot whitelisted for legacy webhooks"},
-				}
-			}
-		}
-
-		_, err = state.Pool.Exec(d.Context, "UPDATE bots SET webhooks_v2 = $1 WHERE bot_id = $2", payload.WebhooksV2, id)
 
 		if err != nil {
 			state.Logger.Error(err)

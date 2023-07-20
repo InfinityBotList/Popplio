@@ -3,6 +3,7 @@ package bothooks
 
 import (
 	"errors"
+	"popplio/config"
 	"popplio/state"
 	"popplio/webhooks/sender"
 
@@ -22,8 +23,7 @@ func (d Driver) PullPending() *sender.WebhookPullPending {
 		EntityType: EntityType,
 		GetSecret: func(id string) (sender.Secret, error) {
 			var sign pgtype.Text
-			var webhooksV2 bool
-			err := state.Pool.QueryRow(state.Context, "SELECT web_auth, webhooks_v2 FROM bots WHERE bot_id = $1", id).Scan(&sign, &webhooksV2)
+			err := state.Pool.QueryRow(state.Context, "SELECT web_auth FROM bots WHERE bot_id = $1", id).Scan(&sign)
 
 			if err != nil {
 				return sender.Secret{}, err
@@ -35,7 +35,7 @@ func (d Driver) PullPending() *sender.WebhookPullPending {
 
 			return sender.Secret{
 				Raw:         sign.String,
-				UseInsecure: !webhooksV2,
+				UseInsecure: config.UseLegacyWebhooks(id),
 			}, nil
 		},
 		GetEntity: func(id string) (sender.WebhookEntity, error) {

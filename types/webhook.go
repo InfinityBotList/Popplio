@@ -30,7 +30,6 @@ type WebhookLogEntry struct {
 type PatchBotWebhook struct {
 	WebhookURL    string `json:"webhook_url"`
 	WebhookSecret string `json:"webhook_secret"`
-	WebhooksV2    *bool  `json:"webhooks_v2"`
 	Clear         bool   `json:"clear"`
 }
 

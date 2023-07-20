@@ -8,6 +8,7 @@ import (
 	"strconv"
 	"time"
 
+	"popplio/config"
 	"popplio/notifications"
 	"popplio/state"
 	"popplio/types"
@@ -19,6 +20,7 @@ import (
 	docs "github.com/infinitybotlist/eureka/doclib"
 	"github.com/infinitybotlist/eureka/dovewing"
 	"github.com/infinitybotlist/eureka/uapi"
+	"go.uber.org/zap"
 
 	"github.com/bwmarrin/discordgo"
 	"github.com/go-chi/chi/v5"
@@ -294,18 +296,20 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 
 	// Send webhook in a goroutine refunding the vote if it failed
 	go func() {
-		var webhooksV2 bool
+		if config.UseLegacyWebhooks(id) {
+			state.Logger.Info("Using legacy webhooks", zap.String("id", id))
 
-		err := state.Pool.QueryRow(state.Context, "SELECT webhooks_v2 FROM bots WHERE bot_id = $1", id).Scan(&webhooksV2)
+			err = bothooks_legacy.SendLegacy(bothooks_legacy.WebhookPostLegacy{
+				BotID:  id,
+				UserID: userId,
+				Votes:  int(votes),
+			})
 
-		if err != nil {
-			state.Logger.Error(err)
-			return
-		}
-
-		if webhooksV2 {
-			state.Logger.Info("Sending webhook for vote (v2) for " + id)
-
+			if err != nil {
+				state.Logger.Error(err)
+				return
+			}
+		} else {
 			err := bothooks.Send(bothooks.With[events.WebhookBotVoteData]{
 				UserID: userId,
 				BotID:  id,
@@ -322,26 +326,9 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 			return
 		}
 
-		err = bothooks_legacy.SendLegacy(bothooks_legacy.WebhookPostLegacy{
-			BotID:  id,
-			UserID: userId,
-			Votes:  int(votes),
-		})
-
 		var msg types.Alert
 
-		if err != nil && err.Error() == "httpUser" {
-			msg = types.Alert{
-				Type:    types.AlertTypeWarning,
-				Title:   "Vote Rewards Deferred!",
-				Message: botObj.Username + " uses the HTTP API for votes. Vote rewards may take time to register.",
-				Icon:    botObj.Avatar,
-				URL: pgtype.Text{
-					String: "https://botlist.site/" + id + "/vote",
-					Valid:  true,
-				},
-			}
-		} else if err != nil {
+		if err != nil {
 			msg = types.Alert{
 				Type:    types.AlertTypeError,
 				Title:   "Whoa There!",
