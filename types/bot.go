@@ -7,6 +7,12 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+type BotFlags string
+
+const (
+	BotFlagAllowLegacyWebhooks BotFlags = "ALLOW_LEGACY_WEBHOOKS"
+)
+
 // @ci table=bots, unfilled=1
 //
 // Represents a 'index bot' (a small subset of the bot object for use in cards etc.)
@@ -63,6 +69,7 @@ type Bot struct {
 	ClientID                  string                  `db:"client_id" json:"client_id" description:"The bot's associated client ID validated using that top-secret Oauth2 API! Used in anti-abuse measures."`
 	ExtraLinks                []Link                  `db:"extra_links" json:"extra_links" description:"The bot's links that it wishes to advertise"`
 	Tags                      []string                `db:"tags" json:"tags" description:"The bot's tags (e.g. music, moderation, etc.)"`
+	Flags                     []BotFlags              `db:"flags" json:"flags" description:"The bot's flags"`
 	Prefix                    string                  `db:"prefix" json:"prefix" description:"The bot's prefix"`
 	User                      *dovetypes.PlatformUser `json:"user" description:"The bot's user information" ci:"internal"` // Must be parsed internally
 	Owner                     pgtype.Text             `db:"owner" json:"-"`
