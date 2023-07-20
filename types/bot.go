@@ -103,7 +103,7 @@ type Bot struct {
 	Note                      pgtype.Text             `db:"approval_note" json:"approval_note" description:"The note for the bot's approval"`
 	CreatedAt                 pgtype.Timestamptz      `db:"created_at" json:"created_at" description:"The bot's creation date"`
 	LastClaimed               pgtype.Timestamptz      `db:"last_claimed" json:"last_claimed" description:"The bot's last claimed date"`
-	LegacyWebhooks            bool                    `db:"-" json:"legacy_webhooks" description:"Whether the bot is using legacy v1 webhooks or not"`
+	LegacyWebhooks            bool                    `db:"-" json:"legacy_webhooks" description:"Whether the bot is using legacy v1 webhooks or not" ci:"internal"` // Must be parsed internally
 	TeamOwnerID               pgtype.UUID             `db:"team_owner" json:"-"`
 	TeamOwner                 *Team                   `json:"team_owner" description:"If the bot is in a team, who owns the bot. If not in a team, this will be null and owner will instead be set" ci:"internal"` // Must be parsed internally
 	CaptchaOptOut             bool                    `db:"captcha_opt_out" json:"captcha_opt_out" description:"Whether the bot should have captchas shown if the user has captcha_sponsor_enabled"`
