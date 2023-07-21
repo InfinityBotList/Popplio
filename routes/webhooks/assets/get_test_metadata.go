@@ -21,13 +21,13 @@ func GetTestMeta(targetId, targetType string) *types.GetTestWebhookMeta {
 						{
 							ID:    "votes",
 							Name:  "Number Of Votes",
-							Type:  "number",
+							Type:  types.WebhookTypeNumber,
 							Value: VariableVotes,
 						},
 						{
 							ID:    "author",
 							Name:  "Author ID",
-							Type:  "string",
+							Type:  types.WebhookTypeText,
 							Value: VariableUser,
 						},
 					},
@@ -36,15 +36,20 @@ func GetTestMeta(targetId, targetType string) *types.GetTestWebhookMeta {
 					Type: string(events.WebhookTypeBotEditReview),
 					Data: []types.TestWebhookVariables{
 						{
-							ID:    "author",
-							Name:  "Author ID",
-							Type:  "string",
-							Value: VariableUser,
+							ID:   "review_id",
+							Name: "Review ID",
+							Type: types.WebhookTypeText,
 						},
 						{
 							ID:   "content",
 							Name: "Content",
-							Type: "changeset",
+							Type: types.WebhookTypeChangeset,
+						},
+						{
+							ID:    "author",
+							Name:  "Author ID",
+							Type:  types.WebhookTypeText,
+							Value: VariableUser,
 						},
 					},
 				},
@@ -52,15 +57,20 @@ func GetTestMeta(targetId, targetType string) *types.GetTestWebhookMeta {
 					Type: string(events.WebhookTypeBotNewReview),
 					Data: []types.TestWebhookVariables{
 						{
-							ID:    "author",
-							Name:  "Author ID",
-							Type:  "string",
-							Value: VariableUser,
+							ID:   "review_id",
+							Name: "Review ID",
+							Type: types.WebhookTypeText,
 						},
 						{
 							ID:   "content",
 							Name: "Content",
-							Type: "string",
+							Type: types.WebhookTypeText,
+						},
+						{
+							ID:    "author",
+							Name:  "Author ID",
+							Type:  types.WebhookTypeText,
+							Value: VariableUser,
 						},
 					},
 				},
@@ -75,12 +85,12 @@ func GetTestMeta(targetId, targetType string) *types.GetTestWebhookMeta {
 						{
 							ID:   "name",
 							Name: "Name",
-							Type: "changeset",
+							Type: types.WebhookTypeChangeset,
 						},
 						{
 							ID:   "avatar",
 							Name: "Avatar",
-							Type: "changeset",
+							Type: types.WebhookTypeChangeset,
 						},
 					},
 				},

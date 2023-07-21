@@ -9,9 +9,7 @@ import (
 
 type BotFlags string
 
-const (
-	BotFlagAllowLegacyWebhooks BotFlags = "ALLOW_LEGACY_WEBHOOKS"
-)
+const ()
 
 // @ci table=bots, unfilled=1
 //

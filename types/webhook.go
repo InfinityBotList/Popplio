@@ -7,6 +7,14 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+type WebhookType string
+
+const (
+	WebhookTypeText      WebhookType = "text"
+	WebhookTypeNumber    WebhookType = "number"
+	WebhookTypeChangeset WebhookType = "changeset"
+)
+
 // @ci table=webhook_logs
 //
 // Webhook log
@@ -49,8 +57,8 @@ type TestWebhookType struct {
 }
 
 type TestWebhookVariables struct {
-	ID    string `json:"id" description:"The ID of the variable."`
-	Name  string `json:"name" description:"The name of the variable."`
-	Value string `json:"value" description:"The default value of the variable."`
-	Type  string `json:"type" description:"The type of the variable."`
+	ID    string      `json:"id" description:"The ID of the variable."`
+	Name  string      `json:"name" description:"The name of the variable."`
+	Value string      `json:"value" description:"The default value of the variable."`
+	Type  WebhookType `json:"type" description:"The type of the variable."`
 }
