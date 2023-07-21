@@ -24,12 +24,6 @@ func GetTestMeta(targetId, targetType string) *types.GetTestWebhookMeta {
 							Type:  types.WebhookTypeNumber,
 							Value: VariableVotes,
 						},
-						{
-							ID:    "author",
-							Name:  "Author ID",
-							Type:  types.WebhookTypeText,
-							Value: VariableUser,
-						},
 					},
 				},
 				{
@@ -45,12 +39,6 @@ func GetTestMeta(targetId, targetType string) *types.GetTestWebhookMeta {
 							Name: "Content",
 							Type: types.WebhookTypeChangeset,
 						},
-						{
-							ID:    "author",
-							Name:  "Author ID",
-							Type:  types.WebhookTypeText,
-							Value: VariableUser,
-						},
 					},
 				},
 				{
@@ -65,12 +53,6 @@ func GetTestMeta(targetId, targetType string) *types.GetTestWebhookMeta {
 							ID:   "content",
 							Name: "Content",
 							Type: types.WebhookTypeText,
-						},
-						{
-							ID:    "author",
-							Name:  "Author ID",
-							Type:  types.WebhookTypeText,
-							Value: VariableUser,
 						},
 					},
 				},
