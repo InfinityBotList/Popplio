@@ -2,11 +2,12 @@ package get_bot_meta
 
 import (
 	"net/http"
-	"popplio/ratelimit"
 	"popplio/routes/bots/assets"
 	"popplio/state"
 	"popplio/types"
 	"time"
+
+	"github.com/infinitybotlist/eureka/uapi/ratelimit"
 
 	"github.com/go-chi/chi/v5"
 	docs "github.com/infinitybotlist/eureka/doclib"

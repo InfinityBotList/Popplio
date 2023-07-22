@@ -10,22 +10,15 @@ const (
 	VariableUser  = "$user"
 )
 
+func changesetOf(t types.WebhookType) types.WebhookType {
+	return types.WebhookType(string(types.WebhookTypeChangeset) + "/" + string(t))
+}
+
 func GetTestMeta(targetId, targetType string) *types.GetTestWebhookMeta {
 	switch targetType {
 	case "bot":
 		return &types.GetTestWebhookMeta{
 			Types: []types.TestWebhookType{
-				{
-					Type: string(events.WebhookTypeBotVote),
-					Data: []types.TestWebhookVariables{
-						{
-							ID:    "votes",
-							Name:  "Number Of Votes",
-							Type:  types.WebhookTypeNumber,
-							Value: VariableVotes,
-						},
-					},
-				},
 				{
 					Type: string(events.WebhookTypeBotEditReview),
 					Data: []types.TestWebhookVariables{
@@ -37,7 +30,7 @@ func GetTestMeta(targetId, targetType string) *types.GetTestWebhookMeta {
 						{
 							ID:   "content",
 							Name: "Content",
-							Type: types.WebhookTypeChangeset,
+							Type: changesetOf(types.WebhookTypeText),
 						},
 					},
 				},
@@ -56,6 +49,17 @@ func GetTestMeta(targetId, targetType string) *types.GetTestWebhookMeta {
 						},
 					},
 				},
+				{
+					Type: string(events.WebhookTypeBotVote),
+					Data: []types.TestWebhookVariables{
+						{
+							ID:    "votes",
+							Name:  "Number Of Votes",
+							Type:  types.WebhookTypeNumber,
+							Value: VariableVotes,
+						},
+					},
+				},
 			},
 		}
 	case "team":
@@ -67,12 +71,12 @@ func GetTestMeta(targetId, targetType string) *types.GetTestWebhookMeta {
 						{
 							ID:   "name",
 							Name: "Name",
-							Type: types.WebhookTypeChangeset,
+							Type: changesetOf(types.WebhookTypeText),
 						},
 						{
 							ID:   "avatar",
 							Name: "Avatar",
-							Type: types.WebhookTypeChangeset,
+							Type: changesetOf(types.WebhookTypeText),
 						},
 					},
 				},

@@ -2,12 +2,13 @@ package redeem_payment_offer
 
 import (
 	"net/http"
-	"popplio/ratelimit"
 	"popplio/routes/payments/assets"
 	"popplio/state"
 	"popplio/types"
 	"popplio/utils"
 	"time"
+
+	"github.com/infinitybotlist/eureka/uapi/ratelimit"
 
 	docs "github.com/infinitybotlist/eureka/doclib"
 	"github.com/infinitybotlist/eureka/uapi"

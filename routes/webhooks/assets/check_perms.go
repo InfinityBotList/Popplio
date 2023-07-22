@@ -3,6 +3,7 @@ package assets
 import (
 	"context"
 	"net/http"
+	"popplio/config"
 	"popplio/state"
 	"popplio/teams"
 	"popplio/types"
@@ -47,6 +48,20 @@ func CheckWebhookPermissions(
 	userId string,
 	o Operation,
 ) (resp uapi.HttpResponse, ok bool) {
+	if targetId == "" || targetType == "" {
+		return uapi.HttpResponse{
+			Status: http.StatusBadRequest,
+			Json:   types.ApiError{Message: "Both target_id and target_type must be specified"},
+		}, false
+	}
+
+	if targetType == "bot" && config.UseLegacyWebhooks(targetId) {
+		return uapi.HttpResponse{
+			Status: http.StatusNotImplemented,
+			Json:   types.ApiError{Message: "Legacy webhook users cannot test their bots webhooks and must instead manually vote"},
+		}, false
+	}
+
 	p := o.Perms()
 
 	err := state.Validator.Struct(p)

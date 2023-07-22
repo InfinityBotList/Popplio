@@ -3,11 +3,12 @@ package create_paypal_order
 import (
 	"fmt"
 	"net/http"
-	"popplio/ratelimit"
 	"popplio/routes/payments/assets"
 	"popplio/state"
 	"popplio/types"
 	"time"
+
+	"github.com/infinitybotlist/eureka/uapi/ratelimit"
 
 	"github.com/infinitybotlist/eureka/crypto"
 	docs "github.com/infinitybotlist/eureka/doclib"

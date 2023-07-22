@@ -2,36 +2,29 @@ package test_webhook
 
 import (
 	"net/http"
+	"strings"
 	"time"
 
-	"popplio/ratelimit"
+	"popplio/routes/webhooks/assets"
 	"popplio/state"
-	"popplio/teams"
 	"popplio/types"
-	"popplio/utils"
 	"popplio/webhooks/bothooks"
 	"popplio/webhooks/events"
+	"popplio/webhooks/teamhooks"
+
+	"github.com/infinitybotlist/eureka/uapi/ratelimit"
 
 	docs "github.com/infinitybotlist/eureka/doclib"
-	"github.com/infinitybotlist/eureka/dovewing/dovetypes"
 	"github.com/infinitybotlist/eureka/uapi"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/go-playground/validator/v10"
 )
-
-var compiledMessages = uapi.CompileValidationErrors(WebhookAuthPost{})
-
-type WebhookAuthPost struct {
-	Votes int                     `json:"votes"`
-	User  *dovetypes.PlatformUser `json:"user" description:"The user to use for testing webhooks"`
-}
 
 func Docs() *docs.Doc {
 	return &docs.Doc{
 		Summary:     "Test Webhook",
-		Description: "Sends a test webhook to allow testing our vote webhook system using the credentials you have set.",
-		Req:         WebhookAuthPost{},
+		Description: "Sends a test webhook.",
+		Req:         map[string]any{},
 		Resp:        types.ApiError{},
 		Params: []docs.Parameter{
 			{
@@ -55,59 +48,38 @@ func Docs() *docs.Doc {
 				In:          "query",
 				Schema:      docs.IdSchema,
 			},
+			{
+				Name:        "event",
+				Description: "The event that is being posted",
+				Required:    true,
+				In:          "query",
+				Schema:      docs.IdSchema,
+			},
 		},
 	}
 }
 
 func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
-	return uapi.HttpResponse{
-		Status: http.StatusNotImplemented,
-		Json:   types.ApiError{Message: "This endpoint is not yet implemented"},
-	}
+	targetType := r.URL.Query().Get("target_type")
+	targetId := chi.URLParam(r, "target_id")
+	eventType := r.URL.Query().Get("event")
 
-	name := chi.URLParam(r, "bid")
-
-	// Resolve bot ID
-	id, err := utils.ResolveBot(state.Context, name)
-
-	if err != nil {
-		state.Logger.Error(err)
-		return uapi.DefaultResponse(http.StatusInternalServerError)
-	}
-
-	if id == "" {
-		return uapi.DefaultResponse(http.StatusNotFound)
-	}
-
-	// Validate that they actually own this bot
-	perms, err := utils.GetUserBotPerms(d.Context, d.Auth.ID, id)
-
-	if err != nil {
-		state.Logger.Error(err)
-		return uapi.DefaultResponse(http.StatusInternalServerError)
-	}
-
-	if !perms.Has(teams.TeamPermissionTestBotWebhooks) {
+	if eventType == "" {
 		return uapi.HttpResponse{
 			Status: http.StatusBadRequest,
-			Json:   types.ApiError{Message: "You do not have permission to test this bot's webhooks"},
+			Json: types.ApiError{
+				Message: "event must be specified",
+			},
 		}
 	}
 
-	var payload WebhookAuthPost
-
-	resp, ok := uapi.MarshalReq(r, &payload)
-
-	if !ok {
-		return resp
-	}
-
-	// Validate the payload
-	err = state.Validator.Struct(payload)
-
-	if err != nil {
-		errors := err.(validator.ValidationErrors)
-		return uapi.ValidatorErrorResponse(compiledMessages, errors)
+	if !strings.HasPrefix(eventType, strings.ToUpper(targetType)+"_") {
+		return uapi.HttpResponse{
+			Status: http.StatusBadRequest,
+			Json: types.ApiError{
+				Message: "This event is not valid for this target type",
+			},
+		}
 	}
 
 	limit, err := ratelimit.Ratelimit{
@@ -131,26 +103,148 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		}
 	}
 
-	err = bothooks.Send(bothooks.With[events.WebhookBotVoteData]{
-		Data: events.WebhookBotVoteData{
-			Votes: payload.Votes,
-		},
-		UserID: d.Auth.ID,
-		BotID:  id,
-		Metadata: &events.WebhookMetadata{
-			Test: true,
-		},
-	})
+	resp, ok := assets.CheckWebhookPermissions(
+		d.Context,
+		targetId,
+		targetType,
+		d.Auth.ID,
+		assets.OpTestWebhooks,
+	)
 
-	if err != nil {
-		state.Logger.Error(err)
+	if !ok {
+		resp.Headers = limit.Headers()
+		return resp
+	}
+
+	var hresp uapi.HttpResponse
+
+	switch events.WebhookType(eventType) {
+	case events.WebhookTypeBotEditReview:
+		hresp, ok = handle[events.WebhookBotEditReviewData](d, r, limit)
+	case events.WebhookTypeBotNewReview:
+		hresp, ok = handle[events.WebhookBotNewReviewData](d, r, limit)
+	case events.WebhookTypeBotVote:
+		hresp, ok = handle[events.WebhookBotVoteData](d, r, limit)
+	case events.WebhookTypeTeamEdit:
+		hresp, ok = handle[events.WebhookTeamEditData](d, r, limit)
+	default:
 		return uapi.HttpResponse{
-			Status: http.StatusBadRequest,
+			Status:  http.StatusNotImplemented,
+			Headers: limit.Headers(),
 			Json: types.ApiError{
-				Message: err.Error(),
+				Message: "This event is not implemented yet",
 			},
 		}
 	}
 
+	if !ok {
+		return hresp
+	}
+
 	return uapi.DefaultResponse(http.StatusNoContent)
+	/*
+		var payload WebhookAuthPost
+
+		resp, ok := uapi.MarshalReq(r, &payload)
+
+		if !ok {
+			return resp
+		}
+
+		// Validate the payload
+		err = state.Validator.Struct(payload)
+
+		if err != nil {
+			errors := err.(validator.ValidationErrors)
+			return uapi.ValidatorErrorResponse(compiledMessages, errors)
+		}
+
+		err = bothooks.Send(bothooks.With[events.WebhookBotVoteData]{
+			Data: events.WebhookBotVoteData{
+				Votes: payload.Votes,
+			},
+			UserID: d.Auth.ID,
+			BotID:  id,
+			Metadata: &events.WebhookMetadata{
+				Test: true,
+			},
+		})
+
+		if err != nil {
+			state.Logger.Error(err)
+			return uapi.HttpResponse{
+				Status: http.StatusBadRequest,
+				Json: types.ApiError{
+					Message: err.Error(),
+				},
+			}
+		}
+
+		return uapi.DefaultResponse(http.StatusNoContent)*/
+}
+
+func handle[T events.WebhookEvent](
+	d uapi.RouteData,
+	r *http.Request,
+	limit ratelimit.Limit,
+) (uapi.HttpResponse, bool) {
+	targetType := r.URL.Query().Get("target_type")
+	targetId := chi.URLParam(r, "target_id")
+	eventType := r.URL.Query().Get("event")
+
+	var event T
+
+	if eventType != string(event.Event()) {
+		return uapi.HttpResponse{
+			Status: http.StatusBadRequest,
+			Json: types.ApiError{
+				Message: "Internal error: eventType != event.Event()",
+			},
+		}, false
+	}
+
+	hresp, ok := uapi.MarshalReqWithHeaders(r, &event, limit.Headers())
+
+	if !ok {
+		return hresp, ok
+	}
+
+	switch targetType {
+	case "bot":
+		err := bothooks.Send(bothooks.With[T]{
+			UserID: d.Auth.ID,
+			BotID:  targetId,
+			Data:   event,
+			Metadata: &events.WebhookMetadata{
+				Test: true,
+			},
+		})
+
+		if err != nil {
+			state.Logger.Error(err)
+			return uapi.HttpResponse{
+				Status: http.StatusBadRequest,
+				Json:   types.ApiError{Message: err.Error()},
+			}, false
+		}
+	case "team":
+		err := teamhooks.Send(teamhooks.With[T]{
+			UserID: d.Auth.ID,
+			TeamID: targetId,
+			Data:   event,
+			Metadata: &events.WebhookMetadata{
+				Test: true,
+			},
+		})
+
+		if err != nil {
+			state.Logger.Error(err)
+			return uapi.HttpResponse{
+				Status: http.StatusBadRequest,
+				Json:   types.ApiError{Message: err.Error()},
+			}, false
+		}
+	}
+
+	return hresp, true
 }

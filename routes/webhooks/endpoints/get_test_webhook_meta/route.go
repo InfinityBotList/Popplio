@@ -3,7 +3,6 @@ package get_test_webhook_meta
 import (
 	"net/http"
 
-	"popplio/config"
 	"popplio/routes/webhooks/assets"
 	"popplio/types"
 
@@ -60,21 +59,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		return resp
 	}
 
-	var data *types.GetTestWebhookMeta
-
-	switch targetType {
-	case "bot":
-		if config.UseLegacyWebhooks(targetId) {
-			return uapi.HttpResponse{
-				Status: http.StatusNotImplemented,
-				Json:   types.ApiError{Message: "Legacy webhook users cannot test their bots webhooks and must instead manually vote"},
-			}
-		}
-
-		data = assets.GetTestMeta(targetId, targetType)
-	default:
-		data = assets.GetTestMeta(targetId, targetType)
-	}
+	data := assets.GetTestMeta(targetId, targetType)
 
 	if data == nil {
 		return uapi.HttpResponse{

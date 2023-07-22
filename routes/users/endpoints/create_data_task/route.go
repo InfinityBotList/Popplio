@@ -2,12 +2,13 @@ package create_data_task
 
 import (
 	"net/http"
-	"popplio/ratelimit"
 	"popplio/routes/users/endpoints/create_data_task/assets"
 	"popplio/state"
 	"popplio/types"
 	"strings"
 	"time"
+
+	"github.com/infinitybotlist/eureka/uapi/ratelimit"
 
 	"github.com/infinitybotlist/eureka/crypto"
 	docs "github.com/infinitybotlist/eureka/doclib"

@@ -7,12 +7,13 @@ import (
 	"strings"
 	"time"
 
-	"popplio/ratelimit"
 	"popplio/routes/bots/assets"
 	"popplio/state"
 	"popplio/teams"
 	"popplio/types"
 	"popplio/utils"
+
+	"github.com/infinitybotlist/eureka/uapi/ratelimit"
 
 	"github.com/infinitybotlist/eureka/crypto"
 	docs "github.com/infinitybotlist/eureka/doclib"

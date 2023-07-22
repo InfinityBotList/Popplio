@@ -2,12 +2,13 @@ package create_stripe_checkout
 
 import (
 	"net/http"
-	"popplio/ratelimit"
 	"popplio/routes/payments/assets"
 	"popplio/state"
 	"popplio/types"
 	"strconv"
 	"time"
+
+	"github.com/infinitybotlist/eureka/uapi/ratelimit"
 
 	docs "github.com/infinitybotlist/eureka/doclib"
 	"github.com/infinitybotlist/eureka/uapi"

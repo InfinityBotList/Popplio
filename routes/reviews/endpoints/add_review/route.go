@@ -2,13 +2,14 @@ package add_review
 
 import (
 	"net/http"
-	"popplio/ratelimit"
 	"popplio/routes/reviews/assets"
 	"popplio/state"
 	"popplio/types"
 	"popplio/webhooks/bothooks"
 	"popplio/webhooks/events"
 	"time"
+
+	"github.com/infinitybotlist/eureka/uapi/ratelimit"
 
 	docs "github.com/infinitybotlist/eureka/doclib"
 	"github.com/infinitybotlist/eureka/uapi"

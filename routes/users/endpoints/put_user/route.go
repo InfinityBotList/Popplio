@@ -7,9 +7,10 @@ import (
 	"time"
 
 	"popplio/api"
-	"popplio/ratelimit"
 	"popplio/state"
 	"popplio/types"
+
+	"github.com/infinitybotlist/eureka/uapi/ratelimit"
 
 	docs "github.com/infinitybotlist/eureka/doclib"
 	"github.com/infinitybotlist/eureka/uapi"
