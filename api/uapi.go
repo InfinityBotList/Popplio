@@ -2,7 +2,6 @@
 package api
 
 import (
-	"errors"
 	"net/http"
 	"popplio/constants"
 	"popplio/state"
@@ -123,35 +122,11 @@ func Authorize(r uapi.Route, req *http.Request) (uapi.AuthData, uapi.HttpRespons
 	return authData, uapi.HttpResponse{}, true
 }
 
-func RouteDataMiddleware(r *uapi.RouteData, req *http.Request) (*uapi.RouteData, error) {
-	clientHeader := req.Header.Get("X-Client")
-
-	var isClient bool
-	if clientHeader != "" {
-		if clientHeader != state.Config.Meta.CliNonce {
-			return nil, errors.New("out-of-date client")
-		}
-
-		isClient = true
-	}
-
-	r.Props = map[string]string{
-		"isClient": func() string {
-			if isClient {
-				return "1"
-			}
-			return "0"
-		}(),
-	}
-
-	return r, nil
-}
-
 func IsClient(r *http.Request) bool {
 	clientHeader := r.Header.Get("X-Client")
 
 	if clientHeader != "" {
-		return clientHeader == state.Config.Meta.CliNonce
+		return clientHeader == "true"
 	}
 
 	return false
@@ -166,9 +141,8 @@ func Setup() {
 			TargetTypeBot:    "bot",
 			TargetTypeServer: "server",
 		},
-		RouteDataMiddleware: RouteDataMiddleware,
-		Redis:               state.Redis,
-		Context:             state.Context,
+		Redis:   state.Redis,
+		Context: state.Context,
 		Constants: &uapi.UAPIConstants{
 			NotFound:         constants.NotFound,
 			NotFoundPage:     constants.NotFoundPage,
