@@ -31,7 +31,7 @@ var srvs = types.ServiceDiscovery{
 func Docs() *docs.Doc {
 	return &docs.Doc{
 		Summary:     "Staff Service Directory",
-		Description: "Returns a list of available RPC services",
+		Description: "Returns a list of available staff services",
 		Resp:        types.ServiceDiscovery{},
 	}
 }
