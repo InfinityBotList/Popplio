@@ -41,6 +41,12 @@ type RssChannel struct {
 	Items         []*RssItem `xml:"item"`
 }
 
+type RSSGuid struct {
+	XMLName     xml.Name `xml:"guid"`
+	Guid        string   `xml:",chardata"`
+	IsPermaLink bool     `xml:"isPermaLink,attr"`
+}
+
 type RssAtomLink struct {
 	XMLName xml.Name `xml:"atom:link"`
 	Href    string   `xml:"href,attr"`
@@ -59,13 +65,13 @@ type RssImage struct {
 }
 
 type RssItem struct {
-	Title       string `xml:"title"`
-	Link        string `xml:"link"`
-	Description string `xml:"description"`
-	Author      string `xml:"author"`
-	Category    string `xml:"category"`
-	Guid        string `xml:"guid"`
-	PubDate     string `xml:"pubDate"`
+	Title       string   `xml:"title"`
+	Link        string   `xml:"link"`
+	Description string   `xml:"description"`
+	Author      string   `xml:"author"`
+	Category    string   `xml:"category"`
+	Guid        *RSSGuid `xml:"guid"`
+	PubDate     string   `xml:"pubDate"`
 }
 
 type RssLink struct {
@@ -127,7 +133,15 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		Category:      []string{"Bots", "Servers"},
 		AtomLink: []*RssAtomLink{
 			{
-				Href: state.Config.Sites.API.Parse() + "/list/rss.xml?page=" + strconv.FormatUint(pageNum, 10),
+				Href: func() string {
+					d := state.Config.Sites.API.Parse() + r.URL.Path
+
+					if r.URL.RawQuery != "" {
+						d += "?" + r.URL.RawQuery
+					}
+
+					return d
+				}(),
 				Rel:  "self",
 				Type: "application/rss+xml",
 			},
@@ -216,7 +230,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 				return owner.String
 			}(),
 			Category: "Bots",
-			Guid:     botID,
+			Guid:     &RSSGuid{Guid: botID, IsPermaLink: false},
 			PubDate:  createdAt.Format(time.RFC822),
 		})
 	}
