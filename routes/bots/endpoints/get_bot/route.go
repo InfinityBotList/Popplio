@@ -31,15 +31,12 @@ var (
 
 func Docs() *docs.Doc {
 	return &docs.Doc{
-		Summary: "Get Bot",
-		Description: `
-Gets a bot by id or name
-
-**Some things to note:**`,
+		Summary:     "Get Bot",
+		Description: "Gets a bot by id/vanity",
 		Params: []docs.Parameter{
 			{
 				Name:        "id",
-				Description: "The bots ID, name or vanity",
+				Description: "The bots ID or vanity",
 				Required:    true,
 				In:          "path",
 				Schema:      docs.IdSchema,

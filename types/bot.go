@@ -175,3 +175,7 @@ type DiscordBotMeta struct {
 	Tags        []string `json:"tags" description:"The suggested tags for the bot"`
 	Fallback    bool     `json:"fallback" description:"Whether or not we had to fallback to RPC from JAPI.rest"`
 }
+
+type UserBotPerms struct {
+	Perms []TeamPermission `json:"perms" description:"The user's permissions on a bot"`
+}
