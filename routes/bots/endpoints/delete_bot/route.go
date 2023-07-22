@@ -88,11 +88,13 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	}
 
 	// Delete generic entities
-	_, err = tx.Exec(d.Context, "DELETE FROM reviews WHERE target_id = $1 AND target_type = 'bot'", id)
+	for _, table := range []string{"reviews", "webhook_logs"} {
+		_, err = tx.Exec(d.Context, "DELETE FROM "+table+" WHERE target_id = $1 AND target_type = 'bot'", id)
 
-	if err != nil {
-		state.Logger.Error(err)
-		return uapi.DefaultResponse(http.StatusInternalServerError)
+		if err != nil {
+			state.Logger.Error(err)
+			return uapi.DefaultResponse(http.StatusInternalServerError)
+		}
 	}
 
 	err = tx.Commit(d.Context)
