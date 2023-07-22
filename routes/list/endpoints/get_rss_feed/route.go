@@ -127,28 +127,28 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		Category:      []string{"Bots", "Servers"},
 		AtomLink: []*RssAtomLink{
 			{
-				Href: state.Config.Sites.Frontend.Parse() + "/list/rss.xml?page=" + strconv.FormatUint(pageNum, 10),
+				Href: state.Config.Sites.API.Parse() + "/list/rss.xml?page=" + strconv.FormatUint(pageNum, 10),
 				Rel:  "self",
 				Type: "application/rss+xml",
 			},
 			{
-				Href: state.Config.Sites.Frontend.Parse() + "/list/rss.xml",
+				Href: state.Config.Sites.API.Parse() + "/list/rss.xml",
 				Rel:  "first",
 				Type: "application/rss+xml",
 			},
 			{
-				Href: state.Config.Sites.Frontend.Parse() + "/list/rss.xml?page=" + strconv.FormatUint(pageNum+1, 10),
+				Href: state.Config.Sites.API.Parse() + "/list/rss.xml?page=" + strconv.FormatUint(pageNum+1, 10),
 				Rel:  "next",
 				Type: "application/rss+xml",
 			},
 		},
 		Links: []*RssLink{
 			{
-				Href: state.Config.Sites.Frontend.Parse() + "/list/rss.xml",
+				Href: state.Config.Sites.API.Parse() + "/list/rss.xml",
 				Rel:  "first",
 			},
 			{
-				Href: state.Config.Sites.Frontend.Parse() + "/list/rss.xml?page=" + strconv.FormatUint(pageNum+1, 10),
+				Href: state.Config.Sites.API.Parse() + "/list/rss.xml?page=" + strconv.FormatUint(pageNum+1, 10),
 				Rel:  "next",
 			},
 		},
@@ -162,12 +162,12 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 
 	if pageNum > 1 {
 		rssFeed.Channel.AtomLink = append(rssFeed.Channel.AtomLink, &RssAtomLink{
-			Href: state.Config.Sites.Frontend.Parse() + "/list/rss.xml?page=" + strconv.FormatUint(pageNum-1, 10),
+			Href: state.Config.Sites.API.Parse() + "/list/rss.xml?page=" + strconv.FormatUint(pageNum-1, 10),
 			Rel:  "prev",
 			Type: "application/rss+xml",
 		})
 		rssFeed.Channel.Links = append(rssFeed.Channel.Links, &RssLink{
-			Href: state.Config.Sites.Frontend.Parse() + "/list/rss.xml?page=" + strconv.FormatUint(pageNum-1, 10),
+			Href: state.Config.Sites.API.Parse() + "/list/rss.xml?page=" + strconv.FormatUint(pageNum-1, 10),
 			Rel:  "prev",
 		})
 
