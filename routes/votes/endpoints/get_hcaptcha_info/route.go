@@ -1,4 +1,4 @@
-package get_notification_info
+package get_hcaptcha_info
 
 import (
 	"net/http"
@@ -12,15 +12,15 @@ import (
 
 func Docs() *docs.Doc {
 	return &docs.Doc{
-		Summary:     "Get Notifications Info",
-		Description: "Gets info needed to subscribe to push notifications (VAPID public key)",
-		Resp:        types.NotificationInfo{},
+		Summary:     "Get HCaptcha Info",
+		Description: "Gets hcaptcha info (sitekey)",
+		Resp:        types.HCaptchaInfo{},
 	}
 }
 
 func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
-	data := types.NotificationInfo{
-		PublicKey: state.Config.Notifications.VapidPublicKey,
+	data := types.HCaptchaInfo{
+		SiteKey: state.Config.Hcaptcha.SiteKey,
 	}
 
 	return uapi.HttpResponse{

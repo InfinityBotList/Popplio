@@ -3,6 +3,7 @@ package votes
 import (
 	"popplio/api"
 	"popplio/routes/votes/endpoints/get_all_bot_votes"
+	"popplio/routes/votes/endpoints/get_hcaptcha_info"
 	"popplio/routes/votes/endpoints/get_user_bot_votes"
 	"popplio/routes/votes/endpoints/get_user_pack_votes"
 	"popplio/routes/votes/endpoints/put_user_bot_votes"
@@ -21,6 +22,14 @@ func (b Router) Tag() (string, string) {
 }
 
 func (b Router) Routes(r *chi.Mux) {
+	uapi.Route{
+		Pattern: "/security/hcaptcha",
+		OpId:    "get_hcaptcha_info",
+		Method:  uapi.GET,
+		Docs:    get_hcaptcha_info.Docs,
+		Handler: get_hcaptcha_info.Route,
+	}.Route(r)
+
 	uapi.Route{
 		Pattern: "/bots/{id}/votes",
 		OpId:    "get_all_bot_votes",

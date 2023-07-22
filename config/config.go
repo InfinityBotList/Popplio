@@ -54,6 +54,7 @@ type Config struct {
 }
 
 type Hcaptcha struct {
+	SiteKey string `yaml:"site_key" comment:"Hcaptcha Site Key" validate:"required"`
 	Secret string `yaml:"secret" comment:"Hcaptcha Secret" validate:"required"`
 }
 

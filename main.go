@@ -21,6 +21,7 @@ import (
 	"popplio/routes/payments"
 	"popplio/routes/platform"
 	"popplio/routes/reviews"
+	"popplio/routes/staff"
 	"popplio/routes/teams"
 	"popplio/routes/tickets"
 	"popplio/routes/users"
@@ -134,21 +135,23 @@ func main() {
 
 	routers := []uapi.APIRouter{
 		// Use same order as routes folder
+		alerts.Router{},
+		apps.Router{},
 		blogs.Router{},
 		bots.Router{},
+		diagnostics.Router{},
 		list.Router{},
 		packs.Router{},
+		payments.Router{},
+		platform.Router{},
+		reviews.Router{},
+		//servers.Router{},
+		staff.Router{},
 		teams.Router{},
 		tickets.Router{},
 		users.Router{},
-		payments.Router{},
 		votes.Router{},
 		webhooks.Router{},
-		diagnostics.Router{},
-		apps.Router{},
-		reviews.Router{},
-		platform.Router{},
-		alerts.Router{},
 	}
 
 	for _, router := range routers {

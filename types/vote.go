@@ -14,3 +14,7 @@ type UserVote struct {
 	VoteInfo     VoteInfo `json:"vote_info"`
 	PremiumBot   bool     `json:"premium_bot"`
 }
+
+type HCaptchaInfo struct {
+	SiteKey string `json:"site_key"`
+}
