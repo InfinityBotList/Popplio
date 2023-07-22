@@ -20,8 +20,10 @@ var srvs = types.ServiceDiscovery{
 			Description: "Responsible for handling onboarding of staff",
 		},
 		"ashfur": {
-			Url:         "https://ashfur.infinitybots.gg",
-			Description: "Responsible for handling data aggregation (modcases) on MongoDB",
+			Url:                "https://ashfur.infinitybots.gg",
+			Description:        "Responsible for handling data aggregation (modcases) on MongoDB",
+			PlannedMaintenance: true,
+			NeedsStaging:       true,
 		},
 	},
 }
