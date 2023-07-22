@@ -3,12 +3,12 @@ module popplio
 go 1.18
 
 require (
-	github.com/bwmarrin/discordgo v0.27.1
+	github.com/bwmarrin/discordgo v0.27.2-0.20230704233747-e39e715086d2
 	github.com/georgysavva/scany/v2 v2.0.0
 	github.com/getkin/kin-openapi v0.118.0 // indirect
 	github.com/go-chi/chi/v5 v5.0.10
 	github.com/google/uuid v1.3.0
-	github.com/infinitybotlist/eureka v0.0.0-20230722070522-c55d20caf67f
+	github.com/infinitybotlist/eureka v0.0.0-20230722102426-c7a4b65ebe8b
 	github.com/mileusna/useragent v1.3.3
 	github.com/wk8/go-ordered-map/v2 v2.1.8 // indirect
 	gopkg.in/yaml.v3 v3.0.1
@@ -62,5 +62,3 @@ require (
 	golang.org/x/exp v0.0.0-20230713183714-613f0c0eb8a1
 	golang.org/x/sys v0.10.0 // indirect
 )
-
-replace github.com/bwmarrin/discordgo => ./submodules/discordgo
