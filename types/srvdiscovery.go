@@ -9,5 +9,5 @@ type SDService struct {
 	Url          string `json:"url,omitempty"`
 	Docs         string `json:"docs,omitempty"`
 	Description  string `json:"description"`
-	NeedsStaging bool   `json:"needs_staging"`
+	NeedsStaging bool   `json:"needs_staging,omitempty"`
 }

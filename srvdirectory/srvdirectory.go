@@ -32,12 +32,12 @@ func Setup() {
 			{
 				ID:          "persepolis",
 				Url:         "https://persepolis.infinitybots.gg",
-				Description: "Responsible for handling onboarding of staff",
+				Description: "Staff onboarding",
 			},
 			{
 				ID:           "ashfur",
 				Url:          "https://ashfur.infinitybots.gg",
-				Description:  "Responsible for handling data aggregation (modcases) on MongoDB",
+				Description:  "Data aggregation (modcases) on MongoDB",
 				NeedsStaging: true,
 			},
 		},
