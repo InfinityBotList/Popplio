@@ -1,6 +1,7 @@
 package main
 
 import (
+	"html/template"
 	"net/http"
 	"strings"
 	"time"
@@ -27,6 +28,7 @@ import (
 	"popplio/routes/users"
 	"popplio/routes/votes"
 	"popplio/routes/webhooks"
+	"popplio/srvdirectory"
 	"popplio/stafftemplates"
 	"popplio/state"
 	"popplio/types"
@@ -114,6 +116,7 @@ func main() {
 		},
 	}
 
+	srvdirectory.Setup()
 	docs.Setup()
 	poplhooks.Setup()
 
@@ -170,9 +173,56 @@ func main() {
 		w.Write(openapi)
 	})
 
+	docsTempl := template.Must(template.New("docs").Parse(docsHTML))
+
 	r.Get("/docs", func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, "/docs/public.popplio", http.StatusFound)
+	})
+
+	r.Get("/docs/{srv}", func(w http.ResponseWriter, r *http.Request) {
+		var specData struct {
+			URL string
+		}
+
+		srv := chi.URLParam(r, "srv")
+
+		if srv == "" {
+			w.WriteHeader(http.StatusBadRequest)
+			w.Write([]byte("Invalid service name"))
+			return
+		}
+
+		split := strings.Split(srv, ".")
+
+		if len(split) != 2 {
+			w.WriteHeader(http.StatusBadRequest)
+			w.Write([]byte("Invalid service name"))
+			return
+		}
+
+		if _, ok := srvdirectory.Directory[split[0]]; !ok {
+			w.WriteHeader(http.StatusBadRequest)
+			w.Write([]byte("Invalid service directory"))
+			return
+		}
+
+		if _, ok := srvdirectory.Directory[split[0]][split[1]]; !ok {
+			w.WriteHeader(http.StatusBadRequest)
+			w.Write([]byte("Invalid service"))
+			return
+		}
+
+		if srvdirectory.Directory[split[0]][split[1]].Docs == "" {
+			w.WriteHeader(http.StatusBadRequest)
+			w.Write([]byte("Service does not have documentation"))
+			return
+		}
+
+		specData.URL = srvdirectory.Directory[split[0]][split[1]].Url + srvdirectory.Directory[split[0]][split[1]].Docs
+
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
-		w.Write([]byte(docsHTML))
+
+		docsTempl.Execute(w, specData)
 	})
 
 	// Load openapi here to avoid large marshalling in every request

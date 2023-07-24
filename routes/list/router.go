@@ -10,8 +10,8 @@ import (
 	"popplio/routes/list/endpoints/get_partners"
 	"popplio/routes/list/endpoints/get_rss_feed"
 	"popplio/routes/list/endpoints/get_staff_templates"
-	"popplio/routes/list/endpoints/public_service_directory"
 	"popplio/routes/list/endpoints/search_list"
+	"popplio/routes/list/endpoints/service_directory"
 	"popplio/routes/list/endpoints/test_auth"
 
 	"github.com/go-chi/chi/v5"
@@ -36,11 +36,11 @@ func (b Router) Routes(r *chi.Mux) {
 	}.Route(r)
 
 	uapi.Route{
-		Pattern: "/list/service-directory",
-		OpId:    "public_service_directory",
+		Pattern: "/list/services/{directory}",
+		OpId:    "service_directory",
 		Method:  uapi.GET,
-		Docs:    public_service_directory.Docs,
-		Handler: public_service_directory.Route,
+		Docs:    service_directory.Docs,
+		Handler: service_directory.Route,
 	}.Route(r)
 
 	uapi.Route{

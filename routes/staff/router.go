@@ -6,7 +6,6 @@ import (
 	"popplio/routes/staff/endpoints/delete_blog_post"
 	"popplio/routes/staff/endpoints/edit_blog_post"
 	"popplio/routes/staff/endpoints/publish_blog_post"
-	"popplio/routes/staff/endpoints/staff_service_directory"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/infinitybotlist/eureka/uapi"
@@ -23,14 +22,6 @@ func (b Router) Tag() (string, string) {
 }
 
 func (b Router) Routes(r *chi.Mux) {
-	uapi.Route{
-		Pattern: "/staff/service-directory",
-		OpId:    "staff_service_directory",
-		Method:  uapi.GET,
-		Docs:    staff_service_directory.Docs,
-		Handler: staff_service_directory.Route,
-	}.Route(r)
-
 	uapi.Route{
 		Pattern: "/users/{user_id}/blog",
 		OpId:    "create_blog_post",

@@ -5,8 +5,8 @@ type ServiceDiscovery struct {
 }
 
 type SDService struct {
-	Url                string `json:"url"`
-	Description        string `json:"description"`
-	PlannedMaintenance bool   `json:"planned_maintenance"`
-	NeedsStaging       bool   `json:"needs_staging"`
+	Url          string `json:"url,omitempty"`
+	Docs         string `json:"docs,omitempty"`
+	Description  string `json:"description"`
+	NeedsStaging bool   `json:"needs_staging"`
 }
