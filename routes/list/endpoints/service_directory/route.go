@@ -48,6 +48,8 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	}
 
 	return uapi.HttpResponse{
-		Json: dir,
+		Json: types.ServiceDiscovery{
+			Services: dir,
+		},
 	}
 }

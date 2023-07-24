@@ -5,32 +5,37 @@ import (
 	"popplio/types"
 )
 
-var Directory map[string]map[string]types.SDService
+var Directory map[string][]types.SDService
 
 func Setup() {
-	Directory = map[string]map[string]types.SDService{
+	Directory = map[string][]types.SDService{
 		"public": {
-			"htmlsanitize": {
+			{
+				ID:          "htmlsanitize",
 				Url:         state.Config.Sites.HtmlSanitize,
 				Description: "HTML->MD",
 			},
-			"popplio": {
+			{
+				ID:          "popplio",
 				Description: "Core API",
 				Docs:        "/openapi",
 			},
 		},
 		"staff": {
-			"arcadia": {
+			{
+				ID:           "arcadia",
 				Url:          "https://rpc.infinitybots.gg",
 				Docs:         "/openapi",
 				Description:  "Staff RPC API",
 				NeedsStaging: true,
 			},
-			"persepolis": {
+			{
+				ID:          "persepolis",
 				Url:         "https://persepolis.infinitybots.gg",
 				Description: "Responsible for handling onboarding of staff",
 			},
-			"ashfur": {
+			{
+				ID:           "ashfur",
 				Url:          "https://ashfur.infinitybots.gg",
 				Description:  "Responsible for handling data aggregation (modcases) on MongoDB",
 				NeedsStaging: true,

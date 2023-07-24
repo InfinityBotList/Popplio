@@ -1,10 +1,11 @@
 package types
 
 type ServiceDiscovery struct {
-	Services map[string]SDService `json:"services"`
+	Services []SDService `json:"services"`
 }
 
 type SDService struct {
+	ID           string `json:"id"`
 	Url          string `json:"url,omitempty"`
 	Docs         string `json:"docs,omitempty"`
 	Description  string `json:"description"`

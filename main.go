@@ -200,25 +200,36 @@ func main() {
 			return
 		}
 
-		if _, ok := srvdirectory.Directory[split[0]]; !ok {
+		v, ok := srvdirectory.Directory[split[0]]
+
+		if !ok {
 			w.WriteHeader(http.StatusBadRequest)
 			w.Write([]byte("Invalid service directory"))
 			return
 		}
 
-		if _, ok := srvdirectory.Directory[split[0]][split[1]]; !ok {
+		var dir *types.SDService
+
+		for _, v := range v {
+			if v.ID == split[1] {
+				dir = &v
+				break
+			}
+		}
+
+		if dir == nil {
 			w.WriteHeader(http.StatusBadRequest)
 			w.Write([]byte("Invalid service"))
 			return
 		}
 
-		if srvdirectory.Directory[split[0]][split[1]].Docs == "" {
+		if dir.Docs == "" {
 			w.WriteHeader(http.StatusBadRequest)
 			w.Write([]byte("Service does not have documentation"))
 			return
 		}
 
-		specData.URL = srvdirectory.Directory[split[0]][split[1]].Url + srvdirectory.Directory[split[0]][split[1]].Docs
+		specData.URL = dir.Url + dir.Docs
 
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
 
