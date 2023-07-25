@@ -111,6 +111,12 @@ github.com/infinitybotlist/eureka v0.0.0-20230722070522-c55d20caf67f h1:hCu4FQD7
 github.com/infinitybotlist/eureka v0.0.0-20230722070522-c55d20caf67f/go.mod h1:W2sJbZywcaMfd1aaW6kJxKBD+Z1oSKjH1hxSabY22BM=
 github.com/infinitybotlist/eureka v0.0.0-20230722102426-c7a4b65ebe8b h1:CYqrx9pj/djSymRsNtnOq9aiVThyNrQrdppNqrC4fos=
 github.com/infinitybotlist/eureka v0.0.0-20230722102426-c7a4b65ebe8b/go.mod h1:EncygsTKn7CRa8waGotqG+OpUDxZrwyNBTK47pvSWes=
+github.com/infinitybotlist/eureka v0.0.0-20230725195157-4a826c5a490b h1:KLfxSDURcnNOnOIbUzwhM6C5DEPovTk8xu2+v4FHKJo=
+github.com/infinitybotlist/eureka v0.0.0-20230725195157-4a826c5a490b/go.mod h1:EncygsTKn7CRa8waGotqG+OpUDxZrwyNBTK47pvSWes=
+github.com/infinitybotlist/eureka v0.0.0-20230725195227-deca01ba19fd h1:LOC+rRmHIUi4jR1IUpQf7C+Kg9y71CZw7wDzOIlhgug=
+github.com/infinitybotlist/eureka v0.0.0-20230725195227-deca01ba19fd/go.mod h1:EncygsTKn7CRa8waGotqG+OpUDxZrwyNBTK47pvSWes=
+github.com/infinitybotlist/eureka v0.0.0-20230725195348-b2bd048840f8 h1:RKKnioULdriEjjEZStctBzeIfXjiDIDUTKivZchCiOA=
+github.com/infinitybotlist/eureka v0.0.0-20230725195348-b2bd048840f8/go.mod h1:EncygsTKn7CRa8waGotqG+OpUDxZrwyNBTK47pvSWes=
 github.com/invopop/yaml v0.1.0/go.mod h1:2XuRLgs/ouIrW3XNzuNj7J3Nvu/Dig5MXvbCEdiBN3Q=
 github.com/invopop/yaml v0.2.0 h1:7zky/qH+O0DwAyoobXUqvVBwgBFRxKoQ/3FjcVpjTMY=
 github.com/invopop/yaml v0.2.0/go.mod h1:2XuRLgs/ouIrW3XNzuNj7J3Nvu/Dig5MXvbCEdiBN3Q=
@@ -227,6 +233,8 @@ golang.org/x/exp v0.0.0-20230626212559-97b1e661b5df h1:UA2aFVmmsIlefxMk29Dp2juaU
 golang.org/x/exp v0.0.0-20230626212559-97b1e661b5df/go.mod h1:FXUEEKJgO7OQYeo8N01OfiKP8RXMtf6e8aTskBGqWdc=
 golang.org/x/exp v0.0.0-20230713183714-613f0c0eb8a1 h1:MGwJjxBy0HJshjDNfLsYO8xppfqWlA5ZT9OhtUUhTNw=
 golang.org/x/exp v0.0.0-20230713183714-613f0c0eb8a1/go.mod h1:FXUEEKJgO7OQYeo8N01OfiKP8RXMtf6e8aTskBGqWdc=
+golang.org/x/exp v0.0.0-20230725093048-515e97ebf090 h1:Di6/M8l0O2lCLc6VVRWhgCiApHV8MnQurBnFSHsQtNY=
+golang.org/x/exp v0.0.0-20230725093048-515e97ebf090/go.mod h1:FXUEEKJgO7OQYeo8N01OfiKP8RXMtf6e8aTskBGqWdc=
 golang.org/x/net v0.0.0-20210226172049-e18ecbb05110/go.mod h1:m0MpNAwzfU5UDzcl9v0D8zg8gWTRqZa9RBIspLL5mdg=
 golang.org/x/net v0.0.0-20210520170846-37e1c6afe023/go.mod h1:9nx3DQGgdP8bBQD5qxJ1jj9UTztislL4KSBs9R2vV5Y=
 golang.org/x/net v0.10.0 h1:X2//UzNDwYmtCLn7To6G58Wr6f5ahEAQgKNzv9Y951M=

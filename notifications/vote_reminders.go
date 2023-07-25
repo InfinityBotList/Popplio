@@ -45,14 +45,14 @@ func vrCheck() {
 			continue
 		}
 
-		voteParsed, err := votes.GetBotVoteData(state.Context, userId, botId, true)
+		vi, err := votes.EntityVoteCheck(state.Context, userId, botId, "bot")
 
 		if err != nil {
 			state.Logger.Error(err)
 			continue
 		}
 
-		if !voteParsed.HasVoted {
+		if !vi.HasVoted {
 			botInf, err := dovewing.GetUser(state.Context, botId, state.DovewingPlatformDiscord)
 
 			if err != nil {

@@ -8,7 +8,6 @@ import (
 	"popplio/state"
 	"popplio/types"
 	"popplio/utils"
-	"popplio/votes"
 
 	docs "github.com/infinitybotlist/eureka/doclib"
 	"github.com/infinitybotlist/eureka/dovewing"
@@ -167,15 +166,6 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	if err != nil {
 		state.Logger.Error(err)
 		return uapi.DefaultResponse(http.StatusInternalServerError)
-	}
-
-	for i := range packs {
-		packs[i].Votes, err = votes.GetPackVoteData(d.Context, packs[i].URL)
-
-		if err != nil {
-			state.Logger.Error(err)
-			return uapi.DefaultResponse(http.StatusInternalServerError)
-		}
 	}
 
 	listIndex.Packs = packs

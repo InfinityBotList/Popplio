@@ -2,12 +2,11 @@ package votes
 
 import (
 	"popplio/api"
-	"popplio/routes/votes/endpoints/get_all_bot_votes"
+	"popplio/routes/votes/endpoints/get_all_votes"
 	"popplio/routes/votes/endpoints/get_hcaptcha_info"
-	"popplio/routes/votes/endpoints/get_user_bot_votes"
-	"popplio/routes/votes/endpoints/get_user_pack_votes"
-	"popplio/routes/votes/endpoints/put_user_bot_votes"
-	"popplio/routes/votes/endpoints/put_user_pack_votes"
+	"popplio/routes/votes/endpoints/get_user_entity_votes"
+	"popplio/routes/votes/endpoints/get_vote_info"
+	"popplio/routes/votes/endpoints/put_user_entity_votes"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/infinitybotlist/eureka/uapi"
@@ -23,7 +22,7 @@ func (b Router) Tag() (string, string) {
 
 func (b Router) Routes(r *chi.Mux) {
 	uapi.Route{
-		Pattern: "/security/hcaptcha",
+		Pattern: "/votes/security/hcaptcha",
 		OpId:    "get_hcaptcha_info",
 		Method:  uapi.GET,
 		Docs:    get_hcaptcha_info.Docs,
@@ -31,70 +30,50 @@ func (b Router) Routes(r *chi.Mux) {
 	}.Route(r)
 
 	uapi.Route{
-		Pattern: "/bots/{id}/votes",
-		OpId:    "get_all_bot_votes",
+		Pattern: "/users/{uid}/{target_type}s/{target_id}/@all",
+		OpId:    "get_all_votes",
 		Method:  uapi.GET,
-		Docs:    get_all_bot_votes.Docs,
-		Handler: get_all_bot_votes.Route,
+		Docs:    get_all_votes.Docs,
+		Handler: get_all_votes.Route,
 		Auth: []uapi.AuthType{
 			{
 				URLVar: "id",
 				Type:   api.TargetTypeBot,
 			},
 		},
+		DisablePathSlashCheck: true,
 	}.Route(r)
 
 	uapi.Route{
-		Pattern: "/users/{uid}/bots/{bid}/votes",
-		OpId:    "get_user_bot_votes",
-		Method:  uapi.GET,
-		Docs:    get_user_bot_votes.Docs,
-		Handler: get_user_bot_votes.Route,
-		Auth: []uapi.AuthType{
-			{
-				URLVar: "uid",
-				Type:   api.TargetTypeUser,
-			},
-			{
-				URLVar: "bid",
-				Type:   api.TargetTypeBot,
-			},
-		},
+		Pattern:               "/users/{uid}/{target_type}s/{target_id}/votes",
+		OpId:                  "get_user_entity_votes",
+		Method:                uapi.GET,
+		Docs:                  get_user_entity_votes.Docs,
+		Handler:               get_user_entity_votes.Route,
+		DisablePathSlashCheck: true,
 	}.Route(r)
 
 	uapi.Route{
-		Pattern: "/users/{uid}/bots/{bid}/votes",
-		OpId:    "put_user_bot_votes",
+		Pattern:               "/{target_type}s/{target_id}/votes/info",
+		OpId:                  "get_vote_info",
+		Method:                uapi.GET,
+		Docs:                  get_vote_info.Docs,
+		Handler:               get_vote_info.Route,
+		DisablePathSlashCheck: true,
+	}.Route(r)
+
+	uapi.Route{
+		Pattern: "/users/{uid}/{target_type}s/{target_id}/votes",
+		OpId:    "put_user_entity_votes",
 		Method:  uapi.PUT,
-		Docs:    put_user_bot_votes.Docs,
-		Handler: put_user_bot_votes.Route,
+		Docs:    put_user_entity_votes.Docs,
+		Handler: put_user_entity_votes.Route,
 		Auth: []uapi.AuthType{
 			{
 				URLVar: "uid",
 				Type:   api.TargetTypeUser,
 			},
 		},
-	}.Route(r)
-
-	uapi.Route{
-		Pattern: "/users/{uid}/packs/{url}/votes",
-		OpId:    "get_user_pack_votes",
-		Method:  uapi.GET,
-		Docs:    get_user_pack_votes.Docs,
-		Handler: get_user_pack_votes.Route,
-	}.Route(r)
-
-	uapi.Route{
-		Pattern: "/users/{uid}/packs/{url}/votes",
-		OpId:    "put_user_pack_votes",
-		Method:  uapi.PUT,
-		Docs:    put_user_pack_votes.Docs,
-		Handler: put_user_pack_votes.Route,
-		Auth: []uapi.AuthType{
-			{
-				URLVar: "uid",
-				Type:   api.TargetTypeUser,
-			},
-		},
+		DisablePathSlashCheck: true,
 	}.Route(r)
 }

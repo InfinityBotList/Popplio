@@ -1,22 +1,31 @@
-package get_vote_info
+package get_user_entity_votes
 
 import (
 	"net/http"
+	"time"
 
 	"popplio/state"
 	"popplio/types"
 	"popplio/votes"
 
-	"github.com/go-chi/chi/v5"
 	docs "github.com/infinitybotlist/eureka/doclib"
 	"github.com/infinitybotlist/eureka/uapi"
+
+	"github.com/go-chi/chi/v5"
 )
 
 func Docs() *docs.Doc {
 	return &docs.Doc{
-		Summary:     "Get Vote Info",
-		Description: "Returns basic voting info for an entity",
+		Summary:     "Get User Entity Votes",
+		Description: "Gets a vote a user has made for an entity.",
 		Params: []docs.Parameter{
+			{
+				Name:        "uid",
+				Description: "The users ID",
+				Required:    true,
+				In:          "path",
+				Schema:      docs.IdSchema,
+			},
 			{
 				Name:        "target_id",
 				Description: "The bot ID",
@@ -26,36 +35,33 @@ func Docs() *docs.Doc {
 			},
 			{
 				Name:        "target_type",
-				Description: "The target type of the tntity",
+				Description: "The target type of the entity",
 				Required:    true,
 				In:          "path",
 				Schema:      docs.IdSchema,
 			},
-			{
-				Name:        "user_id",
-				Description: "The users ID, if you wish the api to take into account user-special perks",
-				In:          "query",
-				Schema:      docs.IdSchema,
-			},
 		},
-		Resp: types.VoteInfo{DoubleVotes: true, VoteTime: 6},
+		Resp: types.UserVote{
+			HasVoted:   true,
+			ValidVotes: []time.Time{},
+			VoteInfo:   types.VoteInfo{},
+		},
 	}
 }
 
 func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
+	uid := chi.URLParam(r, "uid")
 	targetId := chi.URLParam(r, "target_id")
 	targetType := chi.URLParam(r, "target_type")
 
-	if targetId == "" || targetType == "" {
+	if uid == "" || targetId == "" || targetType == "" {
 		return uapi.HttpResponse{
 			Status: http.StatusBadRequest,
 			Json:   types.ApiError{Message: "Both target_id and target_type must be specified"},
 		}
 	}
 
-	uid := r.URL.Query().Get("user_id")
-
-	vi, err := votes.EntityVoteInfo(d.Context, uid, targetId, targetType)
+	uv, err := votes.EntityVoteCheck(d.Context, uid, targetId, targetType)
 
 	if err != nil {
 		state.Logger.Error(err)
@@ -63,6 +69,6 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	}
 
 	return uapi.HttpResponse{
-		Json: vi,
+		Json: uv,
 	}
 }

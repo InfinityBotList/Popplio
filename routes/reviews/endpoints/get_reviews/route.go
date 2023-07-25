@@ -50,6 +50,13 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	targetId := chi.URLParam(r, "target_id")
 	targetType := r.URL.Query().Get("target_type")
 
+	if targetId == "" || targetType == "" {
+		return uapi.HttpResponse{
+			Status: http.StatusBadRequest,
+			Json:   types.ApiError{Message: "Both target_id and target_type must be specified"},
+		}
+	}
+
 	// Check cache, this is how we can avoid hefty ratelimits
 	cache := state.Redis.Get(d.Context, "rv-"+targetId+"-"+targetType).Val()
 	if cache != "" {

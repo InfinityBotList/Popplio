@@ -120,12 +120,12 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		}
 	default:
 		return uapi.HttpResponse{
-			Status: http.StatusBadRequest,
-			Json:   types.ApiError{Message: "Invalid target type"},
+			Status: http.StatusNotImplemented,
+			Json:   types.ApiError{Message: "Support for this target type has not been implemented yet"},
 		}
 	}
 
-	// Check if the user has already made a 'root' review for this bot
+	// Check if the user has already made a 'root' review for this entity
 	if payload.ParentID == "" {
 		var count int
 

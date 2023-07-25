@@ -148,9 +148,8 @@ Some points to note:
 - When you apply for a partnership, make sure that you are authorized to speak on the services behalf
 - Infinity Development reserves the right to deny or cancel any partnership application at any time.
 `,
-		Name:   "Partners",
-		Tags:   []string{"Advertising", "Business"},
-		Closed: true,
+		Name: "Partners",
+		Tags: []string{"Advertising", "Business"},
 		Questions: []types.Question{
 			{
 				ID:          "what",

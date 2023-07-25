@@ -1,18 +1,36 @@
 package types
 
-// Vote Info
-type VoteInfo struct {
-	Weekend  bool   `json:"is_weekend"`
-	VoteTime uint16 `json:"vote_time"`
+import (
+	"time"
+
+	"github.com/jackc/pgx/v5/pgtype"
+)
+
+// @ci table=entity_votes
+//
+// Entity Vote represents a vote on an entity.
+type EntityVote struct {
+	ITag       pgtype.UUID `db:"itag" json:"itag" description:"The internal ID of the entity."`
+	TargetType string      `db:"target_type" json:"target_type"`
+	TargetID   string      `db:"target_id" json:"target_id"`
+	AuthorID   string      `db:"author" json:"author"`
+	Upvote     bool        `db:"upvote" json:"upvote"`
+	Void       bool        `db:"void" json:"void"`
+	VoidReason string      `db:"void_reason" json:"void_reason"`
+	CreatedAt  time.Time   `db:"created_at" json:"created_at"`
 }
 
+// Vote Info
+type VoteInfo struct {
+	DoubleVotes bool   `json:"double_votes"`
+	VoteTime    uint16 `json:"vote_time"`
+}
+
+// A user vote is a struct containing basic info on a users vote
 type UserVote struct {
-	UserID       string   `json:"user_id"`
-	Timestamps   []int64  `json:"ts"`
-	HasVoted     bool     `json:"has_voted"`
-	LastVoteTime int64    `json:"last_vote_time"`
-	VoteInfo     VoteInfo `json:"vote_info"`
-	PremiumBot   bool     `json:"premium_bot"`
+	HasVoted   bool        `json:"has_voted"`
+	ValidVotes []time.Time `json:"valid_votes"`
+	VoteInfo   VoteInfo    `json:"vote_info"`
 }
 
 type HCaptchaInfo struct {

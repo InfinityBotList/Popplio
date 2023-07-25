@@ -8,7 +8,6 @@ import (
 	"popplio/state"
 	"popplio/types"
 	"popplio/utils"
-	"popplio/votes"
 
 	docs "github.com/infinitybotlist/eureka/doclib"
 	"github.com/infinitybotlist/eureka/dovewing"
@@ -91,12 +90,6 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 
 func ResolveBotPack(ctx context.Context, pack *types.BotPack) error {
 	ownerUser, err := dovewing.GetUser(ctx, pack.Owner, state.DovewingPlatformDiscord)
-
-	if err != nil {
-		return err
-	}
-
-	pack.Votes, err = votes.GetPackVoteData(ctx, pack.URL)
 
 	if err != nil {
 		return err
