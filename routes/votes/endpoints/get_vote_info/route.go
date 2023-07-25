@@ -4,7 +4,7 @@ import (
 	"net/http"
 
 	"popplio/types"
-	"popplio/utils"
+	"popplio/votes"
 
 	docs "github.com/infinitybotlist/eureka/doclib"
 	"github.com/infinitybotlist/eureka/uapi"
@@ -20,8 +20,8 @@ func Docs() *docs.Doc {
 
 func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	var payload = types.VoteInfo{
-		Weekend:  utils.GetDoubleVote(),
-		VoteTime: utils.GetVoteTime(),
+		Weekend:  votes.GetDoubleVote(),
+		VoteTime: votes.GetVoteTime(),
 	}
 
 	return uapi.HttpResponse{

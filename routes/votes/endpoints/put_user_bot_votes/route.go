@@ -13,6 +13,7 @@ import (
 	"popplio/state"
 	"popplio/types"
 	"popplio/utils"
+	"popplio/votes"
 	"popplio/webhooks/bothooks"
 	"popplio/webhooks/bothooks_legacy"
 	"popplio/webhooks/events"
@@ -162,7 +163,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		}
 	}
 
-	voteParsed, err := utils.GetVoteData(d.Context, userId, id, true)
+	voteParsed, err := votes.GetBotVoteData(d.Context, userId, id, true)
 
 	if err != nil {
 		state.Logger.Error(err)
@@ -214,15 +215,13 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
-	var incr = 1
-	var votes = oldVotes.Int32
+	var incr int32 = 1
 
-	if utils.GetDoubleVote() {
+	if votes.GetDoubleVote() {
 		incr = 2
-		votes += 2
-	} else {
-		votes++
 	}
+
+	newVotes := oldVotes.Int32 + incr
 
 	_, err = state.Pool.Exec(d.Context, "UPDATE bots SET votes = votes + $1 WHERE bot_id = $2", incr, id)
 
@@ -267,7 +266,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 				Fields: []*discordgo.MessageEmbedField{
 					{
 						Name:   "Vote Count:",
-						Value:  strconv.Itoa(int(votes)),
+						Value:  strconv.Itoa(int(newVotes)),
 						Inline: true,
 					},
 					{
@@ -302,7 +301,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 			err = bothooks_legacy.SendLegacy(bothooks_legacy.WebhookPostLegacy{
 				BotID:  id,
 				UserID: userId,
-				Votes:  int(votes),
+				Votes:  int(newVotes),
 			})
 
 			if err != nil {
@@ -314,7 +313,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 				UserID: userId,
 				BotID:  id,
 				Data: events.WebhookBotVoteData{
-					Votes: int(votes),
+					Votes: int(newVotes),
 				},
 			})
 

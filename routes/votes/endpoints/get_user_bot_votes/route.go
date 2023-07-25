@@ -6,6 +6,7 @@ import (
 	"popplio/state"
 	"popplio/types"
 	"popplio/utils"
+	"popplio/votes"
 
 	docs "github.com/infinitybotlist/eureka/doclib"
 	"github.com/infinitybotlist/eureka/uapi"
@@ -54,7 +55,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 
 	userId := chi.URLParam(r, "uid")
 
-	voteParsed, err := utils.GetVoteData(d.Context, userId, id, true)
+	voteParsed, err := votes.GetBotVoteData(d.Context, userId, id, true)
 
 	if err != nil {
 		state.Logger.Error(err)
