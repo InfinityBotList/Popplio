@@ -2,7 +2,6 @@ package get_user_bot_perms
 
 import (
 	"net/http"
-	"strings"
 
 	"popplio/state"
 	"popplio/types"
@@ -12,11 +11,6 @@ import (
 	"github.com/infinitybotlist/eureka/uapi"
 
 	"github.com/go-chi/chi/v5"
-)
-
-var (
-	botColsArr = utils.GetCols(types.Bot{})
-	botCols    = strings.Join(botColsArr, ",")
 )
 
 func Docs() *docs.Doc {
@@ -44,7 +38,8 @@ func Docs() *docs.Doc {
 }
 
 func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
-	name := chi.URLParam(r, "id")
+	uid := chi.URLParam(r, "uid")
+	name := chi.URLParam(r, "bid")
 
 	// Resolve bot ID
 	id, err := utils.ResolveBot(d.Context, name)
@@ -58,11 +53,19 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		return uapi.DefaultResponse(http.StatusNotFound)
 	}
 
-	perms, err := utils.GetUserBotPerms(d.Context, d.Auth.ID, id)
+	perms, err := utils.GetUserBotPerms(d.Context, uid, id)
 
 	if err != nil {
 		state.Logger.Error(err)
 		return uapi.DefaultResponse(http.StatusInternalServerError)
+	}
+
+	if !perms.HasSomePerms() {
+		return uapi.HttpResponse{
+			Json: types.UserBotPerms{
+				Perms: []types.TeamPermission{},
+			},
+		}
 	}
 
 	return uapi.HttpResponse{
