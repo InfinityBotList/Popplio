@@ -122,16 +122,6 @@ func Authorize(r uapi.Route, req *http.Request) (uapi.AuthData, uapi.HttpRespons
 	return authData, uapi.HttpResponse{}, true
 }
 
-func IsClient(r *http.Request) bool {
-	clientHeader := r.Header.Get("X-Client")
-
-	if clientHeader != "" {
-		return clientHeader == "true"
-	}
-
-	return false
-}
-
 func Setup() {
 	uapi.SetupState(uapi.UAPIState{
 		Logger:    state.Logger,

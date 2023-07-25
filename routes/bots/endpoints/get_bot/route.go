@@ -1,14 +1,12 @@
 package get_bot
 
 import (
-	"context"
 	"crypto/sha256"
 	"fmt"
 	"net/http"
 	"strings"
 	"time"
 
-	"popplio/api"
 	"popplio/config"
 	"popplio/state"
 	"popplio/types"
@@ -41,76 +39,95 @@ func Docs() *docs.Doc {
 				In:          "path",
 				Schema:      docs.IdSchema,
 			},
+			{
+				Name: "target",
+				Description: `The target page of the request if any. 
+				
+If target is 'page', then unique clicks will be counted based on a SHA-256 hashed IP
+
+If target is 'invite', then the invite will be counted as a click
+
+Officially recognized targets:
+
+- page -> bot page view
+- settings -> bot settings page view
+- stats -> bot stats page view
+- invite -> bot invite view
+- vote -> bot vote page`,
+				Required: false,
+				In:       "query",
+				Schema:   docs.IdSchema,
+			},
 		},
 		Resp: types.Bot{},
 	}
 }
 
-func updateClicks(ctx context.Context, r *http.Request, name string) {
-	// Resolve bot ID
-	id, err := utils.ResolveBot(ctx, name)
+func handleAnalytics(r *http.Request, id, target string) {
+	switch target {
+	case "page":
+		// Get IP from request and hash it
+		hashedIp := fmt.Sprintf("%x", sha256.Sum256([]byte(r.RemoteAddr)))
 
-	if err != nil {
-		state.Logger.Error(err)
-		return
-	}
-
-	if id == "" {
-		return
-	}
-
-	// Get IP from request and hash it
-	hashedIp := fmt.Sprintf("%x", sha256.Sum256([]byte(r.RemoteAddr)))
-
-	// Create transaction
-	tx, err := state.Pool.Begin(ctx)
-
-	if err != nil {
-		state.Logger.Error(err)
-		return
-	}
-
-	defer tx.Rollback(ctx)
-
-	_, err = tx.Exec(ctx, "UPDATE bots SET clicks = clicks + 1")
-
-	if err != nil {
-		state.Logger.Error(err)
-		return
-	}
-
-	// Check if the IP has already clicked the bot by checking the unique_clicks row
-	var hasClicked bool
-
-	err = tx.QueryRow(ctx, "SELECT $1 = ANY(unique_clicks) FROM bots WHERE bot_id = $2", hashedIp, id).Scan(&hasClicked)
-
-	if err != nil {
-		state.Logger.Error("Error checking", err)
-		return
-	}
-
-	if !hasClicked {
-		// If not, add it to the array
-		state.Logger.Info("Adding click for " + id)
-		_, err = tx.Exec(ctx, "UPDATE bots SET unique_clicks = array_append(unique_clicks, $1) WHERE bot_id = $2", hashedIp, id)
+		// Create transaction
+		tx, err := state.Pool.Begin(state.Context)
 
 		if err != nil {
-			state.Logger.Error("Error adding:", err)
+			state.Logger.Error(err)
 			return
 		}
-	}
 
-	// Commit transaction
-	err = tx.Commit(ctx)
+		defer tx.Rollback(state.Context)
 
-	if err != nil {
-		state.Logger.Error(err)
-		return
+		_, err = tx.Exec(state.Context, "UPDATE bots SET clicks = clicks + 1")
+
+		if err != nil {
+			state.Logger.Error(err)
+			return
+		}
+
+		// Check if the IP has already clicked the bot by checking the unique_clicks row
+		var hasClicked bool
+
+		err = tx.QueryRow(state.Context, "SELECT $1 = ANY(unique_clicks) FROM bots WHERE bot_id = $2", hashedIp, id).Scan(&hasClicked)
+
+		if err != nil {
+			state.Logger.Error("Error checking", err)
+			return
+		}
+
+		if !hasClicked {
+			// If not, add it to the array
+			state.Logger.Info("Adding click for " + id)
+			_, err = tx.Exec(state.Context, "UPDATE bots SET unique_clicks = array_append(unique_clicks, $1) WHERE bot_id = $2", hashedIp, id)
+
+			if err != nil {
+				state.Logger.Error("Error adding:", err)
+				return
+			}
+		}
+
+		// Commit transaction
+		err = tx.Commit(state.Context)
+
+		if err != nil {
+			state.Logger.Error(err)
+			return
+		}
+	case "invite":
+		// Update clicks
+		_, err := state.Pool.Exec(state.Context, "UPDATE bots SET invite_clicks = invite_clicks + 1 WHERE bot_id = $1", id)
+
+		if err != nil {
+			state.Logger.Error(err)
+		}
 	}
 }
 
 func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	name := chi.URLParam(r, "id")
+
+	target := r.URL.Query().Get("target")
 
 	// Resolve bot ID
 	id, err := utils.ResolveBot(d.Context, name)
@@ -127,10 +144,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	// Check cache, this is how we can avoid hefty ratelimits
 	cache := state.Redis.Get(d.Context, "bc-"+id).Val()
 	if cache != "" {
-		if api.IsClient(r) {
-			updateClicks(d.Context, r, name)
-		}
-
+		go handleAnalytics(r, id, target)
 		return uapi.HttpResponse{
 			Data: cache,
 			Headers: map[string]string{
@@ -202,11 +216,9 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 
 	bot.UniqueClicks = uniqueClicks
 
-	if api.IsClient(r) {
-		updateClicks(d.Context, r, name)
-	}
-
 	bot.LegacyWebhooks = config.UseLegacyWebhooks(bot.BotID)
+
+	go handleAnalytics(r, id, target)
 
 	return uapi.HttpResponse{
 		Json:      bot,

@@ -6,7 +6,6 @@ import (
 	"popplio/routes/bots/endpoints/delete_bot"
 	"popplio/routes/bots/endpoints/get_all_bots"
 	"popplio/routes/bots/endpoints/get_bot"
-	"popplio/routes/bots/endpoints/get_bot_invite"
 	"popplio/routes/bots/endpoints/get_bot_meta"
 	"popplio/routes/bots/endpoints/get_bot_seo"
 	"popplio/routes/bots/endpoints/get_bot_token"
@@ -83,14 +82,6 @@ func (b Router) Routes(r *chi.Mux) {
 	}.Route(r)
 
 	uapi.Route{
-		Pattern: "/bots/{id}/invite",
-		OpId:    "get_bot_invite",
-		Method:  uapi.GET,
-		Docs:    get_bot_invite.Docs,
-		Handler: get_bot_invite.Route,
-	}.Route(r)
-
-	uapi.Route{
 		Pattern: "/bots/{id}/seo",
 		OpId:    "get_bot_seo",
 		Method:  uapi.GET,
@@ -126,18 +117,13 @@ func (b Router) Routes(r *chi.Mux) {
 		Setup: add_bot.Setup,
 	}.Route(r)
 
+	// Intentionally without authentication
 	uapi.Route{
 		Pattern: "/users/{uid}/bots/{bid}/perms",
 		OpId:    "get_user_bot_perms",
 		Method:  uapi.GET,
 		Docs:    get_user_bot_perms.Docs,
 		Handler: get_user_bot_perms.Route,
-		Auth: []uapi.AuthType{
-			{
-				URLVar: "uid",
-				Type:   api.TargetTypeUser,
-			},
-		},
 	}.Route(r)
 
 	uapi.Route{

@@ -6,7 +6,6 @@ import (
 	"net/url"
 	"time"
 
-	"popplio/api"
 	"popplio/state"
 	"popplio/types"
 
@@ -163,35 +162,13 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		return uapi.ValidatorErrorResponse(compiledMessages, errors)
 	}
 
-	if req.Scope == "external_auth" {
-		// For now, until proper custom client support
-		if req.RedirectURI != "http://localhost:3000/auth/sauron" {
-			return uapi.HttpResponse{
-				Json: types.ApiError{
-					Message: "Currently, only localhost:3000 is allowed as a redirect_uri for external_auth. This may be changed in the future",
-				},
-				Status:  http.StatusBadRequest,
-				Headers: limit.Headers(),
-			}
-		}
-	} else {
-		if !api.IsClient(r) {
-			return uapi.HttpResponse{
-				Status: http.StatusBadRequest,
-				Json: types.ApiError{
-					Message: "In order to use this API publicly, please set the scope to external_auth",
-				},
-			}
-		}
-
-		if req.Nonce != "protozoa" {
-			return uapi.HttpResponse{
-				Json: types.ApiError{
-					Message: "Your client is outdated and is not supported. Please update your client.",
-				},
-				Status:  http.StatusBadRequest,
-				Headers: limit.Headers(),
-			}
+	if req.Protocol != "persepolis" {
+		return uapi.HttpResponse{
+			Json: types.ApiError{
+				Message: "Your client is outdated and is not supported. Please contact the developers of this client.",
+			},
+			Status:  http.StatusBadRequest,
+			Headers: limit.Headers(),
 		}
 	}
 

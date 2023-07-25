@@ -14,8 +14,6 @@ import (
 	"github.com/go-chi/chi/v5"
 )
 
-// A bot is a Discord bot that is on the infinitybotlist.
-
 var (
 	botColsArr = utils.GetCols(types.Bot{})
 	botCols    = strings.Join(botColsArr, ",")

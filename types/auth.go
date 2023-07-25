@@ -4,7 +4,7 @@ type AuthorizeRequest struct {
 	ClientID    string `json:"client_id" validate:"required"`
 	Code        string `json:"code" validate:"required,min=5"`
 	RedirectURI string `json:"redirect_uri" validate:"required"`
-	Nonce       string `json:"nonce" validate:"required"` // Just to identify and block older clients from vulns
+	Protocol    string `json:"protocol" validate:"required" description:"Should be 'persepolis'. This is to identify and block older clients that don't support newer protocols"`
 	Scope       string `json:"scope" validate:"required,oneof=normal ban_exempt external_auth"`
 }
 
@@ -19,7 +19,7 @@ type OauthMeta struct {
 }
 
 type TestAuth struct {
-        AuthType string `json:"auth_type"`
-        TargetID string `json:"target_id"`
-        Token    string `json:"token"`
+	AuthType string `json:"auth_type"`
+	TargetID string `json:"target_id"`
+	Token    string `json:"token"`
 }
