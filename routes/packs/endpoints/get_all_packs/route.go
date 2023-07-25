@@ -9,6 +9,7 @@ import (
 	"popplio/state"
 	"popplio/types"
 	"popplio/utils"
+	"popplio/votes"
 
 	docs "github.com/infinitybotlist/eureka/doclib"
 	"github.com/infinitybotlist/eureka/uapi"
@@ -85,7 +86,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	}
 
 	for i := range packs {
-		packs[i].Votes, err = utils.ResolvePackVotes(d.Context, packs[i].URL)
+		packs[i].Votes, err = votes.GetPackVoteData(d.Context, packs[i].URL)
 
 		if err != nil {
 			state.Logger.Error(err)

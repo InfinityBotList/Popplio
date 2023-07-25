@@ -11,18 +11,6 @@ import (
 	"go.uber.org/zap"
 )
 
-func GetDoubleVote() bool {
-	return time.Now().Weekday() == time.Friday || time.Now().Weekday() == time.Saturday || time.Now().Weekday() == time.Sunday
-}
-
-func GetVoteTime() uint16 {
-	if GetDoubleVote() {
-		return 6
-	} else {
-		return 12
-	}
-}
-
 func GetBotVoteData(ctx context.Context, userID, botID string, log bool) (*types.UserVote, error) {
 	var premium bool
 	err := state.Pool.QueryRow(ctx, "SELECT premium FROM bots WHERE bot_id = $1", botID).Scan(&premium)

@@ -303,26 +303,14 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 				UserID: userId,
 				Votes:  int(newVotes),
 			})
-
-			if err != nil {
-				state.Logger.Error(err)
-				return
-			}
 		} else {
-			err := bothooks.Send(bothooks.With[events.WebhookBotVoteData]{
+			err = bothooks.Send(bothooks.With[events.WebhookBotVoteData]{
 				UserID: userId,
 				BotID:  id,
 				Data: events.WebhookBotVoteData{
 					Votes: int(newVotes),
 				},
 			})
-
-			if err != nil {
-				state.Logger.Error(err)
-				return
-			}
-
-			return
 		}
 
 		var msg types.Alert

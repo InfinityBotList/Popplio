@@ -8,6 +8,7 @@ import (
 	"popplio/state"
 	"popplio/types"
 	"popplio/utils"
+	"popplio/votes"
 
 	docs "github.com/infinitybotlist/eureka/doclib"
 	"github.com/infinitybotlist/eureka/dovewing"
@@ -95,7 +96,7 @@ func ResolveBotPack(ctx context.Context, pack *types.BotPack) error {
 		return err
 	}
 
-	pack.Votes, err = utils.ResolvePackVotes(ctx, pack.URL)
+	pack.Votes, err = votes.GetPackVoteData(ctx, pack.URL)
 
 	if err != nil {
 		return err

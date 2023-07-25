@@ -86,6 +86,10 @@ func Send[T events.WebhookEvent](with With[T]) error {
 		return errors.New("failed to fetch webhook url")
 	}
 
+	if utils.IsNone(webhookURL) {
+		return errors.New("no webhook set")
+	}
+
 	params := with.Data.CreateHookParams(resp.Creator, resp.Targets)
 
 	ok, err := sender.SendDiscord(

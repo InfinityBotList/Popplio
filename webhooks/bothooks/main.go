@@ -7,6 +7,7 @@ import (
 	"errors"
 	"popplio/config"
 	"popplio/state"
+	"popplio/utils"
 	"popplio/webhooks/events"
 	"popplio/webhooks/sender"
 	"strings"
@@ -84,6 +85,10 @@ func Send[T events.WebhookEvent](with With[T]) error {
 	if err != nil {
 		state.Logger.Error(err)
 		return errors.New("failed to fetch webhook url")
+	}
+
+	if utils.IsNone(webhookURL) {
+		return errors.New("no webhook set")
 	}
 
 	if config.UseLegacyWebhooks(bot.ID) {

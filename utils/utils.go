@@ -33,40 +33,6 @@ func IsNone(s string) bool {
 	return false
 }
 
-// Returns the votes of a pack, Used throughout the codebase
-func ResolvePackVotes(ctx context.Context, url string) ([]types.PackVote, error) {
-	rows, err := state.Pool.Query(ctx, "SELECT user_id, upvote, created_at FROM pack_votes WHERE url = $1", url)
-
-	if err != nil {
-		return []types.PackVote{}, err
-	}
-
-	defer rows.Close()
-
-	votes := []types.PackVote{}
-
-	for rows.Next() {
-		// Fetch votes for the pack
-		var userId string
-		var upvote bool
-		var createdAt time.Time
-
-		err := rows.Scan(&userId, &upvote, &createdAt)
-
-		if err != nil {
-			return nil, err
-		}
-
-		votes = append(votes, types.PackVote{
-			UserID:    userId,
-			Upvote:    upvote,
-			CreatedAt: createdAt,
-		})
-	}
-
-	return votes, nil
-}
-
 func ResolveTeam(ctx context.Context, teamId string) (*types.Team, error) {
 	var name string
 	var avatar string
