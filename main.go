@@ -37,28 +37,24 @@ import (
 	docs "github.com/infinitybotlist/eureka/doclib"
 	"github.com/infinitybotlist/eureka/uapi"
 
-	_ "embed"
-
 	"github.com/infinitybotlist/eureka/zapchi"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
+
+	_ "embed"
 
 	jsoniter "github.com/json-iterator/go"
 )
 
 var json = jsoniter.ConfigCompatibleWithStandardLibrary
 
-//go:embed docs.html
+//go:embed docs/docs.html
 var docsHTML string
 
-//go:embed docsDesc.md
-var docsDesc string
+var openapi []byte
 
-var (
-	openapi []byte
-)
-
+// Simple middleware to handle CORS
 func corsMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// limit body to 10mb
@@ -103,7 +99,7 @@ func main() {
 			Title:          "Infinity Bot List API",
 			TermsOfService: "https://infinitybotlist.com/terms",
 			Version:        "6.0",
-			Description:    docsDesc,
+			Description:    "",
 			Contact: docs.Contact{
 				Name:  "Infinity Bot List",
 				URL:   "https://infinitybotlist.com",
