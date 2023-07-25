@@ -137,7 +137,7 @@ func Send(d *WebhookSendState) error {
 	)
 
 	client := http.Client{
-		Timeout: 65 * time.Second,
+		Timeout: 30 * time.Second,
 	}
 
 	var req *http.Request
