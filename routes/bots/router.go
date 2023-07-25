@@ -17,7 +17,7 @@ import (
 	"popplio/routes/bots/endpoints/patch_bot_token"
 	"popplio/routes/bots/endpoints/patch_bot_vanity"
 	"popplio/routes/bots/endpoints/patch_bot_webhook"
-	"popplio/routes/bots/endpoints/post_stats"
+	"popplio/routes/bots/endpoints/post_bot_stats"
 	"popplio/routes/bots/endpoints/transfer_bot_to_team"
 
 	"github.com/go-chi/chi/v5"
@@ -91,10 +91,10 @@ func (b Router) Routes(r *chi.Mux) {
 
 	uapi.Route{
 		Pattern: "/bots/stats",
-		OpId:    "post_stats",
+		OpId:    "post_bot_stats",
 		Method:  uapi.POST,
-		Docs:    post_stats.Docs,
-		Handler: post_stats.Route,
+		Docs:    post_bot_stats.Docs,
+		Handler: post_bot_stats.Route,
 		Auth: []uapi.AuthType{
 			{
 				Type: api.TargetTypeBot,

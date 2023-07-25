@@ -1,9 +1,8 @@
-package post_stats
+package post_bot_stats
 
 import (
 	"net/http"
 
-	"popplio/constants"
 	"popplio/state"
 	"popplio/types"
 	"popplio/utils"
@@ -14,21 +13,10 @@ import (
 
 func Docs() *docs.Doc {
 	return &docs.Doc{
-		Summary: "Post Bot Stats",
-		Description: `
-This endpoint can be used to post the stats of a bot. This endpoint does not resolve the ID.
-
-**Example:**
-
-` + constants.BackTick + constants.BackTick + constants.BackTick + `py
-import requests
-
-req = requests.post(f"{API_URL}/bots/stats", json={"servers": 4000, "shards": 2}, headers={"Authorization": "{TOKEN}"})
-
-print(req.json())
-` + constants.BackTick + constants.BackTick + constants.BackTick + "\n\n",
-		Req:  types.BotStats{},
-		Resp: types.ApiError{},
+		Summary:     "Post Bot Stats",
+		Description: "This endpoint posts the stats of a bot.",
+		Req:         types.BotStats{},
+		Resp:        types.ApiError{},
 	}
 }
 
