@@ -257,7 +257,7 @@ func Send(d *WebhookSendState) error {
 			d.cancelSend("WEBHOOK_AUTH_INVALID")
 			err = notifications.PushNotification(d.UserID, types.Alert{
 				Type:    types.AlertTypeInfo,
-				Message: "This webhook does not properly handle authentication at this time.",
+				Message: "Webhook could not be securely authenticated by the bot at this time. Please try again later.",
 				Title:   "Webhook Auth Error",
 			})
 
@@ -425,7 +425,7 @@ func PullPending(p WebhookPullPending) {
 	}
 
 	// Fetch every pending bot webhook from webhook_logs
-	rows, err := state.Pool.Query(state.Context, "SELECT id, target_id, user_id, url, data, bad_intent FROM webhook_logs WHERE state = $1 AND target_type = $2", "PENDING", p.EntityType)
+	rows, err := state.Pool.Query(state.Context, "SELECT id, target_id, user_id, url, data FROM webhook_logs WHERE state = $1 AND target_type = $2 AND bad_intent = false", "PENDING", p.EntityType)
 
 	if err != nil {
 		state.Logger.Error(err)
@@ -436,15 +436,14 @@ func PullPending(p WebhookPullPending) {
 
 	for rows.Next() {
 		var (
-			id        string
-			targetId  string
-			userId    string
-			url       string
-			data      []byte
-			badIntent bool
+			id       string
+			targetId string
+			userId   string
+			url      string
+			data     []byte
 		)
 
-		err := rows.Scan(&id, &targetId, &userId, &url, &data, &badIntent)
+		err := rows.Scan(&id, &targetId, &userId, &url, &data)
 
 		if err != nil {
 			state.Logger.Error(err)
@@ -469,13 +468,12 @@ func PullPending(p WebhookPullPending) {
 
 		// Send webhook
 		err = Send(&WebhookSendState{
-			Url:       url,
-			Sign:      secret,
-			Data:      data,
-			BadIntent: badIntent,
-			LogID:     id,
-			UserID:    userId,
-			Entity:    entity,
+			Url:    url,
+			Sign:   secret,
+			Data:   data,
+			LogID:  id,
+			UserID: userId,
+			Entity: entity,
 		})
 
 		if err != nil {
