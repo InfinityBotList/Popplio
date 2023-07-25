@@ -22,6 +22,7 @@ import (
 	"popplio/routes/payments"
 	"popplio/routes/platform"
 	"popplio/routes/reviews"
+	srvrouter "popplio/routes/srvdiscovery"
 	"popplio/routes/staff"
 	"popplio/routes/teams"
 	"popplio/routes/tickets"
@@ -145,6 +146,7 @@ func main() {
 		platform.Router{},
 		reviews.Router{},
 		//servers.Router{},
+		srvrouter.Router{},
 		staff.Router{},
 		teams.Router{},
 		tickets.Router{},

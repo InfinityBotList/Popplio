@@ -11,19 +11,18 @@ import (
 	"popplio/routes/list/endpoints/get_rss_feed"
 	"popplio/routes/list/endpoints/get_staff_templates"
 	"popplio/routes/list/endpoints/search_list"
-	"popplio/routes/list/endpoints/service_directory"
 	"popplio/routes/list/endpoints/test_auth"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/infinitybotlist/eureka/uapi"
 )
 
-const tagName = "List Stats"
+const tagName = "List"
 
 type Router struct{}
 
 func (b Router) Tag() (string, string) {
-	return tagName, "These API endpoints are basic statistics of our list."
+	return tagName, "These API endpoints are core endpoints of our list."
 }
 
 func (b Router) Routes(r *chi.Mux) {
@@ -33,14 +32,6 @@ func (b Router) Routes(r *chi.Mux) {
 		Method:  uapi.GET,
 		Docs:    get_rss_feed.Docs,
 		Handler: get_rss_feed.Route,
-	}.Route(r)
-
-	uapi.Route{
-		Pattern: "/list/services/{directory}",
-		OpId:    "service_directory",
-		Method:  uapi.GET,
-		Docs:    service_directory.Docs,
-		Handler: service_directory.Route,
 	}.Route(r)
 
 	uapi.Route{

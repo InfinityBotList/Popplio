@@ -13,8 +13,8 @@ import (
 
 func Docs() *docs.Doc {
 	return &docs.Doc{
-		Summary:     "Public Service Directory",
-		Description: "Returns a list of available public services",
+		Summary:     "Get Service Directory",
+		Description: "Get a list of services in a directory",
 		Resp:        types.ServiceDiscovery{},
 		Params: []docs.Parameter{
 			{

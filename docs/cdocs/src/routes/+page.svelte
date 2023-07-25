@@ -1,1 +1,0 @@
-<h1>CDOC INTERNAL PAGE</h1>

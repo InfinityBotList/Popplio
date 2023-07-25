@@ -11,3 +11,7 @@ type SDService struct {
 	Description  string `json:"description"`
 	NeedsStaging bool   `json:"needs_staging,omitempty"`
 }
+
+type SDList struct {
+	Services []string `json:"services"`
+}
