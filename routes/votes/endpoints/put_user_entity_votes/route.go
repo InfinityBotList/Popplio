@@ -300,6 +300,16 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
+	if vi.VoteInfo.DoubleVotes {
+		// Create a second vote
+		_, err = tx.Exec(d.Context, "INSERT INTO entity_votes (author, target_id, target_type, upvote) VALUES ($1, $2, $3, $4)", uid, targetId, targetType, upvote == "true")
+
+		if err != nil {
+			state.Logger.Error(err)
+			return uapi.DefaultResponse(http.StatusInternalServerError)
+		}
+	}
+
 	// Fetch new vote count
 	nvc, err := votes.EntityGetVoteCount(d.Context, tx, targetId, targetType)
 
