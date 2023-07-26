@@ -142,15 +142,6 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		}
 	}
 
-	err = utils.StagingCheckSensitive(d.Context, uid)
-
-	if err != nil {
-		return uapi.HttpResponse{
-			Status: http.StatusForbidden,
-			Json:   types.ApiError{Message: err.Error()},
-		}
-	}
-
 	upvote := r.URL.Query().Get("upvote")
 
 	if upvote != "true" && upvote != "false" {
@@ -379,13 +370,13 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 							Inline: true,
 						},
 						{
-							Name:   "Vote Page",
+							Name:   "View " + targetType + "'s page",
 							Value:  "[View " + entityInfo.Name + "](" + entityInfo.URL + ")",
 							Inline: true,
 						},
 						{
 							Name:   "Vote Page",
-							Value:  "[Vote for " + entityInfo.Name + entityInfo.VoteURL,
+							Value:  "[Vote for " + entityInfo.Name + "](" + entityInfo.VoteURL,
 							Inline: true,
 						},
 					},
