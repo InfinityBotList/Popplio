@@ -13,6 +13,7 @@ var Changelog = types.Changelog{
 				"Analytics on bot pages is now better handled using a target query parameter",
 				"Removed use of custom x-client header for privacy, openness and security reasons. This also fixes some CORS errors that max be experienced by some browsers",
 			},
+			Removed: []string{},
 		},
 		{
 			Version: "4.7.0",
