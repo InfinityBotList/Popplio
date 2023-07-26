@@ -52,13 +52,6 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		return uapi.DefaultResponse(http.StatusBadRequest)
 	}
 
-	if name == "undefined" {
-		return uapi.HttpResponse{
-			Status: http.StatusOK,
-			Data:   `{"error":"false","message":"Handling known issue"}`,
-		}
-	}
-
 	// Check cache, this is how we can avoid hefty ratelimits
 	cache := state.Redis.Get(d.Context, "uc-"+name).Val()
 	if cache != "" {
