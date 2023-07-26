@@ -99,10 +99,12 @@ func EntityVoteCheck(ctx context.Context, userId, targetId, targetType string) (
 		mins := (timeToWaitTime - (hours * time.Hour)) / time.Minute
 		secs := (timeToWaitTime - (hours*time.Hour + mins*time.Minute)) / time.Second
 
+		state.Logger.Info(hours, mins, secs)
+
 		vw = &types.VoteWait{
-			Hours:   int(hours.Hours()),
-			Minutes: int(mins.Minutes()),
-			Seconds: int(secs.Seconds()),
+			Hours:   int(hours),
+			Minutes: int(mins),
+			Seconds: int(secs),
 		}
 	}
 
