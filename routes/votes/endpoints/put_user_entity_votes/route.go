@@ -321,7 +321,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 			return uapi.DefaultResponse(http.StatusInternalServerError)
 		}
 
-		utils.ClearBotCache(d.Context, d.Auth.ID)
+		utils.ClearBotCache(d.Context, targetId)
 	case "pack":
 		_, err = tx.Exec(d.Context, "UPDATE packs SET votes = $1 WHERE url = $2", nvc, targetId)
 
