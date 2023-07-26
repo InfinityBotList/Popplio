@@ -28,12 +28,12 @@ var Changelog = types.Changelog{
 			Added: []string{
 				"Added rules to help center",
 				"Webhook logs has been added",
-				"Improvements to webhook testing",
 			},
 			Updated: []string{
 				"Internal backend changes to better support webhooks",
 				"Internal frontend changes",
 				"General bug fixes and improvements",
+				"Improvements to webhook testing",
 			},
 			Removed: []string{
 				"Webhooks v1 has been mostly removed outside of a set of whitelisted bots (13 to be precise)",
