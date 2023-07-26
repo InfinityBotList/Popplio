@@ -2,7 +2,6 @@ package get_user_entity_votes
 
 import (
 	"net/http"
-	"time"
 
 	"popplio/state"
 	"popplio/types"
@@ -41,11 +40,7 @@ func Docs() *docs.Doc {
 				Schema:      docs.IdSchema,
 			},
 		},
-		Resp: types.UserVote{
-			HasVoted:   true,
-			ValidVotes: []time.Time{},
-			VoteInfo:   types.VoteInfo{},
-		},
+		Resp: types.UserVote{},
 	}
 }
 

@@ -6,7 +6,6 @@ import (
 	"net/http"
 	"net/url"
 	"strconv"
-	"time"
 
 	"popplio/config"
 	"popplio/notifications"
@@ -270,25 +269,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	}
 
 	if vi.HasVoted {
-		if len(vi.ValidVotes) == 0 {
-			return uapi.HttpResponse{
-				Status: http.StatusInternalServerError,
-				Json:   types.ApiError{Message: "You have already voted for this " + targetType + " but there's no records of it for some reason ...?!"},
-			}
-		}
-
-		timeElapsed := time.Since(vi.ValidVotes[0])
-		state.Logger.Debug("Time elapsed since last vote", zap.Duration("timeElapsed", timeElapsed))
-
-		timeToWait := int64(vi.VoteInfo.VoteTime)*60*60*1000 - timeElapsed.Milliseconds()
-
-		timeToWaitTime := (time.Duration(timeToWait) * time.Millisecond)
-
-		hours := timeToWaitTime / time.Hour
-		mins := (timeToWaitTime - (hours * time.Hour)) / time.Minute
-		secs := (timeToWaitTime - (hours*time.Hour + mins*time.Minute)) / time.Second
-
-		timeStr := fmt.Sprintf("%02d hours, %02d minutes. %02d seconds", hours, mins, secs)
+		timeStr := fmt.Sprintf("%02d hours, %02d minutes. %02d seconds", vi.Wait.Hours, vi.Wait.Minutes, vi.Wait.Seconds)
 
 		if len(vi.ValidVotes) > 1 {
 			return uapi.HttpResponse{

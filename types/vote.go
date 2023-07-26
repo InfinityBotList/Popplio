@@ -26,11 +26,19 @@ type VoteInfo struct {
 	VoteTime    uint16 `json:"vote_time"`
 }
 
+// Stores the hours, minutes and seconds until the user can vote again
+type VoteWait struct {
+	Hours   int `json:"hours"`
+	Minutes int `json:"minutes"`
+	Seconds int `json:"seconds"`
+}
+
 // A user vote is a struct containing basic info on a users vote
 type UserVote struct {
 	HasVoted   bool        `json:"has_voted"`
 	ValidVotes []time.Time `json:"valid_votes"`
-	VoteInfo   VoteInfo    `json:"vote_info"`
+	VoteInfo   *VoteInfo   `json:"vote_info"`
+	Wait       *VoteWait   `json:"wait"`
 }
 
 type HCaptchaInfo struct {
