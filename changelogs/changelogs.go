@@ -84,7 +84,6 @@ var Changelog = types.Changelog{
 		},
 		{
 			Version:          "4.3.0",
-			Prerelease:       true,
 			ExtraDescription: "This version is mostly revamping existing code and systems!",
 			Added: []string{
 				"Internal: Proper TypeScript coverage!!!",
