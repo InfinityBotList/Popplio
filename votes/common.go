@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5"
-	"go.uber.org/zap"
 )
 
 func GetDoubleVote() bool {
@@ -89,7 +88,6 @@ func EntityVoteCheck(ctx context.Context, userId, targetId, targetType string) (
 
 	if len(validVotes) > 0 {
 		timeElapsed := time.Since(validVotes[0])
-		state.Logger.Debug("Time elapsed since last vote", zap.Duration("timeElapsed", timeElapsed))
 
 		timeToWait := int64(vi.VoteTime)*60*60*1000 - timeElapsed.Milliseconds()
 
