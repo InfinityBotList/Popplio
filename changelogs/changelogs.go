@@ -5,6 +5,40 @@ import "popplio/types"
 var Changelog = types.Changelog{
 	Entries: []types.ChangelogEntry{
 		{
+			Version: "4.8.0",
+			Added:   []string{},
+			Updated: []string{
+				"Voting has been rewritten from the ground up to be more generic and abstracted to all entities. This will allow easier addition of server listing coming in the near future",
+				"Bot Packs layout has been improved to be more user friendly",
+				"Analytics on bot pages is now better handled using a target query parameter",
+				"Removed use of custom x-client header for privacy, openness and security reasons. This also fixes some CORS errors that max be experienced by some browsers",
+			},
+		},
+		{
+			Version: "4.7.0",
+			Added:   []string{},
+			Updated: []string{
+				"Internal backend change: service discovery has been added to the backend to allow for easier scaling if required",
+			},
+			Removed: []string{},
+		},
+		{
+			Version: "4.6.0",
+			Added: []string{
+				"Added rules to help center",
+				"Webhook logs has been added",
+				"Improvements to webhook testing",
+			},
+			Updated: []string{
+				"Internal backend changes to better support webhooks",
+				"Internal frontend changes",
+				"General bug fixes and improvements",
+			},
+			Removed: []string{
+				"Webhooks v1 has been mostly removed outside of a set of whitelisted bots (13 to be precise)",
+			},
+		},
+		{
 			Version: "4.5.2",
 			Added:   []string{},
 			Updated: []string{
