@@ -16,6 +16,15 @@ type PermDetailMap struct {
 	Group string         `json:"group"`
 }
 
+// Represents a team that is an owner of an entity
+//
+// This struct does not contain all the data present in a team
+type EntityTeamOwner struct {
+	ID     string `db:"id" json:"id"`
+	Name   string `db:"name" json:"name"`
+	Avatar string `db:"avatar" json:"avatar"`
+}
+
 type Team struct {
 	ID       string       `db:"id" json:"id"`
 	Name     string       `db:"name" json:"name"`

@@ -25,6 +25,9 @@ import (
 var (
 	botColsArr = utils.GetCols(types.Bot{})
 	botCols    = strings.Join(botColsArr, ",")
+
+	entityTeamOwnerColsArr = utils.GetCols(types.EntityTeamOwner{})
+	entityTeamOwnerCols    = strings.Join(entityTeamOwnerColsArr, ",")
 )
 
 func Docs() *docs.Doc {
@@ -166,7 +169,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 
 	if err != nil {
 		state.Logger.Error(err)
-		return uapi.DefaultResponse(http.StatusNotFound)
+		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
 	if utils.IsNone(bot.Banner.String) || !strings.HasPrefix(bot.Banner.String, "https://") {
@@ -184,15 +187,23 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 
 		bot.MainOwner = ownerUser
 	} else {
-		// Convert pgtype.UUID to string
-		team, err := utils.ResolveTeam(d.Context, utils.UUIDString(bot.TeamOwnerID))
+		row, err := state.Pool.Query(d.Context, "SELECT "+entityTeamOwnerCols+" FROM teams WHERE id = $1", bot.TeamOwnerID)
 
 		if err != nil {
 			state.Logger.Error(err)
 			return uapi.DefaultResponse(http.StatusInternalServerError)
 		}
 
-		bot.TeamOwner = team
+		var eto types.EntityTeamOwner
+
+		err = pgxscan.ScanOne(&eto, row)
+
+		if err != nil {
+			state.Logger.Error(err)
+			return uapi.DefaultResponse(http.StatusInternalServerError)
+		}
+
+		bot.TeamOwner = &eto
 	}
 
 	bot.PremiumPeriodLengthParsed = types.NewInterval(bot.PremiumPeriodLength)
