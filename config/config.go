@@ -103,7 +103,7 @@ type Servers struct {
 
 type Meta struct {
 	PostgresURL         string          `yaml:"postgres_url" default:"postgresql:///infinity" comment:"Postgres URL" validate:"required"`
-	RedisURL            string          `yaml:"redis_url" default:"redis://localhost:6379" comment:"Redis URL" validate:"required"`
+	RedisURL            Differs[string] `yaml:"redis_url" default:"redis://localhost:6379" comment:"Redis URL" validate:"required"`
 	Port                Differs[string] `yaml:"port" default:":8081" comment:"Port to run the server on" validate:"required"`
 	VulgarList          []string        `yaml:"vulgar_list" default:"fuck,suck,shit,kill" validate:"required"`
 	UrgentMentions      string          `yaml:"urgent_mentions" default:"<@&1061643797315993701>" comment:"Urgent mentions" validate:"required"`

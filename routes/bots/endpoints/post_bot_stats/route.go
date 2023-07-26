@@ -29,8 +29,22 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		return resp
 	}
 
+	tx, err := state.Pool.Begin(d.Context)
+
+	if err != nil {
+		state.Logger.Error(err)
+		return uapi.DefaultResponse(http.StatusInternalServerError)
+	}
+
+	_, err = tx.Exec(d.Context, "UPDATE bots SET last_stats_post = NOW() WHERE bot_id = $1", d.Auth.ID)
+
+	if err != nil {
+		state.Logger.Error(err)
+		return uapi.DefaultResponse(http.StatusInternalServerError)
+	}
+
 	if payload.Servers > 0 {
-		_, err := state.Pool.Exec(d.Context, "UPDATE bots SET servers = $1 WHERE bot_id = $2", payload.Servers, d.Auth.ID)
+		_, err := tx.Exec(d.Context, "UPDATE bots SET servers = $1 WHERE bot_id = $2", payload.Servers, d.Auth.ID)
 
 		if err != nil {
 			state.Logger.Error(err)
@@ -39,7 +53,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	}
 
 	if payload.Shards > 0 {
-		_, err := state.Pool.Exec(d.Context, "UPDATE bots SET shards = $1 WHERE bot_id = $2", payload.Shards, d.Auth.ID)
+		_, err := tx.Exec(d.Context, "UPDATE bots SET shards = $1 WHERE bot_id = $2", payload.Shards, d.Auth.ID)
 
 		if err != nil {
 			state.Logger.Error(err)
@@ -48,7 +62,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	}
 
 	if payload.Users > 0 {
-		_, err := state.Pool.Exec(d.Context, "UPDATE bots SET users = $1 WHERE bot_id = $2", payload.Users, d.Auth.ID)
+		_, err := tx.Exec(d.Context, "UPDATE bots SET users = $1 WHERE bot_id = $2", payload.Users, d.Auth.ID)
 
 		if err != nil {
 			state.Logger.Error(err)
@@ -57,12 +71,20 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	}
 
 	if len(payload.ShardList) > 0 {
-		_, err := state.Pool.Exec(d.Context, "UPDATE bots SET shard_list = $1 WHERE bot_id = $2", payload.ShardList, d.Auth.ID)
+		_, err := tx.Exec(d.Context, "UPDATE bots SET shard_list = $1 WHERE bot_id = $2", payload.ShardList, d.Auth.ID)
 
 		if err != nil {
 			state.Logger.Error(err)
 			return uapi.DefaultResponse(http.StatusInternalServerError)
 		}
+	}
+
+	// Commit the transaction
+	err = tx.Commit(d.Context)
+
+	if err != nil {
+		state.Logger.Error(err)
+		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
 	utils.ClearBotCache(d.Context, d.Auth.ID)

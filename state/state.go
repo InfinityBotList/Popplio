@@ -96,7 +96,7 @@ func Setup() {
 		panic(err)
 	}
 
-	rOptions, err := redis.ParseURL(Config.Meta.RedisURL)
+	rOptions, err := redis.ParseURL(Config.Meta.RedisURL.Parse())
 
 	if err != nil {
 		panic(err)
