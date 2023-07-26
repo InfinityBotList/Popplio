@@ -319,6 +319,8 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	}
 
 	// Entity specific handling here, if desired
+	//
+	// Note that `votes` is a cached value based on new vote count
 	switch targetType {
 	case "bot":
 		_, err = tx.Exec(d.Context, "UPDATE bots SET votes = $1 WHERE bot_id = $2", nvc, targetId)
