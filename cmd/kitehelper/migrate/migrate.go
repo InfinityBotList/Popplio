@@ -20,7 +20,7 @@ var (
 
 type migration struct {
 	name     string
-	function func()
+	function func(pool *pgxpool.Pool)
 }
 
 func tableExists(name string) bool {
@@ -69,6 +69,6 @@ func Migrate(progname string, args []string) {
 
 	for i, mig := range migs {
 		statusBoldBlue("Running migration:", mig.name, "["+strconv.Itoa(i+1)+"/"+strconv.Itoa(len(migs))+"]")
-		mig.function()
+		mig.function(pgpool)
 	}
 }

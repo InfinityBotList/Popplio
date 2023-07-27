@@ -29,17 +29,11 @@ func (b Router) Routes(r *chi.Mux) {
 	}.Route(r)
 
 	uapi.Route{
-		Pattern: "/users/{uid}/{target_type}s/{target_id}/votes/@all",
-		OpId:    "get_all_votes",
-		Method:  uapi.GET,
-		Docs:    get_all_votes.Docs,
-		Handler: get_all_votes.Route,
-		/*Auth: []uapi.AuthType{
-			{
-				URLVar: "uid",
-				Type:   api.TargetTypeUser,
-			},
-		},*/
+		Pattern:               "/users/{uid}/{target_type}s/{target_id}/votes/@all",
+		OpId:                  "get_all_votes",
+		Method:                uapi.GET,
+		Docs:                  get_all_votes.Docs,
+		Handler:               get_all_votes.Route,
 		DisablePathSlashCheck: true,
 	}.Route(r)
 

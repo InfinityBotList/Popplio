@@ -17,7 +17,7 @@ func Docs() *docs.Doc {
 	return &docs.Doc{
 		Summary:     "Patch Bot Webhook",
 		Description: "Resets a bots token. You must have 'Reset Bot Tokens' in the team if the bot is in a team. Returns the new token on success",
-		Resp:        types.TokenResponse{},
+		Resp:        types.UserLogin{},
 		Params: []docs.Parameter{
 			{
 				Name:        "uid",
@@ -77,6 +77,6 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 
 	return uapi.HttpResponse{
 		Status: http.StatusOK,
-		Json:   types.TokenResponse{Token: token},
+		Json:   types.UserLogin{UserID: id, Token: token},
 	}
 }

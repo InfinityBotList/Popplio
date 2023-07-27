@@ -88,7 +88,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	}
 
 	// Delete generic entities
-	for _, table := range []string{"reviews", "webhook_logs", "entity_votes"} {
+	for _, table := range []string{"reviews", "webhook_logs", "entity_votes", "vanity"} {
 		_, err = tx.Exec(d.Context, "DELETE FROM "+table+" WHERE target_id = $1 AND target_type = 'bot'", id)
 
 		if err != nil {

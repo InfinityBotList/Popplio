@@ -5,7 +5,6 @@ import (
 	"popplio/routes/payments/assets"
 	"popplio/state"
 	"popplio/types"
-	"popplio/utils"
 	"time"
 
 	"github.com/infinitybotlist/eureka/uapi/ratelimit"
@@ -119,7 +118,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		}
 
 		// Check that the user is in fact a booster
-		bs := utils.CheckUserBoosterStatus(d.Auth.ID)
+		bs := assets.CheckUserBoosterStatus(d.Auth.ID)
 
 		if !bs.IsBooster {
 			return uapi.HttpResponse{

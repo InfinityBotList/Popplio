@@ -3,8 +3,8 @@ package check_booster_status
 import (
 	"net/http"
 
+	"popplio/routes/payments/assets"
 	"popplio/types"
-	"popplio/utils"
 
 	docs "github.com/infinitybotlist/eureka/doclib"
 	"github.com/infinitybotlist/eureka/uapi"
@@ -33,6 +33,6 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	id := chi.URLParam(r, "id")
 
 	return uapi.HttpResponse{
-		Json: utils.CheckUserBoosterStatus(id),
+		Json: assets.CheckUserBoosterStatus(id),
 	}
 }

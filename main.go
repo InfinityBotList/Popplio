@@ -27,6 +27,7 @@ import (
 	"popplio/routes/teams"
 	"popplio/routes/tickets"
 	"popplio/routes/users"
+	"popplio/routes/vanity"
 	"popplio/routes/votes"
 	"popplio/routes/webhooks"
 	"popplio/srvdirectory"
@@ -151,6 +152,7 @@ func main() {
 		teams.Router{},
 		tickets.Router{},
 		users.Router{},
+		vanity.Router{},
 		votes.Router{},
 		webhooks.Router{},
 	}

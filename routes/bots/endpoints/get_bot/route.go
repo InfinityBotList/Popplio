@@ -128,21 +128,9 @@ func handleAnalytics(r *http.Request, id, target string) {
 }
 
 func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
-	name := chi.URLParam(r, "id")
+	id := chi.URLParam(r, "id")
 
 	target := r.URL.Query().Get("target")
-
-	// Resolve bot ID
-	id, err := utils.ResolveBot(d.Context, name)
-
-	if err != nil {
-		state.Logger.Error("Resolve Error", err)
-		return uapi.DefaultResponse(http.StatusInternalServerError)
-	}
-
-	if id == "" {
-		return uapi.DefaultResponse(http.StatusNotFound)
-	}
 
 	// Check cache, this is how we can avoid hefty ratelimits
 	cache := state.Redis.Get(d.Context, "bc-"+id).Val()
@@ -154,6 +142,19 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 				"X-Popplio-Cached": "true",
 			},
 		}
+	}
+
+	var count int64
+
+	err := state.Pool.QueryRow(d.Context, "SELECT COUNT(*) FROM bots WHERE bot_id = $1", id).Scan(&count)
+
+	if err != nil {
+		state.Logger.Error(err)
+		return uapi.DefaultResponse(http.StatusInternalServerError)
+	}
+
+	if count == 0 {
+		return uapi.DefaultResponse(http.StatusNotFound)
 	}
 
 	var bot types.Bot
@@ -206,8 +207,6 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		bot.TeamOwner = &eto
 	}
 
-	bot.PremiumPeriodLengthParsed = types.NewInterval(bot.PremiumPeriodLength)
-
 	botUser, err := dovewing.GetUser(d.Context, bot.BotID, state.DovewingPlatformDiscord)
 
 	if err != nil {
@@ -233,7 +232,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 
 	return uapi.HttpResponse{
 		Json:      bot,
-		CacheKey:  "bc-" + name,
+		CacheKey:  "bc-" + id,
 		CacheTime: time.Minute * 3,
 	}
 }

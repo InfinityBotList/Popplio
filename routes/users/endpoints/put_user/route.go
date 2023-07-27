@@ -37,7 +37,14 @@ func Docs() *docs.Doc {
 	}
 }
 
-func sendAuthLog(user types.OauthUser, req types.AuthorizeRequest, new bool) {
+// OauthInfo struct for oauth2 info
+type oauthUser struct {
+	ID       string `json:"id"`
+	Username string `json:"username"`
+	Disc     string `json:"discriminator"`
+}
+
+func sendAuthLog(user oauthUser, req types.AuthorizeRequest, new bool) {
 	var banned bool
 	var voteBanned bool
 
@@ -313,7 +320,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		}
 	}
 
-	var user types.OauthUser
+	var user oauthUser
 
 	err = json.Unmarshal(body, &user)
 

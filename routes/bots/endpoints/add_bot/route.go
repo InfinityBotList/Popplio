@@ -14,6 +14,7 @@ import (
 	"popplio/utils"
 
 	"github.com/infinitybotlist/eureka/uapi/ratelimit"
+	"github.com/jackc/pgtype"
 
 	"github.com/infinitybotlist/eureka/crypto"
 	docs "github.com/infinitybotlist/eureka/doclib"
@@ -26,8 +27,8 @@ import (
 
 type internalData struct {
 	Owner      string
-	Vanity     *string
 	GuildCount *int
+	VanityRef  pgtype.UUID
 }
 
 func createBotsArgs(bot types.CreateBot, id internalData) []any {
@@ -45,8 +46,8 @@ func createBotsArgs(bot types.CreateBot, id internalData) []any {
 		bot.NSFW,
 		bot.StaffNote,
 		id.Owner,
-		id.Vanity,
 		id.GuildCount,
+		id.VanityRef,
 	}
 }
 
@@ -227,7 +228,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	// Check that vanity isnt already taken
 	var vanityCount int64
 
-	err = state.Pool.QueryRow(d.Context, "SELECT COUNT(*) FROM bots WHERE lower(vanity) = $1", vanity).Scan(&vanityCount)
+	err = state.Pool.QueryRow(d.Context, "SELECT COUNT(*) FROM vanity WHERE vanity = $1", vanity).Scan(&vanityCount)
 
 	if err != nil {
 		state.Logger.Error(err)
@@ -235,21 +236,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	}
 
 	if vanityCount > 0 {
-		newVanity := vanity + "-" + crypto.RandString(5)
-		id.Vanity = &newVanity
-	} else {
-		id.Vanity = &vanity
-	}
-
-	// Get the arguments to pass when adding the bot
-	botArgs := createBotsArgs(payload, id)
-
-	if len(createBotsColsArr) != len(botArgs) {
-		state.Logger.Error(botArgs, createBotsColsArr)
-		return uapi.HttpResponse{
-			Status: http.StatusInternalServerError,
-			Json:   types.ApiError{Message: "Internal Error: The number of columns and arguments do not match"},
-		}
+		vanity = vanity + "-" + crypto.RandString(8)
 	}
 
 	// Save the bot to the database
@@ -261,6 +248,28 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	}
 
 	defer tx.Rollback(d.Context)
+
+	// Create vanity
+	var itag pgtype.UUID
+	err = tx.QueryRow(d.Context, "INSERT INTO vanity (code, target_id, target_type) VALUES ($1, $2, $3)", vanity, payload.BotID, "bot").Scan(&itag)
+
+	if err != nil {
+		state.Logger.Error(err)
+		return uapi.DefaultResponse(http.StatusInternalServerError)
+	}
+
+	id.VanityRef = itag
+
+	// Get the arguments to pass when adding the bot
+	botArgs := createBotsArgs(payload, id)
+
+	if len(createBotsColsArr) != len(botArgs) {
+		state.Logger.Error(botArgs, createBotsColsArr)
+		return uapi.HttpResponse{
+			Status: http.StatusInternalServerError,
+			Json:   types.ApiError{Message: "Internal Error: The number of columns and arguments do not match"},
+		}
+	}
 
 	_, err = tx.Exec(d.Context, "INSERT INTO bots ("+createBotsCols+") VALUES ("+createBotsParams+")", botArgs...)
 

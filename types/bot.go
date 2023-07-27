@@ -62,50 +62,49 @@ type BotStats struct {
 //
 // Bot represents a bot.
 type Bot struct {
-	ITag                      pgtype.UUID             `db:"itag" json:"itag" description:"The bot's internal ID. An artifact of database migrations."`
-	BotID                     string                  `db:"bot_id" json:"bot_id" description:"The bot's ID"`
-	ClientID                  string                  `db:"client_id" json:"client_id" description:"The bot's associated client ID validated using that top-secret Oauth2 API! Used in anti-abuse measures."`
-	ExtraLinks                []Link                  `db:"extra_links" json:"extra_links" description:"The bot's links that it wishes to advertise"`
-	Tags                      []string                `db:"tags" json:"tags" description:"The bot's tags (e.g. music, moderation, etc.)"`
-	Flags                     []BotFlags              `db:"flags" json:"flags" description:"The bot's flags"`
-	Prefix                    string                  `db:"prefix" json:"prefix" description:"The bot's prefix"`
-	User                      *dovetypes.PlatformUser `json:"user" description:"The bot's user information" ci:"internal"` // Must be parsed internally
-	Owner                     pgtype.Text             `db:"owner" json:"-"`
-	MainOwner                 *dovetypes.PlatformUser `json:"owner" description:"The bot owner's user information. If in a team, this will be null and team_owner will instead be set" ci:"internal"` // Must be parsed internally
-	Short                     string                  `db:"short" json:"short" description:"The bot's short description"`
-	Long                      string                  `db:"long" json:"long" description:"The bot's long description in raw format (HTML/markdown etc. based on the bots settings)"`
-	Library                   string                  `db:"library" json:"library" description:"The bot's library"`
-	NSFW                      bool                    `db:"nsfw" json:"nsfw" description:"Whether the bot is NSFW or not"`
-	Premium                   bool                    `db:"premium" json:"premium" description:"Whether the bot is a premium bot or not"`
-	LastStatsPost             pgtype.Timestamptz      `db:"last_stats_post" json:"last_stats_post" description:"The list time the bot posted stats to the list. Null if never posted"`
-	Servers                   int                     `db:"servers" json:"servers" description:"The bot's server count"`
-	Shards                    int                     `db:"shards" json:"shards" description:"The bot's shard count"`
-	ShardList                 []int                   `db:"shard_list" json:"shard_list" description:"The number of servers per shard"`
-	Users                     int                     `db:"users" json:"users" description:"The bot's user count"`
-	Votes                     int                     `db:"votes" json:"votes" description:"The bot's vote count"`
-	Views                     int                     `db:"clicks" json:"clicks" description:"The bot's total click count"`
-	UniqueClicks              int64                   `json:"unique_clicks" description:"The bot's unique click count based on SHA256 hashed IPs" ci:"internal"` // Must be parsed internally
-	InviteClicks              int                     `db:"invite_clicks" json:"invite_clicks" description:"The bot's invite click count (via users inviting the bot from IBL)"`
-	Banner                    pgtype.Text             `db:"banner" json:"banner" description:"The bot's banner URL if it has one, otherwise null"`
-	Invite                    string                  `db:"invite" json:"invite" description:"The bot's invite URL. Must be present"`
-	Type                      string                  `db:"type" json:"type" description:"The bot's type (e.g. pending/approved/certified/denied etc.). Note that we do not filter out denied/banned bots in API"`
-	Vanity                    string                  `db:"vanity" json:"vanity" description:"The bot's vanity URL if it has one, otherwise null"`
-	VoteBanned                bool                    `db:"vote_banned" json:"vote_banned" description:"Whether the bot is vote banned or not"`
-	StartPeriod               pgtype.Timestamptz      `db:"start_premium_period" json:"start_premium_period"`
-	PremiumPeriodLength       time.Duration           `db:"premium_period_length" json:"-"`
-	PremiumPeriodLengthParsed Interval                `db:"-" json:"premium_period_length" description:"The period of premium for the bot" ci:"internal"` // Must be parsed internally
-	CertReason                pgtype.Text             `db:"cert_reason" json:"cert_reason" description:"The reason for the bot being certified"`
-	Uptime                    int                     `db:"uptime" json:"uptime" description:"The bot's total number of successful uptime checks"`
-	TotalUptime               int                     `db:"total_uptime" json:"total_uptime" description:"The bot's total number of uptime checks"`
-	UptimeLastChecked         pgtype.Timestamptz      `db:"uptime_last_checked" json:"uptime_last_checked" description:"The bot's last uptime check"`
-	ClaimedBy                 pgtype.Text             `db:"claimed_by" json:"claimed_by" description:"The user who claimed the bot"`
-	Note                      pgtype.Text             `db:"approval_note" json:"approval_note" description:"The note for the bot's approval"`
-	CreatedAt                 pgtype.Timestamptz      `db:"created_at" json:"created_at" description:"The bot's creation date"`
-	LastClaimed               pgtype.Timestamptz      `db:"last_claimed" json:"last_claimed" description:"The bot's last claimed date"`
-	LegacyWebhooks            bool                    `db:"-" json:"legacy_webhooks" description:"Whether the bot is using legacy v1 webhooks or not" ci:"internal"` // Must be parsed internally
-	TeamOwnerID               pgtype.UUID             `db:"team_owner" json:"-"`
-	TeamOwner                 *EntityTeamOwner        `json:"team_owner" description:"If the bot is in a team, who owns the bot. If not in a team, this will be null and owner will instead be set" ci:"internal"` // Must be parsed internally
-	CaptchaOptOut             bool                    `db:"captcha_opt_out" json:"captcha_opt_out" description:"Whether the bot should have captchas shown if the user has captcha_sponsor_enabled"`
+	ITag                pgtype.UUID             `db:"itag" json:"itag" description:"The bot's internal ID. An artifact of database migrations."`
+	BotID               string                  `db:"bot_id" json:"bot_id" description:"The bot's ID"`
+	ClientID            string                  `db:"client_id" json:"client_id" description:"The bot's associated client ID validated using that top-secret Oauth2 API! Used in anti-abuse measures."`
+	ExtraLinks          []Link                  `db:"extra_links" json:"extra_links" description:"The bot's links that it wishes to advertise"`
+	Tags                []string                `db:"tags" json:"tags" description:"The bot's tags (e.g. music, moderation, etc.)"`
+	Flags               []BotFlags              `db:"flags" json:"flags" description:"The bot's flags"`
+	Prefix              string                  `db:"prefix" json:"prefix" description:"The bot's prefix"`
+	User                *dovetypes.PlatformUser `json:"user" description:"The bot's user information" ci:"internal"` // Must be parsed internally
+	Owner               pgtype.Text             `db:"owner" json:"-"`
+	MainOwner           *dovetypes.PlatformUser `json:"owner" description:"The bot owner's user information. If in a team, this will be null and team_owner will instead be set" ci:"internal"` // Must be parsed internally
+	Short               string                  `db:"short" json:"short" description:"The bot's short description"`
+	Long                string                  `db:"long" json:"long" description:"The bot's long description in raw format (HTML/markdown etc. based on the bots settings)"`
+	Library             string                  `db:"library" json:"library" description:"The bot's library"`
+	NSFW                bool                    `db:"nsfw" json:"nsfw" description:"Whether the bot is NSFW or not"`
+	Premium             bool                    `db:"premium" json:"premium" description:"Whether the bot is a premium bot or not"`
+	LastStatsPost       pgtype.Timestamptz      `db:"last_stats_post" json:"last_stats_post" description:"The list time the bot posted stats to the list. Null if never posted"`
+	Servers             int                     `db:"servers" json:"servers" description:"The bot's server count"`
+	Shards              int                     `db:"shards" json:"shards" description:"The bot's shard count"`
+	ShardList           []int                   `db:"shard_list" json:"shard_list" description:"The number of servers per shard"`
+	Users               int                     `db:"users" json:"users" description:"The bot's user count"`
+	Votes               int                     `db:"votes" json:"votes" description:"The bot's vote count"`
+	Views               int                     `db:"clicks" json:"clicks" description:"The bot's total click count"`
+	UniqueClicks        int64                   `json:"unique_clicks" description:"The bot's unique click count based on SHA256 hashed IPs" ci:"internal"` // Must be parsed internally
+	InviteClicks        int                     `db:"invite_clicks" json:"invite_clicks" description:"The bot's invite click count (via users inviting the bot from IBL)"`
+	Banner              pgtype.Text             `db:"banner" json:"banner" description:"The bot's banner URL if it has one, otherwise null"`
+	Invite              string                  `db:"invite" json:"invite" description:"The bot's invite URL. Must be present"`
+	Type                string                  `db:"type" json:"type" description:"The bot's type (e.g. pending/approved/certified/denied etc.). Note that we do not filter out denied/banned bots in API"`
+	VanityRef           string                  `db:"vanity_ref" json:"vanity_ref" description:"The corresponding vanities itag, this also works to ensure that all bots have an associated vanity"`
+	VoteBanned          bool                    `db:"vote_banned" json:"vote_banned" description:"Whether the bot is vote banned or not"`
+	StartPeriod         pgtype.Timestamptz      `db:"start_premium_period" json:"start_premium_period"`
+	PremiumPeriodLength time.Duration           `db:"premium_period_length" json:"premium_period_length" description:"The period of premium for the bot in nanoseconds"`
+	CertReason          pgtype.Text             `db:"cert_reason" json:"cert_reason" description:"The reason for the bot being certified"`
+	Uptime              int                     `db:"uptime" json:"uptime" description:"The bot's total number of successful uptime checks"`
+	TotalUptime         int                     `db:"total_uptime" json:"total_uptime" description:"The bot's total number of uptime checks"`
+	UptimeLastChecked   pgtype.Timestamptz      `db:"uptime_last_checked" json:"uptime_last_checked" description:"The bot's last uptime check"`
+	ClaimedBy           pgtype.Text             `db:"claimed_by" json:"claimed_by" description:"The user who claimed the bot"`
+	Note                pgtype.Text             `db:"approval_note" json:"approval_note" description:"The note for the bot's approval"`
+	CreatedAt           pgtype.Timestamptz      `db:"created_at" json:"created_at" description:"The bot's creation date"`
+	LastClaimed         pgtype.Timestamptz      `db:"last_claimed" json:"last_claimed" description:"The bot's last claimed date"`
+	LegacyWebhooks      bool                    `db:"-" json:"legacy_webhooks" description:"Whether the bot is using legacy v1 webhooks or not" ci:"internal"` // Must be parsed internally
+	TeamOwnerID         pgtype.UUID             `db:"team_owner" json:"-"`
+	TeamOwner           *EntityTeamOwner        `json:"team_owner" description:"If the bot is in a team, who owns the bot. If not in a team, this will be null and owner will instead be set" ci:"internal"` // Must be parsed internally
+	CaptchaOptOut       bool                    `db:"captcha_opt_out" json:"captcha_opt_out" description:"Whether the bot should have captchas shown if the user has captcha_sponsor_enabled"`
 }
 
 // @ci table=bots, unfilled=1
@@ -126,10 +125,10 @@ type CreateBot struct {
 	StaffNote  *string  `db:"approval_note" json:"staff_note" validate:"omitempty,max=512" msg:"Staff note must be less than 512 characters if sent"` // impld
 	TeamOwner  string   `db:"-" json:"team_owner" ci:"internal"`                                                                                      // May or may not be present
 
-	// Not needed to send
-	Owner      string  `db:"owner" json:"-"`
-	Vanity     *string `db:"vanity" json:"-"`
-	GuildCount *int    `db:"servers" json:"-"`
+	// Not needed to send, resolved in backend
+	Owner      string      `db:"owner" json:"-"`
+	GuildCount *int        `db:"servers" json:"-"`
+	VanityRef  pgtype.UUID `db:"vanity_ref" json:"-"`
 }
 
 type BotSettingsUpdate struct {

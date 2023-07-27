@@ -16,7 +16,7 @@ func Docs() *docs.Doc {
 	return &docs.Doc{
 		Summary:     "Get Bot Webhook",
 		Description: "Gets the API token of a bot. You must have 'View Existing Bot Tokens' in the team if the bot is in a team.",
-		Resp:        types.TokenResponse{},
+		Resp:        types.UserLogin{},
 		Params: []docs.Parameter{
 			{
 				Name:        "uid",
@@ -76,6 +76,6 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 
 	return uapi.HttpResponse{
 		Status: http.StatusOK,
-		Json:   types.TokenResponse{Token: token},
+		Json:   types.UserLogin{UserID: id, Token: token},
 	}
 }
