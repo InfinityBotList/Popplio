@@ -113,10 +113,21 @@ func ResolveTeam(ctx context.Context, teamId string) (*types.Team, error) {
 
 		if err != nil {
 			state.Logger.Error(err)
-			continue
+			return nil, err
 		}
 
 		indexBot.User = userObj
+
+		var code string
+
+		err = state.Pool.QueryRow(ctx, "SELECT code FROM vanity WHERE itag = $1", indexBot.VanityRef).Scan(&code)
+
+		if err != nil {
+			state.Logger.Error(err)
+			return nil, err
+		}
+
+		indexBot.Vanity = code
 
 		bots = append(bots, indexBot)
 	}

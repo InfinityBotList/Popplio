@@ -65,6 +65,17 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		}
 
 		listIndex.Certified[i].User = botUser
+
+		var code string
+
+		err = state.Pool.QueryRow(d.Context, "SELECT code FROM vanity WHERE itag = $1", listIndex.Certified[i].VanityRef).Scan(&code)
+
+		if err != nil {
+			state.Logger.Error(err)
+			return uapi.DefaultResponse(http.StatusInternalServerError)
+		}
+
+		listIndex.Certified[i].Vanity = code
 	}
 
 	premRow, err := state.Pool.Query(d.Context, "SELECT "+indexBotCols+" FROM bots WHERE premium = true ORDER BY votes DESC LIMIT 9")
@@ -86,6 +97,17 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		}
 
 		listIndex.Premium[i].User = botUser
+
+		var code string
+
+		err = state.Pool.QueryRow(d.Context, "SELECT code FROM vanity WHERE itag = $1", listIndex.Premium[i].VanityRef).Scan(&code)
+
+		if err != nil {
+			state.Logger.Error(err)
+			return uapi.DefaultResponse(http.StatusInternalServerError)
+		}
+
+		listIndex.Premium[i].Vanity = code
 	}
 
 	mostViewedRow, err := state.Pool.Query(d.Context, "SELECT "+indexBotCols+" FROM bots WHERE type = 'approved' OR type = 'certified' ORDER BY clicks DESC LIMIT 9")
@@ -107,6 +129,17 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		}
 
 		listIndex.MostViewed[i].User = botUser
+
+		var code string
+
+		err = state.Pool.QueryRow(d.Context, "SELECT code FROM vanity WHERE itag = $1", listIndex.MostViewed[i].VanityRef).Scan(&code)
+
+		if err != nil {
+			state.Logger.Error(err)
+			return uapi.DefaultResponse(http.StatusInternalServerError)
+		}
+
+		listIndex.MostViewed[i].Vanity = code
 	}
 
 	recentlyAddedRow, err := state.Pool.Query(d.Context, "SELECT "+indexBotCols+" FROM bots WHERE type = 'approved' ORDER BY created_at DESC LIMIT 9")
@@ -128,6 +161,17 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		}
 
 		listIndex.RecentlyAdded[i].User = botUser
+
+		var code string
+
+		err = state.Pool.QueryRow(d.Context, "SELECT code FROM vanity WHERE itag = $1", listIndex.RecentlyAdded[i].VanityRef).Scan(&code)
+
+		if err != nil {
+			state.Logger.Error(err)
+			return uapi.DefaultResponse(http.StatusInternalServerError)
+		}
+
+		listIndex.RecentlyAdded[i].Vanity = code
 	}
 
 	topVotedRow, err := state.Pool.Query(d.Context, "SELECT "+indexBotCols+" FROM bots WHERE type = 'approved' OR type = 'certified' ORDER BY votes DESC LIMIT 9")
@@ -149,6 +193,17 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		}
 
 		listIndex.TopVoted[i].User = botUser
+
+		var code string
+
+		err = state.Pool.QueryRow(d.Context, "SELECT code FROM vanity WHERE itag = $1", listIndex.TopVoted[i].VanityRef).Scan(&code)
+
+		if err != nil {
+			state.Logger.Error(err)
+			return uapi.DefaultResponse(http.StatusInternalServerError)
+		}
+
+		listIndex.TopVoted[i].Vanity = code
 	}
 
 	// Packs

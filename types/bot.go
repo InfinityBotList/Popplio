@@ -19,7 +19,8 @@ type IndexBot struct {
 	User        *dovetypes.PlatformUser `db:"-" json:"user" description:"The bot's user information" ci:"internal"` // Must be parsed internally
 	Short       string                  `db:"short" json:"short" description:"The bot's short description"`
 	Type        string                  `db:"type" json:"type" description:"The bot's type (e.g. pending/approved/certified/denied etc.)"`
-	Vanity      string                  `db:"vanity" json:"vanity" description:"The bot's vanity URL if it has one, otherwise null"`
+	VanityRef   pgtype.UUID             `db:"vanity_ref" json:"vanity_ref" description:"The corresponding vanities itag, this also works to ensure that all bots have an associated vanity"`
+	Vanity      string                  `db:"-" json:"vanity" description:"The bot's vanity URL" ci:"internal"` // Must be parsed internally
 	Votes       int                     `db:"votes" json:"votes" description:"The bot's vote count"`
 	Shards      int                     `db:"shards" json:"shards" description:"The bot's shard count"`
 	Library     string                  `db:"library" json:"library" description:"The bot's library"`
@@ -89,7 +90,7 @@ type Bot struct {
 	Banner              pgtype.Text             `db:"banner" json:"banner" description:"The bot's banner URL if it has one, otherwise null"`
 	Invite              string                  `db:"invite" json:"invite" description:"The bot's invite URL. Must be present"`
 	Type                string                  `db:"type" json:"type" description:"The bot's type (e.g. pending/approved/certified/denied etc.). Note that we do not filter out denied/banned bots in API"`
-	VanityRef           string                  `db:"vanity_ref" json:"vanity_ref" description:"The corresponding vanities itag, this also works to ensure that all bots have an associated vanity"`
+	VanityRef           pgtype.UUID             `db:"vanity_ref" json:"vanity_ref" description:"The corresponding vanities itag, this also works to ensure that all bots have an associated vanity"`
 	VoteBanned          bool                    `db:"vote_banned" json:"vote_banned" description:"Whether the bot is vote banned or not"`
 	StartPeriod         pgtype.Timestamptz      `db:"start_premium_period" json:"start_premium_period"`
 	PremiumPeriodLength time.Duration           `db:"premium_period_length" json:"premium_period_length" description:"The period of premium for the bot in nanoseconds"`

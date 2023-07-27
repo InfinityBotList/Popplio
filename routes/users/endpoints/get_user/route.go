@@ -116,10 +116,21 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 
 		if err != nil {
 			state.Logger.Error(err)
-			continue
+			return uapi.DefaultResponse(http.StatusInternalServerError)
 		}
 
 		indexBots[i].User = userObj
+
+		var code string
+
+		err = state.Pool.QueryRow(d.Context, "SELECT code FROM vanity WHERE itag = $1", indexBots[i].VanityRef).Scan(&code)
+
+		if err != nil {
+			state.Logger.Error(err)
+			return uapi.DefaultResponse(http.StatusInternalServerError)
+		}
+
+		indexBots[i].Vanity = code
 	}
 
 	// Get user teams

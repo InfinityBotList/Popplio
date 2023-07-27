@@ -228,7 +228,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	// Check that vanity isnt already taken
 	var vanityCount int64
 
-	err = state.Pool.QueryRow(d.Context, "SELECT COUNT(*) FROM vanity WHERE vanity = $1", vanity).Scan(&vanityCount)
+	err = state.Pool.QueryRow(d.Context, "SELECT COUNT(*) FROM vanity WHERE code = $1", vanity).Scan(&vanityCount)
 
 	if err != nil {
 		state.Logger.Error(err)
@@ -251,7 +251,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 
 	// Create vanity
 	var itag pgtype.UUID
-	err = tx.QueryRow(d.Context, "INSERT INTO vanity (code, target_id, target_type) VALUES ($1, $2, $3)", vanity, payload.BotID, "bot").Scan(&itag)
+	err = tx.QueryRow(d.Context, "INSERT INTO vanity (code, target_id, target_type) VALUES ($1, $2, $3) RETURNING itag", vanity, payload.BotID, "bot").Scan(&itag)
 
 	if err != nil {
 		state.Logger.Error(err)
