@@ -1,6 +1,7 @@
 package vanity
 
 import (
+	"popplio/api"
 	"popplio/routes/vanity/endpoints/patch_vanity"
 	"popplio/routes/vanity/endpoints/redirect_vanity"
 	"popplio/routes/vanity/endpoints/resolve_vanity"
@@ -41,5 +42,11 @@ func (b Router) Routes(r *chi.Mux) {
 		Method:  uapi.PATCH,
 		Docs:    patch_vanity.Docs,
 		Handler: patch_vanity.Route,
+		Auth: []uapi.AuthType{
+			{
+				URLVar: "uid",
+				Type:   api.TargetTypeUser,
+			},
+		},
 	}.Route(r)
 }

@@ -57,7 +57,7 @@ func Docs() *docs.Doc {
 func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	uid := chi.URLParam(r, "uid")
 	targetId := chi.URLParam(r, "target_id")
-	targetType := chi.URLParam(r, "target_type")
+	targetType := r.URL.Query().Get("target_type")
 	vanity := r.URL.Query().Get("vanity")
 
 	if uid == "" || targetId == "" || targetType == "" {
@@ -132,7 +132,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	// Ensure vanity doesn't already exist
 	var count int64
 
-	err := state.Pool.QueryRow(d.Context, "SELECT COUNT(*) FROM vanity WHERE vanity = $1", vanity).Scan(&count)
+	err := state.Pool.QueryRow(d.Context, "SELECT COUNT(*) FROM vanity WHERE code = $1", vanity).Scan(&count)
 
 	if err != nil {
 		state.Logger.Error(err)
@@ -147,7 +147,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	}
 
 	// Update vanity
-	_, err = state.Pool.Exec(d.Context, "UPDATE vanity SET vanity = $1 WHERE target_id = $2 AND target_type = $3", vanity, targetId, targetType)
+	_, err = state.Pool.Exec(d.Context, "UPDATE vanity SET code = $1 WHERE target_id = $2 AND target_type = $3", vanity, targetId, targetType)
 
 	if err != nil {
 		state.Logger.Error(err)
