@@ -78,17 +78,18 @@ func Docs() *docs.Doc {
 }
 
 func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
-	name := chi.URLParam(r, "bid")
+	id := chi.URLParam(r, "bid")
 
-	// Resolve bot ID
-	id, err := utils.ResolveBot(d.Context, name)
+	var count int64
+
+	err := state.Pool.QueryRow(d.Context, "SELECT COUNT(*) FROM bots WHERE bot_id = $1", id).Scan(&count)
 
 	if err != nil {
 		state.Logger.Error(err)
 		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
-	if id == "" {
+	if count == 0 {
 		return uapi.DefaultResponse(http.StatusNotFound)
 	}
 

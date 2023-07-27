@@ -15,7 +15,6 @@ import (
 	"popplio/routes/bots/endpoints/patch_bot_settings"
 	"popplio/routes/bots/endpoints/patch_bot_team"
 	"popplio/routes/bots/endpoints/patch_bot_token"
-	"popplio/routes/bots/endpoints/patch_bot_vanity"
 	"popplio/routes/bots/endpoints/patch_bot_webhook"
 	"popplio/routes/bots/endpoints/post_bot_stats"
 	"popplio/routes/bots/endpoints/transfer_bot_to_team"
@@ -147,20 +146,6 @@ func (b Router) Routes(r *chi.Mux) {
 		Docs:    patch_bot_settings.Docs,
 		Handler: patch_bot_settings.Route,
 		Setup:   patch_bot_settings.Setup,
-		Auth: []uapi.AuthType{
-			{
-				URLVar: "uid",
-				Type:   api.TargetTypeUser,
-			},
-		},
-	}.Route(r)
-
-	uapi.Route{
-		Pattern: "/users/{uid}/bots/{bid}/vanity",
-		OpId:    "patch_bot_vanity",
-		Method:  uapi.PATCH,
-		Docs:    patch_bot_vanity.Docs,
-		Handler: patch_bot_vanity.Route,
 		Auth: []uapi.AuthType{
 			{
 				URLVar: "uid",

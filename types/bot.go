@@ -91,6 +91,7 @@ type Bot struct {
 	Invite              string                  `db:"invite" json:"invite" description:"The bot's invite URL. Must be present"`
 	Type                string                  `db:"type" json:"type" description:"The bot's type (e.g. pending/approved/certified/denied etc.). Note that we do not filter out denied/banned bots in API"`
 	VanityRef           pgtype.UUID             `db:"vanity_ref" json:"vanity_ref" description:"The corresponding vanities itag, this also works to ensure that all bots have an associated vanity"`
+	Vanity              string                  `db:"-" json:"vanity" description:"The bot's vanity URL" ci:"internal"` // Must be parsed internally
 	VoteBanned          bool                    `db:"vote_banned" json:"vote_banned" description:"Whether the bot is vote banned or not"`
 	StartPeriod         pgtype.Timestamptz      `db:"start_premium_period" json:"start_premium_period"`
 	PremiumPeriodLength time.Duration           `db:"premium_period_length" json:"premium_period_length" description:"The period of premium for the bot in nanoseconds"`

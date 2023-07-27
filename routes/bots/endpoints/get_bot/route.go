@@ -228,6 +228,17 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 
 	bot.LegacyWebhooks = config.UseLegacyWebhooks(bot.BotID)
 
+	var code string
+
+	err = state.Pool.QueryRow(d.Context, "SELECT code FROM vanity WHERE itag = $1", bot.VanityRef).Scan(&code)
+
+	if err != nil {
+		state.Logger.Error(err)
+		return uapi.DefaultResponse(http.StatusInternalServerError)
+	}
+
+	bot.Vanity = code
+
 	go handleAnalytics(r, id, target)
 
 	return uapi.HttpResponse{

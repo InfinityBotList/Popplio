@@ -65,17 +65,18 @@ Returns a 204 on success`,
 }
 
 func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
-	botName := chi.URLParam(r, "bid")
+	id := chi.URLParam(r, "bid")
 
-	// Resolve bot ID
-	id, err := utils.ResolveBot(d.Context, botName)
+	var count int64
+
+	err := state.Pool.QueryRow(d.Context, "SELECT COUNT(*) FROM bots WHERE bot_id = $1", id).Scan(&count)
 
 	if err != nil {
-		state.Logger.Error("Resolve Error", err)
+		state.Logger.Error(err)
 		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
-	if id == "" {
+	if count == 0 {
 		return uapi.DefaultResponse(http.StatusNotFound)
 	}
 
@@ -148,16 +149,16 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	}
 
 	// Find new team
-	var count int
+	var teamCount int
 
-	err = state.Pool.QueryRow(d.Context, "SELECT COUNT(*) FROM teams WHERE id = $1", payload.TeamID).Scan(&count)
+	err = state.Pool.QueryRow(d.Context, "SELECT COUNT(*) FROM teams WHERE id = $1", payload.TeamID).Scan(&teamCount)
 
 	if err != nil {
 		state.Logger.Error(err)
 		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
-	if count == 0 {
+	if teamCount == 0 {
 		return uapi.HttpResponse{
 			Status: http.StatusNotFound,
 			Json:   types.ApiError{Message: "Team not found"},

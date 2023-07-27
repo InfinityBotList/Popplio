@@ -210,21 +210,9 @@ func ClearUserCache(ctx context.Context, userId string) error {
 }
 
 func ClearBotCache(ctx context.Context, botId string) error {
-	// Get name and vanity, delete from cache
-	var vanity string
-	var clientId string
-
-	err := state.Pool.QueryRow(ctx, "SELECT lower(vanity), client_id FROM bots WHERE bot_id = $1", botId).Scan(&vanity, &clientId)
-
-	if err != nil {
-		return err
-	}
-
 	// Delete from cache
 	for _, k := range []string{"bc-", "seob:"} {
-		state.Redis.Del(ctx, k+vanity)
 		state.Redis.Del(ctx, k+botId)
-		state.Redis.Del(ctx, k+clientId)
 	}
 	return nil
 }
@@ -281,44 +269,6 @@ func ValidateExtraLinks(links []types.Link) error {
 	}
 
 	return nil
-}
-
-func ResolveBot(ctx context.Context, name string) (string, error) {
-	resolveBotSQL := "(lower(vanity) = $1 OR bot_id = $1 OR client_id = $1)"
-
-	// First check count so we can avoid expensive DB calls
-	var count int64
-
-	// We need to take the lower of the name because lower(vanity) = $1
-	name = strings.ToLower(name)
-
-	err := state.Pool.QueryRow(ctx, "SELECT COUNT(*) FROM bots WHERE "+resolveBotSQL, name).Scan(&count)
-
-	if err != nil {
-		return "", err
-	}
-
-	if count == 0 {
-		return "", nil
-	}
-
-	if count > 1 {
-		// Delete one of the bots
-		_, err := state.Pool.Exec(ctx, "DELETE FROM bots WHERE "+resolveBotSQL+" LIMIT 1", name)
-
-		if err != nil {
-			return "", err
-		}
-	}
-
-	var id string
-	err = state.Pool.QueryRow(ctx, "SELECT bot_id FROM bots WHERE "+resolveBotSQL, name).Scan(&id)
-
-	if err != nil {
-		return "", err
-	}
-
-	return id, nil
 }
 
 func IsValidUUID(u string) bool {
