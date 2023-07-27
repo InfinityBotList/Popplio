@@ -5,7 +5,6 @@ import (
 	"popplio/routes/votes/endpoints/get_all_votes"
 	"popplio/routes/votes/endpoints/get_hcaptcha_info"
 	"popplio/routes/votes/endpoints/get_user_entity_votes"
-	"popplio/routes/votes/endpoints/get_vote_info"
 	"popplio/routes/votes/endpoints/put_user_entity_votes"
 
 	"github.com/go-chi/chi/v5"
@@ -30,15 +29,15 @@ func (b Router) Routes(r *chi.Mux) {
 	}.Route(r)
 
 	uapi.Route{
-		Pattern: "/users/{uid}/{target_type}s/{target_id}/@all",
+		Pattern: "/users/{uid}/{target_type}s/{target_id}/votes/@all",
 		OpId:    "get_all_votes",
 		Method:  uapi.GET,
 		Docs:    get_all_votes.Docs,
 		Handler: get_all_votes.Route,
 		Auth: []uapi.AuthType{
 			{
-				URLVar: "id",
-				Type:   api.TargetTypeBot,
+				URLVar: "uid",
+				Type:   api.TargetTypeUser,
 			},
 		},
 		DisablePathSlashCheck: true,
@@ -50,15 +49,6 @@ func (b Router) Routes(r *chi.Mux) {
 		Method:                uapi.GET,
 		Docs:                  get_user_entity_votes.Docs,
 		Handler:               get_user_entity_votes.Route,
-		DisablePathSlashCheck: true,
-	}.Route(r)
-
-	uapi.Route{
-		Pattern:               "/{target_type}s/{target_id}/votes/info",
-		OpId:                  "get_vote_info",
-		Method:                uapi.GET,
-		Docs:                  get_vote_info.Docs,
-		Handler:               get_vote_info.Route,
 		DisablePathSlashCheck: true,
 	}.Route(r)
 
