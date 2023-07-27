@@ -25,7 +25,7 @@ var (
 func Docs() *docs.Doc {
 	return &docs.Doc{
 		Summary:     "Get All Votes",
-		Description: "Gets all votes (paginated by 10) of a user on an entity. This endpoint is public as the same data can be found through #vote-logs in discord",
+		Description: "Gets all votes (paginated by 10) of a user on an entity. This endpoint is currently public as the same data can be found through #vote-logs in discord",
 		Resp:        types.PagedResult[[]types.EntityVote]{},
 		RespName:    "PagedResultUserVote",
 		Params: []docs.Parameter{
