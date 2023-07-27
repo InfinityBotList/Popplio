@@ -39,7 +39,7 @@ func Docs() *docs.Doc {
 				Name:        "target_type",
 				Description: "The target type of the tntity",
 				Required:    true,
-				In:          "path",
+				In:          "query",
 				Schema:      docs.IdSchema,
 			},
 			{
