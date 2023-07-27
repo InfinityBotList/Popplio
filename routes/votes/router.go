@@ -34,12 +34,12 @@ func (b Router) Routes(r *chi.Mux) {
 		Method:  uapi.GET,
 		Docs:    get_all_votes.Docs,
 		Handler: get_all_votes.Route,
-		Auth: []uapi.AuthType{
+		/*Auth: []uapi.AuthType{
 			{
 				URLVar: "uid",
 				Type:   api.TargetTypeUser,
 			},
-		},
+		},*/
 		DisablePathSlashCheck: true,
 	}.Route(r)
 

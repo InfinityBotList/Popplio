@@ -15,7 +15,7 @@ import (
 	"github.com/infinitybotlist/eureka/uapi"
 )
 
-const perPage = 10
+const perPage = 5
 
 var (
 	entityVoteColsArr = utils.GetCols(types.EntityVote{})
@@ -25,7 +25,7 @@ var (
 func Docs() *docs.Doc {
 	return &docs.Doc{
 		Summary:     "Get All Votes",
-		Description: "Gets all votes (paginated by 10) of a user on an entity. **Currently requires authentication**",
+		Description: "Gets all votes (paginated by 10) of a user on an entity. This endpoint is public as the same data can be found through #vote-logs in discord",
 		Resp:        types.PagedResult[[]types.EntityVote]{},
 		RespName:    "PagedResultUserVote",
 		Params: []docs.Parameter{
