@@ -18,12 +18,13 @@ type EntityVote struct {
 	Void       bool        `db:"void" json:"void"`
 	VoidReason string      `db:"void_reason" json:"void_reason"`
 	CreatedAt  time.Time   `db:"created_at" json:"created_at"`
+	VoteNum    int         `db:"vote_num" json:"vote_num" description:"The number of the vote (second vote of double vote will have vote_num as 2 etc.)"`
 }
 
 // Vote Info
 type VoteInfo struct {
-	DoubleVotes bool   `json:"double_votes"`
-	VoteTime    uint16 `json:"vote_time"`
+	PerUser  int    `json:"per_user" description:"The amount of votes a single vote creates on this entity"`
+	VoteTime uint16 `json:"vote_time" description:"The amount of time in hours until a user can vote again"`
 }
 
 // Stores the hours, minutes and seconds until the user can vote again

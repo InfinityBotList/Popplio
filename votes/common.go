@@ -26,8 +26,14 @@ func GetVoteTime() uint16 {
 // If user id is specified, then in the future special perks for the user will be returned as well
 func EntityVoteInfo(ctx context.Context, userId, targetId, targetType string) (*types.VoteInfo, error) {
 	var defaultVoteEntity = types.VoteInfo{
-		DoubleVotes: GetDoubleVote(),
-		VoteTime:    GetVoteTime(),
+		PerUser: func() int {
+			if GetDoubleVote() {
+				return 2
+			} else {
+				return 1
+			}
+		}(),
+		VoteTime: GetVoteTime(),
 	}
 
 	// Add other special cases of entities not following the basic voting system rules
