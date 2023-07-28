@@ -26,7 +26,7 @@ AND (
     {{range $table := .PlatformTables }}
         {{$table}}_users.username @@ $9 OR
     {{end}}
-    vanity ILIKE $8 OR short @@ $9 OR bot_id = $9 OR client_id = $9) 
+    OR short @@ $9 OR bot_id = $9 OR client_id = $9) 
 {{end}}
 
 ORDER BY votes DESC, type DESC LIMIT 12

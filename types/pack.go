@@ -25,7 +25,7 @@ type ResolvedPackBot struct {
 	User         *dovetypes.PlatformUser `json:"user"`
 	Short        string                  `json:"short"`
 	Type         pgtype.Text             `json:"type"`
-	Vanity       pgtype.Text             `json:"vanity"`
+	Vanity       string                  `json:"vanity"`
 	Banner       pgtype.Text             `json:"banner"`
 	NSFW         bool                    `json:"nsfw"`
 	Premium      bool                    `json:"premium"`

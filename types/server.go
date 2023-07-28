@@ -12,7 +12,8 @@ type Server struct {
 	Short         string      `db:"short" json:"short" description:"The server's short description"`
 	Long          string      `db:"long" json:"long" description:"The server's long description in raw format (HTML/markdown etc. based on the bots settings)"`
 	State         string      `db:"state" json:"state" description:"The server's state (public, private, unlisted)"`
-	Vanity        string      `db:"vanity" json:"vanity" description:"The server's vanity URL"`
+	VanityRef     pgtype.UUID `db:"vanity_ref" json:"vanity_ref"`
+	Vanity        string      `db:"-" json:"vanity" description:"The server's vanity URL" ci:"internal"` // Must be parsed internally
 	ExtraLinks    []Link      `db:"extra_links" json:"extra_links" description:"The server's links that it wishes to advertise"`
 	TeamOwnerID   pgtype.UUID `db:"team_owner" json:"-"`
 	TeamOwner     *Team       `json:"team_owner" description:"If the server is in a team, who owns the server."` // Must be parsed internally

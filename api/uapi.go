@@ -78,8 +78,7 @@ func Authorize(r uapi.Route, req *http.Request) (uapi.AuthData, uapi.HttpRespons
 		case TargetTypeBot:
 			// Check if the bot exists with said token only
 			var id pgtype.Text
-			var vanity pgtype.Text
-			err := state.Pool.QueryRow(state.Context, "SELECT bot_id, vanity FROM bots WHERE api_token = $1", strings.Replace(authHeader, "Bot ", "", 1)).Scan(&id, &vanity)
+			err := state.Pool.QueryRow(state.Context, "SELECT bot_id FROM bots WHERE api_token = $1", strings.Replace(authHeader, "Bot ", "", 1)).Scan(&id)
 
 			if err != nil {
 				continue
@@ -94,7 +93,7 @@ func Authorize(r uapi.Route, req *http.Request) (uapi.AuthData, uapi.HttpRespons
 				ID:         id.String,
 				Authorized: true,
 			}
-			urlIds = []string{id.String, vanity.String}
+			urlIds = []string{id.String}
 		}
 
 		// Now handle the URLVar

@@ -100,7 +100,6 @@ func ResolveBotPack(ctx context.Context, pack *types.BotPack) error {
 	for _, botId := range pack.Bots {
 		var short string
 		var bot_type pgtype.Text
-		var vanity pgtype.Text
 		var banner pgtype.Text
 		var nsfw bool
 		var premium bool
@@ -109,13 +108,23 @@ func ResolveBotPack(ctx context.Context, pack *types.BotPack) error {
 		var inviteClicks int
 		var servers int
 		var tags []string
-		err := state.Pool.QueryRow(ctx, "SELECT short, type, vanity, banner, nsfw, premium, shards, votes, invite_clicks, servers, tags FROM bots WHERE bot_id = $1", botId).Scan(&short, &bot_type, &vanity, &banner, &nsfw, &premium, &shards, &votes, &inviteClicks, &servers, &tags)
+		var vanityRef pgtype.UUID
+		err := state.Pool.QueryRow(ctx, "SELECT short, type, banner, nsfw, premium, shards, votes, invite_clicks, servers, tags, vanity_ref FROM bots WHERE bot_id = $1", botId).Scan(&short, &bot_type, &banner, &nsfw, &premium, &shards, &votes, &inviteClicks, &servers, &tags, &vanityRef)
 
 		if err == pgx.ErrNoRows {
 			continue
 		}
 
 		if err != nil {
+			return err
+		}
+
+		var code string
+
+		err = state.Pool.QueryRow(ctx, "SELECT code FROM vanity WHERE itag = $1", vanityRef).Scan(&code)
+
+		if err != nil {
+			state.Logger.Error(err)
 			return err
 		}
 
@@ -129,7 +138,6 @@ func ResolveBotPack(ctx context.Context, pack *types.BotPack) error {
 			Short:        short,
 			User:         botUser,
 			Type:         bot_type,
-			Vanity:       vanity,
 			Banner:       banner,
 			NSFW:         nsfw,
 			Premium:      premium,
@@ -138,6 +146,7 @@ func ResolveBotPack(ctx context.Context, pack *types.BotPack) error {
 			InviteClicks: inviteClicks,
 			Servers:      servers,
 			Tags:         tags,
+			Vanity:       code,
 		})
 	}
 
