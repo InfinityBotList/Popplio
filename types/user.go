@@ -22,8 +22,8 @@ type User struct {
 	StaffOnboardLastStartTime        pgtype.Timestamptz      `db:"staff_onboard_last_start_time" json:"staff_onboard_last_start_time"`
 	StaffOnboardGuild                pgtype.Text             `db:"staff_onboard_guild" json:"staff_onboard_guild"`
 	StaffRPCLastVerify               pgtype.Timestamptz      `db:"staff_rpc_last_verify" json:"staff_rpc_last_verify"`
-	StaffOnboardSessionCode          pgtype.Text             `pdb:"staff_onboard_session_code" json:"-"`
-	StaffOnboardCurrentOnboardRespId pgtype.Text             `pdb:"staff_onboard_current_onboard_resp_id" json:"-"`
+	StaffOnboardSessionCode          pgtype.Text             `db:"staff_onboard_session_code" json:"-"`
+	StaffOnboardCurrentOnboardRespId pgtype.Text             `db:"staff_onboard_current_onboard_resp_id" json:"-"`
 	Staff                            bool                    `db:"staff" json:"staff"`
 	Admin                            bool                    `db:"admin" json:"admin"`
 	HAdmin                           bool                    `db:"hadmin" json:"hadmin"`
@@ -38,9 +38,9 @@ type User struct {
 	About                            pgtype.Text             `db:"about" json:"about"`
 	VoteBanned                       bool                    `db:"vote_banned" json:"vote_banned"`
 	Banned                           bool                    `db:"banned" json:"banned"`
-	UserBots                         []IndexBot              `json:"user_bots" ci:"internal"`  // Must be handled internally
-	UserTeams                        []Team                  `json:"user_teams" ci:"internal"` // Must be handled internally
-	UserPacks                        []IndexBotPack          `json:"user_packs" ci:"internal"` // Must be handled internally
+	UserBots                         []IndexBot              `db:"-" json:"user_bots" ci:"internal"`  // Must be handled internally
+	UserTeams                        []Team                  `db:"-" json:"user_teams" ci:"internal"` // Must be handled internally
+	UserPacks                        []IndexBotPack          `db:"-" json:"user_packs" ci:"internal"` // Must be handled internally
 }
 
 type UserPerm struct {
