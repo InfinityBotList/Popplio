@@ -9,11 +9,11 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/georgysavva/scany/v2/pgxscan"
 	"github.com/go-chi/chi/v5"
 	docs "github.com/infinitybotlist/eureka/doclib"
 	"github.com/infinitybotlist/eureka/dovewing"
 	"github.com/infinitybotlist/eureka/uapi"
+	"github.com/jackc/pgx/v5"
 )
 
 const perPage = 10
@@ -100,17 +100,11 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
-	var webhooks []types.WebhookLogEntry
-
-	err = pgxscan.ScanAll(&webhooks, rows)
+	webhooks, err := pgx.CollectRows(rows, pgx.RowToStructByName[types.WebhookLogEntry])
 
 	if err != nil {
 		state.Logger.Error(err)
 		return uapi.DefaultResponse(http.StatusInternalServerError)
-	}
-
-	if len(webhooks) == 0 {
-		webhooks = []types.WebhookLogEntry{}
 	}
 
 	for i, webhook := range webhooks {

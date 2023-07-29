@@ -13,8 +13,9 @@ import (
 	docs "github.com/infinitybotlist/eureka/doclib"
 	"github.com/infinitybotlist/eureka/dovewing"
 	"github.com/infinitybotlist/eureka/uapi"
+	"github.com/jackc/pgx/v5"
+	"go.uber.org/zap"
 
-	"github.com/georgysavva/scany/v2/pgxscan"
 	"github.com/go-playground/validator/v10"
 )
 
@@ -90,8 +91,6 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		}
 	}
 
-	var indexBots = []types.IndexBot{}
-
 	sqlString := &strings.Builder{}
 
 	err = botSqlTemplate.Execute(sqlString, searchSqlTemplateCtx{
@@ -103,17 +102,14 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		},
 	})
 
-	state.Logger.Error(sqlString.String())
+	state.Logger.Error("SQL Res", zap.String("sql", sqlString.String()))
 
 	if err != nil {
 		state.Logger.Error(err)
 		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
-	args := []any{}
-
-	args = append(
-		args,
+	args := []any{
 		payload.Servers.From,   // 1
 		payload.Servers.To,     // 2
 		payload.Votes.From,     // 3
@@ -121,7 +117,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		payload.Shards.From,    // 5
 		payload.Shards.To,      // 6
 		payload.TagFilter.Tags, // 7
-	)
+	}
 
 	if payload.Query != "" {
 		args = append(args, "%"+strings.ToLower(payload.Query)+"%", strings.ToLower(payload.Query)) // 8-9
@@ -139,7 +135,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
-	err = pgxscan.ScanAll(&indexBots, rows)
+	indexBots, err := pgx.CollectRows(rows, pgx.RowToStructByName[types.IndexBot])
 
 	if err != nil {
 		state.Logger.Error(err)

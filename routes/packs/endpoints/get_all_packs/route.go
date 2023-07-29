@@ -12,8 +12,7 @@ import (
 
 	docs "github.com/infinitybotlist/eureka/doclib"
 	"github.com/infinitybotlist/eureka/uapi"
-
-	"github.com/georgysavva/scany/v2/pgxscan"
+	"github.com/jackc/pgx/v5"
 )
 
 const perPage = 12
@@ -75,9 +74,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
-	packs := []types.IndexBotPack{}
-
-	err = pgxscan.ScanAll(&packs, rows)
+	packs, err := pgx.CollectRows(rows, pgx.RowToStructByName[types.IndexBotPack])
 
 	if err != nil {
 		state.Logger.Error(err)

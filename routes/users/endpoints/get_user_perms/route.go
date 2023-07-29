@@ -1,6 +1,7 @@
 package get_user_perms
 
 import (
+	"errors"
 	"net/http"
 	"strings"
 
@@ -11,8 +12,8 @@ import (
 	docs "github.com/infinitybotlist/eureka/doclib"
 	"github.com/infinitybotlist/eureka/dovewing"
 	"github.com/infinitybotlist/eureka/uapi"
+	"github.com/jackc/pgx/v5"
 
-	"github.com/georgysavva/scany/v2/pgxscan"
 	"github.com/go-chi/chi/v5"
 )
 
@@ -48,13 +49,15 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		return uapi.DefaultResponse(http.StatusNotFound)
 	}
 
-	var up types.UserPerm
+	up, err := pgx.CollectOneRow(row, pgx.RowToStructByName[types.UserPerm])
 
-	err = pgxscan.ScanOne(&up, row)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return uapi.DefaultResponse(http.StatusNotFound)
+	}
 
 	if err != nil {
 		state.Logger.Error(err)
-		return uapi.DefaultResponse(http.StatusNotFound)
+		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
 	user, err := dovewing.GetUser(d.Context, id, state.DovewingPlatformDiscord)

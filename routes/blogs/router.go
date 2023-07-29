@@ -19,7 +19,7 @@ func (b Router) Tag() (string, string) {
 
 func (b Router) Routes(r *chi.Mux) {
 	uapi.Route{
-		Pattern: "/blog",
+		Pattern: "/blogs/@all",
 		OpId:    "get_blog_list",
 		Method:  uapi.GET,
 		Docs:    get_blog_list.Docs,
@@ -27,7 +27,7 @@ func (b Router) Routes(r *chi.Mux) {
 	}.Route(r)
 
 	uapi.Route{
-		Pattern: "/blog/{slug}",
+		Pattern: "/blogs/{slug}",
 		OpId:    "get_blog_post",
 		Method:  uapi.GET,
 		Docs:    get_blog_post.Docs,
@@ -35,7 +35,7 @@ func (b Router) Routes(r *chi.Mux) {
 	}.Route(r)
 
 	uapi.Route{
-		Pattern: "/blog/{slug}/seo",
+		Pattern: "/blogs/{slug}/seo",
 		OpId:    "get_blog_seo",
 		Method:  uapi.GET,
 		Docs:    get_blog_seo.Docs,

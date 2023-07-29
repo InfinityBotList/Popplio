@@ -1,6 +1,7 @@
 package get_user
 
 import (
+	"errors"
 	"net/http"
 	"strings"
 	"time"
@@ -12,8 +13,8 @@ import (
 	docs "github.com/infinitybotlist/eureka/doclib"
 	"github.com/infinitybotlist/eureka/dovewing"
 	"github.com/infinitybotlist/eureka/uapi"
+	"github.com/jackc/pgx/v5"
 
-	"github.com/georgysavva/scany/v2/pgxscan"
 	"github.com/go-chi/chi/v5"
 )
 
@@ -27,6 +28,10 @@ var (
 	indexPackColsArr = utils.GetCols(types.IndexBotPack{})
 	indexPackCols    = strings.Join(indexPackColsArr, ",")
 )
+
+type userTeamId struct {
+	TeamID string `db:"team_id"`
+}
 
 func Docs() *docs.Doc {
 	return &docs.Doc{
@@ -63,10 +68,6 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		}
 	}
 
-	var user types.User
-
-	var err error
-
 	row, err := state.Pool.Query(d.Context, "SELECT "+userCols+" FROM users WHERE user_id = $1", name)
 
 	if err != nil {
@@ -74,16 +75,15 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		return uapi.DefaultResponse(http.StatusNotFound)
 	}
 
-	err = pgxscan.ScanOne(&user, row)
+	user, err := pgx.CollectOneRow(row, pgx.RowToStructByName[types.User])
 
-	if err != nil {
-		state.Logger.Error(err)
+	if errors.Is(err, pgx.ErrNoRows) {
 		return uapi.DefaultResponse(http.StatusNotFound)
 	}
 
-	if utils.IsNone(user.About.String) {
-		user.About.Valid = false
-		user.About.String = ""
+	if err != nil {
+		state.Logger.Error(err)
+		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
 	userObj, err := dovewing.GetUser(d.Context, user.ID, state.DovewingPlatformDiscord)
@@ -102,41 +102,37 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
-	var indexBots = []types.IndexBot{}
-
-	err = pgxscan.ScanAll(&indexBots, indexBotRows)
+	user.UserBots, err = pgx.CollectRows(indexBotRows, pgx.RowToStructByName[types.IndexBot])
 
 	if err != nil {
 		state.Logger.Error(err)
 		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
-	for i := range indexBots {
-		userObj, err := dovewing.GetUser(d.Context, indexBots[i].BotID, state.DovewingPlatformDiscord)
+	for i := range user.UserBots {
+		userObj, err := dovewing.GetUser(d.Context, user.UserBots[i].BotID, state.DovewingPlatformDiscord)
 
 		if err != nil {
 			state.Logger.Error(err)
 			return uapi.DefaultResponse(http.StatusInternalServerError)
 		}
 
-		indexBots[i].User = userObj
+		user.UserBots[i].User = userObj
 
 		var code string
 
-		err = state.Pool.QueryRow(d.Context, "SELECT code FROM vanity WHERE itag = $1", indexBots[i].VanityRef).Scan(&code)
+		err = state.Pool.QueryRow(d.Context, "SELECT code FROM vanity WHERE itag = $1", user.UserBots[i].VanityRef).Scan(&code)
 
 		if err != nil {
 			state.Logger.Error(err)
 			return uapi.DefaultResponse(http.StatusInternalServerError)
 		}
 
-		indexBots[i].Vanity = code
+		user.UserBots[i].Vanity = code
 	}
 
 	// Get user teams
 	// Teams the user is a member in
-	var userTeamIds []string
-
 	userTeamRows, err := state.Pool.Query(d.Context, "SELECT team_id FROM team_members WHERE user_id = $1", user.ID)
 
 	if err != nil {
@@ -144,25 +140,23 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
-	err = pgxscan.ScanAll(&userTeamIds, userTeamRows)
+	userTeamIds, err := pgx.CollectRows(userTeamRows, pgx.RowToStructByName[userTeamId])
 
 	if err != nil {
 		state.Logger.Error(err)
 		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
-	var userTeams = []types.Team{}
-
 	for _, teamId := range userTeamIds {
-		team, err := utils.ResolveTeam(d.Context, teamId)
+		team, err := utils.ResolveTeam(d.Context, teamId.TeamID)
 
 		if err != nil {
 			state.Logger.Error(err)
 			return uapi.DefaultResponse(http.StatusInternalServerError)
 		}
 
-		indexBots = append(indexBots, team.UserBots...)
-		userTeams = append(userTeams, *team)
+		user.UserBots = append(user.UserBots, team.UserBots...)
+		user.UserTeams = append(user.UserTeams, *team)
 	}
 
 	// Packs
@@ -173,18 +167,12 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
-	packs := []types.IndexBotPack{}
-
-	err = pgxscan.ScanAll(&packs, packsRows)
+	user.UserPacks, err = pgx.CollectRows(packsRows, pgx.RowToStructByName[types.IndexBotPack])
 
 	if err != nil {
 		state.Logger.Error(err)
 		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
-
-	user.UserPacks = packs
-	user.UserBots = indexBots
-	user.UserTeams = userTeams
 
 	return uapi.HttpResponse{
 		Json:      user,

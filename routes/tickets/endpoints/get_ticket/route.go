@@ -1,6 +1,7 @@
 package get_ticket
 
 import (
+	"errors"
 	"net/http"
 	"strings"
 	"time"
@@ -12,9 +13,9 @@ import (
 	docs "github.com/infinitybotlist/eureka/doclib"
 	"github.com/infinitybotlist/eureka/dovewing"
 	"github.com/infinitybotlist/eureka/uapi"
+	"github.com/jackc/pgx/v5"
 
 	"github.com/bwmarrin/discordgo"
-	"github.com/georgysavva/scany/v2/pgxscan"
 	"github.com/go-chi/chi/v5"
 )
 
@@ -76,7 +77,6 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		}
 	}
 
-	// Check cache, this is how we can avoid hefty ratelimits
 	cache := state.Redis.Get(d.Context, "tik-"+ticketId).Val()
 	if cache != "" {
 		return uapi.HttpResponse{
@@ -88,8 +88,6 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	}
 
 	// Get ticket
-	var ticket types.Ticket
-
 	row, err := state.Pool.Query(d.Context, "SELECT "+ticketCols+" FROM tickets WHERE id = $1", ticketId)
 
 	if err != nil {
@@ -97,11 +95,15 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
-	err = pgxscan.ScanOne(&ticket, row)
+	ticket, err := pgx.CollectOneRow(row, pgx.RowToStructByName[types.Ticket])
+
+	if errors.Is(err, pgx.ErrNoRows) {
+		return uapi.DefaultResponse(http.StatusNotFound)
+	}
 
 	if err != nil {
 		state.Logger.Error(err)
-		return uapi.DefaultResponse(http.StatusNotFound)
+		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
 	// Parse the ticket

@@ -10,8 +10,8 @@ import (
 
 	docs "github.com/infinitybotlist/eureka/doclib"
 	"github.com/infinitybotlist/eureka/uapi"
+	"github.com/jackc/pgx/v5"
 
-	"github.com/georgysavva/scany/v2/pgxscan"
 	"github.com/go-chi/chi/v5"
 	ua "github.com/mileusna/useragent"
 )
@@ -41,8 +41,6 @@ func Docs() *docs.Doc {
 func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	var id = chi.URLParam(r, "id")
 
-	var notifications []types.NotifGet
-
 	rows, err := state.Pool.Query(d.Context, "SELECT "+notifGetColsStr+" FROM poppypaw WHERE user_id = $1", id)
 
 	if err != nil {
@@ -50,7 +48,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
-	err = pgxscan.ScanAll(&notifications, rows)
+	notifications, err := pgx.CollectRows(rows, pgx.RowToStructByName[types.NotifGet])
 
 	if err != nil {
 		state.Logger.Error(err)

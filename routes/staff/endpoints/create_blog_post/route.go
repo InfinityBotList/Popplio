@@ -60,7 +60,6 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	}
 
 	// Validate the payload
-
 	err = state.Validator.Struct(payload)
 
 	if err != nil {

@@ -10,8 +10,7 @@ import (
 	docs "github.com/infinitybotlist/eureka/doclib"
 	"github.com/infinitybotlist/eureka/dovewing"
 	"github.com/infinitybotlist/eureka/uapi"
-
-	"github.com/georgysavva/scany/v2/pgxscan"
+	"github.com/jackc/pgx/v5"
 )
 
 var (
@@ -36,9 +35,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
-	var blogPosts []types.BlogListPost
-
-	err = pgxscan.ScanAll(&blogPosts, rows)
+	blogPosts, err := pgx.CollectRows(rows, pgx.RowToStructByName[types.BlogListPost])
 
 	if err != nil {
 		state.Logger.Error(err)

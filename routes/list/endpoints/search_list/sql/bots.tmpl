@@ -24,9 +24,9 @@ AND (cardinality($7::text[]) = 0 OR tags {{.TagMode}} $7) -- Where TagMode is on
 {{if .Query}}
 AND (
     {{range $table := .PlatformTables }}
-        {{$table}}_users.username @@ $9 OR
+        {{$table}}_users.username ILIKE $8 OR
     {{end}}
-    OR short @@ $9 OR bot_id = $9 OR client_id = $9) 
+    short @@ $9 OR bot_id = $9 OR client_id = $9) 
 {{end}}
 
 ORDER BY votes DESC, type DESC LIMIT 12

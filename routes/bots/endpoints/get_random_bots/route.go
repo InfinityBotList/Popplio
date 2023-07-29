@@ -10,8 +10,7 @@ import (
 	docs "github.com/infinitybotlist/eureka/doclib"
 	"github.com/infinitybotlist/eureka/dovewing"
 	"github.com/infinitybotlist/eureka/uapi"
-
-	"github.com/georgysavva/scany/v2/pgxscan"
+	"github.com/jackc/pgx/v5"
 )
 
 var (
@@ -42,40 +41,37 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
-	var indexBots = []types.IndexBot{}
-
-	err = pgxscan.ScanAll(&indexBots, rows)
+	bots, err := pgx.CollectRows(rows, pgx.RowToStructByName[types.IndexBot])
 
 	if err != nil {
 		state.Logger.Error(err)
 		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
-	for i, bot := range indexBots {
+	for i, bot := range bots {
 		botUser, err := dovewing.GetUser(d.Context, bot.BotID, state.DovewingPlatformDiscord)
 
 		if err != nil {
 			return uapi.DefaultResponse(http.StatusInternalServerError)
 		}
 
-		indexBots[i].User = botUser
+		bots[i].User = botUser
 
 		var code string
 
-		err = state.Pool.QueryRow(d.Context, "SELECT code FROM vanity WHERE itag = $1", indexBots[i].VanityRef).Scan(&code)
+		err = state.Pool.QueryRow(d.Context, "SELECT code FROM vanity WHERE itag = $1", bots[i].VanityRef).Scan(&code)
 
 		if err != nil {
 			state.Logger.Error(err)
 			return uapi.DefaultResponse(http.StatusInternalServerError)
 		}
 
-		indexBots[i].Vanity = code
+		bots[i].Vanity = code
 	}
 
 	return uapi.HttpResponse{
 		Json: RandomBotResponse{
-			Bots:  indexBots,
-			Count: len(indexBots),
+			Bots: bots,
 		},
 	}
 

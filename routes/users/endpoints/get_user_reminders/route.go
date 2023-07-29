@@ -11,8 +11,8 @@ import (
 	docs "github.com/infinitybotlist/eureka/doclib"
 	"github.com/infinitybotlist/eureka/dovewing"
 	"github.com/infinitybotlist/eureka/uapi"
+	"github.com/jackc/pgx/v5"
 
-	"github.com/georgysavva/scany/v2/pgxscan"
 	"github.com/go-chi/chi/v5"
 )
 
@@ -49,17 +49,11 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
-	var reminders []types.Reminder
-
-	pgxscan.ScanAll(&reminders, rows)
+	reminders, err := pgx.CollectRows(rows, pgx.RowToStructByName[types.Reminder])
 
 	if err != nil {
 		state.Logger.Error(err)
 		return uapi.DefaultResponse(http.StatusInternalServerError)
-	}
-
-	if len(reminders) == 0 {
-		return uapi.DefaultResponse(http.StatusNotFound)
 	}
 
 	for i, reminder := range reminders {

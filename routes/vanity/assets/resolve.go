@@ -2,12 +2,13 @@ package assets
 
 import (
 	"context"
+	"errors"
 	"popplio/state"
 	"popplio/types"
 	"popplio/utils"
 	"strings"
 
-	"github.com/georgysavva/scany/v2/pgxscan"
+	"github.com/jackc/pgx/v5"
 )
 
 var (
@@ -16,29 +17,17 @@ var (
 )
 
 func resolveImpl(ctx context.Context, code string, src string) (*types.Vanity, error) {
-	var count int64
-
-	err := state.Pool.QueryRow(ctx, "SELECT COUNT(*) FROM vanity WHERE "+src+" = $1", code).Scan(&count)
-
-	if err != nil {
-		return nil, err
-	}
-
-	if count == 0 {
-		return nil, nil
-	}
-
 	row, err := state.Pool.Query(ctx, "SELECT "+vanityCols+" FROM vanity WHERE "+src+" = $1", code)
 
 	if err != nil {
 		return nil, err
 	}
 
-	defer row.Close()
+	v, err := pgx.CollectOneRow(row, pgx.RowToStructByName[types.Vanity])
 
-	var v types.Vanity
-
-	err = pgxscan.ScanOne(&v, row)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, nil
+	}
 
 	if err != nil {
 		return nil, err

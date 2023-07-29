@@ -70,9 +70,9 @@ type Bot struct {
 	Tags                []string                `db:"tags" json:"tags" description:"The bot's tags (e.g. music, moderation, etc.)"`
 	Flags               []BotFlags              `db:"flags" json:"flags" description:"The bot's flags"`
 	Prefix              string                  `db:"prefix" json:"prefix" description:"The bot's prefix"`
-	User                *dovetypes.PlatformUser `json:"user" description:"The bot's user information" ci:"internal"` // Must be parsed internally
+	User                *dovetypes.PlatformUser `db:"-" json:"user" description:"The bot's user information" ci:"internal"` // Must be parsed internally
 	Owner               pgtype.Text             `db:"owner" json:"-"`
-	MainOwner           *dovetypes.PlatformUser `json:"owner" description:"The bot owner's user information. If in a team, this will be null and team_owner will instead be set" ci:"internal"` // Must be parsed internally
+	MainOwner           *dovetypes.PlatformUser `db:"-" json:"owner" description:"The bot owner's user information. If in a team, this will be null and team_owner will instead be set" ci:"internal"` // Must be parsed internally
 	Short               string                  `db:"short" json:"short" description:"The bot's short description"`
 	Long                string                  `db:"long" json:"long" description:"The bot's long description in raw format (HTML/markdown etc. based on the bots settings)"`
 	Library             string                  `db:"library" json:"library" description:"The bot's library"`
@@ -85,7 +85,7 @@ type Bot struct {
 	Users               int                     `db:"users" json:"users" description:"The bot's user count"`
 	Votes               int                     `db:"votes" json:"votes" description:"The bot's vote count"`
 	Views               int                     `db:"clicks" json:"clicks" description:"The bot's total click count"`
-	UniqueClicks        int64                   `json:"unique_clicks" description:"The bot's unique click count based on SHA256 hashed IPs" ci:"internal"` // Must be parsed internally
+	UniqueClicks        int64                   `db:"-" json:"unique_clicks" description:"The bot's unique click count based on SHA256 hashed IPs" ci:"internal"` // Must be parsed internally
 	InviteClicks        int                     `db:"invite_clicks" json:"invite_clicks" description:"The bot's invite click count (via users inviting the bot from IBL)"`
 	Banner              pgtype.Text             `db:"banner" json:"banner" description:"The bot's banner URL if it has one, otherwise null"`
 	Invite              string                  `db:"invite" json:"invite" description:"The bot's invite URL. Must be present"`
@@ -105,7 +105,7 @@ type Bot struct {
 	LastClaimed         pgtype.Timestamptz      `db:"last_claimed" json:"last_claimed" description:"The bot's last claimed date"`
 	LegacyWebhooks      bool                    `db:"-" json:"legacy_webhooks" description:"Whether the bot is using legacy v1 webhooks or not" ci:"internal"` // Must be parsed internally
 	TeamOwnerID         pgtype.UUID             `db:"team_owner" json:"-"`
-	TeamOwner           *EntityTeamOwner        `json:"team_owner" description:"If the bot is in a team, who owns the bot. If not in a team, this will be null and owner will instead be set" ci:"internal"` // Must be parsed internally
+	TeamOwner           *EntityTeamOwner        `db:"-" json:"team_owner" description:"If the bot is in a team, who owns the bot. If not in a team, this will be null and owner will instead be set" ci:"internal"` // Must be parsed internally
 	CaptchaOptOut       bool                    `db:"captcha_opt_out" json:"captcha_opt_out" description:"Whether the bot should have captchas shown if the user has captcha_sponsor_enabled"`
 }
 

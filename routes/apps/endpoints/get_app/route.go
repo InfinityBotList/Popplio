@@ -1,6 +1,7 @@
 package get_app
 
 import (
+	"errors"
 	"net/http"
 	"popplio/state"
 	"popplio/types"
@@ -9,8 +10,8 @@ import (
 
 	docs "github.com/infinitybotlist/eureka/doclib"
 	"github.com/infinitybotlist/eureka/uapi"
+	"github.com/jackc/pgx/v5"
 
-	"github.com/georgysavva/scany/v2/pgxscan"
 	"github.com/go-chi/chi/v5"
 )
 
@@ -43,21 +44,6 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		return uapi.DefaultResponse(http.StatusBadRequest)
 	}
 
-	// First check count so we can avoid expensive DB calls
-	var count int64
-
-	err := state.Pool.QueryRow(d.Context, "SELECT COUNT(*) FROM apps WHERE app_id = $1", appId).Scan(&count)
-
-	if err != nil {
-		return uapi.DefaultResponse(http.StatusInternalServerError)
-	}
-
-	if count == 0 {
-		return uapi.DefaultResponse(http.StatusNotFound)
-	}
-
-	var app types.AppResponse
-
 	row, err := state.Pool.Query(d.Context, "SELECT "+appCols+" FROM apps WHERE app_id = $1", appId)
 
 	if err != nil {
@@ -65,7 +51,11 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
-	err = pgxscan.ScanOne(&app, row)
+	app, err := pgx.CollectOneRow(row, pgx.RowToStructByName[types.AppResponse])
+
+	if errors.Is(err, pgx.ErrNoRows) {
+		return uapi.DefaultResponse(http.StatusNotFound)
+	}
 
 	if err != nil {
 		state.Logger.Error(err)

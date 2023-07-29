@@ -10,7 +10,6 @@ import (
 	docs "github.com/infinitybotlist/eureka/doclib"
 	"github.com/infinitybotlist/eureka/uapi"
 
-	"github.com/georgysavva/scany/v2/pgxscan"
 	"github.com/jackc/pgx/v5"
 )
 
@@ -50,55 +49,30 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		full = "false"
 	}
 
-	var app []types.AppResponse
-
-	// Check if the user is an admin
-	var admin bool
-
-	err := state.Pool.QueryRow(d.Context, "SELECT admin FROM users WHERE user_id = $1", d.Auth.ID).Scan(&admin)
-
-	if err != nil {
-		state.Logger.Error(err)
-		return uapi.DefaultResponse(http.StatusInternalServerError)
-	}
-
 	// Full needs admin permissions
-	if full == "true" && (!admin || d.Auth.Banned) {
-		return uapi.HttpResponse{
-			Status: http.StatusForbidden,
-			Json: types.ApiError{
-				Message: "Only admins may use the 'full' query parameter.",
-			},
-		}
-	}
-
-	var count int64
-
 	if full == "true" {
-		err = state.Pool.QueryRow(d.Context, "SELECT COUNT(*) FROM apps").Scan(&count)
+		// Check if the user is an admin
+		var admin bool
+
+		err := state.Pool.QueryRow(d.Context, "SELECT admin FROM users WHERE user_id = $1", d.Auth.ID).Scan(&admin)
 
 		if err != nil {
 			state.Logger.Error(err)
 			return uapi.DefaultResponse(http.StatusInternalServerError)
 		}
-	} else {
-		err = state.Pool.QueryRow(d.Context, "SELECT COUNT(*) FROM apps WHERE user_id = $1", d.Auth.ID).Scan(&count)
 
-		if err != nil {
-			state.Logger.Error(err)
-			return uapi.DefaultResponse(http.StatusInternalServerError)
-		}
-	}
-
-	if count == 0 {
-		return uapi.HttpResponse{
-			Json: types.AppListResponse{
-				Apps: []types.AppResponse{},
-			},
+		if !admin {
+			return uapi.HttpResponse{
+				Status: http.StatusForbidden,
+				Json: types.ApiError{
+					Message: "Only admins may use the 'full' query parameter.",
+				},
+			}
 		}
 	}
 
 	var row pgx.Rows
+	var err error
 	if full == "true" {
 		row, err = state.Pool.Query(d.Context, "SELECT "+appCols+" FROM apps")
 	} else {
@@ -110,14 +84,10 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
-	err = pgxscan.ScanAll(&app, row)
+	app, err := pgx.CollectRows(row, pgx.RowToStructByName[types.AppResponse])
 
 	if err != nil {
 		state.Logger.Error(err)
-		return uapi.DefaultResponse(http.StatusNotFound)
-	}
-
-	if len(app) == 0 {
 		return uapi.DefaultResponse(http.StatusNotFound)
 	}
 

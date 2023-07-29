@@ -13,9 +13,9 @@ import (
 	"popplio/teams"
 	"popplio/types"
 
-	"github.com/georgysavva/scany/v2/pgxscan"
 	"github.com/google/uuid"
 	"github.com/infinitybotlist/eureka/dovewing"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
@@ -23,6 +23,10 @@ var (
 	indexBotColsArr = GetCols(types.IndexBot{})
 	indexBotCols    = strings.Join(indexBotColsArr, ",")
 )
+
+type userTeamBotId struct {
+	BotID string `db:"bot_id"`
+}
 
 // Returns if a string is empty/null or not. Used throughout the codebase
 func IsNone(s string) bool {
@@ -78,7 +82,6 @@ func ResolveTeam(ctx context.Context, teamId string) (*types.Team, error) {
 	}
 
 	// Bots
-	var teamBotIds []string
 	var bots = []types.IndexBot{}
 
 	teamBotRows, err := state.Pool.Query(ctx, "SELECT bot_id FROM bots WHERE team_owner = $1", teamId)
@@ -87,36 +90,32 @@ func ResolveTeam(ctx context.Context, teamId string) (*types.Team, error) {
 		return nil, err
 	}
 
-	err = pgxscan.ScanAll(&teamBotIds, teamBotRows)
-
-	if err != nil {
-		return nil, err
-	}
+	teamBotIds, err := pgx.CollectRows(teamBotRows, pgx.RowToStructByName[userTeamBotId])
 
 	// Loop over all bot IDs and create user bots from them
 	for _, botId := range teamBotIds {
-		indexBotsRows, err := state.Pool.Query(ctx, "SELECT "+indexBotCols+" FROM bots WHERE bot_id = $1", botId)
+		indexBotsRows, err := state.Pool.Query(ctx, "SELECT "+indexBotCols+" FROM bots WHERE bot_id = $1", botId.BotID)
 
 		if err != nil {
 			return nil, err
 		}
 
-		var indexBot = types.IndexBot{}
+		indexBot, err := pgx.CollectOneRow(indexBotsRows, pgx.RowToStructByName[types.IndexBot])
 
-		err = pgxscan.ScanOne(&indexBot, indexBotsRows)
+		if errors.Is(err, pgx.ErrNoRows) {
+			continue
+		}
 
 		if err != nil {
 			return nil, err
 		}
 
-		userObj, err := dovewing.GetUser(ctx, indexBot.BotID, state.DovewingPlatformDiscord)
+		indexBot.User, err = dovewing.GetUser(ctx, indexBot.BotID, state.DovewingPlatformDiscord)
 
 		if err != nil {
 			state.Logger.Error(err)
 			return nil, err
 		}
-
-		indexBot.User = userObj
 
 		var code string
 

@@ -12,8 +12,8 @@ import (
 	docs "github.com/infinitybotlist/eureka/doclib"
 	"github.com/infinitybotlist/eureka/dovewing"
 	"github.com/infinitybotlist/eureka/uapi"
+	"github.com/jackc/pgx/v5"
 
-	"github.com/georgysavva/scany/v2/pgxscan"
 	"github.com/go-chi/chi/v5"
 )
 
@@ -75,9 +75,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		return uapi.DefaultResponse(http.StatusNotFound)
 	}
 
-	var reviews []types.Review = []types.Review{}
-
-	err = pgxscan.ScanAll(&reviews, rows)
+	reviews, err := pgx.CollectRows(rows, pgx.RowToStructByName[types.Review])
 
 	if err != nil {
 		state.Logger.Error(err)

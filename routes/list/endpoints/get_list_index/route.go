@@ -1,6 +1,7 @@
 package get_list_index
 
 import (
+	"context"
 	"net/http"
 	"strings"
 	"time"
@@ -12,8 +13,7 @@ import (
 	docs "github.com/infinitybotlist/eureka/doclib"
 	"github.com/infinitybotlist/eureka/dovewing"
 	"github.com/infinitybotlist/eureka/uapi"
-
-	"github.com/georgysavva/scany/v2/pgxscan"
+	"github.com/jackc/pgx/v5"
 )
 
 var (
@@ -46,164 +46,64 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 
 	listIndex := types.ListIndexBot{}
 
-	certRow, err := state.Pool.Query(d.Context, "SELECT "+indexBotCols+" FROM bots WHERE type = 'certified' ORDER BY votes DESC LIMIT 9")
+	// Certified Bots
+	certRows, err := state.Pool.Query(d.Context, "SELECT "+indexBotCols+" FROM bots WHERE type = 'certified' ORDER BY votes DESC LIMIT 9")
 	if err != nil {
 		state.Logger.Error(err)
 		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
-	listIndex.Certified = []types.IndexBot{}
-	err = pgxscan.ScanAll(&listIndex.Certified, certRow)
+	listIndex.Certified, err = processRow(d.Context, certRows)
 	if err != nil {
 		state.Logger.Error(err)
 		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
-	for i, bot := range listIndex.Certified {
-		botUser, err := dovewing.GetUser(d.Context, bot.BotID, state.DovewingPlatformDiscord)
 
-		if err != nil {
-			return uapi.DefaultResponse(http.StatusInternalServerError)
-		}
-
-		listIndex.Certified[i].User = botUser
-
-		var code string
-
-		err = state.Pool.QueryRow(d.Context, "SELECT code FROM vanity WHERE itag = $1", listIndex.Certified[i].VanityRef).Scan(&code)
-
-		if err != nil {
-			state.Logger.Error(err)
-			return uapi.DefaultResponse(http.StatusInternalServerError)
-		}
-
-		listIndex.Certified[i].Vanity = code
-	}
-
-	premRow, err := state.Pool.Query(d.Context, "SELECT "+indexBotCols+" FROM bots WHERE premium = true ORDER BY votes DESC LIMIT 9")
+	// Premium Bots
+	premRows, err := state.Pool.Query(d.Context, "SELECT "+indexBotCols+" FROM bots WHERE premium = true ORDER BY votes DESC LIMIT 9")
 	if err != nil {
 		state.Logger.Error(err)
 		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
-	listIndex.Premium = []types.IndexBot{}
-	err = pgxscan.ScanAll(&listIndex.Premium, premRow)
+	listIndex.Premium, err = processRow(d.Context, premRows)
 	if err != nil {
 		state.Logger.Error(err)
 		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
-	for i, bot := range listIndex.Premium {
-		botUser, err := dovewing.GetUser(d.Context, bot.BotID, state.DovewingPlatformDiscord)
 
-		if err != nil {
-			return uapi.DefaultResponse(http.StatusInternalServerError)
-		}
-
-		listIndex.Premium[i].User = botUser
-
-		var code string
-
-		err = state.Pool.QueryRow(d.Context, "SELECT code FROM vanity WHERE itag = $1", listIndex.Premium[i].VanityRef).Scan(&code)
-
-		if err != nil {
-			state.Logger.Error(err)
-			return uapi.DefaultResponse(http.StatusInternalServerError)
-		}
-
-		listIndex.Premium[i].Vanity = code
-	}
-
-	mostViewedRow, err := state.Pool.Query(d.Context, "SELECT "+indexBotCols+" FROM bots WHERE type = 'approved' OR type = 'certified' ORDER BY clicks DESC LIMIT 9")
+	// Most Viewed Bots
+	mostViewedRows, err := state.Pool.Query(d.Context, "SELECT "+indexBotCols+" FROM bots WHERE type = 'approved' OR type = 'certified' ORDER BY clicks DESC LIMIT 9")
 	if err != nil {
 		state.Logger.Error(err)
 		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
-	listIndex.MostViewed = []types.IndexBot{}
-	err = pgxscan.ScanAll(&listIndex.MostViewed, mostViewedRow)
+	listIndex.MostViewed, err = processRow(d.Context, mostViewedRows)
 	if err != nil {
 		state.Logger.Error(err)
 		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
-	for i, bot := range listIndex.MostViewed {
-		botUser, err := dovewing.GetUser(d.Context, bot.BotID, state.DovewingPlatformDiscord)
 
-		if err != nil {
-			return uapi.DefaultResponse(http.StatusInternalServerError)
-		}
-
-		listIndex.MostViewed[i].User = botUser
-
-		var code string
-
-		err = state.Pool.QueryRow(d.Context, "SELECT code FROM vanity WHERE itag = $1", listIndex.MostViewed[i].VanityRef).Scan(&code)
-
-		if err != nil {
-			state.Logger.Error(err)
-			return uapi.DefaultResponse(http.StatusInternalServerError)
-		}
-
-		listIndex.MostViewed[i].Vanity = code
-	}
-
-	recentlyAddedRow, err := state.Pool.Query(d.Context, "SELECT "+indexBotCols+" FROM bots WHERE type = 'approved' ORDER BY created_at DESC LIMIT 9")
+	// Recently Added Bots
+	recentlyAddedRows, err := state.Pool.Query(d.Context, "SELECT "+indexBotCols+" FROM bots WHERE type = 'approved' ORDER BY created_at DESC LIMIT 9")
 	if err != nil {
 		state.Logger.Error(err)
 		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
-	listIndex.RecentlyAdded = []types.IndexBot{}
-	err = pgxscan.ScanAll(&listIndex.RecentlyAdded, recentlyAddedRow)
+	listIndex.RecentlyAdded, err = processRow(d.Context, recentlyAddedRows)
 	if err != nil {
 		state.Logger.Error(err)
 		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
-	for i, bot := range listIndex.RecentlyAdded {
-		botUser, err := dovewing.GetUser(d.Context, bot.BotID, state.DovewingPlatformDiscord)
 
-		if err != nil {
-			return uapi.DefaultResponse(http.StatusInternalServerError)
-		}
-
-		listIndex.RecentlyAdded[i].User = botUser
-
-		var code string
-
-		err = state.Pool.QueryRow(d.Context, "SELECT code FROM vanity WHERE itag = $1", listIndex.RecentlyAdded[i].VanityRef).Scan(&code)
-
-		if err != nil {
-			state.Logger.Error(err)
-			return uapi.DefaultResponse(http.StatusInternalServerError)
-		}
-
-		listIndex.RecentlyAdded[i].Vanity = code
-	}
-
-	topVotedRow, err := state.Pool.Query(d.Context, "SELECT "+indexBotCols+" FROM bots WHERE type = 'approved' OR type = 'certified' ORDER BY votes DESC LIMIT 9")
+	// Top Voted Bots
+	topVotedRows, err := state.Pool.Query(d.Context, "SELECT "+indexBotCols+" FROM bots WHERE type = 'approved' OR type = 'certified' ORDER BY votes DESC LIMIT 9")
 	if err != nil {
 		state.Logger.Error(err)
 		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
-	listIndex.TopVoted = []types.IndexBot{}
-	err = pgxscan.ScanAll(&listIndex.TopVoted, topVotedRow)
+	listIndex.TopVoted, err = processRow(d.Context, topVotedRows)
 	if err != nil {
 		state.Logger.Error(err)
 		return uapi.DefaultResponse(http.StatusInternalServerError)
-	}
-	for i, bot := range listIndex.TopVoted {
-		botUser, err := dovewing.GetUser(d.Context, bot.BotID, state.DovewingPlatformDiscord)
-
-		if err != nil {
-			return uapi.DefaultResponse(http.StatusInternalServerError)
-		}
-
-		listIndex.TopVoted[i].User = botUser
-
-		var code string
-
-		err = state.Pool.QueryRow(d.Context, "SELECT code FROM vanity WHERE itag = $1", listIndex.TopVoted[i].VanityRef).Scan(&code)
-
-		if err != nil {
-			state.Logger.Error(err)
-			return uapi.DefaultResponse(http.StatusInternalServerError)
-		}
-
-		listIndex.TopVoted[i].Vanity = code
 	}
 
 	// Packs
@@ -214,20 +114,47 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
-	packs := []types.IndexBotPack{}
-
-	err = pgxscan.ScanAll(&packs, rows)
+	listIndex.Packs, err = pgx.CollectRows(rows, pgx.RowToStructByName[types.IndexBotPack])
 
 	if err != nil {
 		state.Logger.Error(err)
 		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
-	listIndex.Packs = packs
-
 	return uapi.HttpResponse{
 		Json:      listIndex,
 		CacheKey:  "indexcache",
 		CacheTime: 3 * time.Minute,
 	}
+}
+
+func processRow(ctx context.Context, rows pgx.Rows) ([]types.IndexBot, error) {
+	bots, err := pgx.CollectRows(rows, pgx.RowToStructByName[types.IndexBot])
+
+	if err != nil {
+		return nil, err
+	}
+
+	for i, bot := range bots {
+		botUser, err := dovewing.GetUser(ctx, bot.BotID, state.DovewingPlatformDiscord)
+
+		if err != nil {
+			return nil, err
+		}
+
+		bots[i].User = botUser
+
+		var code string
+
+		err = state.Pool.QueryRow(ctx, "SELECT code FROM vanity WHERE itag = $1", bots[i].VanityRef).Scan(&code)
+
+		if err != nil {
+			state.Logger.Error(err)
+			return nil, err
+		}
+
+		bots[i].Vanity = code
+	}
+
+	return bots, nil
 }

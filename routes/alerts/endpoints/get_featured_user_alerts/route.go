@@ -8,9 +8,9 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/georgysavva/scany/v2/pgxscan"
 	docs "github.com/infinitybotlist/eureka/doclib"
 	"github.com/infinitybotlist/eureka/uapi"
+	"github.com/jackc/pgx/v5"
 )
 
 var (
@@ -87,17 +87,11 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
-	var ackedAlerts []types.Alert
-
-	err = pgxscan.ScanAll(&ackedAlerts, ackedRows)
+	ackedAlerts, err := pgx.CollectRows(ackedRows, pgx.RowToStructByName[types.Alert])
 
 	if err != nil {
 		state.Logger.Error(err)
 		return uapi.DefaultResponse(http.StatusInternalServerError)
-	}
-
-	if len(ackedAlerts) == 0 {
-		ackedAlerts = []types.Alert{}
 	}
 
 	unackedRows, err := state.Pool.Query(d.Context, "SELECT "+alertColsStr+" FROM alerts WHERE user_id = $1 AND acked = false ORDER BY created_at DESC, priority ASC LIMIT $2", d.Auth.ID, unackedResCount)
@@ -107,9 +101,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
-	var unackedAlerts []types.Alert
-
-	err = pgxscan.ScanAll(&unackedAlerts, unackedRows)
+	unackedAlerts, err := pgx.CollectRows(unackedRows, pgx.RowToStructByName[types.Alert])
 
 	if err != nil {
 		state.Logger.Error(err)

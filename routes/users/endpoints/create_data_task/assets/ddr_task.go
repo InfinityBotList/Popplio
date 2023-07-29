@@ -4,7 +4,7 @@ import (
 	"popplio/state"
 	"time"
 
-	"github.com/georgysavva/scany/v2/pgxscan"
+	"github.com/jackc/pgx/v5"
 	jsoniter "github.com/json-iterator/go"
 )
 
@@ -72,8 +72,6 @@ func DataTask(taskId string, id string, ip string, del bool) {
 
 	addStatus(taskId, "Fetching basic user data")
 
-	var keys []TableStruct
-
 	data, err := state.Pool.Query(ctx, ddrStr)
 
 	if err != nil {
@@ -83,7 +81,9 @@ func DataTask(taskId string, id string, ip string, del bool) {
 		return
 	}
 
-	if err := pgxscan.ScanAll(&keys, data); err != nil {
+	keys, err := pgx.CollectRows(data, pgx.RowToStructByName[TableStruct])
+
+	if err != nil {
 		state.Logger.Error(err)
 
 		addStatus(taskId, "ERROR: db error [riptide]: "+err.Error())
@@ -109,7 +109,7 @@ func DataTask(taskId string, id string, ip string, del bool) {
 
 		sqlStmt := "SELECT * FROM " + key.TableName + " WHERE " + key.ColumnName + "= $1"
 
-		data, err := state.Pool.Query(ctx, sqlStmt, id)
+		stmtRes, err := state.Pool.Query(ctx, sqlStmt, id)
 
 		if err != nil {
 			state.Logger.Error(err)
@@ -117,12 +117,16 @@ func DataTask(taskId string, id string, ip string, del bool) {
 
 		var rows []map[string]any
 
-		if err := pgxscan.ScanAll(&rows, data); err != nil {
+		mappedRow, err := pgx.CollectRows(stmtRes, pgx.RowToMap)
+
+		if err != nil {
 			state.Logger.Error(err)
 
 			addStatus(taskId, "ERROR: db error [catnip]: "+err.Error())
 			return
 		}
+
+		rows = append(rows, mappedRow...)
 
 		if del {
 			if key.TableName == "team_members" {

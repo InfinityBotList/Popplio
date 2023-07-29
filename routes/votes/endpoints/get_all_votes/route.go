@@ -9,10 +9,10 @@ import (
 	"popplio/types"
 	"popplio/utils"
 
-	"github.com/georgysavva/scany/v2/pgxscan"
 	"github.com/go-chi/chi/v5"
 	docs "github.com/infinitybotlist/eureka/doclib"
 	"github.com/infinitybotlist/eureka/uapi"
+	"github.com/jackc/pgx/v5"
 )
 
 const perPage = 5
@@ -95,9 +95,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
-	var ev []types.EntityVote
-
-	err = pgxscan.ScanAll(&ev, rows)
+	ev, err := pgx.CollectRows(rows, pgx.RowToStructByName[types.EntityVote])
 
 	if err != nil {
 		state.Logger.Error(err)

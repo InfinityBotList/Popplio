@@ -1,7 +1,7 @@
 package get_pack
 
 import (
-	"context"
+	"errors"
 	"net/http"
 	"strings"
 
@@ -13,15 +13,16 @@ import (
 	"github.com/infinitybotlist/eureka/dovewing"
 	"github.com/infinitybotlist/eureka/uapi"
 
-	"github.com/georgysavva/scany/v2/pgxscan"
 	"github.com/go-chi/chi/v5"
 	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgtype"
 )
 
 var (
 	packColArr = utils.GetCols(types.BotPack{})
 	packCols   = strings.Join(packColArr, ",")
+
+	indexBotColArr = utils.GetCols(types.IndexBot{})
+	indexBotCols   = strings.Join(indexBotColArr, ",")
 )
 
 func Docs() *docs.Doc {
@@ -48,107 +49,74 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		return uapi.DefaultResponse(http.StatusBadRequest)
 	}
 
-	// First check count so we can avoid expensive DB calls
-	var count int64
-
-	err := state.Pool.QueryRow(d.Context, "SELECT COUNT(*) FROM packs WHERE url = $1", id).Scan(&count)
-
-	if err != nil {
-		return uapi.DefaultResponse(http.StatusInternalServerError)
-	}
-
-	if count == 0 {
-		return uapi.DefaultResponse(http.StatusNotFound)
-	}
-
-	var pack types.BotPack
-
 	row, err := state.Pool.Query(d.Context, "SELECT "+packCols+" FROM packs WHERE url = $1", id)
 
 	if err != nil {
+		state.Logger.Error(err)
+		return uapi.DefaultResponse(http.StatusInternalServerError)
+	}
+
+	pack, err := pgx.CollectOneRow(row, pgx.RowToStructByName[types.BotPack])
+
+	if err == pgx.ErrNoRows {
 		return uapi.DefaultResponse(http.StatusNotFound)
 	}
 
-	err = pgxscan.ScanOne(&pack, row)
-
 	if err != nil {
 		state.Logger.Error(err)
 		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
-	err = ResolveBotPack(d.Context, &pack)
+	ownerUser, err := dovewing.GetUser(d.Context, pack.Owner, state.DovewingPlatformDiscord)
 
 	if err != nil {
 		state.Logger.Error(err)
 		return uapi.DefaultResponse(http.StatusInternalServerError)
-	}
-
-	return uapi.HttpResponse{
-		Json: pack,
-	}
-}
-
-func ResolveBotPack(ctx context.Context, pack *types.BotPack) error {
-	ownerUser, err := dovewing.GetUser(ctx, pack.Owner, state.DovewingPlatformDiscord)
-
-	if err != nil {
-		return err
 	}
 
 	pack.ResolvedOwner = ownerUser
 
 	for _, botId := range pack.Bots {
-		var short string
-		var bot_type pgtype.Text
-		var banner pgtype.Text
-		var nsfw bool
-		var premium bool
-		var shards int
-		var votes int
-		var inviteClicks int
-		var servers int
-		var tags []string
-		var vanityRef pgtype.UUID
-		err := state.Pool.QueryRow(ctx, "SELECT short, type, banner, nsfw, premium, shards, votes, invite_clicks, servers, tags, vanity_ref FROM bots WHERE bot_id = $1", botId).Scan(&short, &bot_type, &banner, &nsfw, &premium, &shards, &votes, &inviteClicks, &servers, &tags, &vanityRef)
+		row, err := state.Pool.Query(d.Context, "SELECT "+indexBotCols+" FROM bots WHERE bot_id = $1", botId)
 
-		if err == pgx.ErrNoRows {
+		if err != nil {
+			state.Logger.Error(err)
+			return uapi.DefaultResponse(http.StatusInternalServerError)
+		}
+
+		bot, err := pgx.CollectOneRow(row, pgx.RowToStructByName[types.IndexBot])
+
+		if errors.Is(err, pgx.ErrNoRows) {
 			continue
 		}
 
 		if err != nil {
-			return err
+			state.Logger.Error(err)
+			return uapi.DefaultResponse(http.StatusInternalServerError)
 		}
 
 		var code string
 
-		err = state.Pool.QueryRow(ctx, "SELECT code FROM vanity WHERE itag = $1", vanityRef).Scan(&code)
+		err = state.Pool.QueryRow(d.Context, "SELECT code FROM vanity WHERE itag = $1", bot.VanityRef).Scan(&code)
 
 		if err != nil {
 			state.Logger.Error(err)
-			return err
+			return uapi.DefaultResponse(http.StatusInternalServerError)
 		}
 
-		botUser, err := dovewing.GetUser(ctx, botId, state.DovewingPlatformDiscord)
+		botUser, err := dovewing.GetUser(d.Context, botId, state.DovewingPlatformDiscord)
 
 		if err != nil {
-			return err
+			state.Logger.Error(err)
+			return uapi.DefaultResponse(http.StatusInternalServerError)
 		}
 
-		pack.ResolvedBots = append(pack.ResolvedBots, types.ResolvedPackBot{
-			Short:        short,
-			User:         botUser,
-			Type:         bot_type,
-			Banner:       banner,
-			NSFW:         nsfw,
-			Premium:      premium,
-			Shards:       shards,
-			Votes:        votes,
-			InviteClicks: inviteClicks,
-			Servers:      servers,
-			Tags:         tags,
-			Vanity:       code,
-		})
+		bot.User = botUser
+
+		pack.ResolvedBots = append(pack.ResolvedBots, bot)
 	}
 
-	return nil
+	return uapi.HttpResponse{
+		Json: pack,
+	}
 }

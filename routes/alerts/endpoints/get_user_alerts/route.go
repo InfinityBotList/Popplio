@@ -8,9 +8,9 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/georgysavva/scany/v2/pgxscan"
 	docs "github.com/infinitybotlist/eureka/doclib"
 	"github.com/infinitybotlist/eureka/uapi"
+	"github.com/jackc/pgx/v5"
 )
 
 var (
@@ -68,17 +68,11 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
-	var alerts []types.Alert
-
-	err = pgxscan.ScanAll(&alerts, rows)
+	alerts, err := pgx.CollectRows(rows, pgx.RowToStructByName[types.Alert])
 
 	if err != nil {
 		state.Logger.Error(err)
 		return uapi.DefaultResponse(http.StatusInternalServerError)
-	}
-
-	if len(alerts) == 0 {
-		alerts = []types.Alert{}
 	}
 
 	var count uint64

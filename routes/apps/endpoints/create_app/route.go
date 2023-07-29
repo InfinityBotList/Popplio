@@ -169,7 +169,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	}
 
 	if position.ExtraLogic != nil {
-		add, err := position.ExtraLogic(d, *position, answerMap)
+		err := position.ExtraLogic(d, *position, answerMap)
 
 		if err != nil {
 			state.Logger.Error(err)
@@ -179,10 +179,6 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 				},
 				Status: http.StatusBadRequest,
 			}
-		}
-
-		if !add {
-			return uapi.DefaultResponse(http.StatusNoContent)
 		}
 	}
 

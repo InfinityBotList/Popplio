@@ -7,7 +7,7 @@ import (
 	"popplio/utils"
 	"strings"
 
-	"github.com/georgysavva/scany/v2/pgxscan"
+	"github.com/jackc/pgx/v5"
 )
 
 var (
@@ -23,9 +23,7 @@ func GCTrigger(targetId, targetType string) {
 		state.Logger.Error(err)
 	}
 
-	var reviews []types.Review = []types.Review{}
-
-	err = pgxscan.ScanAll(&reviews, rows)
+	reviews, err := pgx.CollectRows(rows, pgx.RowToStructByName[types.Review])
 
 	if err != nil {
 		state.Logger.Error(err)

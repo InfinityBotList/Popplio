@@ -4,7 +4,6 @@ go 1.18
 
 require (
 	github.com/bwmarrin/discordgo v0.27.2-0.20230704233747-e39e715086d2
-	github.com/georgysavva/scany/v2 v2.0.0
 	github.com/getkin/kin-openapi v0.118.0 // indirect
 	github.com/go-chi/chi/v5 v5.0.10
 	github.com/google/uuid v1.3.0
@@ -43,7 +42,6 @@ require (
 	github.com/jackc/pgservicefile v0.0.0-20221227161230-091c0ba34f0a // indirect
 	github.com/jackc/puddle/v2 v2.2.1 // indirect
 	github.com/josharian/intern v1.0.0 // indirect
-	github.com/lib/pq v1.10.2 // indirect
 	github.com/mailru/easyjson v0.7.7 // indirect
 	go.uber.org/atomic v1.11.0 // indirect
 	go.uber.org/multierr v1.11.0 // indirect

@@ -1,6 +1,7 @@
 package manage_app
 
 import (
+	"errors"
 	"fmt"
 	"net/http"
 	"popplio/apps"
@@ -11,9 +12,9 @@ import (
 
 	docs "github.com/infinitybotlist/eureka/doclib"
 	"github.com/infinitybotlist/eureka/uapi"
+	"github.com/jackc/pgx/v5"
 
 	"github.com/bwmarrin/discordgo"
-	"github.com/georgysavva/scany/v2/pgxscan"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-playground/validator/v10"
 )
@@ -89,7 +90,6 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	}
 
 	// Validate the payload
-
 	err = state.Validator.Struct(payload)
 
 	if err != nil {
@@ -100,29 +100,18 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	// Fetch app info such as the position from database
 	appId := chi.URLParam(r, "app_id")
 
-	// First check count so we can avoid expensive DB calls
-	var count int64
-
-	err = state.Pool.QueryRow(d.Context, "SELECT COUNT(*) FROM apps WHERE app_id = $1", appId).Scan(&count)
-
-	if err != nil {
-		return uapi.DefaultResponse(http.StatusInternalServerError)
-	}
-
-	if count == 0 {
-		return uapi.DefaultResponse(http.StatusNotFound)
-	}
-
-	var app types.AppResponse
-
-	rows, err := state.Pool.Query(d.Context, "SELECT "+appCols+" FROM apps WHERE app_id = $1", appId)
+	row, err := state.Pool.Query(d.Context, "SELECT "+appCols+" FROM apps WHERE app_id = $1", appId)
 
 	if err != nil {
 		state.Logger.Error(err)
 		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
-	err = pgxscan.ScanOne(&app, rows)
+	app, err := pgx.CollectOneRow(row, pgx.RowToStructByName[types.AppResponse])
+
+	if errors.Is(err, pgx.ErrNoRows) {
+		return uapi.DefaultResponse(http.StatusNotFound)
+	}
 
 	if err != nil {
 		state.Logger.Error(err)
@@ -161,7 +150,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 
 	if payload.Approved {
 		if position.ReviewLogic != nil {
-			add, err := position.ReviewLogic(d, app, payload.Reason)
+			err := position.ReviewLogic(d, app, payload.Reason, true)
 
 			if err != nil {
 				state.Logger.Error(err)
@@ -171,10 +160,6 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 					},
 					Status: http.StatusBadRequest,
 				}
-			}
-
-			if !add {
-				return uapi.DefaultResponse(http.StatusNoContent)
 			}
 		}
 
@@ -221,6 +206,20 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 			},
 		}
 	} else {
+		if position.ReviewLogic != nil {
+			err := position.ReviewLogic(d, app, payload.Reason, false)
+
+			if err != nil {
+				state.Logger.Error(err)
+				return uapi.HttpResponse{
+					Json: types.ApiError{
+						Message: "Error: " + err.Error(),
+					},
+					Status: http.StatusBadRequest,
+				}
+			}
+		}
+
 		_, err = state.Pool.Exec(d.Context, "UPDATE apps SET state = 'denied', review_feedback = $2 WHERE app_id = $1", appId, payload.Reason)
 
 		if err != nil {

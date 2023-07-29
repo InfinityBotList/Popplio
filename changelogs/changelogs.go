@@ -5,6 +5,29 @@ import "popplio/types"
 var Changelog = types.Changelog{
 	Entries: []types.ChangelogEntry{
 		{
+			Version: "4.9.1",
+			Added:   []string{},
+			Updated: []string{
+				"Fixed blog posts not loading due to a regression in 4.9.0",
+				"Fixed bot packs using erroneously nested DIVs for loading bot cards",
+			},
+			Removed: []string{},
+		},
+		{
+			Version: "4.9.0",
+			Added:   []string{},
+			Updated: []string{
+				"Vanities has been rewritten from the ground up to be more generic and abstracted to all entities. This will allow easier addition of server listing coming in the near future",
+				"Team Settings layout has been updated to use a consistent layout and make best use of screen space",
+				"Authentication has been rewritten to allow for faster page load times and significant improvements to performance and stability",
+				"Large parts of the site have been rewritten to improve performance",
+				"General bug fixes and improvements",
+			},
+			Removed: []string{
+				"Some old short-form URLs such /{id}/v etc have been removed. Please update to using the full-form URLs such as /{id}/vote etc.",
+			},
+		},
+		{
 			Version: "4.8.0",
 			Added:   []string{},
 			Updated: []string{

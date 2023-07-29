@@ -12,9 +12,9 @@ import (
 	docs "github.com/infinitybotlist/eureka/doclib"
 	"github.com/infinitybotlist/eureka/dovewing"
 	"github.com/infinitybotlist/eureka/uapi"
+	"github.com/jackc/pgx/v5"
 
 	"github.com/bwmarrin/discordgo"
-	"github.com/georgysavva/scany/v2/pgxscan"
 )
 
 const perPage = 5
@@ -75,17 +75,14 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	limit := perPage
 	offset := (pageNum - 1) * perPage
 
-	// Get ticket
-	var tickets []types.Ticket
-
-	row, err := state.Pool.Query(d.Context, "SELECT "+ticketCols+" FROM tickets WHERE open = false LIMIT $1 OFFSET $2", limit, offset)
+	rows, err := state.Pool.Query(d.Context, "SELECT "+ticketCols+" FROM tickets WHERE open = false LIMIT $1 OFFSET $2", limit, offset)
 
 	if err != nil {
 		state.Logger.Error(err)
 		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
-	err = pgxscan.ScanAll(&tickets, row)
+	tickets, err := pgx.CollectRows(rows, pgx.RowToStructByName[types.Ticket])
 
 	if err != nil {
 		state.Logger.Error(err)

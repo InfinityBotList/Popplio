@@ -4,7 +4,6 @@ import (
 	"time"
 
 	"github.com/infinitybotlist/eureka/dovewing/dovetypes"
-	"github.com/jackc/pgx/v5/pgtype"
 )
 
 // Represents a Bot Pack
@@ -18,22 +17,7 @@ type BotPack struct {
 	URL           string                  `db:"url" json:"url"`
 	CreatedAt     time.Time               `db:"created_at" json:"created_at"`
 	Bots          []string                `db:"bots" json:"bot_ids"`
-	ResolvedBots  []ResolvedPackBot       `db:"-" json:"bots"`
-}
-
-type ResolvedPackBot struct {
-	User         *dovetypes.PlatformUser `json:"user"`
-	Short        string                  `json:"short"`
-	Type         pgtype.Text             `json:"type"`
-	Vanity       string                  `json:"vanity"`
-	Banner       pgtype.Text             `json:"banner"`
-	NSFW         bool                    `json:"nsfw"`
-	Premium      bool                    `json:"premium"`
-	Shards       int                     `json:"shards"`
-	Votes        int                     `json:"votes"`
-	InviteClicks int                     `json:"invite_clicks"`
-	Servers      int                     `json:"servers"`
-	Tags         []string                `json:"tags"`
+	ResolvedBots  []IndexBot              `db:"-" json:"bots"`
 }
 
 type IndexBotPack struct {
