@@ -7,13 +7,11 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-type TeamPermission string // TeamPermission is a permission that a team can have
-
-type PermDetailMap struct {
-	ID    TeamPermission `json:"id"`
-	Name  string         `json:"name"`
-	Desc  string         `json:"desc"`
-	Group string         `json:"group"`
+type PermissionData struct {
+	ID                string   `json:"id"`
+	Name              string   `json:"name"`
+	Desc              string   `json:"desc"`
+	SupportedEntities []string `json:"supported_entities"`
 }
 
 // Represents a team that is an owner of an entity
@@ -35,7 +33,7 @@ type Team struct {
 
 type TeamMember struct {
 	User      *dovetypes.PlatformUser `json:"user"`
-	Perms     []TeamPermission        `json:"perms"`
+	Flags     []string                `json:"flags"`
 	CreatedAt time.Time               `json:"created_at"`
 }
 
@@ -49,5 +47,15 @@ type CreateTeamResponse struct {
 }
 
 type PermissionResponse struct {
-	Perms []PermDetailMap `json:"perms"`
+	Perms []PermissionData `json:"perms"`
+}
+
+type AddTeamMember struct {
+	UserID string   `json:"user_id" description:"The ID of the user to add to the team"`
+	Perms  []string `json:"perms" description:"The initial permissions to give to the user"`
+}
+
+type EditTeamMember struct {
+	Add    []string `json:"add" description:"Add must be the list of permissions to add"`
+	Remove []string `json:"remove" description:"Remove must be the list of permissions to remove"`
 }

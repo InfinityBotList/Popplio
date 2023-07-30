@@ -41,27 +41,17 @@ func Docs() *docs.Doc {
 func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	id := chi.URLParam(r, "bid")
 
-	var count int64
-
-	err := state.Pool.QueryRow(d.Context, "SELECT COUNT(*) FROM bots WHERE bot_id = $1", id).Scan(&count)
+	perms, err := teams.GetEntityPerms(d.Context, d.Auth.ID, "bot", id)
 
 	if err != nil {
 		state.Logger.Error(err)
-		return uapi.DefaultResponse(http.StatusInternalServerError)
+		return uapi.HttpResponse{
+			Status: http.StatusBadRequest,
+			Json:   types.ApiError{Message: "Error getting user perms: " + err.Error()},
+		}
 	}
 
-	if count == 0 {
-		return uapi.DefaultResponse(http.StatusNotFound)
-	}
-
-	perms, err := utils.GetUserBotPerms(d.Context, d.Auth.ID, id)
-
-	if err != nil {
-		state.Logger.Error(err)
-		return uapi.DefaultResponse(http.StatusInternalServerError)
-	}
-
-	if !perms.Has(teams.TeamPermissionDeleteBots) {
+	if !perms.Has("bot", teams.PermissionDelete) {
 		return uapi.HttpResponse{
 			Status: http.StatusForbidden,
 			Json:   types.ApiError{Message: "You do not have permission to delete this bot"},
@@ -74,12 +64,12 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	// Delete bot
 	tx, err := state.Pool.Begin(d.Context)
 
-	defer tx.Rollback(d.Context)
-
 	if err != nil {
 		state.Logger.Error(err)
 		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
+
+	defer tx.Rollback(d.Context)
 
 	_, err = tx.Exec(d.Context, "DELETE FROM bots WHERE bot_id = $1", id)
 

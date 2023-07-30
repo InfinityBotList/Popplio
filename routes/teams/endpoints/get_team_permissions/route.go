@@ -19,6 +19,6 @@ func Docs() *docs.Doc {
 
 func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	return uapi.HttpResponse{
-		Json: types.PermissionResponse{Perms: teams.TeamPermDetails},
+		Json: types.PermissionResponse{Perms: teams.PermDetails},
 	}
 }

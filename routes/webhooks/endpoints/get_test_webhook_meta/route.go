@@ -4,6 +4,8 @@ import (
 	"net/http"
 
 	"popplio/routes/webhooks/assets"
+	"popplio/state"
+	"popplio/teams"
 	"popplio/types"
 
 	docs "github.com/infinitybotlist/eureka/doclib"
@@ -47,16 +49,21 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	targetType := r.URL.Query().Get("target_type")
 	targetId := chi.URLParam(r, "target_id")
 
-	resp, ok := assets.CheckWebhookPermissions(
-		d.Context,
-		targetId,
-		targetType,
-		d.Auth.ID,
-		assets.OpTestWebhooks,
-	)
+	perms, err := teams.GetEntityPerms(d.Context, d.Auth.ID, targetType, targetId)
 
-	if !ok {
-		return resp
+	if err != nil {
+		state.Logger.Error(err)
+		return uapi.HttpResponse{
+			Status: http.StatusBadRequest,
+			Json:   types.ApiError{Message: "Error getting user perms: " + err.Error()},
+		}
+	}
+
+	if !perms.Has(targetType, teams.PermissionTestWebhooks) {
+		return uapi.HttpResponse{
+			Status: http.StatusForbidden,
+			Json:   types.ApiError{Message: "You do not have permission to test webhooks on this entity"},
+		}
 	}
 
 	data := assets.GetTestMeta(targetId, targetType)

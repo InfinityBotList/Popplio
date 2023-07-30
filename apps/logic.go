@@ -6,7 +6,6 @@ import (
 	"popplio/state"
 	"popplio/teams"
 	"popplio/types"
-	"popplio/utils"
 	"strings"
 
 	"github.com/bwmarrin/discordgo"
@@ -30,14 +29,14 @@ func extraLogicResubmit(d uapi.RouteData, p types.Position, answers map[string]s
 		return fmt.Errorf("error getting bot type, does the bot exist?: %w", err)
 	}
 
-	perms, err := utils.GetUserBotPerms(d.Context, d.Auth.ID, botID)
+	perms, err := teams.GetEntityPerms(d.Context, d.Auth.ID, "bot", botID)
 
 	if err != nil {
 		return fmt.Errorf("error getting user bot perms: %w", err)
 	}
 
 	// Check if user has TeamPermissionResubmitBots
-	if !perms.Has(teams.TeamPermissionResubmitBots) {
+	if !perms.Has("bot", teams.PermissionResubmit) {
 		return errors.New("you do not have permission to resubmit bots")
 	}
 
@@ -110,14 +109,14 @@ func extraLogicCert(d uapi.RouteData, p types.Position, answers map[string]strin
 		return fmt.Errorf("error getting bot type, does the bot exist?: %w", err)
 	}
 
-	perms, err := utils.GetUserBotPerms(d.Context, d.Auth.ID, botID)
+	perms, err := teams.GetEntityPerms(d.Context, d.Auth.ID, "bot", botID)
 
 	if err != nil {
 		return fmt.Errorf("error getting user bot perms: %w", err)
 	}
 
 	// Check if user has TeamPermissionCertifyBots
-	if !perms.Has(teams.TeamPermissionCertifyBots) {
+	if !perms.Has("bot", teams.PermissionRequestCertification) {
 		return errors.New("you do not have permission to certify bots")
 	}
 

@@ -280,53 +280,17 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 
 	// Check team owner here, to avoid a race condition
 	if payload.TeamOwner != "" {
-		// Since the bot isn't already in a team, many checks of add_bot_to_team are not needed
-		// The only check needed is that the team itself exists and the user has TeamPermissionAddNewBots
-
-		var count int
-
-		err = tx.QueryRow(d.Context, "SELECT COUNT(*) FROM teams WHERE id = $1", payload.TeamOwner).Scan(&count)
+		perms, err := teams.GetEntityPerms(d.Context, d.Auth.ID, "team", payload.TeamOwner)
 
 		if err != nil {
 			state.Logger.Error(err)
-			return uapi.DefaultResponse(http.StatusInternalServerError)
-		}
-
-		if count == 0 {
 			return uapi.HttpResponse{
-				Status: http.StatusNotFound,
-				Json:   types.ApiError{Message: "Team not found"},
+				Status: http.StatusBadRequest,
+				Json:   types.ApiError{Message: "Error getting user perms: " + err.Error()},
 			}
 		}
 
-		// Ensure manager is a member of the team
-		var managerCount int
-
-		err = tx.QueryRow(d.Context, "SELECT COUNT(*) FROM team_members WHERE team_id = $1 AND user_id = $2", payload.TeamOwner, d.Auth.ID).Scan(&managerCount)
-
-		if err != nil {
-			state.Logger.Error(err)
-			return uapi.DefaultResponse(http.StatusInternalServerError)
-		}
-
-		if managerCount == 0 {
-			return uapi.HttpResponse{
-				Status: http.StatusForbidden,
-				Json:   types.ApiError{Message: "You are not a member of this team"},
-			}
-		}
-
-		var managerPerms []types.TeamPermission
-		err = tx.QueryRow(d.Context, "SELECT perms FROM team_members WHERE team_id = $1 AND user_id = $2", payload.TeamOwner, d.Auth.ID).Scan(&managerPerms)
-
-		if err != nil {
-			state.Logger.Error(err)
-			return uapi.DefaultResponse(http.StatusInternalServerError)
-		}
-
-		mp := teams.NewPermissionManager(managerPerms)
-
-		if !mp.Has(teams.TeamPermissionAddNewBots) {
+		if !perms.Has("bot", teams.PermissionAdd) {
 			return uapi.HttpResponse{
 				Status: http.StatusForbidden,
 				Json:   types.ApiError{Message: "You do not have permission to add new bots to this team"},

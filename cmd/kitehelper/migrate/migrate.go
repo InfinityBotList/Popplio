@@ -21,6 +21,7 @@ var (
 type migration struct {
 	name     string
 	function func(pool *pgxpool.Pool)
+	disabled bool
 }
 
 func tableExists(name string) bool {
@@ -68,6 +69,10 @@ func Migrate(progname string, args []string) {
 	}*/
 
 	for i, mig := range migs {
+		if mig.disabled {
+			continue
+		}
+
 		statusBoldBlue("Running migration:", mig.name, "["+strconv.Itoa(i+1)+"/"+strconv.Itoa(len(migs))+"]")
 		mig.function(pgpool)
 	}

@@ -1,15 +1,16 @@
 package delete_team_member
 
 import (
+	"errors"
 	"net/http"
-	"popplio/routes/teams/assets"
 	"popplio/state"
 	"popplio/teams"
 	"popplio/types"
-	"popplio/utils"
 
 	docs "github.com/infinitybotlist/eureka/doclib"
 	"github.com/infinitybotlist/eureka/uapi"
+	"github.com/jackc/pgx/v5"
+	"golang.org/x/exp/slices"
 
 	"github.com/go-chi/chi/v5"
 )
@@ -49,104 +50,60 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	var teamId = chi.URLParam(r, "tid")
 	var userId = chi.URLParam(r, "mid")
 
-	// Convert ID to UUID
-	if !utils.IsValidUUID(teamId) {
-		return uapi.DefaultResponse(http.StatusNotFound)
-	}
-
-	var count int
-
-	err := state.Pool.QueryRow(d.Context, "SELECT COUNT(*) FROM teams WHERE id = $1", teamId).Scan(&count)
+	// Ensure manager has perms to delete members
+	perms, err := teams.GetEntityPerms(d.Context, d.Auth.ID, "team", teamId)
 
 	if err != nil {
 		state.Logger.Error(err)
-		return uapi.DefaultResponse(http.StatusInternalServerError)
-	}
-
-	if count == 0 {
-		return uapi.DefaultResponse(http.StatusNotFound)
-	}
-
-	// Ensure manager is a member of the team
-	var managerCount int
-
-	err = state.Pool.QueryRow(d.Context, "SELECT COUNT(*) FROM team_members WHERE team_id = $1 AND user_id = $2", teamId, d.Auth.ID).Scan(&managerCount)
-
-	if err != nil {
-		state.Logger.Error(err)
-		return uapi.DefaultResponse(http.StatusInternalServerError)
-	}
-
-	if managerCount == 0 {
 		return uapi.HttpResponse{
-			Status: http.StatusForbidden,
-			Json:   types.ApiError{Message: "You are not a member of this team"},
+			Status: http.StatusBadRequest,
+			Json:   types.ApiError{Message: "Error getting user perms: " + err.Error()},
 		}
 	}
 
-	// Ensure user is a member of the team
-	var userCount int
-
-	err = state.Pool.QueryRow(d.Context, "SELECT COUNT(*) FROM team_members WHERE team_id = $1 AND user_id = $2", teamId, userId).Scan(&userCount)
+	tx, err := state.Pool.Begin(d.Context)
 
 	if err != nil {
 		state.Logger.Error(err)
 		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
-	if userCount == 0 {
+	defer tx.Rollback(d.Context)
+
+	// Get the old permissions of the user
+	var oldPerms []string
+	err = tx.QueryRow(d.Context, "SELECT perms FROM team_members WHERE team_id = $1 AND user_id = $2", teamId, userId).Scan(&oldPerms)
+
+	if errors.Is(err, pgx.ErrNoRows) {
 		return uapi.HttpResponse{
-			Status: http.StatusForbidden,
+			Status: http.StatusNotFound,
 			Json:   types.ApiError{Message: "User is not a member of this team"},
 		}
 	}
 
-	// Get the manager's permissions
-	var managerPerms []types.TeamPermission
-	err = state.Pool.QueryRow(d.Context, "SELECT perms FROM team_members WHERE team_id = $1 AND user_id = $2", teamId, d.Auth.ID).Scan(&managerPerms)
-
-	if err != nil {
-		state.Logger.Error(err)
-		return uapi.DefaultResponse(http.StatusInternalServerError)
-	}
-
-	mp := teams.NewPermissionManager(managerPerms)
-
 	if d.Auth.ID != userId {
-		// Ensure that all permissions
-		if !mp.Has(teams.TeamPermissionRemoveTeamMembers) {
+		if !perms.Has("team_member", teams.PermissionDelete) {
 			return uapi.HttpResponse{
 				Status: http.StatusForbidden,
-				Json:   types.ApiError{Message: "You do not have permission to remove team members"},
+				Json:   types.ApiError{Message: "You do not have permission to delete this member"},
 			}
 		}
 
-		// Get the old permissions of the user
-		var oldPerms []types.TeamPermission
-
-		err = state.Pool.QueryRow(d.Context, "SELECT perms FROM team_members WHERE team_id = $1 AND user_id = $2", teamId, userId).Scan(&oldPerms)
-
-		if err != nil {
-			state.Logger.Error(err)
-			return uapi.DefaultResponse(http.StatusInternalServerError)
-		}
-
-		// if the user can remove all permissions of the target, then only can deleting the team member occur
-		_, err = assets.CheckPerms(managerPerms, oldPerms, []types.TeamPermission{})
-
-		if err != nil {
-			return uapi.HttpResponse{
-				Status: http.StatusBadRequest,
-				Json:   types.ApiError{Message: err.Error()},
+		for _, perm := range oldPerms {
+			if !perms.HasRaw(perm) {
+				return uapi.HttpResponse{
+					Status: http.StatusForbidden,
+					Json:   types.ApiError{Message: "You do not have permission to delete this member, missing permission: " + perm},
+				}
 			}
 		}
 	}
 
 	// Ensure that if perms includes owner, that there is at least one other owner
-	if mp.Has(teams.TeamPermissionOwner) {
+	if slices.Contains(oldPerms, teams.PermissionOwner) {
 		var ownerCount int
 
-		err = state.Pool.QueryRow(d.Context, "SELECT COUNT(*) FROM team_members WHERE team_id = $1 AND user_id != $2 AND perms && $3", teamId, userId, []types.TeamPermission{teams.TeamPermissionOwner}).Scan(&ownerCount)
+		err = tx.QueryRow(d.Context, "SELECT COUNT(*) FROM team_members WHERE team_id = $1 AND user_id != $2 AND perms && $3", teamId, userId, []string{teams.PermissionOwner}).Scan(&ownerCount)
 
 		if err != nil {
 			state.Logger.Error(err)
@@ -161,7 +118,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		}
 	}
 
-	_, err = state.Pool.Exec(d.Context, "DELETE FROM team_members WHERE team_id = $1 AND user_id = $2", teamId, userId)
+	_, err = tx.Exec(d.Context, "DELETE FROM team_members WHERE team_id = $1 AND user_id = $2", teamId, userId)
 
 	if err != nil {
 		state.Logger.Error(err)

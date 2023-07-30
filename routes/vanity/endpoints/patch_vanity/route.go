@@ -74,25 +74,20 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		}
 	}
 
-	switch targetType {
-	case "bot":
-		perms, err := utils.GetUserBotPerms(d.Context, d.Auth.ID, targetId)
+	perms, err := teams.GetEntityPerms(d.Context, d.Auth.ID, targetType, targetId)
 
-		if err != nil {
-			state.Logger.Error(err)
-			return uapi.DefaultResponse(http.StatusInternalServerError)
-		}
-
-		if !perms.Has(teams.TeamPermissionSetBotVanity) {
-			return uapi.HttpResponse{
-				Status: http.StatusForbidden,
-				Json:   types.ApiError{Message: "You do not have permission to set this bot's vanity"},
-			}
-		}
-	default:
+	if err != nil {
+		state.Logger.Error(err)
 		return uapi.HttpResponse{
-			Status: http.StatusNotImplemented,
-			Json:   types.ApiError{Message: "Support for this target type has not been implemented yet"},
+			Status: http.StatusBadRequest,
+			Json:   types.ApiError{Message: "Error getting user perms: " + err.Error()},
+		}
+	}
+
+	if !perms.Has("team", teams.PermissionSetVanity) {
+		return uapi.HttpResponse{
+			Status: http.StatusForbidden,
+			Json:   types.ApiError{Message: "You do not have permission to update this entities vanity"},
 		}
 	}
 
@@ -132,7 +127,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	// Ensure vanity doesn't already exist
 	var count int64
 
-	err := state.Pool.QueryRow(d.Context, "SELECT COUNT(*) FROM vanity WHERE code = $1", vanity).Scan(&count)
+	err = state.Pool.QueryRow(d.Context, "SELECT COUNT(*) FROM vanity WHERE code = $1", vanity).Scan(&count)
 
 	if err != nil {
 		state.Logger.Error(err)

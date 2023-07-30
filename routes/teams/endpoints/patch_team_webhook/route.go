@@ -40,52 +40,21 @@ func Docs() *docs.Doc {
 func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	teamId := chi.URLParam(r, "tid")
 
-	// Check team
-	var count int
-
-	err := state.Pool.QueryRow(d.Context, "SELECT COUNT(*) FROM teams WHERE id = $1", teamId).Scan(&count)
+	// Ensure manager has perms to edit webhooks
+	perms, err := teams.GetEntityPerms(d.Context, d.Auth.ID, "team", teamId)
 
 	if err != nil {
 		state.Logger.Error(err)
-		return uapi.DefaultResponse(http.StatusInternalServerError)
-	}
-
-	if count == 0 {
-		return uapi.DefaultResponse(http.StatusNotFound)
-	}
-
-	// Ensure manager is a member of the team
-	var managerCount int
-
-	err = state.Pool.QueryRow(d.Context, "SELECT COUNT(*) FROM team_members WHERE team_id = $1 AND user_id = $2", teamId, d.Auth.ID).Scan(&managerCount)
-
-	if err != nil {
-		state.Logger.Error(err)
-		return uapi.DefaultResponse(http.StatusInternalServerError)
-	}
-
-	if managerCount == 0 {
 		return uapi.HttpResponse{
-			Status: http.StatusForbidden,
-			Json:   types.ApiError{Message: "You are not a member of this team"},
+			Status: http.StatusBadRequest,
+			Json:   types.ApiError{Message: "Error getting user perms: " + err.Error()},
 		}
 	}
 
-	// Get the manager's permissions
-	var managerPerms []types.TeamPermission
-	err = state.Pool.QueryRow(d.Context, "SELECT perms FROM team_members WHERE team_id = $1 AND user_id = $2", teamId, d.Auth.ID).Scan(&managerPerms)
-
-	if err != nil {
-		state.Logger.Error(err)
-		return uapi.DefaultResponse(http.StatusInternalServerError)
-	}
-
-	mp := teams.NewPermissionManager(managerPerms)
-
-	if !mp.Has(teams.TeamPermissionEditTeamWebhooks) {
+	if !perms.Has("team", teams.PermissionEditWebhooks) {
 		return uapi.HttpResponse{
 			Status: http.StatusForbidden,
-			Json:   types.ApiError{Message: "You do not have permission to edit team webhooks"},
+			Json:   types.ApiError{Message: "You do not have permission to edit webhooks here"},
 		}
 	}
 

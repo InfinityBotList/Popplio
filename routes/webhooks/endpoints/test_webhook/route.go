@@ -5,8 +5,8 @@ import (
 	"strings"
 	"time"
 
-	"popplio/routes/webhooks/assets"
 	"popplio/state"
+	"popplio/teams"
 	"popplio/types"
 	"popplio/webhooks/bothooks"
 	"popplio/webhooks/events"
@@ -103,20 +103,27 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		}
 	}
 
-	resp, ok := assets.CheckWebhookPermissions(
-		d.Context,
-		targetId,
-		targetType,
-		d.Auth.ID,
-		assets.OpTestWebhooks,
-	)
+	perms, err := teams.GetEntityPerms(d.Context, d.Auth.ID, targetType, targetId)
 
-	if !ok {
-		resp.Headers = limit.Headers()
-		return resp
+	if err != nil {
+		state.Logger.Error(err)
+		return uapi.HttpResponse{
+			Status:  http.StatusBadRequest,
+			Headers: limit.Headers(),
+			Json:    types.ApiError{Message: "Error getting user perms: " + err.Error()},
+		}
+	}
+
+	if !perms.Has(targetType, teams.PermissionTestWebhooks) {
+		return uapi.HttpResponse{
+			Status:  http.StatusForbidden,
+			Headers: limit.Headers(),
+			Json:    types.ApiError{Message: "You do not have permission to test webhooks on this entity"},
+		}
 	}
 
 	var hresp uapi.HttpResponse
+	var ok bool
 
 	switch events.WebhookType(eventType) {
 	case events.WebhookTypeBotEditReview:
@@ -142,45 +149,6 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	}
 
 	return uapi.DefaultResponse(http.StatusNoContent)
-	/*
-		var payload WebhookAuthPost
-
-		resp, ok := uapi.MarshalReq(r, &payload)
-
-		if !ok {
-			return resp
-		}
-
-		// Validate the payload
-		err = state.Validator.Struct(payload)
-
-		if err != nil {
-			errors := err.(validator.ValidationErrors)
-			return uapi.ValidatorErrorResponse(compiledMessages, errors)
-		}
-
-		err = bothooks.Send(bothooks.With[events.WebhookBotVoteData]{
-			Data: events.WebhookBotVoteData{
-				Votes: payload.Votes,
-			},
-			UserID: d.Auth.ID,
-			BotID:  id,
-			Metadata: &events.WebhookMetadata{
-				Test: true,
-			},
-		})
-
-		if err != nil {
-			state.Logger.Error(err)
-			return uapi.HttpResponse{
-				Status: http.StatusBadRequest,
-				Json: types.ApiError{
-					Message: err.Error(),
-				},
-			}
-		}
-
-		return uapi.DefaultResponse(http.StatusNoContent)*/
 }
 
 func handle[T events.WebhookEvent](

@@ -4,8 +4,8 @@ import (
 	"net/http"
 
 	"popplio/state"
+	"popplio/teams"
 	"popplio/types"
-	"popplio/utils"
 
 	docs "github.com/infinitybotlist/eureka/doclib"
 	"github.com/infinitybotlist/eureka/uapi"
@@ -41,31 +41,13 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	uid := chi.URLParam(r, "uid")
 	id := chi.URLParam(r, "bid")
 
-	var count int64
-
-	err := state.Pool.QueryRow(d.Context, "SELECT COUNT(*) FROM bots WHERE bot_id = $1", id).Scan(&count)
+	perms, err := teams.GetEntityPerms(d.Context, uid, "bot", id)
 
 	if err != nil {
 		state.Logger.Error(err)
-		return uapi.DefaultResponse(http.StatusInternalServerError)
-	}
-
-	if count == 0 {
-		return uapi.DefaultResponse(http.StatusNotFound)
-	}
-	
-	perms, err := utils.GetUserBotPerms(d.Context, uid, id)
-
-	if err != nil {
-		state.Logger.Error(err)
-		return uapi.DefaultResponse(http.StatusInternalServerError)
-	}
-
-	if !perms.HasSomePerms() {
 		return uapi.HttpResponse{
-			Json: types.UserBotPerms{
-				Perms: []types.TeamPermission{},
-			},
+			Status: http.StatusBadRequest,
+			Json:   types.ApiError{Message: "Error getting user perms: " + err.Error()},
 		}
 	}
 

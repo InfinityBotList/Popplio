@@ -40,7 +40,6 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	}
 
 	// Validate the payload
-
 	err := state.Validator.Struct(payload)
 
 	if err != nil {
@@ -49,6 +48,12 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	}
 
 	tx, err := state.Pool.Begin(d.Context)
+
+	if err != nil {
+		state.Logger.Error(err)
+		return uapi.DefaultResponse(http.StatusInternalServerError)
+	}
+
 	defer tx.Rollback(d.Context)
 
 	for _, patch := range payload.Patches {

@@ -179,5 +179,9 @@ type DiscordBotMeta struct {
 }
 
 type UserBotPerms struct {
-	Perms []TeamPermission `json:"perms" description:"The user's permissions on a bot"`
+	Perms []string `json:"perms" description:"The user's permissions on a bot"`
+}
+
+type PatchBotTeam struct {
+	TeamID string `json:"team_id" description:"The team ID to add the bot to"`
 }

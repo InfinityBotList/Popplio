@@ -36,6 +36,8 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
+	defer tx.Rollback(d.Context)
+
 	_, err = tx.Exec(d.Context, "UPDATE bots SET last_stats_post = NOW() WHERE bot_id = $1", d.Auth.ID)
 
 	if err != nil {

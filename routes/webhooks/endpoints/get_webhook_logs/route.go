@@ -2,8 +2,8 @@ package get_webhook_logs
 
 import (
 	"net/http"
-	"popplio/routes/webhooks/assets"
 	"popplio/state"
+	"popplio/teams"
 	"popplio/types"
 	"popplio/utils"
 	"strconv"
@@ -81,16 +81,21 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	limit := perPage
 	offset := (pageNum - 1) * perPage
 
-	resp, ok := assets.CheckWebhookPermissions(
-		d.Context,
-		targetId,
-		targetType,
-		d.Auth.ID,
-		assets.OpWebhookLogs,
-	)
+	perms, err := teams.GetEntityPerms(d.Context, d.Auth.ID, targetType, targetId)
 
-	if !ok {
-		return resp
+	if err != nil {
+		state.Logger.Error(err)
+		return uapi.HttpResponse{
+			Status: http.StatusBadRequest,
+			Json:   types.ApiError{Message: "Error getting user perms: " + err.Error()},
+		}
+	}
+
+	if !perms.Has(targetType, teams.PermissionGetWebhookLogs) {
+		return uapi.HttpResponse{
+			Status: http.StatusForbidden,
+			Json:   types.ApiError{Message: "You do not have permission to get webhooks logs on this entity"},
+		}
 	}
 
 	rows, err := state.Pool.Query(d.Context, "SELECT "+webhookLogCols+" FROM webhook_logs WHERE target_id = $1 AND target_type = $2 ORDER BY created_at DESC LIMIT $3 OFFSET $4", targetId, targetType, limit, offset)

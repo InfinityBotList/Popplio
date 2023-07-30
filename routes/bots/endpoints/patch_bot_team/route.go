@@ -10,19 +10,10 @@ import (
 
 	docs "github.com/infinitybotlist/eureka/doclib"
 	"github.com/infinitybotlist/eureka/uapi"
+	"github.com/jackc/pgx/v5/pgtype"
 
 	"github.com/bwmarrin/discordgo"
 	"github.com/go-chi/chi/v5"
-	"github.com/go-playground/validator/v10"
-	"github.com/jackc/pgx/v5/pgtype"
-)
-
-type PatchBotTeam struct {
-	TeamID string `json:"team_id" validate:"required"`
-}
-
-var (
-	compiledMessages = uapi.CompileValidationErrors(PatchBotTeam{})
 )
 
 func Docs() *docs.Doc {
@@ -59,7 +50,7 @@ Returns a 204 on success`,
 				Schema:      docs.IdSchema,
 			},
 		},
-		Req:  PatchBotTeam{},
+		Req:  types.PatchBotTeam{},
 		Resp: types.ApiError{},
 	}
 }
@@ -67,20 +58,7 @@ Returns a 204 on success`,
 func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	id := chi.URLParam(r, "bid")
 
-	var count int64
-
-	err := state.Pool.QueryRow(d.Context, "SELECT COUNT(*) FROM bots WHERE bot_id = $1", id).Scan(&count)
-
-	if err != nil {
-		state.Logger.Error(err)
-		return uapi.DefaultResponse(http.StatusInternalServerError)
-	}
-
-	if count == 0 {
-		return uapi.DefaultResponse(http.StatusNotFound)
-	}
-
-	var payload PatchBotTeam
+	var payload types.PatchBotTeam
 
 	hresp, ok := uapi.MarshalReq(r, &payload)
 
@@ -88,15 +66,43 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		return hresp
 	}
 
-	// Validate the payload
-	err = state.Validator.Struct(payload)
-
-	if err != nil {
-		errors := err.(validator.ValidationErrors)
-		return uapi.ValidatorErrorResponse(compiledMessages, errors)
+	if payload.TeamID == "" {
+		return uapi.HttpResponse{
+			Status: http.StatusBadRequest,
+			Json:   types.ApiError{Message: "Team ID must be provided"},
+		}
 	}
 
-	// Get current team of bot
+	// Validate for current team
+	perms, err := teams.GetEntityPerms(d.Context, d.Auth.ID, "bot", id)
+
+	if err != nil {
+		state.Logger.Error(err)
+		return uapi.DefaultResponse(http.StatusInternalServerError)
+	}
+
+	if !perms.Has("bot", teams.PermissionDelete) {
+		return uapi.HttpResponse{
+			Status: http.StatusForbidden,
+			Json:   types.ApiError{Message: "You must be able to delete the bot in the current team to transfer it"},
+		}
+	}
+
+	newTeamPerms, err := teams.GetEntityPerms(d.Context, payload.TeamID, "team", payload.TeamID)
+
+	if err != nil {
+		state.Logger.Error(err)
+		return uapi.DefaultResponse(http.StatusInternalServerError)
+	}
+
+	if !newTeamPerms.Has("bot", teams.PermissionAdd) {
+		return uapi.HttpResponse{
+			Status: http.StatusForbidden,
+			Json:   types.ApiError{Message: "You must be able to add the bot in the new team to transfer it"},
+		}
+	}
+
+	// Get old team ID for audit log
 	var currentBotTeam pgtype.UUID
 
 	err = state.Pool.QueryRow(d.Context, "SELECT team_owner FROM bots WHERE bot_id = $1", id).Scan(&currentBotTeam)
@@ -104,89 +110,6 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	if err != nil {
 		state.Logger.Error(err)
 		return uapi.DefaultResponse(http.StatusInternalServerError)
-	}
-
-	if !currentBotTeam.Valid {
-		return uapi.HttpResponse{
-			Status: http.StatusNotFound,
-			Json:   types.ApiError{Message: "This bot is not in a team?"},
-		}
-	}
-
-	// Check if manager
-	// Ensure manager is a member of the team
-	var managerCount int
-
-	err = state.Pool.QueryRow(d.Context, "SELECT COUNT(*) FROM team_members WHERE team_id = $1 AND user_id = $2", currentBotTeam, d.Auth.ID).Scan(&managerCount)
-
-	if err != nil {
-		state.Logger.Error(err)
-		return uapi.DefaultResponse(http.StatusInternalServerError)
-	}
-
-	if managerCount == 0 {
-		return uapi.HttpResponse{
-			Status: http.StatusForbidden,
-			Json:   types.ApiError{Message: "You are not a member of this team"},
-		}
-	}
-
-	// Get the manager's permissions in current team
-	var managerPerms []types.TeamPermission
-	err = state.Pool.QueryRow(d.Context, "SELECT perms FROM team_members WHERE team_id = $1 AND user_id = $2", currentBotTeam, d.Auth.ID).Scan(&managerPerms)
-
-	if err != nil {
-		state.Logger.Error(err)
-		return uapi.DefaultResponse(http.StatusInternalServerError)
-	}
-
-	// Convert ID to UUID
-	if !utils.IsValidUUID(payload.TeamID) {
-		return uapi.HttpResponse{
-			Status: http.StatusBadRequest,
-			Json:   types.ApiError{Message: "Team ID must be a valid UUID"},
-		}
-	}
-
-	// Find new team
-	var teamCount int
-
-	err = state.Pool.QueryRow(d.Context, "SELECT COUNT(*) FROM teams WHERE id = $1", payload.TeamID).Scan(&teamCount)
-
-	if err != nil {
-		state.Logger.Error(err)
-		return uapi.DefaultResponse(http.StatusInternalServerError)
-	}
-
-	if teamCount == 0 {
-		return uapi.HttpResponse{
-			Status: http.StatusNotFound,
-			Json:   types.ApiError{Message: "Team not found"},
-		}
-	}
-
-	// Get manager perms in new team
-	var newTeamPerms []types.TeamPermission
-
-	err = state.Pool.QueryRow(d.Context, "SELECT perms FROM team_members WHERE team_id = $1 AND user_id = $2", payload.TeamID, d.Auth.ID).Scan(&newTeamPerms)
-
-	if err != nil {
-		state.Logger.Error(err)
-		return uapi.DefaultResponse(http.StatusInternalServerError)
-	}
-
-	if !teams.NewPermissionManager(managerPerms).Has(teams.TeamPermissionDeleteBots) {
-		return uapi.HttpResponse{
-			Status: http.StatusForbidden,
-			Json:   types.ApiError{Message: "You must be able to delete bots on the current team"},
-		}
-	}
-
-	if !teams.NewPermissionManager(newTeamPerms).Has(teams.TeamPermissionAddNewBots) {
-		return uapi.HttpResponse{
-			Status: http.StatusForbidden,
-			Json:   types.ApiError{Message: "You must be able to add new bots on the new team"},
-		}
 	}
 
 	// Transfer bot

@@ -1,27 +1,18 @@
 package edit_team_member_permissions
 
 import (
+	"errors"
 	"net/http"
-	"popplio/routes/teams/assets"
 	"popplio/state"
 	"popplio/teams"
 	"popplio/types"
-	"popplio/utils"
 
 	docs "github.com/infinitybotlist/eureka/doclib"
 	"github.com/infinitybotlist/eureka/uapi"
+	"github.com/jackc/pgx/v5"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/go-playground/validator/v10"
 	"golang.org/x/exp/slices"
-)
-
-type EditTeamMember struct {
-	Perms []types.TeamPermission `json:"perms" validate:"required" msg:"Permissions must be a valid array of strings"`
-}
-
-var (
-	compiledMessages = uapi.CompileValidationErrors(EditTeamMember{})
 )
 
 func Docs() *docs.Doc {
@@ -45,13 +36,13 @@ func Docs() *docs.Doc {
 			},
 			{
 				Name:        "mid",
-				Description: "Member ID",
+				Description: "Team Member ID",
 				Required:    true,
 				In:          "path",
 				Schema:      docs.IdSchema,
 			},
 		},
-		Req:  EditTeamMember{},
+		Req:  types.EditTeamMember{},
 		Resp: types.ApiError{},
 	}
 }
@@ -60,25 +51,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	var teamId = chi.URLParam(r, "tid")
 	var userId = chi.URLParam(r, "mid")
 
-	// Convert ID to UUID
-	if !utils.IsValidUUID(teamId) {
-		return uapi.DefaultResponse(http.StatusNotFound)
-	}
-
-	var count int
-
-	err := state.Pool.QueryRow(d.Context, "SELECT COUNT(*) FROM teams WHERE id = $1", teamId).Scan(&count)
-
-	if err != nil {
-		state.Logger.Error(err)
-		return uapi.DefaultResponse(http.StatusInternalServerError)
-	}
-
-	if count == 0 {
-		return uapi.DefaultResponse(http.StatusNotFound)
-	}
-
-	var payload EditTeamMember
+	var payload types.EditTeamMember
 
 	hresp, ok := uapi.MarshalReq(r, &payload)
 
@@ -86,85 +59,93 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		return hresp
 	}
 
-	// Validate the payload
-	err = state.Validator.Struct(payload)
-
-	if err != nil {
-		errors := err.(validator.ValidationErrors)
-		return uapi.ValidatorErrorResponse(compiledMessages, errors)
-	}
-
-	// Ensure manager is a member of the team
-	var managerCount int
-
-	err = state.Pool.QueryRow(d.Context, "SELECT COUNT(*) FROM team_members WHERE team_id = $1 AND user_id = $2", teamId, d.Auth.ID).Scan(&managerCount)
+	// Ensure manager has perms to edit member permissions etc.
+	perms, err := teams.GetEntityPerms(d.Context, d.Auth.ID, "team", teamId)
 
 	if err != nil {
 		state.Logger.Error(err)
-		return uapi.DefaultResponse(http.StatusInternalServerError)
+		return uapi.HttpResponse{
+			Status: http.StatusBadRequest,
+			Json:   types.ApiError{Message: "Error getting user perms: " + err.Error()},
+		}
 	}
 
-	if managerCount == 0 {
+	if !perms.Has("team_member", teams.PermissionEdit) {
 		return uapi.HttpResponse{
 			Status: http.StatusForbidden,
-			Json:   types.ApiError{Message: "You are not a member of this team"},
+			Json:   types.ApiError{Message: "You do not have permission to edit this member"},
 		}
 	}
 
-	// Get the manager's permissions
-	var managerPerms []types.TeamPermission
-	err = state.Pool.QueryRow(d.Context, "SELECT perms FROM team_members WHERE team_id = $1 AND user_id = $2", teamId, d.Auth.ID).Scan(&managerPerms)
+	tx, err := state.Pool.Begin(d.Context)
 
 	if err != nil {
 		state.Logger.Error(err)
 		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
-	// Check that they are a member
-	var memberExists bool
-
-	err = state.Pool.QueryRow(d.Context, "SELECT EXISTS(SELECT 1 FROM team_members WHERE team_id = $1 AND user_id = $2)", teamId, userId).Scan(&memberExists)
-
-	if err != nil {
-		state.Logger.Error(err)
-		return uapi.DefaultResponse(http.StatusInternalServerError)
-	}
-
-	if !memberExists {
-		return uapi.HttpResponse{
-			Status: http.StatusBadRequest,
-			Json:   types.ApiError{Message: "User is not already a member of this team"},
-		}
-	}
+	defer tx.Rollback(d.Context)
 
 	// Get the old permissions of the user
-	var oldPerms []types.TeamPermission
+	var oldPerms []string
+	err = tx.QueryRow(d.Context, "SELECT perms FROM team_members WHERE team_id = $1 AND user_id = $2", teamId, userId).Scan(&oldPerms)
 
-	err = state.Pool.QueryRow(d.Context, "SELECT perms FROM team_members WHERE team_id = $1 AND user_id = $2", teamId, userId).Scan(&oldPerms)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return uapi.HttpResponse{
+			Status: http.StatusNotFound,
+			Json:   types.ApiError{Message: "User is not a member of this team"},
+		}
+	}
 
 	if err != nil {
 		state.Logger.Error(err)
 		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
-	perms, err := assets.CheckPerms(managerPerms, oldPerms, payload.Perms)
+	// Check if manager has all perms they are trying to add
+	for _, perm := range payload.Add {
+		if !perms.HasRaw(perm) {
+			return uapi.HttpResponse{
+				Status: http.StatusForbidden,
+				Json:   types.ApiError{Message: "You do not have permission to add " + perm},
+			}
+		}
 
-	if err != nil {
-		return uapi.HttpResponse{
-			Status: http.StatusBadRequest,
-			Json:   types.ApiError{Message: err.Error()},
+		if !slices.Contains(oldPerms, perm) {
+			// Add perm
+			_, err = tx.Exec(d.Context, "UPDATE team_members SET perms = array_append(perms, $1) WHERE team_id = $2 AND user_id = $3", perm, teamId, userId)
+
+			if err != nil {
+				state.Logger.Error(err)
+				return uapi.DefaultResponse(http.StatusInternalServerError)
+			}
 		}
 	}
 
-	if perms == nil {
-		perms = []types.TeamPermission{}
+	for _, perm := range payload.Remove {
+		if !perms.HasRaw(perm) {
+			return uapi.HttpResponse{
+				Status: http.StatusForbidden,
+				Json:   types.ApiError{Message: "You do not have permission to remove " + perm},
+			}
+		}
+
+		if slices.Contains(oldPerms, perm) {
+			// Remove the perm from the old perms
+			_, err = tx.Exec(d.Context, "UPDATE team_members SET perms = array_remove(perms, $1) WHERE team_id = $2 AND user_id = $3", perm, teamId, userId)
+
+			if err != nil {
+				state.Logger.Error(err)
+				return uapi.DefaultResponse(http.StatusInternalServerError)
+			}
+		}
 	}
 
 	// Ensure that if perms includes owner, that there is at least one other owner
-	if slices.Contains(managerPerms, teams.TeamPermissionOwner) && !slices.Contains(perms, teams.TeamPermissionOwner) {
+	if slices.Contains(payload.Remove, teams.PermissionOwner) {
 		var ownerCount int
 
-		err = state.Pool.QueryRow(d.Context, "SELECT COUNT(*) FROM team_members WHERE team_id = $1 AND user_id != $2 AND perms && $3", teamId, userId, []types.TeamPermission{teams.TeamPermissionOwner}).Scan(&ownerCount)
+		err = tx.QueryRow(d.Context, "SELECT COUNT(*) FROM team_members WHERE team_id = $1 AND perms && $3", teamId, userId, []string{teams.PermissionOwner}).Scan(&ownerCount)
 
 		if err != nil {
 			state.Logger.Error(err)
@@ -179,7 +160,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		}
 	}
 
-	_, err = state.Pool.Exec(d.Context, "UPDATE team_members SET perms = $1 WHERE team_id = $2 AND user_id = $3", perms, teamId, userId)
+	err = tx.Commit(d.Context)
 
 	if err != nil {
 		state.Logger.Error(err)

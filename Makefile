@@ -19,17 +19,12 @@ ts:
 
 	sed -i 's:TeamPermission:TeamPermissions:g' /iblcdn/public/dev/bindings/popplio/types.ts
 
-	STAGING_API=true DEBUG=true ibl genenums
-
 	# Copy over go types
 	mkdir /iblcdn/public/dev/bindings/popplio/go
 	cp -rf types /iblcdn/public/dev/bindings/popplio/go
 
 	# Patch to change package name to 'popltypes'
 	sed -i 's:package types:package popltypes:g' /iblcdn/public/dev/bindings/popplio/go/types/*
-
-genenums-staging:
-	STAGING_API=true DEBUG=true ibl genenums
 
 promoteprod:
 	rm -rf ../prod2

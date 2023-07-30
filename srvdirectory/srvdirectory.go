@@ -12,7 +12,7 @@ func Setup() {
 		"public": {
 			{
 				ID:          "htmlsanitize",
-				Url:         state.Config.Sites.HtmlSanitize,
+				ProdURL:     state.Config.Sites.HtmlSanitize,
 				Description: "HTML->MD",
 			},
 			{
@@ -24,19 +24,19 @@ func Setup() {
 		"staff": {
 			{
 				ID:           "arcadia",
-				Url:          "https://rpc.infinitybots.gg",
+				ProdURL:      "https://rpc.infinitybots.gg",
 				Docs:         "/openapi",
 				Description:  "Staff RPC API",
 				NeedsStaging: true,
 			},
 			{
 				ID:          "persepolis",
-				Url:         "https://persepolis.infinitybots.gg",
+				ProdURL:     "https://persepolis.infinitybots.gg",
 				Description: "Staff onboarding",
 			},
 			{
 				ID:           "ashfur",
-				Url:          "https://ashfur.infinitybots.gg",
+				ProdURL:      "https://ashfur.infinitybots.gg",
 				Description:  "Data aggregation (modcases) on MongoDB",
 				NeedsStaging: true,
 			},

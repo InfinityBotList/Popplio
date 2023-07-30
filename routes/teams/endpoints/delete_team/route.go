@@ -5,12 +5,10 @@ import (
 	"popplio/state"
 	"popplio/teams"
 	"popplio/types"
-	"popplio/utils"
-
-	docs "github.com/infinitybotlist/eureka/doclib"
-	"github.com/infinitybotlist/eureka/uapi"
 
 	"github.com/go-chi/chi/v5"
+	docs "github.com/infinitybotlist/eureka/doclib"
+	"github.com/infinitybotlist/eureka/uapi"
 )
 
 func Docs() *docs.Doc {
@@ -40,57 +38,21 @@ func Docs() *docs.Doc {
 func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	var teamId = chi.URLParam(r, "tid")
 
-	// Convert ID to UUID
-	if !utils.IsValidUUID(teamId) {
-		return uapi.DefaultResponse(http.StatusNotFound)
-	}
-
-	var count int
-
-	err := state.Pool.QueryRow(d.Context, "SELECT COUNT(*) FROM teams WHERE id = $1", teamId).Scan(&count)
+	// Ensure manager has perms to edit member permissions etc.
+	perms, err := teams.GetEntityPerms(d.Context, d.Auth.ID, "team", teamId)
 
 	if err != nil {
 		state.Logger.Error(err)
-		return uapi.DefaultResponse(http.StatusInternalServerError)
-	}
-
-	if count == 0 {
-		return uapi.DefaultResponse(http.StatusNotFound)
-	}
-
-	// Ensure manager is a member of the team
-	var managerCount int
-
-	err = state.Pool.QueryRow(d.Context, "SELECT COUNT(*) FROM team_members WHERE team_id = $1 AND user_id = $2", teamId, d.Auth.ID).Scan(&managerCount)
-
-	if err != nil {
-		state.Logger.Error(err)
-		return uapi.DefaultResponse(http.StatusInternalServerError)
-	}
-
-	if managerCount == 0 {
 		return uapi.HttpResponse{
-			Status: http.StatusForbidden,
-			Json:   types.ApiError{Message: "You are not a member of this team"},
+			Status: http.StatusBadRequest,
+			Json:   types.ApiError{Message: "Error getting user perms: " + err.Error()},
 		}
 	}
 
-	// Get the manager's permissions
-	var managerPerms []types.TeamPermission
-	err = state.Pool.QueryRow(d.Context, "SELECT perms FROM team_members WHERE team_id = $1 AND user_id = $2", teamId, d.Auth.ID).Scan(&managerPerms)
-
-	if err != nil {
-		state.Logger.Error(err)
-		return uapi.DefaultResponse(http.StatusInternalServerError)
-	}
-
-	mp := teams.NewPermissionManager(managerPerms)
-
-	// Ensure the manager has the 'Owner' permission
-	if !mp.Has(teams.TeamPermissionOwner) {
+	if !perms.HasRaw(teams.PermissionOwner) {
 		return uapi.HttpResponse{
 			Status: http.StatusForbidden,
-			Json:   types.ApiError{Message: "Only owners can delete teams"},
+			Json:   types.ApiError{Message: "Only full owners can delete teams"},
 		}
 	}
 
@@ -106,7 +68,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	if botCount > 0 {
 		return uapi.HttpResponse{
 			Status: http.StatusBadRequest,
-			Json:   types.ApiError{Message: "You cannot delete a team with bots on it"},
+			Json:   types.ApiError{Message: "You cannot delete a team with bots in it"},
 		}
 	}
 
@@ -122,7 +84,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	if serverCount > 0 {
 		return uapi.HttpResponse{
 			Status: http.StatusBadRequest,
-			Json:   types.ApiError{Message: "You cannot delete a team with servers on it"},
+			Json:   types.ApiError{Message: "You cannot delete a team with servers in it"},
 		}
 	}
 

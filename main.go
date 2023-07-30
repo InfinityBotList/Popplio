@@ -9,6 +9,7 @@ import (
 	"popplio/api"
 	poplapps "popplio/apps"
 	"popplio/changelogs"
+	"popplio/config"
 	"popplio/constants"
 	"popplio/notifications"
 	"popplio/partners"
@@ -229,7 +230,19 @@ func main() {
 			return
 		}
 
-		specData.URL = dir.Url + dir.Docs
+		var dirUrl string
+
+		if config.CurrentEnv == config.CurrentEnvProd {
+			dirUrl = dir.ProdURL
+		} else {
+			if dir.StagingURL == "" {
+				dirUrl = dir.ProdURL
+			} else {
+				dirUrl = dir.StagingURL
+			}
+		}
+
+		specData.URL = dirUrl + dir.Docs
 
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
 

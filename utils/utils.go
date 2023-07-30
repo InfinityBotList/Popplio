@@ -10,7 +10,6 @@ import (
 
 	"popplio/config"
 	"popplio/state"
-	"popplio/teams"
 	"popplio/types"
 
 	"github.com/google/uuid"
@@ -49,7 +48,7 @@ func ResolveTeam(ctx context.Context, teamId string) (*types.Team, error) {
 	// Next handle members
 	var members = []types.TeamMember{}
 
-	rows, err := state.Pool.Query(ctx, "SELECT user_id, perms, created_at FROM team_members WHERE team_id = $1 ORDER BY created_at ASC", teamId)
+	rows, err := state.Pool.Query(ctx, "SELECT user_id, flags, created_at FROM team_members WHERE team_id = $1 ORDER BY created_at ASC", teamId)
 
 	if err != nil {
 		return nil, err
@@ -59,10 +58,10 @@ func ResolveTeam(ctx context.Context, teamId string) (*types.Team, error) {
 
 	for rows.Next() {
 		var userId string
-		var perms []types.TeamPermission
+		var flags []string
 		var createdAt time.Time
 
-		err = rows.Scan(&userId, &perms, &createdAt)
+		err = rows.Scan(&userId, &flags, &createdAt)
 
 		if err != nil {
 			return nil, err
@@ -76,7 +75,7 @@ func ResolveTeam(ctx context.Context, teamId string) (*types.Team, error) {
 
 		members = append(members, types.TeamMember{
 			User:      user,
-			Perms:     teams.NewPermissionManager(perms).Perms(),
+			Flags:     flags,
 			CreatedAt: createdAt,
 		})
 	}
@@ -171,35 +170,6 @@ func GetCols(s any) []string {
 
 // Returns a permission manager of the permissions the user has on the bot
 // Also takes teams into account if the bot is in a team
-func GetUserBotPerms(ctx context.Context, userID string, botID string) (*teams.PermissionManager, error) {
-	var teamOwner pgtype.Text
-	var owner pgtype.Text
-	err := state.Pool.QueryRow(ctx, "SELECT team_owner, owner FROM bots WHERE bot_id = $1", botID).Scan(&teamOwner, &owner)
-
-	if err != nil {
-		return &teams.PermissionManager{}, fmt.Errorf("error finding bot: %v", err)
-	}
-
-	// Handle teams
-	if teamOwner.Valid && teamOwner.String != "" {
-		// Get the team member from the team
-		var teamPerms []types.TeamPermission
-
-		err = state.Pool.QueryRow(ctx, "SELECT perms FROM team_members WHERE team_id = $1 AND user_id = $2", teamOwner, userID).Scan(&teamPerms)
-
-		if err != nil {
-			return &teams.PermissionManager{}, fmt.Errorf("error finding team member: %v", err)
-		}
-
-		return teams.NewPermissionManager(teamPerms), nil
-	}
-
-	if owner.String == userID {
-		return teams.NewPermissionManager([]types.TeamPermission{teams.TeamPermissionOwner}), nil
-	}
-
-	return teams.NewPermissionManager([]types.TeamPermission{}), nil
-}
 
 func ClearUserCache(ctx context.Context, userId string) error {
 	// Delete from cache

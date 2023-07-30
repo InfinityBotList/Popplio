@@ -277,12 +277,13 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 
 	// Create a new entity vote
 	tx, err := state.Pool.Begin(d.Context)
-	defer tx.Rollback(d.Context)
 
 	if err != nil {
 		state.Logger.Error(err)
 		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
+
+	defer tx.Rollback(d.Context)
 
 	// Keep adding votes until, but not including vi.VoteInfo.PerUser
 	for i := 0; i < vi.VoteInfo.PerUser; i++ {

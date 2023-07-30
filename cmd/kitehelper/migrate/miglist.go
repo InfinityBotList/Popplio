@@ -9,9 +9,25 @@ import (
 
 // Contains the list of migrations
 
-var (
-// statusBoldErr = color.New(color.Bold, color.FgRed).PrintlnFunc()
-)
+/*
+	// Bot permissions
+	TeamPermissionEditBotSettings       types.TeamPermission = "EDIT_BOT_SETTINGS"
+	TeamPermissionAddNewBots            types.TeamPermission = "ADD_NEW_BOTS"
+	TeamPermissionResubmitBots          types.TeamPermission = "RESUBMIT_BOTS"
+	TeamPermissionCertifyBots           types.TeamPermission = "CERTIFY_BOTS"
+	TeamPermissionViewExistingBotTokens types.TeamPermission = "VIEW_EXISTING_BOT_TOKENS"
+	TeamPermissionResetBotTokens        types.TeamPermission = "RESET_BOT_TOKEN"
+	TeamPermissionEditBotWebhooks       types.TeamPermission = "EDIT_BOT_WEBHOOKS"
+	TeamPermissionTestBotWebhooks       types.TeamPermission = "TEST_BOT_WEBHOOKS"
+	TeamPermissionSetBotVanity          types.TeamPermission = "SET_BOT_VANITY"
+	TeamPermissionDeleteBots            types.TeamPermission = "DELETE_BOTS"
+
+		TeamPermissionEditTeamInfo              types.TeamPermission = "EDIT_TEAM_INFO"
+	TeamPermissionAddTeamMembers            types.TeamPermission = "ADD_TEAM_MEMBERS"
+	TeamPermissionRemoveTeamMembers         types.TeamPermission = "REMOVE_TEAM_MEMBERS"
+	TeamPermissionEditTeamMemberPermissions types.TeamPermission = "EDIT_TEAM_MEMBER_PERMISSIONS"
+	TeamPermissionEditTeamWebhooks          types.TeamPermission = "EDIT_TEAM_WEBHOOKS"
+*/
 
 var migs = []migration{
 	{
@@ -44,7 +60,8 @@ var migs = []migration{
 		},
 	},
 	{
-		name: "Create vanity",
+		name:     "Create vanity",
+		disabled: true,
 		function: func(pool *pgxpool.Pool) {
 			if !colExists("bots", "vanity") {
 				alrMigrated()
@@ -100,6 +117,68 @@ var migs = []migration{
 
 			if err != nil {
 				panic(err)
+			}
+		},
+	},
+	{
+		name: "Team permissions -> flags",
+		function: func(pool *pgxpool.Pool) {
+			// Fetch every team member permission
+			pmap := map[string]string{
+				"EDIT_BOT_SETTINGS":            "bot.edit",
+				"ADD_NEW_BOTS":                 "bot.add",
+				"RESUBMIT_BOTS":                "bot.resubmit",
+				"CERTIFY_BOTS":                 "bot.request_cert",
+				"VIEW_EXISTING_BOT_TOKENS":     "bot.view_api_tokens",
+				"RESET_BOT_TOKEN":              "bot.reset_api_tokens",
+				"EDIT_BOT_WEBHOOKS":            "bot.edit_webhooks",
+				"TEST_BOT_WEBHOOKS":            "bot.test_webhooks",
+				"SET_BOT_VANITY":               "bot.set_vanity",
+				"DELETE_BOTS":                  "bot.delete",
+				"EDIT_TEAM_INFO":               "team.edit",
+				"ADD_TEAM_MEMBERS":             "team_member.add",
+				"EDIT_TEAM_MEMBER_PERMISSIONS": "team_member.edit",
+				"REMOVE_TEAM_MEMBERS":          "team_member.remove",
+				"EDIT_TEAM_WEBHOOKS":           "team.edit_webhooks",
+				"OWNER":                        "*",
+			}
+
+			rows, err := pool.Query(context.Background(), "SELECT team_id, user_id, perms FROM team_members")
+
+			if err != nil {
+				panic(err)
+			}
+
+			defer rows.Close()
+
+			for rows.Next() {
+				var teamId string
+				var userId string
+				var perms []string
+
+				err = rows.Scan(&teamId, &userId, &perms)
+
+				if err != nil {
+					panic(err)
+				}
+
+				statusBoldBlue("Migrating team member permissions for", userId, "in team", teamId)
+
+				// Convert perms
+				var flags = []string{}
+
+				for _, perm := range perms {
+					if flag, ok := pmap[perm]; ok {
+						flags = append(flags, flag)
+					}
+				}
+
+				// Update team_members
+				_, err = pool.Exec(context.Background(), "UPDATE team_members SET flags = $1 WHERE team_id = $2 AND user_id = $3", flags, teamId, userId)
+
+				if err != nil {
+					panic(err)
+				}
 			}
 		},
 	},
