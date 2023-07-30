@@ -13,7 +13,7 @@ require (
 	gopkg.in/yaml.v3 v3.0.1
 )
 
-require github.com/stripe/stripe-go/v74 v74.27.0
+require github.com/stripe/stripe-go/v74 v74.28.0
 
 require (
 	github.com/buger/jsonparser v1.1.1 // indirect
@@ -57,6 +57,6 @@ require (
 	github.com/plutov/paypal/v4 v4.7.0
 	github.com/redis/go-redis/v9 v9.0.5
 	go.uber.org/zap v1.24.0
-	golang.org/x/exp v0.0.0-20230725093048-515e97ebf090
+	golang.org/x/exp v0.0.0-20230728194245-b0cb94b80691
 	golang.org/x/sys v0.10.0 // indirect
 )
