@@ -151,7 +151,7 @@ var PermDetails = []types.PermissionData{
 	{
 		ID:   PermissionOwner,
 		Name: "Owner",
-		Desc: "Has full control over the {entity}. If this is a global permission, it will override all other permissions along with allow for deletions. If this is an entity specific permission, it will override all other permissions for that entity.",
+		Desc: "Has full control on {entity_plural}. If this is a global permission, it will override all other permissions along with allow for deletions. If this is an entity specific permission, it will override all other permissions for that entity.",
 		SupportedEntities: []string{
 			"bot",
 			"server",
