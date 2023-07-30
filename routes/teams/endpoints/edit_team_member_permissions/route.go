@@ -88,7 +88,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 
 	// Get the old permissions of the user
 	var oldPerms []string
-	err = tx.QueryRow(d.Context, "SELECT perms FROM team_members WHERE team_id = $1 AND user_id = $2", teamId, userId).Scan(&oldPerms)
+	err = tx.QueryRow(d.Context, "SELECT flags FROM team_members WHERE team_id = $1 AND user_id = $2", teamId, userId).Scan(&oldPerms)
 
 	if errors.Is(err, pgx.ErrNoRows) {
 		return uapi.HttpResponse{
@@ -113,7 +113,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 
 		if !slices.Contains(oldPerms, perm) {
 			// Add perm
-			_, err = tx.Exec(d.Context, "UPDATE team_members SET perms = array_append(perms, $1) WHERE team_id = $2 AND user_id = $3", perm, teamId, userId)
+			_, err = tx.Exec(d.Context, "UPDATE team_members SET flags = array_append(flags, $1) WHERE team_id = $2 AND user_id = $3", perm, teamId, userId)
 
 			if err != nil {
 				state.Logger.Error(err)
@@ -132,7 +132,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 
 		if slices.Contains(oldPerms, perm) {
 			// Remove the perm from the old perms
-			_, err = tx.Exec(d.Context, "UPDATE team_members SET perms = array_remove(perms, $1) WHERE team_id = $2 AND user_id = $3", perm, teamId, userId)
+			_, err = tx.Exec(d.Context, "UPDATE team_members SET flags = array_remove(flags, $1) WHERE team_id = $2 AND user_id = $3", perm, teamId, userId)
 
 			if err != nil {
 				state.Logger.Error(err)
@@ -142,10 +142,10 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	}
 
 	// Ensure that if perms includes owner, that there is at least one other owner
-	if slices.Contains(payload.Remove, teams.PermissionOwner) {
+	if slices.Contains(payload.Remove, "global."+teams.PermissionOwner) {
 		var ownerCount int
 
-		err = tx.QueryRow(d.Context, "SELECT COUNT(*) FROM team_members WHERE team_id = $1 AND perms && $3", teamId, userId, []string{teams.PermissionOwner}).Scan(&ownerCount)
+		err = tx.QueryRow(d.Context, "SELECT COUNT(*) FROM team_members WHERE team_id = $1 AND flags && $2", teamId, []string{teams.PermissionOwner}).Scan(&ownerCount)
 
 		if err != nil {
 			state.Logger.Error(err)

@@ -100,7 +100,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	}
 
 	// Ensure that if perms includes owner, that there is at least one other owner
-	if slices.Contains(oldPerms, teams.PermissionOwner) {
+	if slices.Contains(oldPerms, "global."+teams.PermissionOwner) {
 		var ownerCount int
 
 		err = tx.QueryRow(d.Context, "SELECT COUNT(*) FROM team_members WHERE team_id = $1 AND user_id != $2 AND perms && $3", teamId, userId, []string{teams.PermissionOwner}).Scan(&ownerCount)

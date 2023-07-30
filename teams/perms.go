@@ -86,32 +86,32 @@ var PermDetails = []types.PermissionData{
 	},
 	{
 		ID:                PermissionResubmit,
-		Name:              "Resubmit {entity}s",
-		Desc:              "Resubmit {entity}s on the team",
+		Name:              "Resubmit {entity_plural}",
+		Desc:              "Resubmit {entity_plural} on the team",
 		SupportedEntities: []string{"bot", "server"},
 	},
 	{
 		ID:                PermissionSetVanity,
 		Name:              "Set {entity} vanity",
-		Desc:              "Set vanity URL for {entity}s on the team",
+		Desc:              "Set vanity URL for {entity_plural} on the team",
 		SupportedEntities: []string{"bot", "server"},
 	},
 	{
 		ID:                PermissionRequestCertification,
-		Name:              "Request Certification for {entity}s",
-		Desc:              "Request certification for {entity}s on the team",
+		Name:              "Request Certification for {entity_plural}",
+		Desc:              "Request certification for {entity_plural} on the team",
 		SupportedEntities: []string{"bot"},
 	},
 	{
 		ID:                PermissionViewAPITokens,
 		Name:              "View Existing {entity} Tokens",
-		Desc:              "View existing API tokens of {entity}s on the team. *DANGEROUS and a potential security risk*",
+		Desc:              "View existing API tokens of {entity_plural} on the team. *DANGEROUS and a potential security risk*",
 		SupportedEntities: []string{"bot", "server"},
 	},
 	{
 		ID:                PermissionResetAPITokens,
 		Name:              "Reset {entity} Tokens",
-		Desc:              "Reset the API token of {entity}s on the team. This is seperate from viewing existing {entity} tokens as that is a much greater security risk",
+		Desc:              "Reset the API token of {entity_plural} on the team. This is seperate from viewing existing {entity} tokens as that is a much greater security risk",
 		SupportedEntities: []string{"bot", "server"},
 	},
 	{
@@ -141,7 +141,7 @@ var PermDetails = []types.PermissionData{
 	{
 		ID:   PermissionDelete,
 		Name: "Delete {entity}",
-		Desc: "Delete {entity}s from the team. This is a very dangerous permission and should usually never be given to anyone.",
+		Desc: "Delete {entity_plural} from the team. This is a very dangerous permission and should usually never be given to anyone.",
 		SupportedEntities: []string{
 			"bot",
 			"server",
@@ -152,6 +152,13 @@ var PermDetails = []types.PermissionData{
 		ID:   PermissionOwner,
 		Name: "Owner",
 		Desc: "Has full control over the {entity}. If this is a global permission, it will override all other permissions along with allow for deletions. If this is an entity specific permission, it will override all other permissions for that entity.",
+		SupportedEntities: []string{
+			"bot",
+			"server",
+			"team_member",
+			"team",
+			"global",
+		},
 	},
 }
 
@@ -160,19 +167,23 @@ type PermMan struct {
 }
 
 // Resolves a permission into an entity and the perm name
-func ResolvePerm(perm Permission) (string, string) {
+func ResolvePerm(perm Permission) (string, string, bool) {
 	pSplit := strings.Split(perm, ".")
 
 	if len(pSplit) != 2 {
-		return "", pSplit[0]
+		return "", "", false
 	}
 
-	return pSplit[0], pSplit[1]
+	return pSplit[0], pSplit[1], true
 }
 
 // Returns whether a permission is valid or not
 func IsValidPerm(perm Permission) bool {
-	entity, flag := ResolvePerm(perm)
+	entity, flag, ok := ResolvePerm(perm)
+
+	if !ok {
+		return false
+	}
 
 	if flag == PermissionOwner {
 		return true
@@ -213,7 +224,7 @@ func NewPermMan(perms []string) *PermMan {
 func (f PermMan) Has(entity string, flag Permission) bool {
 	for _, p := range f.perms {
 		// From fastest to slowest
-		if p == PermissionOwner || p == entity+"."+PermissionOwner || p == flag || p == entity+"."+flag {
+		if p == "global."+PermissionOwner || p == entity+"."+PermissionOwner || p == "global."+flag || p == entity+"."+flag {
 			return true
 		}
 	}
@@ -223,14 +234,13 @@ func (f PermMan) Has(entity string, flag Permission) bool {
 
 // Has raw returns if the user can perform an operation based on a full permission name
 func (f PermMan) HasRaw(flag string) bool {
-	for _, p := range f.perms {
-		// From fastest to slowest
-		if p == flag || p == PermissionOwner {
-			return true
-		}
+	entity, flag, ok := ResolvePerm(flag)
+
+	if !ok {
+		return false
 	}
 
-	return false
+	return f.Has(entity, flag)
 }
 
 func (f *PermMan) Add(flag Permission) {

@@ -140,7 +140,7 @@ var migs = []migration{
 				"EDIT_TEAM_MEMBER_PERMISSIONS": "team_member.edit",
 				"REMOVE_TEAM_MEMBERS":          "team_member.remove",
 				"EDIT_TEAM_WEBHOOKS":           "team.edit_webhooks",
-				"OWNER":                        "*",
+				"OWNER":                        "global.*",
 			}
 
 			rows, err := pool.Query(context.Background(), "SELECT team_id, user_id, perms FROM team_members")

@@ -49,10 +49,10 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		}
 	}
 
-	if !perms.HasRaw(teams.PermissionOwner) {
+	if !perms.HasRaw("global." + teams.PermissionOwner) {
 		return uapi.HttpResponse{
 			Status: http.StatusForbidden,
-			Json:   types.ApiError{Message: "Only full owners can delete teams"},
+			Json:   types.ApiError{Message: "Only global owners can delete teams"},
 		}
 	}
 
