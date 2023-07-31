@@ -86,8 +86,8 @@ var PermDetails = []types.PermissionData{
 	},
 	{
 		ID:                PermissionResubmit,
-		Name:              "Resubmit {entity_plural}",
-		Desc:              "Resubmit {entity_plural} on the team",
+		Name:              "Resubmit {entity}",
+		Desc:              "Resubmit {entity} on the team",
 		SupportedEntities: []string{"bot", "server"},
 	},
 	{

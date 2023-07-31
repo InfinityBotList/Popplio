@@ -34,7 +34,7 @@ type Team struct {
 	Name     string       `db:"name" json:"name"`
 	Avatar   string       `db:"avatar" json:"avatar"`
 	Members  []TeamMember `db:"-" json:"members"`
-	UserBots []IndexBot   `json:"user_bots"` // Bots that are owned by the team
+	UserBots []IndexBot   `db:"-" json:"user_bots"` // Bots that are owned by the team
 }
 
 type TeamMember struct {
