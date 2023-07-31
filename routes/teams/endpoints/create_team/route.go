@@ -71,7 +71,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	}
 
 	// Add the user to the team
-	_, err = tx.Exec(d.Context, "INSERT INTO team_members (team_id, user_id, perms) VALUES ($1, $2, $3)", teamId, d.Auth.ID, []string{teams.PermissionOwner})
+	_, err = tx.Exec(d.Context, "INSERT INTO team_members (team_id, user_id, flags) VALUES ($1, $2, $3)", teamId, d.Auth.ID, []string{"global." + teams.PermissionOwner})
 
 	if err != nil {
 		state.Logger.Error(err)
