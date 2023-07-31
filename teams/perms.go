@@ -157,7 +157,7 @@ var PermDetails = []types.PermissionData{
 	{
 		ID:   PermissionOwner,
 		Name: "{entity} Admin",
-		Desc: "Has full control on {entity_plural}. If this is a global permission, it will override all other permissions along with allow for deletions. If this is an entity specific permission, it will override all other permissions for that entity.",
+		Desc: "Has full control on {entity}'s.",
 		SupportedEntities: []string{
 			"bot",
 			"server",
@@ -169,6 +169,10 @@ var PermDetails = []types.PermissionData{
 			"global": {
 				Name: "Global Owner",
 				Desc: "Full control. This overrides all other permissions and also allows deletion of the team. This is a very dangerous permission and should usually never be given to anyone.",
+			},
+			"team": {
+				Name: "Team Admin",
+				Desc: "Has full control on team settings listed under this tab. Note that this DOES NOT allow deleting the team or managing entities within the team itself",
 			},
 		},
 	},
