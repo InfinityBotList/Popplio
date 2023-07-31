@@ -92,25 +92,25 @@ var PermDetails = []types.PermissionData{
 	},
 	{
 		ID:                PermissionSetVanity,
-		Name:              "Set {entity} vanity",
+		Name:              "Set {entity} Vanity",
 		Desc:              "Set vanity URL for {entity_plural} on the team",
 		SupportedEntities: []string{"bot", "server"},
 	},
 	{
 		ID:                PermissionRequestCertification,
-		Name:              "Request Certification for {entity_plural}",
-		Desc:              "Request certification for {entity_plural} on the team",
+		Name:              "Request Certification for {entity}",
+		Desc:              "Request certification for {entity} on the team",
 		SupportedEntities: []string{"bot"},
 	},
 	{
 		ID:                PermissionViewAPITokens,
-		Name:              "View Existing {entity} Tokens",
-		Desc:              "View existing API tokens of {entity_plural} on the team. *DANGEROUS and a potential security risk*",
+		Name:              "View Existing {entity} Token",
+		Desc:              "View existing API tokens for {entity} on the team. *DANGEROUS and a potential security risk*",
 		SupportedEntities: []string{"bot", "server"},
 	},
 	{
 		ID:                PermissionResetAPITokens,
-		Name:              "Reset {entity} Tokens",
+		Name:              "Reset {entity} Token",
 		Desc:              "Reset the API token of {entity_plural} on the team. This is seperate from viewing existing {entity} tokens as that is a much greater security risk",
 		SupportedEntities: []string{"bot", "server"},
 	},
@@ -141,16 +141,22 @@ var PermDetails = []types.PermissionData{
 	{
 		ID:   PermissionDelete,
 		Name: "Delete {entity}",
-		Desc: "Delete {entity_plural} from the team. This is a very dangerous permission and should usually never be given to anyone.",
+		Desc: "Delete a {entity} from the team. This is a very dangerous permission and should usually never be given to anyone.",
 		SupportedEntities: []string{
 			"bot",
 			"server",
 			"team_member",
 		},
+		DataOverride: map[string]*types.PermissionDataOverride{
+			"global": {
+				Name: "Delete Any",
+				Desc: "Delete any entity from the team other than the entity itself. This is a very dangerous permission and should usually never be given to anyone.",
+			},
+		},
 	},
 	{
 		ID:   PermissionOwner,
-		Name: "{entity}: Owner",
+		Name: "{entity} Admin",
 		Desc: "Has full control on {entity_plural}. If this is a global permission, it will override all other permissions along with allow for deletions. If this is an entity specific permission, it will override all other permissions for that entity.",
 		SupportedEntities: []string{
 			"bot",
@@ -158,6 +164,12 @@ var PermDetails = []types.PermissionData{
 			"team_member",
 			"team",
 			"global",
+		},
+		DataOverride: map[string]*types.PermissionDataOverride{
+			"global": {
+				Name: "Global Owner",
+				Desc: "Full control. This overrides all other permissions and also allows deletion of the team. This is a very dangerous permission and should usually never be given to anyone.",
+			},
 		},
 	},
 }

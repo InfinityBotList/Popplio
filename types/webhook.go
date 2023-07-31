@@ -23,7 +23,7 @@ type WebhookLogEntry struct {
 	TargetID   string                  `db:"target_id" json:"target_id" description:"The target ID."`
 	TargetType string                  `db:"target_type" json:"target_type" description:"The target type (bot/team etc.)."`
 	UserID     string                  `db:"user_id" json:"-"`
-	User       *dovetypes.PlatformUser `json:"user" description:"User ID the webhook is intended for" ci:"internal"` // Must be parsed internally
+	User       *dovetypes.PlatformUser `db:"-" json:"user" description:"User ID the webhook is intended for" ci:"internal"` // Must be parsed internally
 	URL        string                  `db:"url" json:"url" description:"The URL of the webhook."`
 	Data       map[string]any          `db:"data" json:"data" description:"The data of the webhook."`
 	Response   pgtype.Text             `db:"response" json:"response" description:"The response of the webhook request."`

@@ -7,11 +7,17 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+type PermissionDataOverride struct {
+	Name string `json:"name"`
+	Desc string `json:"desc"`
+}
+
 type PermissionData struct {
-	ID                string   `json:"id"`
-	Name              string   `json:"name"`
-	Desc              string   `json:"desc"`
-	SupportedEntities []string `json:"supported_entities"`
+	ID                string                             `json:"id"`
+	Name              string                             `json:"name"`
+	Desc              string                             `json:"desc"`
+	SupportedEntities []string                           `json:"supported_entities"`
+	DataOverride      map[string]*PermissionDataOverride `json:"data_override,omitempty"`
 }
 
 // Represents a team that is an owner of an entity

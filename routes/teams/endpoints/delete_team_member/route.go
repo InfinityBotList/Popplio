@@ -72,7 +72,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 
 	// Get the old permissions of the user
 	var oldPerms []string
-	err = tx.QueryRow(d.Context, "SELECT perms FROM team_members WHERE team_id = $1 AND user_id = $2", teamId, userId).Scan(&oldPerms)
+	err = tx.QueryRow(d.Context, "SELECT flags FROM team_members WHERE team_id = $1 AND user_id = $2", teamId, userId).Scan(&oldPerms)
 
 	if errors.Is(err, pgx.ErrNoRows) {
 		return uapi.HttpResponse{
@@ -103,7 +103,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	if slices.Contains(oldPerms, "global."+teams.PermissionOwner) {
 		var ownerCount int
 
-		err = tx.QueryRow(d.Context, "SELECT COUNT(*) FROM team_members WHERE team_id = $1 AND user_id != $2 AND perms && $3", teamId, userId, []string{teams.PermissionOwner}).Scan(&ownerCount)
+		err = tx.QueryRow(d.Context, "SELECT COUNT(*) FROM team_members WHERE team_id = $1 AND user_id != $2 AND flags && $3", teamId, userId, []string{teams.PermissionOwner}).Scan(&ownerCount)
 
 		if err != nil {
 			state.Logger.Error(err)
@@ -119,6 +119,13 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	}
 
 	_, err = tx.Exec(d.Context, "DELETE FROM team_members WHERE team_id = $1 AND user_id = $2", teamId, userId)
+
+	if err != nil {
+		state.Logger.Error(err)
+		return uapi.DefaultResponse(http.StatusInternalServerError)
+	}
+
+	err = tx.Commit(d.Context)
 
 	if err != nil {
 		state.Logger.Error(err)

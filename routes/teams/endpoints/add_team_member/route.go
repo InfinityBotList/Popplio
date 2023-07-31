@@ -118,7 +118,10 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		}
 	}
 
-	_, err = tx.Exec(d.Context, "INSERT INTO team_members (team_id, user_id, perms) VALUES ($1, $2, $3)", teamId, payload.UserID, perms)
+	// Get unique perms from array
+	pm := teams.NewPermMan(payload.Perms).Perms()
+
+	_, err = tx.Exec(d.Context, "INSERT INTO team_members (team_id, user_id, flags) VALUES ($1, $2, $3)", teamId, payload.UserID, pm)
 
 	if err != nil {
 		state.Logger.Error(err)
