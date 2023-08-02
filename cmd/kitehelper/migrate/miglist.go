@@ -121,7 +121,8 @@ var migs = []migration{
 		},
 	},
 	{
-		name: "Team permissions -> flags",
+		name:     "Team permissions -> flags",
+		disabled: true,
 		function: func(pool *pgxpool.Pool) {
 			// Fetch every team member permission
 			pmap := map[string]string{
@@ -182,4 +183,5 @@ var migs = []migration{
 			}
 		},
 	},
+	{},
 }

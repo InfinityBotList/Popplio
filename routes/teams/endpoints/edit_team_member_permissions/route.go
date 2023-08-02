@@ -104,6 +104,13 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 
 	// Check if manager has all perms they are trying to add
 	for _, perm := range payload.Add {
+		if !teams.IsValidPerm(perm) {
+			return uapi.HttpResponse{
+				Status: http.StatusBadRequest,
+				Json:   types.ApiError{Message: "Invalid permission: " + perm},
+			}
+		}
+
 		if !perms.HasRaw(perm) {
 			return uapi.HttpResponse{
 				Status: http.StatusForbidden,
@@ -123,6 +130,13 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	}
 
 	for _, perm := range payload.Remove {
+		if !teams.IsValidPerm(perm) {
+			return uapi.HttpResponse{
+				Status: http.StatusBadRequest,
+				Json:   types.ApiError{Message: "Invalid permission: " + perm},
+			}
+		}
+
 		if !perms.HasRaw(perm) {
 			return uapi.HttpResponse{
 				Status: http.StatusForbidden,

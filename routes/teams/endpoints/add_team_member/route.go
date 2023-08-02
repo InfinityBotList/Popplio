@@ -67,6 +67,13 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	}
 
 	for _, perm := range payload.Perms {
+		if !teams.IsValidPerm(perm) {
+			return uapi.HttpResponse{
+				Status: http.StatusBadRequest,
+				Json:   types.ApiError{Message: "Invalid permission: " + perm},
+			}
+		}
+
 		if !perms.HasRaw(perm) {
 			return uapi.HttpResponse{
 				Status: http.StatusForbidden,
