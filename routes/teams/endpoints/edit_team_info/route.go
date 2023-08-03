@@ -15,13 +15,8 @@ import (
 	"github.com/go-playground/validator/v10"
 )
 
-type EditTeam struct {
-	Name   string `json:"name" validate:"required,nonvulgar,min=3,max=32" msg:"Team name must be between 3 and 32 characters long"`
-	Avatar string `json:"avatar" validate:"required,https" msg:"Avatar must be a valid HTTPS URL"`
-}
-
 var (
-	compiledMessages = uapi.CompileValidationErrors(EditTeam{})
+	compiledMessages = uapi.CompileValidationErrors(types.EditTeam{})
 )
 
 func Docs() *docs.Doc {
@@ -44,7 +39,7 @@ func Docs() *docs.Doc {
 				Schema:      docs.IdSchema,
 			},
 		},
-		Req:  EditTeam{},
+		Req:  types.EditTeam{},
 		Resp: types.ApiError{},
 	}
 }
@@ -52,7 +47,7 @@ func Docs() *docs.Doc {
 func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	var teamId = chi.URLParam(r, "tid")
 
-	var payload EditTeam
+	var payload types.EditTeam
 
 	hresp, ok := uapi.MarshalReq(r, &payload)
 
@@ -82,14 +77,23 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	if !perms.Has("team", teams.PermissionEdit) {
 		return uapi.HttpResponse{
 			Status: http.StatusForbidden,
-			Json:   types.ApiError{Message: "You do not have permission to edit this team's information (name/avatar)"},
+			Json:   types.ApiError{Message: "You do not have permission to edit this team's information (name/avatar/mention)"},
 		}
 	}
+
+	tx, err := state.Pool.Begin(d.Context)
+
+	if err != nil {
+		state.Logger.Error(err)
+		return uapi.DefaultResponse(http.StatusInternalServerError)
+	}
+
+	defer tx.Rollback(d.Context)
 
 	// Get current name and avatar
 	var oldName, oldAvatar string
 
-	err = state.Pool.QueryRow(d.Context, "SELECT name, avatar FROM teams WHERE id = $1", teamId).Scan(&oldName, &oldAvatar)
+	err = tx.QueryRow(d.Context, "SELECT name, avatar FROM teams WHERE id = $1", teamId).Scan(&oldName, &oldAvatar)
 
 	if err != nil {
 		state.Logger.Error(err)
@@ -97,7 +101,14 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	}
 
 	// Update the team
-	_, err = state.Pool.Exec(d.Context, "UPDATE teams SET name = $1, avatar = $2 WHERE id = $3", payload.Name, payload.Avatar, teamId)
+	_, err = tx.Exec(d.Context, "UPDATE teams SET name = $1, avatar = $2 WHERE id = $3", payload.Name, payload.Avatar, teamId)
+
+	if err != nil {
+		state.Logger.Error(err)
+		return uapi.DefaultResponse(http.StatusInternalServerError)
+	}
+
+	err = tx.Commit(d.Context)
 
 	if err != nil {
 		state.Logger.Error(err)

@@ -7,6 +7,12 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+type EditTeam struct {
+	Name    string `json:"name" validate:"required,nonvulgar,min=3,max=32" msg:"Team name must be between 3 and 32 characters long"`
+	Avatar  string `json:"avatar" validate:"required,https" msg:"Avatar must be a valid HTTPS URL"`
+	Mention string `json:"mention" validate:"required" msg:"The user to mention" description:"ID of the user to mention, if wanted"`
+}
+
 type PermissionDataOverride struct {
 	Name string `json:"name"`
 	Desc string `json:"desc"`
@@ -38,9 +44,11 @@ type Team struct {
 }
 
 type TeamMember struct {
-	User      *dovetypes.PlatformUser `json:"user"`
-	Flags     []string                `json:"flags"`
-	CreatedAt time.Time               `json:"created_at"`
+	ITag        pgtype.UUID             `json:"itag"`
+	User        *dovetypes.PlatformUser `json:"user"`
+	Flags       []string                `json:"flags"`
+	CreatedAt   time.Time               `json:"created_at"`
+	Mentionable bool                    `json:"mentionable"`
 }
 
 type CreateTeam struct {
@@ -62,6 +70,11 @@ type AddTeamMember struct {
 }
 
 type EditTeamMember struct {
+	PermUpdate  *PermissionUpdate `json:"perm_update" description:"The permissions to update"`
+	Mentionable *bool             `json:"mentionable" description:"Whether the user is mentionable"`
+}
+
+type PermissionUpdate struct {
 	Add    []string `json:"add" description:"Add must be the list of permissions to add"`
 	Remove []string `json:"remove" description:"Remove must be the list of permissions to remove"`
 }

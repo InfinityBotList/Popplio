@@ -7,7 +7,7 @@ import (
 	"popplio/routes/teams/endpoints/delete_team"
 	"popplio/routes/teams/endpoints/delete_team_member"
 	"popplio/routes/teams/endpoints/edit_team_info"
-	"popplio/routes/teams/endpoints/edit_team_member_permissions"
+	"popplio/routes/teams/endpoints/edit_team_member"
 	"popplio/routes/teams/endpoints/get_team"
 	"popplio/routes/teams/endpoints/get_team_permissions"
 	"popplio/routes/teams/endpoints/get_team_seo"
@@ -121,11 +121,11 @@ func (b Router) Routes(r *chi.Mux) {
 	}.Route(r)
 
 	uapi.Route{
-		Pattern: "/users/{uid}/teams/{tid}/members/{mid}/permissions",
-		OpId:    "edit_team_member_permissions",
+		Pattern: "/users/{uid}/teams/{tid}/members/{mid}",
+		OpId:    "edit_team_member",
 		Method:  uapi.PATCH,
-		Docs:    edit_team_member_permissions.Docs,
-		Handler: edit_team_member_permissions.Route,
+		Docs:    edit_team_member.Docs,
+		Handler: edit_team_member.Route,
 		Auth: []uapi.AuthType{
 			{
 				Type:   api.TargetTypeUser,

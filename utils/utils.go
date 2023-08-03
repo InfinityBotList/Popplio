@@ -48,7 +48,7 @@ func ResolveTeam(ctx context.Context, teamId string) (*types.Team, error) {
 	// Next handle members
 	var members = []types.TeamMember{}
 
-	rows, err := state.Pool.Query(ctx, "SELECT user_id, flags, created_at FROM team_members WHERE team_id = $1 ORDER BY created_at ASC", teamId)
+	rows, err := state.Pool.Query(ctx, "SELECT itag, user_id, flags, created_at, mentionable FROM team_members WHERE team_id = $1 ORDER BY created_at ASC", teamId)
 
 	if err != nil {
 		return nil, err
@@ -57,11 +57,13 @@ func ResolveTeam(ctx context.Context, teamId string) (*types.Team, error) {
 	defer rows.Close()
 
 	for rows.Next() {
+		var itag pgtype.UUID
 		var userId string
 		var flags []string
 		var createdAt time.Time
+		var mentionable bool
 
-		err = rows.Scan(&userId, &flags, &createdAt)
+		err = rows.Scan(&itag, &userId, &flags, &createdAt, &mentionable)
 
 		if err != nil {
 			return nil, err
@@ -74,9 +76,11 @@ func ResolveTeam(ctx context.Context, teamId string) (*types.Team, error) {
 		}
 
 		members = append(members, types.TeamMember{
-			User:      user,
-			Flags:     flags,
-			CreatedAt: createdAt,
+			ITag:        itag,
+			User:        user,
+			Flags:       flags,
+			CreatedAt:   createdAt,
+			Mentionable: mentionable,
 		})
 	}
 
