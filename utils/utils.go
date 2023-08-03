@@ -8,7 +8,6 @@ import (
 	"strings"
 	"time"
 
-	"popplio/config"
 	"popplio/state"
 	"popplio/types"
 
@@ -172,9 +171,6 @@ func GetCols(s any) []string {
 	return cols
 }
 
-// Returns a permission manager of the permissions the user has on the bot
-// Also takes teams into account if the bot is in a team
-
 func ClearUserCache(ctx context.Context, userId string) error {
 	// Delete from cache
 	state.Redis.Del(ctx, "uc-"+userId)
@@ -190,60 +186,6 @@ func ClearBotCache(ctx context.Context, botId string) error {
 	return nil
 }
 
-func ValidateExtraLinks(links []types.Link) error {
-	var public, private int
-
-	if len(links) > 20 {
-		return errors.New("you have too many links")
-	}
-
-	for _, link := range links {
-		if strings.HasPrefix(link.Name, "_") {
-			private++
-
-			if len(link.Name) > 512 || len(link.Value) > 8192 {
-				return errors.New("one of your private links has a name/value that is too long")
-			}
-
-			if strings.ReplaceAll(link.Name, " ", "") == "" || strings.ReplaceAll(link.Value, " ", "") == "" {
-				return errors.New("one of your private links has a name/value that is empty")
-			}
-		} else {
-			public++
-
-			if len(link.Name) > 64 || len(link.Value) > 512 {
-				return errors.New("one of your public links has a name/value that is too long")
-			}
-
-			if strings.ReplaceAll(link.Name, " ", "") == "" || strings.ReplaceAll(link.Value, " ", "") == "" {
-				return errors.New("one of your public links has a name/value that is empty")
-			}
-
-			if !strings.HasPrefix(link.Value, "https://") {
-				return errors.New("extra link '" + link.Name + "' must be HTTPS")
-			}
-		}
-
-		for _, ch := range link.Name {
-			allowedChars := "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_ "
-
-			if !strings.ContainsRune(allowedChars, ch) {
-				return errors.New("extra link '" + link.Name + "' has an invalid character: " + string(ch))
-			}
-		}
-	}
-
-	if public > 10 {
-		return errors.New("you have too many public links")
-	}
-
-	if private > 10 {
-		return errors.New("you have too many private links")
-	}
-
-	return nil
-}
-
 func IsValidUUID(u string) bool {
 	_, err := uuid.Parse(u)
 	return err == nil
@@ -251,30 +193,4 @@ func IsValidUUID(u string) bool {
 
 func UUIDString(myUUID pgtype.UUID) string {
 	return fmt.Sprintf("%x-%x-%x-%x-%x", myUUID.Bytes[0:4], myUUID.Bytes[4:6], myUUID.Bytes[6:8], myUUID.Bytes[8:10], myUUID.Bytes[10:16])
-}
-
-// For staging, ensure user is a hdev or owner
-//
-// This is because staging uses test keys
-func StagingCheckSensitive(ctx context.Context, userId string) error {
-	// For staging, ensure user is a hdev or owner
-	//
-	// This is because staging uses test keys
-	if config.CurrentEnv == config.CurrentEnvStaging {
-		var hdev bool
-		var owner bool
-
-		err := state.Pool.QueryRow(ctx, "SELECT iblhdev, owner FROM users WHERE user_id = $1", userId).Scan(&hdev, &owner)
-
-		if err != nil {
-			state.Logger.Error(err)
-			return errors.New("unable to determine if user is staff")
-		}
-
-		if !hdev && !owner {
-			return errors.New("user is not a hdev/owner while being in a staging/test environment")
-		}
-	}
-
-	return nil
 }

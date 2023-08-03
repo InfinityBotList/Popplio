@@ -5,7 +5,7 @@ import (
 	"errors"
 	"popplio/state"
 	"popplio/types"
-	"popplio/utils"
+	"popplio/validators"
 	"strconv"
 
 	"github.com/bwmarrin/discordgo"
@@ -47,7 +47,7 @@ func FindPerks(ctx context.Context, payload PerkData) (*types.PaymentPlan, error
 		return nil, errors.New("internal error: user id is required")
 	}
 
-	err := utils.StagingCheckSensitive(ctx, payload.UserID)
+	err := validators.StagingCheckSensitive(ctx, payload.UserID)
 
 	if err != nil {
 		return nil, err
@@ -105,7 +105,7 @@ func FindPerks(ctx context.Context, payload PerkData) (*types.PaymentPlan, error
 }
 
 func GivePerks(ctx context.Context, perkData PerkData) error {
-	err := utils.StagingCheckSensitive(ctx, perkData.UserID)
+	err := validators.StagingCheckSensitive(ctx, perkData.UserID)
 
 	if err != nil {
 		return err

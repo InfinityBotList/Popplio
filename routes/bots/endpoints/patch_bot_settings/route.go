@@ -7,6 +7,7 @@ import (
 	"popplio/teams"
 	"popplio/types"
 	"popplio/utils"
+	"popplio/validators"
 	"reflect"
 	"strconv"
 	"strings"
@@ -112,7 +113,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		return uapi.ValidatorErrorResponse(compiledMessages, errors)
 	}
 
-	err = utils.ValidateExtraLinks(payload.ExtraLinks)
+	err = validators.ValidateExtraLinks(payload.ExtraLinks)
 
 	if err != nil {
 		return uapi.HttpResponse{

@@ -12,6 +12,7 @@ import (
 	"popplio/teams"
 	"popplio/types"
 	"popplio/utils"
+	"popplio/validators"
 
 	"github.com/infinitybotlist/eureka/uapi/ratelimit"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -127,7 +128,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		return uapi.ValidatorErrorResponse(compiledMessages, errors)
 	}
 
-	err = utils.ValidateExtraLinks(payload.ExtraLinks)
+	err = validators.ValidateExtraLinks(payload.ExtraLinks)
 
 	if err != nil {
 		return uapi.HttpResponse{

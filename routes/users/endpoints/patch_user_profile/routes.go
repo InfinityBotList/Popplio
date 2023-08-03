@@ -6,7 +6,7 @@ import (
 
 	"popplio/state"
 	"popplio/types"
-	"popplio/utils"
+	"popplio/validators"
 
 	docs "github.com/infinitybotlist/eureka/doclib"
 	"github.com/infinitybotlist/eureka/uapi"
@@ -55,7 +55,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
-	err = utils.ValidateExtraLinks(profile.ExtraLinks)
+	err = validators.ValidateExtraLinks(profile.ExtraLinks)
 
 	if err != nil {
 		return uapi.HttpResponse{
