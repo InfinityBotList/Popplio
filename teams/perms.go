@@ -71,6 +71,7 @@ var PermDetails = []types.PermissionData{
 			"bot",
 			"server",
 			"team_member",
+			"global",
 		},
 	},
 	{
@@ -82,25 +83,26 @@ var PermDetails = []types.PermissionData{
 			"server",
 			"team",
 			"team_member",
+			"global",
 		},
 	},
 	{
 		ID:                PermissionResubmit,
 		Name:              "Resubmit {entity}",
 		Desc:              "Resubmit {entity} on the team",
-		SupportedEntities: []string{"bot", "server"},
+		SupportedEntities: []string{"bot", "server", "global"},
 	},
 	{
 		ID:                PermissionSetVanity,
 		Name:              "Set {entity} Vanity",
 		Desc:              "Set vanity URL for {entity_plural} on the team",
-		SupportedEntities: []string{"bot", "server"},
+		SupportedEntities: []string{"bot", "server", "global"},
 	},
 	{
 		ID:                PermissionRequestCertification,
 		Name:              "Request Certification for {entity}",
 		Desc:              "Request certification for {entity} on the team",
-		SupportedEntities: []string{"bot"},
+		SupportedEntities: []string{"bot", "global"},
 	},
 	{
 		ID:                PermissionViewAPITokens,
@@ -118,25 +120,25 @@ var PermDetails = []types.PermissionData{
 		ID:                PermissionEditWebhooks,
 		Name:              "Edit {entity} Webhooks",
 		Desc:              "Edit {entity} webhook settings. Note that 'Test {entity} Webhooks' is a separate permission and is required to test webhooks.",
-		SupportedEntities: []string{"bot", "team", "server"},
+		SupportedEntities: []string{"bot", "team", "server", "global"},
 	},
 	{
 		ID:                PermissionTestWebhooks,
 		Name:              "Test {entity} Webhooks",
 		Desc:              "Test {entity} webhooks. Note that this is a separate permission from 'Edit {entity} Webhooks' and is required to test webhooks.",
-		SupportedEntities: []string{"bot", "team", "server"},
+		SupportedEntities: []string{"bot", "team", "server", "global"},
 	},
 	{
 		ID:                PermissionGetWebhookLogs,
 		Name:              "Get {entity} Webhook Logs",
 		Desc:              "Get {entity} webhook logs.",
-		SupportedEntities: []string{"bot", "team", "server"},
+		SupportedEntities: []string{"bot", "team", "server", "global"},
 	},
 	{
 		ID:                PermissionDeleteWebhookLogs,
 		Name:              "Delete {entity} Webhook Logs",
 		Desc:              "Delete {entity} webhook logs. Usually requires 'Get {entity} Webhook Logs' to be useful.",
-		SupportedEntities: []string{"bot", "team", "server"},
+		SupportedEntities: []string{"bot", "team", "server", "global"},
 	},
 	{
 		ID:   PermissionDelete,
@@ -146,6 +148,7 @@ var PermDetails = []types.PermissionData{
 			"bot",
 			"server",
 			"team_member",
+			"global",
 		},
 		DataOverride: map[string]*types.PermissionDataOverride{
 			"global": {
@@ -199,10 +202,6 @@ func IsValidPerm(perm Permission) bool {
 
 	if !ok {
 		return false
-	}
-
-	if flag == PermissionOwner {
-		return true
 	}
 
 	for _, p := range PermDetails {
