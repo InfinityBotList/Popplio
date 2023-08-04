@@ -107,11 +107,14 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		}
 	}
 
-	newTeamPerms, err := teams.GetEntityPerms(d.Context, payload.TeamID, "team", payload.TeamID)
+	newTeamPerms, err := teams.GetEntityPerms(d.Context, d.Auth.ID, "team", payload.TeamID)
 
 	if err != nil {
 		state.Logger.Error(err)
-		return uapi.DefaultResponse(http.StatusInternalServerError)
+		return uapi.HttpResponse{
+			Status: http.StatusBadRequest,
+			Json:   types.ApiError{Message: err.Error()},
+		}
 	}
 
 	if !newTeamPerms.Has("bot", teams.PermissionAdd) {

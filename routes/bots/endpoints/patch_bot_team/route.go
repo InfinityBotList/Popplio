@@ -88,7 +88,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		}
 	}
 
-	newTeamPerms, err := teams.GetEntityPerms(d.Context, payload.TeamID, "team", payload.TeamID)
+	newTeamPerms, err := teams.GetEntityPerms(d.Context, d.Auth.ID, "team", payload.TeamID)
 
 	if err != nil {
 		state.Logger.Error(err)
