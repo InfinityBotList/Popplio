@@ -68,10 +68,10 @@ var PermDetails = []types.PermissionData{
 		Name: "Add {entity}",
 		Desc: "Add new {entity} to the team or allow transferring {entity} to this team",
 		SupportedEntities: []string{
+			"global",
 			"bot",
 			"server",
 			"team_member",
-			"global",
 		},
 	},
 	{
@@ -79,11 +79,11 @@ var PermDetails = []types.PermissionData{
 		Name: "Edit {entity}",
 		Desc: "Edit settings for the {entity}",
 		SupportedEntities: []string{
+			"global",
 			"bot",
 			"server",
 			"team",
 			"team_member",
-			"global",
 		},
 	},
 	{
