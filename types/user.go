@@ -39,7 +39,7 @@ type User struct {
 	VoteBanned                       bool                    `db:"vote_banned" json:"vote_banned"`
 	Banned                           bool                    `db:"banned" json:"banned"`
 	UserBots                         []IndexBot              `db:"-" json:"user_bots" ci:"internal"`  // Must be handled internally
-	UserTeams                        []Team                  `db:"-" json:"user_teams" ci:"internal"` // Must be handled internally
+	UserTeams                        []PartialTeam           `db:"-" json:"user_teams" ci:"internal"` // Must be handled internally
 	UserPacks                        []IndexBotPack          `db:"-" json:"user_packs" ci:"internal"` // Must be handled internally
 }
 

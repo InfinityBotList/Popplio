@@ -6,6 +6,7 @@ package teamhooks
 import (
 	"errors"
 	"popplio/state"
+	"popplio/types"
 	"popplio/utils"
 	"popplio/webhooks/events"
 	"popplio/webhooks/sender"
@@ -13,6 +14,7 @@ import (
 	"time"
 
 	"github.com/infinitybotlist/eureka/dovewing"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 	jsoniter "github.com/json-iterator/go"
 )
@@ -20,6 +22,11 @@ import (
 const EntityType = "team"
 
 var json = jsoniter.ConfigCompatibleWithStandardLibrary
+
+var (
+	pteamColsArr = utils.GetCols(types.PartialTeam{})
+	pteamCols    = strings.Join(pteamColsArr, ", ")
+)
 
 // Simple ergonomic webhook builder
 type With[T events.WebhookEvent] struct {
@@ -35,7 +42,14 @@ func Send[T events.WebhookEvent](with With[T]) error {
 		return errors.New("invalid event type")
 	}
 
-	team, err := utils.ResolveTeam(state.Context, with.TeamID)
+	row, err := state.Pool.Query(state.Context, "SELECT "+pteamCols+" FROM teams WHERE id = $1", with.TeamID)
+
+	if err != nil {
+		state.Logger.Error(err)
+		return err
+	}
+
+	team, err := pgx.CollectOneRow(row, pgx.RowToStructByName[types.PartialTeam])
 
 	if err != nil {
 		state.Logger.Error(err)
@@ -69,7 +83,7 @@ func Send[T events.WebhookEvent](with With[T]) error {
 	resp := &events.WebhookResponse[T]{
 		Creator: user,
 		Targets: events.Target{
-			Team: team,
+			Team: &team,
 		},
 		CreatedAt: time.Now().Unix(),
 		Type:      with.Data.Event(),

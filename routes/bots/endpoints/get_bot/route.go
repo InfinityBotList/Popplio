@@ -27,8 +27,8 @@ var (
 	botColsArr = utils.GetCols(types.Bot{})
 	botCols    = strings.Join(botColsArr, ",")
 
-	entityTeamOwnerColsArr = utils.GetCols(types.EntityTeamOwner{})
-	entityTeamOwnerCols    = strings.Join(entityTeamOwnerColsArr, ",")
+	pteamColsArr = utils.GetCols(types.PartialTeam{})
+	pteamCols    = strings.Join(pteamColsArr, ",")
 )
 
 func Docs() *docs.Doc {
@@ -178,14 +178,14 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 
 		bot.MainOwner = ownerUser
 	} else {
-		row, err := state.Pool.Query(d.Context, "SELECT "+entityTeamOwnerCols+" FROM teams WHERE id = $1", bot.TeamOwnerID)
+		row, err := state.Pool.Query(d.Context, "SELECT "+pteamCols+" FROM teams WHERE id = $1", bot.TeamOwnerID)
 
 		if err != nil {
 			state.Logger.Error(err)
 			return uapi.DefaultResponse(http.StatusInternalServerError)
 		}
 
-		eto, err := pgx.CollectOneRow(row, pgx.RowToStructByName[types.EntityTeamOwner])
+		eto, err := pgx.CollectOneRow(row, pgx.RowToStructByName[types.PartialTeam])
 
 		if err != nil {
 			state.Logger.Error(err)

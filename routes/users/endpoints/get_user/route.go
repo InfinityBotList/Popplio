@@ -27,6 +27,9 @@ var (
 
 	indexPackColsArr = utils.GetCols(types.IndexBotPack{})
 	indexPackCols    = strings.Join(indexPackColsArr, ",")
+
+	pteamColsArr = utils.GetCols(types.PartialTeam{})
+	pteamCols    = strings.Join(pteamColsArr, ",")
 )
 
 type userTeamId struct {
@@ -148,15 +151,21 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	}
 
 	for _, teamId := range userTeamIds {
-		team, err := utils.ResolveTeam(d.Context, teamId.TeamID)
+		row, err := state.Pool.Query(d.Context, "SELECT "+pteamCols+" FROM teams WHERE team_id = $1", teamId)
 
 		if err != nil {
 			state.Logger.Error(err)
 			return uapi.DefaultResponse(http.StatusInternalServerError)
 		}
 
-		user.UserBots = append(user.UserBots, team.UserBots...)
-		user.UserTeams = append(user.UserTeams, *team)
+		team, err := pgx.CollectOneRow(row, pgx.RowToStructByName[types.PartialTeam])
+
+		if err != nil {
+			state.Logger.Error(err)
+			return uapi.DefaultResponse(http.StatusInternalServerError)
+		}
+
+		user.UserTeams = append(user.UserTeams, team)
 	}
 
 	// Packs

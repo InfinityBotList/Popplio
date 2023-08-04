@@ -26,29 +26,27 @@ type PermissionData struct {
 	DataOverride      map[string]*PermissionDataOverride `json:"data_override,omitempty"`
 }
 
-// Represents a team that is an owner of an entity
-//
-// This struct does not contain all the data present in a team
-type EntityTeamOwner struct {
+type PartialTeam struct {
 	ID     string `db:"id" json:"id"`
 	Name   string `db:"name" json:"name"`
 	Avatar string `db:"avatar" json:"avatar"`
 }
 
 type Team struct {
-	ID       string       `db:"id" json:"id"`
-	Name     string       `db:"name" json:"name"`
-	Avatar   string       `db:"avatar" json:"avatar"`
-	Members  []TeamMember `db:"-" json:"members"`
-	UserBots []IndexBot   `db:"-" json:"user_bots"` // Bots that are owned by the team
+	ID      string       `db:"id" json:"id" description:"The ID of the team"`
+	Name    string       `db:"name" json:"name" description:"The name of the team"`
+	Avatar  string       `db:"avatar" json:"avatar" description:"The avatar of the team"`
+	Members []TeamMember `db:"-" json:"members" description:"Members of the team"`
+	Bots    []IndexBot   `db:"-" json:"bots" ci:"internal"` // Must be handled internally
 }
 
 type TeamMember struct {
-	ITag        pgtype.UUID             `json:"itag"`
-	User        *dovetypes.PlatformUser `json:"user"`
-	Flags       []string                `json:"flags"`
-	CreatedAt   time.Time               `json:"created_at"`
-	Mentionable bool                    `json:"mentionable"`
+	ITag        pgtype.UUID             `db:"itag" json:"itag"`
+	UserID      string                  `db:"user_id" json:"-"`
+	User        *dovetypes.PlatformUser `db:"-" json:"user"`
+	Flags       []string                `db:"flags" json:"flags"`
+	CreatedAt   time.Time               `db:"created_at" json:"created_at"`
+	Mentionable bool                    `db:"mentionable" json:"mentionable"`
 }
 
 type CreateTeam struct {
