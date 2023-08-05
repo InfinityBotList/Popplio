@@ -7,12 +7,6 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-type EditTeam struct {
-	Name    string `json:"name" validate:"required,nonvulgar,min=3,max=32" msg:"Team name must be between 3 and 32 characters long"`
-	Avatar  string `json:"avatar" validate:"required,https" msg:"Avatar must be a valid HTTPS URL"`
-	Mention string `json:"mention" validate:"required" msg:"The user to mention" description:"ID of the user to mention, if wanted"`
-}
-
 type PermissionDataOverride struct {
 	Name string `json:"name"`
 	Desc string `json:"desc"`
@@ -34,6 +28,9 @@ type Team struct {
 	ID       string        `db:"id" json:"id" description:"The ID of the team"`
 	Name     string        `db:"name" json:"name" description:"The name of the team"`
 	Avatar   string        `db:"avatar" json:"avatar" description:"The avatar of the team"`
+	Banner   pgtype.Text   `db:"banner" json:"banner" description:"The team's banner URL if it has one, otherwise null"`
+	Short    pgtype.Text   `db:"short" json:"short" description:"The teams's short description if it has one, otherwise null"`
+	Tags     []string      `db:"tags" json:"tags" description:"The teams's tags if it has any, otherwise null"`
 	Entities *TeamEntities `db:"-" json:"entities" description:"The entities of the team"` // Must be handled internally
 }
 
@@ -52,9 +49,12 @@ type TeamMember struct {
 	Mentionable bool                    `db:"mentionable" json:"mentionable"`
 }
 
-type CreateTeam struct {
-	Name   string `json:"name" validate:"required,nonvulgar,min=3,max=32" msg:"Team name must be between 3 and 32 characters long"`
-	Avatar string `json:"avatar" validate:"required,https" msg:"Avatar must be a valid HTTPS URL"`
+type CreateEditTeam struct {
+	Name   string    `json:"name" validate:"required,nonvulgar,min=3,max=32" msg:"Team name must be between 3 and 32 characters long"`
+	Avatar string    `json:"avatar" validate:"required,https" msg:"Avatar must be a valid HTTPS URL"`
+	Banner *string   `json:"banner" validate:"omitempty,https" msg:"Background must be a valid HTTPS URL"`                   // impld
+	Short  *string   `json:"short" validate:"omitempty,max=150" msg:"Short description must be a maximum of 150 characters"` // impld
+	Tags   *[]string `json:"tags" validate:"omitempty,unique,max=5,dive,min=3,max=30,notblank,nonvulgar" msg:"There may a maximum of 5 tags without duplicates" amsg:"Each tag must be between 3 and 30 characters and alphabetic"`
 }
 
 type CreateTeamResponse struct {

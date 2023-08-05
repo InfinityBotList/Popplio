@@ -16,7 +16,7 @@ import (
 )
 
 var (
-	compiledMessages = uapi.CompileValidationErrors(types.EditTeam{})
+	compiledMessages = uapi.CompileValidationErrors(types.CreateEditTeam{})
 )
 
 func Docs() *docs.Doc {
@@ -39,7 +39,7 @@ func Docs() *docs.Doc {
 				Schema:      docs.IdSchema,
 			},
 		},
-		Req:  types.EditTeam{},
+		Req:  types.CreateEditTeam{},
 		Resp: types.ApiError{},
 	}
 }
@@ -47,7 +47,7 @@ func Docs() *docs.Doc {
 func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	var teamId = chi.URLParam(r, "tid")
 
-	var payload types.EditTeam
+	var payload types.CreateEditTeam
 
 	hresp, ok := uapi.MarshalReq(r, &payload)
 
@@ -106,6 +106,33 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	if err != nil {
 		state.Logger.Error(err)
 		return uapi.DefaultResponse(http.StatusInternalServerError)
+	}
+
+	if payload.Short != nil {
+		_, err = tx.Exec(d.Context, "UPDATE teams SET short = $1 WHERE id = $2", payload.Short, teamId)
+
+		if err != nil {
+			state.Logger.Error(err)
+			return uapi.DefaultResponse(http.StatusInternalServerError)
+		}
+	}
+
+	if payload.Banner != nil {
+		_, err = tx.Exec(d.Context, "UPDATE teams SET banner = $1 WHERE id = $2", payload.Banner, teamId)
+
+		if err != nil {
+			state.Logger.Error(err)
+			return uapi.DefaultResponse(http.StatusInternalServerError)
+		}
+	}
+
+	if payload.Tags != nil {
+		_, err = tx.Exec(d.Context, "UPDATE teams SET tags = $1 WHERE id = $2", payload.Tags, teamId)
+
+		if err != nil {
+			state.Logger.Error(err)
+			return uapi.DefaultResponse(http.StatusInternalServerError)
+		}
 	}
 
 	err = tx.Commit(d.Context)

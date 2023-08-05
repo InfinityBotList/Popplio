@@ -14,7 +14,7 @@ import (
 )
 
 var (
-	compiledMessages = uapi.CompileValidationErrors(types.CreateTeam{})
+	compiledMessages = uapi.CompileValidationErrors(types.CreateEditTeam{})
 )
 
 func Docs() *docs.Doc {
@@ -30,13 +30,13 @@ func Docs() *docs.Doc {
 				Schema:      docs.IdSchema,
 			},
 		},
-		Req:  types.CreateTeam{},
+		Req:  types.CreateEditTeam{},
 		Resp: types.CreateTeamResponse{},
 	}
 }
 
 func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
-	var payload types.CreateTeam
+	var payload types.CreateEditTeam
 
 	hresp, ok := uapi.MarshalReq(r, &payload)
 
@@ -63,7 +63,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	defer tx.Rollback(d.Context)
 
 	var teamId pgtype.UUID
-	err = tx.QueryRow(d.Context, "INSERT INTO teams (name, avatar) VALUES ($1, $2) RETURNING id", payload.Name, payload.Avatar).Scan(&teamId)
+	err = tx.QueryRow(d.Context, "INSERT INTO teams (name, avatar, banner, short, tags) VALUES ($1, $2, $3, $4, $5) RETURNING id", payload.Name, payload.Avatar, payload.Banner, payload.Short, payload.Tags).Scan(&teamId)
 
 	if err != nil {
 		state.Logger.Error(err)

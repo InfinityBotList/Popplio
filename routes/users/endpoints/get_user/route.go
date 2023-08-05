@@ -28,6 +28,9 @@ var (
 
 	indexPackColsArr = utils.GetCols(types.IndexBotPack{})
 	indexPackCols    = strings.Join(indexPackColsArr, ",")
+
+	teamColsArr = utils.GetCols(types.Team{})
+	teamCols    = strings.Join(teamColsArr, ",")
 )
 
 func Docs() *docs.Doc {
@@ -137,7 +140,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
-	user.Teams, err = pgx.CollectRows[pgtype.UUID](userTeamRows, func(row pgx.CollectableRow) (pgtype.UUID, error) {
+	tids, err := pgx.CollectRows[pgtype.UUID](userTeamRows, func(row pgx.CollectableRow) (pgtype.UUID, error) {
 		var id pgtype.UUID
 		err := row.Scan(&id)
 		return id, err
@@ -146,6 +149,28 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	if err != nil {
 		state.Logger.Error(err)
 		return uapi.DefaultResponse(http.StatusInternalServerError)
+	}
+
+	for _, tid := range tids {
+		row, err := state.Pool.Query(d.Context, "SELECT "+teamCols+" FROM teams WHERE id = $1", tid)
+
+		if err != nil {
+			state.Logger.Error(err)
+			return uapi.DefaultResponse(http.StatusInternalServerError)
+		}
+
+		eto, err := pgx.CollectOneRow(row, pgx.RowToStructByName[types.Team])
+
+		if err != nil {
+			state.Logger.Error(err)
+			return uapi.DefaultResponse(http.StatusInternalServerError)
+		}
+
+		eto.Entities = &types.TeamEntities{
+			Targets: []string{}, // We don't provide any entities right now, may change
+		}
+
+		user.UserTeams = append(user.UserTeams, eto)
 	}
 
 	// Packs
