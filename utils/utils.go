@@ -4,23 +4,12 @@ import (
 	"context"
 	"fmt"
 	"reflect"
-	"strings"
 
 	"popplio/state"
-	"popplio/types"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
 )
-
-var (
-	indexBotColsArr = GetCols(types.IndexBot{})
-	indexBotCols    = strings.Join(indexBotColsArr, ",")
-)
-
-type userTeamBotId struct {
-	BotID string `db:"bot_id"`
-}
 
 // Returns if a string is empty/null or not. Used throughout the codebase
 func IsNone(s string) bool {
