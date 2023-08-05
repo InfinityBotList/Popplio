@@ -1,6 +1,7 @@
 package put_user_entity_votes
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -16,6 +17,7 @@ import (
 	"popplio/webhooks/bothooks"
 	"popplio/webhooks/bothooks_legacy"
 	"popplio/webhooks/events"
+	"popplio/webhooks/teamhooks"
 
 	"github.com/bwmarrin/discordgo"
 	docs "github.com/infinitybotlist/eureka/doclib"
@@ -24,6 +26,7 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 	jsoniter "github.com/json-iterator/go"
 )
@@ -243,7 +246,27 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		if count == 0 {
 			return uapi.DefaultResponse(http.StatusNotFound)
 		}
+	case "team":
+		var name, avatar string
 
+		err = state.Pool.QueryRow(d.Context, "SELECT name, avatar FROM teams WHERE id = $1", targetId).Scan(&name, &avatar)
+
+		if errors.Is(err, pgx.ErrNoRows) {
+			return uapi.DefaultResponse(http.StatusNotFound)
+		}
+
+		if err != nil {
+			state.Logger.Error(err)
+			return uapi.DefaultResponse(http.StatusInternalServerError)
+		}
+
+		// Set entityInfo for log
+		entityInfo = &entityIdent{
+			URL:     "https://botlist.site/team/" + targetId,
+			VoteURL: "https://botlist.site/team/" + targetId + "/vote",
+			Name:    name,
+			Avatar:  avatar,
+		}
 	default:
 		return uapi.HttpResponse{
 			Status: http.StatusNotImplemented,
@@ -323,6 +346,13 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 			state.Logger.Error(err)
 			return uapi.DefaultResponse(http.StatusInternalServerError)
 		}
+	case "team":
+		_, err = tx.Exec(d.Context, "UPDATE teams SET votes = $1 WHERE id = $2", nvc, targetId)
+
+		if err != nil {
+			state.Logger.Error(err)
+			return uapi.DefaultResponse(http.StatusInternalServerError)
+		}
 	}
 
 	// Commit transaction
@@ -359,6 +389,11 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 							Inline: true,
 						},
 						{
+							Name:   "Votes Added:",
+							Value:  strconv.Itoa(vi.VoteInfo.PerUser),
+							Inline: true,
+						},
+						{
 							Name:   "User ID:",
 							Value:  userObj.ID,
 							Inline: true,
@@ -370,7 +405,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 						},
 						{
 							Name:   "Vote Page",
-							Value:  "[Vote for " + entityInfo.Name + "](" + entityInfo.VoteURL,
+							Value:  "[Vote for " + entityInfo.Name + "](" + entityInfo.VoteURL + ")",
 							Inline: true,
 						},
 					},
@@ -402,6 +437,14 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 					UserID: uid,
 					BotID:  targetId,
 					Data: events.WebhookBotVoteData{
+						Votes: nvc,
+					},
+				})
+			case "team":
+				err = teamhooks.Send(teamhooks.With[events.WebhookTeamVoteData]{
+					UserID: uid,
+					TeamID: targetId,
+					Data: events.WebhookTeamVoteData{
 						Votes: nvc,
 					},
 				})

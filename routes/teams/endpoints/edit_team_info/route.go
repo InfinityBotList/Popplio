@@ -5,6 +5,7 @@ import (
 	"popplio/state"
 	"popplio/teams"
 	"popplio/types"
+	"popplio/validators"
 	"popplio/webhooks/events"
 	"popplio/webhooks/teamhooks"
 
@@ -128,6 +129,24 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 
 	if payload.Tags != nil {
 		_, err = tx.Exec(d.Context, "UPDATE teams SET tags = $1 WHERE id = $2", payload.Tags, teamId)
+
+		if err != nil {
+			state.Logger.Error(err)
+			return uapi.DefaultResponse(http.StatusInternalServerError)
+		}
+	}
+
+	if payload.ExtraLinks != nil {
+		err = validators.ValidateExtraLinks(*payload.ExtraLinks)
+
+		if err != nil {
+			return uapi.HttpResponse{
+				Status: http.StatusBadRequest,
+				Json:   types.ApiError{Message: err.Error()},
+			}
+		}
+
+		_, err = tx.Exec(d.Context, "UPDATE teams SET extra_links = $1 WHERE id = $2", payload.ExtraLinks, teamId)
 
 		if err != nil {
 			state.Logger.Error(err)

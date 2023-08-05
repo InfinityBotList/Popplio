@@ -5,6 +5,7 @@ import (
 	"popplio/state"
 	"popplio/teams"
 	"popplio/types"
+	"popplio/validators"
 
 	docs "github.com/infinitybotlist/eureka/doclib"
 	"github.com/infinitybotlist/eureka/uapi"
@@ -52,6 +53,21 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		return uapi.ValidatorErrorResponse(compiledMessages, errors)
 	}
 
+	var el = []types.Link{}
+
+	if payload.ExtraLinks != nil {
+		err = validators.ValidateExtraLinks(*payload.ExtraLinks)
+
+		if err != nil {
+			return uapi.HttpResponse{
+				Status: http.StatusBadRequest,
+				Json:   types.ApiError{Message: err.Error()},
+			}
+		}
+
+		el = *payload.ExtraLinks
+	}
+
 	// Create the team
 	tx, err := state.Pool.Begin(d.Context)
 
@@ -63,7 +79,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	defer tx.Rollback(d.Context)
 
 	var teamId pgtype.UUID
-	err = tx.QueryRow(d.Context, "INSERT INTO teams (name, avatar, banner, short, tags) VALUES ($1, $2, $3, $4, $5) RETURNING id", payload.Name, payload.Avatar, payload.Banner, payload.Short, payload.Tags).Scan(&teamId)
+	err = tx.QueryRow(d.Context, "INSERT INTO teams (name, avatar, banner, short, tags, extra_links) VALUES ($1, $2, $3, $4, $5. $6) RETURNING id", payload.Name, payload.Avatar, payload.Banner, payload.Short, payload.Tags, el).Scan(&teamId)
 
 	if err != nil {
 		state.Logger.Error(err)
