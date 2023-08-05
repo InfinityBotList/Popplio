@@ -20,10 +20,6 @@ type PermissionData struct {
 	DataOverride      map[string]*PermissionDataOverride `json:"data_override,omitempty"`
 }
 
-type TeamResponse struct {
-	Teams []Team `json:"teams" description:"List of teams requested"`
-}
-
 type Team struct {
 	ID       string        `db:"id" json:"id" description:"The ID of the team"`
 	Name     string        `db:"name" json:"name" description:"The name of the team"`
