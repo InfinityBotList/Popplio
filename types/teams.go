@@ -26,18 +26,21 @@ type PermissionData struct {
 	DataOverride      map[string]*PermissionDataOverride `json:"data_override,omitempty"`
 }
 
-type PartialTeam struct {
-	ID     string `db:"id" json:"id"`
-	Name   string `db:"name" json:"name"`
-	Avatar string `db:"avatar" json:"avatar"`
+type TeamResponse struct {
+	Teams []Team `json:"teams" description:"List of teams requested"`
 }
 
 type Team struct {
-	ID      string       `db:"id" json:"id" description:"The ID of the team"`
-	Name    string       `db:"name" json:"name" description:"The name of the team"`
-	Avatar  string       `db:"avatar" json:"avatar" description:"The avatar of the team"`
-	Members []TeamMember `db:"-" json:"members" description:"Members of the team"`
-	Bots    []IndexBot   `db:"-" json:"bots" ci:"internal"` // Must be handled internally
+	ID       string        `db:"id" json:"id" description:"The ID of the team"`
+	Name     string        `db:"name" json:"name" description:"The name of the team"`
+	Avatar   string        `db:"avatar" json:"avatar" description:"The avatar of the team"`
+	Entities *TeamEntities `db:"-" json:"entities" description:"The entities of the team"` // Must be handled internally
+}
+
+type TeamEntities struct {
+	Targets []string     `json:"targets,omitempty" description:"The targets available in the response"`
+	Members []TeamMember `json:"members,omitempty" description:"Members of the team"`
+	Bots    []IndexBot   `json:"bots,omitempty" description:"Bots of the team"` // Must be handled internally
 }
 
 type TeamMember struct {

@@ -14,6 +14,7 @@ import (
 	"github.com/infinitybotlist/eureka/dovewing"
 	"github.com/infinitybotlist/eureka/uapi"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgtype"
 
 	"github.com/go-chi/chi/v5"
 )
@@ -27,14 +28,7 @@ var (
 
 	indexPackColsArr = utils.GetCols(types.IndexBotPack{})
 	indexPackCols    = strings.Join(indexPackColsArr, ",")
-
-	pteamColsArr = utils.GetCols(types.PartialTeam{})
-	pteamCols    = strings.Join(pteamColsArr, ",")
 )
-
-type userTeamId struct {
-	TeamID string `db:"team_id"`
-}
 
 func Docs() *docs.Doc {
 	return &docs.Doc{
@@ -143,29 +137,15 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
-	userTeamIds, err := pgx.CollectRows(userTeamRows, pgx.RowToStructByName[userTeamId])
+	user.Teams, err = pgx.CollectRows[pgtype.UUID](userTeamRows, func(row pgx.CollectableRow) (pgtype.UUID, error) {
+		var id pgtype.UUID
+		err := row.Scan(&id)
+		return id, err
+	})
 
 	if err != nil {
 		state.Logger.Error(err)
 		return uapi.DefaultResponse(http.StatusInternalServerError)
-	}
-
-	for _, teamId := range userTeamIds {
-		row, err := state.Pool.Query(d.Context, "SELECT "+pteamCols+" FROM teams WHERE team_id = $1", teamId)
-
-		if err != nil {
-			state.Logger.Error(err)
-			return uapi.DefaultResponse(http.StatusInternalServerError)
-		}
-
-		team, err := pgx.CollectOneRow(row, pgx.RowToStructByName[types.PartialTeam])
-
-		if err != nil {
-			state.Logger.Error(err)
-			return uapi.DefaultResponse(http.StatusInternalServerError)
-		}
-
-		user.UserTeams = append(user.UserTeams, team)
 	}
 
 	// Packs

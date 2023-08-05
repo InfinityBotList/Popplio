@@ -16,5 +16,5 @@ type Server struct {
 	Vanity        string       `db:"-" json:"vanity" description:"The server's vanity URL" ci:"internal"` // Must be parsed internally
 	ExtraLinks    []Link       `db:"extra_links" json:"extra_links" description:"The server's links that it wishes to advertise"`
 	TeamOwnerID   pgtype.UUID  `db:"team_owner" json:"-"`
-	TeamOwner     *PartialTeam `json:"team_owner" description:"If the server is in a team, who owns the server."` // Must be parsed internally
+	TeamOwner     *Team `json:"team_owner" description:"If the server is in a team, who owns the server."` // Must be parsed internally
 }

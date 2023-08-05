@@ -24,8 +24,8 @@ const EntityType = "team"
 var json = jsoniter.ConfigCompatibleWithStandardLibrary
 
 var (
-	pteamColsArr = utils.GetCols(types.PartialTeam{})
-	pteamCols    = strings.Join(pteamColsArr, ", ")
+	teamColsArr = utils.GetCols(types.Team{})
+	teamCols    = strings.Join(teamColsArr, ", ")
 )
 
 // Simple ergonomic webhook builder
@@ -42,18 +42,22 @@ func Send[T events.WebhookEvent](with With[T]) error {
 		return errors.New("invalid event type")
 	}
 
-	row, err := state.Pool.Query(state.Context, "SELECT "+pteamCols+" FROM teams WHERE id = $1", with.TeamID)
+	row, err := state.Pool.Query(state.Context, "SELECT "+teamCols+" FROM teams WHERE id = $1", with.TeamID)
 
 	if err != nil {
 		state.Logger.Error(err)
 		return err
 	}
 
-	team, err := pgx.CollectOneRow(row, pgx.RowToStructByName[types.PartialTeam])
+	team, err := pgx.CollectOneRow(row, pgx.RowToStructByName[types.Team])
 
 	if err != nil {
 		state.Logger.Error(err)
 		return err
+	}
+
+	team.Entities = &types.TeamEntities{
+		Targets: []string{}, // We don't provide any entities right now, may change
 	}
 
 	user, err := dovewing.GetUser(state.Context, with.UserID, state.DovewingPlatformDiscord)
