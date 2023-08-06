@@ -13,6 +13,10 @@ type WebhookTeamEditData struct {
 	Avatar Changeset[string] `json:"avatar" description:"The changeset of the avatar"`
 }
 
+func (n WebhookTeamEditData) TargetType() string {
+	return "team"
+}
+
 func (n WebhookTeamEditData) Event() WebhookType {
 	return WebhookTypeTeamEdit
 }
@@ -82,18 +86,22 @@ func (n WebhookTeamEditData) CreateHookParams(creator *dovetypes.PlatformUser, t
 	}
 }
 
-func init() {
-	AddEvent(&docs.WebhookDoc{
+func (n WebhookTeamEditData) Docs() *docs.WebhookDoc {
+	return &docs.WebhookDoc{
 		Name:    "EditTeam",
 		Summary: "Edit Team",
 		Tags: []string{
 			"Webhooks",
 		},
 		Description: `This webhook is sent when a user edits the basic settings of a team (name/avatar) is changed.`,
-		Format: WebhookResponse[WebhookTeamEditData]{
+		Format: WebhookResponse{
 			Type: WebhookTeamEditData{}.Event(),
 			Data: WebhookTeamEditData{},
 		},
 		FormatName: "WebhookResponse-WebhookTeamEditData",
-	})
+	}
+}
+
+func init() {
+	RegisterEvent(WebhookTeamEditData{})
 }

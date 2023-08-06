@@ -14,6 +14,10 @@ type WebhookTeamVoteData struct {
 	Votes int `json:"votes" description:"The number of votes the team received"`
 }
 
+func (n WebhookTeamVoteData) TargetType() string {
+	return "team"
+}
+
 func (v WebhookTeamVoteData) Event() WebhookType {
 	return WebhookTypeTeamVote
 }
@@ -56,18 +60,22 @@ func (v WebhookTeamVoteData) CreateHookParams(creator *dovetypes.PlatformUser, t
 	}
 }
 
-func init() {
-	AddEvent(&docs.WebhookDoc{
+func (v WebhookTeamVoteData) Docs() *docs.WebhookDoc {
+	return &docs.WebhookDoc{
 		Name:    "NewTeamVote",
 		Summary: "New Team Vote",
 		Tags: []string{
 			"Webhooks",
 		},
 		Description: `This webhook is sent when a user votes for a team.`,
-		Format: WebhookResponse[WebhookTeamVoteData]{
+		Format: WebhookResponse{
 			Type: WebhookTeamVoteData{}.Event(),
 			Data: WebhookTeamVoteData{},
 		},
 		FormatName: "WebhookResponse-WebhookTeamVoteData",
-	})
+	}
+}
+
+func init() {
+	RegisterEvent(WebhookTeamVoteData{})
 }

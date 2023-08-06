@@ -7,7 +7,7 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-type WebhookType string
+type WebhookType = string
 
 const (
 	WebhookTypeText      WebhookType = "text"

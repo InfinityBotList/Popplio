@@ -13,6 +13,10 @@ type WebhookBotEditReviewData struct {
 	Content  Changeset[string] `json:"content" description:"The content of the review"`
 }
 
+func (v WebhookBotEditReviewData) TargetType() string {
+	return "bot"
+}
+
 func (n WebhookBotEditReviewData) Event() WebhookType {
 	return WebhookTypeBotEditReview
 }
@@ -72,18 +76,22 @@ func (n WebhookBotEditReviewData) CreateHookParams(creator *dovetypes.PlatformUs
 	}
 }
 
-func init() {
-	AddEvent(&docs.WebhookDoc{
+func (n WebhookBotEditReviewData) Docs() *docs.WebhookDoc {
+	return &docs.WebhookDoc{
 		Name:    "EditBotReview",
 		Summary: "Edit Bot Review",
 		Tags: []string{
 			"Webhooks",
 		},
 		Description: `This webhook is sent when a user edits an existing review on a bot.`,
-		Format: WebhookResponse[WebhookBotEditReviewData]{
+		Format: WebhookResponse{
 			Type: WebhookBotEditReviewData{}.Event(),
 			Data: WebhookBotEditReviewData{},
 		},
 		FormatName: "WebhookResponse-WebhookEditReviewData",
-	})
+	}
+}
+
+func init() {
+	RegisterEvent(WebhookBotEditReviewData{})
 }

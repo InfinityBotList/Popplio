@@ -161,7 +161,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
-	err = teamhooks.Send(teamhooks.With[events.WebhookTeamEditData]{
+	err = teamhooks.Send(teamhooks.With{
 		Data: events.WebhookTeamEditData{
 			Name: events.Changeset[string]{
 				Old: oldName,

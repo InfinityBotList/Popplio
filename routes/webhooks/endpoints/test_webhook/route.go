@@ -2,6 +2,7 @@ package test_webhook
 
 import (
 	"net/http"
+	"reflect"
 	"strings"
 	"time"
 
@@ -122,64 +123,52 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		}
 	}
 
-	var hresp uapi.HttpResponse
-	var ok bool
+	var w events.WebhookEvent
 
-	switch events.WebhookType(eventType) {
-	case events.WebhookTypeBotEditReview:
-		hresp, ok = handle[events.WebhookBotEditReviewData](d, r, limit)
-	case events.WebhookTypeBotNewReview:
-		hresp, ok = handle[events.WebhookBotNewReviewData](d, r, limit)
-	case events.WebhookTypeBotVote:
-		hresp, ok = handle[events.WebhookBotVoteData](d, r, limit)
-	case events.WebhookTypeTeamEdit:
-		hresp, ok = handle[events.WebhookTeamEditData](d, r, limit)
-	default:
+	for _, evt := range events.Registry {
+		if string(evt.Event.Event()) == eventType {
+			if evt.Event.TargetType() != targetType {
+				return uapi.HttpResponse{
+					Status: http.StatusBadRequest,
+					Json: types.ApiError{
+						Message: "This event is not valid for this target type",
+					},
+				}
+			}
+
+			w = evt.Event
+		}
+	}
+
+	if w == nil {
 		return uapi.HttpResponse{
-			Status:  http.StatusNotImplemented,
-			Headers: limit.Headers(),
+			Status: http.StatusBadRequest,
 			Json: types.ApiError{
-				Message: "This event is not implemented yet",
+				Message: "This event does not exist",
 			},
 		}
 	}
 
+	event := reflect.New(reflect.TypeOf(w)).Interface().(events.WebhookEvent)
+
+	// JSON serialize the event from request body
+	hresp, ok := uapi.MarshalReqWithHeaders(r, event, limit.Headers())
+
 	if !ok {
 		return hresp
 	}
-
-	return uapi.DefaultResponse(http.StatusNoContent)
-}
-
-func handle[T events.WebhookEvent](
-	d uapi.RouteData,
-	r *http.Request,
-	limit ratelimit.Limit,
-) (uapi.HttpResponse, bool) {
-	targetType := r.URL.Query().Get("target_type")
-	targetId := chi.URLParam(r, "target_id")
-	eventType := r.URL.Query().Get("event")
-
-	var event T
-
-	if eventType != string(event.Event()) {
+	/*
 		return uapi.HttpResponse{
-			Status: http.StatusBadRequest,
-			Json: types.ApiError{
-				Message: "Internal error: eventType != event.Event()",
+			Status:  http.StatusForbidden,
+			Headers: limit.Headers(),
+			Json: map[string]any{
+				"evt": event,
 			},
-		}, false
-	}
-
-	hresp, ok := uapi.MarshalReqWithHeaders(r, &event, limit.Headers())
-
-	if !ok {
-		return hresp, ok
-	}
+		}*/
 
 	switch targetType {
 	case "bot":
-		err := bothooks.Send(bothooks.With[T]{
+		err := bothooks.Send(bothooks.With{
 			UserID: d.Auth.ID,
 			BotID:  targetId,
 			Data:   event,
@@ -193,10 +182,10 @@ func handle[T events.WebhookEvent](
 			return uapi.HttpResponse{
 				Status: http.StatusBadRequest,
 				Json:   types.ApiError{Message: err.Error()},
-			}, false
+			}
 		}
 	case "team":
-		err := teamhooks.Send(teamhooks.With[T]{
+		err := teamhooks.Send(teamhooks.With{
 			UserID: d.Auth.ID,
 			TeamID: targetId,
 			Data:   event,
@@ -210,9 +199,14 @@ func handle[T events.WebhookEvent](
 			return uapi.HttpResponse{
 				Status: http.StatusBadRequest,
 				Json:   types.ApiError{Message: err.Error()},
-			}, false
+			}
+		}
+	default:
+		return uapi.HttpResponse{
+			Status: http.StatusBadRequest,
+			Json:   types.ApiError{Message: "Invalid target type"},
 		}
 	}
 
-	return hresp, true
+	return uapi.DefaultResponse(http.StatusNoContent)
 }

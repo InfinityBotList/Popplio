@@ -325,6 +325,8 @@ func Send(d *WebhookSendState) error {
 }
 
 func SendDiscord(userId, entityName, url string, delete func() error, params *discordgo.WebhookParams) (validUrl bool, err error) {
+	state.Logger.Info("discord webhook send: ")
+
 	validPrefixes := []string{
 		"https://discordapp.com/",
 		"https://discord.com/",

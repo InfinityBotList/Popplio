@@ -10,7 +10,6 @@ import (
 	"popplio/utils"
 	"popplio/webhooks/events"
 	"popplio/webhooks/sender"
-	"strings"
 	"time"
 
 	"github.com/infinitybotlist/eureka/dovewing"
@@ -23,16 +22,16 @@ const EntityType = "bot"
 var json = jsoniter.ConfigCompatibleWithStandardLibrary
 
 // Simple ergonomic webhook builder
-type With[T events.WebhookEvent] struct {
+type With struct {
 	UserID   string
 	BotID    string
 	Metadata *events.WebhookMetadata
-	Data     T
+	Data     events.WebhookEvent
 }
 
 // Fills in Bot and Creator from IDs
-func Send[T events.WebhookEvent](with With[T]) error {
-	if !strings.HasPrefix(string(with.Data.Event()), strings.ToUpper(EntityType)) {
+func Send(with With) error {
+	if with.Data.TargetType() != EntityType {
 		return errors.New("invalid event type")
 	}
 
@@ -67,7 +66,7 @@ func Send[T events.WebhookEvent](with With[T]) error {
 		},
 	}
 
-	resp := &events.WebhookResponse[T]{
+	resp := &events.WebhookResponse{
 		Creator: user,
 		Targets: events.Target{
 			Bot: bot,

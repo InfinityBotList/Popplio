@@ -3,10 +3,10 @@ package get_test_webhook_meta
 import (
 	"net/http"
 
-	"popplio/routes/webhooks/assets"
 	"popplio/state"
 	"popplio/teams"
 	"popplio/types"
+	"popplio/webhooks/events"
 
 	docs "github.com/infinitybotlist/eureka/doclib"
 	"github.com/infinitybotlist/eureka/uapi"
@@ -66,12 +66,21 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		}
 	}
 
-	data := assets.GetTestMeta(targetId, targetType)
+	var data = types.GetTestWebhookMeta{}
 
-	if data == nil {
+	for _, evt := range events.Registry {
+		if evt.Event.TargetType() == targetType {
+			data.Types = append(data.Types, types.TestWebhookType{
+				Type: string(evt.Event.Event()),
+				Data: evt.TestVars,
+			})
+		}
+	}
+
+	if len(data.Types) == 0 {
 		return uapi.HttpResponse{
 			Status: http.StatusNotImplemented,
-			Json:   types.ApiError{Message: "This endpoint is not yet implemented for this target id/type combo"},
+			Json:   types.ApiError{Message: "There are no available events for this target type"},
 		}
 	}
 

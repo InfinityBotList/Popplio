@@ -433,7 +433,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		} else {
 			switch targetType {
 			case "bot":
-				err = bothooks.Send(bothooks.With[events.WebhookBotVoteData]{
+				err = bothooks.Send(bothooks.With{
 					UserID: uid,
 					BotID:  targetId,
 					Data: events.WebhookBotVoteData{
@@ -441,7 +441,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 					},
 				})
 			case "team":
-				err = teamhooks.Send(teamhooks.With[events.WebhookTeamVoteData]{
+				err = teamhooks.Send(teamhooks.With{
 					UserID: uid,
 					TeamID: targetId,
 					Data: events.WebhookTeamVoteData{

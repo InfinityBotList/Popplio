@@ -4,7 +4,6 @@ import (
 	"errors"
 	"net/http"
 	"strings"
-	"time"
 
 	"popplio/state"
 	"popplio/types"
@@ -55,17 +54,6 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 
 	if name == "" {
 		return uapi.DefaultResponse(http.StatusBadRequest)
-	}
-
-	// Check cache, this is how we can avoid hefty ratelimits
-	cache := state.Redis.Get(d.Context, "uc-"+name).Val()
-	if cache != "" {
-		return uapi.HttpResponse{
-			Data: cache,
-			Headers: map[string]string{
-				"X-Popplio-Cached": "true",
-			},
-		}
 	}
 
 	row, err := state.Pool.Query(d.Context, "SELECT "+userCols+" FROM users WHERE user_id = $1", name)
@@ -189,8 +177,6 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	}
 
 	return uapi.HttpResponse{
-		Json:      user,
-		CacheKey:  "uc-" + name,
-		CacheTime: 2 * time.Minute,
+		Json: user,
 	}
 }

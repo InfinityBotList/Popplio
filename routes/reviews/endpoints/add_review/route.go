@@ -185,7 +185,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 
 	switch targetType {
 	case "bot":
-		err = bothooks.Send(bothooks.With[events.WebhookBotNewReviewData]{
+		err = bothooks.Send(bothooks.With{
 			Data: events.WebhookBotNewReviewData{
 				ReviewID: reviewId,
 				Content:  payload.Content,

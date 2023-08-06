@@ -29,16 +29,16 @@ var (
 )
 
 // Simple ergonomic webhook builder
-type With[T events.WebhookEvent] struct {
+type With struct {
 	UserID   string
 	TeamID   string
 	Metadata *events.WebhookMetadata
-	Data     T
+	Data     events.WebhookEvent
 }
 
 // Fills in Team and Creator from IDs
-func Send[T events.WebhookEvent](with With[T]) error {
-	if !strings.HasPrefix(string(with.Data.Event()), strings.ToUpper(EntityType)) {
+func Send(with With) error {
+	if with.Data.TargetType() != EntityType {
 		return errors.New("invalid event type")
 	}
 
@@ -84,7 +84,7 @@ func Send[T events.WebhookEvent](with With[T]) error {
 		},
 	}
 
-	resp := &events.WebhookResponse[T]{
+	resp := &events.WebhookResponse{
 		Creator: user,
 		Targets: events.Target{
 			Team: &team,
