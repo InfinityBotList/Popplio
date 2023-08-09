@@ -4,7 +4,6 @@ import (
 	"net/http"
 	"popplio/state"
 	"popplio/types"
-	"popplio/utils"
 
 	docs "github.com/infinitybotlist/eureka/doclib"
 	"github.com/infinitybotlist/eureka/dovewing"
@@ -113,8 +112,6 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 			Json:   types.ApiError{Message: err.Error()},
 		}
 	}
-
-	utils.ClearUserCache(d.Context, d.Auth.ID)
 
 	return uapi.DefaultResponse(http.StatusNoContent)
 }

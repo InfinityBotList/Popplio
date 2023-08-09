@@ -32,6 +32,10 @@ type Team struct {
 	Entities   *TeamEntities `db:"-" json:"entities" description:"The entities of the team"` // Must be handled internally
 }
 
+type TeamBulkFetch struct {
+	Teams []Team `json:"teams"`
+}
+
 type TeamEntities struct {
 	Targets []string     `json:"targets,omitempty" description:"The targets available in the response"`
 	Members []TeamMember `json:"members,omitempty" description:"Members of the team"`

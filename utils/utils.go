@@ -2,13 +2,9 @@ package utils
 
 import (
 	"context"
-	"fmt"
 	"reflect"
 
 	"popplio/state"
-
-	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5/pgtype"
 )
 
 // Returns if a string is empty/null or not. Used throughout the codebase
@@ -43,26 +39,10 @@ func GetCols(s any) []string {
 	return cols
 }
 
-func ClearUserCache(ctx context.Context, userId string) error {
-	// Delete from cache
-	state.Redis.Del(ctx, "uc-"+userId)
-
-	return nil
-}
-
 func ClearBotCache(ctx context.Context, botId string) error {
 	// Delete from cache
 	for _, k := range []string{"bc-", "seob:"} {
 		state.Redis.Del(ctx, k+botId)
 	}
 	return nil
-}
-
-func IsValidUUID(u string) bool {
-	_, err := uuid.Parse(u)
-	return err == nil
-}
-
-func UUIDString(myUUID pgtype.UUID) string {
-	return fmt.Sprintf("%x-%x-%x-%x-%x", myUUID.Bytes[0:4], myUUID.Bytes[4:6], myUUID.Bytes[6:8], myUUID.Bytes[8:10], myUUID.Bytes[10:16])
 }

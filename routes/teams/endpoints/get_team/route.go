@@ -4,12 +4,13 @@ import (
 	"errors"
 	"net/http"
 	"popplio/state"
+	"popplio/teams/resolvers"
 	"popplio/types"
 	"popplio/utils"
 	"strings"
 
+	"github.com/google/uuid"
 	docs "github.com/infinitybotlist/eureka/doclib"
-	"github.com/infinitybotlist/eureka/dovewing"
 	"github.com/infinitybotlist/eureka/uapi"
 	"github.com/jackc/pgx/v5"
 
@@ -19,12 +20,6 @@ import (
 var (
 	teamColsArr = utils.GetCols(types.Team{})
 	teamCols    = strings.Join(teamColsArr, ",")
-
-	tmColsArr = utils.GetCols(types.TeamMember{})
-	tmCols    = strings.Join(tmColsArr, ",")
-
-	indexBotColsArr = utils.GetCols(types.IndexBot{})
-	indexBotCols    = strings.Join(indexBotColsArr, ",")
 )
 
 func Docs() *docs.Doc {
@@ -57,13 +52,8 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	targets := strings.Split(targetStr, ",")
 
 	// Convert ID to UUID
-	if !utils.IsValidUUID(id) {
-		return uapi.HttpResponse{
-			Status: http.StatusBadRequest,
-			Json: types.ApiError{
-				Message: "Team ID: " + id + " is not a valid UUID",
-			},
-		}
+	if _, err := uuid.Parse(id); err != nil {
+		return uapi.DefaultResponse(http.StatusNotFound)
 	}
 
 	rows, err := state.Pool.Query(d.Context, "SELECT "+teamCols+" FROM teams WHERE id = $1", id)
@@ -84,76 +74,11 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
-	team.Entities = &types.TeamEntities{}
+	team.Entities, err = resolvers.GetTeamEntities(d.Context, id, targets)
 
-	for _, st := range targets {
-		var isInvalid bool
-		switch st {
-		case "team_member":
-			// Get team members
-			memberRows, err := state.Pool.Query(d.Context, "SELECT "+tmCols+" FROM team_members WHERE team_id = $1", id)
-
-			if err != nil {
-				state.Logger.Error(err)
-				return uapi.DefaultResponse(http.StatusInternalServerError)
-			}
-
-			team.Entities.Members, err = pgx.CollectRows(memberRows, pgx.RowToStructByName[types.TeamMember])
-
-			if err != nil {
-				state.Logger.Error(err)
-				return uapi.DefaultResponse(http.StatusInternalServerError)
-			}
-
-			for i := range team.Entities.Members {
-				team.Entities.Members[i].User, err = dovewing.GetUser(d.Context, team.Entities.Members[i].UserID, state.DovewingPlatformDiscord)
-
-				if err != nil {
-					state.Logger.Error(err)
-					return uapi.DefaultResponse(http.StatusInternalServerError)
-				}
-			}
-		case "bot":
-			indexBotsRows, err := state.Pool.Query(d.Context, "SELECT "+indexBotCols+" FROM bots WHERE team_owner = $1", id)
-
-			if err != nil {
-				state.Logger.Error(err)
-				return uapi.DefaultResponse(http.StatusInternalServerError)
-			}
-
-			team.Entities.Bots, err = pgx.CollectRows(indexBotsRows, pgx.RowToStructByName[types.IndexBot])
-
-			if err != nil {
-				state.Logger.Error(err)
-				return uapi.DefaultResponse(http.StatusInternalServerError)
-			}
-
-			for i := range team.Entities.Bots {
-				team.Entities.Bots[i].User, err = dovewing.GetUser(d.Context, team.Entities.Bots[i].BotID, state.DovewingPlatformDiscord)
-
-				if err != nil {
-					state.Logger.Error(err)
-					return uapi.DefaultResponse(http.StatusInternalServerError)
-				}
-
-				var code string
-
-				err = state.Pool.QueryRow(d.Context, "SELECT code FROM vanity WHERE itag = $1", team.Entities.Bots[i].VanityRef).Scan(&code)
-
-				if err != nil {
-					state.Logger.Error(err)
-					return uapi.DefaultResponse(http.StatusInternalServerError)
-				}
-
-				team.Entities.Bots[i].Vanity = code
-			}
-		default:
-			isInvalid = true
-		}
-
-		if !isInvalid {
-			team.Entities.Targets = append(team.Entities.Targets, st)
-		}
+	if err != nil {
+		state.Logger.Error(err)
+		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
 	return uapi.HttpResponse{

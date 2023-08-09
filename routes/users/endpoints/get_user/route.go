@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"popplio/state"
+	"popplio/teams/resolvers"
 	"popplio/types"
 	"popplio/utils"
 
@@ -13,7 +14,6 @@ import (
 	"github.com/infinitybotlist/eureka/dovewing"
 	"github.com/infinitybotlist/eureka/uapi"
 	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgtype"
 
 	"github.com/go-chi/chi/v5"
 )
@@ -128,8 +128,8 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
-	tids, err := pgx.CollectRows[pgtype.UUID](userTeamRows, func(row pgx.CollectableRow) (pgtype.UUID, error) {
-		var id pgtype.UUID
+	tids, err := pgx.CollectRows[string](userTeamRows, func(row pgx.CollectableRow) (string, error) {
+		var id string
 		err := row.Scan(&id)
 		return id, err
 	})
@@ -154,8 +154,13 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 			return uapi.DefaultResponse(http.StatusInternalServerError)
 		}
 
-		eto.Entities = &types.TeamEntities{
-			Targets: []string{}, // We don't provide any entities right now, may change
+		eto.Entities, err = resolvers.GetTeamEntities(d.Context, tid, []string{
+			"bot",
+		})
+
+		if err != nil {
+			state.Logger.Error(err)
+			return uapi.DefaultResponse(http.StatusInternalServerError)
 		}
 
 		user.UserTeams = append(user.UserTeams, eto)

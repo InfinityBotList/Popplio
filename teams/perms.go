@@ -6,9 +6,9 @@ import (
 	"fmt"
 	"popplio/state"
 	"popplio/types"
-	"popplio/utils"
 	"strings"
 
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 	"golang.org/x/exp/slices"
@@ -305,7 +305,7 @@ func GetEntityPerms(ctx context.Context, userId, targetType, targetId string) (*
 	}
 
 	// Handle teams
-	if teamId == "" || !utils.IsValidUUID(teamId) {
+	if _, err := uuid.Parse(teamId); err != nil {
 		return nil, fmt.Errorf("invalid team id")
 	}
 

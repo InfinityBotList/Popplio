@@ -4,7 +4,6 @@ import (
 	"net/http"
 	"popplio/state"
 	"popplio/types"
-	"popplio/utils"
 
 	"github.com/infinitybotlist/eureka/crypto"
 	docs "github.com/infinitybotlist/eureka/doclib"
@@ -29,8 +28,6 @@ func Docs() *docs.Doc {
 }
 
 func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
-	utils.ClearUserCache(d.Context, d.Auth.ID)
-
 	token := crypto.RandString(128)
 
 	_, err := state.Pool.Exec(d.Context, "UPDATE users SET api_token = $1 WHERE user_id = $2", token, d.Auth.ID)

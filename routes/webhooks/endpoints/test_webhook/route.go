@@ -157,14 +157,6 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	if !ok {
 		return hresp
 	}
-	/*
-		return uapi.HttpResponse{
-			Status:  http.StatusForbidden,
-			Headers: limit.Headers(),
-			Json: map[string]any{
-				"evt": event,
-			},
-		}*/
 
 	switch targetType {
 	case "bot":

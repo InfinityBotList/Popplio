@@ -6,8 +6,8 @@ import (
 
 	"popplio/state"
 	"popplio/types"
-	"popplio/utils"
 
+	"github.com/google/uuid"
 	docs "github.com/infinitybotlist/eureka/doclib"
 	"github.com/infinitybotlist/eureka/uapi"
 
@@ -45,7 +45,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	}
 
 	// Convert ID to UUID
-	if !utils.IsValidUUID(tid) {
+	if _, err := uuid.Parse(tid); err != nil {
 		return uapi.DefaultResponse(http.StatusNotFound)
 	}
 
