@@ -43,7 +43,7 @@ func PushNotification(userId string, notif types.Alert) error {
 		return err
 	}
 
-	notifIds, err := state.Pool.Query(state.Context, "SELECT notif_id, auth, endpoint, p256dh FROM poppypaw WHERE user_id = $1", userId)
+	notifIds, err := state.Pool.Query(state.Context, "SELECT notif_id, auth, endpoint, p256dh FROM user_notificationsifications WHERE user_id = $1", userId)
 
 	if err != nil {
 		return err
@@ -87,7 +87,7 @@ func PushNotification(userId string, notif types.Alert) error {
 		if err != nil {
 			if resp.StatusCode == 410 || resp.StatusCode == 404 {
 				// Delete the subscription
-				state.Pool.Exec(state.Context, "DELETE FROM poppypaw WHERE notif_id = $1", notifId)
+				state.Pool.Exec(state.Context, "DELETE FROM user_notifications WHERE notif_id = $1", notifId)
 			}
 			return err
 		}

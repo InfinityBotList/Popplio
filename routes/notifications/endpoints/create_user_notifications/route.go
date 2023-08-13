@@ -1,4 +1,4 @@
-package post_user_subscription
+package create_user_notifications
 
 import (
 	"io"
@@ -20,8 +20,8 @@ var json = jsoniter.ConfigCompatibleWithStandardLibrary
 
 func Docs() *docs.Doc {
 	return &docs.Doc{
-		Summary:     "Create User Subscription",
-		Description: "Creates a user subscription for a push notification. Returns 204 on success",
+		Summary:     "Create User Notification",
+		Description: "Creates a new subscription for a push notification. Returns 204 on success",
 		Params: []docs.Parameter{
 			{
 				Name:        "id",
@@ -70,11 +70,20 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		ua = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/80.0.3987.149 Safari/537.36"
 	}
 
-	state.Pool.Exec(d.Context, "DELETE FROM poppypaw WHERE user_id = $1 AND endpoint = $2", id, subscription.Endpoint)
+	tx, err := state.Pool.Begin(d.Context)
 
-	state.Pool.Exec(
+	if err != nil {
+		state.Logger.Error(err)
+		return uapi.DefaultResponse(http.StatusInternalServerError)
+	}
+
+	defer tx.Rollback(d.Context)
+
+	tx.Exec(d.Context, "DELETE FROM user_notifications WHERE user_id = $1 AND endpoint = $2", id, subscription.Endpoint)
+
+	tx.Exec(
 		d.Context,
-		"INSERT INTO poppypaw (user_id, notif_id, auth, p256dh, endpoint, ua) VALUES ($1, $2, $3, $4, $5, $6)",
+		"INSERT INTO user_notifications (user_id, notif_id, auth, p256dh, endpoint, ua) VALUES ($1, $2, $3, $4, $5, $6)",
 		id,
 		notifId,
 		subscription.Auth,
@@ -82,6 +91,13 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		subscription.Endpoint,
 		ua,
 	)
+
+	err = tx.Commit(d.Context)
+
+	if err != nil {
+		state.Logger.Error(err)
+		return uapi.DefaultResponse(http.StatusInternalServerError)
+	}
 
 	// Fan out notification
 	err = notifications.PushNotification(id, types.Alert{

@@ -1,7 +1,6 @@
 package put_user_entity_votes
 
 import (
-	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -26,20 +25,11 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 	jsoniter "github.com/json-iterator/go"
 )
 
 var json = jsoniter.ConfigCompatibleWithStandardLibrary
-
-// Internal struct that stores internal entity info
-type entityIdent struct {
-	Name    string
-	URL     string
-	VoteURL string
-	Avatar  string
-}
 
 func Docs() *docs.Doc {
 	return &docs.Doc{
@@ -171,8 +161,6 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		}
 	}
 
-	var entityInfo *entityIdent
-
 	// Handle entity specific checks here, such as ensuring the entity actually exists
 	switch targetType {
 	case "bot":
@@ -182,95 +170,15 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 				Json:   types.ApiError{Message: "Downvoting bots is not implemented yet"},
 			}
 		}
+	}
 
-		var count int64
+	entityInfo, err := votes.GetEntityInfo(d.Context, targetId, targetType)
 
-		err = state.Pool.QueryRow(d.Context, "SELECT COUNT(*) FROM bots WHERE bot_id = $1", targetId).Scan(&count)
-
-		if err != nil {
-			return uapi.DefaultResponse(http.StatusInternalServerError)
-		}
-
-		if count == 0 {
-			return uapi.DefaultResponse(http.StatusNotFound)
-		}
-
-		var botType string
-		var voteBanned bool
-
-		err = state.Pool.QueryRow(d.Context, "SELECT type, vote_banned FROM bots WHERE bot_id = $1", targetId).Scan(&botType, &voteBanned)
-
-		if err != nil {
-			state.Logger.Error(err)
-			return uapi.DefaultResponse(http.StatusInternalServerError)
-		}
-
-		if voteBanned {
-			return uapi.HttpResponse{
-				Status: http.StatusForbidden,
-				Json:   types.ApiError{Message: "This bot is banned from being voted on right now! Contact support if you think this is a mistake"},
-			}
-		}
-
-		if botType != "approved" && botType != "certified" {
-			return uapi.HttpResponse{
-				Status: http.StatusBadRequest,
-				Json:   types.ApiError{Message: "Woah there, this bot needs to be approved before you can vote for it!"},
-			}
-		}
-
-		botObj, err := dovewing.GetUser(d.Context, targetId, state.DovewingPlatformDiscord)
-
-		if err != nil {
-			state.Logger.Error(err)
-			return uapi.DefaultResponse(http.StatusInternalServerError)
-		}
-
-		// Set entityInfo for log
-		entityInfo = &entityIdent{
-			URL:     "https://botlist.site/" + targetId,
-			VoteURL: "https://botlist.site/" + targetId + "/vote",
-			Name:    botObj.Username,
-			Avatar:  botObj.Avatar,
-		}
-	case "pack":
-		var count int64
-
-		err = state.Pool.QueryRow(d.Context, "SELECT COUNT(*) FROM packs WHERE url = $1", targetId).Scan(&count)
-
-		if err != nil {
-			state.Logger.Error(err)
-			return uapi.DefaultResponse(http.StatusInternalServerError)
-		}
-
-		if count == 0 {
-			return uapi.DefaultResponse(http.StatusNotFound)
-		}
-	case "team":
-		var name, avatar string
-
-		err = state.Pool.QueryRow(d.Context, "SELECT name, avatar FROM teams WHERE id = $1", targetId).Scan(&name, &avatar)
-
-		if errors.Is(err, pgx.ErrNoRows) {
-			return uapi.DefaultResponse(http.StatusNotFound)
-		}
-
-		if err != nil {
-			state.Logger.Error(err)
-			return uapi.DefaultResponse(http.StatusInternalServerError)
-		}
-
-		// Set entityInfo for log
-		entityInfo = &entityIdent{
-			URL:     "https://botlist.site/team/" + targetId,
-			VoteURL: "https://botlist.site/team/" + targetId + "/vote",
-			Name:    name,
-			Avatar:  avatar,
-		}
-	default:
+	if err != nil {
+		state.Logger.Error(err)
 		return uapi.HttpResponse{
-			Status: http.StatusNotImplemented,
-			Json:   types.ApiError{Message: "Support for this target type has not been implemented yet"},
+			Status: http.StatusBadRequest,
+			Json:   types.ApiError{Message: err.Error()},
 		}
 	}
 
@@ -371,51 +279,49 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
-	if entityInfo != nil {
-		_, err = state.Discord.ChannelMessageSendComplex(state.Config.Channels.VoteLogs, &discordgo.MessageSend{
-			Embeds: []*discordgo.MessageEmbed{
-				{
-					URL: entityInfo.URL,
-					Thumbnail: &discordgo.MessageEmbedThumbnail{
-						URL: entityInfo.Avatar,
+	_, err = state.Discord.ChannelMessageSendComplex(state.Config.Channels.VoteLogs, &discordgo.MessageSend{
+		Embeds: []*discordgo.MessageEmbed{
+			{
+				URL: entityInfo.URL,
+				Thumbnail: &discordgo.MessageEmbedThumbnail{
+					URL: entityInfo.Avatar,
+				},
+				Title:       "🎉 Vote Count Updated!",
+				Description: ":heart:" + userObj.DisplayName + " has voted for " + targetType + ": " + entityInfo.Name,
+				Color:       0x8A6BFD,
+				Fields: []*discordgo.MessageEmbedField{
+					{
+						Name:   "Vote Count:",
+						Value:  strconv.Itoa(nvc),
+						Inline: true,
 					},
-					Title:       "🎉 Vote Count Updated!",
-					Description: ":heart:" + userObj.DisplayName + " has voted for " + targetType + ": " + entityInfo.Name,
-					Color:       0x8A6BFD,
-					Fields: []*discordgo.MessageEmbedField{
-						{
-							Name:   "Vote Count:",
-							Value:  strconv.Itoa(nvc),
-							Inline: true,
-						},
-						{
-							Name:   "Votes Added:",
-							Value:  strconv.Itoa(vi.VoteInfo.PerUser),
-							Inline: true,
-						},
-						{
-							Name:   "User ID:",
-							Value:  userObj.ID,
-							Inline: true,
-						},
-						{
-							Name:   "View " + targetType + "'s page",
-							Value:  "[View " + entityInfo.Name + "](" + entityInfo.URL + ")",
-							Inline: true,
-						},
-						{
-							Name:   "Vote Page",
-							Value:  "[Vote for " + entityInfo.Name + "](" + entityInfo.VoteURL + ")",
-							Inline: true,
-						},
+					{
+						Name:   "Votes Added:",
+						Value:  strconv.Itoa(vi.VoteInfo.PerUser),
+						Inline: true,
+					},
+					{
+						Name:   "User ID:",
+						Value:  userObj.ID,
+						Inline: true,
+					},
+					{
+						Name:   "View " + targetType + "'s page",
+						Value:  "[View " + entityInfo.Name + "](" + entityInfo.URL + ")",
+						Inline: true,
+					},
+					{
+						Name:   "Vote Page",
+						Value:  "[Vote for " + entityInfo.Name + "](" + entityInfo.VoteURL + ")",
+						Inline: true,
 					},
 				},
 			},
-		})
+		},
+	})
 
-		if err != nil {
-			state.Logger.Warn(err)
-		}
+	if err != nil {
+		state.Logger.Warn(err)
 	}
 
 	// Send webhook in a goroutine refunding the vote if it failed

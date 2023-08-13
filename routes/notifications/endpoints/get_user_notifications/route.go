@@ -41,7 +41,7 @@ func Docs() *docs.Doc {
 func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	var id = chi.URLParam(r, "id")
 
-	rows, err := state.Pool.Query(d.Context, "SELECT "+notifGetColsStr+" FROM poppypaw WHERE user_id = $1", id)
+	rows, err := state.Pool.Query(d.Context, "SELECT "+notifGetColsStr+" FROM user_notifications WHERE user_id = $1", id)
 
 	if err != nil {
 		state.Logger.Error(err)

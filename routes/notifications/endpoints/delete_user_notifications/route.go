@@ -1,4 +1,4 @@
-package delete_user_reminders
+package delete_user_notifications
 
 import (
 	"net/http"
@@ -14,46 +14,42 @@ import (
 
 func Docs() *docs.Doc {
 	return &docs.Doc{
-		Summary:     "Delete User Reminders",
-		Description: "Deletes a users reminders. Returns 204 on success",
+		Summary:     "Delete User Notifications",
+		Description: "Deletes a users notification. Returns 204 on success",
 		Params: []docs.Parameter{
 			{
-				Name:        "uid",
+				Name:        "id",
 				Description: "User ID",
 				Required:    true,
 				In:          "path",
 				Schema:      docs.IdSchema,
 			},
 			{
-				Name:        "bid",
-				Description: "Bot ID to delete a reminder of",
+				Name:        "notif_id",
+				Description: "Notification ID",
 				Required:    true,
-				In:          "path",
+				In:          "query",
 				Schema:      docs.IdSchema,
 			},
 		},
-		Resp: types.ReminderList{},
+		Resp: types.ApiError{},
 	}
 }
 
 func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
-	id := chi.URLParam(r, "bid")
+	var id = chi.URLParam(r, "id")
 
-	var count int64
+	// Check for notif_id
+	if r.URL.Query().Get("notif_id") == "" {
+		return uapi.DefaultResponse(http.StatusBadRequest)
+	}
 
-	err := state.Pool.QueryRow(d.Context, "SELECT COUNT(*) FROM bots WHERE bot_id = $1", id).Scan(&count)
+	_, err := state.Pool.Exec(d.Context, "DELETE FROM user_notifications WHERE user_id = $1 AND notif_id = $2", id, r.URL.Query().Get("notif_id"))
 
 	if err != nil {
 		state.Logger.Error(err)
 		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
-
-	if count == 0 {
-		return uapi.DefaultResponse(http.StatusNotFound)
-	}
-
-	// Delete old
-	state.Pool.Exec(d.Context, "DELETE FROM silverpelt WHERE user_id = $1 AND bot_id = $2", d.Auth.ID, id)
 
 	return uapi.DefaultResponse(http.StatusNoContent)
 }

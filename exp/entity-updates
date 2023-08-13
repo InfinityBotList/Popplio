@@ -1,0 +1,7 @@
+When adding a new target type, here is the list of generic systems that should be updated:
+
+- Reviews
+- Votes (votes.GetEntityInfo etc. VrCheck etc should just work after that)
+- Vanity
+- Webhook (create a new driver and add as Target to WebhookTarget)
+- User Reminders [be sure to delete user reminders in a delete api if needed]

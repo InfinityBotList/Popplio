@@ -17,8 +17,8 @@ import (
 )
 
 var (
-	silverpeltColsArr = utils.GetCols(types.Reminder{})
-	silverpeltCols    = strings.Join(silverpeltColsArr, ",")
+	reminderColsArr = utils.GetCols(types.Reminder{})
+	reminderCols    = strings.Join(reminderColsArr, ",")
 )
 
 func Docs() *docs.Doc {
@@ -42,7 +42,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	var id = chi.URLParam(r, "id")
 
 	// Fetch reminder from postgres
-	rows, err := state.Pool.Query(d.Context, "SELECT "+silverpeltCols+" FROM silverpelt WHERE user_id = $1", id)
+	rows, err := state.Pool.Query(d.Context, "SELECT "+reminderCols+" FROM user_reminders WHERE user_id = $1", id)
 
 	if err != nil {
 		state.Logger.Error(err)
@@ -57,23 +57,34 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	}
 
 	for i, reminder := range reminders {
-		// Try resolving the bot from discord API
-		var resolvedBot types.ResolvedReminderBot
-		bot, err := dovewing.GetUser(d.Context, reminder.BotID, state.DovewingPlatformDiscord)
-
-		if err != nil {
-			resolvedBot = types.ResolvedReminderBot{
-				Name:   "Unknown",
-				Avatar: "https://cdn.discordapp.com/embed/avatars/0.png",
-			}
-		} else {
-			resolvedBot = types.ResolvedReminderBot{
-				Name:   bot.Username,
-				Avatar: bot.Avatar,
-			}
+		// Try resolving the entity from discord API
+		reminders[i].Resolved = &types.ResolvedReminder{
+			Name:   "Unknown",
+			Avatar: "https://cdn.discordapp.com/embed/avatars/0.png",
 		}
 
-		reminders[i].ResolvedBot = resolvedBot
+		switch reminder.TargetType {
+		case "bot":
+			bot, err := dovewing.GetUser(d.Context, reminder.TargetID, state.DovewingPlatformDiscord)
+
+			if err == nil {
+				reminders[i].Resolved = &types.ResolvedReminder{
+					Name:   bot.Username,
+					Avatar: bot.Avatar,
+				}
+			}
+		case "team":
+			var name, avatar string
+
+			err := state.Pool.QueryRow(d.Context, "SELECT name, avatar FROM teams WHERE id = $1", reminder.TargetID).Scan(&name, &avatar)
+
+			if err == nil {
+				reminders[i].Resolved = &types.ResolvedReminder{
+					Name:   name,
+					Avatar: avatar,
+				}
+			}
+		}
 	}
 
 	reminderList := types.ReminderList{

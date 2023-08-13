@@ -19,9 +19,11 @@ import (
 	"popplio/routes/bots"
 	"popplio/routes/diagnostics"
 	"popplio/routes/list"
+	notifrouter "popplio/routes/notifications"
 	"popplio/routes/packs"
 	"popplio/routes/payments"
 	"popplio/routes/platform"
+	"popplio/routes/reminders"
 	"popplio/routes/reviews"
 	srvrouter "popplio/routes/srvdiscovery"
 	"popplio/routes/staff"
@@ -143,9 +145,11 @@ func main() {
 		bots.Router{},
 		diagnostics.Router{},
 		list.Router{},
+		notifrouter.Router{},
 		packs.Router{},
 		payments.Router{},
 		platform.Router{},
+		reminders.Router{},
 		reviews.Router{},
 		//servers.Router{},
 		srvrouter.Router{},

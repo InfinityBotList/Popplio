@@ -7,7 +7,6 @@ import (
 	"popplio/votes"
 	"time"
 
-	"github.com/infinitybotlist/eureka/dovewing"
 	"github.com/jackc/pgx/v5/pgtype"
 	jsoniter "github.com/json-iterator/go"
 )
@@ -28,7 +27,7 @@ func VrLoop() {
 }
 
 func vrCheck() {
-	rows, err := state.Pool.Query(state.Context, "SELECT user_id, bot_id FROM silverpelt WHERE NOW() - last_acked > interval '4 hours'")
+	rows, err := state.Pool.Query(state.Context, "SELECT user_id, target_id, target_type FROM user_reminders WHERE NOW() - last_acked > interval '4 hours'")
 
 	if err != nil {
 		state.Logger.Error("Error finding reminders: ", err)
@@ -37,15 +36,16 @@ func vrCheck() {
 
 	for rows.Next() {
 		var userId string
-		var botId string
-		err := rows.Scan(&userId, &botId)
+		var targetId string
+		var targetType string
+		err := rows.Scan(&userId, &targetId, &targetType)
 
 		if err != nil {
 			state.Logger.Error("Error decoding reminder:", err)
 			continue
 		}
 
-		vi, err := votes.EntityVoteCheck(state.Context, userId, botId, "bot")
+		vi, err := votes.EntityVoteCheck(state.Context, userId, targetId, targetType)
 
 		if err != nil {
 			state.Logger.Error(err)
@@ -53,7 +53,7 @@ func vrCheck() {
 		}
 
 		if !vi.HasVoted {
-			botInf, err := dovewing.GetUser(state.Context, botId, state.DovewingPlatformDiscord)
+			entityInfo, err := votes.GetEntityInfo(state.Context, targetId, targetType)
 
 			if err != nil {
 				state.Logger.Error("Error finding bot info:", err)
@@ -62,10 +62,10 @@ func vrCheck() {
 
 			message := types.Alert{
 				Type:    types.AlertTypeInfo,
-				URL:     pgtype.Text{String: "/bot/" + botId + "/vote", Valid: true},
-				Message: "You can vote for " + botInf.Username + " now!",
-				Title:   "Vote for " + botInf.Username + "!",
-				Icon:    botInf.Avatar,
+				URL:     pgtype.Text{String: entityInfo.VoteURL, Valid: true},
+				Message: "You can vote for the " + targetType + " " + entityInfo.Name + " now!",
+				Title:   "Vote for " + entityInfo.Name + "!",
+				Icon:    entityInfo.Avatar,
 			}
 
 			err = PushNotification(userId, message)
@@ -75,7 +75,7 @@ func vrCheck() {
 				continue
 			}
 
-			_, err = state.Pool.Exec(state.Context, "UPDATE silverpelt SET last_acked = NOW() WHERE bot_id = $1 AND user_id = $2", botId, userId)
+			_, err = state.Pool.Exec(state.Context, "UPDATE user_reminders SET last_acked = NOW() WHERE user_id = $1 AND target_id = $2 AND target_type = $3", userId, targetId, targetType)
 			if err != nil {
 				state.Logger.Error("Error updating reminder: %s", err)
 				continue

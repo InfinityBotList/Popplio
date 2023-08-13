@@ -38,14 +38,14 @@ func Docs() *docs.Doc {
 			},
 			{
 				Name:        "target_id",
-				Description: "The bot ID",
+				Description: "The target ID of the entity",
 				Required:    true,
 				In:          "path",
 				Schema:      docs.IdSchema,
 			},
 			{
 				Name:        "target_type",
-				Description: "The target type of the tntity",
+				Description: "The target type of the entity",
 				Required:    true,
 				In:          "path",
 				Schema:      docs.IdSchema,
