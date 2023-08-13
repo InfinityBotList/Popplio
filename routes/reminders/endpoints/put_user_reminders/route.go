@@ -17,7 +17,7 @@ import (
 func Docs() *docs.Doc {
 	return &docs.Doc{
 		Summary:     "Create User Reminder",
-		Description: "Creates a new user reminders of a bot deleting existing ones for the bot",
+		Description: "Creates a new user reminders of an entity",
 		Params: []docs.Parameter{
 			{
 				Name:        "uid",
