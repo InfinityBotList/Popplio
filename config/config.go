@@ -112,5 +112,5 @@ type Meta struct {
 	StripePublicKey     Differs[string] `yaml:"stripe_public_key" default:"" comment:"Stripe Public Key" validate:"required"`
 	StripeSecretKey     Differs[string] `yaml:"stripe_secret_key" default:"" comment:"Stripe Public Key" validate:"required"`
 	UptimeRobotROAPIKey string          `yaml:"uptime_robot_ro_api_key" default:"" comment:"Uptime Robot Read-Only API Key" validate:"required"`
-	PopplioProxy        string          `yaml:"popplio_proxy" default:"http://100.104.199.117:3219" comment:"Popplio Proxy URL" validate:"required"`
+	PopplioProxy        string          `yaml:"popplio_proxy" default:"http://127.0.0.1:3219" comment:"Popplio Proxy URL" validate:"required"`
 }

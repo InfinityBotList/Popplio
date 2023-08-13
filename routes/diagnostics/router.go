@@ -1,6 +1,7 @@
 package diagnostics
 
 import (
+	"popplio/routes/diagnostics/endpoints/failure_management"
 	"popplio/routes/diagnostics/endpoints/ping"
 	"popplio/routes/diagnostics/endpoints/ping_head"
 
@@ -13,7 +14,7 @@ const tagName = "Diagnostics"
 type Router struct{}
 
 func (b Router) Tag() (string, string) {
-	return tagName, "These API endpoints allow diagnosing potential connection issues to our API."
+	return tagName, "These API endpoints allow diagnosing potential issues within our API or within any frontend application."
 }
 
 func (b Router) Routes(r *chi.Mux) {
@@ -32,5 +33,13 @@ func (b Router) Routes(r *chi.Mux) {
 		Method:  uapi.HEAD,
 		Docs:    ping_head.Docs,
 		Handler: ping_head.Route,
+	}.Route(r)
+
+	uapi.Route{
+		Pattern: "/failure-management",
+		OpId:    "failure_management",
+		Method:  uapi.POST,
+		Docs:    failure_management.Docs,
+		Handler: failure_management.Route,
 	}.Route(r)
 }

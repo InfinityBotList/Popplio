@@ -18,6 +18,7 @@ require github.com/stripe/stripe-go/v74 v74.28.0
 require (
 	github.com/buger/jsonparser v1.1.1 // indirect
 	github.com/gabriel-vasile/mimetype v1.4.2 // indirect
+	github.com/getsentry/sentry-go v0.23.0 // indirect
 	github.com/go-playground/locales v0.14.1 // indirect
 	github.com/go-playground/universal-translator v0.18.1 // indirect
 	github.com/leodido/go-urn v1.2.4 // indirect
