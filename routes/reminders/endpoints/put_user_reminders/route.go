@@ -53,12 +53,14 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		return uapi.DefaultResponse(http.StatusBadRequest)
 	}
 
-	// Handle entity specific checks here, such as ensuring the entity actually exists
 	entityInfo, err := votes.GetEntityInfo(d.Context, targetId, targetType)
 
 	if err != nil {
 		state.Logger.Error(err)
-		return uapi.DefaultResponse(http.StatusInternalServerError)
+		return uapi.HttpResponse{
+			Status: http.StatusBadRequest,
+			Json:   types.ApiError{Message: "Error: " + err.Error()},
+		}
 	}
 
 	// Delete old

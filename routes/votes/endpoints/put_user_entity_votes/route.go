@@ -178,7 +178,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		state.Logger.Error(err)
 		return uapi.HttpResponse{
 			Status: http.StatusBadRequest,
-			Json:   types.ApiError{Message: err.Error()},
+			Json:   types.ApiError{Message: "Error: " + err.Error()},
 		}
 	}
 
