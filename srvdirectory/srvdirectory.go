@@ -14,6 +14,7 @@ func Setup() {
 				ID:          "htmlsanitize",
 				ProdURL:     state.Config.Sites.HtmlSanitize,
 				Description: "HTML->MD",
+				Docs:        "/openapi",
 			},
 			{
 				ID:          "popplio",
