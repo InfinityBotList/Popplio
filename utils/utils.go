@@ -4,14 +4,6 @@ import (
 	"reflect"
 )
 
-// Returns if a string is empty/null or not. Used throughout the codebase
-func IsNone(s string) bool {
-	if s == "None" || s == "none" || s == "" || s == "null" {
-		return true
-	}
-	return false
-}
-
 func GetCols(s any) []string {
 	refType := reflect.TypeOf(s)
 
