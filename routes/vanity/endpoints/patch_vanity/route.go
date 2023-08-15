@@ -184,5 +184,12 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		}
 	}
 
+	err = tx.Commit(d.Context)
+
+	if err != nil {
+		state.Logger.Error(err)
+		return uapi.DefaultResponse(http.StatusInternalServerError)
+	}
+
 	return uapi.DefaultResponse(http.StatusNoContent)
 }
