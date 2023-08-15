@@ -2,6 +2,7 @@ package migrate
 
 import (
 	"context"
+	"strings"
 
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -183,5 +184,50 @@ var migs = []migration{
 			}
 		},
 	},
-	{},
+	{
+		name:     "migrate webhooks",
+		disabled: true,
+		function: func(pool *pgxpool.Pool) {
+			rows, err := pool.Query(context.Background(), "SELECT bot_id, webhook, web_auth, api_token from bots")
+
+			if err != nil {
+				panic(err)
+			}
+
+			defer rows.Close()
+
+			for rows.Next() {
+				var botId string
+				var webhook pgtype.Text
+				var webAuth pgtype.Text
+				var apiToken string
+
+				err = rows.Scan(&botId, &webhook, &webAuth, &apiToken)
+
+				if err != nil {
+					panic(err)
+				}
+
+				if !webhook.Valid || !strings.HasPrefix(webhook.String, "https://") {
+					continue
+				}
+
+				if !webAuth.Valid {
+					webAuth = pgtype.Text{
+						Valid:  true,
+						String: apiToken,
+					}
+				}
+
+				statusBoldBlue("Migrating webhook for botId="+botId, "webhook="+webhook.String, "webAuth="+webAuth.String)
+
+				// Insert into webhooks
+				_, err = pool.Exec(context.Background(), "INSERT INTO webhooks (target_id, target_type, url, secret) VALUES ($1, 'bot', $2, $3)", botId, webhook.String, webAuth.String)
+
+				if err != nil {
+					panic(err)
+				}
+			}
+		},
+	},
 }

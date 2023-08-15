@@ -1,10 +1,7 @@
 package utils
 
 import (
-	"context"
 	"reflect"
-
-	"popplio/state"
 )
 
 // Returns if a string is empty/null or not. Used throughout the codebase
@@ -37,12 +34,4 @@ func GetCols(s any) []string {
 	}
 
 	return cols
-}
-
-func ClearBotCache(ctx context.Context, botId string) error {
-	// Delete from cache
-	for _, k := range []string{"bc-", "seob:"} {
-		state.Redis.Del(ctx, k+botId)
-	}
-	return nil
 }

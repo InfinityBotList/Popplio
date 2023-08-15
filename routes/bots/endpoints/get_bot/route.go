@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
-	"time"
 
 	"popplio/config"
 	"popplio/state"
@@ -61,6 +60,13 @@ Officially recognized targets:
 				Required: false,
 				In:       "query",
 				Schema:   docs.IdSchema,
+			},
+			{
+				Name:        "short",
+				Description: "Avoid sending large fields. Currently this is only the long description of the bot",
+				Required:    false,
+				In:          "query",
+				Schema:      docs.IdSchema,
 			},
 		},
 		Resp: types.Bot{},
@@ -133,18 +139,6 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 
 	target := r.URL.Query().Get("target")
 
-	// Check cache, this is how we can avoid hefty ratelimits
-	cache := state.Redis.Get(d.Context, "bc-"+id).Val()
-	if cache != "" {
-		go handleAnalytics(r, id, target)
-		return uapi.HttpResponse{
-			Data: cache,
-			Headers: map[string]string{
-				"X-Popplio-Cached": "true",
-			},
-		}
-	}
-
 	row, err := state.Pool.Query(d.Context, "SELECT "+botCols+" FROM bots WHERE bot_id = $1", id)
 
 	if err != nil {
@@ -163,7 +157,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
-	if utils.IsNone(bot.Banner.String) || !strings.HasPrefix(bot.Banner.String, "https://") {
+	if !strings.HasPrefix(bot.Banner.String, "https://") {
 		bot.Banner.Valid = false
 		bot.Banner.String = ""
 	}
@@ -233,9 +227,11 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 
 	go handleAnalytics(r, id, target)
 
+	if r.URL.Query().Get("short") == "true" {
+		bot.Long = ""
+	}
+
 	return uapi.HttpResponse{
-		Json:      bot,
-		CacheKey:  "bc-" + id,
-		CacheTime: time.Minute * 3,
+		Json: bot,
 	}
 }

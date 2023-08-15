@@ -6,7 +6,6 @@ import (
 	"popplio/state"
 	"popplio/teams"
 	"popplio/types"
-	"popplio/utils"
 
 	"github.com/bwmarrin/discordgo"
 	"github.com/go-chi/chi/v5"
@@ -58,9 +57,6 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		}
 	}
 
-	// Clear cache
-	utils.ClearBotCache(d.Context, id)
-
 	// Delete bot
 	tx, err := state.Pool.Begin(d.Context)
 
@@ -76,16 +72,6 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	if err != nil {
 		state.Logger.Error(err)
 		return uapi.DefaultResponse(http.StatusInternalServerError)
-	}
-
-	// Delete generic entities
-	for _, table := range []string{"reviews", "webhook_logs", "entity_votes", "vanity", "user_reminders"} {
-		_, err = tx.Exec(d.Context, "DELETE FROM "+table+" WHERE target_id = $1 AND target_type = 'bot'", id)
-
-		if err != nil {
-			state.Logger.Error(err)
-			return uapi.DefaultResponse(http.StatusInternalServerError)
-		}
 	}
 
 	err = tx.Commit(d.Context)

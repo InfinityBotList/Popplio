@@ -6,7 +6,6 @@ import (
 	"popplio/state"
 	"popplio/teams"
 	"popplio/types"
-	"popplio/utils"
 	"popplio/validators"
 	"reflect"
 	"strconv"
@@ -153,9 +152,6 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		state.Logger.Error(err)
 		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
-
-	// Clear cache
-	utils.ClearBotCache(d.Context, id)
 
 	// Send a message to the bot logs channel
 	state.Discord.ChannelMessageSendComplex(state.Config.Channels.BotLogs, &discordgo.MessageSend{

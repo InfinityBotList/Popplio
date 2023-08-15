@@ -9,7 +9,6 @@ import (
 	"crypto/sha256"
 	"crypto/sha512"
 	"encoding/hex"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -18,13 +17,18 @@ import (
 	"popplio/notifications"
 	"popplio/state"
 	"popplio/types"
+	"popplio/webhooks/events"
 	"strconv"
 	"strings"
 	"time"
 
 	"github.com/bwmarrin/discordgo"
 	"github.com/infinitybotlist/eureka/crypto"
+	"github.com/jackc/pgx/v5"
+	jsoniter "github.com/json-iterator/go"
 )
+
+var json = jsoniter.ConfigCompatibleWithStandardLibrary
 
 // The Secret
 type Secret struct {
@@ -38,16 +42,18 @@ func (s Secret) Sign(data []byte) string {
 	return hex.EncodeToString(h.Sum(nil))
 }
 
+type webhookData struct {
+	sign Secret
+	url  string
+}
+
 // Internal structs
 type WebhookSendState struct {
-	// the url to post to
-	Url string
+	// webhook event (used for discord webhooks)
+	Event *events.WebhookResponse
 
 	// the data to send
 	Data []byte
-
-	// the signature header to send
-	Sign Secret
 
 	// is it a bad intent: intentionally bad auth to trigger 401 check
 	BadIntent bool
@@ -60,6 +66,9 @@ type WebhookSendState struct {
 
 	// The entity itself
 	Entity WebhookEntity
+
+	// low-level data
+	wdata *webhookData
 }
 
 // An abstraction over an entity whether that be a bot (or teams if we add that in the future, which is very likely)
@@ -73,12 +82,12 @@ type WebhookEntity struct {
 	// the name of the webhook's target
 	EntityName string
 
-	// deletes webhook from entity
-	DeleteWebhook func() error
+	// whether or not the secret is 'insecure' or not
+	InsecureSecret bool
 }
 
 func (e WebhookEntity) Validate() bool {
-	return e.EntityID != "" && e.EntityType != "" && e.EntityName != "" && e.DeleteWebhook != nil
+	return e.EntityID != "" && e.EntityType != "" && e.EntityName != ""
 }
 
 func (st *WebhookSendState) cancelSend(saveState string) {
@@ -97,17 +106,74 @@ func Send(d *WebhookSendState) error {
 		panic("invalid webhook entity")
 	}
 
+	if d.wdata == nil {
+		var url, secret string
+
+		err := state.Pool.QueryRow(state.Context, "SELECT url, secret FROM webhooks WHERE target_id = $1 AND target_type = $2", d.Entity.EntityID, d.Entity.EntityType).Scan(&url, &secret)
+
+		if errors.Is(err, pgx.ErrNoRows) {
+			state.Logger.Error("webhook not found for " + d.Entity.EntityID)
+			return errors.New("webhook not found")
+		}
+
+		if err != nil {
+			return err
+		}
+
+		d.wdata = &webhookData{
+			url: url,
+			sign: Secret{
+				Raw:         secret,
+				UseInsecure: d.Entity.InsecureSecret,
+			},
+		}
+	}
+
+	// Handle webhook event
+	if d.Event != nil {
+		params := d.Event.Data.CreateHookParams(d.Event.Creator, d.Event.Targets)
+
+		ok, err := SendDiscord(
+			d.Event.Creator.ID,
+			d.Entity.EntityID,
+			d.wdata.url,
+			func() error {
+				_, err := state.Pool.Exec(state.Context, "DELETE FROM webhooks WHERE target_id = $1 AND target_type = $2", d.Entity.EntityID, d.Entity.EntityType)
+				return err
+			},
+			params,
+		)
+
+		if err != nil {
+			state.Logger.Error(err)
+			return err
+		}
+
+		if ok {
+			return nil
+		}
+
+		d.Data, err = json.Marshal(d.Event)
+
+		if err != nil {
+			state.Logger.Error(err)
+			return errors.New("failed to marshal webhook payload")
+		}
+	}
+
 	// Randomly send a bad webhook with invalid auth
 	if !d.BadIntent {
 		if rand2.Float64() < 0.4 {
 			go func() {
 				badD := &WebhookSendState{
 					BadIntent: true,
-					Sign: Secret{
-						Raw:         crypto.RandString(128),
-						UseInsecure: d.Sign.UseInsecure,
+					wdata: &webhookData{
+						url: d.wdata.url,
+						sign: Secret{
+							Raw:         crypto.RandString(128),
+							UseInsecure: d.Entity.InsecureSecret,
+						},
 					},
-					Url:    d.Url,
 					Data:   d.Data,
 					UserID: d.UserID,
 					Entity: d.Entity,
@@ -122,7 +188,7 @@ func Send(d *WebhookSendState) error {
 	if d.LogID == "" {
 		// Add to webhook logs for automatic retry
 		var logID string
-		err := state.Pool.QueryRow(state.Context, "INSERT INTO webhook_logs (target_id, target_type, user_id, url, data, bad_intent) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id", d.Entity.EntityID, d.Entity.EntityType, d.UserID, d.Url, d.Data, d.BadIntent).Scan(&logID)
+		err := state.Pool.QueryRow(state.Context, "INSERT INTO webhook_logs (target_id, target_type, user_id, url, data, bad_intent) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id", d.Entity.EntityID, d.Entity.EntityType, d.UserID, d.wdata.url, d.Data, d.BadIntent).Scan(&logID)
 
 		if err != nil {
 			return err
@@ -143,21 +209,21 @@ func Send(d *WebhookSendState) error {
 	var req *http.Request
 	var err error
 
-	if d.Sign.UseInsecure {
-		req, err = http.NewRequestWithContext(state.Context, "POST", d.Url, bytes.NewReader(d.Data))
+	if d.wdata.sign.UseInsecure {
+		req, err = http.NewRequestWithContext(state.Context, "POST", d.wdata.url, bytes.NewReader(d.Data))
 
 		if err != nil {
 			return err
 		}
 
-		req.Header.Set("Authorization", d.Sign.Raw)
+		req.Header.Set("Authorization", d.wdata.sign.Raw)
 		req.Header.Set("X-Webhook-Protocol", "legacy-insecure")
 	} else {
 		// Generate HMAC token using nonce and signed header for further randomization
 		nonce := crypto.RandString(16)
 
 		keyHash := sha256.New()
-		keyHash.Write([]byte(d.Sign.Raw + nonce))
+		keyHash.Write([]byte(d.wdata.sign.Raw + nonce))
 
 		// Encrypt request body with hashed
 		c, err := aes.NewCipher(keyHash.Sum(nil))
@@ -180,11 +246,11 @@ func Send(d *WebhookSendState) error {
 		postData := []byte(hex.EncodeToString(gcm.Seal(aesNonce, aesNonce, d.Data, nil)))
 
 		// HMAC with encrypted request body
-		tok1 := d.Sign.Sign(postData)
+		tok1 := d.wdata.sign.Sign(postData)
 
 		finalToken := Secret{Raw: nonce}.Sign([]byte(tok1))
 
-		req, err = http.NewRequestWithContext(state.Context, "POST", d.Url, bytes.NewReader(postData))
+		req, err = http.NewRequestWithContext(state.Context, "POST", d.wdata.url, bytes.NewReader(postData))
 
 		if err != nil {
 			return err
@@ -227,7 +293,8 @@ func Send(d *WebhookSendState) error {
 	case resp.StatusCode == 404 || resp.StatusCode == 410:
 		// Remove from DB
 		d.cancelSend("WEBHOOK_REMOVED_404_410")
-		err := d.Entity.DeleteWebhook()
+
+		_, err := state.Pool.Exec(state.Context, "DELETE FROM webhooks WHERE target_id = $1 AND target_type = $2", d.Entity.EntityID, d.Entity.EntityType)
 
 		if err != nil {
 			state.Logger.Error(err)
@@ -298,7 +365,7 @@ func Send(d *WebhookSendState) error {
 			}
 
 			// Remove webhook, it doesn't validate auth at all
-			err := d.Entity.DeleteWebhook()
+			_, err := state.Pool.Exec(state.Context, "DELETE FROM webhooks WHERE target_id = $1 AND target_type = $2", d.Entity.EntityID, d.Entity.EntityType)
 
 			if err != nil {
 				state.Logger.Error(err)
@@ -399,9 +466,6 @@ type WebhookPullPending struct {
 	// delete webhook for specific id
 	GetEntity func(id string) (WebhookEntity, error)
 
-	// returns the secret of an entity
-	GetSecret func(id string) (Secret, error)
-
 	// If a entity may not support pulls, implement this function to determine if it does
 	// If this function is not implemented, it will be assumed that the entity supports pulls
 	SupportsPulls func(id string) (bool, error)
@@ -427,7 +491,7 @@ func PullPending(p WebhookPullPending) {
 	}
 
 	// Fetch every pending bot webhook from webhook_logs
-	rows, err := state.Pool.Query(state.Context, "SELECT id, target_id, user_id, url, data FROM webhook_logs WHERE state = $1 AND target_type = $2 AND bad_intent = false", "PENDING", p.EntityType)
+	rows, err := state.Pool.Query(state.Context, "SELECT id, target_id, user_id, data FROM webhook_logs WHERE state = $1 AND target_type = $2 AND bad_intent = false", "PENDING", p.EntityType)
 
 	if err != nil {
 		state.Logger.Error(err)
@@ -441,11 +505,10 @@ func PullPending(p WebhookPullPending) {
 			id       string
 			targetId string
 			userId   string
-			url      string
 			data     []byte
 		)
 
-		err := rows.Scan(&id, &targetId, &userId, &url, &data)
+		err := rows.Scan(&id, &targetId, &userId, &data)
 
 		if err != nil {
 			state.Logger.Error(err)
@@ -459,19 +522,10 @@ func PullPending(p WebhookPullPending) {
 			continue
 		}
 
-		secret, err := p.GetSecret(targetId)
-
-		if err != nil {
-			state.Logger.Error(err)
-			continue
-		}
-
 		entity.EntityType = p.EntityType
 
 		// Send webhook
 		err = Send(&WebhookSendState{
-			Url:    url,
-			Sign:   secret,
 			Data:   data,
 			LogID:  id,
 			UserID: userId,

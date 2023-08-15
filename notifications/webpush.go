@@ -43,7 +43,7 @@ func PushNotification(userId string, notif types.Alert) error {
 		return err
 	}
 
-	notifIds, err := state.Pool.Query(state.Context, "SELECT notif_id, auth, endpoint, p256dh FROM user_notificationsifications WHERE user_id = $1", userId)
+	notifIds, err := state.Pool.Query(state.Context, "SELECT notif_id, auth, endpoint, p256dh FROM user_notifications WHERE user_id = $1", userId)
 
 	if err != nil {
 		return err

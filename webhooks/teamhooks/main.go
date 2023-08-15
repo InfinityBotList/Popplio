@@ -15,13 +15,9 @@ import (
 
 	"github.com/infinitybotlist/eureka/dovewing"
 	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgtype"
-	jsoniter "github.com/json-iterator/go"
 )
 
 const EntityType = "team"
-
-var json = jsoniter.ConfigCompatibleWithStandardLibrary
 
 var (
 	teamColsArr = utils.GetCols(types.Team{})
@@ -73,15 +69,6 @@ func Send(with With) error {
 		EntityID:   team.ID,
 		EntityName: team.Name,
 		EntityType: EntityType,
-		DeleteWebhook: func() error {
-			_, err := state.Pool.Exec(state.Context, "UPDATE teams SET webhook = NULL WHERE id = $1", with.TeamID)
-
-			if err != nil {
-				return err
-			}
-
-			return nil
-		},
 	}
 
 	resp := &events.WebhookResponse{
@@ -95,67 +82,8 @@ func Send(with With) error {
 		Metadata:  events.ParseWebhookMetadata(with.Metadata),
 	}
 
-	// Fetch the webhook url from db
-	var webhookURL string
-	err = state.Pool.QueryRow(state.Context, "SELECT webhook FROM teams WHERE id = $1", team.ID).Scan(&webhookURL)
-
-	if err != nil {
-		state.Logger.Error(err)
-		return errors.New("failed to fetch webhook url")
-	}
-
-	if utils.IsNone(webhookURL) {
-		return errors.New("no webhook set")
-	}
-
-	params := with.Data.CreateHookParams(resp.Creator, resp.Targets)
-
-	ok, err := sender.SendDiscord(
-		user.ID,
-		team.Name,
-		webhookURL,
-		func() error {
-			_, err := state.Pool.Exec(state.Context, "UPDATE teams SET webhook = NULL WHERE id = $1", team.ID)
-
-			if err != nil {
-				return err
-			}
-
-			return nil
-		},
-		params,
-	)
-
-	if err != nil {
-		state.Logger.Error(err)
-		return err
-	}
-
-	if ok {
-		return nil
-	}
-
-	var webhookSecret pgtype.Text
-	err = state.Pool.QueryRow(state.Context, "SELECT web_auth FROM teams WHERE id = $1", team.ID).Scan(&webhookSecret)
-
-	if err != nil {
-		state.Logger.Error(err)
-		return errors.New("failed to fetch webhook secret")
-	}
-
-	payload, err := json.Marshal(resp)
-
-	if err != nil {
-		state.Logger.Error(err)
-		return errors.New("failed to marshal webhook payload")
-	}
-
 	return sender.Send(&sender.WebhookSendState{
-		Url: webhookURL,
-		Sign: sender.Secret{
-			Raw: webhookSecret.String,
-		},
-		Data:   payload,
+		Event:  resp,
 		UserID: resp.Creator.ID,
 		Entity: entity,
 	})

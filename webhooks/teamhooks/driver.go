@@ -29,15 +29,6 @@ func (d Driver) PullPending() *sender.WebhookPullPending {
 				EntityID:   id,
 				EntityName: name,
 				EntityType: EntityType,
-				DeleteWebhook: func() error {
-					_, err := state.Pool.Exec(state.Context, "UPDATE teams SET webhook = NULL WHERE id = $1", id)
-
-					if err != nil {
-						return err
-					}
-
-					return nil
-				},
 			}, nil
 		},
 	}

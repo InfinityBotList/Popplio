@@ -4,6 +4,7 @@ import (
 	"popplio/api"
 	"popplio/routes/webhooks/endpoints/get_test_webhook_meta"
 	"popplio/routes/webhooks/endpoints/get_webhook_logs"
+	"popplio/routes/webhooks/endpoints/patch_webhook"
 	"popplio/routes/webhooks/endpoints/test_webhook"
 
 	"github.com/go-chi/chi/v5"
@@ -21,6 +22,20 @@ func (b Router) Tag() (string, string) {
 func (b Router) Routes(r *chi.Mux) {
 	uapi.Route{
 		Pattern: "/users/{uid}/webhooks/{target_id}",
+		OpId:    "patch_webhook",
+		Method:  uapi.PATCH,
+		Docs:    patch_webhook.Docs,
+		Handler: patch_webhook.Route,
+		Auth: []uapi.AuthType{
+			{
+				Type:   api.TargetTypeUser,
+				URLVar: "uid",
+			},
+		},
+	}.Route(r)
+
+	uapi.Route{
+		Pattern: "/users/{uid}/webhooks/{target_id}/logs",
 		OpId:    "get_webhook_logs",
 		Method:  uapi.GET,
 		Docs:    get_webhook_logs.Docs,

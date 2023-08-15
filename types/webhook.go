@@ -35,13 +35,7 @@ type WebhookLogEntry struct {
 	StatusCode int                     `db:"status_code" json:"status_code" description:"The status code of the webhook request."`
 }
 
-type PatchBotWebhook struct {
-	WebhookURL    string `json:"webhook_url"`
-	WebhookSecret string `json:"webhook_secret"`
-	Clear         bool   `json:"clear"`
-}
-
-type PatchTeamWebhook struct {
+type PatchWebhook struct {
 	WebhookURL    string `json:"webhook_url"`
 	WebhookSecret string `json:"webhook_secret"`
 	Clear         bool   `json:"clear"`

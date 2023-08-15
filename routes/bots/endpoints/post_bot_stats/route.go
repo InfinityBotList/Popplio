@@ -5,7 +5,6 @@ import (
 
 	"popplio/state"
 	"popplio/types"
-	"popplio/utils"
 
 	docs "github.com/infinitybotlist/eureka/doclib"
 	"github.com/infinitybotlist/eureka/uapi"
@@ -88,8 +87,6 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		state.Logger.Error(err)
 		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
-
-	utils.ClearBotCache(d.Context, d.Auth.ID)
 
 	return uapi.DefaultResponse(http.StatusNoContent)
 }

@@ -1,9 +1,8 @@
-package patch_vanity
+package patch_webhook
 
 import (
 	"net/http"
 	"strings"
-	"unicode"
 
 	"popplio/state"
 	"popplio/teams"
@@ -17,8 +16,10 @@ import (
 
 func Docs() *docs.Doc {
 	return &docs.Doc{
-		Summary:     "Update Entity Vanity",
-		Description: "Updates an entities vanity. Returns 204 on success",
+		Summary:     "Update Entity Webhook",
+		Description: "Updates a entities webhook. Returns 204 on success",
+		Req:         types.PatchWebhook{},
+		Resp:        types.ApiError{},
 		Params: []docs.Parameter{
 			{
 				Name:        "uid",
@@ -41,15 +42,7 @@ func Docs() *docs.Doc {
 				In:          "query",
 				Schema:      docs.IdSchema,
 			},
-			{
-				Name:        "vanity",
-				Description: "The new vanity",
-				Required:    true,
-				In:          "query",
-				Schema:      docs.IdSchema,
-			},
 		},
-		Resp: types.ApiError{},
 	}
 }
 
@@ -57,7 +50,6 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	uid := chi.URLParam(r, "uid")
 	targetId := chi.URLParam(r, "target_id")
 	targetType := r.URL.Query().Get("target_type")
-	vanity := r.URL.Query().Get("vanity")
 
 	if uid == "" || targetId == "" || targetType == "" {
 		return uapi.HttpResponse{
@@ -66,15 +58,9 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		}
 	}
 
-	if vanity == "" {
-		return uapi.HttpResponse{
-			Status: http.StatusBadRequest,
-			Json:   types.ApiError{Message: "Vanity cannot be empty"},
-		}
-	}
-
 	switch targetType {
 	case "bot":
+	case "team":
 	default:
 		return uapi.HttpResponse{
 			Status: http.StatusNotImplemented,
@@ -92,44 +78,20 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		}
 	}
 
-	if !perms.Has(targetType, teams.PermissionSetVanity) {
+	if !perms.Has(targetType, teams.PermissionEditWebhooks) {
 		return uapi.HttpResponse{
 			Status: http.StatusForbidden,
-			Json:   types.ApiError{Message: "You do not have permission to update this entities vanity"},
+			Json:   types.ApiError{Message: "You do not have permission to update this entities webhook settings"},
 		}
 	}
 
-	// Strip out unicode characters
-	vanity = strings.Map(func(r rune) rune {
-		if r > unicode.MaxASCII {
-			return -1
-		}
-		return r
-	}, vanity)
+	// Read payload from body
+	var payload types.PatchWebhook
 
-	if vanity == "undefined" || vanity == "null" || vanity == "blog" || vanity == "help" {
-		return uapi.HttpResponse{
-			Status: http.StatusBadRequest,
-			Json:   types.ApiError{Message: "Vanity cannot be undefined, blog, help or null"},
-		}
-	}
+	hresp, ok := uapi.MarshalReq(r, &payload)
 
-	if strings.Contains(vanity, "@") {
-		return uapi.HttpResponse{
-			Status: http.StatusBadRequest,
-			Json:   types.ApiError{Message: "Vanity cannot contain @"},
-		}
-	}
-
-	vanity = strings.TrimSuffix(vanity, "-")
-	vanity = strings.ToLower(vanity)
-	vanity = strings.ReplaceAll(vanity, " ", "-")
-
-	if vanity == "" {
-		return uapi.HttpResponse{
-			Status: http.StatusBadRequest,
-			Json:   types.ApiError{Message: "Vanity cannot be empty"},
-		}
+	if !ok {
+		return hresp
 	}
 
 	tx, err := state.Pool.Begin(d.Context)
@@ -141,47 +103,62 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 
 	defer tx.Rollback(d.Context)
 
-	// Ensure vanity doesn't already exist
-	var count int64
+	if payload.Clear {
+		_, err = tx.Exec(d.Context, "DELETE FROM webhooks WHERE target_id = $1 AND target_type = $2", targetId, targetType)
 
-	err = tx.QueryRow(d.Context, "SELECT COUNT(*) FROM vanity WHERE code = $1", vanity).Scan(&count)
+		if err != nil {
+			state.Logger.Error(err)
+			return uapi.DefaultResponse(http.StatusInternalServerError)
+		}
 
-	if err != nil {
-		state.Logger.Error(err)
-		return uapi.DefaultResponse(http.StatusInternalServerError)
+		return uapi.DefaultResponse(http.StatusNoContent)
 	}
 
-	if count > 0 {
+	if payload.WebhookURL == "" || payload.WebhookSecret == "" {
 		return uapi.HttpResponse{
 			Status: http.StatusBadRequest,
-			Json:   types.ApiError{Message: "Vanity is already taken"},
+			Json:   types.ApiError{Message: "Both webhook_url and webhook_secret must be specified"},
 		}
 	}
 
-	// Check that a vanity row exists
-	var rowCount int64
-	err = tx.QueryRow(d.Context, "SELECT COUNT(*) FROM vanity WHERE target_id = $1 AND target_type = $2", targetId, targetType).Scan(&rowCount)
+	if !(strings.HasPrefix(payload.WebhookURL, "http://") || strings.HasPrefix(payload.WebhookURL, "https://")) {
+		return uapi.HttpResponse{
+			Status: http.StatusBadRequest,
+			Json:   types.ApiError{Message: "Webhook URL must start with http:// or https://"},
+		}
+	}
+
+	// Check that a webhooks row exists
+	var count int64
+	err = tx.QueryRow(d.Context, "SELECT COUNT(*) FROM webhooks WHERE target_id = $1 AND target_type = $2", targetId, targetType).Scan(&count)
 
 	if err != nil {
 		state.Logger.Error(err)
 		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
-	if rowCount == 0 {
-		_, err = tx.Exec(d.Context, "INSERT INTO vanity (target_id, target_type, code) VALUES ($1, $2, $3)", targetId, targetType, vanity)
+	if count == 0 {
+		_, err = tx.Exec(d.Context, "INSERT INTO webhooks (target_id, target_type, url, secret) VALUES ($1, $2, $3, $4)", targetId, targetType, payload.WebhookURL, payload.WebhookSecret)
 
 		if err != nil {
 			state.Logger.Error(err)
 			return uapi.DefaultResponse(http.StatusInternalServerError)
 		}
 	} else {
-		// Update vanity
-		_, err = tx.Exec(d.Context, "UPDATE vanity SET code = $1 WHERE target_id = $2 AND target_type = $3", vanity, targetId, targetType)
+		// Update webhooks
+		_, err = tx.Exec(d.Context, "UPDATE webhooks SET url = $1, secret = $2 WHERE target_id = $3 AND target_type = $4", payload.WebhookURL, payload.WebhookSecret, targetId, targetType)
 
 		if err != nil {
 			state.Logger.Error(err)
 			return uapi.DefaultResponse(http.StatusInternalServerError)
 		}
+	}
+
+	err = tx.Commit(d.Context)
+
+	if err != nil {
+		state.Logger.Error(err)
+		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
 	return uapi.DefaultResponse(http.StatusNoContent)
