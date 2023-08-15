@@ -4,9 +4,9 @@ import (
 	"net/http"
 	"strings"
 
+	"popplio/db"
 	"popplio/state"
 	"popplio/types"
-	"popplio/utils"
 
 	docs "github.com/infinitybotlist/eureka/doclib"
 	"github.com/infinitybotlist/eureka/dovewing"
@@ -15,7 +15,7 @@ import (
 )
 
 var (
-	queueBotColsArr = utils.GetCols(types.QueueBot{})
+	queueBotColsArr = db.GetCols(types.QueueBot{})
 	queueBotCols    = strings.Join(queueBotColsArr, ",")
 )
 

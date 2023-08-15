@@ -2,16 +2,16 @@ package assets
 
 import (
 	"context"
+	"popplio/db"
 	"popplio/state"
 	"popplio/types"
-	"popplio/utils"
 	"strings"
 
 	"github.com/jackc/pgx/v5"
 )
 
 var (
-	reviewColsArr = utils.GetCols(types.Review{})
+	reviewColsArr = db.GetCols(types.Review{})
 	reviewCols    = strings.Join(reviewColsArr, ",")
 )
 

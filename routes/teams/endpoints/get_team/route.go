@@ -3,10 +3,10 @@ package get_team
 import (
 	"errors"
 	"net/http"
+	"popplio/db"
 	"popplio/state"
 	"popplio/teams/resolvers"
 	"popplio/types"
-	"popplio/utils"
 	"strings"
 
 	"github.com/google/uuid"
@@ -18,7 +18,7 @@ import (
 )
 
 var (
-	teamColsArr = utils.GetCols(types.Team{})
+	teamColsArr = db.GetCols(types.Team{})
 	teamCols    = strings.Join(teamColsArr, ",")
 )
 

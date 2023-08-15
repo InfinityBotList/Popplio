@@ -6,9 +6,9 @@ import (
 	"strings"
 	"time"
 
+	"popplio/db"
 	"popplio/state"
 	"popplio/types"
-	"popplio/utils"
 
 	docs "github.com/infinitybotlist/eureka/doclib"
 	"github.com/infinitybotlist/eureka/uapi"
@@ -18,7 +18,7 @@ import (
 const perPage = 12
 
 var (
-	indexPackColArr = utils.GetCols(types.IndexBotPack{})
+	indexPackColArr = db.GetCols(types.IndexBotPack{})
 	indexPackCols   = strings.Join(indexPackColArr, ",")
 )
 

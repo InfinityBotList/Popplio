@@ -4,9 +4,9 @@ import (
 	"net/http"
 	"strings"
 
+	"popplio/db"
 	"popplio/state"
 	"popplio/types"
-	"popplio/utils"
 
 	docs "github.com/infinitybotlist/eureka/doclib"
 	"github.com/infinitybotlist/eureka/dovewing"
@@ -17,7 +17,7 @@ import (
 )
 
 var (
-	reminderColsArr = utils.GetCols(types.Reminder{})
+	reminderColsArr = db.GetCols(types.Reminder{})
 	reminderCols    = strings.Join(reminderColsArr, ",")
 )
 

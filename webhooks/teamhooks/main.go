@@ -5,9 +5,9 @@ package teamhooks
 
 import (
 	"errors"
+	"popplio/db"
 	"popplio/state"
 	"popplio/types"
-	"popplio/utils"
 	"popplio/webhooks/events"
 	"popplio/webhooks/sender"
 	"strings"
@@ -20,7 +20,7 @@ import (
 const EntityType = "team"
 
 var (
-	teamColsArr = utils.GetCols(types.Team{})
+	teamColsArr = db.GetCols(types.Team{})
 	teamCols    = strings.Join(teamColsArr, ", ")
 )
 

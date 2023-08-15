@@ -2,9 +2,9 @@ package get_blog_list
 
 import (
 	"net/http"
+	"popplio/db"
 	"popplio/state"
 	"popplio/types"
-	"popplio/utils"
 	"strings"
 
 	docs "github.com/infinitybotlist/eureka/doclib"
@@ -14,7 +14,7 @@ import (
 )
 
 var (
-	blogColsArr = utils.GetCols(types.BlogListPost{})
+	blogColsArr = db.GetCols(types.BlogListPost{})
 
 	blogCols = strings.Join(blogColsArr, ",")
 )

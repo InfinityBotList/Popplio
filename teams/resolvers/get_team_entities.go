@@ -2,9 +2,9 @@ package resolvers
 
 import (
 	"context"
+	"popplio/db"
 	"popplio/state"
 	"popplio/types"
-	"popplio/utils"
 	"strings"
 
 	"github.com/infinitybotlist/eureka/dovewing"
@@ -12,10 +12,10 @@ import (
 )
 
 var (
-	tmColsArr = utils.GetCols(types.TeamMember{})
+	tmColsArr = db.GetCols(types.TeamMember{})
 	tmCols    = strings.Join(tmColsArr, ",")
 
-	indexBotColsArr = utils.GetCols(types.IndexBot{})
+	indexBotColsArr = db.GetCols(types.IndexBot{})
 	indexBotCols    = strings.Join(indexBotColsArr, ",")
 )
 

@@ -1,8 +1,6 @@
-package utils
+package db
 
-import (
-	"reflect"
-)
+import "reflect"
 
 func GetCols(s any) []string {
 	refType := reflect.TypeOf(s)
@@ -14,11 +12,6 @@ func GetCols(s any) []string {
 		reflectOpts := f.Tag.Get("reflect")
 
 		if db == "-" || db == "" || reflectOpts == "ignore" {
-			continue
-		}
-
-		// Do not allow even accidental fetches of tokens
-		if db == "api_token" || db == "webhook_secret" {
 			continue
 		}
 

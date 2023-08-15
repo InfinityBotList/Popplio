@@ -2,9 +2,9 @@ package get_featured_user_alerts
 
 import (
 	"net/http"
+	"popplio/db"
 	"popplio/state"
 	"popplio/types"
-	"popplio/utils"
 	"strconv"
 	"strings"
 
@@ -14,7 +14,7 @@ import (
 )
 
 var (
-	alertCols    = utils.GetCols(types.Alert{})
+	alertCols    = db.GetCols(types.Alert{})
 	alertColsStr = strings.Join(alertCols, ",")
 )
 

@@ -7,11 +7,11 @@ import (
 	"strings"
 	"time"
 
+	"popplio/db"
 	"popplio/routes/bots/assets"
 	"popplio/state"
 	"popplio/teams"
 	"popplio/types"
-	"popplio/utils"
 	"popplio/validators"
 
 	"github.com/infinitybotlist/eureka/uapi/ratelimit"
@@ -55,7 +55,7 @@ func createBotsArgs(bot types.CreateBot, id internalData) []any {
 var (
 	compiledMessages = uapi.CompileValidationErrors(types.CreateBot{})
 
-	createBotsColsArr = utils.GetCols(types.CreateBot{})
+	createBotsColsArr = db.GetCols(types.CreateBot{})
 	createBotsCols    = strings.Join(createBotsColsArr, ", ")
 
 	// $1, $2, $3, etc, using the length of the array

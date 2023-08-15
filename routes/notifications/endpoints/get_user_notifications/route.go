@@ -4,9 +4,9 @@ import (
 	"net/http"
 	"strings"
 
+	"popplio/db"
 	"popplio/state"
 	"popplio/types"
-	"popplio/utils"
 
 	docs "github.com/infinitybotlist/eureka/doclib"
 	"github.com/infinitybotlist/eureka/uapi"
@@ -17,7 +17,7 @@ import (
 )
 
 var (
-	notifGetCols    = utils.GetCols(types.NotifGet{})
+	notifGetCols    = db.GetCols(types.NotifGet{})
 	notifGetColsStr = strings.Join(notifGetCols, ",")
 )
 

@@ -2,10 +2,10 @@ package get_webhook_logs
 
 import (
 	"net/http"
+	"popplio/db"
 	"popplio/state"
 	"popplio/teams"
 	"popplio/types"
-	"popplio/utils"
 	"strconv"
 	"strings"
 
@@ -19,7 +19,7 @@ import (
 const perPage = 10
 
 var (
-	webhookLogColsArr = utils.GetCols(types.WebhookLogEntry{})
+	webhookLogColsArr = db.GetCols(types.WebhookLogEntry{})
 	webhookLogCols    = strings.Join(webhookLogColsArr, ",")
 )
 

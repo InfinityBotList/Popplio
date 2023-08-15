@@ -3,9 +3,9 @@ package get_user_alert_by_itag
 import (
 	"errors"
 	"net/http"
+	"popplio/db"
 	"popplio/state"
 	"popplio/types"
-	"popplio/utils"
 	"strings"
 
 	"github.com/go-chi/chi/v5"
@@ -15,7 +15,7 @@ import (
 )
 
 var (
-	alertCols    = utils.GetCols(types.Alert{})
+	alertCols    = db.GetCols(types.Alert{})
 	alertColsStr = strings.Join(alertCols, ",")
 )
 

@@ -5,9 +5,9 @@ import (
 	"strings"
 	"time"
 
+	"popplio/db"
 	"popplio/state"
 	"popplio/types"
-	"popplio/utils"
 
 	docs "github.com/infinitybotlist/eureka/doclib"
 	"github.com/infinitybotlist/eureka/dovewing"
@@ -18,7 +18,7 @@ import (
 )
 
 var (
-	reviewColsArr = utils.GetCols(types.Review{})
+	reviewColsArr = db.GetCols(types.Review{})
 	reviewCols    = strings.Join(reviewColsArr, ",")
 )
 

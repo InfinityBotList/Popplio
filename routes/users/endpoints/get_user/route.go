@@ -5,10 +5,10 @@ import (
 	"net/http"
 	"strings"
 
+	"popplio/db"
 	"popplio/state"
 	"popplio/teams/resolvers"
 	"popplio/types"
-	"popplio/utils"
 
 	docs "github.com/infinitybotlist/eureka/doclib"
 	"github.com/infinitybotlist/eureka/dovewing"
@@ -19,16 +19,16 @@ import (
 )
 
 var (
-	userColsArr = utils.GetCols(types.User{})
+	userColsArr = db.GetCols(types.User{})
 	userCols    = strings.Join(userColsArr, ",")
 
-	indexBotColsArr = utils.GetCols(types.IndexBot{})
+	indexBotColsArr = db.GetCols(types.IndexBot{})
 	indexBotCols    = strings.Join(indexBotColsArr, ",")
 
-	indexPackColsArr = utils.GetCols(types.IndexBotPack{})
+	indexPackColsArr = db.GetCols(types.IndexBotPack{})
 	indexPackCols    = strings.Join(indexPackColsArr, ",")
 
-	teamColsArr = utils.GetCols(types.Team{})
+	teamColsArr = db.GetCols(types.Team{})
 	teamCols    = strings.Join(teamColsArr, ",")
 )
 

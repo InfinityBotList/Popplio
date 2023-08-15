@@ -3,16 +3,16 @@ package assets
 import (
 	"context"
 	"errors"
+	"popplio/db"
 	"popplio/state"
 	"popplio/types"
-	"popplio/utils"
 	"strings"
 
 	"github.com/jackc/pgx/v5"
 )
 
 var (
-	vanityColsArr = utils.GetCols(types.Vanity{})
+	vanityColsArr = db.GetCols(types.Vanity{})
 	vanityCols    = strings.Join(vanityColsArr, ",")
 )
 

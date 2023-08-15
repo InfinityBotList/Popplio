@@ -5,9 +5,9 @@ import (
 	"net/http"
 	"strings"
 
+	"popplio/db"
 	"popplio/state"
 	"popplio/types"
-	"popplio/utils"
 
 	docs "github.com/infinitybotlist/eureka/doclib"
 	"github.com/infinitybotlist/eureka/dovewing"
@@ -18,10 +18,10 @@ import (
 )
 
 var (
-	packColArr = utils.GetCols(types.BotPack{})
+	packColArr = db.GetCols(types.BotPack{})
 	packCols   = strings.Join(packColArr, ",")
 
-	indexBotColArr = utils.GetCols(types.IndexBot{})
+	indexBotColArr = db.GetCols(types.IndexBot{})
 	indexBotCols   = strings.Join(indexBotColArr, ",")
 )
 

@@ -6,9 +6,9 @@ import (
 	"strings"
 	"time"
 
+	"popplio/db"
 	"popplio/state"
 	"popplio/types"
-	"popplio/utils"
 
 	docs "github.com/infinitybotlist/eureka/doclib"
 	"github.com/infinitybotlist/eureka/dovewing"
@@ -20,7 +20,7 @@ import (
 )
 
 var (
-	ticketColsArr = utils.GetCols(types.Ticket{})
+	ticketColsArr = db.GetCols(types.Ticket{})
 	ticketCols    = strings.Join(ticketColsArr, ", ")
 )
 

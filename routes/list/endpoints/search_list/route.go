@@ -6,9 +6,9 @@ import (
 	"strings"
 	"text/template"
 
+	"popplio/db"
 	"popplio/state"
 	"popplio/types"
-	"popplio/utils"
 
 	docs "github.com/infinitybotlist/eureka/doclib"
 	"github.com/infinitybotlist/eureka/dovewing"
@@ -20,7 +20,7 @@ import (
 )
 
 var (
-	indexBotColsArr = utils.GetCols(types.IndexBot{})
+	indexBotColsArr = db.GetCols(types.IndexBot{})
 	indexBotCols    = strings.Join(indexBotColsArr, ",")
 
 	//go:embed sql/bots.tmpl

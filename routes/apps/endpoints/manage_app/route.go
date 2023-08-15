@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"net/http"
 	"popplio/apps"
+	"popplio/db"
 	"popplio/state"
 	"popplio/types"
-	"popplio/utils"
 	"strings"
 
 	docs "github.com/infinitybotlist/eureka/doclib"
@@ -26,7 +26,7 @@ type ManageApp struct {
 
 var (
 	compiledMessages = uapi.CompileValidationErrors(ManageApp{})
-	appColsArr       = utils.GetCols(types.AppResponse{})
+	appColsArr       = db.GetCols(types.AppResponse{})
 	appCols          = strings.Join(appColsArr, ",")
 )
 

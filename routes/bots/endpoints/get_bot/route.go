@@ -8,9 +8,9 @@ import (
 	"strings"
 
 	"popplio/config"
+	"popplio/db"
 	"popplio/state"
 	"popplio/types"
-	"popplio/utils"
 
 	docs "github.com/infinitybotlist/eureka/doclib"
 	"github.com/infinitybotlist/eureka/dovewing"
@@ -23,10 +23,10 @@ import (
 // A bot is a Discord bot that is on the infinitybotlist.
 
 var (
-	botColsArr = utils.GetCols(types.Bot{})
+	botColsArr = db.GetCols(types.Bot{})
 	botCols    = strings.Join(botColsArr, ",")
 
-	teamColsArr = utils.GetCols(types.Team{})
+	teamColsArr = db.GetCols(types.Team{})
 	teamCols    = strings.Join(teamColsArr, ",")
 )
 

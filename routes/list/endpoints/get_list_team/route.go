@@ -2,9 +2,9 @@ package get_list_team
 
 import (
 	"net/http"
+	"popplio/db"
 	"popplio/state"
 	"popplio/types"
-	"popplio/utils"
 	"strings"
 
 	docs "github.com/infinitybotlist/eureka/doclib"
@@ -14,7 +14,7 @@ import (
 )
 
 var (
-	userPermColsArr = utils.GetCols(types.UserPerm{})
+	userPermColsArr = db.GetCols(types.UserPerm{})
 	userPermCols    = strings.Join(userPermColsArr, ",")
 )
 

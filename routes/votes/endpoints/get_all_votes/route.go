@@ -5,9 +5,9 @@ import (
 	"strconv"
 	"strings"
 
+	"popplio/db"
 	"popplio/state"
 	"popplio/types"
-	"popplio/utils"
 
 	"github.com/go-chi/chi/v5"
 	docs "github.com/infinitybotlist/eureka/doclib"
@@ -18,7 +18,7 @@ import (
 const perPage = 5
 
 var (
-	entityVoteColsArr = utils.GetCols(types.EntityVote{})
+	entityVoteColsArr = db.GetCols(types.EntityVote{})
 	entityVoteCols    = strings.Join(entityVoteColsArr, ",")
 )
 

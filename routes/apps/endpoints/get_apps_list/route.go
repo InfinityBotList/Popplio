@@ -2,9 +2,9 @@ package get_apps_list
 
 import (
 	"net/http"
+	"popplio/db"
 	"popplio/state"
 	"popplio/types"
-	"popplio/utils"
 	"strings"
 
 	docs "github.com/infinitybotlist/eureka/doclib"
@@ -14,7 +14,7 @@ import (
 )
 
 var (
-	appColsArr = utils.GetCols(types.AppResponse{})
+	appColsArr = db.GetCols(types.AppResponse{})
 	appCols    = strings.Join(appColsArr, ",")
 )
 

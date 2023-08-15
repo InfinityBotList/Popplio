@@ -2,9 +2,9 @@ package get_random_bots
 
 import (
 	"net/http"
+	"popplio/db"
 	"popplio/state"
 	"popplio/types"
-	"popplio/utils"
 	"strings"
 
 	docs "github.com/infinitybotlist/eureka/doclib"
@@ -14,7 +14,7 @@ import (
 )
 
 var (
-	indexBotColsArr = utils.GetCols(types.IndexBot{})
+	indexBotColsArr = db.GetCols(types.IndexBot{})
 	indexBotCols    = strings.Join(indexBotColsArr, ",")
 )
 

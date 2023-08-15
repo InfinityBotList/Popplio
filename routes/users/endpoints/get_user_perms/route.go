@@ -5,9 +5,9 @@ import (
 	"net/http"
 	"strings"
 
+	"popplio/db"
 	"popplio/state"
 	"popplio/types"
-	"popplio/utils"
 
 	docs "github.com/infinitybotlist/eureka/doclib"
 	"github.com/infinitybotlist/eureka/dovewing"
@@ -18,7 +18,7 @@ import (
 )
 
 var (
-	userPermColsArr = utils.GetCols(types.UserPerm{})
+	userPermColsArr = db.GetCols(types.UserPerm{})
 	userPermCols    = strings.Join(userPermColsArr, ",")
 )
 
