@@ -40,7 +40,7 @@ func Docs() *docs.Doc {
 				Schema:      docs.IdSchema,
 			},
 		},
-		Resp: types.UserBotPerms{},
+		Resp: types.UserEntityPerms{},
 	}
 }
 
@@ -67,7 +67,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	}
 
 	return uapi.HttpResponse{
-		Json: types.UserBotPerms{
+		Json: types.UserEntityPerms{
 			Perms: perms.Perms(),
 		},
 	}

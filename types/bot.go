@@ -178,10 +178,6 @@ type DiscordBotMeta struct {
 	Fallback    bool     `json:"fallback" description:"Whether or not we had to fallback to RPC from JAPI.rest"`
 }
 
-type UserBotPerms struct {
-	Perms []string `json:"perms" description:"The user's permissions on a bot"`
-}
-
 type PatchBotTeam struct {
 	TeamID string `json:"team_id" description:"The team ID to add the bot to"`
 }

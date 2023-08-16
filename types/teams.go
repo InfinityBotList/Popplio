@@ -82,3 +82,7 @@ type PermissionUpdate struct {
 	Add    []string `json:"add" description:"Add must be the list of permissions to add"`
 	Remove []string `json:"remove" description:"Remove must be the list of permissions to remove"`
 }
+
+type UserEntityPerms struct {
+	Perms []string `json:"perms" description:"The user's permissions on an entity"`
+}

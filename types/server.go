@@ -25,4 +25,5 @@ type Server struct {
 	Banner        pgtype.Text `db:"banner" json:"banner" description:"The server's banner URL if it has one, otherwise null"`
 	Clicks        int         `db:"clicks" json:"clicks" description:"The server's total click count"`
 	UniqueClicks  int64       `db:"-" json:"unique_clicks" description:"The server's unique click count based on SHA256 hashed IPs" ci:"internal"` // Must be parsed internally
+	NSFW          bool        `db:"nsfw" json:"nsfw" description:"Whether the serber is NSFW or not"`
 }
