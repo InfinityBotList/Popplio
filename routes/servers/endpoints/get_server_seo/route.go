@@ -1,6 +1,7 @@
-package get_user_seo
+package get_server_seo
 
 import (
+	"errors"
 	"net/http"
 	"time"
 
@@ -8,33 +9,33 @@ import (
 	"popplio/types"
 
 	docs "github.com/infinitybotlist/eureka/doclib"
-	"github.com/infinitybotlist/eureka/dovewing"
 	"github.com/infinitybotlist/eureka/uapi"
+	"github.com/jackc/pgx/v5"
 
 	"github.com/go-chi/chi/v5"
 )
 
 func Docs() *docs.Doc {
 	return &docs.Doc{
-		Summary:     "Get User SEO Info",
-		Description: "Gets a users SEO data by id",
+		Summary:     "Get Server SEO Info",
+		Description: "Gets the minimal SEO information about a server for embed/search purposes. Used by v4 website for meta tags",
+		Resp:        types.SEO{},
 		Params: []docs.Parameter{
 			{
 				Name:        "id",
-				Description: "User ID",
+				Description: "The server ID",
 				Required:    true,
 				In:          "path",
 				Schema:      docs.IdSchema,
 			},
 		},
-		Resp: types.SEO{},
 	}
 }
 
 func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
-	name := chi.URLParam(r, "id")
+	id := chi.URLParam(r, "id")
 
-	cache := state.Redis.Get(d.Context, "seou:"+name).Val()
+	cache := state.Redis.Get(d.Context, "seos:"+id).Val()
 	if cache != "" {
 		return uapi.HttpResponse{
 			Data: cache,
@@ -44,32 +45,28 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		}
 	}
 
-	var about string
-	var userId string
-	err := state.Pool.QueryRow(d.Context, "SELECT about, user_id FROM users WHERE user_id = $1", name).Scan(&about, &userId)
+	var name, avatar, short string
+	err := state.Pool.QueryRow(d.Context, "SELECT name, avatar, short FROM servers WHERE server_id = $1", id).Scan(&name, &avatar, &short)
 
-	if err != nil {
-		state.Logger.Error(err)
+	if errors.Is(err, pgx.ErrNoRows) {
 		return uapi.DefaultResponse(http.StatusNotFound)
 	}
-
-	user, err := dovewing.GetUser(d.Context, userId, state.DovewingPlatformDiscord)
 
 	if err != nil {
 		state.Logger.Error(err)
 		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
-	seo := types.SEO{
-		ID:     user.ID,
-		Name:   user.DisplayName,
-		Avatar: user.Avatar,
-		Short:  about,
+	seoData := types.SEO{
+		ID:     id,
+		Name:   name,
+		Avatar: avatar,
+		Short:  short,
 	}
 
 	return uapi.HttpResponse{
-		Json:      seo,
-		CacheKey:  "seou:" + name,
+		Json:      seoData,
+		CacheKey:  "seos:" + id,
 		CacheTime: 30 * time.Minute,
 	}
 }

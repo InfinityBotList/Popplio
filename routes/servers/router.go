@@ -2,6 +2,7 @@ package servers
 
 import (
 	"popplio/routes/servers/endpoints/get_server"
+	"popplio/routes/servers/endpoints/get_server_seo"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/infinitybotlist/eureka/uapi"
@@ -22,5 +23,13 @@ func (b Router) Routes(r *chi.Mux) {
 		Method:  uapi.GET,
 		Docs:    get_server.Docs,
 		Handler: get_server.Route,
+	}.Route(r)
+
+	uapi.Route{
+		Pattern: "/servers/{id}/seo",
+		OpId:    "get_server_seo",
+		Method:  uapi.GET,
+		Docs:    get_server_seo.Docs,
+		Handler: get_server_seo.Route,
 	}.Route(r)
 }

@@ -60,11 +60,10 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	}
 
 	seoData := types.SEO{
-		ID:             id,
-		Name:           name,
-		UsernameLegacy: name,
-		Avatar:         avatar,
-		Short:          "View the team " + name + " on Infinity Bot List",
+		ID:     id,
+		Name:   name,
+		Avatar: avatar,
+		Short:  "View the team " + name + " on Infinity Bot List",
 	}
 
 	return uapi.HttpResponse{

@@ -91,7 +91,7 @@ func handleAnalytics(r *http.Request, id, target string) {
 			return
 		}
 
-		// Check if the IP has already clicked the bot by checking the unique_clicks row
+		// Check if the IP has already clicked the server by checking the unique_clicks row
 		var hasClicked bool
 
 		err = tx.QueryRow(state.Context, "SELECT $1 = ANY(unique_clicks) FROM servers WHERE server_id = $2", hashedIp, id).Scan(&hasClicked)
