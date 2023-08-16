@@ -31,7 +31,8 @@ type Server struct {
 	UniqueClicks        int64              `db:"-" json:"unique_clicks" description:"The server's unique click count based on SHA256 hashed IPs" ci:"internal"` // Must be parsed internally
 	NSFW                bool               `db:"nsfw" json:"nsfw" description:"Whether the serber is NSFW or not"`
 	Votes               int                `db:"votes" json:"votes" description:"The bot's vote count"`
-	Premium             bool               `db:"premium" json:"premium" description:"Whether the bot is a premium bot or not"`
+	VoteBanned          bool               `db:"vote_banned" json:"vote_banned" description:"Whether the server is vote banned or not"`
+	Premium             bool               `db:"premium" json:"premium" description:"Whether the server is a premium server or not"`
 	StartPeriod         pgtype.Timestamptz `db:"start_premium_period" json:"start_premium_period"`
-	PremiumPeriodLength time.Duration      `db:"premium_period_length" json:"premium_period_length" description:"The period of premium for the bot in nanoseconds"`
+	PremiumPeriodLength time.Duration      `db:"premium_period_length" json:"premium_period_length" description:"The period of premium for the server in nanoseconds"`
 }
