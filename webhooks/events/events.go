@@ -96,8 +96,9 @@ const WebhookTypeUndefined = ""
 
 // You can add targets here to extend the webhook system
 type Target struct {
-	Bot  *dovetypes.PlatformUser `json:"bot,omitempty" description:"If a bot event, the bot that the webhook is about"`
-	Team *types.Team             `json:"team,omitempty" description:"If a team event, the team that the webhook is about"`
+	Bot    *dovetypes.PlatformUser `json:"bot,omitempty" description:"If a bot event, the bot that the webhook is about"`
+	Server *types.SEO              `json:"server,omitempty" description:"If a server event, the server that the webhook is about"`
+	Team   *types.Team             `json:"team,omitempty" description:"If a team event, the team that the webhook is about"`
 }
 
 // IMPL

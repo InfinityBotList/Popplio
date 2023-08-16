@@ -6,31 +6,31 @@ import (
 	"github.com/infinitybotlist/eureka/dovewing/dovetypes"
 )
 
-const WebhookTypeBotNewReview WebhookType = "BOT_NEW_REVIEW"
+const WebhookTypeServerNewReview WebhookType = "SERVER_NEW_REVIEW"
 
-type WebhookBotNewReviewData struct {
+type WebhookServerNewReviewData struct {
 	ReviewID string `json:"review_id" description:"The ID of the review"`
 	Content  string `json:"content" description:"The content of the review"`
 }
 
-func (v WebhookBotNewReviewData) TargetType() string {
-	return "bot"
+func (v WebhookServerNewReviewData) TargetType() string {
+	return "server"
 }
 
-func (n WebhookBotNewReviewData) Event() WebhookType {
-	return WebhookTypeBotNewReview
+func (n WebhookServerNewReviewData) Event() WebhookType {
+	return WebhookTypeServerNewReview
 }
 
-func (n WebhookBotNewReviewData) CreateHookParams(creator *dovetypes.PlatformUser, targets Target) *discordgo.WebhookParams {
+func (n WebhookServerNewReviewData) CreateHookParams(creator *dovetypes.PlatformUser, targets Target) *discordgo.WebhookParams {
 	return &discordgo.WebhookParams{
 		Embeds: []*discordgo.MessageEmbed{
 			{
-				URL: "https://botlist.site/" + targets.Bot.ID,
+				URL: "https://botlist.site/" + targets.Server.ID,
 				Thumbnail: &discordgo.MessageEmbedThumbnail{
-					URL: targets.Bot.Avatar,
+					URL: targets.Server.Avatar,
 				},
 				Title:       "📝 New Review!",
-				Description: ":heart: " + creator.DisplayName + " has left a review for bot " + targets.Bot.Username,
+				Description: ":heart: " + creator.DisplayName + " has left a review for server " + targets.Server.Name,
 				Color:       0x8A6BFD,
 				Fields: []*discordgo.MessageEmbedField{
 					{
@@ -56,7 +56,7 @@ func (n WebhookBotNewReviewData) CreateHookParams(creator *dovetypes.PlatformUse
 					},
 					{
 						Name:   "Review Page",
-						Value:  "[View " + targets.Bot.Username + "](https://botlist.site/" + targets.Bot.ID + ")",
+						Value:  "[View " + targets.Server.Name + "](https://botlist.site/" + targets.Server.ID + ")",
 						Inline: true,
 					},
 				},
@@ -65,22 +65,22 @@ func (n WebhookBotNewReviewData) CreateHookParams(creator *dovetypes.PlatformUse
 	}
 }
 
-func (n WebhookBotNewReviewData) Docs() *docs.WebhookDoc {
+func (n WebhookServerNewReviewData) Docs() *docs.WebhookDoc {
 	return &docs.WebhookDoc{
-		Name:    "NewBotReview",
-		Summary: "New Bot Review",
+		Name:    "NewServerReview",
+		Summary: "New Server Review",
 		Tags: []string{
 			"Webhooks",
 		},
-		Description: `This webhook is sent when a user creates a new review on a bot.`,
+		Description: `This webhook is sent when a user creates a new review on a server.`,
 		Format: WebhookResponse{
-			Type: WebhookBotNewReviewData{}.Event(),
-			Data: WebhookBotNewReviewData{},
+			Type: WebhookServerNewReviewData{}.Event(),
+			Data: WebhookServerNewReviewData{},
 		},
-		FormatName: "WebhookResponse-WebhookBotNewReviewData",
+		FormatName: "WebhookResponse-WebhookServerNewReviewData",
 	}
 }
 
 func init() {
-	RegisterEvent(WebhookBotNewReviewData{})
+	RegisterEvent(WebhookServerNewReviewData{})
 }

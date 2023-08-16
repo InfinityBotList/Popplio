@@ -7,6 +7,7 @@ import (
 	"popplio/types"
 	"popplio/webhooks/bothooks"
 	"popplio/webhooks/events"
+	"popplio/webhooks/serverhooks"
 
 	docs "github.com/infinitybotlist/eureka/doclib"
 	"github.com/infinitybotlist/eureka/uapi"
@@ -106,6 +107,22 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 			},
 			UserID: d.Auth.ID,
 			BotID:  targetId,
+		})
+
+		if err != nil {
+			state.Logger.Error(err)
+		}
+	case "server":
+		err = serverhooks.Send(serverhooks.With{
+			Data: events.WebhookServerEditReviewData{
+				ReviewID: rid,
+				Content: events.Changeset[string]{
+					Old: content,
+					New: payload.Content,
+				},
+			},
+			UserID:   d.Auth.ID,
+			ServerID: targetId,
 		})
 
 		if err != nil {

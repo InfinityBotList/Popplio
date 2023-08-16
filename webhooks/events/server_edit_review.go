@@ -6,31 +6,31 @@ import (
 	"github.com/infinitybotlist/eureka/dovewing/dovetypes"
 )
 
-const WebhookTypeBotEditReview WebhookType = "BOT_EDIT_REVIEW"
+const WebhookTypeServerEditReview WebhookType = "SERVER_EDIT_REVIEW"
 
-type WebhookBotEditReviewData struct {
+type WebhookServerEditReviewData struct {
 	ReviewID string            `json:"review_id" description:"The ID of the review"`
 	Content  Changeset[string] `json:"content" description:"The content of the review"`
 }
 
-func (v WebhookBotEditReviewData) TargetType() string {
-	return "bot"
+func (v WebhookServerEditReviewData) TargetType() string {
+	return "server"
 }
 
-func (n WebhookBotEditReviewData) Event() WebhookType {
-	return WebhookTypeBotEditReview
+func (n WebhookServerEditReviewData) Event() WebhookType {
+	return WebhookTypeServerEditReview
 }
 
-func (n WebhookBotEditReviewData) CreateHookParams(creator *dovetypes.PlatformUser, targets Target) *discordgo.WebhookParams {
+func (n WebhookServerEditReviewData) CreateHookParams(creator *dovetypes.PlatformUser, targets Target) *discordgo.WebhookParams {
 	return &discordgo.WebhookParams{
 		Embeds: []*discordgo.MessageEmbed{
 			{
-				URL: "https://botlist.site/" + targets.Bot.ID,
+				URL: "https://botlist.site/" + targets.Server.ID,
 				Thumbnail: &discordgo.MessageEmbedThumbnail{
-					URL: targets.Bot.Avatar,
+					URL: targets.Server.Avatar,
 				},
 				Title:       "📝 Review Editted!",
-				Description: ":heart: " + creator.DisplayName + " has editted a review for bot " + targets.Bot.Username,
+				Description: ":heart: " + creator.DisplayName + " has editted a review for server" + targets.Server.Name,
 				Color:       0x8A6BFD,
 				Fields: []*discordgo.MessageEmbedField{
 					{
@@ -67,7 +67,7 @@ func (n WebhookBotEditReviewData) CreateHookParams(creator *dovetypes.PlatformUs
 					},
 					{
 						Name:   "Review Page",
-						Value:  "[View " + targets.Bot.Username + "](https://botlist.site/" + targets.Bot.ID + ")",
+						Value:  "[View " + targets.Server.Name + "](https://botlist.site/" + targets.Server.ID + ")",
 						Inline: true,
 					},
 				},
@@ -76,22 +76,22 @@ func (n WebhookBotEditReviewData) CreateHookParams(creator *dovetypes.PlatformUs
 	}
 }
 
-func (n WebhookBotEditReviewData) Docs() *docs.WebhookDoc {
+func (n WebhookServerEditReviewData) Docs() *docs.WebhookDoc {
 	return &docs.WebhookDoc{
-		Name:    "EditBotReview",
-		Summary: "Edit Bot Review",
+		Name:    "EditServerReview",
+		Summary: "Edit Server Review",
 		Tags: []string{
 			"Webhooks",
 		},
-		Description: `This webhook is sent when a user edits an existing review on a bot.`,
+		Description: `This webhook is sent when a user edits an existing review on a server.`,
 		Format: WebhookResponse{
-			Type: WebhookBotEditReviewData{}.Event(),
-			Data: WebhookBotEditReviewData{},
+			Type: WebhookServerEditReviewData{}.Event(),
+			Data: WebhookServerEditReviewData{},
 		},
-		FormatName: "WebhookResponse-WebhookEditBotReviewData",
+		FormatName: "WebhookResponse-WebhookEditServerReviewData",
 	}
 }
 
 func init() {
-	RegisterEvent(WebhookBotEditReviewData{})
+	RegisterEvent(WebhookServerEditReviewData{})
 }

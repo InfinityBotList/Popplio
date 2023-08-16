@@ -7,6 +7,7 @@ import (
 	"popplio/types"
 	"popplio/webhooks/bothooks"
 	"popplio/webhooks/events"
+	"popplio/webhooks/serverhooks"
 	"time"
 
 	"github.com/infinitybotlist/eureka/uapi/ratelimit"
@@ -118,6 +119,23 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 				Json:   types.ApiError{Message: "Bot not found"},
 			}
 		}
+	case "server":
+		// Check if the server exists
+		var count int64
+
+		err = state.Pool.QueryRow(d.Context, "SELECT COUNT(*) FROM servers WHERE server_id = $1", targetId).Scan(&count)
+
+		if err != nil {
+			state.Logger.Error(err)
+			return uapi.DefaultResponse(http.StatusInternalServerError)
+		}
+
+		if count == 0 {
+			return uapi.HttpResponse{
+				Status: http.StatusBadRequest,
+				Json:   types.ApiError{Message: "Server not found"},
+			}
+		}
 	default:
 		return uapi.HttpResponse{
 			Status: http.StatusNotImplemented,
@@ -192,6 +210,19 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 			},
 			UserID: d.Auth.ID,
 			BotID:  targetId,
+		})
+
+		if err != nil {
+			state.Logger.Error(err)
+		}
+	case "server":
+		err = serverhooks.Send(serverhooks.With{
+			Data: events.WebhookServerNewReviewData{
+				ReviewID: reviewId,
+				Content:  payload.Content,
+			},
+			UserID:   d.Auth.ID,
+			ServerID: targetId,
 		})
 
 		if err != nil {
