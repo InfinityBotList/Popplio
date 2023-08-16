@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/url"
 	"strconv"
+	"strings"
 
 	"popplio/config"
 	"popplio/notifications"
@@ -36,7 +37,7 @@ var json = jsoniter.ConfigCompatibleWithStandardLibrary
 func Docs() *docs.Doc {
 	return &docs.Doc{
 		Summary:     "Create User Entity Vote",
-		Description: "Creates a vote for an entity. Returns 204 on success",
+		Description: "Creates a vote for an entity. Returns 204 on success. Note that for compatibility, a trailing 's' is removed",
 		Params: []docs.Parameter{
 			{
 				Name:        "uid",
@@ -46,15 +47,15 @@ func Docs() *docs.Doc {
 				Schema:      docs.IdSchema,
 			},
 			{
-				Name:        "target_id",
-				Description: "The bot ID",
+				Name:        "target_type",
+				Description: "The target type of the entity",
 				Required:    true,
 				In:          "path",
 				Schema:      docs.IdSchema,
 			},
 			{
-				Name:        "target_type",
-				Description: "The target type of the entity",
+				Name:        "target_id",
+				Description: "The bot ID",
 				Required:    true,
 				In:          "path",
 				Schema:      docs.IdSchema,
@@ -136,6 +137,8 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 			Json:   types.ApiError{Message: "Both target_id and target_type must be specified"},
 		}
 	}
+
+	targetType = strings.TrimSuffix(targetType, "s")
 
 	upvote := r.URL.Query().Get("upvote")
 

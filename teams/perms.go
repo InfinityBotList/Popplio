@@ -300,6 +300,19 @@ func GetEntityPerms(ctx context.Context, userId, targetType, targetId string) (*
 		teamId = teamOwner.String
 	case "team":
 		teamId = targetId
+	case "server":
+		var teamOwner pgtype.Text
+		err := state.Pool.QueryRow(ctx, "SELECT team_owner FROM servers WHERE server_id = $1", targetId).Scan(&teamOwner)
+
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, fmt.Errorf("server not found")
+		}
+
+		if err != nil {
+			return nil, fmt.Errorf("error finding server: %v", err)
+		}
+
+		teamId = teamOwner.String
 	default:
 		return nil, fmt.Errorf("invalid target type")
 	}

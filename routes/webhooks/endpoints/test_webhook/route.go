@@ -10,6 +10,7 @@ import (
 	"popplio/types"
 	"popplio/webhooks/bothooks"
 	"popplio/webhooks/events"
+	"popplio/webhooks/serverhooks"
 	"popplio/webhooks/teamhooks"
 
 	"github.com/infinitybotlist/eureka/uapi/ratelimit"
@@ -171,6 +172,23 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 			UserID: d.Auth.ID,
 			TeamID: targetId,
 			Data:   event,
+			Metadata: &events.WebhookMetadata{
+				Test: true,
+			},
+		})
+
+		if err != nil {
+			state.Logger.Error(err)
+			return uapi.HttpResponse{
+				Status: http.StatusBadRequest,
+				Json:   types.ApiError{Message: err.Error()},
+			}
+		}
+	case "server":
+		err := serverhooks.Send(serverhooks.With{
+			UserID:   d.Auth.ID,
+			ServerID: targetId,
+			Data:     event,
 			Metadata: &events.WebhookMetadata{
 				Test: true,
 			},

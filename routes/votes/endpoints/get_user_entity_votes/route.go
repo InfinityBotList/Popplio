@@ -2,6 +2,7 @@ package get_user_entity_votes
 
 import (
 	"net/http"
+	"strings"
 
 	"popplio/state"
 	"popplio/types"
@@ -16,7 +17,7 @@ import (
 func Docs() *docs.Doc {
 	return &docs.Doc{
 		Summary:     "Get User Entity Votes",
-		Description: "Gets a vote a user has made for an entity.",
+		Description: "Gets a vote a user has made for an entity. Note that for compatibility, a trailing 's' is removed",
 		Params: []docs.Parameter{
 			{
 				Name:        "uid",
@@ -26,15 +27,15 @@ func Docs() *docs.Doc {
 				Schema:      docs.IdSchema,
 			},
 			{
-				Name:        "target_id",
-				Description: "The bot ID",
+				Name:        "target_type",
+				Description: "The target type of the entity",
 				Required:    true,
 				In:          "path",
 				Schema:      docs.IdSchema,
 			},
 			{
-				Name:        "target_type",
-				Description: "The target type of the entity",
+				Name:        "target_id",
+				Description: "The bot ID",
 				Required:    true,
 				In:          "path",
 				Schema:      docs.IdSchema,
@@ -56,11 +57,16 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		}
 	}
 
+	targetType = strings.TrimSuffix(targetType, "s")
+
 	uv, err := votes.EntityVoteCheck(d.Context, uid, targetId, targetType)
 
 	if err != nil {
 		state.Logger.Error(err)
-		return uapi.DefaultResponse(http.StatusInternalServerError)
+		return uapi.HttpResponse{
+			Status: http.StatusBadRequest,
+			Json:   types.ApiError{Message: err.Error()},
+		}
 	}
 
 	return uapi.HttpResponse{

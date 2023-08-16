@@ -25,7 +25,7 @@ var (
 func Docs() *docs.Doc {
 	return &docs.Doc{
 		Summary:     "Get All Votes",
-		Description: "Gets all votes (paginated by 10) of a user on an entity. This endpoint is currently public as the same data can be found through #vote-logs in discord",
+		Description: "Gets all votes (paginated by 10) of a user on an entity. This endpoint is currently public as the same data can be found through #vote-logs in discord. Note that for compatibility, a trailing 's' is removed",
 		Resp:        types.PagedResult[[]types.EntityVote]{},
 		RespName:    "PagedResultUserVote",
 		Params: []docs.Parameter{
@@ -37,15 +37,15 @@ func Docs() *docs.Doc {
 				Schema:      docs.IdSchema,
 			},
 			{
-				Name:        "target_id",
-				Description: "The target ID of the entity",
+				Name:        "target_type",
+				Description: "The target type of the entity",
 				Required:    true,
 				In:          "path",
 				Schema:      docs.IdSchema,
 			},
 			{
-				Name:        "target_type",
-				Description: "The target type of the entity",
+				Name:        "target_id",
+				Description: "The target ID of the entity",
 				Required:    true,
 				In:          "path",
 				Schema:      docs.IdSchema,
@@ -78,6 +78,8 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 			Json:   types.ApiError{Message: "Both target_id and target_type must be specified"},
 		}
 	}
+
+	targetType = strings.TrimSuffix(targetType, "s")
 
 	pageNum, err := strconv.ParseUint(page, 10, 32)
 

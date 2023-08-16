@@ -29,25 +29,23 @@ func (b Router) Routes(r *chi.Mux) {
 	}.Route(r)
 
 	uapi.Route{
-		Pattern:               "/users/{uid}/{target_type}s/{target_id}/votes/@all",
-		OpId:                  "get_all_votes",
-		Method:                uapi.GET,
-		Docs:                  get_all_votes.Docs,
-		Handler:               get_all_votes.Route,
-		DisablePathSlashCheck: true,
+		Pattern: "/users/{uid}/{target_type}/{target_id}/votes/@all",
+		OpId:    "get_all_votes",
+		Method:  uapi.GET,
+		Docs:    get_all_votes.Docs,
+		Handler: get_all_votes.Route,
 	}.Route(r)
 
 	uapi.Route{
-		Pattern:               "/users/{uid}/{target_type}s/{target_id}/votes",
-		OpId:                  "get_user_entity_votes",
-		Method:                uapi.GET,
-		Docs:                  get_user_entity_votes.Docs,
-		Handler:               get_user_entity_votes.Route,
-		DisablePathSlashCheck: true,
+		Pattern: "/users/{uid}/{target_type}/{target_id}/votes",
+		OpId:    "get_user_entity_votes",
+		Method:  uapi.GET,
+		Docs:    get_user_entity_votes.Docs,
+		Handler: get_user_entity_votes.Route,
 	}.Route(r)
 
 	uapi.Route{
-		Pattern: "/users/{uid}/{target_type}s/{target_id}/votes",
+		Pattern: "/users/{uid}/{target_type}/{target_id}/votes",
 		OpId:    "put_user_entity_votes",
 		Method:  uapi.PUT,
 		Docs:    put_user_entity_votes.Docs,
@@ -58,6 +56,5 @@ func (b Router) Routes(r *chi.Mux) {
 				Type:   api.TargetTypeUser,
 			},
 		},
-		DisablePathSlashCheck: true,
 	}.Route(r)
 }
