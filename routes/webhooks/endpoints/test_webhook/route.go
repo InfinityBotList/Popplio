@@ -3,7 +3,6 @@ package test_webhook
 import (
 	"net/http"
 	"reflect"
-	"strings"
 	"time"
 
 	"popplio/state"
@@ -70,15 +69,6 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 			Status: http.StatusBadRequest,
 			Json: types.ApiError{
 				Message: "event must be specified",
-			},
-		}
-	}
-
-	if !strings.HasPrefix(eventType, strings.ToUpper(targetType)+"_") {
-		return uapi.HttpResponse{
-			Status: http.StatusBadRequest,
-			Json: types.ApiError{
-				Message: "This event is not valid for this target type",
 			},
 		}
 	}

@@ -60,6 +60,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 
 	switch targetType {
 	case "bot":
+	case "server":
 	case "team":
 	default:
 		return uapi.HttpResponse{

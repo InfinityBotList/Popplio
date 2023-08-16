@@ -46,7 +46,7 @@ func Docs() *docs.Doc {
 			},
 			{
 				Name:        "target_type",
-				Description: "The entity type to return logs for. Must be `bot` or `team` (other entity types coming soon)",
+				Description: "The entity type to return logs for.",
 				Required:    true,
 				In:          "query",
 				Schema:      docs.IdSchema,
