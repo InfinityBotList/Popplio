@@ -84,7 +84,7 @@ type Bot struct {
 	ShardList           []int                   `db:"shard_list" json:"shard_list" description:"The number of servers per shard"`
 	Users               int                     `db:"users" json:"users" description:"The bot's user count"`
 	Votes               int                     `db:"votes" json:"votes" description:"The bot's vote count"`
-	Views               int                     `db:"clicks" json:"clicks" description:"The bot's total click count"`
+	Clicks              int                     `db:"clicks" json:"clicks" description:"The bot's total click count"`
 	UniqueClicks        int64                   `db:"-" json:"unique_clicks" description:"The bot's unique click count based on SHA256 hashed IPs" ci:"internal"` // Must be parsed internally
 	InviteClicks        int                     `db:"invite_clicks" json:"invite_clicks" description:"The bot's invite click count (via users inviting the bot from IBL)"`
 	Banner              pgtype.Text             `db:"banner" json:"banner" description:"The bot's banner URL if it has one, otherwise null"`
