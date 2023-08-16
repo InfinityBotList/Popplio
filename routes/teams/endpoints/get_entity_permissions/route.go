@@ -1,4 +1,4 @@
-package get_user_bot_perms
+package get_entity_permissions
 
 import (
 	"net/http"
@@ -15,21 +15,28 @@ import (
 
 func Docs() *docs.Doc {
 	return &docs.Doc{
-		Summary:     "Get User Bot Perms",
-		Description: "Returns the permissions a user has on a bot",
+		Summary:     "Get Entity Permissions",
+		Description: "Returns the permissions a user has on an entity",
 		Params: []docs.Parameter{
 			{
-				Name:        "uid",
+				Name:        "id",
 				Description: "The user's ID",
 				Required:    true,
 				In:          "path",
 				Schema:      docs.IdSchema,
 			},
 			{
-				Name:        "bid",
-				Description: "The bots ID, vanity",
+				Name:        "target_id",
+				Description: "The target ID of the entity",
 				Required:    true,
 				In:          "path",
+				Schema:      docs.IdSchema,
+			},
+			{
+				Name:        "target_type",
+				Description: "The target type of the entity",
+				Required:    true,
+				In:          "query",
 				Schema:      docs.IdSchema,
 			},
 		},
@@ -38,10 +45,18 @@ func Docs() *docs.Doc {
 }
 
 func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
-	uid := chi.URLParam(r, "uid")
-	id := chi.URLParam(r, "bid")
+	uid := chi.URLParam(r, "id")
+	targetId := chi.URLParam(r, "target_id")
+	targetType := r.URL.Query().Get("target_type")
 
-	perms, err := teams.GetEntityPerms(d.Context, uid, "bot", id)
+	if targetId == "" || targetType == "" {
+		return uapi.HttpResponse{
+			Status: http.StatusBadRequest,
+			Json:   types.ApiError{Message: "Both target_id and target_type must be specified"},
+		}
+	}
+
+	perms, err := teams.GetEntityPerms(d.Context, uid, targetType, targetId)
 
 	if err != nil {
 		state.Logger.Error(err)

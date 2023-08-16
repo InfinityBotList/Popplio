@@ -8,6 +8,7 @@ import (
 	"popplio/routes/teams/endpoints/delete_team_member"
 	"popplio/routes/teams/endpoints/edit_team_info"
 	"popplio/routes/teams/endpoints/edit_team_member"
+	"popplio/routes/teams/endpoints/get_entity_permissions"
 	"popplio/routes/teams/endpoints/get_team"
 	"popplio/routes/teams/endpoints/get_team_permissions"
 	"popplio/routes/teams/endpoints/get_team_seo"
@@ -61,6 +62,15 @@ func (b Router) Routes(r *chi.Mux) {
 				URLVar: "id",
 			},
 		},
+	}.Route(r)
+
+	// Intentionally without authentication
+	uapi.Route{
+		Pattern: "/users/{id}/perms/{target_id}",
+		OpId:    "get_entity_permissions",
+		Method:  uapi.GET,
+		Docs:    get_entity_permissions.Docs,
+		Handler: get_entity_permissions.Route,
 	}.Route(r)
 
 	uapi.Route{

@@ -11,7 +11,6 @@ import (
 	"popplio/routes/bots/endpoints/get_bot_token"
 	"popplio/routes/bots/endpoints/get_queue_bots"
 	"popplio/routes/bots/endpoints/get_random_bots"
-	"popplio/routes/bots/endpoints/get_user_bot_perms"
 	"popplio/routes/bots/endpoints/patch_bot_settings"
 	"popplio/routes/bots/endpoints/patch_bot_team"
 	"popplio/routes/bots/endpoints/patch_bot_token"
@@ -113,15 +112,6 @@ func (b Router) Routes(r *chi.Mux) {
 			},
 		},
 		Setup: add_bot.Setup,
-	}.Route(r)
-
-	// Intentionally without authentication
-	uapi.Route{
-		Pattern: "/users/{uid}/bots/{bid}/perms",
-		OpId:    "get_user_bot_perms",
-		Method:  uapi.GET,
-		Docs:    get_user_bot_perms.Docs,
-		Handler: get_user_bot_perms.Route,
 	}.Route(r)
 
 	uapi.Route{
