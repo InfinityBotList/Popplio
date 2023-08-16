@@ -17,8 +17,8 @@ type Server struct {
 	OnlineMembers       int                `db:"online_members" json:"online_members" description:"The server's online member count"`
 	Invite              string             `db:"invite" json:"-" ci:"internal"` // Never filled in, as its protected by the invite API
 	Short               string             `db:"short" json:"short" description:"The server's short description"`
-	Long                string             `db:"long" json:"long" description:"The server's long description in raw format (HTML/markdown etc. based on the bots settings)"`
-	Type                string             `db:"type" json:"type" description:"The bot's type (e.g. pending/approved/certified/denied etc.)"`
+	Long                string             `db:"long" json:"long" description:"The server's long description in raw format (HTML/markdown etc. based on the servers settings)"`
+	Type                string             `db:"type" json:"type" description:"The server's type (e.g. pending/approved/certified/denied etc.)"`
 	State               string             `db:"state" json:"state" description:"The server's state (public, private, unlisted)"`
 	VanityRef           pgtype.UUID        `db:"vanity_ref" json:"vanity_ref"`
 	Vanity              string             `db:"-" json:"vanity" description:"The server's vanity URL" ci:"internal"` // Must be parsed internally
@@ -30,9 +30,10 @@ type Server struct {
 	Clicks              int                `db:"clicks" json:"clicks" description:"The server's total click count"`
 	UniqueClicks        int64              `db:"-" json:"unique_clicks" description:"The server's unique click count based on SHA256 hashed IPs" ci:"internal"` // Must be parsed internally
 	NSFW                bool               `db:"nsfw" json:"nsfw" description:"Whether the serber is NSFW or not"`
-	Votes               int                `db:"votes" json:"votes" description:"The bot's vote count"`
+	Votes               int                `db:"votes" json:"votes" description:"The server's vote count"`
 	VoteBanned          bool               `db:"vote_banned" json:"vote_banned" description:"Whether the server is vote banned or not"`
 	Premium             bool               `db:"premium" json:"premium" description:"Whether the server is a premium server or not"`
 	StartPeriod         pgtype.Timestamptz `db:"start_premium_period" json:"start_premium_period"`
 	PremiumPeriodLength time.Duration      `db:"premium_period_length" json:"premium_period_length" description:"The period of premium for the server in nanoseconds"`
+	CaptchaOptOut       bool               `db:"captcha_opt_out" json:"captcha_opt_out" description:"Whether the server should have captchas shown if the user has captcha_sponsor_enabled"`
 }
