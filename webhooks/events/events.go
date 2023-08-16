@@ -47,6 +47,8 @@ func RegisterEvent(a WebhookEvent) {
 			fieldType = types.WebhookTypeText
 		case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
 			fieldType = types.WebhookTypeNumber
+		case reflect.Bool:
+			fieldType = types.WebhookTypeBoolean
 		case reflect.Struct:
 			// Typeswitch here
 			ti := reflect.Zero(f.Type).Interface()

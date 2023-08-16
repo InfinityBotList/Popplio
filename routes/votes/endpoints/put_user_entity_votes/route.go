@@ -15,6 +15,7 @@ import (
 	"popplio/webhooks/bothooks"
 	"popplio/webhooks/bothooks_legacy"
 	"popplio/webhooks/events"
+	"popplio/webhooks/serverhooks"
 	"popplio/webhooks/teamhooks"
 
 	"github.com/bwmarrin/discordgo"
@@ -22,6 +23,8 @@ import (
 	"github.com/infinitybotlist/eureka/dovewing"
 	"github.com/infinitybotlist/eureka/uapi"
 	"go.uber.org/zap"
+	"golang.org/x/text/cases"
+	"golang.org/x/text/language"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -258,6 +261,13 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 			state.Logger.Error(err)
 			return uapi.DefaultResponse(http.StatusInternalServerError)
 		}
+	case "server":
+		_, err = tx.Exec(d.Context, "UPDATE servers SET votes = $1 WHERE server_id = $2", nvc, targetId)
+
+		if err != nil {
+			state.Logger.Error(err)
+			return uapi.DefaultResponse(http.StatusInternalServerError)
+		}
 	}
 
 	// Commit transaction
@@ -333,31 +343,44 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 				UserID: uid,
 				Votes:  nvc,
 			})
-		} else {
-			switch targetType {
-			case "bot":
-				err = bothooks.Send(bothooks.With{
-					UserID: uid,
-					BotID:  targetId,
-					Data: events.WebhookBotVoteData{
-						Votes: nvc,
-					},
-				})
-			case "team":
-				err = teamhooks.Send(teamhooks.With{
-					UserID: uid,
-					TeamID: targetId,
-					Data: events.WebhookTeamVoteData{
-						Votes: nvc,
-					},
-				})
-			}
+			return
+		}
+
+		switch targetType {
+		case "bot":
+			err = bothooks.Send(bothooks.With{
+				UserID: uid,
+				BotID:  targetId,
+				Data: events.WebhookBotVoteData{
+					Votes:   nvc,
+					PerUser: vi.VoteInfo.PerUser,
+				},
+			})
+		case "team":
+			err = teamhooks.Send(teamhooks.With{
+				UserID: uid,
+				TeamID: targetId,
+				Data: events.WebhookTeamVoteData{
+					Votes:    nvc,
+					PerUser:  vi.VoteInfo.PerUser,
+					Downvote: upvote == "false",
+				},
+			})
+		case "server":
+			err = serverhooks.Send(serverhooks.With{
+				UserID:   uid,
+				ServerID: targetId,
+				Data: events.WebhookServerVoteData{
+					Votes:    nvc,
+					PerUser:  vi.VoteInfo.PerUser,
+					Downvote: upvote == "false",
+				},
+			})
 		}
 
 		var msg types.Alert
 
 		if err != nil {
-			// Check if the entity follows the entityInfo protocol, if not, fallback
 			if entityInfo != nil {
 				msg = types.Alert{
 					Type:    types.AlertTypeError,
@@ -381,11 +404,10 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 				}
 			}
 		} else {
-			// Check if the entity follows the entityInfo protocol, if not, fallback
 			if entityInfo != nil {
 				msg = types.Alert{
 					Type:    types.AlertTypeSuccess,
-					Title:   "Bot Notified!",
+					Title:   cases.Title(language.English).String(targetType) + " Notified!",
 					Message: "Successfully alerted " + targetType + " " + entityInfo.Name + " to your vote with target ID of " + targetId + ".",
 					Icon:    entityInfo.Avatar,
 					URL: pgtype.Text{
@@ -396,7 +418,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 			} else {
 				msg = types.Alert{
 					Type:    types.AlertTypeSuccess,
-					Title:   "Bot Notified!",
+					Title:   cases.Title(language.English).String(targetType) + " Notified!",
 					Message: "Successfully alerted " + targetType + " " + targetId + " to your vote with target ID of " + targetId + ".",
 					URL: pgtype.Text{
 						String: "https://botlist.site/" + targetType + "/" + targetId,

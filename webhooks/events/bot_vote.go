@@ -11,7 +11,8 @@ import (
 const WebhookTypeBotVote WebhookType = "BOT_VOTE"
 
 type WebhookBotVoteData struct {
-	Votes int `json:"votes" description:"The number of votes the bot received"`
+	Votes   int `json:"votes" description:"The number of votes the bot received"`
+	PerUser int `json:"per_user" description:"The number of votes the user has given"`
 }
 
 func (v WebhookBotVoteData) TargetType() string {
@@ -31,7 +32,7 @@ func (v WebhookBotVoteData) CreateHookParams(creator *dovetypes.PlatformUser, ta
 					URL: targets.Bot.Avatar,
 				},
 				Title:       "🎉 Vote Count Updated!",
-				Description: ":heart: " + creator.DisplayName + " has voted for " + targets.Bot.Username,
+				Description: ":heart: " + creator.DisplayName + " has voted for *bot*: " + targets.Bot.Username,
 				Color:       0x8A6BFD,
 				Fields: []*discordgo.MessageEmbedField{
 					{
@@ -45,7 +46,7 @@ func (v WebhookBotVoteData) CreateHookParams(creator *dovetypes.PlatformUser, ta
 						Inline: true,
 					},
 					{
-						Name:   "Vote Page",
+						Name:   "View Page",
 						Value:  "[View " + targets.Bot.Username + "](https://botlist.site/" + targets.Bot.ID + ")",
 						Inline: true,
 					},

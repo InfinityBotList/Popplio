@@ -13,6 +13,7 @@ const (
 	WebhookTypeText      WebhookType = "text"
 	WebhookTypeNumber    WebhookType = "number"
 	WebhookTypeChangeset WebhookType = "changeset"
+	WebhookTypeBoolean   WebhookType = "boolean"
 )
 
 // @ci table=webhook_logs

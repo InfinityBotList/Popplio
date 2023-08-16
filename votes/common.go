@@ -50,6 +50,18 @@ func EntityVoteInfo(ctx context.Context, userId, targetId, targetType string) (*
 		if premium {
 			defaultVoteEntity.VoteTime = 4
 		}
+	case "server":
+		var premium bool
+		err := state.Pool.QueryRow(ctx, "SELECT premium FROM servers WHERE server_id = $1", targetId).Scan(&premium)
+
+		if err != nil {
+			return nil, err
+		}
+
+		// Premium bots get vote time of 4
+		if premium {
+			defaultVoteEntity.VoteTime = 4
+		}
 	}
 
 	return &defaultVoteEntity, nil

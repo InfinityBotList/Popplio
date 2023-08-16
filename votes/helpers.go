@@ -82,6 +82,26 @@ func GetEntityInfo(ctx context.Context, targetId, targetType string) (*EntityInf
 			Name:    name,
 			Avatar:  avatar,
 		}, nil
+	case "server":
+		var name, avatar string
+
+		err := state.Pool.QueryRow(ctx, "SELECT name, avatar FROM servers WHERE id = $1", targetId).Scan(&name, &avatar)
+
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, errors.New("server not found")
+		}
+
+		if err != nil {
+			return nil, err
+		}
+
+		// Set entityInfo for log
+		return &EntityInfo{
+			URL:     "https://botlist.site/server/" + targetId,
+			VoteURL: "https://botlist.site/server/" + targetId + "/vote",
+			Name:    name,
+			Avatar:  avatar,
+		}, nil
 	default:
 		return nil, errors.New("unimplemented target type:" + targetType)
 	}

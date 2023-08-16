@@ -11,7 +11,9 @@ import (
 const WebhookTypeTeamVote WebhookType = "TEAM_VOTE"
 
 type WebhookTeamVoteData struct {
-	Votes int `json:"votes" description:"The number of votes the team received"`
+	Votes    int  `json:"votes" description:"The number of votes the team received"`
+	Downvote bool `json:"downvote" description:"Whether the vote was a downvote"`
+	PerUser  int  `json:"per_user" description:"The number of votes the user has given"`
 }
 
 func (n WebhookTeamVoteData) TargetType() string {
@@ -26,7 +28,7 @@ func (v WebhookTeamVoteData) CreateHookParams(creator *dovetypes.PlatformUser, t
 	return &discordgo.WebhookParams{
 		Embeds: []*discordgo.MessageEmbed{
 			{
-				URL: "https://botlist.site/" + targets.Bot.ID,
+				URL: "https://botlist.site/" + targets.Team.ID,
 				Thumbnail: &discordgo.MessageEmbedThumbnail{
 					URL: targets.Team.Avatar,
 				},
@@ -45,7 +47,7 @@ func (v WebhookTeamVoteData) CreateHookParams(creator *dovetypes.PlatformUser, t
 						Inline: true,
 					},
 					{
-						Name:   "Vote Page",
+						Name:   "View Page",
 						Value:  "[View " + targets.Team.Name + "](https://botlist.site/teams/" + targets.Team.ID + ")",
 						Inline: true,
 					},
