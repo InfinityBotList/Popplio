@@ -85,7 +85,7 @@ func GetEntityInfo(ctx context.Context, targetId, targetType string) (*EntityInf
 	case "server":
 		var name, avatar string
 
-		err := state.Pool.QueryRow(ctx, "SELECT name, avatar FROM servers WHERE id = $1", targetId).Scan(&name, &avatar)
+		err := state.Pool.QueryRow(ctx, "SELECT name, avatar FROM servers WHERE server_id = $1", targetId).Scan(&name, &avatar)
 
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, errors.New("server not found")
