@@ -108,8 +108,9 @@ func Send(d *WebhookSendState) error {
 
 	if d.wdata == nil {
 		var url, secret string
+		var broken bool
 
-		err := state.Pool.QueryRow(state.Context, "SELECT url, secret FROM webhooks WHERE target_id = $1 AND target_type = $2", d.Entity.EntityID, d.Entity.EntityType).Scan(&url, &secret)
+		err := state.Pool.QueryRow(state.Context, "SELECT url, secret, broken FROM webhooks WHERE target_id = $1 AND target_type = $2", d.Entity.EntityID, d.Entity.EntityType).Scan(&url, &secret, &broken)
 
 		if errors.Is(err, pgx.ErrNoRows) {
 			state.Logger.Error("webhook not found for " + d.Entity.EntityID)
@@ -118,6 +119,11 @@ func Send(d *WebhookSendState) error {
 
 		if err != nil {
 			return err
+		}
+
+		if broken {
+			state.Logger.Error("webhook is broken for " + d.Entity.EntityID)
+			return errors.New("webhook has been flagged for not working correctly")
 		}
 
 		d.wdata = &webhookData{
@@ -133,14 +139,10 @@ func Send(d *WebhookSendState) error {
 	if d.Event != nil {
 		params := d.Event.Data.CreateHookParams(d.Event.Creator, d.Event.Targets)
 
-		ok, err := SendDiscord(
+		ok, err := sendDiscord(
 			d.Event.Creator.ID,
-			d.Entity.EntityID,
 			d.wdata.url,
-			func() error {
-				_, err := state.Pool.Exec(state.Context, "DELETE FROM webhooks WHERE target_id = $1 AND target_type = $2", d.Entity.EntityID, d.Entity.EntityType)
-				return err
-			},
+			d.Entity,
 			params,
 		)
 
@@ -292,9 +294,9 @@ func Send(d *WebhookSendState) error {
 	switch {
 	case resp.StatusCode == 404 || resp.StatusCode == 410:
 		// Remove from DB
-		d.cancelSend("WEBHOOK_REMOVED_404_410")
+		d.cancelSend("WEBHOOK_BROKEN_404_410")
 
-		_, err := state.Pool.Exec(state.Context, "DELETE FROM webhooks WHERE target_id = $1 AND target_type = $2", d.Entity.EntityID, d.Entity.EntityType)
+		_, err := state.Pool.Exec(state.Context, "UPDATE webhooks SET broken = true WHERE target_id = $1 AND target_type = $2", d.Entity.EntityID, d.Entity.EntityType)
 
 		if err != nil {
 			state.Logger.Error(err)
@@ -352,7 +354,7 @@ func Send(d *WebhookSendState) error {
 
 	case resp.StatusCode >= 200 && resp.StatusCode < 300:
 		if d.BadIntent {
-			d.cancelSend("WEBHOOK_DELETED_BAD_AUTHCODE")
+			d.cancelSend("WEBHOOK_BROKEN_BAD_AUTHCODE")
 
 			err = notifications.PushNotification(d.UserID, types.Alert{
 				Type:    types.AlertTypeError,
@@ -364,8 +366,8 @@ func Send(d *WebhookSendState) error {
 				state.Logger.Error(err)
 			}
 
-			// Remove webhook, it doesn't validate auth at all
-			_, err := state.Pool.Exec(state.Context, "DELETE FROM webhooks WHERE target_id = $1 AND target_type = $2", d.Entity.EntityID, d.Entity.EntityType)
+			// Set webhook to broken
+			_, err := state.Pool.Exec(state.Context, "UPDATE webhooks SET broken = true WHERE target_id = $1 AND target_type = $2", d.Entity.EntityID, d.Entity.EntityType)
 
 			if err != nil {
 				state.Logger.Error(err)
@@ -391,7 +393,7 @@ func Send(d *WebhookSendState) error {
 	return nil
 }
 
-func SendDiscord(userId, entityName, url string, delete func() error, params *discordgo.WebhookParams) (validUrl bool, err error) {
+func sendDiscord(userId, url string, entity WebhookEntity, params *discordgo.WebhookParams) (validUrl bool, err error) {
 	state.Logger.Info("discord webhook send: ")
 
 	validPrefixes := []string{
@@ -436,7 +438,13 @@ func SendDiscord(userId, entityName, url string, delete func() error, params *di
 
 	for _, code := range []int{404, 401, 403, 410} {
 		if resp.StatusCode == code {
-			delete()
+			// This webhook is broken
+			_, err := state.Pool.Exec(state.Context, "UPDATE webhooks SET broken = true WHERE target_id = $1 AND target_type = $2", entity.EntityID, entity.EntityType)
+
+			if err != nil {
+				state.Logger.Error(err)
+				return true, err
+			}
 		}
 	}
 
@@ -447,7 +455,7 @@ func SendDiscord(userId, entityName, url string, delete func() error, params *di
 
 	err = notifications.PushNotification(userId, types.Alert{
 		Type:    types.AlertTypeSuccess,
-		Message: "Successfully notified " + entityName + " of this action.",
+		Message: "Successfully notified " + entity.EntityName + " of this action.",
 		Title:   "Webhook Send Successful!",
 	})
 
@@ -463,7 +471,7 @@ type WebhookPullPending struct {
 	// the entity type
 	EntityType string
 
-	// delete webhook for specific id
+	// get an entity
 	GetEntity func(id string) (WebhookEntity, error)
 
 	// If a entity may not support pulls, implement this function to determine if it does
@@ -473,8 +481,7 @@ type WebhookPullPending struct {
 
 // Pulls all pending webhooks from the database and sends them
 //
-// Do not call this directly/normally, this is meant for webhook handlers such as “bothooks“
-// or a potential “teamhooks“ etc.
+// Do not call this directly/normally, this is handled automatically in 'core'
 func PullPending(p WebhookPullPending) {
 	if p.SupportsPulls != nil {
 		// Check if the entity supports pulls

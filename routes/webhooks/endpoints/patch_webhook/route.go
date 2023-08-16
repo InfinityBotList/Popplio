@@ -146,7 +146,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		}
 	} else {
 		// Update webhooks
-		_, err = tx.Exec(d.Context, "UPDATE webhooks SET url = $1, secret = $2 WHERE target_id = $3 AND target_type = $4", payload.WebhookURL, payload.WebhookSecret, targetId, targetType)
+		_, err = tx.Exec(d.Context, "UPDATE webhooks SET url = $1, secret = $2, broken = false WHERE target_id = $3 AND target_type = $4", payload.WebhookURL, payload.WebhookSecret, targetId, targetType)
 
 		if err != nil {
 			state.Logger.Error(err)
