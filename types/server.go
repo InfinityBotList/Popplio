@@ -37,3 +37,13 @@ type Server struct {
 	PremiumPeriodLength time.Duration      `db:"premium_period_length" json:"premium_period_length" description:"The period of premium for the server in nanoseconds"`
 	CaptchaOptOut       bool               `db:"captcha_opt_out" json:"captcha_opt_out" description:"Whether the server should have captchas shown if the user has captcha_sponsor_enabled"`
 }
+
+type ServerSettingsUpdate struct {
+	Short         string   `db:"short" json:"short" validate:"required,min=30,max=150" msg:"Short description must be between 30 and 150 characters"` // impld
+	Long          string   `db:"long" json:"long" validate:"required,min=500" msg:"Long description must be at least 500 characters"`                 // impld
+	Banner        *string  `db:"banner" json:"banner" validate:"omitempty,https" msg:"Background must be a valid HTTPS URL"`                          // impld
+	ExtraLinks    []Link   `db:"extra_links" json:"extra_links" validate:"required" msg:"Extra links must be sent"`                                   // Impld
+	Tags          []string `db:"tags" json:"tags" validate:"required,unique,min=1,max=5,dive,min=3,max=30,notblank,nonvulgar" msg:"There must be between 1 and 5 tags without duplicates" amsg:"Each tag must be between 3 and 30 characters and alphabetic"`
+	NSFW          bool     `db:"nsfw" json:"nsfw"`
+	CaptchaOptOut bool     `db:"captcha_opt_out" json:"captcha_opt_out"`
+}
