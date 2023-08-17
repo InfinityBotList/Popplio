@@ -8,12 +8,10 @@ import (
 	"popplio/routes/bots/endpoints/get_bot"
 	"popplio/routes/bots/endpoints/get_bot_meta"
 	"popplio/routes/bots/endpoints/get_bot_seo"
-	"popplio/routes/bots/endpoints/get_bot_token"
 	"popplio/routes/bots/endpoints/get_queue_bots"
 	"popplio/routes/bots/endpoints/get_random_bots"
 	"popplio/routes/bots/endpoints/patch_bot_settings"
 	"popplio/routes/bots/endpoints/patch_bot_team"
-	"popplio/routes/bots/endpoints/patch_bot_token"
 	"popplio/routes/bots/endpoints/post_bot_stats"
 	"popplio/routes/bots/endpoints/transfer_bot_to_team"
 
@@ -135,34 +133,6 @@ func (b Router) Routes(r *chi.Mux) {
 		Docs:    patch_bot_settings.Docs,
 		Handler: patch_bot_settings.Route,
 		Setup:   patch_bot_settings.Setup,
-		Auth: []uapi.AuthType{
-			{
-				URLVar: "uid",
-				Type:   api.TargetTypeUser,
-			},
-		},
-	}.Route(r)
-
-	uapi.Route{
-		Pattern: "/users/{uid}/bots/{bid}/token",
-		OpId:    "get_bot_token",
-		Method:  uapi.GET,
-		Docs:    get_bot_token.Docs,
-		Handler: get_bot_token.Route,
-		Auth: []uapi.AuthType{
-			{
-				URLVar: "uid",
-				Type:   api.TargetTypeUser,
-			},
-		},
-	}.Route(r)
-
-	uapi.Route{
-		Pattern: "/users/{uid}/bots/{bid}/token",
-		OpId:    "patch_bot_token",
-		Method:  uapi.PATCH,
-		Docs:    patch_bot_token.Docs,
-		Handler: patch_bot_token.Route,
 		Auth: []uapi.AuthType{
 			{
 				URLVar: "uid",
