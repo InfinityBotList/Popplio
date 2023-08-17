@@ -15,7 +15,7 @@ type Server struct {
 	Avatar              string             `db:"avatar" json:"avatar" description:"The server's avatar"`
 	TotalMembers        int                `db:"total_members" json:"total_members" description:"The server's total member count"`
 	OnlineMembers       int                `db:"online_members" json:"online_members" description:"The server's online member count"`
-	Invite              string             `db:"invite" json:"-" ci:"internal"` // Never filled in, as its protected by the invite API
+	Invite              string             `db:"-" json:"-" ci:"internal"` // Never filled in, as its protected by the invite API
 	Short               string             `db:"short" json:"short" description:"The server's short description"`
 	Long                string             `db:"long" json:"long" description:"The server's long description in raw format (HTML/markdown etc. based on the servers settings)"`
 	Type                string             `db:"type" json:"type" description:"The server's type (e.g. pending/approved/certified/denied etc.)"`
