@@ -24,7 +24,7 @@ type Server struct {
 	Vanity              string             `db:"-" json:"vanity" description:"The server's vanity URL" ci:"internal"` // Must be parsed internally
 	ExtraLinks          []Link             `db:"extra_links" json:"extra_links" description:"The server's links that it wishes to advertise"`
 	TeamOwnerID         pgtype.UUID        `db:"team_owner" json:"-"`
-	TeamOwner           *Team              `db:"-" json:"team_owner" description:"If the server is in a team, who owns the server."` // Must be parsed internally
+	TeamOwner           *Team              `db:"-" json:"team_owner" description:"If the server is in a team, who owns the server." ci:"internal"` // Must be parsed internally
 	InviteClicks        int                `db:"invite_clicks" json:"invite_clicks" description:"The server's invite click count (via users inviting the server from IBL)"`
 	Banner              pgtype.Text        `db:"banner" json:"banner" description:"The server's banner URL if it has one, otherwise null"`
 	Clicks              int                `db:"clicks" json:"clicks" description:"The server's total click count"`
