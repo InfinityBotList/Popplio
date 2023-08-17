@@ -19,6 +19,7 @@ type Server struct {
 	Long                string             `db:"long" json:"long" description:"The server's long description in raw format (HTML/markdown etc. based on the servers settings)"`
 	Type                string             `db:"type" json:"type" description:"The server's type (e.g. pending/approved/certified/denied etc.)"`
 	State               string             `db:"state" json:"state" description:"The server's state (public, private, unlisted)"`
+	Tags                []string           `db:"tags" json:"tags" description:"The server's tags"`
 	Flags               []string           `db:"flags" json:"flags" description:"The server's flags"`
 	VanityRef           pgtype.UUID        `db:"vanity_ref" json:"vanity_ref"`
 	Vanity              string             `db:"-" json:"vanity" description:"The server's vanity URL" ci:"internal"` // Must be parsed internally
