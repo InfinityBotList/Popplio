@@ -75,6 +75,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 
 	switch targetType {
 	case "bot":
+	case "server":
 	default:
 		return uapi.HttpResponse{
 			Status: http.StatusNotImplemented,
