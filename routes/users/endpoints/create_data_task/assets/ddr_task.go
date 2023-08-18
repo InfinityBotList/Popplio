@@ -103,7 +103,7 @@ func DataTask(taskId string, id string, ip string, del bool) {
 		addStatus(taskId, "Fetching data for table: "+key.TableName)
 
 		if key.ForeignTable != "users" {
-			addStatus(taskId, "Skipping table: "+key.TableName)
+			addStatus(taskId, "Skipping table: "+key.TableName+" (fkey: "+key.ForeignTable+")")
 			continue
 		}
 
