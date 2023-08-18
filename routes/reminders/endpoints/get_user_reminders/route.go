@@ -73,6 +73,17 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 					Avatar: bot.Avatar,
 				}
 			}
+		case "server":
+			var name, avatar string
+
+			err := state.Pool.QueryRow(d.Context, "SELECT name, avatar FROM servers WHERE server_id = $1", reminder.TargetID).Scan(&name, &avatar)
+
+			if err == nil {
+				reminders[i].Resolved = &types.ResolvedReminder{
+					Name:   name,
+					Avatar: avatar,
+				}
+			}
 		case "team":
 			var name, avatar string
 
