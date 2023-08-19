@@ -77,7 +77,7 @@ func EntityVoteCheck(ctx context.Context, userId, targetId, targetType string) (
 
 	rows, err := state.Pool.Query(
 		ctx,
-		"SELECT created_at FROM entity_votes WHERE author = $1 AND target_id = $2 AND target_type = $3 AND void = false AND NOW() - created_at < make_interval(hours => $4) ORDER BY created_at DESC",
+		"SELECT created_at, upvote FROM entity_votes WHERE author = $1 AND target_id = $2 AND target_type = $3 AND void = false AND NOW() - created_at < make_interval(hours => $4) ORDER BY created_at DESC",
 		userId,
 		targetId,
 		targetType,
@@ -88,24 +88,28 @@ func EntityVoteCheck(ctx context.Context, userId, targetId, targetType string) (
 		return nil, err
 	}
 
-	var validVotes []time.Time
+	var validVotes []*types.ValidVote
 
 	for rows.Next() {
 		var createdAt time.Time
+		var upvote bool
 
-		err = rows.Scan(&createdAt)
+		err = rows.Scan(&createdAt, &upvote)
 
 		if err != nil {
 			return nil, err
 		}
 
-		validVotes = append(validVotes, createdAt)
+		validVotes = append(validVotes, &types.ValidVote{
+			Upvote:    upvote,
+			CreatedAt: createdAt,
+		})
 	}
 
 	var vw *types.VoteWait
 
 	if len(validVotes) > 0 {
-		timeElapsed := time.Since(validVotes[0])
+		timeElapsed := time.Since(validVotes[0].CreatedAt)
 
 		timeToWait := int64(vi.VoteTime)*60*60*1000 - timeElapsed.Milliseconds()
 

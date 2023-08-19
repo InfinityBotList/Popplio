@@ -35,12 +35,17 @@ type VoteWait struct {
 	Seconds int `json:"seconds"`
 }
 
+type ValidVote struct {
+	Upvote    bool      `json:"upvote" description:"Whether or not the vote was an upvote"`
+	CreatedAt time.Time `json:"created_at" description:"The time the vote was created"`
+}
+
 // A user vote is a struct containing basic info on a users vote
 type UserVote struct {
-	HasVoted   bool        `json:"has_voted"`
-	ValidVotes []time.Time `json:"valid_votes"`
-	VoteInfo   *VoteInfo   `json:"vote_info"`
-	Wait       *VoteWait   `json:"wait"`
+	HasVoted   bool         `json:"has_voted" description:"Whether or not the user has voted"`
+	ValidVotes []*ValidVote `json:"valid_votes" description:"Some information about a valid vote"`
+	VoteInfo   *VoteInfo    `json:"vote_info" description:"Some information about the vote"`
+	Wait       *VoteWait    `json:"wait" description:"The time until the user can vote again"`
 }
 
 type HCaptchaInfo struct {
