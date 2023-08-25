@@ -8,7 +8,6 @@ import (
 	"popplio/routes/bots/endpoints/get_bot"
 	"popplio/routes/bots/endpoints/get_bot_meta"
 	"popplio/routes/bots/endpoints/get_bot_seo"
-	"popplio/routes/bots/endpoints/get_queue_bots"
 	"popplio/routes/bots/endpoints/get_random_bots"
 	"popplio/routes/bots/endpoints/patch_bot_settings"
 	"popplio/routes/bots/endpoints/patch_bot_team"
@@ -36,14 +35,6 @@ func (b Router) Routes(r *chi.Mux) {
 		Method:  uapi.GET,
 		Docs:    get_all_bots.Docs,
 		Handler: get_all_bots.Route,
-	}.Route(r)
-
-	uapi.Route{
-		Pattern: "/bots/@queue",
-		OpId:    "get_all_bots",
-		Method:  uapi.GET,
-		Docs:    get_queue_bots.Docs,
-		Handler: get_queue_bots.Route,
 	}.Route(r)
 
 	uapi.Route{
