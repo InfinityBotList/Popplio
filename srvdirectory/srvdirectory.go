@@ -25,9 +25,9 @@ func Setup() {
 		"staff": {
 			{
 				ID:           "arcadia",
-				ProdURL:      "https://rpc.infinitybots.gg",
+				ProdURL:      "https://prod--panel-api.infinitybots.gg",
 				Docs:         "/openapi",
-				Description:  "Staff RPC API",
+				Description:  "Staff Panel API",
 				NeedsStaging: true,
 			},
 			{
