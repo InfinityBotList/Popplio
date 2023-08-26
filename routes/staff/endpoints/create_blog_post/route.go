@@ -2,6 +2,7 @@ package create_blog_post
 
 import (
 	"net/http"
+	"popplio/routes/staff/assets"
 	"popplio/state"
 	"popplio/types"
 	"strings"
@@ -17,7 +18,7 @@ var compiledMessages = uapi.CompileValidationErrors(types.CreateBlogPost{})
 func Docs() *docs.Doc {
 	return &docs.Doc{
 		Summary:     "Create Blog Post",
-		Description: "Creates a blog post. You must be an `iblhdev` or an `hadmin` to create a blog post. Returns a 204 on success",
+		Description: "Creates a blog post. Returns a 204 on success",
 		Req:         types.CreateBlogPost{},
 		Params: []docs.Parameter{
 			{
@@ -33,11 +34,21 @@ func Docs() *docs.Doc {
 }
 
 func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
+	var err error
+	d.Auth.ID, err = assets.EnsurePanelAuth(d.Context, r)
+
+	if err != nil {
+		return uapi.HttpResponse{
+			Status: http.StatusFailedDependency,
+			Json:   types.ApiError{Message: err.Error()},
+		}
+	}
+
 	// Check if user is iblhdev or hadmin
 	var iblhdev bool
 	var hadmin bool
 
-	err := state.Pool.QueryRow(d.Context, "SELECT iblhdev, hadmin FROM users WHERE user_id = $1", d.Auth.ID).Scan(&iblhdev, &hadmin)
+	err = state.Pool.QueryRow(d.Context, "SELECT iblhdev, hadmin FROM users WHERE user_id = $1", d.Auth.ID).Scan(&iblhdev, &hadmin)
 
 	if err != nil {
 		state.Logger.Error(err)

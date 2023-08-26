@@ -6,7 +6,6 @@ import (
 	"popplio/routes/apps/endpoints/get_app"
 	"popplio/routes/apps/endpoints/get_apps_list"
 	"popplio/routes/apps/endpoints/get_apps_meta"
-	"popplio/routes/apps/endpoints/manage_app"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/infinitybotlist/eureka/uapi"
@@ -60,19 +59,6 @@ func (b Router) Routes(r *chi.Mux) {
 				URLVar:       "user_id",
 				Type:         api.TargetTypeUser,
 				AllowedScope: "ban_exempt", // Ensure banned users can create apps
-			},
-		},
-	}.Route(r)
-	uapi.Route{
-		Pattern: "/users/{user_id}/apps/{app_id}",
-		OpId:    "manage_app",
-		Method:  uapi.PATCH,
-		Docs:    manage_app.Docs,
-		Handler: manage_app.Route,
-		Auth: []uapi.AuthType{
-			{
-				URLVar: "user_id",
-				Type:   api.TargetTypeUser,
 			},
 		},
 	}.Route(r)

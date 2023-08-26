@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"popplio/apps"
 	"popplio/db"
+	"popplio/routes/staff/assets"
 	"popplio/state"
 	"popplio/types"
 	"strings"
@@ -56,11 +57,21 @@ func Docs() *docs.Doc {
 }
 
 func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
+	var err error
+	d.Auth.ID, err = assets.EnsurePanelAuth(d.Context, r)
+
+	if err != nil {
+		return uapi.HttpResponse{
+			Status: http.StatusFailedDependency,
+			Json:   types.ApiError{Message: err.Error()},
+		}
+	}
+
 	// Check if the user has the permission to approve/deny the app
 	var iblhdev bool
 	var hadmin bool
 
-	err := state.Pool.QueryRow(d.Context, "SELECT iblhdev, hadmin FROM users WHERE user_id = $1", d.Auth.ID).Scan(&iblhdev, &hadmin)
+	err = state.Pool.QueryRow(d.Context, "SELECT iblhdev, hadmin FROM users WHERE user_id = $1", d.Auth.ID).Scan(&iblhdev, &hadmin)
 
 	if err != nil {
 		state.Logger.Error(err)
