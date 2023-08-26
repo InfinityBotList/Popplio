@@ -19,13 +19,6 @@ func Docs() *docs.Doc {
 		Req:         types.PublishBlogPost{},
 		Params: []docs.Parameter{
 			{
-				Name:        "user_id",
-				Description: "The ID of the user who is creating the blog post.",
-				Required:    true,
-				In:          "path",
-				Schema:      docs.IdSchema,
-			},
-			{
 				Name:        "slug",
 				Description: "The slug of the blog post.",
 				Required:    true,

@@ -20,16 +20,7 @@ func Docs() *docs.Doc {
 		Summary:     "Create Blog Post",
 		Description: "Creates a blog post. Returns a 204 on success",
 		Req:         types.CreateBlogPost{},
-		Params: []docs.Parameter{
-			{
-				Name:        "user_id",
-				Description: "The ID of the user who is creating the blog post.",
-				Required:    true,
-				In:          "path",
-				Schema:      docs.IdSchema,
-			},
-		},
-		Resp: types.ApiError{},
+		Resp:        types.ApiError{},
 	}
 }
 

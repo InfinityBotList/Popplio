@@ -38,13 +38,6 @@ func Docs() *docs.Doc {
 		Req:         ManageApp{},
 		Params: []docs.Parameter{
 			{
-				Name:        "user_id",
-				Description: "The ID of the user to create the application for.",
-				Required:    true,
-				In:          "path",
-				Schema:      docs.IdSchema,
-			},
-			{
 				Name:        "app_id",
 				Description: "The App ID",
 				Required:    true,
