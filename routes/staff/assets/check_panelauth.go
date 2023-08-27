@@ -14,7 +14,7 @@ func EnsurePanelAuth(ctx context.Context, r *http.Request) (string, error) {
 
 	loginToken := r.Header.Get("Authorization")
 
-	_, err := state.Pool.Exec(ctx, "DELETE FROM rpc__panelauthchain WHERE created_at < NOW() - INTERVAL '1 hour'")
+	_, err := state.Pool.Exec(ctx, "DELETE FROM staffpanel__authchain WHERE created_at < NOW() - INTERVAL '30 minutes'")
 
 	if err != nil {
 		return "", err
@@ -22,7 +22,7 @@ func EnsurePanelAuth(ctx context.Context, r *http.Request) (string, error) {
 
 	var count int64
 
-	err = state.Pool.QueryRow(ctx, "SELECT COUNT(*) FROM rpc__panelauthchain WHERE token = $1", loginToken).Scan(&count)
+	err = state.Pool.QueryRow(ctx, "SELECT COUNT(*) FROM staffpanel__authchain WHERE token = $1", loginToken).Scan(&count)
 
 	if err != nil {
 		return "", err
@@ -34,7 +34,7 @@ func EnsurePanelAuth(ctx context.Context, r *http.Request) (string, error) {
 
 	var userId string
 
-	err = state.Pool.QueryRow(ctx, "SELECT user_id FROM rpc__panelauthchain WHERE token = $1", loginToken).Scan(&userId)
+	err = state.Pool.QueryRow(ctx, "SELECT user_id FROM staffpanel__authchain WHERE token = $1 AND state = 'active'", loginToken).Scan(&userId)
 
 	if err != nil {
 		return "", err
