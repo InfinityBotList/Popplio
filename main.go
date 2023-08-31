@@ -12,7 +12,6 @@ import (
 	"popplio/config"
 	"popplio/constants"
 	"popplio/notifications"
-	"popplio/partners"
 	"popplio/routes/alerts"
 	"popplio/routes/apitokens"
 	"popplio/routes/apps"
@@ -276,7 +275,6 @@ func main() {
 
 	poplapps.Setup()
 	stafftemplates.Setup()
-	partners.Setup()
 	changelogs.Setup()
 
 	go notifications.VrLoop()

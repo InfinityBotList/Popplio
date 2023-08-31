@@ -2,20 +2,20 @@ package types
 
 import "github.com/infinitybotlist/eureka/dovewing/dovetypes"
 
+// @ci table=partners
+//
+// Partner represents a IBL partner.
 type Partner struct {
-	ID     string `json:"id" validate:"required"`
-	Name   string `json:"name" validate:"required"`
-	Image  string `json:"image" validate:"required"`
-	Short  string `json:"short" validate:"required"`
-	Links  []Link `json:"links" validate:"required,min=1,max=2"`
-	UserID string `json:"-" validate:"required,numeric"`
-
-	// Internal field
-	User *dovetypes.PlatformUser `json:"user"`
+	ID     string                  `db:"id" json:"id" description:"The partners ID" validate:"required"`
+	Name   string                  `db:"name" json:"name" description:"The partners name" validate:"required"`
+	Image  string                  `db:"image" json:"image" description:"URL of the partners image" validate:"required"`
+	Short  string                  `db:"short" json:"short" description:"Short description of the partner" validate:"required"`
+	Links  []Link                  `db:"links" json:"links" description:"Links of the partners" validate:"required,min=1,max=2"`
+	Type   string                  `db:"type" json:"type" description:"Type of partner" validate:"required"`
+	UserID string                  `db:"user_id" json:"-" description:"User ID of the partner. Is an internal field" validate:"required"`
+	User   *dovetypes.PlatformUser `db:"-" json:"user" description:"The partner's user information" ci:"internal"` // Must be parsed internally
 }
 
 type PartnerList struct {
-	Featured        []*Partner `json:"featured" validate:"required,dive"`
-	BotPartners     []*Partner `json:"bot_partners" validate:"required,dive"`
-	BotListPartners []*Partner `json:"bot_list_partners" validate:"required,dive"`
+	Partners []Partner `json:"partners"`
 }
