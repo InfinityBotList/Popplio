@@ -23,19 +23,6 @@ func setupPartnerList() {
 					},
 				},
 			},
-			{
-				ID:     "discord-israel-hub",
-				Name:   "Discord Israel Hub",
-				Short:  "Welcome! \"Discord Israel Hub\" is Your place to unite with the Discord community and managers and grow together!",
-				UserID: "952562403751641178",
-				Image:  state.Config.Sites.CDN + "/images/gif/discordisraelhub-partner.gif",
-				Links: []types.Link{
-					{
-						Name:  "Discord",
-						Value: "https://discord.com/invite/pAZ4FHpyXf",
-					},
-				},
-			},
 		},
 		BotPartners: []*types.Partner{
 			{
