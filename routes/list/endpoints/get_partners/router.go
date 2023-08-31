@@ -27,7 +27,7 @@ func Docs() *docs.Doc {
 }
 
 func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
-	rows, err := state.Pool.Query(state.Context, "SELECT "+partnersCols+" FROM partners")
+	rows, err := state.Pool.Query(state.Context, "SELECT "+partnersCols+" FROM partners ORDER BY created_at DESC")
 
 	if err != nil {
 		state.Logger.Error(err)
