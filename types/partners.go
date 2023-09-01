@@ -34,5 +34,5 @@ type PartnerTypes struct {
 
 type PartnerList struct {
 	Partners     []Partner      `json:"partners"`
-	PartnerTypes []PartnerTypes `json:"partner_sections"`
+	PartnerTypes []PartnerTypes `json:"partner_types"`
 }
