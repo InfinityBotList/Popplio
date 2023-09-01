@@ -21,6 +21,18 @@ type Partner struct {
 	User      *dovetypes.PlatformUser `db:"-" json:"user" description:"The partner's user information" ci:"internal"` // Must be parsed internally
 }
 
+// @ci table=partner_types
+//
+// PartnerTypes represents a IBL partner type.
+type PartnerTypes struct {
+	ID        string    `db:"id" json:"id" description:"The partner type ID"`
+	Name      string    `db:"name" json:"name" description:"The partner type name"`
+	Short     string    `db:"short" json:"short" description:"Short description of the partner type"`
+	Icon      string    `db:"icon" json:"icon" description:"Iconify icon of the partner type"`
+	CreatedAt time.Time `db:"created_at" json:"created_at" description:"When the partner type was created on DB"`
+}
+
 type PartnerList struct {
-	Partners []Partner `json:"partners"`
+	Partners     []Partner      `json:"partners"`
+	PartnerTypes []PartnerTypes `json:"partner_sections"`
 }

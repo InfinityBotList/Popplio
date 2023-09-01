@@ -14,8 +14,13 @@ import (
 )
 
 var (
+	// Partners
 	partnersColsArr = db.GetCols(types.Partner{})
 	partnersCols    = strings.Join(partnersColsArr, ",")
+
+	// Partner types
+	partnerTypesColsArr = db.GetCols(types.PartnerTypes{})
+	partnerTypesCols    = strings.Join(partnerTypesColsArr, ",")
 )
 
 func Docs() *docs.Doc {
@@ -62,10 +67,27 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		}
 	}
 
+	rows, err = state.Pool.Query(state.Context, "SELECT "+partnerTypesCols+" FROM partner_types ORDER BY created_at DESC")
+
+	if err != nil {
+		state.Logger.Error(err)
+		return uapi.DefaultResponse(http.StatusInternalServerError)
+	}
+
+	defer rows.Close()
+
+	partnerTypes, err := pgx.CollectRows(rows, pgx.RowToStructByName[types.PartnerTypes])
+
+	if err != nil {
+		state.Logger.Error(err)
+		return uapi.DefaultResponse(http.StatusInternalServerError)
+	}
+
 	return uapi.HttpResponse{
 		Status: http.StatusOK,
 		Json: types.PartnerList{
-			Partners: partners,
+			Partners:     partners,
+			PartnerTypes: partnerTypes,
 		},
 	}
 }
