@@ -1,6 +1,7 @@
 package notifications
 
 import (
+	"fmt"
 	"popplio/config"
 	"popplio/state"
 	"popplio/types"
@@ -21,17 +22,23 @@ func VrLoop() {
 
 	for {
 		//state.Logger.Debug("Running vrCheck")
-		vrCheck()
+		err := vrCheck()
+
+		if err != nil {
+			state.Logger.Error(err)
+			time.Sleep(5 * time.Minute)
+			continue
+		}
+
 		time.Sleep(10 * time.Second)
 	}
 }
 
-func vrCheck() {
+func vrCheck() error {
 	rows, err := state.Pool.Query(state.Context, "SELECT user_id, target_id, target_type FROM user_reminders WHERE NOW() - last_acked > interval '4 hours'")
 
 	if err != nil {
-		state.Logger.Error("Error finding reminders: ", err)
-		return
+		return fmt.Errorf("error finding reminders: %w", err)
 	}
 
 	for rows.Next() {
@@ -83,4 +90,6 @@ func vrCheck() {
 
 		}
 	}
+
+	return nil
 }
