@@ -85,8 +85,8 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	}
 
 	// Set the user for each bot
-	for i, bot := range bots {
-		botUser, err := dovewing.GetUser(d.Context, bot.BotID, state.DovewingPlatformDiscord)
+	for i := range bots {
+		botUser, err := dovewing.GetUser(d.Context, bots[i].BotID, state.DovewingPlatformDiscord)
 
 		if err != nil {
 			return uapi.DefaultResponse(http.StatusInternalServerError)
@@ -96,15 +96,14 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 
 		var code string
 
-		err = state.Pool.QueryRow(d.Context, "SELECT code FROM vanity WHERE itag = $1", bot.VanityRef).Scan(&code)
+		err = state.Pool.QueryRow(d.Context, "SELECT code FROM vanity WHERE itag = $1", bots[i].VanityRef).Scan(&code)
 
 		if err != nil {
 			state.Logger.Error(err)
 			return uapi.DefaultResponse(http.StatusInternalServerError)
 		}
 
-		bot.Vanity = code
-
+		bots[i].Vanity = code
 	}
 
 	var count uint64

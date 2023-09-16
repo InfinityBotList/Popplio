@@ -65,6 +65,8 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 			state.Logger.Error(err)
 			return uapi.DefaultResponse(http.StatusInternalServerError)
 		}
+
+		partners[i].Image = state.Config.Sites.CDN + "/partners/" + partners[i].ID + "." + partners[i].ImageType
 	}
 
 	rows, err = state.Pool.Query(state.Context, "SELECT "+partnerTypesCols+" FROM partner_types ORDER BY created_at DESC")
