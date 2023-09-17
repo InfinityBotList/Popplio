@@ -7,6 +7,18 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+// @ci table=webhooks, unfilled=1
+//
+// Webhook (omits secret)
+type Webhook struct {
+	ID         pgtype.UUID `db:"id" json:"id" description:"The bot's internal ID. An artifact of database migrations."`
+	Url        string      `db:"url" json:"url" description:"The URL of the webhook."`
+	TargetID   string      `db:"target_id" json:"target_id" description:"The target ID."`
+	TargetType string      `db:"target_type" json:"target_type" description:"The target type (bot/team etc.)."`
+	Broken     bool        `db:"broken" json:"broken" description:"Whether the webhook is broken."`
+	CreatedAt  time.Time   `db:"created_at" json:"created_at" description:"The time when the webhook was created."`
+}
+
 type WebhookType = string
 
 const (

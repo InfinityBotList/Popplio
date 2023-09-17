@@ -43,6 +43,9 @@ const (
 	// Ability to reset API tokens for the entity
 	PermissionResetAPITokens Permission = "reset_api_tokens"
 
+	// Ability to get webhooks for the entity
+	PermissionGetWebhooks Permission = "get_webhooks"
+
 	// Ability to edit webhooks for the entity
 	PermissionEditWebhooks Permission = "edit_webhooks"
 
@@ -115,6 +118,12 @@ var PermDetails = []types.PermissionData{
 		Name:              "Reset {entity} Token",
 		Desc:              "Reset the API token of {entity_plural} on the team. This is seperate from viewing existing {entity} tokens as that is a much greater security risk",
 		SupportedEntities: []string{"bot", "server"},
+	},
+	{
+		ID:                PermissionGetWebhooks,
+		Name:              "Get {entity} Webhooks",
+		Desc:              "Get {entity} webhook settings. This is independent of updating them (you can still update without this permission)",
+		SupportedEntities: []string{"bot", "team", "server", "global"},
 	},
 	{
 		ID:                PermissionEditWebhooks,

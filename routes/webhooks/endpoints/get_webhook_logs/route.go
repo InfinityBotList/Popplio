@@ -26,7 +26,7 @@ var (
 func Docs() *docs.Doc {
 	return &docs.Doc{
 		Summary:     "Get Webhook Logs",
-		Description: "Gets logs of a specific entity. The entity type is determined by the auth type used. Paginated to 50 at a time. **Requires authentication**",
+		Description: "Gets webhook logs of a specific entity. Paginated to 10 at a time. **Requires authentication**",
 		Resp:        types.PagedResult[[]types.WebhookLogEntry]{},
 		RespName:    "PagedResultWebhookLogEntry",
 		Params: []docs.Parameter{
@@ -46,7 +46,7 @@ func Docs() *docs.Doc {
 			},
 			{
 				Name:        "target_type",
-				Description: "The entity type to return logs for.",
+				Description: "The entity type to return webhook logs for.",
 				Required:    true,
 				In:          "query",
 				Schema:      docs.IdSchema,
