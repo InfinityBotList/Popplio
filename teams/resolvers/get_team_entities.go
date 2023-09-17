@@ -17,6 +17,9 @@ var (
 
 	indexBotColsArr = db.GetCols(types.IndexBot{})
 	indexBotCols    = strings.Join(indexBotColsArr, ",")
+
+	indexServerColsArr = db.GetCols(types.IndexServer{})
+	indexServerCols    = strings.Join(indexServerColsArr, ",")
 )
 
 func GetTeamEntities(ctx context.Context, teamId string, targets []string) (*types.TeamEntities, error) {
@@ -75,6 +78,30 @@ func GetTeamEntities(ctx context.Context, teamId string, targets []string) (*typ
 				}
 
 				eto.Bots[i].Vanity = code
+			}
+		case "server":
+			indexServerRows, err := state.Pool.Query(ctx, "SELECT "+indexServerCols+" FROM servers WHERE team_owner = $1", teamId)
+
+			if err != nil {
+				return nil, err
+			}
+
+			eto.Servers, err = pgx.CollectRows(indexServerRows, pgx.RowToStructByName[types.IndexServer])
+
+			if err != nil {
+				return nil, err
+			}
+
+			for i := range eto.Servers {
+				var code string
+
+				err = state.Pool.QueryRow(ctx, "SELECT code FROM vanity WHERE itag = $1", eto.Servers[i].VanityRef).Scan(&code)
+
+				if err != nil {
+					return nil, err
+				}
+
+				eto.Servers[i].Vanity = code
 			}
 		default:
 			isInvalid = true

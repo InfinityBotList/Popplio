@@ -25,7 +25,7 @@ type IndexBot struct {
 	Shards      int                     `db:"shards" json:"shards" description:"The bot's shard count"`
 	Library     string                  `db:"library" json:"library" description:"The bot's library"`
 	InviteClick int                     `db:"invite_clicks" json:"invite_clicks" description:"The bot's invite click count (via users inviting the bot from IBL)"`
-	Views       int                     `db:"clicks" json:"clicks" description:"The bot's view count"`
+	Clicks      int                     `db:"clicks" json:"clicks" description:"The bot's view count"`
 	Servers     int                     `db:"servers" json:"servers" description:"The bot's server count"`
 	NSFW        bool                    `db:"nsfw" json:"nsfw" description:"Whether the bot is NSFW or not"`
 	Tags        []string                `db:"tags" json:"tags" description:"The bot's tags (e.g. music, moderation, etc.)"`

@@ -37,9 +37,10 @@ type TeamBulkFetch struct {
 }
 
 type TeamEntities struct {
-	Targets []string     `json:"targets,omitempty" description:"The targets available in the response"`
-	Members []TeamMember `json:"members,omitempty" description:"Members of the team"`
-	Bots    []IndexBot   `json:"bots,omitempty" description:"Bots of the team"` // Must be handled internally
+	Targets []string      `json:"targets,omitempty" description:"The targets available in the response"`
+	Members []TeamMember  `json:"members,omitempty" description:"Members of the team"`
+	Bots    []IndexBot    `json:"bots,omitempty" description:"Bots of the team"`
+	Servers []IndexServer `json:"servers,omitempty" description:"Servers of the team"`
 }
 
 type TeamMember struct {
