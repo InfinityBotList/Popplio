@@ -82,12 +82,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	webhook, err := pgx.CollectOneRow(rows, pgx.RowToStructByName[types.Webhook])
 
 	if errors.Is(err, pgx.ErrNoRows) {
-		return uapi.HttpResponse{
-			Json: types.Webhook{
-				TargetID:   targetId,
-				TargetType: targetType,
-			},
-		}
+		return uapi.DefaultResponse(http.StatusNotFound)
 	}
 
 	if err != nil {
