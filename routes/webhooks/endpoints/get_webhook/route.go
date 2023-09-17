@@ -1,6 +1,7 @@
 package get_webhook
 
 import (
+	"errors"
 	"net/http"
 	"popplio/db"
 	"popplio/state"
@@ -79,6 +80,15 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	}
 
 	webhook, err := pgx.CollectOneRow(rows, pgx.RowToStructByName[types.Webhook])
+
+	if errors.Is(err, pgx.ErrNoRows) {
+		return uapi.HttpResponse{
+			Json: types.Webhook{
+				TargetID:   targetId,
+				TargetType: targetType,
+			},
+		}
+	}
 
 	if err != nil {
 		state.Logger.Error(err)

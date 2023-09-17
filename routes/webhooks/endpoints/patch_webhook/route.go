@@ -95,24 +95,8 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		return hresp
 	}
 
-	tx, err := state.Pool.Begin(d.Context)
-
-	if err != nil {
-		state.Logger.Error(err)
-		return uapi.DefaultResponse(http.StatusInternalServerError)
-	}
-
-	defer tx.Rollback(d.Context)
-
 	if payload.Clear {
-		_, err = tx.Exec(d.Context, "DELETE FROM webhooks WHERE target_id = $1 AND target_type = $2", targetId, targetType)
-
-		if err != nil {
-			state.Logger.Error(err)
-			return uapi.DefaultResponse(http.StatusInternalServerError)
-		}
-
-		err = tx.Commit(d.Context)
+		_, err = state.Pool.Exec(d.Context, "DELETE FROM webhooks WHERE target_id = $1 AND target_type = $2", targetId, targetType)
 
 		if err != nil {
 			state.Logger.Error(err)
@@ -136,33 +120,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		}
 	}
 
-	// Check that a webhooks row exists
-	var count int64
-	err = tx.QueryRow(d.Context, "SELECT COUNT(*) FROM webhooks WHERE target_id = $1 AND target_type = $2", targetId, targetType).Scan(&count)
-
-	if err != nil {
-		state.Logger.Error(err)
-		return uapi.DefaultResponse(http.StatusInternalServerError)
-	}
-
-	if count == 0 {
-		_, err = tx.Exec(d.Context, "INSERT INTO webhooks (target_id, target_type, url, secret) VALUES ($1, $2, $3, $4)", targetId, targetType, payload.WebhookURL, payload.WebhookSecret)
-
-		if err != nil {
-			state.Logger.Error(err)
-			return uapi.DefaultResponse(http.StatusInternalServerError)
-		}
-	} else {
-		// Update webhooks
-		_, err = tx.Exec(d.Context, "UPDATE webhooks SET url = $1, secret = $2, broken = false WHERE target_id = $3 AND target_type = $4", payload.WebhookURL, payload.WebhookSecret, targetId, targetType)
-
-		if err != nil {
-			state.Logger.Error(err)
-			return uapi.DefaultResponse(http.StatusInternalServerError)
-		}
-	}
-
-	err = tx.Commit(d.Context)
+	state.Pool.Exec(d.Context, "INSERT INTO webhooks (target_id, target_type, url, secret) VALUES ($1, $2, $3, $4) ON CONFLICT (target_id, target_type) DO UPDATE SET url = $3, secret = $4, broken = false", targetId, targetType, payload.WebhookURL, payload.WebhookSecret)
 
 	if err != nil {
 		state.Logger.Error(err)
