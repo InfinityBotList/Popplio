@@ -152,11 +152,6 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
-	if !strings.HasPrefix(server.Banner.String, "https://") {
-		server.Banner.Valid = false
-		server.Banner.String = ""
-	}
-
 	row, err = state.Pool.Query(d.Context, "SELECT "+teamCols+" FROM teams WHERE id = $1", server.TeamOwnerID)
 
 	if err != nil {

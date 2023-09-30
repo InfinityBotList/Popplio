@@ -155,11 +155,6 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
-	if !strings.HasPrefix(bot.Banner.String, "https://") {
-		bot.Banner.Valid = false
-		bot.Banner.String = ""
-	}
-
 	if bot.Owner.Valid {
 		ownerUser, err := dovewing.GetUser(d.Context, bot.Owner.String, state.DovewingPlatformDiscord)
 

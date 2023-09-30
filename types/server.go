@@ -25,7 +25,7 @@ type IndexServer struct {
 	NSFW          bool        `db:"nsfw" json:"nsfw" description:"Whether the server is NSFW or not"`
 	Tags          []string    `db:"tags" json:"tags" description:"The server's tags (e.g. music, moderation, etc.)"`
 	Premium       bool        `db:"premium" json:"premium" description:"Whether the server is a premium server or not"`
-	Banner        pgtype.Text `db:"banner" json:"banner" description:"The server's banner URL if it has one, otherwise null"`
+	HasBanner     bool        `db:"has_banner" json:"has_banner" description:"Whether the bot has a banner or not. If it does, then it will be accessible from $cdnUrl/banners/bots/$bot_id.webp"`
 }
 
 // @ci table=servers
@@ -49,7 +49,7 @@ type Server struct {
 	TeamOwnerID         pgtype.UUID        `db:"team_owner" json:"-"`
 	TeamOwner           *Team              `db:"-" json:"team_owner" description:"If the server is in a team, who owns the server." ci:"internal"` // Must be parsed internally
 	InviteClicks        int                `db:"invite_clicks" json:"invite_clicks" description:"The server's invite click count (via users inviting the server from IBL)"`
-	Banner              pgtype.Text        `db:"banner" json:"banner" description:"The server's banner URL if it has one, otherwise null"`
+	HasBanner           bool               `db:"has_banner" json:"has_banner" description:"Whether the bot has a banner or not. If it does, then it will be accessible from $cdnUrl/banners/bots/$bot_id.webp"`
 	Clicks              int                `db:"clicks" json:"clicks" description:"The server's total click count"`
 	UniqueClicks        int64              `db:"-" json:"unique_clicks" description:"The server's unique click count based on SHA256 hashed IPs" ci:"internal"` // Must be parsed internally
 	NSFW                bool               `db:"nsfw" json:"nsfw" description:"Whether the serber is NSFW or not"`

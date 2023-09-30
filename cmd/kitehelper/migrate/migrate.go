@@ -40,12 +40,15 @@ func (s *SandboxPool) QueryRow(ctx context.Context, sql string, args ...interfac
 func (s *SandboxPool) Exec(ctx context.Context, sql string, args ...interface{}) error {
 	s.Log("Exec", sql, "with arguments:", args)
 
-	if os.Getenv("COMMIT") != "" && s.allowCommit {
+	if os.Getenv("NO_COMMIT") == "" && s.allowCommit {
+		s.Log("Exec", "Allowing commit")
 		_, err := s.pool.Exec(ctx, sql, args...)
 
 		if err != nil {
 			return err
 		}
+	} else {
+		s.Log("Exec", "Denying exec silently")
 	}
 
 	return nil
@@ -57,7 +60,7 @@ func (s *SandboxPool) Query(ctx context.Context, sql string, args ...interface{}
 }
 
 func (s *SandboxPool) Transaction(ctx context.Context, calls []func(tx pgx.Tx)) error {
-	if !s.allowCommit {
+	if os.Getenv("NO_COMMIT") == "" && s.allowCommit {
 		panic("creating a transaction is not allowed in this scope")
 	}
 
