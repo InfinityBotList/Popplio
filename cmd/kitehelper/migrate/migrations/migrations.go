@@ -1,46 +1,31 @@
-package migrate
+package migrations
 
 import (
 	"context"
+	"errors"
 	"strings"
 
+	"kitehelper/migrate"
+
 	"github.com/jackc/pgx/v5/pgtype"
-	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 // Contains the list of migrations
-
-/*
-	// Bot permissions
-	TeamPermissionEditBotSettings       types.TeamPermission = "EDIT_BOT_SETTINGS"
-	TeamPermissionAddNewBots            types.TeamPermission = "ADD_NEW_BOTS"
-	TeamPermissionResubmitBots          types.TeamPermission = "RESUBMIT_BOTS"
-	TeamPermissionCertifyBots           types.TeamPermission = "CERTIFY_BOTS"
-	TeamPermissionViewExistingBotTokens types.TeamPermission = "VIEW_EXISTING_BOT_TOKENS"
-	TeamPermissionResetBotTokens        types.TeamPermission = "RESET_BOT_TOKEN"
-	TeamPermissionEditBotWebhooks       types.TeamPermission = "EDIT_BOT_WEBHOOKS"
-	TeamPermissionTestBotWebhooks       types.TeamPermission = "TEST_BOT_WEBHOOKS"
-	TeamPermissionSetBotVanity          types.TeamPermission = "SET_BOT_VANITY"
-	TeamPermissionDeleteBots            types.TeamPermission = "DELETE_BOTS"
-
-		TeamPermissionEditTeamInfo              types.TeamPermission = "EDIT_TEAM_INFO"
-	TeamPermissionAddTeamMembers            types.TeamPermission = "ADD_TEAM_MEMBERS"
-	TeamPermissionRemoveTeamMembers         types.TeamPermission = "REMOVE_TEAM_MEMBERS"
-	TeamPermissionEditTeamMemberPermissions types.TeamPermission = "EDIT_TEAM_MEMBER_PERMISSIONS"
-	TeamPermissionEditTeamWebhooks          types.TeamPermission = "EDIT_TEAM_WEBHOOKS"
-*/
-
-var migs = []migration{
+var migs = []migrate.Migration{
 	{
-		name: "Create webhook_logs",
-		function: func(pool *pgxpool.Pool) {
-			if tableExists("webhook_logs") {
-				alrMigrated()
-				return
+		ID:   "create_webhook_logs",
+		Name: "Create webhook_logs",
+		HasMigrated: func(pool *migrate.SandboxPool) error {
+			if tableExists(pool, "webhook_logs") {
+				return errors.New("table webhook_logs already exists")
 			}
 
+			return nil
+		},
+		Function: func(pool *migrate.SandboxPool) {
+
 			// Create webhook_logs
-			_, err := pool.Exec(context.Background(), `CREATE TABLE IF NOT EXISTS webhook_logs (
+			err := pool.Exec(context.Background(), `CREATE TABLE IF NOT EXISTS webhook_logs (
 		id UUID PRIMARY KEY DEFAULT uuid_generate_v4(), 
 		target_id TEXT NOT NULL, 
 		target_type TEXT NOT NULL,
@@ -61,14 +46,16 @@ var migs = []migration{
 		},
 	},
 	{
-		name:     "Create vanity",
-		disabled: true,
-		function: func(pool *pgxpool.Pool) {
-			if !colExists("bots", "vanity") {
-				alrMigrated()
-				return
+		ID:   "create_vanity",
+		Name: "Create vanity",
+		HasMigrated: func(pool *migrate.SandboxPool) error {
+			if !colExists(pool, "bots", "vanity") && tableExists(pool, "vanity") {
+				return errors.New("table vanity already exists")
 			}
 
+			return nil
+		},
+		Function: func(pool *migrate.SandboxPool) {
 			// Fetch all bot vanities
 			rows, err := pool.Query(context.Background(), "SELECT bot_id, vanity FROM bots")
 
@@ -77,7 +64,7 @@ var migs = []migration{
 			}
 
 			// Add column vanity_ref to bots
-			_, err = pool.Exec(context.Background(), "ALTER TABLE bots ADD COLUMN vanity_ref UUID REFERENCES vanity(itag)")
+			err = pool.Exec(context.Background(), "ALTER TABLE bots ADD COLUMN vanity_ref UUID REFERENCES vanity(itag)")
 
 			if err != nil {
 				panic(err)
@@ -95,7 +82,7 @@ var migs = []migration{
 					panic(err)
 				}
 
-				statusBoldBlue("Migrating vanity for bot", botId)
+				migrate.StatusBoldBlue("Migrating vanity for bot", botId)
 
 				// Insert into vanity
 				var itag pgtype.UUID
@@ -106,7 +93,7 @@ var migs = []migration{
 				}
 
 				// Update bots
-				_, err = pool.Exec(context.Background(), "UPDATE bots SET vanity_ref = $1 WHERE bot_id = $2", itag, botId)
+				err = pool.Exec(context.Background(), "UPDATE bots SET vanity_ref = $1 WHERE bot_id = $2", itag, botId)
 
 				if err != nil {
 					panic(err)
@@ -114,7 +101,7 @@ var migs = []migration{
 			}
 
 			// Set vanity_ref to not null
-			_, err = pool.Exec(context.Background(), "ALTER TABLE bots ALTER COLUMN vanity_ref SET NOT NULL")
+			err = pool.Exec(context.Background(), "ALTER TABLE bots ALTER COLUMN vanity_ref SET NOT NULL")
 
 			if err != nil {
 				panic(err)
@@ -122,9 +109,16 @@ var migs = []migration{
 		},
 	},
 	{
-		name:     "Team permissions -> flags",
-		disabled: true,
-		function: func(pool *pgxpool.Pool) {
+		ID: "team_permissions_v2",
+		HasMigrated: func(pool *migrate.SandboxPool) error {
+			if !colExists(pool, "team_members", "perms") {
+				return errors.New("column perms does not exist")
+			}
+
+			return nil
+		},
+		Name: "Team permissions -> flags",
+		Function: func(pool *migrate.SandboxPool) {
 			// Fetch every team member permission
 			pmap := map[string]string{
 				"EDIT_BOT_SETTINGS":            "bot.edit",
@@ -164,7 +158,7 @@ var migs = []migration{
 					panic(err)
 				}
 
-				statusBoldBlue("Migrating team member permissions for", userId, "in team", teamId)
+				migrate.StatusBoldBlue("Migrating team member permissions for", userId, "in team", teamId)
 
 				// Convert perms
 				var flags = []string{}
@@ -176,7 +170,7 @@ var migs = []migration{
 				}
 
 				// Update team_members
-				_, err = pool.Exec(context.Background(), "UPDATE team_members SET flags = $1 WHERE team_id = $2 AND user_id = $3", flags, teamId, userId)
+				err = pool.Exec(context.Background(), "UPDATE team_members SET flags = $1 WHERE team_id = $2 AND user_id = $3", flags, teamId, userId)
 
 				if err != nil {
 					panic(err)
@@ -185,9 +179,16 @@ var migs = []migration{
 		},
 	},
 	{
-		name:     "migrate webhooks",
-		disabled: true,
-		function: func(pool *pgxpool.Pool) {
+		ID:   "migrate_webhooks",
+		Name: "migrate webhooks",
+		HasMigrated: func(pool *migrate.SandboxPool) error {
+			if tableExists(pool, "webhooks") && !colExists(pool, "bots", "webhooks") {
+				return errors.New("table webhooks already exists")
+			}
+
+			return nil
+		},
+		Function: func(pool *migrate.SandboxPool) {
 			rows, err := pool.Query(context.Background(), "SELECT bot_id, webhook, web_auth, api_token from bots")
 
 			if err != nil {
@@ -219,10 +220,10 @@ var migs = []migration{
 					}
 				}
 
-				statusBoldBlue("Migrating webhook for botId="+botId, "webhook="+webhook.String, "webAuth="+webAuth.String)
+				migrate.StatusBoldBlue("Migrating webhook for botId="+botId, "webhook="+webhook.String, "webAuth="+webAuth.String)
 
 				// Insert into webhooks
-				_, err = pool.Exec(context.Background(), "INSERT INTO webhooks (target_id, target_type, url, secret) VALUES ($1, 'bot', $2, $3)", botId, webhook.String, webAuth.String)
+				err = pool.Exec(context.Background(), "INSERT INTO webhooks (target_id, target_type, url, secret) VALUES ($1, 'bot', $2, $3)", botId, webhook.String, webAuth.String)
 
 				if err != nil {
 					panic(err)
@@ -230,4 +231,8 @@ var migs = []migration{
 			}
 		},
 	},
+}
+
+func init() {
+	migrate.AddMigrations(migs)
 }

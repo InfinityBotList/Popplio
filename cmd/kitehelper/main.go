@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	_ "kitehelper/icb/icb_migrations"
 	"kitehelper/migrate"
 	"kitehelper/tests"
 	"os"
