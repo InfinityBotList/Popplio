@@ -2,6 +2,7 @@ package upload_asset
 
 import (
 	"bytes"
+	"fmt"
 	"image"
 	"image/gif"
 	"image/jpeg"
@@ -23,8 +24,54 @@ import (
 )
 
 const maxAssetSize = 10 * 1024 * 1024
-const maxX = 1024
-const maxY = 256
+const maxX = 0 // STILL DECIDING
+const maxY = 0 // STILL DECIDING
+
+func decodeImage(payload *types.Asset) (fileExt string, img image.Image, err error) {
+	reader := bytes.NewReader(payload.Content)
+
+	switch payload.ContentType {
+	case "image/png":
+		// decode image
+		img, err = png.Decode(reader)
+
+		if err != nil {
+			return "png", nil, fmt.Errorf("error decoding PNG: %s", err.Error())
+		}
+
+		return "png", img, nil
+	case "image/jpeg":
+		// decode image
+		img, err = jpeg.Decode(reader)
+
+		if err != nil {
+			return "jpg", nil, fmt.Errorf("error decoding JPEG: %s", err.Error())
+		}
+
+		return "jpg", img, nil
+	case "image/gif":
+		// decode image
+		img, err = gif.Decode(reader)
+
+		if err != nil {
+			return "gif", nil, fmt.Errorf("error decoding GIF: %s", err.Error())
+		}
+
+		return "gif", img, nil
+	case "image/webp":
+		// decode image
+		img, err = webp.Decode(reader)
+
+		if err != nil {
+			return "webp", nil, fmt.Errorf("error decoding GIF: %s", err.Error())
+		}
+
+		return "webp", img, nil
+	default:
+		return "", nil, fmt.Errorf("content type not implemented")
+	}
+
+}
 
 func Docs() *docs.Doc {
 	return &docs.Doc{
@@ -158,77 +205,24 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 			}
 		}
 
-		reader := bytes.NewReader(payload.Content)
+		fileExt, img, err := decodeImage(&payload)
 
-		var img image.Image
-		var fileExt string
-		switch payload.ContentType {
-		case "image/png":
-			fileExt = "png"
-
-			// decode image
-			img, err = png.Decode(reader)
-
-			if err != nil {
-				return uapi.HttpResponse{
-					Status:  http.StatusBadRequest,
-					Headers: limit.Headers(),
-					Json:    types.ApiError{Message: "Error decoding PNG: " + err.Error()},
-				}
-			}
-		case "image/jpeg":
-			fileExt = "jpg"
-
-			// decode image
-			img, err = jpeg.Decode(reader)
-
-			if err != nil {
-				return uapi.HttpResponse{
-					Status:  http.StatusBadRequest,
-					Headers: limit.Headers(),
-					Json:    types.ApiError{Message: "Error decoding JPEG: " + err.Error()},
-				}
-			}
-		case "image/gif":
-			fileExt = "gif"
-
-			// decode image
-			img, err = gif.Decode(reader)
-
-			if err != nil {
-				return uapi.HttpResponse{
-					Status:  http.StatusBadRequest,
-					Headers: limit.Headers(),
-					Json:    types.ApiError{Message: "Error decoding GIF: " + err.Error()},
-				}
-			}
-		case "image/webp":
-			fileExt = "webp"
-
-			// decode image
-			img, err = webp.Decode(reader)
-
-			if err != nil {
-				return uapi.HttpResponse{
-					Status:  http.StatusBadRequest,
-					Headers: limit.Headers(),
-					Json:    types.ApiError{Message: "Error decoding WEBP: " + err.Error()},
-				}
-			}
-		default:
+		if err != nil {
 			return uapi.HttpResponse{
-				Status:  http.StatusNotImplemented,
+				Status:  http.StatusBadRequest,
 				Headers: limit.Headers(),
-				Json:    types.ApiError{Message: "ContentType not implemented for this banner"},
+				Json:    types.ApiError{Message: err.Error()},
 			}
 		}
 
 		// check image size
-		if (maxX != 0 && maxY != 0) && (img.Bounds().Dx() > maxX || img.Bounds().Dy() > maxY) {
-			return uapi.HttpResponse{
-				Status:  http.StatusBadRequest,
-				Headers: limit.Headers(),
-				Json:    types.ApiError{Message: "Image must be 1024x256 or smaller"},
+		if maxX != 0 && maxY != 0 {
+			if img.Bounds().Dx() > maxX || img.Bounds().Dy() > maxY {
+				return uapi.HttpResponse{
+					Status:  http.StatusBadRequest,
+					Headers: limit.Headers(),
+					Json:    types.ApiError{Message: fmt.Sprintf("Image must be %dx%d or smaller", maxX, maxY)},
+				}
 			}
 		}
 
