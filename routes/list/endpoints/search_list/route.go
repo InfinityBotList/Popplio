@@ -6,6 +6,7 @@ import (
 	"strings"
 	"text/template"
 
+	"popplio/assets"
 	"popplio/db"
 	"popplio/state"
 	"popplio/types"
@@ -135,37 +136,38 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
-	indexBots, err := pgx.CollectRows(rows, pgx.RowToStructByName[types.IndexBot])
+	bots, err := pgx.CollectRows(rows, pgx.RowToStructByName[types.IndexBot])
 
 	if err != nil {
 		state.Logger.Error(err)
 		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
-	for i, bot := range indexBots {
-		botUser, err := dovewing.GetUser(d.Context, bot.BotID, state.DovewingPlatformDiscord)
+	for i := range bots {
+		botUser, err := dovewing.GetUser(d.Context, bots[i].BotID, state.DovewingPlatformDiscord)
 
 		if err != nil {
 			return uapi.DefaultResponse(http.StatusInternalServerError)
 		}
 
-		indexBots[i].User = botUser
+		bots[i].User = botUser
 
 		var code string
 
-		err = state.Pool.QueryRow(d.Context, "SELECT code FROM vanity WHERE itag = $1", indexBots[i].VanityRef).Scan(&code)
+		err = state.Pool.QueryRow(d.Context, "SELECT code FROM vanity WHERE itag = $1", bots[i].VanityRef).Scan(&code)
 
 		if err != nil {
 			state.Logger.Error(err)
 			return uapi.DefaultResponse(http.StatusInternalServerError)
 		}
 
-		indexBots[i].Vanity = code
+		bots[i].Vanity = code
+		bots[i].Banner = assets.BannerInfo("bots", bots[i].BotID)
 	}
 
 	return uapi.HttpResponse{
 		Json: types.SearchResponse{
-			Bots: indexBots,
+			Bots: bots,
 		},
 	}
 }

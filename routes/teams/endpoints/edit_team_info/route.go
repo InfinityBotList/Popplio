@@ -92,9 +92,13 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	defer tx.Rollback(d.Context)
 
 	// Get current name and avatar
-	var oldName, oldAvatar string
+	var oldName string
+	var oldAvatar string
+	var oldShort string
+	var oldTags []string
+	var oldExtraLinks []types.Link
 
-	err = tx.QueryRow(d.Context, "SELECT name, avatar FROM teams WHERE id = $1", teamId).Scan(&oldName, &oldAvatar)
+	err = tx.QueryRow(d.Context, "SELECT name, avatar, short, tags, links FROM teams WHERE id = $1", teamId).Scan(&oldName, &oldAvatar, &oldShort, &oldTags, &oldExtraLinks)
 
 	if err != nil {
 		state.Logger.Error(err)
@@ -111,15 +115,6 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 
 	if payload.Short != nil {
 		_, err = tx.Exec(d.Context, "UPDATE teams SET short = $1 WHERE id = $2", payload.Short, teamId)
-
-		if err != nil {
-			state.Logger.Error(err)
-			return uapi.DefaultResponse(http.StatusInternalServerError)
-		}
-	}
-
-	if payload.Banner != nil {
-		_, err = tx.Exec(d.Context, "UPDATE teams SET banner = $1 WHERE id = $2", payload.Banner, teamId)
 
 		if err != nil {
 			state.Logger.Error(err)
@@ -171,6 +166,36 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 				Old: oldAvatar,
 				New: payload.Avatar,
 			},
+			Short: func() events.Changeset[string] {
+				if payload.Short == nil {
+					return events.Changeset[string]{}
+				}
+
+				return events.Changeset[string]{
+					Old: oldShort,
+					New: *payload.Short,
+				}
+			}(),
+			Tags: func() events.Changeset[[]string] {
+				if payload.Tags == nil {
+					return events.Changeset[[]string]{}
+				}
+
+				return events.Changeset[[]string]{
+					Old: oldTags,
+					New: *payload.Tags,
+				}
+			}(),
+			ExtraLinks: func() events.Changeset[[]types.Link] {
+				if payload.ExtraLinks == nil {
+					return events.Changeset[[]types.Link]{}
+				}
+
+				return events.Changeset[[]types.Link]{
+					Old: oldExtraLinks,
+					New: *payload.ExtraLinks,
+				}
+			}(),
 		},
 		UserID: d.Auth.ID,
 		TeamID: teamId,

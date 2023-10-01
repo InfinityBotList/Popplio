@@ -10,22 +10,22 @@ import (
 //
 // Represents a 'index server' (a small subset of the server object for use in cards etc.)
 type IndexServer struct {
-	ServerID      string      `db:"server_id" json:"server_id" description:"The server's ID"`
-	Name          string      `db:"name" json:"name" description:"The server's name"`
-	Avatar        string      `db:"avatar" json:"avatar" description:"The server's avatar"`
-	TotalMembers  int         `db:"total_members" json:"total_members" description:"The server's total member count"`
-	OnlineMembers int         `db:"online_members" json:"online_members" description:"The server's online member count"`
-	Short         string      `db:"short" json:"short" description:"The server's short description"`
-	Type          string      `db:"type" json:"type" description:"The server's type (e.g. pending/approved/certified/denied etc.)"`
-	VanityRef     pgtype.UUID `db:"vanity_ref" json:"vanity_ref" description:"The corresponding vanities itag, this also works to ensure that all servers have an associated vanity"`
-	Vanity        string      `db:"-" json:"vanity" description:"The server's vanity URL" ci:"internal"` // Must be parsed internally
-	Votes         int         `db:"votes" json:"votes" description:"The server's vote count"`
-	InviteClicks  int         `db:"invite_clicks" json:"invite_clicks" description:"The server's invite click count (via users inviting the server from IBL)"`
-	Clicks        int         `db:"clicks" json:"clicks" description:"The server's view count"`
-	NSFW          bool        `db:"nsfw" json:"nsfw" description:"Whether the server is NSFW or not"`
-	Tags          []string    `db:"tags" json:"tags" description:"The server's tags (e.g. music, moderation, etc.)"`
-	Premium       bool        `db:"premium" json:"premium" description:"Whether the server is a premium server or not"`
-	HasBanner     bool        `db:"has_banner" json:"has_banner" description:"Whether the bot has a banner or not. If it does, then it will be accessible from $cdnUrl/banners/bots/$bot_id.webp"`
+	ServerID      string         `db:"server_id" json:"server_id" description:"The server's ID"`
+	Name          string         `db:"name" json:"name" description:"The server's name"`
+	Avatar        string         `db:"avatar" json:"avatar" description:"The server's avatar"`
+	TotalMembers  int            `db:"total_members" json:"total_members" description:"The server's total member count"`
+	OnlineMembers int            `db:"online_members" json:"online_members" description:"The server's online member count"`
+	Short         string         `db:"short" json:"short" description:"The server's short description"`
+	Type          string         `db:"type" json:"type" description:"The server's type (e.g. pending/approved/certified/denied etc.)"`
+	VanityRef     pgtype.UUID    `db:"vanity_ref" json:"vanity_ref" description:"The corresponding vanities itag, this also works to ensure that all servers have an associated vanity"`
+	Vanity        string         `db:"-" json:"vanity" description:"The server's vanity URL" ci:"internal"` // Must be parsed internally
+	Votes         int            `db:"votes" json:"votes" description:"The server's vote count"`
+	InviteClicks  int            `db:"invite_clicks" json:"invite_clicks" description:"The server's invite click count (via users inviting the server from IBL)"`
+	Clicks        int            `db:"clicks" json:"clicks" description:"The server's view count"`
+	NSFW          bool           `db:"nsfw" json:"nsfw" description:"Whether the server is NSFW or not"`
+	Tags          []string       `db:"tags" json:"tags" description:"The server's tags (e.g. music, moderation, etc.)"`
+	Premium       bool           `db:"premium" json:"premium" description:"Whether the server is a premium server or not"`
+	Banner        *AssetMetadata `db:"-" json:"banner" description:"Banner information/metadata"`
 }
 
 // @ci table=servers
@@ -49,7 +49,7 @@ type Server struct {
 	TeamOwnerID         pgtype.UUID        `db:"team_owner" json:"-"`
 	TeamOwner           *Team              `db:"-" json:"team_owner" description:"If the server is in a team, who owns the server." ci:"internal"` // Must be parsed internally
 	InviteClicks        int                `db:"invite_clicks" json:"invite_clicks" description:"The server's invite click count (via users inviting the server from IBL)"`
-	HasBanner           bool               `db:"has_banner" json:"has_banner" description:"Whether the bot has a banner or not. If it does, then it will be accessible from $cdnUrl/banners/bots/$bot_id.webp"`
+	Banner              *AssetMetadata     `db:"-" json:"banner" description:"Banner information/metadata"`
 	Clicks              int                `db:"clicks" json:"clicks" description:"The server's total click count"`
 	UniqueClicks        int64              `db:"-" json:"unique_clicks" description:"The server's unique click count based on SHA256 hashed IPs" ci:"internal"` // Must be parsed internally
 	NSFW                bool               `db:"nsfw" json:"nsfw" description:"Whether the serber is NSFW or not"`
@@ -64,7 +64,6 @@ type Server struct {
 type ServerSettingsUpdate struct {
 	Short         string   `db:"short" json:"short" validate:"required,min=30,max=150" msg:"Short description must be between 30 and 150 characters"` // impld
 	Long          string   `db:"long" json:"long" validate:"required,min=500" msg:"Long description must be at least 500 characters"`                 // impld
-	Banner        *string  `db:"banner" json:"banner" validate:"omitempty,https" msg:"Background must be a valid HTTPS URL"`                          // impld
 	ExtraLinks    []Link   `db:"extra_links" json:"extra_links" validate:"required" msg:"Extra links must be sent"`                                   // Impld
 	Tags          []string `db:"tags" json:"tags" validate:"required,unique,min=1,max=5,dive,min=3,max=30,notblank,nonvulgar" msg:"There must be between 1 and 5 tags without duplicates" amsg:"Each tag must be between 3 and 30 characters and alphabetic"`
 	NSFW          bool     `db:"nsfw" json:"nsfw"`

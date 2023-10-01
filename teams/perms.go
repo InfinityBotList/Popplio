@@ -58,6 +58,9 @@ const (
 	// Ability to delete the logs of a webhook
 	PermissionDeleteWebhookLogs Permission = "delete_webhook_logs"
 
+	// Ability to upload and manage assets for the entity
+	PermissionAssets Permission = "assets"
+
 	// Ability to delete the entity
 	PermissionDelete Permission = "delete"
 
@@ -148,6 +151,12 @@ var PermDetails = []types.PermissionData{
 		Name:              "Delete {entity} Webhook Logs",
 		Desc:              "Delete {entity} webhook logs. Usually requires 'Get {entity} Webhook Logs' to be useful.",
 		SupportedEntities: []string{"bot", "team", "server", "global"},
+	},
+	{
+		ID:                PermissionAssets,
+		Name:              "Manage {entity} Assets",
+		Desc:              "Upload and manage assets for {entity} on the team",
+		SupportedEntities: []string{"bot", "server", "team", "global"},
 	},
 	{
 		ID:   PermissionDelete,

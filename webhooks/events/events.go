@@ -54,6 +54,10 @@ func RegisterEvent(a WebhookEvent) {
 			ti := reflect.Zero(f.Type).Interface()
 
 			switch ti.(type) {
+			case Changeset[[]string]:
+				fieldType = changesetOf(types.WebhookTypeTextArray)
+			case Changeset[[]types.Link]:
+				fieldType = changesetOf(types.WebhookTypeLinkArray)
 			case Changeset[string]:
 				fieldType = changesetOf(types.WebhookTypeText)
 			case Changeset[int], Changeset[int8], Changeset[int16], Changeset[int32], Changeset[int64]:

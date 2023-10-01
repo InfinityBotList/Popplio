@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"strings"
 
+	"popplio/assets"
 	"popplio/db"
 	"popplio/state"
 	"popplio/types"
@@ -192,12 +193,13 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	}
 
 	server.Vanity = code
-
-	go handleAnalytics(r, id, target)
+	server.Banner = assets.BannerInfo("servers", server.ServerID)
 
 	if r.URL.Query().Get("short") == "true" {
 		server.Long = ""
 	}
+
+	go handleAnalytics(r, id, target)
 
 	return uapi.HttpResponse{
 		Json: server,

@@ -23,7 +23,6 @@ func updateServerArgs(server types.ServerSettingsUpdate) []any {
 	return []any{
 		server.Short,
 		server.Long,
-		server.Banner,
 		server.ExtraLinks,
 		server.Tags,
 		server.NSFW,

@@ -3,6 +3,7 @@ package get_team
 import (
 	"errors"
 	"net/http"
+	"popplio/assets"
 	"popplio/db"
 	"popplio/state"
 	"popplio/teams/resolvers"
@@ -73,6 +74,8 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		state.Logger.Error(err)
 		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
+
+	team.Banner = assets.BannerInfo("teams", id)
 
 	team.Entities, err = resolvers.GetTeamEntities(d.Context, id, targets)
 

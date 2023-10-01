@@ -30,7 +30,7 @@ type IndexBot struct {
 	NSFW        bool                    `db:"nsfw" json:"nsfw" description:"Whether the bot is NSFW or not"`
 	Tags        []string                `db:"tags" json:"tags" description:"The bot's tags (e.g. music, moderation, etc.)"`
 	Premium     bool                    `db:"premium" json:"premium" description:"Whether the bot is a premium bot or not"`
-	HasBanner   bool                    `db:"has_banner" json:"has_banner" description:"Whether the bot has a banner or not. If it does, then it will be accessible from $cdnUrl/banners/bots/$bot_id.webp"`
+	Banner      *AssetMetadata          `db:"-" json:"banner" description:"Banner information/metadata"`
 }
 
 type BotStats struct {
@@ -68,7 +68,7 @@ type Bot struct {
 	Clicks              int                     `db:"clicks" json:"clicks" description:"The bot's total click count"`
 	UniqueClicks        int64                   `db:"-" json:"unique_clicks" description:"The bot's unique click count based on SHA256 hashed IPs" ci:"internal"` // Must be parsed internally
 	InviteClicks        int                     `db:"invite_clicks" json:"invite_clicks" description:"The bot's invite click count (via users inviting the bot from IBL)"`
-	HasBanner           bool                    `db:"has_banner" json:"has_banner" description:"Whether the bot has a banner or not. If it does, then it will be accessible from $cdnUrl/banners/bots/$bot_id.webp"`
+	Banner              *AssetMetadata          `db:"-" json:"banner" description:"Banner information/metadata"`
 	Invite              string                  `db:"invite" json:"invite" description:"The bot's invite URL. Must be present"`
 	Type                string                  `db:"type" json:"type" description:"The bot's type (e.g. pending/approved/certified/denied etc.). Note that we do not filter out denied/banned bots in API"`
 	VanityRef           pgtype.UUID             `db:"vanity_ref" json:"vanity_ref" description:"The corresponding vanities itag, this also works to ensure that all bots have an associated vanity"`
@@ -100,7 +100,6 @@ type CreateBot struct {
 	Long       string   `db:"long" json:"long" validate:"required,min=500" msg:"Long description must be at least 500 characters"`                 // impld
 	Prefix     string   `db:"prefix" json:"prefix" validate:"required,min=1,max=10" msg:"Prefix must be between 1 and 10 characters"`              // impld
 	Invite     string   `db:"invite" json:"invite" validate:"required,https" msg:"Invite is required and must be a valid HTTPS URL"`               // impld
-	Banner     *string  `db:"banner" json:"banner" validate:"omitempty,https" msg:"Background must be a valid HTTPS URL"`                          // impld
 	Library    string   `db:"library" json:"library" validate:"required,min=1,max=50" msg:"Library must be between 1 and 50 characters"`           // impld
 	ExtraLinks []Link   `db:"extra_links" json:"extra_links" validate:"required" msg:"Extra links must be sent"`                                   // Impld
 	Tags       []string `db:"tags" json:"tags" validate:"required,unique,min=1,max=5,dive,min=3,max=30,notblank,nonvulgar" msg:"There must be between 1 and 5 tags without duplicates" amsg:"Each tag must be between 3 and 30 characters and alphabetic"`
@@ -119,7 +118,6 @@ type BotSettingsUpdate struct {
 	Long          string   `db:"long" json:"long" validate:"required,min=500" msg:"Long description must be at least 500 characters"`                 // impld
 	Prefix        string   `db:"prefix" json:"prefix" validate:"required,min=1,max=10" msg:"Prefix must be between 1 and 10 characters"`              // impld
 	Invite        string   `db:"invite" json:"invite" validate:"required,https" msg:"Invite is required and must be a valid HTTPS URL"`               // impld
-	Banner        *string  `db:"banner" json:"banner" validate:"omitempty,https" msg:"Background must be a valid HTTPS URL"`                          // impld
 	Library       string   `db:"library" json:"library" validate:"required,min=1,max=50" msg:"Library must be between 1 and 50 characters"`           // impld
 	ExtraLinks    []Link   `db:"extra_links" json:"extra_links" validate:"required" msg:"Extra links must be sent"`                                   // Impld
 	Tags          []string `db:"tags" json:"tags" validate:"required,unique,min=1,max=5,dive,min=3,max=30,notblank,nonvulgar" msg:"There must be between 1 and 5 tags without duplicates" amsg:"Each tag must be between 3 and 30 characters and alphabetic"`

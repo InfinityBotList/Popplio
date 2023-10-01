@@ -21,15 +21,15 @@ type PermissionData struct {
 }
 
 type Team struct {
-	ID         string        `db:"id" json:"id" description:"The ID of the team"`
-	Name       string        `db:"name" json:"name" description:"The name of the team"`
-	Avatar     string        `db:"avatar" json:"avatar" description:"The avatar of the team"`
-	Banner     pgtype.Text   `db:"banner" json:"banner" description:"The team's banner URL if it has one, otherwise null"`
-	Short      pgtype.Text   `db:"short" json:"short" description:"The teams's short description if it has one, otherwise null"`
-	Tags       []string      `db:"tags" json:"tags" description:"The teams's tags if it has any, otherwise null"`
-	Votes      int           `db:"votes" json:"votes" description:"The teams's vote count"`
-	ExtraLinks []Link        `db:"extra_links" json:"extra_links" description:"The teams's links that it wishes to advertise"`
-	Entities   *TeamEntities `db:"-" json:"entities" description:"The entities of the team"` // Must be handled internally
+	ID         string         `db:"id" json:"id" description:"The ID of the team"`
+	Name       string         `db:"name" json:"name" description:"The name of the team"`
+	Avatar     string         `db:"avatar" json:"avatar" description:"The avatar of the team"`
+	Banner     *AssetMetadata `db:"-" json:"banner" description:"Banner information/metadata"`
+	Short      pgtype.Text    `db:"short" json:"short" description:"The teams's short description if it has one, otherwise null"`
+	Tags       []string       `db:"tags" json:"tags" description:"The teams's tags if it has any, otherwise null"`
+	Votes      int            `db:"votes" json:"votes" description:"The teams's vote count"`
+	ExtraLinks []Link         `db:"extra_links" json:"extra_links" description:"The teams's links that it wishes to advertise"`
+	Entities   *TeamEntities  `db:"-" json:"entities" description:"The entities of the team"` // Must be handled internally
 }
 
 type TeamBulkFetch struct {
@@ -55,7 +55,6 @@ type TeamMember struct {
 type CreateEditTeam struct {
 	Name       string    `json:"name" validate:"required,nonvulgar,min=3,max=32" msg:"Team name must be between 3 and 32 characters long"`
 	Avatar     string    `json:"avatar" validate:"required,https" msg:"Avatar must be a valid HTTPS URL"`
-	Banner     *string   `json:"banner" validate:"omitempty,https" msg:"Background must be a valid HTTPS URL"`                   // impld
 	Short      *string   `json:"short" validate:"omitempty,max=150" msg:"Short description must be a maximum of 150 characters"` // impld
 	Tags       *[]string `json:"tags" validate:"omitempty,unique,max=5,dive,min=3,max=30,notblank,nonvulgar" msg:"There may a maximum of 5 tags without duplicates" amsg:"Each tag must be between 3 and 30 characters and alphabetic"`
 	ExtraLinks *[]Link   `json:"extra_links" description:"The team's links that it wishes to advertise"`

@@ -1,6 +1,8 @@
 package events
 
 import (
+	"popplio/types"
+
 	"github.com/bwmarrin/discordgo"
 	docs "github.com/infinitybotlist/eureka/doclib"
 	"github.com/infinitybotlist/eureka/dovewing/dovetypes"
@@ -9,8 +11,11 @@ import (
 const WebhookTypeTeamEdit WebhookType = "TEAM_EDIT"
 
 type WebhookTeamEditData struct {
-	Name   Changeset[string] `json:"name" description:"The changeset of the name"`
-	Avatar Changeset[string] `json:"avatar" description:"The changeset of the avatar"`
+	Name       Changeset[string]       `json:"name" description:"The changeset of the name"`
+	Avatar     Changeset[string]       `json:"avatar" description:"The changeset of the avatar"`
+	Short      Changeset[string]       `json:"short" description:"The changeset of the short description"`
+	Tags       Changeset[[]string]     `json:"tags" description:"The changeset of the tags"`
+	ExtraLinks Changeset[[]types.Link] `json:"extra_links" description:"The changeset of the extra links"`
 }
 
 func (n WebhookTeamEditData) TargetType() string {

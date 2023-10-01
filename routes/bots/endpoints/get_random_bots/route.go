@@ -2,6 +2,7 @@ package get_random_bots
 
 import (
 	"net/http"
+	"popplio/assets"
 	"popplio/db"
 	"popplio/state"
 	"popplio/types"
@@ -67,6 +68,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		}
 
 		bots[i].Vanity = code
+		bots[i].Banner = assets.BannerInfo("bots", bots[i].BotID)
 	}
 
 	return uapi.HttpResponse{
@@ -74,5 +76,4 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 			Bots: bots,
 		},
 	}
-
 }

@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"strings"
 
+	"popplio/assets"
 	"popplio/db"
 	"popplio/state"
 	"popplio/teams/resolvers"
@@ -117,6 +118,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		}
 
 		user.UserBots[i].Vanity = code
+		user.UserBots[i].Banner = assets.BannerInfo("bots", user.UserBots[i].BotID)
 	}
 
 	// Get user teams
@@ -163,6 +165,8 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 			state.Logger.Error(err)
 			return uapi.DefaultResponse(http.StatusInternalServerError)
 		}
+
+		eto.Banner = assets.BannerInfo("teams", eto.ID)
 
 		user.UserTeams = append(user.UserTeams, eto)
 	}

@@ -23,6 +23,8 @@ type WebhookType = string
 
 const (
 	WebhookTypeText      WebhookType = "text"
+	WebhookTypeTextArray WebhookType = "text[]"
+	WebhookTypeLinkArray WebhookType = "link[]"
 	WebhookTypeNumber    WebhookType = "number"
 	WebhookTypeChangeset WebhookType = "changeset"
 	WebhookTypeBoolean   WebhookType = "boolean"

@@ -40,7 +40,6 @@ func createBotsArgs(bot types.CreateBot, id internalData) []any {
 		bot.Long,
 		bot.Prefix,
 		bot.Invite,
-		bot.Banner,
 		bot.Library,
 		bot.ExtraLinks,
 		bot.Tags,

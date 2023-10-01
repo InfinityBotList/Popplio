@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"strings"
 
+	"popplio/assets"
 	"popplio/config"
 	"popplio/db"
 	"popplio/state"
@@ -217,6 +218,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	}
 
 	bot.Vanity = code
+	bot.Banner = assets.BannerInfo("bots", bot.BotID)
 
 	go handleAnalytics(r, id, target)
 

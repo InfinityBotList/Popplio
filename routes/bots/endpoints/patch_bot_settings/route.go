@@ -26,7 +26,6 @@ func updateBotsArgs(bot types.BotSettingsUpdate) []any {
 		bot.Long,
 		bot.Prefix,
 		bot.Invite,
-		bot.Banner,
 		bot.Library,
 		bot.ExtraLinks,
 		bot.Tags,
@@ -104,7 +103,6 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	}
 
 	// Validate the payload
-
 	err = state.Validator.Struct(payload)
 
 	if err != nil {
