@@ -19,7 +19,7 @@ func (b Router) Tag() (string, string) {
 func (b Router) Routes(r *chi.Mux) {
 	uapi.Route{
 		Pattern: "/users/{uid}/assets/{target_id}",
-		OpId:    "patch_webhook",
+		OpId:    "upload_asset",
 		Method:  uapi.POST,
 		Docs:    upload_asset.Docs,
 		Handler: upload_asset.Route,

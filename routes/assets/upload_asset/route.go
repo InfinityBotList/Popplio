@@ -12,11 +12,13 @@ import (
 	"popplio/state"
 	"popplio/teams"
 	"popplio/types"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/infinitybotlist/eureka/crypto"
 	docs "github.com/infinitybotlist/eureka/doclib"
 	"github.com/infinitybotlist/eureka/uapi"
+	"github.com/infinitybotlist/eureka/uapi/ratelimit"
 	"golang.org/x/image/webp"
 )
 
@@ -57,14 +59,36 @@ func Docs() *docs.Doc {
 }
 
 func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
+	limit, err := ratelimit.Ratelimit{
+		Expiry:      1 * time.Minute,
+		MaxRequests: 3,
+		Bucket:      "upload_asset",
+	}.Limit(d.Context, r)
+
+	if err != nil {
+		state.Logger.Error(err)
+		return uapi.DefaultResponse(http.StatusInternalServerError)
+	}
+
+	if limit.Exceeded {
+		return uapi.HttpResponse{
+			Json: types.ApiError{
+				Message: "You are being ratelimited. Please try again in " + limit.TimeToReset.String(),
+			},
+			Headers: limit.Headers(),
+			Status:  http.StatusTooManyRequests,
+		}
+	}
+
 	uid := chi.URLParam(r, "uid")
 	targetId := chi.URLParam(r, "target_id")
 	targetType := r.URL.Query().Get("target_type")
 
 	if uid == "" || targetId == "" || targetType == "" {
 		return uapi.HttpResponse{
-			Status: http.StatusBadRequest,
-			Json:   types.ApiError{Message: "Both target_id and target_type must be specified"},
+			Status:  http.StatusBadRequest,
+			Headers: limit.Headers(),
+			Json:    types.ApiError{Message: "Both target_id and target_type must be specified"},
 		}
 	}
 
@@ -74,8 +98,9 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	case "team":
 	default:
 		return uapi.HttpResponse{
-			Status: http.StatusNotImplemented,
-			Json:   types.ApiError{Message: "Target type not implemented"},
+			Status:  http.StatusNotImplemented,
+			Headers: limit.Headers(),
+			Json:    types.ApiError{Message: "Target type not implemented"},
 		}
 	}
 
@@ -84,22 +109,24 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	if err != nil {
 		state.Logger.Error(err)
 		return uapi.HttpResponse{
-			Status: http.StatusBadRequest,
-			Json:   types.ApiError{Message: "Error getting user perms: " + err.Error()},
+			Status:  http.StatusBadRequest,
+			Headers: limit.Headers(),
+			Json:    types.ApiError{Message: "Error getting user perms: " + err.Error()},
 		}
 	}
 
 	if !perms.Has(targetType, teams.PermissionAssets) {
 		return uapi.HttpResponse{
-			Status: http.StatusForbidden,
-			Json:   types.ApiError{Message: "You do not have permission to manage assets for this entity"},
+			Status:  http.StatusForbidden,
+			Headers: limit.Headers(),
+			Json:    types.ApiError{Message: "You do not have permission to manage assets for this entity"},
 		}
 	}
 
 	// Read payload from body
 	var payload types.Asset
 
-	hresp, ok := uapi.MarshalReq(r, &payload)
+	hresp, ok := uapi.MarshalReqWithHeaders(r, &payload, limit.Headers())
 
 	if !ok {
 		return hresp
@@ -107,15 +134,17 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 
 	if payload.Type == "" {
 		return uapi.HttpResponse{
-			Status: http.StatusBadRequest,
-			Json:   types.ApiError{Message: "Type must be specified"},
+			Status:  http.StatusBadRequest,
+			Headers: limit.Headers(),
+			Json:    types.ApiError{Message: "Type must be specified"},
 		}
 	}
 
 	if len(payload.Content) == 0 || len(payload.Content) > maxAssetSize {
 		return uapi.HttpResponse{
-			Status: http.StatusBadRequest,
-			Json:   types.ApiError{Message: "Content must be between 1 and 10mb"},
+			Status:  http.StatusBadRequest,
+			Headers: limit.Headers(),
+			Json:    types.ApiError{Message: "Content must be between 1 and 10mb"},
 		}
 	}
 
@@ -123,8 +152,9 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	case "banner":
 		if payload.ContentType == "" {
 			return uapi.HttpResponse{
-				Status: http.StatusBadRequest,
-				Json:   types.ApiError{Message: "ContentType must be specified to upload a banner"},
+				Status:  http.StatusBadRequest,
+				Headers: limit.Headers(),
+				Json:    types.ApiError{Message: "ContentType must be specified to upload a banner"},
 			}
 		}
 
@@ -141,8 +171,9 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 
 			if err != nil {
 				return uapi.HttpResponse{
-					Status: http.StatusBadRequest,
-					Json:   types.ApiError{Message: "Error decoding PNG: " + err.Error()},
+					Status:  http.StatusBadRequest,
+					Headers: limit.Headers(),
+					Json:    types.ApiError{Message: "Error decoding PNG: " + err.Error()},
 				}
 			}
 		case "image/jpeg":
@@ -153,8 +184,9 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 
 			if err != nil {
 				return uapi.HttpResponse{
-					Status: http.StatusBadRequest,
-					Json:   types.ApiError{Message: "Error decoding JPEG: " + err.Error()},
+					Status:  http.StatusBadRequest,
+					Headers: limit.Headers(),
+					Json:    types.ApiError{Message: "Error decoding JPEG: " + err.Error()},
 				}
 			}
 		case "image/gif":
@@ -165,8 +197,9 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 
 			if err != nil {
 				return uapi.HttpResponse{
-					Status: http.StatusBadRequest,
-					Json:   types.ApiError{Message: "Error decoding GIF: " + err.Error()},
+					Status:  http.StatusBadRequest,
+					Headers: limit.Headers(),
+					Json:    types.ApiError{Message: "Error decoding GIF: " + err.Error()},
 				}
 			}
 		case "image/webp":
@@ -177,22 +210,25 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 
 			if err != nil {
 				return uapi.HttpResponse{
-					Status: http.StatusBadRequest,
-					Json:   types.ApiError{Message: "Error decoding WEBP: " + err.Error()},
+					Status:  http.StatusBadRequest,
+					Headers: limit.Headers(),
+					Json:    types.ApiError{Message: "Error decoding WEBP: " + err.Error()},
 				}
 			}
 		default:
 			return uapi.HttpResponse{
-				Status: http.StatusNotImplemented,
-				Json:   types.ApiError{Message: "ContentType not implemented for this banner"},
+				Status:  http.StatusNotImplemented,
+				Headers: limit.Headers(),
+				Json:    types.ApiError{Message: "ContentType not implemented for this banner"},
 			}
 		}
 
 		// check image size
 		if (maxX != 0 && maxY != 0) && (img.Bounds().Dx() > maxX || img.Bounds().Dy() > maxY) {
 			return uapi.HttpResponse{
-				Status: http.StatusBadRequest,
-				Json:   types.ApiError{Message: "Image must be 1024x256 or smaller"},
+				Status:  http.StatusBadRequest,
+				Headers: limit.Headers(),
+				Json:    types.ApiError{Message: "Image must be 1024x256 or smaller"},
 			}
 		}
 
@@ -203,8 +239,9 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 
 		if err != nil {
 			return uapi.HttpResponse{
-				Status: http.StatusInternalServerError,
-				Json:   types.ApiError{Message: "Error creating temp file: " + err.Error()},
+				Status:  http.StatusInternalServerError,
+				Headers: limit.Headers(),
+				Json:    types.ApiError{Message: "Error creating temp file: " + err.Error()},
 			}
 		}
 
@@ -242,16 +279,21 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 
 		if err != nil {
 			return uapi.HttpResponse{
-				Status: http.StatusInternalServerError,
-				Json:   types.ApiError{Message: "Error converting image: " + err.Error() + "\n" + outputCmd},
+				Status:  http.StatusInternalServerError,
+				Headers: limit.Headers(),
+				Json:    types.ApiError{Message: "Error converting image: " + err.Error() + "\n" + outputCmd},
 			}
 		}
 
-		return uapi.DefaultResponse(http.StatusNoContent)
+		return uapi.HttpResponse{
+			Status:  http.StatusNoContent,
+			Headers: limit.Headers(),
+		}
 	default:
 		return uapi.HttpResponse{
-			Status: http.StatusNotImplemented,
-			Json:   types.ApiError{Message: "Asset type not implemented"},
+			Status:  http.StatusNotImplemented,
+			Headers: limit.Headers(),
+			Json:    types.ApiError{Message: "Asset type not implemented"},
 		}
 	}
 }
