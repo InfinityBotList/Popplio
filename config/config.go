@@ -70,6 +70,7 @@ type Sites struct {
 	API          Differs[string] `yaml:"api" default:"https://spider.infinitybots.gg" comment:"API URL" validate:"required"`
 	CDN          string          `yaml:"cdn" default:"https://cdn.infinitybots.gg" comment:"CDN URL" validate:"required"`
 	HtmlSanitize string          `yaml:"html_sanitize" default:"https://js.infinitybots.gg" comment:"HTML Sanitize URL" validate:"required"`
+	Instatus     string          `yaml:"instatus" default:"https://infinity-bots.instatus.com" comment:"Instatus Status Page URL" validate:"required"`
 }
 
 type Roles struct {

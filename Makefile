@@ -2,7 +2,7 @@ TEST__USER_ID := 728871946456137770
 
 all:
 	CGO_ENABLED=0 go build -v 
-	systemctl restart popplio-staging
+	systemctl reload popplio-staging
 build-cdocs:
 	cd docs/cdocs && FRONTEND_URL=https://botlist.site npm run build && cd ..
 tests:

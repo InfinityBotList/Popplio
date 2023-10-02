@@ -1,7 +1,6 @@
 package current_status
 
 import (
-	"fmt"
 	"net/http"
 	"net/url"
 	"popplio/state"
@@ -45,14 +44,24 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 
 	switch src {
 	case "instatus":
-		res, err := http.Get("https://status.botlist.site/summary.json")
+		res, err := http.Get(state.Config.Sites.Instatus + "/summary.json")
 
 		if err != nil {
-			return uapi.DefaultResponse(http.StatusInternalServerError)
+			return uapi.HttpResponse{
+				Status: http.StatusInternalServerError,
+				Json: types.ApiError{
+					Message: "Instatus returned an error: " + err.Error(),
+				},
+			}
 		}
 
 		if res.StatusCode != 200 {
-			return uapi.DefaultResponse(http.StatusInternalServerError)
+			return uapi.HttpResponse{
+				Status: http.StatusInternalServerError,
+				Json: types.ApiError{
+					Message: "Instatus returned a non-200 status code: " + res.Status,
+				},
+			}
 		}
 
 		err = json.NewDecoder(res.Body).Decode(&listStatus)
@@ -99,9 +108,8 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		}
 
 		// Get type of monitor key
-		monitorType := listStatus["monitors"].([]interface{})
-
-		fmt.Println(monitorType)
+		//monitorType := listStatus["monitors"].([]interface{})
+		//fmt.Println(monitorType)
 	default:
 		return uapi.HttpResponse{
 			Status: http.StatusBadRequest,

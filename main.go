@@ -3,7 +3,11 @@ package main
 import (
 	"html/template"
 	"net/http"
+	"os"
+	"os/signal"
+	"runtime"
 	"strings"
+	"syscall"
 	"time"
 
 	"popplio/api"
@@ -41,6 +45,7 @@ import (
 	"popplio/types"
 	poplhooks "popplio/webhooks"
 
+	"github.com/cloudflare/tableflip"
 	docs "github.com/infinitybotlist/eureka/doclib"
 	"github.com/infinitybotlist/eureka/uapi"
 
@@ -281,9 +286,53 @@ func main() {
 
 	go notifications.VrLoop()
 
-	err = http.ListenAndServe(state.Config.Meta.Port.Parse(), r)
+	// If GOOS is windows, do normal http server
+	if runtime.GOOS == "linux" || runtime.GOOS == "darwin" {
+		upg, _ := tableflip.New(tableflip.Options{})
+		defer upg.Stop()
 
-	if err != nil {
-		state.Logger.Fatal(err)
+		go func() {
+			sig := make(chan os.Signal, 1)
+			signal.Notify(sig, syscall.SIGHUP)
+			for range sig {
+				state.Logger.Info("Received SIGHUP, upgrading server")
+				upg.Upgrade()
+			}
+		}()
+
+		// Listen must be called before Ready
+		ln, err := upg.Listen("tcp", state.Config.Meta.Port.Parse())
+
+		if err != nil {
+			state.Logger.Fatal(err)
+		}
+
+		defer ln.Close()
+
+		server := http.Server{
+			ReadTimeout: 30 * time.Second,
+			Handler:     r,
+		}
+
+		go func() {
+			err := server.Serve(ln)
+			if err != http.ErrServerClosed {
+				state.Logger.Error(err)
+			}
+		}()
+
+		if err := upg.Ready(); err != nil {
+			state.Logger.Fatal(err)
+		}
+
+		<-upg.Exit()
+	} else {
+		// Tableflip not supported
+		state.Logger.Warn("Tableflip not supported on this platform, this is not a production-capable server.")
+		err = http.ListenAndServe(state.Config.Meta.Port.Parse(), r)
+
+		if err != nil {
+			state.Logger.Fatal(err)
+		}
 	}
 }
