@@ -67,5 +67,5 @@ func BannerInfo(targetType AssetTargetType, targetId string) *types.AssetMetadat
 }
 
 func AvatarInfo(targetType AssetTargetType, targetId string) *types.AssetMetadata {
-	return info("partner", "avatars/"+targetType.String()+"/"+targetId+".webp", "avatars/default.webp")
+	return info("avatar", "avatars/"+targetType.String()+"/"+targetId+".webp", "avatars/default.webp")
 }
