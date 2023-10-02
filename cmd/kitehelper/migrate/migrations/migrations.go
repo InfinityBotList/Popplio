@@ -252,32 +252,17 @@ var migs = []migrate.Migration{
 				return nil
 			}
 
+			if !colExists(pool, "bots", "has_banner") {
+				return errors.New("banners do not need migration")
+			}
+
 			return errors.New("banners do not need migration")
 		},
 		Function: func(pool *migrate.SandboxPool) {
 			proxyUrl := os.Getenv("BANNER_PROXY_URL")
 			for _, targetType := range []string{"bots", "servers", "teams"} {
-				// Firstly, if not already done, add has_banner column to bots and servers
-				err := pool.Exec(context.Background(), "ALTER TABLE "+targetType+" ADD COLUMN IF NOT EXISTS has_banner BOOLEAN NOT NULL DEFAULT false")
-
-				if err != nil {
-					panic(err)
-				}
-
-				err = pool.Exec(context.Background(), "ALTER TABLE "+targetType+" ADD COLUMN IF NOT EXISTS __orig_banner TEXT")
-
-				if err != nil {
-					panic(err)
-				}
-
-				err = pool.Exec(context.Background(), "UPDATE "+targetType+" SET __orig_banner = banner")
-
-				if err != nil {
-					panic(err)
-				}
-
 				// Create banners directory
-				err = os.MkdirAll(cdnPath+"/banners/"+targetType, 0755)
+				err := os.MkdirAll(cdnPath+"/banners/"+targetType, 0755)
 
 				if err != nil {
 					panic(err)
@@ -334,15 +319,7 @@ var migs = []migrate.Migration{
 					}
 
 					if banner == "https://i.imgur.com/lNdMzuW.png" {
-						migrate.StatusBoldYellow("Banner for", targetType, id, "is a default banner, setting has_banner to false")
-						// This is the default banner, skip it. The client will default to the default banner if has_banner is false
-						// But we still need to set has_banner to false
-						err = pool.Exec(context.Background(), "UPDATE "+targetType+" SET has_banner = false, banner = NULL WHERE "+uniqueId+" = $1", id)
-
-						if err != nil {
-							panic(err)
-						}
-
+						migrate.StatusBoldYellow("Banner for", targetType, id, "is a default banner")
 						continue
 					}
 
@@ -355,18 +332,10 @@ var migs = []migrate.Migration{
 						migrate.StatusBoldYellow("IMGUR BANNER hash2: " + bannerHash)
 						banner = "https://i.imgur.com/" + bannerHash
 
-						bannerCheck := userInput("Please validate this, input 'gone' if the banner is gone" + banner)
+						bannerCheck := userInput("Please validate this, input 'gone' if the banner is gone: " + banner)
 
 						if bannerCheck == "gone" {
-							migrate.StatusBoldBlue("OK, setting has_banner to default, and setting banner to null")
-							err = pool.Exec(context.Background(), "UPDATE "+targetType+" SET has_banner = false, banner = NULL WHERE "+uniqueId+" = $1", id)
-
-							if err != nil {
-								panic(err)
-							}
-
-							time.Sleep(1 * time.Second)
-
+							migrate.StatusBoldBlue("OK setting banner to null")
 							continue
 						}
 
@@ -421,15 +390,7 @@ var migs = []migrate.Migration{
 
 					if resp.StatusCode != 200 {
 						if resp.StatusCode == 403 || resp.StatusCode == 404 {
-							migrate.StatusBoldBlue("OK, setting has_banner to default, and setting banner to null")
-							err = pool.Exec(context.Background(), "UPDATE "+targetType+" SET has_banner = false, banner = NULL WHERE "+uniqueId+" = $1", id)
-
-							if err != nil {
-								panic(err)
-							}
-
-							time.Sleep(1 * time.Second)
-
+							migrate.StatusBoldBlue("OK, setting banner to null")
 							continue
 						}
 
@@ -486,13 +447,6 @@ var migs = []migrate.Migration{
 					if err != nil {
 						panic(err)
 					}
-
-					// Update the database
-					err = pool.Exec(context.Background(), "UPDATE "+targetType+" SET banner = $1, has_banner = true WHERE "+uniqueId+" = $2", cdnUrl+"/"+filePath, id)
-
-					if err != nil {
-						panic(err)
-					}
 				}
 
 				if i == 0 {
@@ -502,6 +456,210 @@ var migs = []migrate.Migration{
 				if len(failedIds) > 0 {
 					fmt.Println("Failed to migrate banners for", targetType, "with ids", strings.Join(failedIds, ","))
 				}
+			}
+		},
+	},
+	{
+		ID:   "migrate_team_avatars",
+		Name: "Migrate team avatars",
+		HasMigrated: func(pool *migrate.SandboxPool) error {
+			if os.Getenv("TEAMAVATARS_NEED_MIGRATION") != "" {
+				return nil
+			}
+
+			if colExists(pool, "teams", "avatar") {
+				return nil
+			}
+
+			return errors.New("avatars do not need migration")
+		},
+		Function: func(pool *migrate.SandboxPool) {
+			proxyUrl := os.Getenv("BANNER_PROXY_URL")
+			// Create banners directory
+			err := os.MkdirAll(cdnPath+"/avatars/teams", 0755)
+
+			if err != nil {
+				panic(err)
+			}
+
+			rows, err := pool.Query(context.Background(), "SELECT id, avatar FROM teams WHERE avatar IS NOT NULL AND avatar != ''")
+
+			if err != nil {
+				panic(err)
+			}
+
+			var i = 0
+			var failedIds = []string{}
+
+			defer rows.Close()
+
+			for rows.Next() {
+				var id string
+				var avatar string
+
+				err = rows.Scan(&id, &avatar)
+
+				if err != nil {
+					panic(err)
+				}
+
+				i++
+
+				if os.Getenv("ONLY_NEW") != "" && strings.HasPrefix(avatar, cdnUrl) {
+					migrate.StatusBoldYellow("Avatar for team", id, "already migrated, skipping")
+					continue
+				}
+
+				fmt.Println(cdnUrl)
+
+				if !strings.HasPrefix(avatar, "https://") {
+					migrate.StatusBoldYellow("Avatar for team", id, "is invalid, skipping")
+					continue
+				}
+
+				if strings.HasPrefix(avatar, "https://imgur.com") {
+					avatar = strings.ReplaceAll(avatar, "https://imgur.com", "https://i.imgur.com")
+				}
+
+				if avatar == "https://cdn.discordapp.com/embed/avatars/0.png" {
+					migrate.StatusBoldYellow("Avatar for team", id, "is a default avatar")
+					continue
+				}
+
+				// Check for imgur, that needs a proxied download
+				if strings.HasPrefix(avatar, "https://i.imgur.com/") {
+					migrate.StatusBoldYellow("IMGUR AVATAR, initial: " + avatar)
+					avatarHash := strings.TrimPrefix(avatar, "https://i.imgur.com/")
+					migrate.StatusBoldYellow("IMGUR AVATAR hash1: " + avatarHash)
+					avatarHash = strings.TrimPrefix(avatarHash, "a/")
+					migrate.StatusBoldYellow("IMGUR AVATAR hash2: " + avatarHash)
+					avatar = "https://i.imgur.com/" + avatarHash
+
+					avatarCheck := userInput("Please validate this, input 'gone' if the avatar is gone: " + avatar)
+
+					if avatarCheck == "gone" {
+						migrate.StatusBoldBlue("OK, setting avatar to null")
+						time.Sleep(1 * time.Second)
+
+						continue
+					}
+
+					if !strings.Contains(avatarHash, ".") {
+						ext := userInput("Please enter the file extension for the avatar for team" + " " + id + " (e.g. png, jpg, gif) for " + avatar + " as it does not contain a file extension")
+						avatar = avatar + "." + ext
+					}
+
+					if proxyUrl == "" {
+						migrate.StatusBoldYellow("Avatar for team", id, "("+avatar+") is hosted on imgur, continuing will require a proxy set up on another device?")
+
+						if !userInputBoolean("Do you want to continue?") {
+							failedIds = append(failedIds, id)
+							continue
+						}
+
+						proxyUrl = userInput("Please enter the proxy url to use?")
+
+						if !strings.HasPrefix(proxyUrl, "http://") && !strings.HasPrefix(proxyUrl, "https://") {
+							proxyUrl = "http://" + proxyUrl
+						}
+					}
+
+					avatar = proxyUrl + "/?url=" + avatar
+				}
+
+				// Check if $cdnPath/avatars/teams/$id.webp exists
+				var filePath = "avatars/teams/" + id + ".webp"
+				if _, err := os.Stat(cdnPath + "/" + filePath); err == nil {
+					// Banner already exists, ask for user input
+					if os.Getenv("ONLY_NEW") != "" {
+						migrate.StatusBoldYellow("Avatar for team", id, "already exists [points to "+avatar+"]", "("+filePath+")")
+						continue
+					}
+
+					if !userInputBoolean("Avatar for team " + id + " already exists [points to " + avatar + "]" + "(" + filePath + ", do you want to overwrite it?") {
+						continue
+					}
+				}
+
+				migrate.StatusBoldBlue("Waiting 1 seconds to avoid rate limiting")
+				time.Sleep(1 * time.Second)
+
+				migrate.StatusBoldBlue("Migrating avatar for team", id, "["+avatar+"]")
+
+				// First retrieve just the http headers of a CDN request without downloading the body
+				resp, err := http.Head(avatar)
+
+				if err != nil {
+					panic(err)
+				}
+
+				if resp.StatusCode != 200 {
+					if resp.StatusCode == 403 || resp.StatusCode == 404 {
+						migrate.StatusBoldBlue("OK, setting avatar to null")
+						continue
+					}
+
+					failedIds = append(failedIds, id)
+					migrate.StatusBoldYellow("Avatar for team", id, "is invalid, got status code", resp.StatusCode)
+					continue
+				}
+
+				// Check if the content type is an image
+				if !strings.HasPrefix(resp.Header.Get("Content-Type"), "image/") {
+					migrate.StatusBoldYellow("Avatar for team", id, "is invalid, got content type", resp.Header.Get("Content-Type"))
+					continue
+				}
+
+				fileExtension := strings.Split(resp.Header.Get("Content-Type"), "/")[1]
+
+				// Download the banner
+				bannerData, err := downloader.DownloadFileWithProgress(avatar)
+
+				if err != nil {
+					panic(err)
+				}
+
+				// Save the banner to the CDN
+				var preconv = "avatars/teams/preconv_" + id + "." + fileExtension
+
+				err = os.WriteFile(cdnPath+"/"+preconv, bannerData, 0644)
+
+				if err != nil {
+					panic(err)
+				}
+
+				// Convert to webp
+				cmd := []string{"cwebp", "-q", "100", cdnPath + "/" + preconv, "-o", cdnPath + "/" + filePath}
+
+				if fileExtension == "gif" {
+					cmd = []string{"gif2webp", "-q", "100", "-m", "3", cdnPath + "/" + preconv, "-o", cdnPath + "/" + filePath, "-v"}
+				}
+
+				cmdExec := exec.Command(cmd[0], cmd[1:]...)
+				cmdExec.Stdout = os.Stdout
+				cmdExec.Stderr = os.Stderr
+				cmdExec.Env = os.Environ()
+
+				err = cmdExec.Run()
+
+				if err != nil {
+					panic(err)
+				}
+
+				// Delete the original file
+				err = os.Remove(cdnPath + "/" + preconv)
+
+				if err != nil {
+					panic(err)
+				}
+			}
+
+			if i == 0 {
+				migrate.StatusBoldBlue("No avatars to migrate")
+			}
+
+			if len(failedIds) > 0 {
+				fmt.Println("Failed to migrate team avatars with ids", strings.Join(failedIds, ","))
 			}
 		},
 	},
