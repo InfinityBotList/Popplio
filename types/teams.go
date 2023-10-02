@@ -23,7 +23,7 @@ type PermissionData struct {
 type Team struct {
 	ID         string         `db:"id" json:"id" description:"The ID of the team"`
 	Name       string         `db:"name" json:"name" description:"The name of the team"`
-	Avatar     *AssetMetadata `db:"avatar" json:"avatar" description:"The avatar of the team"`
+	Avatar     *AssetMetadata `db:"-" json:"avatar" description:"The avatar of the team"`
 	Banner     *AssetMetadata `db:"-" json:"banner" description:"Banner information/metadata"`
 	Short      pgtype.Text    `db:"short" json:"short" description:"The teams's short description if it has one, otherwise null"`
 	Tags       []string       `db:"tags" json:"tags" description:"The teams's tags if it has any, otherwise null"`

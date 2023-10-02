@@ -87,14 +87,14 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	indexBotRows, err := state.Pool.Query(d.Context, "SELECT "+indexBotCols+" FROM bots WHERE owner = $1", user.ID)
 
 	if err != nil {
-		state.Logger.Error(err)
+		state.Logger.Error("ibr: ", err)
 		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
 	user.UserBots, err = pgx.CollectRows(indexBotRows, pgx.RowToStructByName[types.IndexBot])
 
 	if err != nil {
-		state.Logger.Error(err)
+		state.Logger.Error("ub:", err)
 		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
