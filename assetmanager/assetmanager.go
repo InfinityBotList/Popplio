@@ -53,11 +53,12 @@ func info(typ, path, defaultPath string) *types.AssetMetadata {
 	}
 
 	return &types.AssetMetadata{
-		Exists:      true,
-		Path:        path,
-		DefaultPath: defaultPath,
-		Size:        st.Size(),
-		Type:        typ,
+		Exists:       true,
+		Path:         path,
+		DefaultPath:  defaultPath,
+		Size:         st.Size(),
+		LastModified: st.ModTime(),
+		Type:         typ,
 	}
 }
 
