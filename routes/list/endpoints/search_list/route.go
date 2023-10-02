@@ -6,7 +6,7 @@ import (
 	"strings"
 	"text/template"
 
-	"popplio/assets"
+	"popplio/assetmanager"
 	"popplio/db"
 	"popplio/state"
 	"popplio/types"
@@ -162,7 +162,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		}
 
 		bots[i].Vanity = code
-		bots[i].Banner = assets.BannerInfo("bots", bots[i].BotID)
+		bots[i].Banner = assetmanager.BannerInfo(assetmanager.AssetTargetTypeBots, bots[i].BotID)
 	}
 
 	return uapi.HttpResponse{

@@ -7,7 +7,7 @@ import (
 	"net/http"
 	"strings"
 
-	"popplio/assets"
+	"popplio/assetmanager"
 	"popplio/config"
 	"popplio/db"
 	"popplio/state"
@@ -184,8 +184,8 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 			Targets: []string{}, // We don't provide any entities right now, may change
 		}
 
-		eto.Banner = assets.BannerInfo("teams", eto.ID)
-		eto.Avatar = assets.AvatarInfo("teams", eto.ID)
+		eto.Banner = assetmanager.BannerInfo(assetmanager.AssetTargetTypeTeams, eto.ID)
+		eto.Avatar = assetmanager.AvatarInfo(assetmanager.AssetTargetTypeTeams, eto.ID)
 
 		bot.TeamOwner = &eto
 	}
@@ -221,7 +221,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	}
 
 	bot.Vanity = code
-	bot.Banner = assets.BannerInfo("bots", bot.BotID)
+	bot.Banner = assetmanager.BannerInfo(assetmanager.AssetTargetTypeBots, bot.BotID)
 
 	go handleAnalytics(r, id, target)
 

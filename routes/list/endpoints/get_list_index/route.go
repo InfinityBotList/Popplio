@@ -6,7 +6,7 @@ import (
 	"strings"
 	"time"
 
-	"popplio/assets"
+	"popplio/assetmanager"
 	"popplio/db"
 	"popplio/state"
 	"popplio/types"
@@ -155,7 +155,7 @@ func processRow(ctx context.Context, rows pgx.Rows) ([]types.IndexBot, error) {
 		}
 
 		bots[i].Vanity = code
-		bots[i].Banner = assets.BannerInfo("bots", bots[i].BotID)
+		bots[i].Banner = assetmanager.BannerInfo(assetmanager.AssetTargetTypeBots, bots[i].BotID)
 	}
 
 	return bots, nil

@@ -2,7 +2,7 @@ package resolvers
 
 import (
 	"context"
-	"popplio/assets"
+	"popplio/assetmanager"
 	"popplio/db"
 	"popplio/state"
 	"popplio/types"
@@ -79,7 +79,7 @@ func GetTeamEntities(ctx context.Context, teamId string, targets []string) (*typ
 				}
 
 				eto.Bots[i].Vanity = code
-				eto.Bots[i].Banner = assets.BannerInfo("bots", eto.Bots[i].BotID)
+				eto.Bots[i].Banner = assetmanager.BannerInfo(assetmanager.AssetTargetTypeBots, eto.Bots[i].BotID)
 			}
 		case "server":
 			indexServerRows, err := state.Pool.Query(ctx, "SELECT "+indexServerCols+" FROM servers WHERE team_owner = $1", teamId)
@@ -104,7 +104,7 @@ func GetTeamEntities(ctx context.Context, teamId string, targets []string) (*typ
 				}
 
 				eto.Servers[i].Vanity = code
-				eto.Servers[i].Banner = assets.BannerInfo("servers", eto.Servers[i].ServerID)
+				eto.Servers[i].Banner = assetmanager.BannerInfo(assetmanager.AssetTargetTypeServers, eto.Servers[i].ServerID)
 			}
 		default:
 			isInvalid = true

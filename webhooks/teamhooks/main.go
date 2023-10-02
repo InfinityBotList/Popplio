@@ -5,7 +5,7 @@ package teamhooks
 
 import (
 	"errors"
-	"popplio/assets"
+	"popplio/assetmanager"
 	"popplio/db"
 	"popplio/state"
 	"popplio/types"
@@ -57,8 +57,8 @@ func Send(with With) error {
 		Targets: []string{}, // We don't provide any entities right now, may change
 	}
 
-	team.Banner = assets.BannerInfo("teams", team.ID)
-	team.Avatar = assets.AvatarInfo("teams", team.ID)
+	team.Banner = assetmanager.BannerInfo(assetmanager.AssetTargetTypeTeams, team.ID)
+	team.Avatar = assetmanager.AvatarInfo(assetmanager.AssetTargetTypeTeams, team.ID)
 
 	user, err := dovewing.GetUser(state.Context, with.UserID, state.DovewingPlatformDiscord)
 
