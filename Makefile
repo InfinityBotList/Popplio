@@ -1,4 +1,5 @@
 TEST__USER_ID := 728871946456137770
+CDN_PATH := /silverpelt/cdn/ibl
 
 all:
 	CGO_ENABLED=0 go build -v 
@@ -8,23 +9,23 @@ build-cdocs:
 tests:
 	CGO_ENABLED=0 go test -v -coverprofile=coverage.out ./...
 ts:
-	rm -rvf /iblcdn/public/dev/bindings/popplio
+	rm -rvf $(CDN_PATH)/dev/bindings/popplio
 	~/go/bin/tygo generate
 
 	# Because tygo cant replace all instances of TeamPermission and other useful modifications
-	sed -i 's:export type TeamPermission = string; //:// Note that:g' /iblcdn/public/dev/bindings/popplio/types.ts
+	sed -i 's:export type TeamPermission = string; //:// Note that:g' $(CDN_PATH)/dev/bindings/popplio/types.ts
 
 	# Two steps to replace all instances of TeamPermission with TeamPermissions while keeping TeamPermissions intact	
-	sed -i 's:TeamPermissions:TeamPermission:g' /iblcdn/public/dev/bindings/popplio/types.ts
+	sed -i 's:TeamPermissions:TeamPermission:g' $(CDN_PATH)/dev/bindings/popplio/types.ts
 
-	sed -i 's:TeamPermission:TeamPermissions:g' /iblcdn/public/dev/bindings/popplio/types.ts
+	sed -i 's:TeamPermission:TeamPermissions:g' $(CDN_PATH)/dev/bindings/popplio/types.ts
 
 	# Copy over go types
-	mkdir /iblcdn/public/dev/bindings/popplio/go
-	cp -rf types /iblcdn/public/dev/bindings/popplio/go
+	mkdir $(CDN_PATH)/dev/bindings/popplio/go
+	cp -rf types $(CDN_PATH)/dev/bindings/popplio/go
 
 	# Patch to change package name to 'popltypes'
-	sed -i 's:package types:package popltypes:g' /iblcdn/public/dev/bindings/popplio/go/types/*
+	sed -i 's:package types:package popltypes:g' $(CDN_PATH)/dev/bindings/popplio/go/types/*
 
 promoteprod:
 	rm -rf ../prod2
