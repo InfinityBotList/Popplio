@@ -79,7 +79,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	defer tx.Rollback(d.Context)
 
 	var teamId pgtype.UUID
-	err = tx.QueryRow(d.Context, "INSERT INTO teams (name, avatar, short, tags, extra_links) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id", payload.Name, payload.Avatar, payload.Short, payload.Tags, el).Scan(&teamId)
+	err = tx.QueryRow(d.Context, "INSERT INTO teams (name, short, tags, extra_links) VALUES ($1, $2, $3, $4) RETURNING id", payload.Name, payload.Short, payload.Tags, el).Scan(&teamId)
 
 	if err != nil {
 		state.Logger.Error(err)

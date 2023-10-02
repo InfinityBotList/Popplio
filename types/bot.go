@@ -30,7 +30,7 @@ type IndexBot struct {
 	NSFW        bool                    `db:"nsfw" json:"nsfw" description:"Whether the bot is NSFW or not"`
 	Tags        []string                `db:"tags" json:"tags" description:"The bot's tags (e.g. music, moderation, etc.)"`
 	Premium     bool                    `db:"premium" json:"premium" description:"Whether the bot is a premium bot or not"`
-	Banner      *AssetMetadata          `db:"-" json:"banner" description:"Banner information/metadata"`
+	Banner      *AssetMetadata          `db:"-" json:"banner" description:"Banner information/metadata" ci:"internal"` // Must be parsed internally
 }
 
 type BotStats struct {
@@ -68,7 +68,7 @@ type Bot struct {
 	Clicks              int                     `db:"clicks" json:"clicks" description:"The bot's total click count"`
 	UniqueClicks        int64                   `db:"-" json:"unique_clicks" description:"The bot's unique click count based on SHA256 hashed IPs" ci:"internal"` // Must be parsed internally
 	InviteClicks        int                     `db:"invite_clicks" json:"invite_clicks" description:"The bot's invite click count (via users inviting the bot from IBL)"`
-	Banner              *AssetMetadata          `db:"-" json:"banner" description:"Banner information/metadata"`
+	Banner              *AssetMetadata          `db:"-" json:"banner" description:"Banner information/metadata" ci:"internal"` // Must be parsed internally
 	Invite              string                  `db:"invite" json:"invite" description:"The bot's invite URL. Must be present"`
 	Type                string                  `db:"type" json:"type" description:"The bot's type (e.g. pending/approved/certified/denied etc.). Note that we do not filter out denied/banned bots in API"`
 	VanityRef           pgtype.UUID             `db:"vanity_ref" json:"vanity_ref" description:"The corresponding vanities itag, this also works to ensure that all bots have an associated vanity"`

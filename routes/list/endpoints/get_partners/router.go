@@ -2,6 +2,7 @@ package get_partners
 
 import (
 	"net/http"
+	"popplio/assets"
 	"popplio/db"
 	"popplio/state"
 	"popplio/types"
@@ -66,7 +67,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 			return uapi.DefaultResponse(http.StatusInternalServerError)
 		}
 
-		partners[i].Image = state.Config.Sites.CDN + "/partners/" + partners[i].ID + "." + partners[i].ImageType
+		partners[i].Image = assets.PartnerInfo(partners[i].ID)
 	}
 
 	rows, err = state.Pool.Query(state.Context, "SELECT "+partnerTypesCols+" FROM partner_types ORDER BY created_at DESC")

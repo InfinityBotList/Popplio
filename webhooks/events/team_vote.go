@@ -30,7 +30,12 @@ func (v WebhookTeamVoteData) CreateHookParams(creator *dovetypes.PlatformUser, t
 			{
 				URL: "https://botlist.site/" + targets.Team.ID,
 				Thumbnail: &discordgo.MessageEmbedThumbnail{
-					URL: targets.Team.Avatar,
+					URL: func() string {
+						if targets.Team.Avatar.Path != "" {
+							return targets.Team.Avatar.Path
+						}
+						return targets.Team.Avatar.DefaultPath
+					}(),
 				},
 				Title:       "🎉 Vote Count Updated!",
 				Description: ":heart: " + creator.DisplayName + " has voted for *team*: " + targets.Team.Name,

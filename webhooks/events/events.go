@@ -148,3 +148,30 @@ func ParseWebhookMetadata(w *WebhookMetadata) WebhookMetadata {
 
 	return *w
 }
+
+func convertChangesetToFields[T any](c Changeset[T]) []*discordgo.MessageEmbedField {
+	return []*discordgo.MessageEmbedField{
+		{
+			Name: "Old Name",
+			Value: func() string {
+				if len(fmt.Sprint(c.Old)) > 1000 {
+					return fmt.Sprint(c.Old)[:1000] + "..."
+				}
+
+				return fmt.Sprint(c.Old)
+			}(),
+			Inline: true,
+		},
+		{
+			Name: "New Name",
+			Value: func() string {
+				if len(fmt.Sprint(c.New)) > 1000 {
+					return fmt.Sprint(c.New)[:1000] + "..."
+				}
+
+				return fmt.Sprint(c.New)
+			}(),
+			Inline: true,
+		},
+	}
+}

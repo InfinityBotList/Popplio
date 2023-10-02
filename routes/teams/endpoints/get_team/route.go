@@ -76,6 +76,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	}
 
 	team.Banner = assets.BannerInfo("teams", id)
+	team.Avatar = assets.AvatarInfo("teams", id)
 
 	team.Entities, err = resolvers.GetTeamEntities(d.Context, id, targets)
 

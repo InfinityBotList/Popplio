@@ -171,6 +171,9 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		Targets: []string{}, // We don't provide any entities right now, may change
 	}
 
+	eto.Banner = assets.BannerInfo("teams", eto.ID)
+	eto.Avatar = assets.AvatarInfo("teams", eto.ID)
+
 	server.TeamOwner = &eto
 
 	var uniqueClicks int64

@@ -93,12 +93,11 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 
 	// Get current name and avatar
 	var oldName string
-	var oldAvatar string
 	var oldShort string
 	var oldTags []string
 	var oldExtraLinks []types.Link
 
-	err = tx.QueryRow(d.Context, "SELECT name, avatar, short, tags, links FROM teams WHERE id = $1", teamId).Scan(&oldName, &oldAvatar, &oldShort, &oldTags, &oldExtraLinks)
+	err = tx.QueryRow(d.Context, "SELECT name, short, tags, links FROM teams WHERE id = $1", teamId).Scan(&oldName, &oldShort, &oldTags, &oldExtraLinks)
 
 	if err != nil {
 		state.Logger.Error(err)
@@ -106,7 +105,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	}
 
 	// Update the team
-	_, err = tx.Exec(d.Context, "UPDATE teams SET name = $1, avatar = $2 WHERE id = $3", payload.Name, payload.Avatar, teamId)
+	_, err = tx.Exec(d.Context, "UPDATE teams SET name = $1 WHERE id = $2", payload.Name, teamId)
 
 	if err != nil {
 		state.Logger.Error(err)
@@ -161,10 +160,6 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 			Name: events.Changeset[string]{
 				Old: oldName,
 				New: payload.Name,
-			},
-			Avatar: events.Changeset[string]{
-				Old: oldAvatar,
-				New: payload.Avatar,
 			},
 			Short: func() events.Changeset[string] {
 				if payload.Short == nil {

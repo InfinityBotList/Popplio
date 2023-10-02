@@ -12,7 +12,6 @@ const WebhookTypeTeamEdit WebhookType = "TEAM_EDIT"
 
 type WebhookTeamEditData struct {
 	Name       Changeset[string]       `json:"name" description:"The changeset of the name"`
-	Avatar     Changeset[string]       `json:"avatar" description:"The changeset of the avatar"`
 	Short      Changeset[string]       `json:"short" description:"The changeset of the short description"`
 	Tags       Changeset[[]string]     `json:"tags" description:"The changeset of the tags"`
 	ExtraLinks Changeset[[]types.Link] `json:"extra_links" description:"The changeset of the extra links"`
@@ -27,12 +26,20 @@ func (n WebhookTeamEditData) Event() WebhookType {
 }
 
 func (n WebhookTeamEditData) CreateHookParams(creator *dovetypes.PlatformUser, targets Target) *discordgo.WebhookParams {
+	name := convertChangesetToFields[string](n.Name)
+	short := convertChangesetToFields[string](n.Short)
+	tags := convertChangesetToFields[[]string](n.Tags)
 	return &discordgo.WebhookParams{
 		Embeds: []*discordgo.MessageEmbed{
 			{
 				URL: "https://botlist.site/teams/" + targets.Team.Name,
 				Thumbnail: &discordgo.MessageEmbedThumbnail{
-					URL: targets.Team.Avatar,
+					URL: func() string {
+						if targets.Team.Avatar.Path != "" {
+							return targets.Team.Avatar.Path
+						}
+						return targets.Team.Avatar.DefaultPath
+					}(),
 				},
 				Title:       "📝 Team Update!",
 				Description: ":heart: " + creator.DisplayName + " has updated the name/description of your team " + targets.Team.Name,
@@ -43,48 +50,12 @@ func (n WebhookTeamEditData) CreateHookParams(creator *dovetypes.PlatformUser, t
 						Value:  creator.ID,
 						Inline: true,
 					},
-					{
-						Name: "Old Name",
-						Value: func() string {
-							if len(n.Name.Old) > 1000 {
-								return n.Name.Old[:1000] + "..."
-							}
-
-							return n.Name.Old
-						}(),
-						Inline: true,
-					},
-					{
-						Name: "New Name",
-						Value: func() string {
-							if len(n.Name.New) > 1000 {
-								return n.Name.New[:1000] + "..."
-							}
-
-							return n.Name.New
-						}(),
-						Inline: true,
-					},
-					{
-						Name: "Old Avatar",
-						Value: func() string {
-							if len(n.Avatar.Old) > 1000 {
-								return n.Avatar.Old[:1000] + "..."
-							}
-
-							return n.Avatar.Old
-						}(),
-					},
-					{
-						Name: "New Avatar",
-						Value: func() string {
-							if len(n.Avatar.New) > 1000 {
-								return n.Avatar.New[:1000] + "..."
-							}
-
-							return n.Avatar.New
-						}(),
-					},
+					name[0],
+					name[1],
+					short[0],
+					short[1],
+					tags[0],
+					tags[1],
 				},
 			},
 		},
