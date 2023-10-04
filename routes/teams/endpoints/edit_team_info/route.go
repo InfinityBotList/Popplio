@@ -11,6 +11,7 @@ import (
 
 	docs "github.com/infinitybotlist/eureka/doclib"
 	"github.com/infinitybotlist/eureka/uapi"
+	"github.com/jackc/pgx/v5/pgtype"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-playground/validator/v10"
@@ -93,11 +94,11 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 
 	// Get current name and avatar
 	var oldName string
-	var oldShort string
+	var oldShort pgtype.Text
 	var oldTags []string
 	var oldExtraLinks []types.Link
 
-	err = tx.QueryRow(d.Context, "SELECT name, short, tags, links FROM teams WHERE id = $1", teamId).Scan(&oldName, &oldShort, &oldTags, &oldExtraLinks)
+	err = tx.QueryRow(d.Context, "SELECT name, short, tags, extra_links FROM teams WHERE id = $1", teamId).Scan(&oldName, &oldShort, &oldTags, &oldExtraLinks)
 
 	if err != nil {
 		state.Logger.Error(err)
@@ -167,7 +168,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 				}
 
 				return events.Changeset[string]{
-					Old: oldShort,
+					Old: oldShort.String,
 					New: *payload.Short,
 				}
 			}(),
