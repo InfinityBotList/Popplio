@@ -227,55 +227,121 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		}
 
 		// Save image to temp file
-		filePath := os.TempDir() + "pconv_" + crypto.RandString(256) + "." + fileExt
 		targetPath := state.Config.Meta.CDNPath + "/banners/" + targetType + "/" + targetId + ".webp"
-		tmpfile, err := os.Create(filePath)
 
-		if err != nil {
-			return uapi.HttpResponse{
-				Status:  http.StatusInternalServerError,
-				Headers: limit.Headers(),
-				Json:    types.ApiError{Message: "Error creating temp file: " + err.Error()},
-			}
-		}
+		// Write temp file
+		if fileExt == "gif" {
+			// GIF has special handling
+			filePath := os.TempDir() + "/pconv_" + crypto.RandString(256) + ".gif"
 
-		defer func() {
-			err := tmpfile.Close()
+			tmpfile, err := os.Create(filePath)
+
 			if err != nil {
-				state.Logger.Error(err)
+				return uapi.HttpResponse{
+					Status:  http.StatusInternalServerError,
+					Headers: limit.Headers(),
+					Json:    types.ApiError{Message: "Error creating temp file: " + err.Error()},
+				}
 			}
 
+			err = gif.Encode(tmpfile, img, &gif.Options{})
+
+			if err != nil {
+				return uapi.HttpResponse{
+					Status:  http.StatusInternalServerError,
+					Headers: limit.Headers(),
+					Json:    types.ApiError{Message: "Error writing image to temp file: " + err.Error()},
+				}
+			}
+
+			err = tmpfile.Close()
+
+			if err != nil {
+				return uapi.DefaultResponse(http.StatusInternalServerError)
+			}
+
+			cmd := []string{"gif2webp", "-q", "100", "-m", "3", filePath, "-o", targetPath, "-v"}
+
+			outbuf := bytes.NewBuffer(nil)
+
+			cmdExec := exec.Command(cmd[0], cmd[1:]...)
+			cmdExec.Stdout = outbuf
+			cmdExec.Stderr = outbuf
+			cmdExec.Env = os.Environ()
+
+			err = cmdExec.Run()
+
+			outputCmd := outbuf.String()
+
+			if err != nil {
+				return uapi.HttpResponse{
+					Status:  http.StatusInternalServerError,
+					Headers: limit.Headers(),
+					Json:    types.ApiError{Message: "Error converting image: " + err.Error() + "\n" + outputCmd},
+				}
+			}
+
+			// Delete temp file
 			err = os.Remove(filePath)
 
 			if err != nil {
-				state.Logger.Error(err)
+				return uapi.DefaultResponse(http.StatusInternalServerError)
 			}
-		}()
+		} else {
+			filePath := os.TempDir() + "/pconv_" + crypto.RandString(256) + ".jpg"
 
-		// Convert to webp
-		cmd := []string{"cwebp", "-q", "100", filePath, "-o", targetPath, "-v"}
+			tmpfile, err := os.Create(filePath)
 
-		if fileExt == "gif" {
-			// use gif2webp instead
-			cmd = []string{"gif2webp", "-q", "100", "-m", "3", filePath, "-o", targetPath, "-v"}
-		}
+			if err != nil {
+				return uapi.HttpResponse{
+					Status:  http.StatusInternalServerError,
+					Headers: limit.Headers(),
+					Json:    types.ApiError{Message: "Error creating temp file: " + err.Error()},
+				}
+			}
 
-		outbuf := bytes.NewBuffer(nil)
+			err = jpeg.Encode(tmpfile, img, &jpeg.Options{Quality: 100})
 
-		cmdExec := exec.Command(cmd[0], cmd[1:]...)
-		cmdExec.Stdout = outbuf
-		cmdExec.Stderr = outbuf
-		cmdExec.Env = os.Environ()
+			if err != nil {
+				return uapi.HttpResponse{
+					Status:  http.StatusInternalServerError,
+					Headers: limit.Headers(),
+					Json:    types.ApiError{Message: "Error writing image to temp file: " + err.Error()},
+				}
+			}
 
-		err = cmdExec.Run()
+			err = tmpfile.Close()
 
-		outputCmd := outbuf.String()
+			if err != nil {
+				return uapi.DefaultResponse(http.StatusInternalServerError)
+			}
 
-		if err != nil {
-			return uapi.HttpResponse{
-				Status:  http.StatusInternalServerError,
-				Headers: limit.Headers(),
-				Json:    types.ApiError{Message: "Error converting image: " + err.Error() + "\n" + outputCmd},
+			cmd := []string{"cwebp", "-q", "100", filePath, "-o", targetPath, "-v"}
+
+			outbuf := bytes.NewBuffer(nil)
+
+			cmdExec := exec.Command(cmd[0], cmd[1:]...)
+			cmdExec.Stdout = outbuf
+			cmdExec.Stderr = outbuf
+			cmdExec.Env = os.Environ()
+
+			err = cmdExec.Run()
+
+			outputCmd := outbuf.String()
+
+			if err != nil {
+				return uapi.HttpResponse{
+					Status:  http.StatusInternalServerError,
+					Headers: limit.Headers(),
+					Json:    types.ApiError{Message: "Error converting image: " + err.Error() + "\n" + outputCmd},
+				}
+			}
+
+			// Delete temp file
+			err = os.Remove(filePath)
+
+			if err != nil {
+				return uapi.DefaultResponse(http.StatusInternalServerError)
 			}
 		}
 
