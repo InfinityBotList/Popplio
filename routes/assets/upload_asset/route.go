@@ -227,12 +227,12 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		}
 
 		// Save image to temp file
-		targetPath := state.Config.Meta.CDNPath + "/banners/" + targetType + "/" + targetId + ".webp"
+		targetPath := state.Config.Meta.CDNPath + "/banners/" + targetType + "s/" + targetId + ".webp"
 
 		// Write temp file
 		if fileExt == "gif" {
 			// GIF has special handling
-			filePath := os.TempDir() + "/pconv_" + crypto.RandString(256) + ".gif"
+			filePath := os.TempDir() + "/pconv_" + crypto.RandString(128) + ".gif"
 
 			tmpfile, err := os.Create(filePath)
 
@@ -288,7 +288,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 				return uapi.DefaultResponse(http.StatusInternalServerError)
 			}
 		} else {
-			filePath := os.TempDir() + "/pconv_" + crypto.RandString(256) + ".jpg"
+			filePath := os.TempDir() + "/pconv_" + crypto.RandString(128) + ".jpg"
 
 			tmpfile, err := os.Create(filePath)
 
