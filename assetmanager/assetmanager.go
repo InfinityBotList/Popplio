@@ -52,12 +52,14 @@ func info(typ, path, defaultPath string) *types.AssetMetadata {
 		}
 	}
 
+	modTime := st.ModTime()
+
 	return &types.AssetMetadata{
 		Exists:       true,
 		Path:         path,
 		DefaultPath:  defaultPath,
 		Size:         st.Size(),
-		LastModified: st.ModTime(),
+		LastModified: &modTime,
 		Type:         typ,
 	}
 }
