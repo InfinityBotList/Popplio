@@ -24,8 +24,10 @@ import (
 )
 
 const maxAssetSize = 10 * 1024 * 1024
-const maxX = 0 // STILL DECIDING
-const maxY = 0 // STILL DECIDING
+const bannerMaxX = 0 // STILL DECIDING
+const bannerMaxY = 0 // STILL DECIDING
+const avatarMaxX = 0 // STILL DECIDING
+const avatarMaxY = 0 // STILL DECIDING
 
 func decodeImage(payload *types.Asset) (fileExt string, img image.Image, err error) {
 	reader := bytes.NewReader(payload.Content)
@@ -70,7 +72,66 @@ func decodeImage(payload *types.Asset) (fileExt string, img image.Image, err err
 	default:
 		return "", nil, fmt.Errorf("content type not implemented")
 	}
+}
 
+func encodeImageToFile(img image.Image, intermediary, outputPath string) error {
+	var tmpPath = os.TempDir() + "/pconv_" + crypto.RandString(128) + "." + intermediary
+
+	tmpfile, err := os.Create(tmpPath)
+
+	if err != nil {
+		return fmt.Errorf("error creating temp file: %s", err.Error())
+	}
+
+	if intermediary == "gif" {
+		err = gif.Encode(tmpfile, img, &gif.Options{})
+
+		if err != nil {
+			return fmt.Errorf("error encoding image to temp file: %s", err.Error())
+		}
+	} else {
+		err = jpeg.Encode(tmpfile, img, &jpeg.Options{Quality: 100})
+
+		if err != nil {
+			return fmt.Errorf("error encoding image to temp file: %s", err.Error())
+		}
+	}
+
+	err = tmpfile.Close()
+
+	if err != nil {
+		return fmt.Errorf("error closing temp file: %s", err.Error())
+	}
+
+	cmd := []string{"cwebp", "-q", "100", tmpPath, "-o", outputPath, "-v"}
+
+	if intermediary == "gif" {
+		cmd = []string{"gif2webp", "-q", "100", "-m", "3", tmpPath, "-o", outputPath, "-v"}
+	}
+
+	outbuf := bytes.NewBuffer(nil)
+
+	cmdExec := exec.Command(cmd[0], cmd[1:]...)
+	cmdExec.Stdout = outbuf
+	cmdExec.Stderr = outbuf
+	cmdExec.Env = os.Environ()
+
+	err = cmdExec.Run()
+
+	outputCmd := outbuf.String()
+
+	if err != nil {
+		return fmt.Errorf("error converting image: %s\n%s", err.Error(), outputCmd)
+	}
+
+	// Delete temp file
+	err = os.Remove(tmpPath)
+
+	if err != nil {
+		return fmt.Errorf("error deleting temp file: %s", err.Error())
+	}
+
+	return nil
 }
 
 func Docs() *docs.Doc {
@@ -216,132 +277,89 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		}
 
 		// check image size
-		if maxX != 0 && maxY != 0 {
-			if img.Bounds().Dx() > maxX || img.Bounds().Dy() > maxY {
+		if bannerMaxX != 0 && bannerMaxY != 0 {
+			if img.Bounds().Dx() > bannerMaxX || img.Bounds().Dy() > bannerMaxY {
 				return uapi.HttpResponse{
 					Status:  http.StatusBadRequest,
 					Headers: limit.Headers(),
-					Json:    types.ApiError{Message: fmt.Sprintf("Image must be %dx%d or smaller", maxX, maxY)},
+					Json:    types.ApiError{Message: fmt.Sprintf("Image must be %dx%d or smaller", bannerMaxX, bannerMaxY)},
 				}
 			}
 		}
 
 		// Save image to temp file
-		targetPath := state.Config.Meta.CDNPath + "/banners/" + targetType + "s/" + targetId + ".webp"
+		err = encodeImageToFile(
+			img,
+			func() string {
+				if fileExt == "gif" {
+					return "gif"
+				}
 
-		// Write temp file
-		if fileExt == "gif" {
-			// GIF has special handling
-			filePath := os.TempDir() + "/pconv_" + crypto.RandString(128) + ".gif"
+				return "jpg"
+			}(),
+			state.Config.Meta.CDNPath+"/banners/"+targetType+"s/"+targetId+".webp",
+		)
 
-			tmpfile, err := os.Create(filePath)
+		if err != nil {
+			return uapi.HttpResponse{
+				Status:  http.StatusInternalServerError,
+				Headers: limit.Headers(),
+				Json:    types.ApiError{Message: "Error converting image: " + err.Error()},
+			}
+		}
 
-			if err != nil {
+		return uapi.HttpResponse{
+			Status:  http.StatusNoContent,
+			Headers: limit.Headers(),
+		}
+	case "avatar":
+		if payload.ContentType == "" {
+			return uapi.HttpResponse{
+				Status:  http.StatusBadRequest,
+				Headers: limit.Headers(),
+				Json:    types.ApiError{Message: "ContentType must be specified to upload an avatar"},
+			}
+		}
+
+		fileExt, img, err := decodeImage(&payload)
+
+		if err != nil {
+			return uapi.HttpResponse{
+				Status:  http.StatusBadRequest,
+				Headers: limit.Headers(),
+				Json:    types.ApiError{Message: err.Error()},
+			}
+		}
+
+		// check image size
+		if avatarMaxX != 0 && avatarMaxY != 0 {
+			if img.Bounds().Dx() > avatarMaxX || img.Bounds().Dy() > avatarMaxY {
 				return uapi.HttpResponse{
-					Status:  http.StatusInternalServerError,
+					Status:  http.StatusBadRequest,
 					Headers: limit.Headers(),
-					Json:    types.ApiError{Message: "Error creating temp file: " + err.Error()},
+					Json:    types.ApiError{Message: fmt.Sprintf("Image must be %dx%d or smaller", avatarMaxX, avatarMaxY)},
 				}
 			}
+		}
 
-			err = gif.Encode(tmpfile, img, &gif.Options{})
-
-			if err != nil {
-				return uapi.HttpResponse{
-					Status:  http.StatusInternalServerError,
-					Headers: limit.Headers(),
-					Json:    types.ApiError{Message: "Error writing image to temp file: " + err.Error()},
+		// Save image to temp file
+		err = encodeImageToFile(
+			img,
+			func() string {
+				if fileExt == "gif" {
+					return "gif"
 				}
-			}
 
-			err = tmpfile.Close()
+				return "jpg"
+			}(),
+			state.Config.Meta.CDNPath+"/avatars/"+targetType+"s/"+targetId+".webp",
+		)
 
-			if err != nil {
-				return uapi.DefaultResponse(http.StatusInternalServerError)
-			}
-
-			cmd := []string{"gif2webp", "-q", "100", "-m", "3", filePath, "-o", targetPath, "-v"}
-
-			outbuf := bytes.NewBuffer(nil)
-
-			cmdExec := exec.Command(cmd[0], cmd[1:]...)
-			cmdExec.Stdout = outbuf
-			cmdExec.Stderr = outbuf
-			cmdExec.Env = os.Environ()
-
-			err = cmdExec.Run()
-
-			outputCmd := outbuf.String()
-
-			if err != nil {
-				return uapi.HttpResponse{
-					Status:  http.StatusInternalServerError,
-					Headers: limit.Headers(),
-					Json:    types.ApiError{Message: "Error converting image: " + err.Error() + "\n" + outputCmd},
-				}
-			}
-
-			// Delete temp file
-			err = os.Remove(filePath)
-
-			if err != nil {
-				return uapi.DefaultResponse(http.StatusInternalServerError)
-			}
-		} else {
-			filePath := os.TempDir() + "/pconv_" + crypto.RandString(128) + ".jpg"
-
-			tmpfile, err := os.Create(filePath)
-
-			if err != nil {
-				return uapi.HttpResponse{
-					Status:  http.StatusInternalServerError,
-					Headers: limit.Headers(),
-					Json:    types.ApiError{Message: "Error creating temp file: " + err.Error()},
-				}
-			}
-
-			err = jpeg.Encode(tmpfile, img, &jpeg.Options{Quality: 100})
-
-			if err != nil {
-				return uapi.HttpResponse{
-					Status:  http.StatusInternalServerError,
-					Headers: limit.Headers(),
-					Json:    types.ApiError{Message: "Error writing image to temp file: " + err.Error()},
-				}
-			}
-
-			err = tmpfile.Close()
-
-			if err != nil {
-				return uapi.DefaultResponse(http.StatusInternalServerError)
-			}
-
-			cmd := []string{"cwebp", "-q", "100", filePath, "-o", targetPath, "-v"}
-
-			outbuf := bytes.NewBuffer(nil)
-
-			cmdExec := exec.Command(cmd[0], cmd[1:]...)
-			cmdExec.Stdout = outbuf
-			cmdExec.Stderr = outbuf
-			cmdExec.Env = os.Environ()
-
-			err = cmdExec.Run()
-
-			outputCmd := outbuf.String()
-
-			if err != nil {
-				return uapi.HttpResponse{
-					Status:  http.StatusInternalServerError,
-					Headers: limit.Headers(),
-					Json:    types.ApiError{Message: "Error converting image: " + err.Error() + "\n" + outputCmd},
-				}
-			}
-
-			// Delete temp file
-			err = os.Remove(filePath)
-
-			if err != nil {
-				return uapi.DefaultResponse(http.StatusInternalServerError)
+		if err != nil {
+			return uapi.HttpResponse{
+				Status:  http.StatusInternalServerError,
+				Headers: limit.Headers(),
+				Json:    types.ApiError{Message: "Error converting image: " + err.Error()},
 			}
 		}
 

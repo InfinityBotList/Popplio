@@ -2,7 +2,7 @@ package assets
 
 import (
 	"popplio/api"
-	"popplio/routes/assets/upload_asset"
+	"popplio/routes/assets/endpoints/upload_asset"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/infinitybotlist/eureka/uapi"
