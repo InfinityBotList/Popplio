@@ -3,9 +3,9 @@ package types
 import "time"
 
 type Asset struct {
-	Type        string `json:"type" description:"Asset type (banner, icon etc.)"`
-	ContentType string `json:"content_type" description:"Asset file type (png, jpg etc.). This is only required for certain asset types and may be ignored by others"`
-	Content     []byte `json:"content" description:"Asset content (image data)"`
+	Type        string  `json:"type" description:"Asset type (banner, icon etc.)"`
+	ContentType string  `json:"content_type" description:"Asset file type (png, jpg etc.). This is only required for certain asset types and may be ignored by others"`
+	Content     []uint8 `json:"content" description:"Asset content (image data)"`
 }
 
 type AssetMetadata struct {
