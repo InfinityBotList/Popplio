@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"kitehelper/common"
 	"kitehelper/downloader"
 	"kitehelper/migrate"
 
@@ -24,14 +25,14 @@ var migs = []migrate.Migration{
 	{
 		ID:   "create_webhook_logs",
 		Name: "Create webhook_logs",
-		HasMigrated: func(pool *migrate.SandboxPool) error {
+		HasMigrated: func(pool *common.SandboxPool) error {
 			if tableExists(pool, "webhook_logs") {
 				return errors.New("table webhook_logs already exists")
 			}
 
 			return nil
 		},
-		Function: func(pool *migrate.SandboxPool) {
+		Function: func(pool *common.SandboxPool) {
 
 			// Create webhook_logs
 			err := pool.Exec(context.Background(), `CREATE TABLE IF NOT EXISTS webhook_logs (
@@ -57,14 +58,14 @@ var migs = []migrate.Migration{
 	{
 		ID:   "create_vanity",
 		Name: "Create vanity",
-		HasMigrated: func(pool *migrate.SandboxPool) error {
+		HasMigrated: func(pool *common.SandboxPool) error {
 			if !colExists(pool, "bots", "vanity") && tableExists(pool, "vanity") {
 				return errors.New("table vanity already exists")
 			}
 
 			return nil
 		},
-		Function: func(pool *migrate.SandboxPool) {
+		Function: func(pool *common.SandboxPool) {
 			// Fetch all bot vanities
 			rows, err := pool.Query(context.Background(), "SELECT bot_id, vanity FROM bots")
 
@@ -119,7 +120,7 @@ var migs = []migrate.Migration{
 	},
 	{
 		ID: "team_permissions_v2",
-		HasMigrated: func(pool *migrate.SandboxPool) error {
+		HasMigrated: func(pool *common.SandboxPool) error {
 			if !colExists(pool, "team_members", "perms") {
 				return errors.New("column perms does not exist")
 			}
@@ -127,7 +128,7 @@ var migs = []migrate.Migration{
 			return nil
 		},
 		Name: "Team permissions -> flags",
-		Function: func(pool *migrate.SandboxPool) {
+		Function: func(pool *common.SandboxPool) {
 			// Fetch every team member permission
 			pmap := map[string]string{
 				"EDIT_BOT_SETTINGS":            "bot.edit",
@@ -190,14 +191,14 @@ var migs = []migrate.Migration{
 	{
 		ID:   "migrate_webhooks",
 		Name: "migrate webhooks",
-		HasMigrated: func(pool *migrate.SandboxPool) error {
+		HasMigrated: func(pool *common.SandboxPool) error {
 			if tableExists(pool, "webhooks") && !colExists(pool, "bots", "webhooks") {
 				return errors.New("table webhooks already exists")
 			}
 
 			return nil
 		},
-		Function: func(pool *migrate.SandboxPool) {
+		Function: func(pool *common.SandboxPool) {
 			rows, err := pool.Query(context.Background(), "SELECT bot_id, webhook, web_auth, api_token from bots")
 
 			if err != nil {
@@ -243,7 +244,7 @@ var migs = []migrate.Migration{
 	{
 		ID:   "banner_migration",
 		Name: "Banner migration",
-		HasMigrated: func(pool *migrate.SandboxPool) error {
+		HasMigrated: func(pool *common.SandboxPool) error {
 			if os.Getenv("BANNERS_NEED_MIGRATION") != "" {
 				return nil
 			}
@@ -258,7 +259,7 @@ var migs = []migrate.Migration{
 
 			return errors.New("banners do not need migration")
 		},
-		Function: func(pool *migrate.SandboxPool) {
+		Function: func(pool *common.SandboxPool) {
 			proxyUrl := os.Getenv("BANNER_PROXY_URL")
 			for _, targetType := range []string{"bots", "servers", "teams"} {
 				// Create banners directory
@@ -332,7 +333,7 @@ var migs = []migrate.Migration{
 						migrate.StatusBoldYellow("IMGUR BANNER hash2: " + bannerHash)
 						banner = "https://i.imgur.com/" + bannerHash
 
-						bannerCheck := userInput("Please validate this, input 'gone' if the banner is gone: " + banner)
+						bannerCheck := common.UserInput("Please validate this, input 'gone' if the banner is gone: " + banner)
 
 						if bannerCheck == "gone" {
 							migrate.StatusBoldBlue("OK setting banner to null")
@@ -340,19 +341,19 @@ var migs = []migrate.Migration{
 						}
 
 						if !strings.Contains(bannerHash, ".") {
-							ext := userInput("Please enter the file extension for the banner for " + targetType + " " + id + " (e.g. png, jpg, gif) for " + banner + " as it does not contain a file extension")
+							ext := common.UserInput("Please enter the file extension for the banner for " + targetType + " " + id + " (e.g. png, jpg, gif) for " + banner + " as it does not contain a file extension")
 							banner = banner + "." + ext
 						}
 
 						if proxyUrl == "" {
 							migrate.StatusBoldYellow("Banner for", targetType, id, "("+banner+") is hosted on imgur, continuing will require a proxy set up on another device?")
 
-							if !userInputBoolean("Do you want to continue?") {
+							if !common.UserInputBoolean("Do you want to continue?") {
 								failedIds = append(failedIds, id)
 								continue
 							}
 
-							proxyUrl = userInput("Please enter the proxy url to use?")
+							proxyUrl = common.UserInput("Please enter the proxy url to use?")
 
 							if !strings.HasPrefix(proxyUrl, "http://") && !strings.HasPrefix(proxyUrl, "https://") {
 								proxyUrl = "http://" + proxyUrl
@@ -371,7 +372,7 @@ var migs = []migrate.Migration{
 							continue
 						}
 
-						if !userInputBoolean("Banner for " + targetType + " " + id + " already exists [points to " + banner + "]" + "(" + filePath + ", do you want to overwrite it?") {
+						if !common.UserInputBoolean("Banner for " + targetType + " " + id + " already exists [points to " + banner + "]" + "(" + filePath + ", do you want to overwrite it?") {
 							continue
 						}
 					}
@@ -462,7 +463,7 @@ var migs = []migrate.Migration{
 	{
 		ID:   "migrate_team_avatars",
 		Name: "Migrate team avatars",
-		HasMigrated: func(pool *migrate.SandboxPool) error {
+		HasMigrated: func(pool *common.SandboxPool) error {
 			if os.Getenv("TEAMAVATARS_NEED_MIGRATION") != "" {
 				return nil
 			}
@@ -473,7 +474,7 @@ var migs = []migrate.Migration{
 
 			return errors.New("avatars do not need migration")
 		},
-		Function: func(pool *migrate.SandboxPool) {
+		Function: func(pool *common.SandboxPool) {
 			proxyUrl := os.Getenv("BANNER_PROXY_URL")
 			// Create banners directory
 			err := os.MkdirAll(cdnPath+"/avatars/teams", 0755)
@@ -535,7 +536,7 @@ var migs = []migrate.Migration{
 					migrate.StatusBoldYellow("IMGUR AVATAR hash2: " + avatarHash)
 					avatar = "https://i.imgur.com/" + avatarHash
 
-					avatarCheck := userInput("Please validate this, input 'gone' if the avatar is gone: " + avatar)
+					avatarCheck := common.UserInput("Please validate this, input 'gone' if the avatar is gone: " + avatar)
 
 					if avatarCheck == "gone" {
 						migrate.StatusBoldBlue("OK, setting avatar to null")
@@ -545,19 +546,19 @@ var migs = []migrate.Migration{
 					}
 
 					if !strings.Contains(avatarHash, ".") {
-						ext := userInput("Please enter the file extension for the avatar for team" + " " + id + " (e.g. png, jpg, gif) for " + avatar + " as it does not contain a file extension")
+						ext := common.UserInput("Please enter the file extension for the avatar for team" + " " + id + " (e.g. png, jpg, gif) for " + avatar + " as it does not contain a file extension")
 						avatar = avatar + "." + ext
 					}
 
 					if proxyUrl == "" {
 						migrate.StatusBoldYellow("Avatar for team", id, "("+avatar+") is hosted on imgur, continuing will require a proxy set up on another device?")
 
-						if !userInputBoolean("Do you want to continue?") {
+						if !common.UserInputBoolean("Do you want to continue?") {
 							failedIds = append(failedIds, id)
 							continue
 						}
 
-						proxyUrl = userInput("Please enter the proxy url to use?")
+						proxyUrl = common.UserInput("Please enter the proxy url to use?")
 
 						if !strings.HasPrefix(proxyUrl, "http://") && !strings.HasPrefix(proxyUrl, "https://") {
 							proxyUrl = "http://" + proxyUrl
@@ -576,7 +577,7 @@ var migs = []migrate.Migration{
 						continue
 					}
 
-					if !userInputBoolean("Avatar for team " + id + " already exists [points to " + avatar + "]" + "(" + filePath + ", do you want to overwrite it?") {
+					if !common.UserInputBoolean("Avatar for team " + id + " already exists [points to " + avatar + "]" + "(" + filePath + ", do you want to overwrite it?") {
 						continue
 					}
 				}

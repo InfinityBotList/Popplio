@@ -5,8 +5,10 @@ import (
 	_ "kitehelper/icb/icb_migrations"
 	"kitehelper/migrate"
 	"kitehelper/tests"
+	"kitehelper/validatetable"
 	"os"
 	"runtime/debug"
+	"slices"
 )
 
 var GitCommit string
@@ -40,6 +42,10 @@ var cmds = map[string]command{
 		Func: migrate.Migrate,
 		Help: "Run custom migrations",
 	},
+	"validate-table": {
+		Func: validatetable.ValidateTable,
+		Help: "Validate a table",
+	},
 }
 
 func cmdList() {
@@ -57,6 +63,12 @@ func main() {
 		fmt.Printf("usage: %s <command> [args]\n\n", progname)
 		cmdList()
 		os.Exit(1)
+	}
+
+	if slices.Contains(args, "-h") || slices.Contains(args, "--help") {
+		fmt.Printf("usage: %s <command> [args]\n\n", progname)
+		cmdList()
+		os.Exit(0)
 	}
 
 	cmd, ok := cmds[args[0]]
