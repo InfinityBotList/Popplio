@@ -27,6 +27,9 @@ ts:
 	# Patch to change package name to 'popltypes'
 	sed -i 's:package types:package popltypes:g' $(CDN_PATH)/dev/bindings/popplio/go/types/*
 
+	# Add enums
+	STAGING_API=true ibl genenums
+
 promoteprod:
 	rm -rf ../prod2
 	cd .. && cp -rf staging prod2

@@ -19,16 +19,11 @@ var (
 	indexBotCols    = strings.Join(indexBotColsArr, ",")
 )
 
-type RandomBotResponse struct {
-	Bots  []types.IndexBot `json:"bots"`
-	Count int              `json:"count"`
-}
-
 func Docs() *docs.Doc {
 	return &docs.Doc{
 		Summary:     "Get Random Bots",
 		Description: "Returns a list of bots from the database in random order",
-		Resp: RandomBotResponse{
+		Resp: types.RandomBots{
 			Bots: []types.IndexBot{},
 		},
 	}
@@ -49,8 +44,8 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
-	for i, bot := range bots {
-		botUser, err := dovewing.GetUser(d.Context, bot.BotID, state.DovewingPlatformDiscord)
+	for i := range bots {
+		botUser, err := dovewing.GetUser(d.Context, bots[i].BotID, state.DovewingPlatformDiscord)
 
 		if err != nil {
 			return uapi.DefaultResponse(http.StatusInternalServerError)
@@ -72,7 +67,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	}
 
 	return uapi.HttpResponse{
-		Json: RandomBotResponse{
+		Json: types.RandomBots{
 			Bots: bots,
 		},
 	}

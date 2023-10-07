@@ -79,3 +79,7 @@ type ListIndexServer struct {
 	RecentlyAdded []IndexServer `json:"recently_added"`
 	TopVoted      []IndexServer `json:"top_voted"`
 }
+
+type RandomServers struct {
+	Servers []IndexServer `json:"servers"`
+}

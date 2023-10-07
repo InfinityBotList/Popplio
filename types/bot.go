@@ -156,3 +156,7 @@ type DiscordBotMeta struct {
 type PatchBotTeam struct {
 	TeamID string `json:"team_id" description:"The team ID to add the bot to"`
 }
+
+type RandomBots struct {
+	Bots []IndexBot `json:"bots"`
+}

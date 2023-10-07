@@ -26,5 +26,6 @@ type SearchQuery struct {
 }
 
 type SearchResponse struct {
-	Bots []IndexBot `json:"bots"`
+	Bots    []IndexBot    `json:"bots"`
+	Servers []IndexServer `json:"servers"`
 }
