@@ -2,6 +2,7 @@ package servers
 
 import (
 	"popplio/api"
+	"popplio/routes/servers/endpoints/get_all_servers"
 	"popplio/routes/servers/endpoints/get_random_servers"
 	"popplio/routes/servers/endpoints/get_server"
 	"popplio/routes/servers/endpoints/get_server_seo"
@@ -21,6 +22,14 @@ func (b Router) Tag() (string, string) {
 }
 
 func (b Router) Routes(r *chi.Mux) {
+	uapi.Route{
+		Pattern: "/servers/@all",
+		OpId:    "get_all_servers",
+		Method:  uapi.GET,
+		Docs:    get_all_servers.Docs,
+		Handler: get_all_servers.Route,
+	}.Route(r)
+
 	uapi.Route{
 		Pattern: "/servers/@random",
 		OpId:    "get_random_servers",
