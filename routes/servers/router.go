@@ -4,6 +4,7 @@ import (
 	"popplio/api"
 	"popplio/routes/servers/endpoints/get_server"
 	"popplio/routes/servers/endpoints/get_server_seo"
+	"popplio/routes/servers/endpoints/get_servers_index"
 	"popplio/routes/servers/endpoints/patch_server_settings"
 
 	"github.com/go-chi/chi/v5"
@@ -19,6 +20,14 @@ func (b Router) Tag() (string, string) {
 }
 
 func (b Router) Routes(r *chi.Mux) {
+	uapi.Route{
+		Pattern: "/servers/@index",
+		OpId:    "get_servers_index",
+		Method:  uapi.GET,
+		Docs:    get_servers_index.Docs,
+		Handler: get_servers_index.Route,
+	}.Route(r)
+
 	uapi.Route{
 		Pattern: "/servers/{id}",
 		OpId:    "get_server",

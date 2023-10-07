@@ -1,4 +1,4 @@
-package get_list_index
+package get_bots_index
 
 import (
 	"context"
@@ -27,15 +27,15 @@ var (
 
 func Docs() *docs.Doc {
 	return &docs.Doc{
-		Summary:     "Get List Index",
-		Description: "Gets the index of the list. Returns a ``Index`` object",
+		Summary:     "Get Bots Index",
+		Description: "Gets the index of the bot-side of the list. Returns a ``ListIndexBot`` object",
 		Resp:        types.ListIndexBot{},
 	}
 }
 
 func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	// Check cache, this is how we can avoid hefty ratelimits
-	cache := state.Redis.Get(d.Context, "indexcache").Val()
+	cache := state.Redis.Get(d.Context, "indexcache:bots").Val()
 	if cache != "" {
 		return uapi.HttpResponse{
 			Data: cache,
@@ -124,7 +124,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 
 	return uapi.HttpResponse{
 		Json:      listIndex,
-		CacheKey:  "indexcache",
+		CacheKey:  "indexcache:bots",
 		CacheTime: 3 * time.Minute,
 	}
 }
@@ -136,8 +136,8 @@ func processRow(ctx context.Context, rows pgx.Rows) ([]types.IndexBot, error) {
 		return nil, err
 	}
 
-	for i, bot := range bots {
-		botUser, err := dovewing.GetUser(ctx, bot.BotID, state.DovewingPlatformDiscord)
+	for i := range bots {
+		botUser, err := dovewing.GetUser(ctx, bots[i].BotID, state.DovewingPlatformDiscord)
 
 		if err != nil {
 			return nil, err

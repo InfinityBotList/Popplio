@@ -59,6 +59,7 @@ type Server struct {
 	StartPeriod         pgtype.Timestamptz `db:"start_premium_period" json:"start_premium_period"`
 	PremiumPeriodLength time.Duration      `db:"premium_period_length" json:"premium_period_length" description:"The period of premium for the server in nanoseconds"`
 	CaptchaOptOut       bool               `db:"captcha_opt_out" json:"captcha_opt_out" description:"Whether the server should have captchas shown if the user has captcha_sponsor_enabled"`
+	CreatedAt           pgtype.Timestamptz `db:"created_at" json:"created_at" description:"The server's creation date"`
 }
 
 type ServerSettingsUpdate struct {
@@ -68,4 +69,13 @@ type ServerSettingsUpdate struct {
 	Tags          []string `db:"tags" json:"tags" validate:"required,unique,min=1,max=5,dive,min=3,max=30,notblank,nonvulgar" msg:"There must be between 1 and 5 tags without duplicates" amsg:"Each tag must be between 3 and 30 characters and alphabetic"`
 	NSFW          bool     `db:"nsfw" json:"nsfw"`
 	CaptchaOptOut bool     `db:"captcha_opt_out" json:"captcha_opt_out"`
+}
+
+// List Index
+type ListIndexServer struct {
+	Certified     []IndexServer `json:"certified"`
+	Premium       []IndexServer `json:"premium"`
+	MostViewed    []IndexServer `json:"most_viewed"`
+	RecentlyAdded []IndexServer `json:"recently_added"`
+	TopVoted      []IndexServer `json:"top_voted"`
 }

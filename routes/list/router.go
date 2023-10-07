@@ -3,7 +3,6 @@ package list
 import (
 	"popplio/routes/list/endpoints/current_status"
 	"popplio/routes/list/endpoints/get_changelog"
-	"popplio/routes/list/endpoints/get_list_index"
 	"popplio/routes/list/endpoints/get_list_stats"
 	"popplio/routes/list/endpoints/get_list_team"
 	"popplio/routes/list/endpoints/get_oauth_url"
@@ -32,14 +31,6 @@ func (b Router) Routes(r *chi.Mux) {
 		Method:  uapi.GET,
 		Docs:    get_rss_feed.Docs,
 		Handler: get_rss_feed.Route,
-	}.Route(r)
-
-	uapi.Route{
-		Pattern: "/list/index",
-		OpId:    "get_list_index",
-		Method:  uapi.GET,
-		Docs:    get_list_index.Docs,
-		Handler: get_list_index.Route,
 	}.Route(r)
 
 	uapi.Route{
