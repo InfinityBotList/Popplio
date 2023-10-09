@@ -170,7 +170,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	limit, err := ratelimit.Ratelimit{
 		Expiry:      1 * time.Minute,
 		MaxRequests: 3,
-		Bucket:      "upload_asset",
+		Bucket:      "assets",
 	}.Limit(d.Context, r)
 
 	if err != nil {
@@ -223,11 +223,11 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		}
 	}
 
-	if !perms.Has(targetType, teams.PermissionAssets) {
+	if !perms.Has(targetType, teams.PermissionUploadAssets) {
 		return uapi.HttpResponse{
 			Status:  http.StatusForbidden,
 			Headers: limit.Headers(),
-			Json:    types.ApiError{Message: "You do not have permission to manage assets for this entity"},
+			Json:    types.ApiError{Message: "You do not have permission to upload assets for this entity"},
 		}
 	}
 

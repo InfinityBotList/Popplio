@@ -2,6 +2,7 @@ package assets
 
 import (
 	"popplio/api"
+	"popplio/routes/assets/endpoints/delete_asset"
 	"popplio/routes/assets/endpoints/upload_asset"
 
 	"github.com/go-chi/chi/v5"
@@ -23,6 +24,20 @@ func (b Router) Routes(r *chi.Mux) {
 		Method:  uapi.POST,
 		Docs:    upload_asset.Docs,
 		Handler: upload_asset.Route,
+		Auth: []uapi.AuthType{
+			{
+				Type:   api.TargetTypeUser,
+				URLVar: "uid",
+			},
+		},
+	}.Route(r)
+
+	uapi.Route{
+		Pattern: "/users/{uid}/assets/{target_id}",
+		OpId:    "delete_asset",
+		Method:  uapi.DELETE,
+		Docs:    delete_asset.Docs,
+		Handler: delete_asset.Route,
 		Auth: []uapi.AuthType{
 			{
 				Type:   api.TargetTypeUser,
