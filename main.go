@@ -12,7 +12,6 @@ import (
 
 	"popplio/api"
 	poplapps "popplio/apps"
-	"popplio/config"
 	"popplio/constants"
 	"popplio/notifications"
 	"popplio/routes/alerts"
@@ -30,7 +29,6 @@ import (
 	"popplio/routes/reminders"
 	"popplio/routes/reviews"
 	"popplio/routes/servers"
-	srvrouter "popplio/routes/srvdiscovery"
 	"popplio/routes/staff"
 	"popplio/routes/teams"
 	"popplio/routes/tickets"
@@ -38,7 +36,6 @@ import (
 	"popplio/routes/vanity"
 	"popplio/routes/votes"
 	"popplio/routes/webhooks"
-	"popplio/srvdirectory"
 	"popplio/stafftemplates"
 	"popplio/state"
 	"popplio/types"
@@ -109,7 +106,7 @@ func main() {
 		Info: docs.Info{
 			Title:          "Infinity Bot List API",
 			TermsOfService: "https://infinitybotlist.com/terms",
-			Version:        "6.0",
+			Version:        "7.0",
 			Description:    "",
 			Contact: docs.Contact{
 				Name:  "Infinity Bot List",
@@ -123,7 +120,6 @@ func main() {
 		},
 	}
 
-	srvdirectory.Setup()
 	docs.Setup()
 	poplhooks.Setup()
 
@@ -160,7 +156,6 @@ func main() {
 		reminders.Router{},
 		reviews.Router{},
 		servers.Router{},
-		srvrouter.Router{},
 		staff.Router{},
 		teams.Router{},
 		tickets.Router{},
@@ -189,12 +184,13 @@ func main() {
 	docsTempl := template.Must(template.New("docs").Parse(docsHTML))
 
 	r.Get("/docs", func(w http.ResponseWriter, r *http.Request) {
-		http.Redirect(w, r, "/docs/public.popplio", http.StatusFound)
+		http.Redirect(w, r, "/docs/popplio", http.StatusFound)
 	})
 
 	r.Get("/docs/{srv}", func(w http.ResponseWriter, r *http.Request) {
-		var specData struct {
-			URL string
+		var docMap = map[string]string{
+			"popplio": "/openapi",
+			"arcadia": "https://prod--panel-api.infinitybots.gg/openapi",
 		}
 
 		srv := chi.URLParam(r, "srv")
@@ -205,60 +201,19 @@ func main() {
 			return
 		}
 
-		split := strings.Split(srv, ".")
-
-		if len(split) != 2 {
-			w.WriteHeader(http.StatusBadRequest)
-			w.Write([]byte("Invalid service name"))
-			return
-		}
-
-		v, ok := srvdirectory.Directory[split[0]]
+		v, ok := docMap[srv]
 
 		if !ok {
-			w.WriteHeader(http.StatusBadRequest)
-			w.Write([]byte("Invalid service directory"))
-			return
-		}
-
-		var dir *types.SDService
-
-		for _, v := range v {
-			if v.ID == split[1] {
-				dir = &v
-				break
-			}
-		}
-
-		if dir == nil {
 			w.WriteHeader(http.StatusBadRequest)
 			w.Write([]byte("Invalid service"))
 			return
 		}
 
-		if dir.Docs == "" {
-			w.WriteHeader(http.StatusBadRequest)
-			w.Write([]byte("Service does not have documentation"))
-			return
-		}
-
-		var dirUrl string
-
-		if config.CurrentEnv == config.CurrentEnvProd {
-			dirUrl = dir.ProdURL
-		} else {
-			if dir.StagingURL == "" {
-				dirUrl = dir.ProdURL
-			} else {
-				dirUrl = dir.StagingURL
-			}
-		}
-
-		specData.URL = dirUrl + dir.Docs
-
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
 
-		docsTempl.Execute(w, specData)
+		docsTempl.Execute(w, map[string]string{
+			"url": v,
+		})
 	})
 
 	// Load openapi here to avoid large marshalling in every request

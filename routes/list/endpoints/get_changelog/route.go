@@ -13,8 +13,8 @@ import (
 )
 
 var (
-	changelogColsArr = db.GetCols(&types.Changelog{})
-	changelogCols    = strings.Join(changelogColsArr, ", ")
+	changelogEntryColsArr = db.GetCols(types.ChangelogEntry{})
+	changelogEntryCols    = strings.Join(changelogEntryColsArr, ", ")
 )
 
 func Docs() *docs.Doc {
@@ -26,22 +26,26 @@ func Docs() *docs.Doc {
 }
 
 func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
-	rows, err := state.Pool.Query(d.Context, "SELECT "+changelogCols+" FROM changelogs ORDER BY version DESC")
+	rows, err := state.Pool.Query(d.Context, "SELECT "+changelogEntryCols+" FROM changelogs ORDER BY version DESC")
 
 	if err != nil {
+		state.Logger.Error(err)
 		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
 	defer rows.Close()
 
-	changelogs, err := pgx.CollectRows(rows, pgx.RowToStructByName[types.Changelog])
+	changelogs, err := pgx.CollectRows(rows, pgx.RowToStructByName[types.ChangelogEntry])
 
 	if err != nil {
+		state.Logger.Error(err)
 		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
 	return uapi.HttpResponse{
 		Status: http.StatusOK,
-		Json:   changelogs,
+		Json: types.Changelog{
+			Entries: changelogs,
+		},
 	}
 }
