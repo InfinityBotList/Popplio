@@ -64,9 +64,9 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	var avatarPath string
 
 	if avatar.Exists {
-		avatarPath = state.Config.Meta.CDNPath + avatar.Path
+		avatarPath = state.Config.Sites.CDN + avatar.Path
 	} else {
-		avatarPath = state.Config.Meta.CDNPath + avatar.DefaultPath
+		avatarPath = state.Config.Sites.CDN + avatar.DefaultPath
 	}
 
 	seoData := types.SEO{
