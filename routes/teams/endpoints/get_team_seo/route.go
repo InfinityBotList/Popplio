@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"time"
 
+	"popplio/assetmanager"
 	"popplio/state"
 	"popplio/types"
 
@@ -51,18 +52,27 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 
 	var id string
 	var name string
-	var avatar string
-	err := state.Pool.QueryRow(d.Context, "SELECT id, name, avatar FROM teams WHERE id = $1", tid).Scan(&id, &name, &avatar)
+	err := state.Pool.QueryRow(d.Context, "SELECT id, name FROM teams WHERE id = $1", tid).Scan(&id, &name)
 
 	if err != nil {
 		state.Logger.Error(err)
 		return uapi.DefaultResponse(http.StatusNotFound)
 	}
 
+	avatar := assetmanager.AvatarInfo(assetmanager.AssetTargetTypeTeams, id)
+
+	var avatarPath string
+
+	if avatar.Exists {
+		avatarPath = state.Config.Meta.CDNPath + avatar.Path
+	} else {
+		avatarPath = state.Config.Meta.CDNPath + avatar.DefaultPath
+	}
+
 	seoData := types.SEO{
 		ID:     id,
 		Name:   name,
-		Avatar: avatar,
+		Avatar: avatarPath,
 		Short:  "View the team " + name + " on Infinity Bot List",
 	}
 
