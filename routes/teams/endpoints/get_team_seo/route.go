@@ -2,6 +2,7 @@ package get_team_seo
 
 import (
 	"net/http"
+	"strconv"
 	"time"
 
 	"popplio/assetmanager"
@@ -64,9 +65,9 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	var avatarPath string
 
 	if avatar.Exists {
-		avatarPath = state.Config.Sites.CDN + avatar.Path
+		avatarPath = state.Config.Sites.CDN + "/" + avatar.Path + "ts=" + strconv.FormatInt(avatar.LastModified.Unix(), 10)
 	} else {
-		avatarPath = state.Config.Sites.CDN + avatar.DefaultPath
+		avatarPath = state.Config.Sites.CDN + "/" + avatar.DefaultPath
 	}
 
 	seoData := types.SEO{
