@@ -1,7 +1,6 @@
 package srvdirectory
 
 import (
-	"popplio/state"
 	"popplio/types"
 )
 
@@ -12,7 +11,7 @@ func Setup() {
 		"public": {
 			{
 				ID:          "htmlsanitize",
-				ProdURL:     state.Config.Sites.HtmlSanitize,
+				ProdURL:     "https://hs.infinitybots.gg",
 				Description: "HTML->MD",
 				Docs:        "/openapi",
 			},
@@ -24,22 +23,9 @@ func Setup() {
 		},
 		"staff": {
 			{
-				ID:           "arcadia",
-				ProdURL:      "https://prod--panel-api.infinitybots.gg",
-				Docs:         "/openapi",
-				Description:  "Staff Panel API",
-				NeedsStaging: true,
-			},
-			{
 				ID:          "persepolis",
 				ProdURL:     "https://persepolis.infinitybots.gg",
 				Description: "Staff onboarding",
-			},
-			{
-				ID:           "ashfur",
-				ProdURL:      "https://ashfur.infinitybots.gg",
-				Description:  "Data aggregation (modcases) on MongoDB",
-				NeedsStaging: true,
 			},
 		},
 	}
