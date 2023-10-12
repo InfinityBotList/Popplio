@@ -56,7 +56,7 @@ func FindPerks(ctx context.Context, payload PerkData) (*types.PaymentPlan, error
 	switch payload.ProductID {
 	case "premium":
 		for _, plan := range Plans {
-			state.Logger.Info(plan.ID, payload.ProductName)
+			state.Logger.Debug(plan.ID, "!=", payload.ProductName)
 			if plan.ID == payload.ProductName {
 				// Ensure the bot associated with For exists
 				var count int64
