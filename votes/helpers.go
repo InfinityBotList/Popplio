@@ -3,7 +3,9 @@ package votes
 import (
 	"context"
 	"errors"
+	"popplio/assetmanager"
 	"popplio/state"
+	"strconv"
 
 	"github.com/infinitybotlist/eureka/dovewing"
 	"github.com/jackc/pgx/v5"
@@ -63,9 +65,9 @@ func GetEntityInfo(ctx context.Context, targetId, targetType string) (*EntityInf
 			Avatar:  "",
 		}, nil
 	case "team":
-		var name, avatar string
+		var name string
 
-		err := state.Pool.QueryRow(ctx, "SELECT name, avatar FROM teams WHERE id = $1", targetId).Scan(&name, &avatar)
+		err := state.Pool.QueryRow(ctx, "SELECT name FROM teams WHERE id = $1", targetId).Scan(&name)
 
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, errors.New("team not found")
@@ -75,12 +77,22 @@ func GetEntityInfo(ctx context.Context, targetId, targetType string) (*EntityInf
 			return nil, err
 		}
 
+		avatar := assetmanager.AvatarInfo(assetmanager.AssetTargetTypeTeams, targetId)
+
+		var avatarPath string
+
+		if avatar.Exists {
+			avatarPath = state.Config.Sites.CDN + "/" + avatar.Path + "?ts=" + strconv.FormatInt(avatar.LastModified.Unix(), 10)
+		} else {
+			avatarPath = state.Config.Sites.CDN + "/" + avatar.DefaultPath
+		}
+
 		// Set entityInfo for log
 		return &EntityInfo{
 			URL:     "https://botlist.site/team/" + targetId,
 			VoteURL: "https://botlist.site/team/" + targetId + "/vote",
 			Name:    name,
-			Avatar:  avatar,
+			Avatar:  avatarPath,
 		}, nil
 	case "server":
 		var name, avatar string
