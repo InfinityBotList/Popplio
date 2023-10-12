@@ -21,8 +21,8 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/plutov/paypal/v4"
 	"github.com/redis/go-redis/v9"
-	"github.com/stripe/stripe-go/v74"
-	"github.com/stripe/stripe-go/v74/webhookendpoint"
+	"github.com/stripe/stripe-go/v75"
+	"github.com/stripe/stripe-go/v75/webhookendpoint"
 	"go.uber.org/zap"
 	"gopkg.in/yaml.v3"
 )

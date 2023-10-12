@@ -13,8 +13,8 @@ import (
 	"github.com/infinitybotlist/eureka/uapi"
 
 	jsoniter "github.com/json-iterator/go"
-	"github.com/stripe/stripe-go/v74"
-	"github.com/stripe/stripe-go/v74/webhook"
+	"github.com/stripe/stripe-go/v75"
+	"github.com/stripe/stripe-go/v75/webhook"
 	"golang.org/x/exp/slices"
 )
 
@@ -114,7 +114,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		state.Logger.Error("Unknown event type:" + event.Type)
 		return uapi.HttpResponse{
 			Status: http.StatusOK,
-			Data:   "Unknown event type: " + event.Type,
+			Data:   "Unknown event type: " + string(event.Type),
 		}
 	}
 

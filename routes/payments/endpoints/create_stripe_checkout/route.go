@@ -15,8 +15,8 @@ import (
 
 	"github.com/go-playground/validator/v10"
 	jsoniter "github.com/json-iterator/go"
-	"github.com/stripe/stripe-go/v74"
-	"github.com/stripe/stripe-go/v74/checkout/session"
+	"github.com/stripe/stripe-go/v75"
+	"github.com/stripe/stripe-go/v75/checkout/session"
 )
 
 var json = jsoniter.ConfigCompatibleWithStandardLibrary
