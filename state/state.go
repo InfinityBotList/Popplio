@@ -192,6 +192,7 @@ func Setup() {
 				"checkout.session.async_payment_succeeded",
 				"checkout.session.async_payment_failed",
 			}),
+			APIVersion: stripe.String("2023-08-16"),
 		}
 		wh, err := webhookendpoint.New(params)
 
