@@ -16,6 +16,7 @@ import (
 
 	"github.com/infinitybotlist/eureka/dovewing"
 	"github.com/jackc/pgx/v5"
+	"go.uber.org/zap"
 )
 
 const EntityType = "team"
@@ -41,15 +42,19 @@ func Send(with With) error {
 
 	row, err := state.Pool.Query(state.Context, "SELECT "+teamCols+" FROM teams WHERE id = $1", with.TeamID)
 
+	if errors.Is(err, pgx.ErrNoRows) {
+		return errors.New("team not found")
+	}
+
 	if err != nil {
-		state.Logger.Error(err)
+		state.Logger.Error("Failed to fetch team data for this teambook", zap.Error(err), zap.String("teamID", with.TeamID), zap.String("userID", with.UserID))
 		return err
 	}
 
 	team, err := pgx.CollectOneRow(row, pgx.RowToStructByName[types.Team])
 
 	if err != nil {
-		state.Logger.Error(err)
+		state.Logger.Error("Failed to fetch team data for this teambook", zap.Error(err), zap.String("teamID", with.TeamID), zap.String("userID", with.UserID))
 		return err
 	}
 
@@ -63,11 +68,11 @@ func Send(with With) error {
 	user, err := dovewing.GetUser(state.Context, with.UserID, state.DovewingPlatformDiscord)
 
 	if err != nil {
-		state.Logger.Error(err)
+		state.Logger.Error("Failed to fetch user via dovewing for this teamhook", zap.Error(err), zap.String("teamID", with.TeamID), zap.String("userID", with.UserID))
 		return err
 	}
 
-	state.Logger.Info("Sending webhook for team " + team.ID)
+	state.Logger.Info("Sending webhook for team", zap.String("teamID", team.ID))
 
 	entity := sender.WebhookEntity{
 		EntityID:   team.ID,

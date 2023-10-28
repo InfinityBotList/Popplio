@@ -3,6 +3,7 @@ package votes
 import (
 	"context"
 	"errors"
+	"fmt"
 	"popplio/assetmanager"
 	"popplio/state"
 	"strconv"
@@ -32,8 +33,7 @@ func GetEntityInfo(ctx context.Context, targetId, targetType string) (*EntityInf
 		}
 
 		if err != nil {
-			state.Logger.Error(err)
-			return nil, err
+			return nil, fmt.Errorf("failed to fetch bot data for this vote: %w", err)
 		}
 
 		if voteBanned {

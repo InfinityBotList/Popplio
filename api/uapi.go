@@ -11,6 +11,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/infinitybotlist/eureka/uapi"
 	"github.com/jackc/pgx/v5/pgtype"
+	"go.uber.org/zap"
 	"golang.org/x/exp/slices"
 )
 
@@ -94,11 +95,30 @@ func Authorize(r uapi.Route, req *http.Request) (uapi.AuthData, uapi.HttpRespons
 				Authorized: true,
 			}
 			urlIds = []string{id.String}
+		case TargetTypeServer:
+			// Check if the server exists with said token only
+			var id pgtype.Text
+			err := state.Pool.QueryRow(state.Context, "SELECT server_id FROM servers WHERE api_token = $1", strings.Replace(authHeader, "Server ", "", 1)).Scan(&id)
+
+			if err != nil {
+				continue
+			}
+
+			if !id.Valid {
+				continue
+			}
+
+			authData = uapi.AuthData{
+				TargetType: TargetTypeServer,
+				ID:         id.String,
+				Authorized: true,
+			}
+			urlIds = []string{id.String}
 		}
 
 		// Now handle the URLVar
 		if auth.URLVar != "" {
-			state.Logger.Info("URLVar: ", auth.URLVar)
+			state.Logger.Info("Checking URL variable against user ID from auth token", zap.String("URLVar", auth.URLVar))
 			gotUserId := chi.URLParam(req, auth.URLVar)
 			if !slices.Contains(urlIds, gotUserId) {
 				authData = uapi.AuthData{} // Remove auth data

@@ -10,6 +10,7 @@ import (
 
 	docs "github.com/infinitybotlist/eureka/doclib"
 	"github.com/infinitybotlist/eureka/uapi"
+	"go.uber.org/zap"
 
 	"github.com/go-chi/chi/v5"
 )
@@ -62,7 +63,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	uv, err := votes.EntityVoteCheck(d.Context, uid, targetId, targetType)
 
 	if err != nil {
-		state.Logger.Error(err)
+		state.Logger.Error("Failed to get user entity votes", zap.Error(err), zap.String("userId", uid), zap.String("targetId", targetId), zap.String("targetType", targetType))
 		return uapi.HttpResponse{
 			Status: http.StatusBadRequest,
 			Json:   types.ApiError{Message: err.Error()},

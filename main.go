@@ -44,6 +44,7 @@ import (
 	"github.com/cloudflare/tableflip"
 	docs "github.com/infinitybotlist/eureka/doclib"
 	"github.com/infinitybotlist/eureka/uapi"
+	"go.uber.org/zap"
 
 	"github.com/infinitybotlist/eureka/zapchi"
 
@@ -257,7 +258,7 @@ func main() {
 		ln, err := upg.Listen("tcp", state.Config.Meta.Port.Parse())
 
 		if err != nil {
-			state.Logger.Fatal(err)
+			state.Logger.Fatal("Error binding to socket", zap.Error(err))
 		}
 
 		defer ln.Close()
@@ -270,12 +271,12 @@ func main() {
 		go func() {
 			err := server.Serve(ln)
 			if err != http.ErrServerClosed {
-				state.Logger.Error(err)
+				state.Logger.Error("Server failed due to unexpected error", zap.Error(err))
 			}
 		}()
 
 		if err := upg.Ready(); err != nil {
-			state.Logger.Fatal(err)
+			state.Logger.Fatal("Error calling upg.Ready", zap.Error(err))
 		}
 
 		<-upg.Exit()
@@ -285,7 +286,7 @@ func main() {
 		err = http.ListenAndServe(state.Config.Meta.Port.Parse(), r)
 
 		if err != nil {
-			state.Logger.Fatal(err)
+			state.Logger.Fatal("Error binding to socket", zap.Error(err))
 		}
 	}
 }

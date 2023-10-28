@@ -26,6 +26,7 @@ import (
 	"github.com/infinitybotlist/eureka/crypto"
 	"github.com/jackc/pgx/v5"
 	jsoniter "github.com/json-iterator/go"
+	"go.uber.org/zap"
 )
 
 var json = jsoniter.ConfigCompatibleWithStandardLibrary
@@ -71,7 +72,7 @@ type WebhookSendState struct {
 	wdata *webhookData
 }
 
-// An abstraction over an entity whether that be a bot (or teams if we add that in the future, which is very likely)
+// An abstraction over an entity whether that be a bot/team/server
 type WebhookEntity struct {
 	// the id of the webhook's target
 	EntityID string
@@ -91,12 +92,12 @@ func (e WebhookEntity) Validate() bool {
 }
 
 func (st *WebhookSendState) cancelSend(saveState string) {
-	state.Logger.Warnf("Cancelling webhook send for %s", st.LogID)
+	state.Logger.Warn("Cancelling webhook send", zap.String("logID", st.LogID), zap.String("userID", st.UserID), zap.String("entityID", st.Entity.EntityID), zap.Bool("badIntent", st.BadIntent))
 
 	_, err := state.Pool.Exec(state.Context, "UPDATE webhook_logs SET state = $1, tries = tries + 1 WHERE id = $2", saveState, st.LogID)
 
 	if err != nil {
-		state.Logger.Errorf("Failed to update webhook state for %s: %s", st.LogID, err.Error())
+		state.Logger.Error("Failed to update webhook logs with new status", zap.Error(err), zap.String("logID", st.LogID), zap.String("userID", st.UserID), zap.String("entityID", st.Entity.EntityID), zap.Bool("badIntent", st.BadIntent))
 	}
 }
 
@@ -113,8 +114,7 @@ func Send(d *WebhookSendState) error {
 		err := state.Pool.QueryRow(state.Context, "SELECT url, secret, broken FROM webhooks WHERE target_id = $1 AND target_type = $2", d.Entity.EntityID, d.Entity.EntityType).Scan(&url, &secret, &broken)
 
 		if errors.Is(err, pgx.ErrNoRows) {
-			state.Logger.Error("webhook not found for " + d.Entity.EntityID)
-			return errors.New("webhook not found")
+			return fmt.Errorf("webhook not found for %s", d.Entity.EntityID)
 		}
 
 		if err != nil {
@@ -123,7 +123,7 @@ func Send(d *WebhookSendState) error {
 
 		if broken {
 			state.Logger.Error("webhook is broken for " + d.Entity.EntityID)
-			return errors.New("webhook has been flagged for not working correctly")
+			return fmt.Errorf("webhook has been flagged as broken for %s", d.Entity.EntityID)
 		}
 
 		d.wdata = &webhookData{
@@ -147,7 +147,7 @@ func Send(d *WebhookSendState) error {
 		)
 
 		if err != nil {
-			state.Logger.Error(err)
+			state.Logger.Error("failed to send discord webhook", zap.Error(err), zap.String("logID", d.LogID), zap.String("userID", d.UserID), zap.String("entityID", d.Entity.EntityID), zap.Bool("badIntent", d.BadIntent))
 			return err
 		}
 
@@ -158,8 +158,8 @@ func Send(d *WebhookSendState) error {
 		d.Data, err = json.Marshal(d.Event)
 
 		if err != nil {
-			state.Logger.Error(err)
-			return errors.New("failed to marshal webhook payload")
+			state.Logger.Error("failed to marshal webhook payload", zap.Error(err), zap.String("logID", d.LogID), zap.String("userID", d.UserID), zap.String("entityID", d.Entity.EntityID), zap.Bool("badIntent", d.BadIntent))
+			return fmt.Errorf("failed to marshal webhook payload: %w", err)
 		}
 	}
 
@@ -199,10 +199,7 @@ func Send(d *WebhookSendState) error {
 		d.LogID = logID
 	}
 
-	state.Logger.With(
-		"entityID", d.Entity.EntityID,
-		"userId", d.UserID,
-	)
+	state.Logger.Info("Sending webhook", zap.String("logID", d.LogID), zap.String("userID", d.UserID), zap.String("entityID", d.Entity.EntityID), zap.Bool("badIntent", d.BadIntent))
 
 	client := http.Client{
 		Timeout: 30 * time.Second,
@@ -269,7 +266,7 @@ func Send(d *WebhookSendState) error {
 	resp, err := client.Do(req)
 
 	if err != nil {
-		state.Logger.Error(err)
+		state.Logger.Error("Failed to send webhook", zap.Error(err), zap.String("logID", d.LogID), zap.String("userID", d.UserID), zap.String("entityID", d.Entity.EntityID), zap.Bool("badIntent", d.BadIntent))
 
 		d.cancelSend("REQUEST_SEND_FAILURE")
 		return err
@@ -288,7 +285,7 @@ func Send(d *WebhookSendState) error {
 	_, err = state.Pool.Exec(state.Context, "UPDATE webhook_logs SET response = $1, status_code = $2 WHERE id = $3", body, resp.StatusCode, d.LogID)
 
 	if err != nil {
-		state.Logger.Error(err)
+		state.Logger.Error("Failed to update webhook logs with response", zap.Error(err), zap.String("logID", d.LogID), zap.String("userID", d.UserID), zap.String("entityID", d.Entity.EntityID), zap.Bool("badIntent", d.BadIntent))
 	}
 
 	switch {
@@ -299,7 +296,7 @@ func Send(d *WebhookSendState) error {
 		_, err := state.Pool.Exec(state.Context, "UPDATE webhooks SET broken = true WHERE target_id = $1 AND target_type = $2", d.Entity.EntityID, d.Entity.EntityType)
 
 		if err != nil {
-			state.Logger.Error(err)
+			state.Logger.Error("Failed to update webhook logs with response", zap.Error(err), zap.String("logID", d.LogID), zap.String("userID", d.UserID), zap.String("entityID", d.Entity.EntityID), zap.Bool("badIntent", d.BadIntent))
 			return err
 		}
 
@@ -310,7 +307,7 @@ func Send(d *WebhookSendState) error {
 		})
 
 		if err != nil {
-			state.Logger.Error(err)
+			state.Logger.Error("Failed to send notification", zap.Error(err), zap.String("logID", d.LogID), zap.String("userID", d.UserID), zap.String("entityID", d.Entity.EntityID), zap.Bool("badIntent", d.BadIntent))
 		}
 
 		return errors.New("webhook returned not found thus removing it from the database")
@@ -331,7 +328,7 @@ func Send(d *WebhookSendState) error {
 			})
 
 			if err != nil {
-				state.Logger.Error(err)
+				state.Logger.Error("Failed to send notification", zap.Error(err), zap.String("logID", d.LogID), zap.String("userID", d.UserID), zap.String("entityID", d.Entity.EntityID), zap.Bool("badIntent", d.BadIntent))
 			}
 
 			return errors.New("webhook auth error:" + strconv.Itoa(resp.StatusCode))
@@ -347,7 +344,7 @@ func Send(d *WebhookSendState) error {
 		})
 
 		if err != nil {
-			state.Logger.Error(err)
+			state.Logger.Error("Failed to send notification", zap.Error(err), zap.String("logID", d.LogID), zap.String("userID", d.UserID), zap.String("entityID", d.Entity.EntityID), zap.Bool("badIntent", d.BadIntent))
 		}
 
 		return errors.New("webhook returned error: " + strconv.Itoa(resp.StatusCode))
@@ -363,14 +360,13 @@ func Send(d *WebhookSendState) error {
 			})
 
 			if err != nil {
-				state.Logger.Error(err)
+				state.Logger.Error("Failed to send notification", zap.Error(err), zap.String("logID", d.LogID), zap.String("userID", d.UserID), zap.String("entityID", d.Entity.EntityID), zap.Bool("badIntent", d.BadIntent))
 			}
 
 			// Set webhook to broken
 			_, err := state.Pool.Exec(state.Context, "UPDATE webhooks SET broken = true WHERE target_id = $1 AND target_type = $2", d.Entity.EntityID, d.Entity.EntityType)
 
 			if err != nil {
-				state.Logger.Error(err)
 				return errors.New("webhook failed to validate auth and failed to remove webhook from db")
 			}
 
@@ -386,7 +382,7 @@ func Send(d *WebhookSendState) error {
 		})
 
 		if err != nil {
-			state.Logger.Error(err)
+			state.Logger.Error("Failed to send notification", zap.Error(err), zap.String("logID", d.LogID), zap.String("userID", d.UserID), zap.String("entityID", d.Entity.EntityID), zap.Bool("badIntent", d.BadIntent))
 		}
 	}
 
@@ -394,7 +390,7 @@ func Send(d *WebhookSendState) error {
 }
 
 func sendDiscord(userId, url string, entity WebhookEntity, params *discordgo.WebhookParams) (validUrl bool, err error) {
-	state.Logger.Info("discord webhook send: ")
+	state.Logger.Info("discord webhook send")
 
 	validPrefixes := []string{
 		"https://discordapp.com/",
@@ -442,16 +438,13 @@ func sendDiscord(userId, url string, entity WebhookEntity, params *discordgo.Web
 			_, err := state.Pool.Exec(state.Context, "UPDATE webhooks SET broken = true WHERE target_id = $1 AND target_type = $2", entity.EntityID, entity.EntityType)
 
 			if err != nil {
-				state.Logger.Error(err)
+				state.Logger.Error("Failed to update webhook logs with response", zap.Error(err), zap.String("userID", userId), zap.String("entityID", entity.EntityID))
 				return true, err
 			}
 		}
 	}
 
-	state.Logger.With(
-		"url", url,
-		"statusCode", resp.StatusCode,
-	).Info("sent discord webhook")
+	state.Logger.Info("discord webhook send", zap.Int("status", resp.StatusCode), zap.String("url", url), zap.String("entityID", entity.EntityID), zap.String("userID", userId))
 
 	err = notifications.PushNotification(userId, types.Alert{
 		Type:    types.AlertTypeSuccess,
@@ -460,7 +453,7 @@ func sendDiscord(userId, url string, entity WebhookEntity, params *discordgo.Web
 	})
 
 	if err != nil {
-		state.Logger.Error(err)
+		state.Logger.Error("Failed to send notification", zap.Error(err), zap.String("userID", userId), zap.String("entityID", entity.EntityID))
 	}
 
 	return true, nil
@@ -488,7 +481,7 @@ func PullPending(p WebhookPullPending) {
 		supports, err := p.SupportsPulls("")
 
 		if err != nil {
-			state.Logger.Error(err)
+			state.Logger.Error("Failed to check if entity supports pulls", zap.Error(err))
 			return
 		}
 
@@ -501,7 +494,7 @@ func PullPending(p WebhookPullPending) {
 	rows, err := state.Pool.Query(state.Context, "SELECT id, target_id, user_id, data FROM webhook_logs WHERE state = $1 AND target_type = $2 AND bad_intent = false", "PENDING", p.EntityType)
 
 	if err != nil {
-		state.Logger.Error(err)
+		state.Logger.Error("Failed to fetch pending webhooks", zap.Error(err))
 		return
 	}
 
@@ -518,14 +511,14 @@ func PullPending(p WebhookPullPending) {
 		err := rows.Scan(&id, &targetId, &userId, &data)
 
 		if err != nil {
-			state.Logger.Error(err)
+			state.Logger.Error("Failed to scan pending webhook", zap.Error(err))
 			continue
 		}
 
 		entity, err := p.GetEntity(targetId)
 
 		if err != nil {
-			state.Logger.Error(err)
+			state.Logger.Error("Failed to get entity for webhook", zap.Error(err), zap.String("entityID", targetId))
 			continue
 		}
 
@@ -540,7 +533,7 @@ func PullPending(p WebhookPullPending) {
 		})
 
 		if err != nil {
-			state.Logger.Error(err)
+			state.Logger.Error("Failed to send webhook", zap.Error(err), zap.String("entityID", targetId))
 		}
 	}
 }

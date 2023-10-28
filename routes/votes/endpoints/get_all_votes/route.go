@@ -13,6 +13,7 @@ import (
 	docs "github.com/infinitybotlist/eureka/doclib"
 	"github.com/infinitybotlist/eureka/uapi"
 	"github.com/jackc/pgx/v5"
+	"go.uber.org/zap"
 )
 
 const perPage = 5
@@ -93,14 +94,14 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	rows, err := state.Pool.Query(d.Context, "SELECT "+entityVoteCols+" FROM entity_votes WHERE target_id = $1 AND target_type = $2 AND author = $3 LIMIT $4 OFFSET $5", targetId, targetType, uid, limit, offset)
 
 	if err != nil {
-		state.Logger.Error(err)
+		state.Logger.Error("Failed to get user entity votes", zap.Error(err), zap.String("userId", uid), zap.String("targetId", targetId), zap.String("targetType", targetType))
 		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
 	ev, err := pgx.CollectRows(rows, pgx.RowToStructByName[types.EntityVote])
 
 	if err != nil {
-		state.Logger.Error(err)
+		state.Logger.Error("Failed to get user entity votes", zap.Error(err), zap.String("userId", uid), zap.String("targetId", targetId), zap.String("targetType", targetType))
 		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
@@ -109,7 +110,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	err = state.Pool.QueryRow(d.Context, "SELECT COUNT(*) FROM entity_votes WHERE target_id = $1 AND target_type = $2 AND author = $3", targetId, targetType, uid).Scan(&count)
 
 	if err != nil {
-		state.Logger.Error(err)
+		state.Logger.Error("Failed to get user entity votes", zap.Error(err), zap.String("userId", uid), zap.String("targetId", targetId), zap.String("targetType", targetType))
 		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 

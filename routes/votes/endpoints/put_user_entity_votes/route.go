@@ -83,7 +83,7 @@ func hcaptcha(b []byte) {
 	err := json.Unmarshal(b, &hcaptchaResp)
 
 	if err != nil {
-		state.Logger.Error(err)
+		state.Logger.Error("Failed to unmarshal hcaptcha response", zap.Error(err))
 	} else {
 		// We have a response, lets verify it
 		resp, err := http.PostForm("https://hcaptcha.com/siteverify", url.Values{
@@ -92,7 +92,7 @@ func hcaptcha(b []byte) {
 		})
 
 		if err != nil {
-			state.Logger.Error(err)
+			state.Logger.Error("Failed to verify hcaptcha", zap.Error(err))
 			return
 		}
 
@@ -106,16 +106,16 @@ func hcaptcha(b []byte) {
 		err = json.NewDecoder(resp.Body).Decode(&hcaptchaResp)
 
 		if err != nil {
-			state.Logger.Error(err)
+			state.Logger.Error("Failed to decode hcaptcha response", zap.Error(err))
 			return
 		}
 
 		if !hcaptchaResp.Success {
-			state.Logger.Error("hcaptcha failed" + fmt.Sprintf("%v", hcaptchaResp.ErrorCodes))
+			state.Logger.Error("hcaptcha failed to verify token", zap.Strings("errorCodes", hcaptchaResp.ErrorCodes))
 			return
 		}
 
-		state.Logger.Info("hcaptcha passed")
+		state.Logger.Info("hcaptcha siteverify check passed")
 	}
 }
 
@@ -155,7 +155,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	err = state.Pool.QueryRow(d.Context, "SELECT vote_banned FROM users WHERE user_id = $1", uid).Scan(&voteBanned)
 
 	if err != nil {
-		state.Logger.Error(err)
+		state.Logger.Error("Failed to check if user is vote banned", zap.Error(err), zap.String("userId", uid))
 		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
@@ -180,7 +180,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	entityInfo, err := votes.GetEntityInfo(d.Context, targetId, targetType)
 
 	if err != nil {
-		state.Logger.Error(err)
+		state.Logger.Error("Failed to fetch entity info", zap.Error(err), zap.String("userId", uid), zap.String("targetId", targetId), zap.String("targetType", targetType))
 		return uapi.HttpResponse{
 			Status: http.StatusBadRequest,
 			Json:   types.ApiError{Message: "Error: " + err.Error()},
@@ -191,7 +191,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	vi, err := votes.EntityVoteCheck(d.Context, uid, targetId, targetType)
 
 	if err != nil {
-		state.Logger.Error(err)
+		state.Logger.Error("Failed to check vote", zap.Error(err), zap.String("userId", uid), zap.String("targetId", targetId), zap.String("targetType", targetType))
 		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
@@ -215,7 +215,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	tx, err := state.Pool.Begin(d.Context)
 
 	if err != nil {
-		state.Logger.Error(err)
+		state.Logger.Error("Failed to create transaction [put_user_entity_votes]", zap.Error(err))
 		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
@@ -226,7 +226,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		_, err = tx.Exec(d.Context, "INSERT INTO entity_votes (author, target_id, target_type, upvote, vote_num) VALUES ($1, $2, $3, $4, $5)", uid, targetId, targetType, upvote == "true", i)
 
 		if err != nil {
-			state.Logger.Error(err)
+			state.Logger.Error("Failed to insert vote", zap.Error(err), zap.String("userId", uid), zap.String("targetId", targetId), zap.String("targetType", targetType), zap.String("upvote", upvote))
 			return uapi.DefaultResponse(http.StatusInternalServerError)
 		}
 	}
@@ -235,7 +235,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	nvc, err := votes.EntityGetVoteCount(d.Context, tx, targetId, targetType)
 
 	if err != nil {
-		state.Logger.Error(err)
+		state.Logger.Error("Failed to fetch new vote count", zap.Error(err), zap.String("userId", uid), zap.String("targetId", targetId), zap.String("targetType", targetType))
 		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
@@ -247,28 +247,28 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		_, err = tx.Exec(d.Context, "UPDATE bots SET votes = $1 WHERE bot_id = $2", nvc, targetId)
 
 		if err != nil {
-			state.Logger.Error(err)
+			state.Logger.Error("Failed to update bot vote count cache", zap.Error(err), zap.String("userId", uid), zap.String("targetId", targetId), zap.String("targetType", targetType))
 			return uapi.DefaultResponse(http.StatusInternalServerError)
 		}
 	case "pack":
 		_, err = tx.Exec(d.Context, "UPDATE packs SET votes = $1 WHERE url = $2", nvc, targetId)
 
 		if err != nil {
-			state.Logger.Error(err)
+			state.Logger.Error("Failed to update pack vote count cache", zap.Error(err), zap.String("userId", uid), zap.String("targetId", targetId), zap.String("targetType", targetType))
 			return uapi.DefaultResponse(http.StatusInternalServerError)
 		}
 	case "team":
 		_, err = tx.Exec(d.Context, "UPDATE teams SET votes = $1 WHERE id = $2", nvc, targetId)
 
 		if err != nil {
-			state.Logger.Error(err)
+			state.Logger.Error("Failed to update team vote count cache", zap.Error(err), zap.String("userId", uid), zap.String("targetId", targetId), zap.String("targetType", targetType))
 			return uapi.DefaultResponse(http.StatusInternalServerError)
 		}
 	case "server":
 		_, err = tx.Exec(d.Context, "UPDATE servers SET votes = $1 WHERE server_id = $2", nvc, targetId)
 
 		if err != nil {
-			state.Logger.Error(err)
+			state.Logger.Error("Failed to update server vote count cache", zap.Error(err), zap.String("userId", uid), zap.String("targetId", targetId), zap.String("targetType", targetType))
 			return uapi.DefaultResponse(http.StatusInternalServerError)
 		}
 	}
@@ -277,7 +277,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	err = tx.Commit(d.Context)
 
 	if err != nil {
-		state.Logger.Error(err)
+		state.Logger.Error("Failed to commit transaction", zap.Error(err), zap.String("userId", uid), zap.String("targetId", targetId), zap.String("targetType", targetType))
 		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
@@ -285,7 +285,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	userObj, err := dovewing.GetUser(d.Context, uid, state.DovewingPlatformDiscord)
 
 	if err != nil {
-		state.Logger.Error(err)
+		state.Logger.Error("Failed to fetch user info", zap.Error(err), zap.String("userId", uid), zap.String("targetId", targetId), zap.String("targetType", targetType))
 		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
@@ -331,7 +331,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	})
 
 	if err != nil {
-		state.Logger.Warn(err)
+		state.Logger.Error("Failed to send vote log message", zap.Error(err), zap.String("userId", uid), zap.String("targetId", targetId), zap.String("targetType", targetType))
 	}
 
 	// Send webhook in a goroutine refunding the vote if it failed
@@ -339,13 +339,18 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		err = nil // Be sure error is empty before we start
 
 		if targetType == "bot" && config.UseLegacyWebhooks(targetId) {
-			state.Logger.Info("Using legacy webhooks", zap.String("targetId", targetId), zap.String("targetType", targetType), zap.String("uid", uid))
+			state.Logger.Info("Using legacy webhooks", zap.String("targetId", targetId), zap.String("targetType", targetType), zap.String("userId", uid))
 
 			err = bothooks_legacy.SendLegacy(bothooks_legacy.WebhookPostLegacy{
 				BotID:  targetId,
 				UserID: uid,
 				Votes:  nvc,
 			})
+
+			if err != nil {
+				state.Logger.Error("Failed to send legacy webhook", zap.Error(err))
+			}
+
 			return
 		}
 
@@ -435,7 +440,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		err = notifications.PushNotification(uid, msg)
 
 		if err != nil {
-			state.Logger.Error(err)
+			state.Logger.Error("Failed to send push notification", zap.Error(err), zap.String("userId", uid), zap.String("targetId", targetId), zap.String("targetType", targetType))
 		}
 	}()
 

@@ -13,6 +13,7 @@ import (
 
 	"github.com/infinitybotlist/eureka/dovewing"
 	"github.com/jackc/pgx/v5"
+	"go.uber.org/zap"
 )
 
 const EntityType = "server"
@@ -40,14 +41,14 @@ func Send(with With) error {
 	}
 
 	if err != nil {
-		state.Logger.Error(err)
+		state.Logger.Error("Failed to fetch name/avatar/short of server for this serverhook", zap.Error(err), zap.String("serverID", with.ServerID), zap.String("userID", with.UserID))
 		return err
 	}
 
 	user, err := dovewing.GetUser(state.Context, with.UserID, state.DovewingPlatformDiscord)
 
 	if err != nil {
-		state.Logger.Error(err)
+		state.Logger.Error("Failed to fetch user via dovewing for this serverhook", zap.Error(err), zap.String("serverID", with.ServerID), zap.String("userID", with.UserID))
 		return err
 	}
 

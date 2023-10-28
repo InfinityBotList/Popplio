@@ -21,7 +21,6 @@ func StagingCheckSensitive(ctx context.Context, userId string) error {
 		err := state.Pool.QueryRow(ctx, "SELECT iblhdev, owner FROM users WHERE user_id = $1", userId).Scan(&hdev, &owner)
 
 		if err != nil {
-			state.Logger.Error(err)
 			return errors.New("unable to determine if user is staff")
 		}
 

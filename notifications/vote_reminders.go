@@ -63,7 +63,7 @@ func vrCheck() error {
 			entityInfo, err := votes.GetEntityInfo(state.Context, targetId, targetType)
 
 			if err != nil {
-				state.Logger.Error("Error finding bot info:", err)
+				state.Logger.Error("Error finding bot info:", err, targetId, targetType)
 				continue
 			}
 

@@ -57,14 +57,12 @@ func SendLegacy(webhook WebhookPostLegacy) error {
 	dUser, err := dovewing.GetUser(state.Context, webhook.UserID, state.DovewingPlatformDiscord)
 
 	if err != nil {
-		state.Logger.Error(err)
 		return err
 	}
 
 	dBot, err := dovewing.GetUser(state.Context, webhook.BotID, state.DovewingPlatformDiscord)
 
 	if err != nil {
-		state.Logger.Error(err)
 		return err
 	}
 

@@ -33,7 +33,7 @@ var (
 	Redis                   *redis.Client
 	DovewingPlatformDiscord *dovewing.DiscordState
 	Discord                 *discordgo.Session
-	Logger                  *zap.SugaredLogger
+	Logger                  *zap.Logger
 	Context                 = context.Background()
 	Validator               = validator.New()
 
@@ -127,12 +127,12 @@ func Setup() {
 		}
 	}()
 
-	Logger = snippets.CreateZap()
+	Logger = snippets.CreateZap().Desugar()
 
 	// Load dovewing state
 	baseDovewingState := dovewing.BaseState{
 		Pool:           Pool,
-		Logger:         Logger,
+		Logger:         Logger.Sugar(), // TODO: update dovewing to use regular (non-sugared) zap logger
 		Context:        Context,
 		Redis:          Redis,
 		OnUpdate:       updateDb,
@@ -227,6 +227,6 @@ func Setup() {
 			}
 		}
 
-		Logger.Info("Stripe webhook IP allowlist:", StripeWebhIPList)
+		Logger.Info("Stripe webhook IP allowlist:", zap.Strings("ipList", StripeWebhIPList))
 	}()
 }
