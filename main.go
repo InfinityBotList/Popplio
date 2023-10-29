@@ -11,7 +11,6 @@ import (
 	"time"
 
 	"popplio/api"
-	poplapps "popplio/apps"
 	"popplio/constants"
 	"popplio/notifications"
 	"popplio/routes/alerts"
@@ -36,7 +35,6 @@ import (
 	"popplio/routes/vanity"
 	"popplio/routes/votes"
 	"popplio/routes/webhooks"
-	"popplio/stafftemplates"
 	"popplio/state"
 	"popplio/types"
 	poplhooks "popplio/webhooks"
@@ -170,7 +168,7 @@ func main() {
 		name, desc := router.Tag()
 		if name != "" {
 			docs.AddTag(name, desc)
-			uapi.CurrentTag = name
+			uapi.State.SetCurrentTag(name)
 		} else {
 			panic("Router tag name cannot be empty")
 		}
@@ -227,16 +225,13 @@ func main() {
 
 	r.NotFound(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusNotFound)
-		w.Write([]byte(constants.NotFoundPage))
+		w.Write([]byte(constants.EndpointNotFound))
 	})
 
 	r.MethodNotAllowed(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusMethodNotAllowed)
 		w.Write([]byte(constants.MethodNotAllowed))
 	})
-
-	poplapps.Setup()
-	stafftemplates.Setup()
 
 	go notifications.VrLoop()
 

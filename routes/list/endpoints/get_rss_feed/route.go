@@ -12,6 +12,7 @@ import (
 	"github.com/infinitybotlist/eureka/dovewing"
 	"github.com/infinitybotlist/eureka/uapi"
 	"github.com/jackc/pgx/v5/pgtype"
+	"go.uber.org/zap"
 )
 
 type RssFeed struct {
@@ -191,7 +192,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	rows, err := state.Pool.Query(d.Context, "SELECT bot_id, short, owner, team_owner, created_at FROM bots ORDER BY created_at DESC LIMIT $1 OFFSET $2", limit, offset)
 
 	if err != nil {
-		state.Logger.Error(err)
+		state.Logger.Error("Failed to get bots [row query] for generating RSS feed", zap.Error(err))
 		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
@@ -207,14 +208,14 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		err = rows.Scan(&botID, &short, &owner, &teamOwner, &createdAt)
 
 		if err != nil {
-			state.Logger.Error(err)
+			state.Logger.Error("Failed to scan row for generating RSS feed", zap.Error(err), zap.String("botId", botID))
 			return uapi.DefaultResponse(http.StatusInternalServerError)
 		}
 
 		botUser, err := dovewing.GetUser(d.Context, botID, state.DovewingPlatformDiscord)
 
 		if err != nil {
-			state.Logger.Error(err)
+			state.Logger.Error("Failed to get bot user for generating RSS feed", zap.Error(err), zap.String("botId", botID))
 			return uapi.DefaultResponse(http.StatusInternalServerError)
 		}
 
@@ -238,7 +239,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	body, err := xml.Marshal(rssFeed)
 
 	if err != nil {
-		state.Logger.Error(err)
+		state.Logger.Error("Failed to marshal RSS feed", zap.Error(err))
 		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 

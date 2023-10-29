@@ -24,12 +24,20 @@ var (
 	indexBotColsArr = db.GetCols(types.IndexBot{})
 	indexBotCols    = strings.Join(indexBotColsArr, ",")
 
-	//go:embed sql/bots.tmpl
-	botsSql string
-
-	botSqlTemplate *template.Template
+	indexServerColsArr = db.GetCols(types.IndexServer{})
+	indexServerCols    = strings.Join(indexServerColsArr, ",")
 
 	compiledMessages = uapi.CompileValidationErrors(types.SearchQuery{})
+)
+
+var (
+	//go:embed sql/bots.tmpl
+	botsSql        string
+	botSqlTemplate *template.Template
+
+	// go:embed sql/servers.tmpl
+	serversSql        string
+	serverSqlTemplate *template.Template
 )
 
 type searchSqlTemplateCtx struct {
@@ -41,12 +49,13 @@ type searchSqlTemplateCtx struct {
 
 func Setup() {
 	botSqlTemplate = template.Must(template.New("sql").Parse(botsSql))
+	serverSqlTemplate = template.Must(template.New("sql").Parse(serversSql))
 }
 
 func Docs() *docs.Doc {
 	return &docs.Doc{
 		Summary:     "Search List",
-		Description: "Searches the list. This replaces arcadias tetanus API",
+		Description: "Searches the list returning a list of bots/servers that match the query",
 		Req:         types.SearchQuery{},
 		Resp:        types.SearchResponse{},
 	}
@@ -69,10 +78,12 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	}
 
 	if payload.Query == "" && len(payload.TagFilter.Tags) == 0 {
+		// Return 206 because the user didn't specify a query or tags
+		//
+		// Clients can then use this to not show any bots
 		return uapi.HttpResponse{
-			Json: types.SearchResponse{
-				Bots: []types.IndexBot{},
-			},
+			Status: http.StatusPartialContent,
+			Json:   types.ApiError{Message: "No query or tags specified"},
 		}
 	}
 
@@ -85,6 +96,10 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		payload.TagFilter.Tags = []string{}
 	}
 
+	if len(payload.TargetTypes) == 0 {
+		payload.TargetTypes = []string{"bot"}
+	}
+
 	if payload.TagFilter.TagMode != types.TagModeAll && payload.TagFilter.TagMode != types.TagModeAny {
 		return uapi.HttpResponse{
 			Status: http.StatusBadRequest,
@@ -92,82 +107,159 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		}
 	}
 
-	sqlString := &strings.Builder{}
+	sr := types.SearchResponse{}
 
-	err = botSqlTemplate.Execute(sqlString, searchSqlTemplateCtx{
-		Query:   payload.Query,
-		TagMode: payload.TagFilter.TagMode,
-		Cols:    indexBotCols,
-		PlatformTables: []string{
-			dovewing.TableName(state.DovewingPlatformDiscord),
-		},
-	})
+	for _, targetType := range payload.TargetTypes {
+		switch targetType {
+		case "bot":
+			sr.TargetTypes = append(sr.TargetTypes, "bot")
+			sqlString := &strings.Builder{}
 
-	state.Logger.Error("SQL Res", zap.String("sql", sqlString.String()))
+			err = botSqlTemplate.Execute(sqlString, searchSqlTemplateCtx{
+				Query:   payload.Query,
+				TagMode: payload.TagFilter.TagMode,
+				Cols:    indexBotCols,
+				PlatformTables: []string{
+					dovewing.TableName(state.DovewingPlatformDiscord),
+				},
+			})
 
-	if err != nil {
-		state.Logger.Error(err)
-		return uapi.DefaultResponse(http.StatusInternalServerError)
-	}
+			if err != nil {
+				state.Logger.Error("Failed to execute template", zap.Error(err), zap.String("sql", sqlString.String()))
+				return uapi.DefaultResponse(http.StatusInternalServerError)
+			}
 
-	args := []any{
-		payload.Servers.From,   // 1
-		payload.Servers.To,     // 2
-		payload.Votes.From,     // 3
-		payload.Votes.To,       // 4
-		payload.Shards.From,    // 5
-		payload.Shards.To,      // 6
-		payload.TagFilter.Tags, // 7
-	}
+			args := []any{
+				payload.Servers.From,   // 1
+				payload.Servers.To,     // 2
+				payload.Votes.From,     // 3
+				payload.Votes.To,       // 4
+				payload.Shards.From,    // 5
+				payload.Shards.To,      // 6
+				payload.TagFilter.Tags, // 7
+			}
 
-	if payload.Query != "" {
-		args = append(args, "%"+strings.ToLower(payload.Query)+"%", strings.ToLower(payload.Query)) // 8-9
-	}
+			if payload.Query != "" {
+				args = append(args, "%"+strings.ToLower(payload.Query)+"%", strings.ToLower(payload.Query)) // 8-9
+			}
 
-	rows, err := state.Pool.Query(
-		d.Context,
-		sqlString.String(),
-		// Args
-		args...,
-	)
+			rows, err := state.Pool.Query(
+				d.Context,
+				sqlString.String(),
+				// Args
+				args...,
+			)
 
-	if err != nil {
-		state.Logger.Error(err)
-		return uapi.DefaultResponse(http.StatusInternalServerError)
-	}
+			if err != nil {
+				state.Logger.Error("Failed to query", zap.Error(err), zap.String("sql", sqlString.String()))
+				return uapi.DefaultResponse(http.StatusInternalServerError)
+			}
 
-	bots, err := pgx.CollectRows(rows, pgx.RowToStructByName[types.IndexBot])
+			bots, err := pgx.CollectRows(rows, pgx.RowToStructByName[types.IndexBot])
 
-	if err != nil {
-		state.Logger.Error(err)
-		return uapi.DefaultResponse(http.StatusInternalServerError)
-	}
+			if err != nil {
+				state.Logger.Error("Failed to collect rows", zap.Error(err), zap.String("sql", sqlString.String()))
+				return uapi.DefaultResponse(http.StatusInternalServerError)
+			}
 
-	for i := range bots {
-		botUser, err := dovewing.GetUser(d.Context, bots[i].BotID, state.DovewingPlatformDiscord)
+			state.Logger.Debug("SQL result", zap.String("sql", sqlString.String()), zap.String("targetType", "bot"))
 
-		if err != nil {
-			return uapi.DefaultResponse(http.StatusInternalServerError)
+			for i := range bots {
+				botUser, err := dovewing.GetUser(d.Context, bots[i].BotID, state.DovewingPlatformDiscord)
+
+				if err != nil {
+					state.Logger.Error("Failed to get user", zap.Error(err), zap.String("botID", bots[i].BotID))
+					return uapi.DefaultResponse(http.StatusInternalServerError)
+				}
+
+				bots[i].User = botUser
+
+				var code string
+
+				err = state.Pool.QueryRow(d.Context, "SELECT code FROM vanity WHERE itag = $1", bots[i].VanityRef).Scan(&code)
+
+				if err != nil {
+					state.Logger.Error("Failed to get vanity code", zap.Error(err), zap.String("botID", bots[i].BotID))
+					return uapi.DefaultResponse(http.StatusInternalServerError)
+				}
+
+				bots[i].Vanity = code
+				bots[i].Banner = assetmanager.BannerInfo(assetmanager.AssetTargetTypeBots, bots[i].BotID)
+			}
+
+			sr.Bots = bots
+		case "server":
+			sr.TargetTypes = append(sr.TargetTypes, "server")
+			sqlString := &strings.Builder{}
+
+			err = serverSqlTemplate.Execute(sqlString, searchSqlTemplateCtx{
+				Query:   payload.Query,
+				TagMode: payload.TagFilter.TagMode,
+				Cols:    indexServerCols,
+				PlatformTables: []string{
+					dovewing.TableName(state.DovewingPlatformDiscord),
+				},
+			})
+
+			if err != nil {
+				state.Logger.Error("Failed to execute template", zap.Error(err), zap.String("sql", sqlString.String()))
+				return uapi.DefaultResponse(http.StatusInternalServerError)
+			}
+
+			args := []any{
+				payload.Servers.From,   // 1
+				payload.Servers.To,     // 2
+				payload.Votes.From,     // 3
+				payload.Votes.To,       // 4
+				payload.Shards.From,    // 5
+				payload.Shards.To,      // 6
+				payload.TagFilter.Tags, // 7
+			}
+
+			if payload.Query != "" {
+				args = append(args, "%"+strings.ToLower(payload.Query)+"%", strings.ToLower(payload.Query)) // 8-9
+			}
+
+			rows, err := state.Pool.Query(
+				d.Context,
+				sqlString.String(),
+				// Args
+				args...,
+			)
+
+			if err != nil {
+				state.Logger.Error("Failed to query", zap.Error(err), zap.String("sql", sqlString.String()))
+				return uapi.DefaultResponse(http.StatusInternalServerError)
+			}
+
+			servers, err := pgx.CollectRows(rows, pgx.RowToStructByName[types.IndexServer])
+
+			if err != nil {
+				state.Logger.Error("Failed to collect rows", zap.Error(err), zap.String("sql", sqlString.String()))
+				return uapi.DefaultResponse(http.StatusInternalServerError)
+			}
+
+			state.Logger.Debug("SQL result", zap.String("sql", sqlString.String()), zap.String("targetType", "server"))
+
+			for i := range servers {
+				var code string
+
+				err = state.Pool.QueryRow(d.Context, "SELECT code FROM vanity WHERE itag = $1", servers[i].VanityRef).Scan(&code)
+
+				if err != nil {
+					state.Logger.Error("Failed to get vanity code", zap.Error(err), zap.String("serverID", servers[i].ServerID))
+					return uapi.DefaultResponse(http.StatusInternalServerError)
+				}
+
+				servers[i].Vanity = code
+				servers[i].Banner = assetmanager.BannerInfo(assetmanager.AssetTargetTypeServers, servers[i].ServerID)
+			}
+
+			sr.Servers = servers
 		}
-
-		bots[i].User = botUser
-
-		var code string
-
-		err = state.Pool.QueryRow(d.Context, "SELECT code FROM vanity WHERE itag = $1", bots[i].VanityRef).Scan(&code)
-
-		if err != nil {
-			state.Logger.Error(err)
-			return uapi.DefaultResponse(http.StatusInternalServerError)
-		}
-
-		bots[i].Vanity = code
-		bots[i].Banner = assetmanager.BannerInfo(assetmanager.AssetTargetTypeBots, bots[i].BotID)
 	}
 
 	return uapi.HttpResponse{
-		Json: types.SearchResponse{
-			Bots: bots,
-		},
+		Json: sr,
 	}
 }

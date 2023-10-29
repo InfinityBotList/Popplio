@@ -6,13 +6,14 @@ import (
 	"popplio/types"
 
 	"github.com/SherClockHolmes/webpush-go"
+	"go.uber.org/zap"
 )
 
 func PushNotification(userId string, notif types.Alert) error {
 	err := state.Validator.Struct(notif)
 
 	if err != nil {
-		panic(fmt.Sprintf("invalid notification: %s", err))
+		return fmt.Errorf("invalid notification: %s", err)
 	}
 
 	if len(notif.AlertData) == 0 {
@@ -33,7 +34,7 @@ func PushNotification(userId string, notif types.Alert) error {
 	)
 
 	if err != nil {
-		state.Logger.Error(err)
+		state.Logger.Error("Error inserting alert", zap.Error(err), zap.String("user_id", userId), zap.Any("alert", notif))
 		return err
 	}
 
@@ -67,7 +68,7 @@ func PushNotification(userId string, notif types.Alert) error {
 			continue
 		}
 
-		state.Logger.Infow("Sending notification", "notif_id", notifId)
+		state.Logger.Info("Sending notification", zap.String("notif_id", notifId), zap.String("endpoint", endpoint))
 
 		sub := webpush.Subscription{
 			Endpoint: endpoint,

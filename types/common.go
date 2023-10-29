@@ -1,6 +1,10 @@
 package types
 
-import "github.com/jackc/pgx/v5/pgtype"
+import (
+	"time"
+
+	"github.com/jackc/pgx/v5/pgtype"
+)
 
 // A link is any extra link
 type Link struct {
@@ -34,4 +38,5 @@ type Vanity struct {
 	TargetID   string      `db:"target_id" json:"target_id" description:"The ID of the entity"`
 	TargetType string      `db:"target_type" json:"target_type" description:"The type of the entity"`
 	Code       string      `db:"code" json:"code" description:"The code of the vanity"`
+	CreatedAt  time.Time   `db:"created_at" json:"created_at" description:"The time the vanity was created"`
 }

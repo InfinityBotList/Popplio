@@ -10,6 +10,7 @@ import (
 
 	"github.com/jackc/pgx/v5/pgtype"
 	jsoniter "github.com/json-iterator/go"
+	"go.uber.org/zap"
 )
 
 var json = jsoniter.ConfigCompatibleWithStandardLibrary
@@ -21,11 +22,10 @@ func VrLoop() {
 	}
 
 	for {
-		//state.Logger.Debug("Running vrCheck")
 		err := vrCheck()
 
 		if err != nil {
-			state.Logger.Error(err)
+			state.Logger.Error("vrCheck returned an error", zap.Error(err))
 			time.Sleep(5 * time.Minute)
 			continue
 		}
@@ -48,14 +48,14 @@ func vrCheck() error {
 		err := rows.Scan(&userId, &targetId, &targetType)
 
 		if err != nil {
-			state.Logger.Error("Error decoding reminder:", err)
+			state.Logger.Error("Error decoding reminder:", zap.Error(err))
 			continue
 		}
 
 		vi, err := votes.EntityVoteCheck(state.Context, userId, targetId, targetType)
 
 		if err != nil {
-			state.Logger.Error(err)
+			state.Logger.Error("Error checking votes of entity", zap.Error(err), zap.String("userId", userId), zap.String("targetId", targetId), zap.String("targetType", targetType))
 			continue
 		}
 
@@ -63,7 +63,7 @@ func vrCheck() error {
 			entityInfo, err := votes.GetEntityInfo(state.Context, targetId, targetType)
 
 			if err != nil {
-				state.Logger.Error("Error finding bot info:", err, targetId, targetType)
+				state.Logger.Error("Error finding bot info", zap.Error(err), zap.String("targetId", targetId), zap.String("targetType", targetType))
 				continue
 			}
 
@@ -78,13 +78,13 @@ func vrCheck() error {
 			err = PushNotification(userId, message)
 
 			if err != nil {
-				state.Logger.Error(err)
+				state.Logger.Error("PushNotification returned an error", zap.Error(err), zap.String("userId", userId), zap.String("targetId", targetId), zap.String("targetType", targetType))
 				continue
 			}
 
 			_, err = state.Pool.Exec(state.Context, "UPDATE user_reminders SET last_acked = NOW() WHERE user_id = $1 AND target_id = $2 AND target_type = $3", userId, targetId, targetType)
 			if err != nil {
-				state.Logger.Error("Error updating reminder: %s", err)
+				state.Logger.Error("Error updating user reminder", zap.Error(err), zap.String("userId", userId), zap.String("targetId", targetId), zap.String("targetType", targetType))
 				continue
 			}
 

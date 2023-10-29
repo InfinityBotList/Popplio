@@ -9,6 +9,7 @@ import (
 
 	docs "github.com/infinitybotlist/eureka/doclib"
 	"github.com/infinitybotlist/eureka/uapi"
+	"go.uber.org/zap"
 
 	"github.com/jackc/pgx/v5"
 )
@@ -21,7 +22,7 @@ var (
 func Docs() *docs.Doc {
 	return &docs.Doc{
 		Summary:     "Get Application List",
-		Description: "Gets all applications that the user can access returning a list of apps.",
+		Description: "Gets all applications of the user returning a list of apps.",
 		Params: []docs.Parameter{
 			{
 				Name:        "user_id",
@@ -30,64 +31,23 @@ func Docs() *docs.Doc {
 				In:          "path",
 				Schema:      docs.IdSchema,
 			},
-			{
-				Name:        "full",
-				Description: "Whether to return the full application list or not. Requires admin permissions.",
-				Required:    true,
-				In:          "query",
-				Schema:      docs.IdSchema,
-			},
 		},
 		Resp: types.AppListResponse{},
 	}
 }
 
 func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
-	var full = r.URL.Query().Get("full")
-
-	if full != "true" && full != "false" {
-		full = "false"
-	}
-
-	// Full needs admin permissions
-	if full == "true" {
-		// Check if the user is an admin
-		var admin bool
-
-		err := state.Pool.QueryRow(d.Context, "SELECT admin FROM users WHERE user_id = $1", d.Auth.ID).Scan(&admin)
-
-		if err != nil {
-			state.Logger.Error(err)
-			return uapi.DefaultResponse(http.StatusInternalServerError)
-		}
-
-		if !admin {
-			return uapi.HttpResponse{
-				Status: http.StatusForbidden,
-				Json: types.ApiError{
-					Message: "Only admins may use the 'full' query parameter.",
-				},
-			}
-		}
-	}
-
-	var row pgx.Rows
-	var err error
-	if full == "true" {
-		row, err = state.Pool.Query(d.Context, "SELECT "+appCols+" FROM apps")
-	} else {
-		row, err = state.Pool.Query(d.Context, "SELECT "+appCols+" FROM apps WHERE user_id = $1", d.Auth.ID)
-	}
+	row, err := state.Pool.Query(d.Context, "SELECT "+appCols+" FROM apps WHERE user_id = $1", d.Auth.ID)
 
 	if err != nil {
-		state.Logger.Error(err)
+		state.Logger.Error("Failed to fetch application list [db fetch]", zap.String("userId", d.Auth.ID), zap.Error(err))
 		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
 	app, err := pgx.CollectRows(row, pgx.RowToStructByName[types.AppResponse])
 
 	if err != nil {
-		state.Logger.Error(err)
+		state.Logger.Error("Failed to fetch application list [collection]", zap.String("userId", d.Auth.ID), zap.Error(err))
 		return uapi.DefaultResponse(http.StatusNotFound)
 	}
 

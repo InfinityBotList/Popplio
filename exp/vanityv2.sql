@@ -3,6 +3,7 @@ CREATE TABLE vanity (
     target_id TEXT NOT NULL,
     target_type TEXT NOT NULL,
     code CITEXT NOT NULL UNIQUE,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     UNIQUE (target_id, target_type)
 );
 

@@ -18,14 +18,16 @@ type TagFilter struct {
 }
 
 type SearchQuery struct {
-	Query     string       `json:"query"`
-	Servers   SearchFilter `json:"servers" msg:"Servers must be a valid filter"`
-	Votes     SearchFilter `json:"votes" msg:"Votes must be a valid filter"`
-	Shards    SearchFilter `json:"shards" msg:"Shards must be a valid filter"`
-	TagFilter TagFilter    `json:"tags" msg:"Tags must be a valid filter"`
+	Query       string       `json:"query"`
+	TargetTypes []string     `json:"target_types"` // Defaults to 'bot' if unset
+	Servers     SearchFilter `json:"servers" msg:"Servers must be a valid filter"`
+	Votes       SearchFilter `json:"votes" msg:"Votes must be a valid filter"`
+	Shards      SearchFilter `json:"shards" msg:"Shards must be a valid filter"`
+	TagFilter   TagFilter    `json:"tags" msg:"Tags must be a valid filter"`
 }
 
 type SearchResponse struct {
-	Bots    []IndexBot    `json:"bots"`
-	Servers []IndexServer `json:"servers"`
+	TargetTypes []string      `json:"target_types"`
+	Bots        []IndexBot    `json:"bots"`
+	Servers     []IndexServer `json:"servers"`
 }

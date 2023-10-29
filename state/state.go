@@ -127,12 +127,12 @@ func Setup() {
 		}
 	}()
 
-	Logger = snippets.CreateZap().Desugar()
+	Logger = snippets.CreateZap()
 
 	// Load dovewing state
 	baseDovewingState := dovewing.BaseState{
 		Pool:           Pool,
-		Logger:         Logger.Sugar(), // TODO: update dovewing to use regular (non-sugared) zap logger
+		Logger:         Logger,
 		Context:        Context,
 		Redis:          Redis,
 		OnUpdate:       updateDb,

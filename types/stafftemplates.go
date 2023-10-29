@@ -1,19 +1,25 @@
 package types
 
-type StaffTemplateList struct {
-	Templates []StaffTemplateMeta `json:"templates" validate:"required"`
-}
+import "time"
 
-type StaffTemplateMeta struct {
-	Name        string          `json:"name" validate:"required"`
-	Icon        string          `json:"icon" validate:"required"`
-	Description string          `json:"description" validate:"required"`
-	Templates   []StaffTemplate `json:"templates" validate:"required"`
+type StaffTemplateType struct {
+	ID    string `db:"id" json:"id"`
+	Name  string `db:"name" json:"name"`
+	Icon  string `db:"icon" json:"icon"`
+	Short string `db:"short" json:"short"`
 }
 
 type StaffTemplate struct {
-	Name        string   `json:"name" validate:"required"`
-	Emoji       string   `json:"emoji" validate:"required"`
-	Tags        []string `json:"tags" validate:"required"`
-	Description string   `json:"description" validate:"required"`
+	ID          string    `db:"id" json:"id"`
+	Name        string    `db:"name" json:"name"`
+	Emoji       string    `db:"emoji" json:"emoji"`
+	Tags        []string  `db:"tags" json:"tags"`
+	Description string    `db:"description" json:"description"`
+	Type        string    `db:"type" json:"type"`
+	CreatedAt   time.Time `db:"created_at" json:"created_at"`
+}
+
+type StaffTemplateList struct {
+	TemplateTypes []StaffTemplateType `json:"template_types"`
+	Templates     []StaffTemplate     `json:"templates"`
 }

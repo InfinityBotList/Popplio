@@ -21,9 +21,9 @@ const (
 	TargetTypeServer = "server"
 )
 
-type ErrorStructGen struct{}
+type DefaultResponder struct{}
 
-func (e ErrorStructGen) New(err string, ctx map[string]string) any {
+func (d DefaultResponder) New(err string, ctx map[string]string) any {
 	return types.ApiError{
 		Message: err,
 		Context: ctx,
@@ -153,15 +153,14 @@ func Setup() {
 		Redis:   state.Redis,
 		Context: state.Context,
 		Constants: &uapi.UAPIConstants{
-			NotFound:         constants.NotFound,
-			NotFoundPage:     constants.NotFoundPage,
-			BadRequest:       constants.BadRequest,
-			Forbidden:        constants.Forbidden,
-			Unauthorized:     constants.Unauthorized,
-			InternalError:    constants.InternalError,
-			MethodNotAllowed: constants.MethodNotAllowed,
-			BodyRequired:     constants.BodyRequired,
+			ResourceNotFound:    constants.ResourceNotFound,
+			BadRequest:          constants.BadRequest,
+			Forbidden:           constants.Forbidden,
+			Unauthorized:        constants.Unauthorized,
+			InternalServerError: constants.InternalServerError,
+			MethodNotAllowed:    constants.MethodNotAllowed,
+			BodyRequired:        constants.BodyRequired,
 		},
-		UAPIErrorType: ErrorStructGen{},
+		DefaultResponder: DefaultResponder{},
 	})
 }
