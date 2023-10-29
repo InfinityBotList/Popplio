@@ -8,6 +8,7 @@ import (
 
 	docs "github.com/infinitybotlist/eureka/doclib"
 	"github.com/infinitybotlist/eureka/uapi"
+	"go.uber.org/zap"
 
 	"github.com/go-chi/chi/v5"
 )
@@ -47,7 +48,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	_, err := state.Pool.Exec(d.Context, "DELETE FROM user_notifications WHERE user_id = $1 AND notif_id = $2", id, r.URL.Query().Get("notif_id"))
 
 	if err != nil {
-		state.Logger.Error(err)
+		state.Logger.Error("Error while deleting user notification", zap.Error(err), zap.String("userID", id), zap.String("notifID", r.URL.Query().Get("notif_id")))
 		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
