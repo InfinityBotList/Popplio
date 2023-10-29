@@ -8,6 +8,7 @@ import (
 
 	docs "github.com/infinitybotlist/eureka/doclib"
 	"github.com/infinitybotlist/eureka/uapi"
+	"go.uber.org/zap"
 )
 
 func Docs() *docs.Doc {
@@ -31,7 +32,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	tx, err := state.Pool.Begin(d.Context)
 
 	if err != nil {
-		state.Logger.Error(err)
+		state.Logger.Error("Error while starting transaction", zap.Error(err), zap.String("botID", d.Auth.ID))
 		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
@@ -40,7 +41,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	_, err = tx.Exec(d.Context, "UPDATE bots SET last_stats_post = NOW() WHERE bot_id = $1", d.Auth.ID)
 
 	if err != nil {
-		state.Logger.Error(err)
+		state.Logger.Error("Error while updating last_stats_post", zap.Error(err), zap.String("botID", d.Auth.ID))
 		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
@@ -48,7 +49,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		_, err := tx.Exec(d.Context, "UPDATE bots SET servers = $1 WHERE bot_id = $2", payload.Servers, d.Auth.ID)
 
 		if err != nil {
-			state.Logger.Error(err)
+			state.Logger.Error("Error while updating servers", zap.Error(err), zap.String("botID", d.Auth.ID))
 			return uapi.DefaultResponse(http.StatusInternalServerError)
 		}
 	}
@@ -57,7 +58,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		_, err := tx.Exec(d.Context, "UPDATE bots SET shards = $1 WHERE bot_id = $2", payload.Shards, d.Auth.ID)
 
 		if err != nil {
-			state.Logger.Error(err)
+			state.Logger.Error("Error while updating shards", zap.Error(err), zap.String("botID", d.Auth.ID))
 			return uapi.DefaultResponse(http.StatusInternalServerError)
 		}
 	}
@@ -66,7 +67,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		_, err := tx.Exec(d.Context, "UPDATE bots SET users = $1 WHERE bot_id = $2", payload.Users, d.Auth.ID)
 
 		if err != nil {
-			state.Logger.Error(err)
+			state.Logger.Error("Error while updating users", zap.Error(err), zap.String("botID", d.Auth.ID))
 			return uapi.DefaultResponse(http.StatusInternalServerError)
 		}
 	}
@@ -75,7 +76,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		_, err := tx.Exec(d.Context, "UPDATE bots SET shard_list = $1 WHERE bot_id = $2", payload.ShardList, d.Auth.ID)
 
 		if err != nil {
-			state.Logger.Error(err)
+			state.Logger.Error("Error while updating shard_list", zap.Error(err), zap.String("botID", d.Auth.ID))
 			return uapi.DefaultResponse(http.StatusInternalServerError)
 		}
 	}
@@ -84,7 +85,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	err = tx.Commit(d.Context)
 
 	if err != nil {
-		state.Logger.Error(err)
+		state.Logger.Error("Error while committing transaction", zap.Error(err), zap.String("botID", d.Auth.ID), zap.Any("payload", payload))
 		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 

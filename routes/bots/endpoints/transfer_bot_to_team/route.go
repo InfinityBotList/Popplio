@@ -9,6 +9,7 @@ import (
 
 	docs "github.com/infinitybotlist/eureka/doclib"
 	"github.com/infinitybotlist/eureka/uapi"
+	"go.uber.org/zap"
 
 	"github.com/bwmarrin/discordgo"
 	"github.com/go-chi/chi/v5"
@@ -73,7 +74,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	err := state.Pool.QueryRow(d.Context, "SELECT owner FROM bots WHERE bot_id = $1", botId).Scan(&owner)
 
 	if err != nil {
-		state.Logger.Error(err)
+		state.Logger.Error("Error checking bot owner: ", zap.Error(err), zap.String("botID", botId))
 		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
@@ -96,7 +97,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	err = state.Pool.QueryRow(d.Context, "SELECT COUNT(*) FROM teams WHERE id = $1", payload.TeamID).Scan(&count)
 
 	if err != nil {
-		state.Logger.Error(err)
+		state.Logger.Error("Error checking team: ", zap.Error(err), zap.String("teamID", payload.TeamID))
 		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
@@ -110,7 +111,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	newTeamPerms, err := teams.GetEntityPerms(d.Context, d.Auth.ID, "team", payload.TeamID)
 
 	if err != nil {
-		state.Logger.Error(err)
+		state.Logger.Error("Error checking team perms: ", zap.Error(err), zap.String("teamID", payload.TeamID))
 		return uapi.HttpResponse{
 			Status: http.StatusBadRequest,
 			Json:   types.ApiError{Message: err.Error()},
@@ -128,7 +129,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	_, err = state.Pool.Exec(d.Context, "UPDATE bots SET team_owner = $1, owner = NULL WHERE bot_id = $2", payload.TeamID, botId)
 
 	if err != nil {
-		state.Logger.Error(err)
+		state.Logger.Error("Error transferring bot: ", zap.Error(err), zap.String("botID", botId), zap.String("teamID", payload.TeamID))
 		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 

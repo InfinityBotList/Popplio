@@ -52,7 +52,7 @@ func sendAuthLog(user oauthUser, req types.AuthorizeRequest, new bool) {
 		err := state.Pool.QueryRow(state.Context, "SELECT banned, vote_banned FROM users WHERE user_id = $1", user.ID).Scan(&banned, &voteBanned)
 
 		if err != nil {
-			state.Logger.Error(err)
+			state.Logger.Error("sendAuthLog: Failed to get user details from database", zap.Error(err), zap.String("user_id", user.ID))
 			return
 		}
 	}
@@ -61,7 +61,7 @@ func sendAuthLog(user oauthUser, req types.AuthorizeRequest, new bool) {
 		zap.String("user_id", user.ID),
 		zap.String("channel_id", state.Config.Channels.AuthLogs),
 		zap.String("bot_info", state.Discord.State.User.String()),
-	).Info("Channel Info")
+	).Debug("sendAuthLog: Channel Info")
 
 	_, err := state.Discord.ChannelMessageSendComplex(state.Config.Channels.AuthLogs, &discordgo.MessageSend{
 		Embeds: []*discordgo.MessageEmbed{
@@ -127,7 +127,7 @@ func sendAuthLog(user oauthUser, req types.AuthorizeRequest, new bool) {
 	})
 
 	if err != nil {
-		state.Logger.Error(err)
+		state.Logger.Error("sendAuthLog: Failed to send message to Discord", zap.Error(err), zap.String("user_id", user.ID))
 	}
 }
 
@@ -139,7 +139,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	}.Limit(d.Context, r)
 
 	if err != nil {
-		state.Logger.Error(err)
+		state.Logger.Error("Error while ratelimiting", zap.Error(err), zap.String("bucket", "login"))
 		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
@@ -221,7 +221,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	})
 
 	if err != nil {
-		state.Logger.Error(err)
+		state.Logger.Error("Failed to send oauth2 token request to discord", zap.Error(err))
 		return uapi.HttpResponse{
 			Json: types.ApiError{
 				Message: "Failed to send token request to Discord",
@@ -236,7 +236,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	body, err := io.ReadAll(httpResp.Body)
 
 	if err != nil {
-		state.Logger.Error(err)
+		state.Logger.Error("Failed to read oauth2 token response from discord", zap.Error(err))
 		return uapi.HttpResponse{
 			Json: types.ApiError{
 				Message: "Failed to read token response from Discord",
@@ -253,7 +253,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	err = json.Unmarshal(body, &token)
 
 	if err != nil {
-		state.Logger.Error(err)
+		state.Logger.Error("Failed to parse oauth2 token response from discord", zap.Error(err))
 		return uapi.HttpResponse{
 			Json: types.ApiError{
 				Message: "Failed to parse token response from Discord",
@@ -264,7 +264,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	}
 
 	if token.AccessToken == "" {
-		state.Logger.Error(err)
+		state.Logger.Error("No access token provided by discord")
 		return uapi.HttpResponse{
 			Json: types.ApiError{
 				Message: "No access token provided by Discord",
@@ -280,7 +280,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	httpReq, err = http.NewRequestWithContext(d.Context, "GET", "https://discord.com/api/v10/users/@me", nil)
 
 	if err != nil {
-		state.Logger.Error(err)
+		state.Logger.Error("Failed to create oauth2 request to discord", zap.Error(err))
 		return uapi.HttpResponse{
 			Json: types.ApiError{
 				Message: "Failed to create request to Discord to fetch user info",
@@ -295,7 +295,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	httpResp, err = cli.Do(httpReq)
 
 	if err != nil {
-		state.Logger.Error(err)
+		state.Logger.Error("Failed to send oauth2 request to discord", zap.Error(err))
 		return uapi.HttpResponse{
 			Json: types.ApiError{
 				Message: "Failed to send oauth2 request to Discord",
@@ -310,7 +310,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	body, err = io.ReadAll(httpResp.Body)
 
 	if err != nil {
-		state.Logger.Error(err)
+		state.Logger.Error("Failed to read oauth2 response from discord", zap.Error(err))
 		return uapi.HttpResponse{
 			Json: types.ApiError{
 				Message: "Failed to read oauth2 response from Discord",
@@ -325,7 +325,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	err = json.Unmarshal(body, &user)
 
 	if err != nil {
-		state.Logger.Error(err)
+		state.Logger.Error("Failed to parse oauth2 response from discord", zap.Error(err))
 		return uapi.HttpResponse{
 			Json: types.ApiError{
 				Message: "Failed to parse oauth2 response from Discord",
@@ -336,7 +336,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	}
 
 	if user.ID == "" {
-		state.Logger.Error(err)
+		state.Logger.Error("No user ID provided by discord. Invalid code/access token?")
 		return uapi.HttpResponse{
 			Json: types.ApiError{
 				Message: "No user ID provided by Discord. Invalid code/access token?",
@@ -352,7 +352,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	err = state.Pool.QueryRow(d.Context, "SELECT EXISTS(SELECT 1 FROM users WHERE user_id = $1)", user.ID).Scan(&exists)
 
 	if err != nil {
-		state.Logger.Error(err)
+		state.Logger.Error("Failed to check if user exists on database", zap.Error(err), zap.String("userID", user.ID))
 		return uapi.HttpResponse{
 			Json: types.ApiError{
 				Message: "Failed to check if user exists on database",
@@ -363,16 +363,6 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	}
 
 	var apiToken string
-
-	if err != nil {
-		state.Logger.Error(err)
-		return uapi.HttpResponse{
-			Json: types.ApiError{
-				Message: "Failed to get user from Discord",
-			},
-			Status: http.StatusInternalServerError,
-		}
-	}
 
 	if !exists {
 		// Create user
@@ -386,7 +376,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		)
 
 		if err != nil {
-			state.Logger.Error(err)
+			state.Logger.Error("Failed to create user on database", zap.Error(err), zap.String("userID", user.ID))
 			return uapi.HttpResponse{
 				Json: types.ApiError{
 					Message: "Failed to create user on database",
@@ -405,7 +395,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		err = state.Pool.QueryRow(d.Context, "SELECT banned, api_token FROM users WHERE user_id = $1", user.ID).Scan(&banned, &tokenStr)
 
 		if err != nil {
-			state.Logger.Error(err)
+			state.Logger.Error("Failed to get API token from database", zap.Error(err), zap.String("userID", user.ID))
 			return uapi.HttpResponse{
 				Json: types.ApiError{
 					Message: "Failed to get API token from database",

@@ -9,6 +9,7 @@ import (
 	"strconv"
 
 	"github.com/bwmarrin/discordgo"
+	"go.uber.org/zap"
 )
 
 type CreatePerkData struct {
@@ -41,7 +42,7 @@ type PerkData struct {
 func FindPerks(ctx context.Context, payload PerkData) (*types.PaymentPlan, error) {
 	var perk *types.PaymentPlan
 
-	state.Logger.Info(payload)
+	state.Logger.Debug("Got payload", zap.Any("payload", payload))
 
 	if payload.UserID == "" {
 		return nil, errors.New("internal error: user id is required")
@@ -56,7 +57,6 @@ func FindPerks(ctx context.Context, payload PerkData) (*types.PaymentPlan, error
 	switch payload.ProductID {
 	case "premium":
 		for _, plan := range Plans {
-			state.Logger.Debug(plan.ID, "!=", payload.ProductName)
 			if plan.ID == payload.ProductName {
 				// Ensure the bot associated with For exists
 				var count int64

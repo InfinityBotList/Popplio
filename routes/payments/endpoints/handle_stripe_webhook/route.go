@@ -1,7 +1,6 @@
 package handle_stripe_webhook
 
 import (
-	"fmt"
 	"io"
 	"net/http"
 	"popplio/notifications"
@@ -11,6 +10,7 @@ import (
 
 	docs "github.com/infinitybotlist/eureka/doclib"
 	"github.com/infinitybotlist/eureka/uapi"
+	"go.uber.org/zap"
 
 	jsoniter "github.com/json-iterator/go"
 	"github.com/stripe/stripe-go/v75"
@@ -40,18 +40,18 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 
 	// Get request IP
 	if !slices.Contains(state.StripeWebhIPList, r.RemoteAddr) {
-		state.Logger.Error("IP " + r.RemoteAddr + " is not allowed to access this endpoint")
+		state.Logger.Error("IP is not allowed to access this endpoint", zap.String("ip", r.RemoteAddr))
 		return uapi.HttpResponse{
 			Status: http.StatusForbidden,
 			Json: types.ApiError{
-				Message: "You are not allowed to access this endpoint",
+				Message: "IP is not allowed to access this endpoint",
 			},
 		}
 	}
 
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
-		state.Logger.Error(err)
+		state.Logger.Error("Failed to read request body", zap.Error(err))
 		return uapi.HttpResponse{
 			Status: http.StatusBadRequest,
 			Json: types.ApiError{
@@ -65,7 +65,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	event, err := webhook.ConstructEvent(body, r.Header.Get("Stripe-Signature"), state.StripeWebhSecret)
 
 	if err != nil {
-		state.Logger.Error(err)
+		state.Logger.Error("Failed to construct event", zap.Error(err))
 		return uapi.HttpResponse{
 			Status: http.StatusBadRequest,
 			Json: types.ApiError{
@@ -81,7 +81,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	case "checkout.session.completed":
 		err := json.Unmarshal(event.Data.Raw, &s)
 		if err != nil {
-			state.Logger.Error(err)
+			state.Logger.Error("Failed to unmarshal event data", zap.Error(err))
 			return uapi.DefaultResponse(http.StatusInternalServerError)
 		}
 
@@ -96,7 +96,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	case "checkout.session.async_payment_succeeded":
 		err := json.Unmarshal(event.Data.Raw, &s)
 		if err != nil {
-			state.Logger.Error(err)
+			state.Logger.Error("Failed to unmarshal event data", zap.Error(err))
 			return uapi.DefaultResponse(http.StatusInternalServerError)
 		}
 
@@ -104,14 +104,14 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		var s stripe.CheckoutSession
 		err := json.Unmarshal(event.Data.Raw, &s)
 		if err != nil {
-			state.Logger.Error(err)
+			state.Logger.Error("Failed to unmarshal event data", zap.Error(err))
 			return uapi.DefaultResponse(http.StatusInternalServerError)
 		}
 
 		failed = true
 
 	default:
-		state.Logger.Error("Unknown event type:" + event.Type)
+		state.Logger.Error("Unknown event type", zap.String("event", string(event.Type)))
 		return uapi.HttpResponse{
 			Status: http.StatusOK,
 			Data:   "Unknown event type: " + string(event.Type),
@@ -124,7 +124,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	err = json.Unmarshal([]byte(s.ClientReferenceID), &payload)
 
 	if err != nil {
-		state.Logger.Error(err)
+		state.Logger.Error("Failed to unmarshal client reference id", zap.Error(err))
 		return uapi.HttpResponse{
 			Status: http.StatusOK,
 			Data:   "Failed to unmarshal client reference id: " + err.Error(),
@@ -149,13 +149,13 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	}
 
 	go func() {
-		fmt.Println(payload, "with userID of", payload.UserID)
+		state.Logger.Info("Giving perks", zap.Any("payload", payload))
 
 		err = assets.GivePerks(state.Context, payload)
 
 		if err != nil {
 			// Warn user about it as refunding is costly
-			state.Logger.Error(err)
+			state.Logger.Error("Failed to give perks", zap.Error(err), zap.Any("payload", payload))
 			notifications.PushNotification(payload.UserID, types.Alert{
 				Title:    "Perk Delivery Failed",
 				Message:  "Your payment for \"" + payload.ProductName + "\" for " + payload.For + " has succeeded but couldn't be handled correctly. Please contact our support team IMMEDIATELY: " + err.Error(),

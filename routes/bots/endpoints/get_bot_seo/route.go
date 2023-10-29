@@ -12,6 +12,7 @@ import (
 	"github.com/infinitybotlist/eureka/dovewing"
 	"github.com/infinitybotlist/eureka/uapi"
 	"github.com/jackc/pgx/v5"
+	"go.uber.org/zap"
 
 	"github.com/go-chi/chi/v5"
 )
@@ -54,14 +55,14 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	}
 
 	if err != nil {
-		state.Logger.Error(err)
+		state.Logger.Error("Error while getting bot [queryrow]", zap.Error(err), zap.String("botID", id))
 		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
 	bot, err := dovewing.GetUser(d.Context, id, state.DovewingPlatformDiscord)
 
 	if err != nil {
-		state.Logger.Error(err)
+		state.Logger.Error("Error while getting bot user [dovewing]", zap.Error(err), zap.String("botID", id))
 		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 

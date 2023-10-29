@@ -11,6 +11,7 @@ import (
 	docs "github.com/infinitybotlist/eureka/doclib"
 	"github.com/infinitybotlist/eureka/uapi"
 	"github.com/jackc/pgx/v5/pgtype"
+	"go.uber.org/zap"
 
 	"github.com/bwmarrin/discordgo"
 	"github.com/go-chi/chi/v5"
@@ -77,7 +78,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	perms, err := teams.GetEntityPerms(d.Context, d.Auth.ID, "bot", id)
 
 	if err != nil {
-		state.Logger.Error(err)
+		state.Logger.Error("Error getting perms for bot: ", zap.Error(err), zap.String("botID", id), zap.String("userID", d.Auth.ID))
 		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
@@ -91,7 +92,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	newTeamPerms, err := teams.GetEntityPerms(d.Context, d.Auth.ID, "team", payload.TeamID)
 
 	if err != nil {
-		state.Logger.Error(err)
+		state.Logger.Error("Error getting perms for team: ", zap.Error(err), zap.String("teamID", payload.TeamID), zap.String("userID", d.Auth.ID))
 		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
@@ -108,7 +109,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	err = state.Pool.QueryRow(d.Context, "SELECT team_owner FROM bots WHERE bot_id = $1", id).Scan(&currentBotTeam)
 
 	if err != nil {
-		state.Logger.Error(err)
+		state.Logger.Error("Error getting current team for bot: ", zap.Error(err), zap.String("botID", id), zap.String("userID", d.Auth.ID))
 		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
@@ -116,7 +117,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	_, err = state.Pool.Exec(d.Context, "UPDATE bots SET team_owner = $1, owner = NULL WHERE bot_id = $2", payload.TeamID, id)
 
 	if err != nil {
-		state.Logger.Error(err)
+		state.Logger.Error("Error transferring bot to team", zap.String("botID", id), zap.String("userID", d.Auth.ID), zap.String("newTeamID", payload.TeamID))
 		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 

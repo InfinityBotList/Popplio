@@ -14,6 +14,7 @@ import (
 	docs "github.com/infinitybotlist/eureka/doclib"
 	"github.com/infinitybotlist/eureka/dovewing"
 	"github.com/infinitybotlist/eureka/uapi"
+	"go.uber.org/zap"
 
 	"github.com/bwmarrin/discordgo"
 	"github.com/go-chi/chi/v5"
@@ -82,7 +83,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	perms, err := teams.GetEntityPerms(d.Context, d.Auth.ID, "bot", id)
 
 	if err != nil {
-		state.Logger.Error(err)
+		state.Logger.Error("Failed to get entity perms: ", zap.Error(err), zap.String("userID", d.Auth.ID), zap.String("targetType", "bot"), zap.String("targetID", id))
 		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
@@ -123,9 +124,10 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	botUser, err := dovewing.GetUser(d.Context, id, state.DovewingPlatformDiscord)
 
 	if err != nil {
+		state.Logger.Error("Failed to get bot user: ", zap.Error(err), zap.String("userID", d.Auth.ID), zap.String("botID", id))
 		return uapi.HttpResponse{
 			Status: http.StatusInternalServerError,
-			Json:   types.ApiError{Message: "Internal Error: Failed to get bot user"},
+			Json:   types.ApiError{Message: "Failed to get bot user:" + err.Error()},
 		}
 	}
 
@@ -134,6 +136,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	botArgs := updateBotsArgs(payload)
 
 	if len(updateSql) != len(botArgs) {
+		state.Logger.Error("updateSql and botArgs do not match in length", zap.Any("updateSql", updateSql), zap.Any("botArgs", botArgs))
 		return uapi.HttpResponse{
 			Status: http.StatusInternalServerError,
 			Json:   types.ApiError{Message: "Internal Error: The number of columns and arguments do not match"},
@@ -147,7 +150,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	_, err = state.Pool.Exec(d.Context, "UPDATE bots SET "+updateSqlStr+" WHERE bot_id=$"+strconv.Itoa(len(botArgs)), botArgs...)
 
 	if err != nil {
-		state.Logger.Error(err)
+		state.Logger.Error("Failed to update bot: ", zap.Error(err), zap.String("userID", d.Auth.ID), zap.String("botID", id))
 		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
