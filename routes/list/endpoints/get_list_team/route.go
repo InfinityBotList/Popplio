@@ -11,6 +11,7 @@ import (
 	"github.com/infinitybotlist/eureka/dovewing"
 	"github.com/infinitybotlist/eureka/uapi"
 	"github.com/jackc/pgx/v5"
+	"go.uber.org/zap"
 )
 
 var (
@@ -30,14 +31,14 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	rows, err := state.Pool.Query(d.Context, "SELECT "+userPermCols+" FROM users WHERE staff = true")
 
 	if err != nil {
-		state.Logger.Error(err)
+		state.Logger.Error("Failed to fetch staff team [rows]", zap.Error(err))
 		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
 	users, err := pgx.CollectRows(rows, pgx.RowToStructByName[types.UserPerm])
 
 	if err != nil {
-		state.Logger.Error(err)
+		state.Logger.Error("Failed to fetch staff team [collect]", zap.Error(err))
 		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
@@ -45,7 +46,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		user, err := dovewing.GetUser(d.Context, user.ID, state.DovewingPlatformDiscord)
 
 		if err != nil {
-			state.Logger.Error(err)
+			state.Logger.Error("Failed to fetch staff team member [dovewing]", zap.Error(err), zap.String("id", user.ID))
 			return uapi.DefaultResponse(http.StatusInternalServerError)
 		}
 

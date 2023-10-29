@@ -196,9 +196,6 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 				Query:   payload.Query,
 				TagMode: payload.TagFilter.TagMode,
 				Cols:    indexServerCols,
-				PlatformTables: []string{
-					dovewing.TableName(state.DovewingPlatformDiscord),
-				},
 			})
 
 			if err != nil {

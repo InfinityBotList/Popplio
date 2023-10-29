@@ -12,6 +12,7 @@ import (
 	docs "github.com/infinitybotlist/eureka/doclib"
 	"github.com/infinitybotlist/eureka/uapi"
 	"github.com/jackc/pgx/v5"
+	"go.uber.org/zap"
 )
 
 var (
@@ -49,7 +50,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	rows, err := state.Pool.Query(d.Context, "SELECT "+alertColsStr+" FROM alerts WHERE user_id = $1 AND itag = $2", d.Auth.ID, itag)
 
 	if err != nil {
-		state.Logger.Error(err)
+		state.Logger.Error("Error querying for alert [collect]", zap.Error(err), zap.String("itag", itag), zap.String("userID", d.Auth.ID))
 		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
@@ -60,7 +61,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	}
 
 	if err != nil {
-		state.Logger.Error(err)
+		state.Logger.Error("Error querying for alert [collect]", zap.Error(err), zap.String("itag", itag), zap.String("userID", d.Auth.ID))
 		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
@@ -69,7 +70,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	err = state.Pool.QueryRow(d.Context, "SELECT COUNT(*) FROM alerts WHERE user_id = $1 AND acked = false", d.Auth.ID).Scan(&unackedCount)
 
 	if err != nil {
-		state.Logger.Error(err)
+		state.Logger.Error("Error querying for unacked count", zap.Error(err), zap.String("itag", itag), zap.String("userID", d.Auth.ID))
 		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 

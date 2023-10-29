@@ -15,6 +15,7 @@ import (
 	"github.com/infinitybotlist/eureka/dovewing"
 	"github.com/infinitybotlist/eureka/uapi"
 	"github.com/jackc/pgx/v5"
+	"go.uber.org/zap"
 )
 
 const perPage = 12
@@ -74,14 +75,14 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	rows, err = state.Pool.Query(d.Context, "SELECT "+indexBotCols+" FROM bots ORDER BY created_at DESC LIMIT $1 OFFSET $2", limit, offset)
 
 	if err != nil {
-		state.Logger.Error(err)
+		state.Logger.Error("Error while getting all bots [db fetch]", zap.Error(err))
 		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
 	bots, err := pgx.CollectRows(rows, pgx.RowToStructByName[types.IndexBot])
 
 	if err != nil {
-		state.Logger.Error(err)
+		state.Logger.Error("Error while getting all bots [collect]", zap.Error(err))
 		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
@@ -90,6 +91,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		botUser, err := dovewing.GetUser(d.Context, bots[i].BotID, state.DovewingPlatformDiscord)
 
 		if err != nil {
+			state.Logger.Error("Error while getting bot user [dovewing]", zap.Error(err), zap.String("botID", bots[i].BotID))
 			return uapi.DefaultResponse(http.StatusInternalServerError)
 		}
 
@@ -100,7 +102,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		err = state.Pool.QueryRow(d.Context, "SELECT code FROM vanity WHERE itag = $1", bots[i].VanityRef).Scan(&code)
 
 		if err != nil {
-			state.Logger.Error(err)
+			state.Logger.Error("Error while getting vanity code", zap.Error(err), zap.String("botID", bots[i].BotID))
 			return uapi.DefaultResponse(http.StatusInternalServerError)
 		}
 
@@ -113,7 +115,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	err = state.Pool.QueryRow(d.Context, "SELECT COUNT(*) FROM bots").Scan(&count)
 
 	if err != nil {
-		state.Logger.Error(err)
+		state.Logger.Error("Error while getting bot count", zap.Error(err))
 		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 

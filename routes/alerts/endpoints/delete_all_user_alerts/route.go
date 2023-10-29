@@ -7,6 +7,7 @@ import (
 
 	docs "github.com/infinitybotlist/eureka/doclib"
 	"github.com/infinitybotlist/eureka/uapi"
+	"go.uber.org/zap"
 )
 
 func Docs() *docs.Doc {
@@ -30,7 +31,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	_, err := state.Pool.Exec(d.Context, "DELETE FROM alerts WHERE user_id = $1", d.Auth.ID)
 
 	if err != nil {
-		state.Logger.Error(err)
+		state.Logger.Error("Failed to delete alerts", zap.Error(err), zap.String("userID", d.Auth.ID))
 		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 

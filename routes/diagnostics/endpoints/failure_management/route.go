@@ -12,6 +12,7 @@ import (
 	"github.com/getsentry/sentry-go"
 	docs "github.com/infinitybotlist/eureka/doclib"
 	"github.com/infinitybotlist/eureka/uapi"
+	"go.uber.org/zap"
 )
 
 func Docs() *docs.Doc {
@@ -47,7 +48,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		bodyBytes, err := io.ReadAll(r.Body)
 
 		if err != nil {
-			state.Logger.Error(err)
+			state.Logger.Error("Failed to read body", zap.Error(err), zap.Int("size", len(bodyBytes)))
 			return uapi.HttpResponse{
 				Status: http.StatusBadRequest,
 				Json:   types.ApiError{Message: "Failed to read body: " + err.Error()},

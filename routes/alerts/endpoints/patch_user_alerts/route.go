@@ -8,6 +8,7 @@ import (
 	"github.com/go-playground/validator/v10"
 	docs "github.com/infinitybotlist/eureka/doclib"
 	"github.com/infinitybotlist/eureka/uapi"
+	"go.uber.org/zap"
 )
 
 var compiledMessages = uapi.CompileValidationErrors(types.AlertPatch{})
@@ -50,7 +51,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	tx, err := state.Pool.Begin(d.Context)
 
 	if err != nil {
-		state.Logger.Error(err)
+		state.Logger.Error("Error while starting transaction", zap.Error(err), zap.String("userID", d.Auth.ID))
 		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
@@ -67,7 +68,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		}
 
 		if err != nil {
-			state.Logger.Error(err)
+			state.Logger.Error("Error while patching user alerts", zap.Any("patch", patch), zap.String("userID", d.Auth.ID), zap.Error(err))
 			return uapi.DefaultResponse(http.StatusInternalServerError)
 		}
 	}
@@ -75,7 +76,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	err = tx.Commit(d.Context)
 
 	if err != nil {
-		state.Logger.Error(err)
+		state.Logger.Error("Error while committing transaction", zap.Error(err), zap.String("userID", d.Auth.ID))
 		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 

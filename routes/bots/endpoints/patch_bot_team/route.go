@@ -3,6 +3,7 @@ package patch_bot_team
 import (
 	"fmt"
 	"net/http"
+	"popplio/routes/bots/assets"
 	"popplio/state"
 	"popplio/teams"
 	"popplio/types"
@@ -138,7 +139,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 					},
 					{
 						Name:  "Old Team",
-						Value: fmt.Sprintf("[View Team](%s/team/%s)", state.Config.Sites.Frontend, encodeUUID(currentBotTeam.Bytes)),
+						Value: fmt.Sprintf("[View Team](%s/team/%s)", state.Config.Sites.Frontend, assets.EncodeUUID(currentBotTeam.Bytes)),
 					},
 					{
 						Name:  "New Team",
@@ -150,8 +151,4 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	})
 
 	return uapi.DefaultResponse(http.StatusNoContent)
-}
-
-func encodeUUID(src [16]byte) string {
-	return fmt.Sprintf("%x-%x-%x-%x-%x", src[0:4], src[4:6], src[6:8], src[8:10], src[10:16])
 }

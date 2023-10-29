@@ -9,6 +9,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	docs "github.com/infinitybotlist/eureka/doclib"
 	"github.com/infinitybotlist/eureka/uapi"
+	"go.uber.org/zap"
 )
 
 func Docs() *docs.Doc {
@@ -56,7 +57,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	perms, err := teams.GetEntityPerms(d.Context, d.Auth.ID, targetType, targetId)
 
 	if err != nil {
-		state.Logger.Error(err)
+		state.Logger.Error("Error while getting entity perms", zap.Error(err), zap.String("userID", d.Auth.ID), zap.String("targetType", targetType), zap.String("targetID", targetId))
 		return uapi.HttpResponse{
 			Status: http.StatusBadRequest,
 			Json:   types.ApiError{Message: "Error: " + err.Error()},
@@ -77,14 +78,14 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		err = state.Pool.QueryRow(d.Context, "SELECT api_token FROM bots WHERE bot_id = $1", targetId).Scan(&token)
 
 		if err != nil {
-			state.Logger.Error(err)
+			state.Logger.Error("Error while getting bot token", zap.Error(err), zap.String("userID", d.Auth.ID), zap.String("targetType", targetType), zap.String("targetID", targetId))
 			return uapi.DefaultResponse(http.StatusInternalServerError)
 		}
 	case "server":
 		err = state.Pool.QueryRow(d.Context, "SELECT api_token FROM servers WHERE server_id = $1", targetId).Scan(&token)
 
 		if err != nil {
-			state.Logger.Error(err)
+			state.Logger.Error("Error while getting server token", zap.Error(err), zap.String("userID", d.Auth.ID), zap.String("targetType", targetType), zap.String("targetID", targetId))
 			return uapi.DefaultResponse(http.StatusInternalServerError)
 		}
 	default:

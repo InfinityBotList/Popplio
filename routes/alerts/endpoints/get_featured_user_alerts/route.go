@@ -11,6 +11,7 @@ import (
 	docs "github.com/infinitybotlist/eureka/doclib"
 	"github.com/infinitybotlist/eureka/uapi"
 	"github.com/jackc/pgx/v5"
+	"go.uber.org/zap"
 )
 
 var (
@@ -53,7 +54,12 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	ackedResCount, err := strconv.Atoi(r.URL.Query().Get("acked_count"))
 
 	if err != nil {
-		return uapi.DefaultResponse(http.StatusBadRequest)
+		return uapi.HttpResponse{
+			Status: http.StatusBadRequest,
+			Json: types.ApiError{
+				Message: "acked_count must be an integer",
+			},
+		}
 	}
 
 	if ackedResCount > 20 {
@@ -68,7 +74,12 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	unackedResCount, err := strconv.Atoi(r.URL.Query().Get("unacked_count"))
 
 	if err != nil {
-		return uapi.DefaultResponse(http.StatusBadRequest)
+		return uapi.HttpResponse{
+			Status: http.StatusBadRequest,
+			Json: types.ApiError{
+				Message: "unacked_count must be an integer",
+			},
+		}
 	}
 
 	if unackedResCount > 20 {
@@ -83,28 +94,28 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	ackedRows, err := state.Pool.Query(d.Context, "SELECT "+alertColsStr+" FROM alerts WHERE user_id = $1 AND acked = true ORDER BY created_at DESC, priority ASC LIMIT $2", d.Auth.ID, ackedResCount)
 
 	if err != nil {
-		state.Logger.Error(err)
+		state.Logger.Error("Error getting acked user alerts [query]", zap.Error(err), zap.String("userID", d.Auth.ID), zap.Int("ackedResCount", ackedResCount), zap.Int("unackedResCount", unackedResCount))
 		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
 	ackedAlerts, err := pgx.CollectRows(ackedRows, pgx.RowToStructByName[types.Alert])
 
 	if err != nil {
-		state.Logger.Error(err)
+		state.Logger.Error("Error getting acked user alerts [collect]", zap.Error(err), zap.String("userID", d.Auth.ID), zap.Int("ackedResCount", ackedResCount), zap.Int("unackedResCount", unackedResCount))
 		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
 	unackedRows, err := state.Pool.Query(d.Context, "SELECT "+alertColsStr+" FROM alerts WHERE user_id = $1 AND acked = false ORDER BY created_at DESC, priority ASC LIMIT $2", d.Auth.ID, unackedResCount)
 
 	if err != nil {
-		state.Logger.Error(err)
+		state.Logger.Error("Error getting unacked user alerts [query]", zap.Error(err), zap.String("userID", d.Auth.ID), zap.Int("ackedResCount", ackedResCount), zap.Int("unackedResCount", unackedResCount))
 		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
 	unackedAlerts, err := pgx.CollectRows(unackedRows, pgx.RowToStructByName[types.Alert])
 
 	if err != nil {
-		state.Logger.Error(err)
+		state.Logger.Error("Error getting unacked user alerts [collect]", zap.Error(err), zap.String("userID", d.Auth.ID), zap.Int("ackedResCount", ackedResCount), zap.Int("unackedResCount", unackedResCount))
 		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
@@ -117,7 +128,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	err = state.Pool.QueryRow(d.Context, "SELECT COUNT(*) FROM alerts WHERE user_id = $1 AND acked = false", d.Auth.ID).Scan(&unackedCount)
 
 	if err != nil {
-		state.Logger.Error(err)
+		state.Logger.Error("Error getting unacked user alerts count", zap.Error(err), zap.String("userID", d.Auth.ID), zap.Int("ackedResCount", ackedResCount), zap.Int("unackedResCount", unackedResCount))
 		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 

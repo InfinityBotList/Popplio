@@ -10,6 +10,7 @@ import (
 	"popplio/assetmanager"
 	"popplio/config"
 	"popplio/db"
+	"popplio/routes/bots/assets"
 	"popplio/state"
 	"popplio/types"
 
@@ -17,6 +18,7 @@ import (
 	"github.com/infinitybotlist/eureka/dovewing"
 	"github.com/infinitybotlist/eureka/uapi"
 	"github.com/jackc/pgx/v5"
+	"go.uber.org/zap"
 
 	"github.com/go-chi/chi/v5"
 )
@@ -82,7 +84,7 @@ func handleAnalytics(r *http.Request, id, target string) {
 		tx, err := state.Pool.Begin(state.Context)
 
 		if err != nil {
-			state.Logger.Error(err)
+			state.Logger.Error("Error creating transaction during handleAnalytics", zap.Error(err), zap.String("id", id), zap.String("target", target), zap.String("targetType", "bot"))
 			return
 		}
 
@@ -91,7 +93,7 @@ func handleAnalytics(r *http.Request, id, target string) {
 		_, err = tx.Exec(state.Context, "UPDATE bots SET clicks = clicks + 1 WHERE bot_id = $1", id)
 
 		if err != nil {
-			state.Logger.Error(err)
+			state.Logger.Error("Error updating clicks count during handleAnalytics", zap.Error(err), zap.String("id", id), zap.String("target", target), zap.String("targetType", "bot"))
 			return
 		}
 
@@ -101,17 +103,17 @@ func handleAnalytics(r *http.Request, id, target string) {
 		err = tx.QueryRow(state.Context, "SELECT $1 = ANY(unique_clicks) FROM bots WHERE bot_id = $2", hashedIp, id).Scan(&hasClicked)
 
 		if err != nil {
-			state.Logger.Error("Error checking", err)
+			state.Logger.Error("Error checking for any unique clicks from this user during handleAnalytics", zap.Error(err), zap.String("id", id), zap.String("target", target), zap.String("targetType", "bot"))
 			return
 		}
 
 		if !hasClicked {
 			// If not, add it to the array
-			state.Logger.Info("Adding click for " + id)
+			state.Logger.Debug("Adding new unique click for user during handleAnalytics", zap.Error(err), zap.String("id", id), zap.String("target", target), zap.String("targetType", "bot"))
 			_, err = tx.Exec(state.Context, "UPDATE bots SET unique_clicks = array_append(unique_clicks, $1) WHERE bot_id = $2", hashedIp, id)
 
 			if err != nil {
-				state.Logger.Error("Error adding:", err)
+				state.Logger.Error("Error adding new unique click for user during handleAnalytics", zap.Error(err), zap.String("id", id), zap.String("target", target), zap.String("targetType", "bot"))
 				return
 			}
 		}
@@ -120,7 +122,7 @@ func handleAnalytics(r *http.Request, id, target string) {
 		err = tx.Commit(state.Context)
 
 		if err != nil {
-			state.Logger.Error(err)
+			state.Logger.Error("Error committing transaction during handleAnalytics", zap.Error(err), zap.String("id", id), zap.String("target", target), zap.String("targetType", "bot"))
 			return
 		}
 	case "invite":
@@ -128,7 +130,7 @@ func handleAnalytics(r *http.Request, id, target string) {
 		_, err := state.Pool.Exec(state.Context, "UPDATE bots SET invite_clicks = invite_clicks + 1 WHERE bot_id = $1", id)
 
 		if err != nil {
-			state.Logger.Error(err)
+			state.Logger.Error("Error updating invite clicks during handleAnalytics", zap.Error(err), zap.String("id", id), zap.String("target", target), zap.String("targetType", "bot"))
 		}
 	}
 }
@@ -141,7 +143,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	row, err := state.Pool.Query(d.Context, "SELECT "+botCols+" FROM bots WHERE bot_id = $1", id)
 
 	if err != nil {
-		state.Logger.Error(err)
+		state.Logger.Error("Error while getting bot [db fetch]", zap.Error(err), zap.String("id", id), zap.String("target", target))
 		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
@@ -152,7 +154,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	}
 
 	if err != nil {
-		state.Logger.Error(err)
+		state.Logger.Error("Error while getting bot [db fetch]", zap.Error(err), zap.String("id", id), zap.String("target", target))
 		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
@@ -160,7 +162,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		ownerUser, err := dovewing.GetUser(d.Context, bot.Owner.String, state.DovewingPlatformDiscord)
 
 		if err != nil {
-			state.Logger.Error(err)
+			state.Logger.Error("Error while getting bot owner [dovewing fetch]", zap.Error(err), zap.String("id", id), zap.String("target", target), zap.String("owner", bot.Owner.String))
 			return uapi.DefaultResponse(http.StatusInternalServerError)
 		}
 
@@ -169,14 +171,14 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		row, err := state.Pool.Query(d.Context, "SELECT "+teamCols+" FROM teams WHERE id = $1", bot.TeamOwnerID)
 
 		if err != nil {
-			state.Logger.Error(err)
+			state.Logger.Error("Error while getting bot team owner [db fetch]", zap.Error(err), zap.String("id", id), zap.String("target", target), zap.String("teamOwner", assets.EncodeUUID(bot.TeamOwnerID.Bytes)))
 			return uapi.DefaultResponse(http.StatusInternalServerError)
 		}
 
 		eto, err := pgx.CollectOneRow(row, pgx.RowToStructByName[types.Team])
 
 		if err != nil {
-			state.Logger.Error(err)
+			state.Logger.Error("Error while getting bot team owner [collect]", zap.Error(err), zap.String("id", id), zap.String("target", target), zap.String("teamOwner", assets.EncodeUUID(bot.TeamOwnerID.Bytes)))
 			return uapi.DefaultResponse(http.StatusInternalServerError)
 		}
 
@@ -193,7 +195,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	botUser, err := dovewing.GetUser(d.Context, bot.BotID, state.DovewingPlatformDiscord)
 
 	if err != nil {
-		state.Logger.Error(err)
+		state.Logger.Error("Error while getting bot user [dovewing fetch]", zap.Error(err), zap.String("id", id), zap.String("target", target), zap.String("botID", bot.BotID))
 		return uapi.DefaultResponse(http.StatusNotFound)
 	}
 
@@ -203,7 +205,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	err = state.Pool.QueryRow(d.Context, "SELECT cardinality(unique_clicks) AS unique_clicks FROM bots WHERE bot_id = $1", bot.BotID).Scan(&uniqueClicks)
 
 	if err != nil {
-		state.Logger.Error(err)
+		state.Logger.Error("Error while getting bot unique clicks [db fetch]", zap.Error(err), zap.String("id", id), zap.String("target", target), zap.String("botID", bot.BotID))
 		return uapi.DefaultResponse(http.StatusNotFound)
 	}
 
@@ -216,7 +218,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	err = state.Pool.QueryRow(d.Context, "SELECT code FROM vanity WHERE itag = $1", bot.VanityRef).Scan(&code)
 
 	if err != nil {
-		state.Logger.Error(err)
+		state.Logger.Error("Error while getting bot vanity code [db fetch]", zap.Error(err), zap.String("id", id), zap.String("target", target), zap.String("botID", bot.BotID))
 		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 

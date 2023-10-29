@@ -10,6 +10,7 @@ import (
 	docs "github.com/infinitybotlist/eureka/doclib"
 	"github.com/infinitybotlist/eureka/uapi"
 	"github.com/jackc/pgx/v5"
+	"go.uber.org/zap"
 )
 
 var (
@@ -29,7 +30,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	rows, err := state.Pool.Query(d.Context, "SELECT "+changelogEntryCols+" FROM changelogs ORDER BY version DESC")
 
 	if err != nil {
-		state.Logger.Error(err)
+		state.Logger.Error("Failed to fetch changelog entries [rows]", zap.Error(err))
 		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
@@ -38,7 +39,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	changelogs, err := pgx.CollectRows(rows, pgx.RowToStructByName[types.ChangelogEntry])
 
 	if err != nil {
-		state.Logger.Error(err)
+		state.Logger.Error("Failed to fetch changelog entries [collect]", zap.Error(err))
 		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 

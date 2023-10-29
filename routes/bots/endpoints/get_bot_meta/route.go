@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/infinitybotlist/eureka/uapi/ratelimit"
+	"go.uber.org/zap"
 
 	"github.com/go-chi/chi/v5"
 	docs "github.com/infinitybotlist/eureka/doclib"
@@ -53,7 +54,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	}.Limit(d.Context, r)
 
 	if err != nil {
-		state.Logger.Error(err)
+		state.Logger.Error("Error while ratelimiting", zap.Error(err), zap.String("bucket", "get_bot_meta"))
 		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 

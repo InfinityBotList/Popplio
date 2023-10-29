@@ -16,6 +16,7 @@ import (
 
 	"github.com/infinitybotlist/eureka/uapi/ratelimit"
 	"github.com/jackc/pgx/v5/pgtype"
+	"go.uber.org/zap"
 
 	"github.com/infinitybotlist/eureka/crypto"
 	docs "github.com/infinitybotlist/eureka/doclib"
@@ -96,7 +97,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	}.Limit(d.Context, r)
 
 	if err != nil {
-		state.Logger.Error(err)
+		state.Logger.Error("Error calculating ratelimits", zap.Error(err), zap.String("userID", d.Auth.ID))
 		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
@@ -142,7 +143,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	err = state.Pool.QueryRow(d.Context, "SELECT COUNT(*) FROM bots WHERE bot_id = $1", payload.BotID).Scan(&count)
 
 	if err != nil {
-		state.Logger.Error(err)
+		state.Logger.Error("Error while checking if bot is already in database", zap.Error(err), zap.String("userID", d.Auth.ID), zap.String("botID", payload.BotID))
 		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
@@ -231,7 +232,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	err = state.Pool.QueryRow(d.Context, "SELECT COUNT(*) FROM vanity WHERE code = $1", vanity).Scan(&vanityCount)
 
 	if err != nil {
-		state.Logger.Error(err)
+		state.Logger.Error("Error while checking if calculated vanity is already taken", zap.Error(err), zap.String("userID", d.Auth.ID), zap.String("botID", payload.BotID), zap.String("vanity", vanity))
 		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
@@ -243,7 +244,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	tx, err := state.Pool.Begin(d.Context)
 
 	if err != nil {
-		state.Logger.Error(err)
+		state.Logger.Error("Error while starting transaction", zap.Error(err), zap.String("userID", d.Auth.ID), zap.String("botID", payload.BotID))
 		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
@@ -254,7 +255,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	err = tx.QueryRow(d.Context, "INSERT INTO vanity (code, target_id, target_type) VALUES ($1, $2, $3) RETURNING itag", vanity, payload.BotID, "bot").Scan(&itag)
 
 	if err != nil {
-		state.Logger.Error(err)
+		state.Logger.Error("Error while inserting vanity", zap.Error(err), zap.String("userID", d.Auth.ID), zap.String("botID", payload.BotID), zap.String("vanity", vanity))
 		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
@@ -264,7 +265,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	botArgs := createBotsArgs(payload, id)
 
 	if len(createBotsColsArr) != len(botArgs) {
-		state.Logger.Error(botArgs, createBotsColsArr)
+		state.Logger.Error("createBotsColsArr and botArgs do not match in length", zap.Any("createBotsColsArr", createBotsColsArr), zap.Any("botArgs", botArgs))
 		return uapi.HttpResponse{
 			Status: http.StatusInternalServerError,
 			Json:   types.ApiError{Message: "Internal Error: The number of columns and arguments do not match"},
@@ -274,7 +275,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	_, err = tx.Exec(d.Context, "INSERT INTO bots ("+createBotsCols+") VALUES ("+createBotsParams+")", botArgs...)
 
 	if err != nil {
-		state.Logger.Error(err)
+		state.Logger.Error("Error while inserting bot", zap.Error(err), zap.String("userID", d.Auth.ID), zap.String("botID", payload.BotID))
 		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
@@ -283,7 +284,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		perms, err := teams.GetEntityPerms(d.Context, d.Auth.ID, "team", payload.TeamOwner)
 
 		if err != nil {
-			state.Logger.Error(err)
+			state.Logger.Error("Error while getting team perms", zap.Error(err), zap.String("userID", d.Auth.ID), zap.String("teamID", payload.TeamOwner), zap.String("botID", payload.BotID), zap.String("vanity", vanity))
 			return uapi.HttpResponse{
 				Status: http.StatusBadRequest,
 				Json:   types.ApiError{Message: "Error getting user perms: " + err.Error()},
@@ -300,7 +301,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		_, err = tx.Exec(d.Context, "UPDATE bots SET team_owner = $1, owner = NULL WHERE bot_id = $2", payload.TeamOwner, payload.BotID)
 
 		if err != nil {
-			state.Logger.Error(err)
+			state.Logger.Error("Error while updating bot team owner", zap.Error(err), zap.String("userID", d.Auth.ID), zap.String("teamID", payload.TeamOwner), zap.String("botID", payload.BotID), zap.String("vanity", vanity))
 			return uapi.DefaultResponse(http.StatusInternalServerError)
 		}
 	}
@@ -308,11 +309,11 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	err = tx.Commit(d.Context)
 
 	if err != nil {
-		state.Logger.Error(err)
+		state.Logger.Error("Error while committing transaction", zap.Error(err), zap.String("userID", d.Auth.ID), zap.String("botID", payload.BotID))
 		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
-	state.Discord.ChannelMessageSendComplex(state.Config.Channels.BotLogs, &discordgo.MessageSend{
+	_, err = state.Discord.ChannelMessageSendComplex(state.Config.Channels.BotLogs, &discordgo.MessageSend{
 		Content: state.Config.Meta.UrgentMentions,
 		Embeds: []*discordgo.MessageEmbed{
 			{
@@ -346,6 +347,10 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 			},
 		},
 	})
+
+	if err != nil {
+		state.Logger.Error("Error while sending bot logs message", zap.Error(err), zap.String("userID", d.Auth.ID), zap.String("botID", payload.BotID))
+	}
 
 	return uapi.DefaultResponse(http.StatusNoContent)
 }

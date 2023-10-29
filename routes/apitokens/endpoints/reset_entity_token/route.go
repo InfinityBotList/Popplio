@@ -10,6 +10,7 @@ import (
 	"github.com/infinitybotlist/eureka/crypto"
 	docs "github.com/infinitybotlist/eureka/doclib"
 	"github.com/infinitybotlist/eureka/uapi"
+	"go.uber.org/zap"
 )
 
 func Docs() *docs.Doc {
@@ -57,7 +58,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	perms, err := teams.GetEntityPerms(d.Context, d.Auth.ID, targetType, targetId)
 
 	if err != nil {
-		state.Logger.Error(err)
+		state.Logger.Error("Error while getting entity perms", zap.Error(err), zap.String("userID", d.Auth.ID), zap.String("targetType", targetType), zap.String("targetID", targetId))
 		return uapi.HttpResponse{
 			Status: http.StatusBadRequest,
 			Json:   types.ApiError{Message: "Error: " + err.Error()},
@@ -78,14 +79,14 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		_, err = state.Pool.Exec(d.Context, "UPDATE bots SET api_token = $1 WHERE bot_id = $2", token, targetId)
 
 		if err != nil {
-			state.Logger.Error(err)
+			state.Logger.Error("Error while resetting bot token", zap.Error(err), zap.String("userID", d.Auth.ID), zap.String("targetID", targetId))
 			return uapi.DefaultResponse(http.StatusInternalServerError)
 		}
 	case "server":
 		_, err = state.Pool.Exec(d.Context, "UPDATE servers SET api_token = $1 WHERE server_id = $2", token, targetId)
 
 		if err != nil {
-			state.Logger.Error(err)
+			state.Logger.Error("Error while resetting server token", zap.Error(err), zap.String("userID", d.Auth.ID), zap.String("targetID", targetId))
 			return uapi.DefaultResponse(http.StatusInternalServerError)
 		}
 	default:
