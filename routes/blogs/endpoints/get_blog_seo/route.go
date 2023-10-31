@@ -9,6 +9,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	docs "github.com/infinitybotlist/eureka/doclib"
 	"github.com/infinitybotlist/eureka/uapi"
+	"go.uber.org/zap"
 )
 
 func Docs() *docs.Doc {
@@ -47,7 +48,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	err := state.Pool.QueryRow(d.Context, "SELECT title, description FROM blogs WHERE slug = $1", slug).Scan(&title, &description)
 
 	if err != nil {
-		state.Logger.Error(err)
+		state.Logger.Error("Error fetching blog post [db query]", zap.Error(err), zap.String("slug", slug))
 		return uapi.DefaultResponse(http.StatusNotFound)
 	}
 

@@ -78,6 +78,8 @@ github.com/infinitybotlist/eureka v0.1.0 h1:b8xbwOFj9+0RDLsHqRCs5fdh8ZM10XcGAjQX
 github.com/infinitybotlist/eureka v0.1.0/go.mod h1:XY/H8htZ4EQJwyfwnDrLuKg5M7DGoo6835ZJSKSswCg=
 github.com/infinitybotlist/eureka v0.2.0 h1:wRs4cp++BxZBBcXltBrtK0do13RlDhvOmmGqQyiW7Fc=
 github.com/infinitybotlist/eureka v0.2.0/go.mod h1:XY/H8htZ4EQJwyfwnDrLuKg5M7DGoo6835ZJSKSswCg=
+github.com/infinitybotlist/eureka v0.3.0 h1:UduytrEIPqiMFQfdWKU7Jqhbc+Fu8wD4SpoKMP4WqBY=
+github.com/infinitybotlist/eureka v0.3.0/go.mod h1:XY/H8htZ4EQJwyfwnDrLuKg5M7DGoo6835ZJSKSswCg=
 github.com/invopop/yaml v0.1.0/go.mod h1:2XuRLgs/ouIrW3XNzuNj7J3Nvu/Dig5MXvbCEdiBN3Q=
 github.com/invopop/yaml v0.2.0 h1:7zky/qH+O0DwAyoobXUqvVBwgBFRxKoQ/3FjcVpjTMY=
 github.com/invopop/yaml v0.2.0/go.mod h1:2XuRLgs/ouIrW3XNzuNj7J3Nvu/Dig5MXvbCEdiBN3Q=

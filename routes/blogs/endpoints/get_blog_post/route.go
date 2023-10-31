@@ -12,6 +12,7 @@ import (
 	"github.com/infinitybotlist/eureka/dovewing"
 	"github.com/infinitybotlist/eureka/uapi"
 	"github.com/jackc/pgx/v5"
+	"go.uber.org/zap"
 
 	"github.com/go-chi/chi/v5"
 )
@@ -43,7 +44,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	row, err := state.Pool.Query(d.Context, "SELECT "+blogCols+" FROM blogs WHERE slug = $1", chi.URLParam(r, "slug"))
 
 	if err != nil {
-		state.Logger.Error(err)
+		state.Logger.Error("Error fetching blog post [db query]", zap.Error(err), zap.String("slug", chi.URLParam(r, "slug")))
 		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
@@ -54,14 +55,14 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	}
 
 	if err != nil {
-		state.Logger.Error(err)
+		state.Logger.Error("Error fetching blog post [collect]", zap.Error(err), zap.String("slug", chi.URLParam(r, "slug")))
 		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
 	blogPost.Author, err = dovewing.GetUser(d.Context, blogPost.UserID, state.DovewingPlatformDiscord)
 
 	if err != nil {
-		state.Logger.Error(err)
+		state.Logger.Error("Error while getting user [dovewing]", zap.Error(err), zap.String("user_id", blogPost.UserID))
 		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 

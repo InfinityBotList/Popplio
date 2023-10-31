@@ -14,6 +14,7 @@ import (
 	docs "github.com/infinitybotlist/eureka/doclib"
 	"github.com/infinitybotlist/eureka/uapi"
 	"github.com/infinitybotlist/eureka/uapi/ratelimit"
+	"go.uber.org/zap"
 )
 
 // Deletes a file if it exists
@@ -88,7 +89,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	}.Limit(d.Context, r)
 
 	if err != nil {
-		state.Logger.Error(err)
+		state.Logger.Error("Error while ratelimiting", zap.Error(err), zap.String("bucket", "assets"))
 		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
@@ -130,7 +131,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	perms, err := teams.GetEntityPerms(d.Context, d.Auth.ID, targetType, targetId)
 
 	if err != nil {
-		state.Logger.Error(err)
+		state.Logger.Error("Error getting user perms", zap.Error(err))
 		return uapi.HttpResponse{
 			Status:  http.StatusBadRequest,
 			Headers: limit.Headers(),

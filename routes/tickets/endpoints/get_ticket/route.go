@@ -14,6 +14,7 @@ import (
 	"github.com/infinitybotlist/eureka/dovewing"
 	"github.com/infinitybotlist/eureka/uapi"
 	"github.com/jackc/pgx/v5"
+	"go.uber.org/zap"
 
 	"github.com/bwmarrin/discordgo"
 	"github.com/go-chi/chi/v5"
@@ -54,7 +55,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	err := state.Pool.QueryRow(d.Context, "SELECT user_id FROM tickets WHERE id = $1", ticketId).Scan(&userId)
 
 	if err != nil {
-		state.Logger.Error(err)
+		state.Logger.Error("Error while fetching ticket [db query]", zap.Error(err), zap.String("ticket_id", ticketId))
 		return uapi.DefaultResponse(http.StatusNotFound)
 	}
 
@@ -65,7 +66,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		err = state.Pool.QueryRow(d.Context, "SELECT staff FROM users WHERE user_id = $1", d.Auth.ID).Scan(&staff)
 
 		if err != nil {
-			state.Logger.Error(err)
+			state.Logger.Error("Error while fetching user [db query]", zap.Error(err), zap.String("user_id", d.Auth.ID))
 			return uapi.DefaultResponse(http.StatusInternalServerError)
 		}
 
@@ -91,7 +92,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	row, err := state.Pool.Query(d.Context, "SELECT "+ticketCols+" FROM tickets WHERE id = $1", ticketId)
 
 	if err != nil {
-		state.Logger.Error(err)
+		state.Logger.Error("Error while fetching ticket [db query]", zap.Error(err), zap.String("ticket_id", ticketId))
 		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
@@ -102,7 +103,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	}
 
 	if err != nil {
-		state.Logger.Error(err)
+		state.Logger.Error("Error while fetching ticket [db query]", zap.Error(err), zap.String("ticket_id", ticketId))
 		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
@@ -110,7 +111,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	ticket.Author, err = dovewing.GetUser(d.Context, ticket.UserID, state.DovewingPlatformDiscord)
 
 	if err != nil {
-		state.Logger.Error(err)
+		state.Logger.Error("Error while fetching ticket author [db query]", zap.Error(err), zap.String("ticket_id", ticketId))
 		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
@@ -118,7 +119,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		ticket.CloseUser, err = dovewing.GetUser(d.Context, ticket.CloseUserID.String, state.DovewingPlatformDiscord)
 
 		if err != nil {
-			state.Logger.Error(err)
+			state.Logger.Error("Error while fetching ticket closer [dovewing]", zap.Error(err), zap.String("ticket_id", ticketId))
 			return uapi.DefaultResponse(http.StatusInternalServerError)
 		}
 	}
@@ -127,7 +128,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		ticket.Messages[i].Author, err = dovewing.GetUser(d.Context, ticket.Messages[i].AuthorID, state.DovewingPlatformDiscord)
 
 		if err != nil {
-			state.Logger.Error(err)
+			state.Logger.Error("Error while fetching ticket message author [dovewing]", zap.Error(err), zap.String("ticket_id", ticketId))
 			return uapi.DefaultResponse(http.StatusInternalServerError)
 		}
 
@@ -135,7 +136,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		ticket.Messages[i].Timestamp, err = discordgo.SnowflakeTimestamp(ticket.Messages[i].ID)
 
 		if err != nil {
-			state.Logger.Error(err)
+			state.Logger.Error("Error while converting snowflake to timestamp [discord]", zap.Error(err), zap.String("ticket_id", ticketId))
 			return uapi.DefaultResponse(http.StatusInternalServerError)
 		}
 	}

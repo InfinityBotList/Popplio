@@ -20,6 +20,7 @@ import (
 	docs "github.com/infinitybotlist/eureka/doclib"
 	"github.com/infinitybotlist/eureka/uapi"
 	"github.com/infinitybotlist/eureka/uapi/ratelimit"
+	"go.uber.org/zap"
 	"golang.org/x/image/webp"
 )
 
@@ -174,7 +175,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	}.Limit(d.Context, r)
 
 	if err != nil {
-		state.Logger.Error(err)
+		state.Logger.Error("Error while ratelimiting", zap.Error(err), zap.String("bucket", "assets"))
 		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
@@ -215,7 +216,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	perms, err := teams.GetEntityPerms(d.Context, d.Auth.ID, targetType, targetId)
 
 	if err != nil {
-		state.Logger.Error(err)
+		state.Logger.Error("Error getting user perms", zap.Error(err), zap.String("target_type", targetType), zap.String("target_id", targetId))
 		return uapi.HttpResponse{
 			Status:  http.StatusBadRequest,
 			Headers: limit.Headers(),
@@ -269,6 +270,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		fileExt, img, err := decodeImage(&payload)
 
 		if err != nil {
+			state.Logger.Error("Error decoding image", zap.Error(err), zap.String("content_type", payload.ContentType), zap.String("type", payload.Type), zap.String("target_type", targetType), zap.String("target_id", targetId))
 			return uapi.HttpResponse{
 				Status:  http.StatusBadRequest,
 				Headers: limit.Headers(),
