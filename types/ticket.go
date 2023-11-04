@@ -21,14 +21,23 @@ type Ticket struct {
 	CloseUser     *dovetypes.PlatformUser `db:"-" json:"close_user"`
 	Open          bool                    `db:"open" json:"open"`
 	CreatedAt     time.Time               `db:"created_at" json:"created_at"`
+	EncKey        pgtype.Text             `db:"enc_key" json:"enc_key"`
 }
 
 type Message struct {
-	ID          string                         `json:"id"`
-	Timestamp   time.Time                      `json:"timestamp"` // Not in DB, but generated from snowflake ID
-	Content     string                         `json:"content"`
-	Embeds      []*discordgo.MessageEmbed      `json:"embeds"`
-	AuthorID    string                         `json:"author_id"`
-	Author      *dovetypes.PlatformUser        `json:"author"`
-	Attachments []*discordgo.MessageAttachment `json:"attachments"`
+	ID          string                    `json:"id"`
+	Timestamp   time.Time                 `json:"timestamp"` // Not in DB, but generated from snowflake ID
+	Content     string                    `json:"content"`
+	Embeds      []*discordgo.MessageEmbed `json:"embeds"`
+	AuthorID    string                    `json:"author_id"`
+	Author      *dovetypes.PlatformUser   `json:"author"`
+	Attachments []Attachment              `json:"attachments"`
+}
+
+type Attachment struct {
+	ID       string   `json:"id"`        // ID of the attachment within the ticket
+	URL      string   `json:"url"`       // URL of the attachment
+	ProxyURL string   `json:"proxy_url"` // URL (cached) of the attachment
+	Name     string   `json:"name"`      // Name of the attachment
+	Errors   []string `json:"errors"`    // Non-fatal errors that occurred while uploading the attachment
 }
