@@ -10,6 +10,7 @@ import (
 
 	docs "github.com/infinitybotlist/eureka/doclib"
 	"github.com/infinitybotlist/eureka/uapi"
+	"go.uber.org/zap"
 
 	"github.com/go-chi/chi/v5"
 )
@@ -56,7 +57,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	entityInfo, err := votes.GetEntityInfo(d.Context, targetId, targetType)
 
 	if err != nil {
-		state.Logger.Error(err)
+		state.Logger.Error("Error getting entity info", zap.Error(err), zap.String("target_id", targetId), zap.String("target_type", targetType))
 		return uapi.HttpResponse{
 			Status: http.StatusBadRequest,
 			Json:   types.ApiError{Message: "Error: " + err.Error()},
@@ -67,7 +68,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	tx, err := state.Pool.Begin(d.Context)
 
 	if err != nil {
-		state.Logger.Error(err)
+		state.Logger.Error("Error starting transaction", zap.Error(err), zap.String("target_id", targetId), zap.String("target_type", targetType))
 		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
@@ -79,7 +80,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	_, err = state.Pool.Exec(d.Context, "INSERT INTO user_reminders (user_id, target_id, target_type) VALUES ($1, $2, $3)", d.Auth.ID, targetId, targetType)
 
 	if err != nil {
-		state.Logger.Error("Error adding reminder: ", err)
+		state.Logger.Error("Error inserting new reminder", zap.Error(err), zap.String("target_id", targetId), zap.String("target_type", targetType))
 		return uapi.DefaultResponse(http.StatusBadRequest)
 	}
 
@@ -92,7 +93,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	})
 
 	if err != nil {
-		state.Logger.Error(err)
+		state.Logger.Error("Error pushing notification", zap.Error(err), zap.String("target_id", targetId), zap.String("target_type", targetType))
 	}
 
 	return uapi.DefaultResponse(http.StatusNoContent)

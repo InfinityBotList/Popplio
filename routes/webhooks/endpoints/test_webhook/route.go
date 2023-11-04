@@ -14,6 +14,7 @@ import (
 	"popplio/webhooks/teamhooks"
 
 	"github.com/infinitybotlist/eureka/uapi/ratelimit"
+	"go.uber.org/zap"
 
 	docs "github.com/infinitybotlist/eureka/doclib"
 	"github.com/infinitybotlist/eureka/uapi"
@@ -81,7 +82,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	}.Limit(d.Context, r)
 
 	if err != nil {
-		state.Logger.Error(err)
+		state.Logger.Error("Error while ratelimiting", zap.Error(err), zap.String("bucket", "test_webhook"))
 		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
@@ -98,7 +99,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	perms, err := teams.GetEntityPerms(d.Context, d.Auth.ID, targetType, targetId)
 
 	if err != nil {
-		state.Logger.Error(err)
+		state.Logger.Error("Error getting user perms", zap.Error(err), zap.String("userID", d.Auth.ID))
 		return uapi.HttpResponse{
 			Status:  http.StatusBadRequest,
 			Headers: limit.Headers(),
@@ -161,7 +162,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		})
 
 		if err != nil {
-			state.Logger.Error(err)
+			state.Logger.Error("Error while sending webhook", zap.Error(err), zap.String("userID", d.Auth.ID), zap.String("botID", targetId), zap.String("eventType", eventType))
 			return uapi.HttpResponse{
 				Status: http.StatusBadRequest,
 				Json:   types.ApiError{Message: err.Error()},
@@ -178,7 +179,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		})
 
 		if err != nil {
-			state.Logger.Error(err)
+			state.Logger.Error("Error while sending webhook", zap.Error(err), zap.String("userID", d.Auth.ID), zap.String("teamID", targetId), zap.String("eventType", eventType))
 			return uapi.HttpResponse{
 				Status: http.StatusBadRequest,
 				Json:   types.ApiError{Message: err.Error()},
@@ -195,7 +196,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		})
 
 		if err != nil {
-			state.Logger.Error(err)
+			state.Logger.Error("Error while sending webhook", zap.Error(err), zap.String("userID", d.Auth.ID), zap.String("serverID", targetId), zap.String("eventType", eventType))
 			return uapi.HttpResponse{
 				Status: http.StatusBadRequest,
 				Json:   types.ApiError{Message: err.Error()},

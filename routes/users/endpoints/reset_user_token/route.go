@@ -8,6 +8,7 @@ import (
 	"github.com/infinitybotlist/eureka/crypto"
 	docs "github.com/infinitybotlist/eureka/doclib"
 	"github.com/infinitybotlist/eureka/uapi"
+	"go.uber.org/zap"
 )
 
 func Docs() *docs.Doc {
@@ -33,7 +34,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	_, err := state.Pool.Exec(d.Context, "UPDATE users SET api_token = $1 WHERE user_id = $2", token, d.Auth.ID)
 
 	if err != nil {
-		state.Logger.Error(err)
+		state.Logger.Error("Failed to reset user token", zap.Error(err), zap.String("user_id", d.Auth.ID), zap.String("token", token))
 		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 

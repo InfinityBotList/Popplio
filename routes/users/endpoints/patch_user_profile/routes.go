@@ -1,7 +1,6 @@
 package patch_user_profile
 
 import (
-	"io"
 	"net/http"
 
 	"popplio/state"
@@ -10,12 +9,10 @@ import (
 
 	docs "github.com/infinitybotlist/eureka/doclib"
 	"github.com/infinitybotlist/eureka/uapi"
+	"go.uber.org/zap"
 
 	"github.com/go-chi/chi/v5"
-	jsoniter "github.com/json-iterator/go"
 )
-
-var json = jsoniter.ConfigCompatibleWithStandardLibrary
 
 func Docs() *docs.Doc {
 	return &docs.Doc{
@@ -41,27 +38,19 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	// Fetch profile update from body
 	var profile types.ProfileUpdate
 
-	bodyBytes, err := io.ReadAll(r.Body)
+	hresp, ok := uapi.MarshalReq(r, &profile)
 
-	if err != nil {
-		state.Logger.Error(err)
-		return uapi.DefaultResponse(http.StatusInternalServerError)
+	if !ok {
+		return hresp
 	}
 
-	err = json.Unmarshal(bodyBytes, &profile)
-
-	if err != nil {
-		state.Logger.Error(err)
-		return uapi.DefaultResponse(http.StatusInternalServerError)
-	}
-
-	err = validators.ValidateExtraLinks(profile.ExtraLinks)
+	err := validators.ValidateExtraLinks(profile.ExtraLinks)
 
 	if err != nil {
 		return uapi.HttpResponse{
 			Status: http.StatusBadRequest,
 			Json: types.ApiError{
-				Message: "Hmmm... " + err.Error(),
+				Message: "Failed to validate extra links: " + err.Error(),
 			},
 		}
 	}
@@ -70,7 +59,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	_, err = state.Pool.Exec(d.Context, "UPDATE users SET extra_links = $1 WHERE user_id = $2", profile.ExtraLinks, id)
 
 	if err != nil {
-		state.Logger.Error(err)
+		state.Logger.Error("Error while updating extra links", zap.Error(err), zap.String("userID", d.Auth.ID))
 		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
@@ -78,7 +67,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		if len(profile.About) > 1000 {
 			return uapi.HttpResponse{
 				Status: http.StatusBadRequest,
-				Data:   `{"error":true,"message":"About me is over 1000 characters!"}`,
+				Json:   types.ApiError{Message: "About me is over 1000 characters!"},
 			}
 		}
 
@@ -86,7 +75,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		_, err = state.Pool.Exec(d.Context, "UPDATE users SET about = $1 WHERE user_id = $2", profile.About, id)
 
 		if err != nil {
-			state.Logger.Error(err)
+			state.Logger.Error("Error while updating about", zap.Error(err), zap.String("userID", d.Auth.ID))
 			return uapi.DefaultResponse(http.StatusInternalServerError)
 		}
 	}
@@ -95,7 +84,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		_, err = state.Pool.Exec(d.Context, "UPDATE users SET captcha_sponsor_enabled = $1 WHERE user_id = $2", *profile.CaptchaSponsorEnabled, id)
 
 		if err != nil {
-			state.Logger.Error(err)
+			state.Logger.Error("Error while updating captcha sponsor enabled", zap.Error(err), zap.String("userID", d.Auth.ID))
 			return uapi.DefaultResponse(http.StatusInternalServerError)
 		}
 	}

@@ -14,6 +14,7 @@ import (
 	"github.com/infinitybotlist/eureka/dovewing"
 	"github.com/infinitybotlist/eureka/uapi"
 	"github.com/jackc/pgx/v5"
+	"go.uber.org/zap"
 
 	"github.com/go-chi/chi/v5"
 )
@@ -47,14 +48,14 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	rows, err := state.Pool.Query(d.Context, "SELECT "+reminderCols+" FROM user_reminders WHERE user_id = $1", id)
 
 	if err != nil {
-		state.Logger.Error(err)
+		state.Logger.Error("Error querying reminders [db fetch]", zap.Error(err), zap.String("user_id", id))
 		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
 	reminders, err := pgx.CollectRows(rows, pgx.RowToStructByName[types.Reminder])
 
 	if err != nil {
-		state.Logger.Error(err)
+		state.Logger.Error("Error querying reminders [collect]", zap.Error(err), zap.String("user_id", id))
 		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 

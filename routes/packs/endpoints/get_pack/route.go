@@ -12,6 +12,7 @@ import (
 	docs "github.com/infinitybotlist/eureka/doclib"
 	"github.com/infinitybotlist/eureka/dovewing"
 	"github.com/infinitybotlist/eureka/uapi"
+	"go.uber.org/zap"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/jackc/pgx/v5"
@@ -52,7 +53,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	row, err := state.Pool.Query(d.Context, "SELECT "+packCols+" FROM packs WHERE url = $1", id)
 
 	if err != nil {
-		state.Logger.Error(err)
+		state.Logger.Error("Error querying packs table [db fetch]", zap.Error(err), zap.String("url", id))
 		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
@@ -63,14 +64,14 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	}
 
 	if err != nil {
-		state.Logger.Error(err)
+		state.Logger.Error("Error querying packs table [collect]", zap.Error(err), zap.String("url", id))
 		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
 	ownerUser, err := dovewing.GetUser(d.Context, pack.Owner, state.DovewingPlatformDiscord)
 
 	if err != nil {
-		state.Logger.Error(err)
+		state.Logger.Error("Error querying dovewing for owner user", zap.Error(err), zap.String("url", id))
 		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
@@ -80,7 +81,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		row, err := state.Pool.Query(d.Context, "SELECT "+indexBotCols+" FROM bots WHERE bot_id = $1", botId)
 
 		if err != nil {
-			state.Logger.Error(err)
+			state.Logger.Error("Error querying bots table [db fetch]", zap.Error(err), zap.String("bot_id", botId))
 			return uapi.DefaultResponse(http.StatusInternalServerError)
 		}
 
@@ -91,7 +92,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		}
 
 		if err != nil {
-			state.Logger.Error(err)
+			state.Logger.Error("Error querying bots table [collect]", zap.Error(err), zap.String("bot_id", botId))
 			return uapi.DefaultResponse(http.StatusInternalServerError)
 		}
 
@@ -100,14 +101,14 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		err = state.Pool.QueryRow(d.Context, "SELECT code FROM vanity WHERE itag = $1", bot.VanityRef).Scan(&code)
 
 		if err != nil {
-			state.Logger.Error(err)
+			state.Logger.Error("Error querying vanity table [db fetch]", zap.Error(err), zap.String("botID", bot.BotID))
 			return uapi.DefaultResponse(http.StatusInternalServerError)
 		}
 
 		botUser, err := dovewing.GetUser(d.Context, botId, state.DovewingPlatformDiscord)
 
 		if err != nil {
-			state.Logger.Error(err)
+			state.Logger.Error("Error querying for bot user [dovewing]", zap.Error(err), zap.String("bot_id", botId))
 			return uapi.DefaultResponse(http.StatusInternalServerError)
 		}
 

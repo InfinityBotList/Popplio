@@ -29,7 +29,6 @@ import (
 	"popplio/routes/reviews"
 	"popplio/routes/servers"
 	"popplio/routes/teams"
-	"popplio/routes/tickets"
 	"popplio/routes/users"
 	"popplio/routes/vanity"
 	"popplio/routes/votes"
@@ -155,7 +154,6 @@ func main() {
 		reviews.Router{},
 		servers.Router{},
 		teams.Router{},
-		tickets.Router{},
 		users.Router{},
 		vanity.Router{},
 		votes.Router{},

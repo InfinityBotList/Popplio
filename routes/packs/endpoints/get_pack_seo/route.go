@@ -1,6 +1,7 @@
 package get_pack_seo
 
 import (
+	"errors"
 	"net/http"
 	"time"
 
@@ -9,6 +10,8 @@ import (
 
 	docs "github.com/infinitybotlist/eureka/doclib"
 	"github.com/infinitybotlist/eureka/uapi"
+	"github.com/jackc/pgx/v5"
+	"go.uber.org/zap"
 
 	"github.com/go-chi/chi/v5"
 )
@@ -43,26 +46,17 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		}
 	}
 
-	var count int64
-
-	err := state.Pool.QueryRow(d.Context, "SELECT COUNT(*) FROM packs WHERE url = $1", id).Scan(&count)
-
-	if err != nil {
-		state.Logger.Error(err)
-		return uapi.DefaultResponse(http.StatusInternalServerError)
-	}
-
-	if count == 0 {
-		return uapi.DefaultResponse(http.StatusNotFound)
-	}
-
 	var short string
 	var packName string
-	err = state.Pool.QueryRow(d.Context, "SELECT name, short FROM packs WHERE url = $1", id).Scan(&packName, &short)
+	err := state.Pool.QueryRow(d.Context, "SELECT name, short FROM packs WHERE url = $1", id).Scan(&packName, &short)
+
+	if errors.Is(err, pgx.ErrNoRows) {
+		return uapi.DefaultResponse(http.StatusNotFound)
+	}
 
 	if err != nil {
-		state.Logger.Error(err)
-		return uapi.DefaultResponse(http.StatusNotFound)
+		state.Logger.Error("Failed to get pack seo", zap.Error(err), zap.String("url", id))
+		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
 	seoData := types.SEO{

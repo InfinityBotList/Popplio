@@ -14,6 +14,7 @@ import (
 	"github.com/infinitybotlist/eureka/dovewing"
 	"github.com/infinitybotlist/eureka/uapi"
 	"github.com/jackc/pgx/v5"
+	"go.uber.org/zap"
 )
 
 const perPage = 10
@@ -75,7 +76,10 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	pageNum, err := strconv.ParseUint(page, 10, 32)
 
 	if err != nil {
-		return uapi.DefaultResponse(http.StatusBadRequest)
+		return uapi.HttpResponse{
+			Status: http.StatusBadRequest,
+			Json:   types.ApiError{Message: "Invalid page number"},
+		}
 	}
 
 	limit := perPage
@@ -84,7 +88,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	perms, err := teams.GetEntityPerms(d.Context, d.Auth.ID, targetType, targetId)
 
 	if err != nil {
-		state.Logger.Error(err)
+		state.Logger.Error("Error getting user perms", zap.Error(err), zap.String("userID", d.Auth.ID))
 		return uapi.HttpResponse{
 			Status: http.StatusBadRequest,
 			Json:   types.ApiError{Message: "Error getting user perms: " + err.Error()},
@@ -101,14 +105,14 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	rows, err := state.Pool.Query(d.Context, "SELECT "+webhookLogCols+" FROM webhook_logs WHERE target_id = $1 AND target_type = $2 ORDER BY created_at DESC LIMIT $3 OFFSET $4", targetId, targetType, limit, offset)
 
 	if err != nil {
-		state.Logger.Error(err)
+		state.Logger.Error("Error while querying webhook logs [db fetch]", zap.Error(err), zap.String("userID", d.Auth.ID))
 		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
 	webhooks, err := pgx.CollectRows(rows, pgx.RowToStructByName[types.WebhookLogEntry])
 
 	if err != nil {
-		state.Logger.Error(err)
+		state.Logger.Error("Error while querying webhook logs [collect]", zap.Error(err), zap.String("userID", d.Auth.ID))
 		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
@@ -116,7 +120,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		webhooks[i].User, err = dovewing.GetUser(d.Context, webhook.UserID, state.DovewingPlatformDiscord)
 
 		if err != nil {
-			state.Logger.Error(err)
+			state.Logger.Error("Error while querying webhook logs [dovewing]", zap.Error(err), zap.String("userID", d.Auth.ID))
 			return uapi.DefaultResponse(http.StatusInternalServerError)
 		}
 	}
@@ -126,7 +130,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	err = state.Pool.QueryRow(d.Context, "SELECT COUNT(*) FROM webhook_logs WHERE target_id = $1 AND target_type = $2", targetId, targetType).Scan(&count)
 
 	if err != nil {
-		state.Logger.Error(err)
+		state.Logger.Error("Error while querying webhook logs [db count]", zap.Error(err), zap.String("userID", d.Auth.ID))
 		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 

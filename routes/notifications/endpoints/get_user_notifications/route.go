@@ -11,6 +11,7 @@ import (
 	docs "github.com/infinitybotlist/eureka/doclib"
 	"github.com/infinitybotlist/eureka/uapi"
 	"github.com/jackc/pgx/v5"
+	"go.uber.org/zap"
 
 	"github.com/go-chi/chi/v5"
 	ua "github.com/mileusna/useragent"
@@ -44,14 +45,14 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	rows, err := state.Pool.Query(d.Context, "SELECT "+notifGetColsStr+" FROM user_notifications WHERE user_id = $1", id)
 
 	if err != nil {
-		state.Logger.Error(err)
+		state.Logger.Error("Failed to get user notifications", zap.Error(err), zap.String("user_id", id))
 		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
 	notifications, err := pgx.CollectRows(rows, pgx.RowToStructByName[types.NotifGet])
 
 	if err != nil {
-		state.Logger.Error(err)
+		state.Logger.Error("Failed to get user notifications", zap.Error(err), zap.String("user_id", id))
 		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 

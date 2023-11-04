@@ -1,7 +1,6 @@
 package create_user_notifications
 
 import (
-	"io"
 	"net/http"
 
 	"popplio/notifications"
@@ -10,13 +9,11 @@ import (
 
 	docs "github.com/infinitybotlist/eureka/doclib"
 	"github.com/infinitybotlist/eureka/uapi"
+	"go.uber.org/zap"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/infinitybotlist/eureka/crypto"
-	jsoniter "github.com/json-iterator/go"
 )
-
-var json = jsoniter.ConfigCompatibleWithStandardLibrary
 
 func Docs() *docs.Doc {
 	return &docs.Doc{
@@ -39,23 +36,13 @@ func Docs() *docs.Doc {
 func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	var subscription types.UserSubscription
 
+	hresp, ok := uapi.MarshalReq(r, &subscription)
+
+	if !ok {
+		return hresp
+	}
+
 	var id = chi.URLParam(r, "id")
-
-	defer r.Body.Close()
-
-	bodyBytes, err := io.ReadAll(r.Body)
-
-	if err != nil {
-		state.Logger.Error(err)
-		return uapi.DefaultResponse(http.StatusInternalServerError)
-	}
-
-	err = json.Unmarshal(bodyBytes, &subscription)
-
-	if err != nil {
-		state.Logger.Error(err)
-		return uapi.DefaultResponse(http.StatusInternalServerError)
-	}
 
 	if subscription.Auth == "" || subscription.P256dh == "" {
 		return uapi.DefaultResponse(http.StatusBadRequest)
@@ -73,7 +60,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	tx, err := state.Pool.Begin(d.Context)
 
 	if err != nil {
-		state.Logger.Error(err)
+		state.Logger.Error("Error while starting transaction", zap.Error(err), zap.String("userID", d.Auth.ID))
 		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
@@ -95,7 +82,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	err = tx.Commit(d.Context)
 
 	if err != nil {
-		state.Logger.Error(err)
+		state.Logger.Error("Error while committing transaction", zap.Error(err), zap.String("userID", d.Auth.ID))
 		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
@@ -107,7 +94,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	})
 
 	if err != nil {
-		state.Logger.Error(err)
+		state.Logger.Error("Error while sending push notification", zap.Error(err), zap.String("userID", d.Auth.ID))
 	}
 
 	return uapi.DefaultResponse(http.StatusNoContent)

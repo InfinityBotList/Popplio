@@ -10,6 +10,7 @@ import (
 	docs "github.com/infinitybotlist/eureka/doclib"
 	"github.com/infinitybotlist/eureka/dovewing"
 	"github.com/infinitybotlist/eureka/uapi"
+	"go.uber.org/zap"
 )
 
 func Docs() *docs.Doc {
@@ -57,7 +58,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	res, err := dovewing.ClearUser(d.Context, id, dovewingPlatform, dovewing.ClearUserReq{})
 
 	if err != nil {
-		state.Logger.Error(err)
+		state.Logger.Error("Error clearing user [dovewing]", zap.Error(err), zap.String("id", id), zap.String("platform", platform))
 		return uapi.DefaultResponse(http.StatusNotFound)
 	}
 

@@ -10,6 +10,7 @@ import (
 
 	docs "github.com/infinitybotlist/eureka/doclib"
 	"github.com/infinitybotlist/eureka/uapi"
+	"go.uber.org/zap"
 
 	"github.com/go-chi/chi/v5"
 )
@@ -72,7 +73,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	perms, err := teams.GetEntityPerms(d.Context, d.Auth.ID, targetType, targetId)
 
 	if err != nil {
-		state.Logger.Error(err)
+		state.Logger.Error("Error getting user perms", zap.Error(err), zap.String("userID", d.Auth.ID))
 		return uapi.HttpResponse{
 			Status: http.StatusBadRequest,
 			Json:   types.ApiError{Message: "Error getting user perms: " + err.Error()},
@@ -99,7 +100,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		_, err = state.Pool.Exec(d.Context, "DELETE FROM webhooks WHERE target_id = $1 AND target_type = $2", targetId, targetType)
 
 		if err != nil {
-			state.Logger.Error(err)
+			state.Logger.Error("Error while deleting webhook", zap.Error(err), zap.String("userID", d.Auth.ID))
 			return uapi.DefaultResponse(http.StatusInternalServerError)
 		}
 
@@ -123,7 +124,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	state.Pool.Exec(d.Context, "INSERT INTO webhooks (target_id, target_type, url, secret) VALUES ($1, $2, $3, $4) ON CONFLICT (target_id, target_type) DO UPDATE SET url = $3, secret = $4, broken = false", targetId, targetType, payload.WebhookURL, payload.WebhookSecret)
 
 	if err != nil {
-		state.Logger.Error(err)
+		state.Logger.Error("Error while updating webhook", zap.Error(err), zap.String("userID", d.Auth.ID))
 		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 

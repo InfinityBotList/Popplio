@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/infinitybotlist/eureka/uapi/ratelimit"
+	"go.uber.org/zap"
 
 	docs "github.com/infinitybotlist/eureka/doclib"
 	"github.com/infinitybotlist/eureka/uapi"
@@ -56,12 +57,12 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 
 	limit, err := ratelimit.Ratelimit{
 		Expiry:      1 * time.Minute,
-		MaxRequests: 5,
+		MaxRequests: 2,
 		Bucket:      "payments",
 	}.Limit(d.Context, r)
 
 	if err != nil {
-		state.Logger.Error(err)
+		state.Logger.Error("Error while ratelimiting", zap.Error(err), zap.String("bucket", "payments"))
 		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
@@ -96,7 +97,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	perk, err := assets.FindPerks(d.Context, payload)
 
 	if err != nil {
-		state.Logger.Error(err)
+		state.Logger.Error("Error while finding perk", zap.Error(err), zap.String("userID", d.Auth.ID))
 		return uapi.HttpResponse{
 			Status: http.StatusBadRequest,
 			Json: types.ApiError{
@@ -132,7 +133,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		err = assets.GivePerks(d.Context, payload)
 
 		if err != nil {
-			state.Logger.Error(err)
+			state.Logger.Error("Error while giving perks", zap.Error(err), zap.String("userID", d.Auth.ID))
 			return uapi.HttpResponse{
 				Status: http.StatusBadRequest,
 				Json: types.ApiError{

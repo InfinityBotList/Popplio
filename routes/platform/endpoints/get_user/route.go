@@ -10,6 +10,7 @@ import (
 	"github.com/infinitybotlist/eureka/dovewing"
 	"github.com/infinitybotlist/eureka/dovewing/dovetypes"
 	"github.com/infinitybotlist/eureka/uapi"
+	"go.uber.org/zap"
 
 	"github.com/go-chi/chi/v5"
 )
@@ -59,7 +60,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	user, err := dovewing.GetUser(d.Context, id, dovewingPlatform)
 
 	if err != nil {
-		state.Logger.Error(err)
+		state.Logger.Error("Error fetching user [dovewing]", zap.Error(err), zap.String("id", id), zap.String("platform", platform))
 		return uapi.DefaultResponse(http.StatusNotFound)
 	}
 

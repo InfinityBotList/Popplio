@@ -13,6 +13,7 @@ import (
 	"github.com/infinitybotlist/eureka/dovewing"
 	"github.com/infinitybotlist/eureka/uapi"
 	"github.com/jackc/pgx/v5"
+	"go.uber.org/zap"
 
 	"github.com/go-chi/chi/v5"
 )
@@ -45,7 +46,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	row, err := state.Pool.Query(d.Context, "SELECT "+userPermCols+" FROM users WHERE user_id = $1", id)
 
 	if err != nil {
-		state.Logger.Error(err)
+		state.Logger.Error("Failed to get user perms", zap.Error(err), zap.String("user_id", id))
 		return uapi.DefaultResponse(http.StatusNotFound)
 	}
 
@@ -56,14 +57,14 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	}
 
 	if err != nil {
-		state.Logger.Error(err)
+		state.Logger.Error("Failed to get user perms", zap.Error(err), zap.String("user_id", id))
 		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
 	user, err := dovewing.GetUser(d.Context, id, state.DovewingPlatformDiscord)
 
 	if err != nil {
-		state.Logger.Error(err)
+		state.Logger.Error("Failed to get user perms", zap.Error(err), zap.String("user_id", id))
 		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 

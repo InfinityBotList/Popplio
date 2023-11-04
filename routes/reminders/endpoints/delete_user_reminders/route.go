@@ -8,6 +8,7 @@ import (
 
 	docs "github.com/infinitybotlist/eureka/doclib"
 	"github.com/infinitybotlist/eureka/uapi"
+	"go.uber.org/zap"
 
 	"github.com/go-chi/chi/v5"
 )
@@ -54,7 +55,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	tx, err := state.Pool.Begin(d.Context)
 
 	if err != nil {
-		state.Logger.Error(err)
+		state.Logger.Error("Error beginning transaction", zap.Error(err), zap.String("target_id", targetId), zap.String("target_type", targetType))
 		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
@@ -63,7 +64,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	err = tx.QueryRow(d.Context, "SELECT COUNT(*) FROM user_reminders WHERE user_id = $1 AND target_id = $2 AND target_type = $3", d.Auth.ID, targetId, targetType).Scan(&count)
 
 	if err != nil {
-		state.Logger.Error(err)
+		state.Logger.Error("Error querying reminders [db count]", zap.Error(err), zap.String("target_id", targetId), zap.String("target_type", targetType))
 		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
@@ -74,7 +75,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	_, err = tx.Exec(d.Context, "DELETE FROM user_reminders WHERE user_id = $1 AND target_id = $2 AND target_type = $3", d.Auth.ID, targetId, targetType)
 
 	if err != nil {
-		state.Logger.Error(err)
+		state.Logger.Error("Error deleting reminders", zap.Error(err), zap.String("target_id", targetId), zap.String("target_type", targetType))
 		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 

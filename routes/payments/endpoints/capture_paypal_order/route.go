@@ -10,6 +10,7 @@ import (
 	docs "github.com/infinitybotlist/eureka/doclib"
 	"github.com/infinitybotlist/eureka/uapi"
 	"github.com/plutov/paypal/v4"
+	"go.uber.org/zap"
 
 	jsoniter "github.com/json-iterator/go"
 )
@@ -62,11 +63,11 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	captured, err := state.Paypal.CaptureOrder(d.Context, orderId, paypal.CaptureOrderRequest{})
 
 	if err != nil {
-		state.Logger.Error("At capture", err)
+		state.Logger.Error("Failed to capture paypal order", zap.Error(err), zap.String("order_id", orderId))
 		return uapi.HttpResponse{
-			Status: http.StatusBadRequest,
+			Status: http.StatusInternalServerError,
 			Json: types.ApiError{
-				Message: err.Error(),
+				Message: "Failed to capture paypal order: " + err.Error(),
 			},
 		}
 	}
@@ -85,9 +86,9 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		_, err = state.Paypal.RefundCapture(d.Context, orderId, paypal.RefundCaptureRequest{})
 
 		if err != nil {
-			state.Logger.Error("At refund", err)
+			state.Logger.Error("Failed to refund order [len(captured.PurchaseUnits) == 0]", zap.Error(err), zap.String("order_id", orderId))
 			return uapi.HttpResponse{
-				Status: http.StatusBadRequest,
+				Status: http.StatusInternalServerError,
 				Json: types.ApiError{
 					Message: "Failed to refund order.",
 				},
@@ -107,9 +108,9 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		_, err = state.Paypal.RefundCapture(d.Context, orderId, paypal.RefundCaptureRequest{})
 
 		if err != nil {
-			state.Logger.Error("At refund", err)
+			state.Logger.Error("Failed to refund order [captured.PurchaseUnits[0].Items == 0]", zap.Error(err), zap.String("order_id", orderId))
 			return uapi.HttpResponse{
-				Status: http.StatusBadRequest,
+				Status: http.StatusInternalServerError,
 				Json: types.ApiError{
 					Message: "Failed to refund order.",
 				},
@@ -135,16 +136,16 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		_, err = state.Paypal.RefundCapture(d.Context, orderId, paypal.RefundCaptureRequest{})
 
 		if err != nil {
-			state.Logger.Error("At refund", err)
+			state.Logger.Error("Failed to refund order [json.Unmarshal]", zap.Error(err), zap.String("order_id", orderId))
 			return uapi.HttpResponse{
-				Status: http.StatusBadRequest,
+				Status: http.StatusInternalServerError,
 				Json: types.ApiError{
 					Message: "Failed to refund order.",
 				},
 			}
 		}
 
-		state.Logger.Error(err)
+		state.Logger.Error("Failed to unmarshal product json", zap.Error(err), zap.String("json", productJson))
 		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
@@ -155,20 +156,20 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		_, err = state.Paypal.RefundCapture(d.Context, orderId, paypal.RefundCaptureRequest{})
 
 		if err != nil {
-			state.Logger.Error("At refund", err)
+			state.Logger.Error("Failed to refund order [GivePerks: err != nil]", zap.Error(err), zap.String("order_id", orderId))
 			return uapi.HttpResponse{
-				Status: http.StatusBadRequest,
+				Status: http.StatusInternalServerError,
 				Json: types.ApiError{
 					Message: "Failed to refund order.",
 				},
 			}
 		}
 
-		state.Logger.Error(err)
+		state.Logger.Error("Failed to give perks", zap.Error(err), zap.String("json", productJson))
 		return uapi.HttpResponse{
 			Status: http.StatusBadRequest,
 			Json: types.ApiError{
-				Message: "Error: " + err.Error(),
+				Message: "Failed to give perks: " + err.Error(),
 			},
 		}
 	}
