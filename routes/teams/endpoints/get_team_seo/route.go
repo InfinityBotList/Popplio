@@ -12,6 +12,7 @@ import (
 	"github.com/google/uuid"
 	docs "github.com/infinitybotlist/eureka/doclib"
 	"github.com/infinitybotlist/eureka/uapi"
+	"go.uber.org/zap"
 
 	"github.com/go-chi/chi/v5"
 )
@@ -53,10 +54,11 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 
 	var id string
 	var name string
-	err := state.Pool.QueryRow(d.Context, "SELECT id, name FROM teams WHERE id = $1", tid).Scan(&id, &name)
+	var short string
+	err := state.Pool.QueryRow(d.Context, "SELECT id, name, short FROM teams WHERE id = $1", tid).Scan(&id, &name, &short)
 
 	if err != nil {
-		state.Logger.Error(err)
+		state.Logger.Error("Error getting team SEO info [db queryrow]", zap.Error(err), zap.String("id", tid))
 		return uapi.DefaultResponse(http.StatusNotFound)
 	}
 
@@ -74,7 +76,13 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		ID:     id,
 		Name:   name,
 		Avatar: avatarPath,
-		Short:  "View the team " + name + " on Infinity Bot List",
+		Short: func() string {
+			if short == "" {
+				return "View the team " + name + " on Infinity List"
+			}
+
+			return short
+		}(),
 	}
 
 	return uapi.HttpResponse{

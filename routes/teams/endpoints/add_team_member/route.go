@@ -8,6 +8,7 @@ import (
 
 	docs "github.com/infinitybotlist/eureka/doclib"
 	"github.com/infinitybotlist/eureka/uapi"
+	"go.uber.org/zap"
 
 	"github.com/go-chi/chi/v5"
 )
@@ -52,7 +53,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	perms, err := teams.GetEntityPerms(d.Context, d.Auth.ID, "team", teamId)
 
 	if err != nil {
-		state.Logger.Error(err)
+		state.Logger.Error("Error getting user perms", zap.Error(err), zap.String("uid", d.Auth.ID), zap.String("tid", teamId))
 		return uapi.HttpResponse{
 			Status: http.StatusBadRequest,
 			Json:   types.ApiError{Message: "Error getting user perms: " + err.Error()},
@@ -85,7 +86,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	tx, err := state.Pool.Begin(d.Context)
 
 	if err != nil {
-		state.Logger.Error(err)
+		state.Logger.Error("Error starting transaction", zap.Error(err), zap.String("uid", d.Auth.ID), zap.String("tid", teamId))
 		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
@@ -97,7 +98,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	err = tx.QueryRow(d.Context, "SELECT EXISTS(SELECT 1 FROM users WHERE user_id = $1)", payload.UserID).Scan(&userExists)
 
 	if err != nil {
-		state.Logger.Error(err)
+		state.Logger.Error("Error checking if user exists", zap.Error(err), zap.String("uid", d.Auth.ID), zap.String("tid", teamId))
 		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
@@ -114,7 +115,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	err = tx.QueryRow(d.Context, "SELECT EXISTS(SELECT 1 FROM team_members WHERE team_id = $1 AND user_id = $2)", teamId, payload.UserID).Scan(&memberExists)
 
 	if err != nil {
-		state.Logger.Error(err)
+		state.Logger.Error("Error checking if user is already a member", zap.Error(err), zap.String("uid", d.Auth.ID), zap.String("tid", teamId))
 		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
@@ -131,14 +132,14 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	_, err = tx.Exec(d.Context, "INSERT INTO team_members (team_id, user_id, flags) VALUES ($1, $2, $3)", teamId, payload.UserID, pm)
 
 	if err != nil {
-		state.Logger.Error(err)
+		state.Logger.Error("Error adding member", zap.Error(err), zap.String("uid", d.Auth.ID), zap.String("tid", teamId))
 		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
 	err = tx.Commit(d.Context)
 
 	if err != nil {
-		state.Logger.Error(err)
+		state.Logger.Error("Error committing transaction", zap.Error(err), zap.String("uid", d.Auth.ID), zap.String("tid", teamId))
 		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 

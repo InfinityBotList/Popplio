@@ -10,9 +10,11 @@ import (
 	docs "github.com/infinitybotlist/eureka/doclib"
 	"github.com/infinitybotlist/eureka/uapi"
 	"github.com/jackc/pgx/v5"
+	"go.uber.org/zap"
+
+	"slices"
 
 	"github.com/go-chi/chi/v5"
-	"golang.org/x/exp/slices"
 )
 
 func Docs() *docs.Doc {
@@ -62,7 +64,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	tx, err := state.Pool.Begin(d.Context)
 
 	if err != nil {
-		state.Logger.Error(err)
+		state.Logger.Error("Error starting transaction", zap.Error(err), zap.String("uid", d.Auth.ID), zap.String("tid", teamId), zap.String("mid", userId))
 		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
@@ -73,7 +75,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		perms, err := teams.GetEntityPerms(d.Context, d.Auth.ID, "team", teamId)
 
 		if err != nil {
-			state.Logger.Error(err)
+			state.Logger.Error("Error getting user perms", zap.Error(err), zap.String("uid", d.Auth.ID), zap.String("tid", teamId), zap.String("mid", userId))
 			return uapi.HttpResponse{
 				Status: http.StatusBadRequest,
 				Json:   types.ApiError{Message: "Error getting user perms: " + err.Error()},
@@ -99,9 +101,11 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		}
 
 		if err != nil {
-			state.Logger.Error(err)
+			state.Logger.Error("Error getting old perms", zap.Error(err), zap.String("uid", d.Auth.ID), zap.String("tid", teamId), zap.String("mid", userId))
 			return uapi.DefaultResponse(http.StatusInternalServerError)
 		}
+
+		var newPerms = oldPerms // The new permissions of the user
 
 		// Check if manager has all perms they are trying to add
 		for _, perm := range payload.PermUpdate.Add {
@@ -121,16 +125,30 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 
 			if !slices.Contains(oldPerms, perm) {
 				// Add perm
-				_, err = tx.Exec(d.Context, "UPDATE team_members SET flags = array_append(flags, $1) WHERE team_id = $2 AND user_id = $3", perm, teamId, userId)
-
-				if err != nil {
-					state.Logger.Error(err)
-					return uapi.DefaultResponse(http.StatusInternalServerError)
-				}
+				newPerms = append(newPerms, perm)
 			}
 		}
 
 		for _, perm := range payload.PermUpdate.Remove {
+			// Ensure that if perm is owner, then there is another owner
+			if perm == "global."+teams.PermissionOwner {
+				var ownerCount int
+
+				err = tx.QueryRow(d.Context, "SELECT COUNT(*) FROM team_members WHERE team_id = $1 AND flags && $2", teamId, []string{teams.PermissionOwner}).Scan(&ownerCount)
+
+				if err != nil {
+					state.Logger.Error("Error getting owner count", zap.Error(err), zap.String("uid", d.Auth.ID), zap.String("tid", teamId), zap.String("mid", userId))
+					return uapi.DefaultResponse(http.StatusInternalServerError)
+				}
+
+				if ownerCount == 0 {
+					return uapi.HttpResponse{
+						Status: http.StatusBadRequest,
+						Json:   types.ApiError{Message: "There needs to be one other global owner before you can remove yourself from owner"},
+					}
+				}
+			}
+
 			if !teams.IsValidPerm(perm) {
 				return uapi.HttpResponse{
 					Status: http.StatusBadRequest,
@@ -145,52 +163,22 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 				}
 			}
 
-			if slices.Contains(oldPerms, perm) {
-				// Remove the perm from the old perms
-				_, err = tx.Exec(d.Context, "UPDATE team_members SET flags = array_remove(flags, $1) WHERE team_id = $2 AND user_id = $3", perm, teamId, userId)
-
-				if err != nil {
-					state.Logger.Error(err)
-					return uapi.DefaultResponse(http.StatusInternalServerError)
+			// Remove perm
+			filteredPerms := []string{}
+			for _, p := range newPerms {
+				if p != perm {
+					filteredPerms = append(filteredPerms, p)
 				}
 			}
+			newPerms = filteredPerms
 		}
 
-		// Ensure that if perms includes owner, that there is at least one other owner
-		if slices.Contains(payload.PermUpdate.Remove, "global."+teams.PermissionOwner) {
-			var ownerCount int
+		newPerms = teams.NewPermMan(newPerms).Perms()
 
-			err = tx.QueryRow(d.Context, "SELECT COUNT(*) FROM team_members WHERE team_id = $1 AND flags && $2", teamId, []string{teams.PermissionOwner}).Scan(&ownerCount)
-
-			if err != nil {
-				state.Logger.Error(err)
-				return uapi.DefaultResponse(http.StatusInternalServerError)
-			}
-
-			if ownerCount == 0 {
-				return uapi.HttpResponse{
-					Status: http.StatusBadRequest,
-					Json:   types.ApiError{Message: "There needs to be one other owner before you can remove yourself from owner"},
-				}
-			}
-		}
-
-		// Try to fix permissions in case any removals etc.
-		var flags []string
-
-		err = tx.QueryRow(d.Context, "SELECT flags FROM team_members WHERE team_id = $1 AND user_id = $2", teamId, userId).Scan(&flags)
+		_, err = tx.Exec(d.Context, "UPDATE team_members SET flags = $1 WHERE team_id = $2 AND user_id = $3", newPerms, teamId, userId)
 
 		if err != nil {
-			state.Logger.Error(err)
-			return uapi.DefaultResponse(http.StatusInternalServerError)
-		}
-
-		flags = teams.NewPermMan(flags).Perms()
-
-		_, err = tx.Exec(d.Context, "UPDATE team_members SET flags = $1 WHERE team_id = $2 AND user_id = $3", flags, teamId, userId)
-
-		if err != nil {
-			state.Logger.Error(err)
+			state.Logger.Error("Error updating perms", zap.Error(err), zap.String("uid", d.Auth.ID), zap.String("tid", teamId), zap.String("mid", userId))
 			return uapi.DefaultResponse(http.StatusInternalServerError)
 		}
 	}
@@ -202,7 +190,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 			perms, err := teams.GetEntityPerms(d.Context, d.Auth.ID, "team", teamId)
 
 			if err != nil {
-				state.Logger.Error(err)
+				state.Logger.Error("Error getting user perms", zap.Error(err), zap.String("uid", d.Auth.ID), zap.String("tid", teamId), zap.String("mid", userId))
 				return uapi.HttpResponse{
 					Status: http.StatusBadRequest,
 					Json:   types.ApiError{Message: "Error getting user perms: " + err.Error()},
@@ -220,7 +208,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		_, err = tx.Exec(d.Context, "UPDATE team_members SET mentionable = $1 WHERE team_id = $2 AND user_id = $3", *payload.Mentionable, teamId, userId)
 
 		if err != nil {
-			state.Logger.Error(err)
+			state.Logger.Error("Error updating mentionable", zap.Error(err), zap.String("uid", d.Auth.ID), zap.String("tid", teamId), zap.String("mid", userId))
 			return uapi.DefaultResponse(http.StatusInternalServerError)
 		}
 	}
@@ -228,7 +216,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	err = tx.Commit(d.Context)
 
 	if err != nil {
-		state.Logger.Error(err)
+		state.Logger.Error("Error committing transaction", zap.Error(err), zap.String("uid", d.Auth.ID), zap.String("tid", teamId), zap.String("mid", userId))
 		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 

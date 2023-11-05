@@ -13,6 +13,7 @@ import (
 
 	docs "github.com/infinitybotlist/eureka/doclib"
 	"github.com/infinitybotlist/eureka/uapi"
+	"go.uber.org/zap"
 
 	"github.com/bwmarrin/discordgo"
 	"github.com/go-chi/chi/v5"
@@ -78,7 +79,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	perms, err := teams.GetEntityPerms(d.Context, d.Auth.ID, "server", id)
 
 	if err != nil {
-		state.Logger.Error(err)
+		state.Logger.Error("Error while getting entity perms", zap.Error(err), zap.String("userID", d.Auth.ID), zap.String("targetType", "server"), zap.String("targetID", id))
 		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
@@ -133,7 +134,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	_, err = state.Pool.Exec(d.Context, "UPDATE servers SET "+updateSqlStr+" WHERE server_id=$"+strconv.Itoa(len(serverArgs)), serverArgs...)
 
 	if err != nil {
-		state.Logger.Error(err)
+		state.Logger.Error("Error while updating server", zap.Error(err), zap.String("serverID", id))
 		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
@@ -142,7 +143,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	err = state.Pool.QueryRow(d.Context, "SELECT name, avatar FROM servers WHERE server_id = $1", id).Scan(&name, &avatar)
 
 	if err != nil {
-		state.Logger.Error(err)
+		state.Logger.Error("Error while getting server info", zap.Error(err), zap.String("serverID", id))
 		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 

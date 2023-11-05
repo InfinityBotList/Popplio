@@ -14,6 +14,7 @@ import (
 	docs "github.com/infinitybotlist/eureka/doclib"
 	"github.com/infinitybotlist/eureka/uapi"
 	"github.com/jackc/pgx/v5"
+	"go.uber.org/zap"
 
 	"github.com/go-chi/chi/v5"
 )
@@ -37,7 +38,7 @@ func Docs() *docs.Doc {
 			},
 			{
 				Name:        "targets",
-				Description: "Entities to get. Can be one of the following: `team_member`, `bot`. Comma-seperated",
+				Description: "Entities to get. Can be one of the following: `team_member`, `bot`, `server`. Comma-seperated",
 				Required:    true,
 				In:          "query",
 				Schema:      docs.IdSchema,
@@ -64,14 +65,14 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	}
 
 	if err != nil {
-		state.Logger.Error(err)
+		state.Logger.Error("Error querying team [db query]", zap.Error(err), zap.String("id", id))
 		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
 	team, err := pgx.CollectOneRow(rows, pgx.RowToStructByName[types.Team])
 
 	if err != nil {
-		state.Logger.Error(err)
+		state.Logger.Error("Error querying team [db collect]", zap.Error(err), zap.String("id", id))
 		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
@@ -81,7 +82,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	team.Entities, err = resolvers.GetTeamEntities(d.Context, id, targets)
 
 	if err != nil {
-		state.Logger.Error(err)
+		state.Logger.Error("Error resolving team entities", zap.Error(err), zap.String("id", id))
 		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 

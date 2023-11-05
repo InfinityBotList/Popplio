@@ -9,6 +9,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	docs "github.com/infinitybotlist/eureka/doclib"
 	"github.com/infinitybotlist/eureka/uapi"
+	"go.uber.org/zap"
 )
 
 func Docs() *docs.Doc {
@@ -42,7 +43,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	perms, err := teams.GetEntityPerms(d.Context, d.Auth.ID, "team", teamId)
 
 	if err != nil {
-		state.Logger.Error(err)
+		state.Logger.Error("Error getting user perms", zap.Error(err), zap.String("uid", d.Auth.ID), zap.String("tid", teamId))
 		return uapi.HttpResponse{
 			Status: http.StatusBadRequest,
 			Json:   types.ApiError{Message: "Error getting user perms: " + err.Error()},
@@ -61,7 +62,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	err = state.Pool.QueryRow(d.Context, "SELECT COUNT(*) FROM bots WHERE team_owner = $1", teamId).Scan(&botCount)
 
 	if err != nil {
-		state.Logger.Error(err)
+		state.Logger.Error("Error getting bot count [db count]", zap.Error(err), zap.String("tid", teamId))
 		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
@@ -77,7 +78,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	err = state.Pool.QueryRow(d.Context, "SELECT COUNT(*) FROM servers WHERE team_owner = $1", teamId).Scan(&serverCount)
 
 	if err != nil {
-		state.Logger.Error(err)
+		state.Logger.Error("Error getting server count [db count]", zap.Error(err), zap.String("tid", teamId))
 		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
@@ -91,7 +92,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	_, err = state.Pool.Exec(d.Context, "DELETE FROM teams WHERE id = $1", teamId)
 
 	if err != nil {
-		state.Logger.Error(err)
+		state.Logger.Error("Error deleting team", zap.Error(err), zap.String("tid", teamId))
 		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 

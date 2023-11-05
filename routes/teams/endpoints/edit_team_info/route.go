@@ -12,6 +12,7 @@ import (
 	docs "github.com/infinitybotlist/eureka/doclib"
 	"github.com/infinitybotlist/eureka/uapi"
 	"github.com/jackc/pgx/v5/pgtype"
+	"go.uber.org/zap"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-playground/validator/v10"
@@ -69,7 +70,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	perms, err := teams.GetEntityPerms(d.Context, d.Auth.ID, "team", teamId)
 
 	if err != nil {
-		state.Logger.Error(err)
+		state.Logger.Error("Error getting user perms", zap.Error(err), zap.String("uid", d.Auth.ID), zap.String("tid", teamId))
 		return uapi.HttpResponse{
 			Status: http.StatusBadRequest,
 			Json:   types.ApiError{Message: "Error getting user perms: " + err.Error()},
@@ -86,7 +87,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	tx, err := state.Pool.Begin(d.Context)
 
 	if err != nil {
-		state.Logger.Error(err)
+		state.Logger.Error("Error beginning transaction", zap.Error(err), zap.String("uid", d.Auth.ID), zap.String("tid", teamId))
 		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
@@ -101,7 +102,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	err = tx.QueryRow(d.Context, "SELECT name, short, tags, extra_links FROM teams WHERE id = $1", teamId).Scan(&oldName, &oldShort, &oldTags, &oldExtraLinks)
 
 	if err != nil {
-		state.Logger.Error(err)
+		state.Logger.Error("Error getting team info [db queryrow]", zap.Error(err), zap.String("uid", d.Auth.ID), zap.String("tid", teamId))
 		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
@@ -109,7 +110,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	_, err = tx.Exec(d.Context, "UPDATE teams SET name = $1 WHERE id = $2", payload.Name, teamId)
 
 	if err != nil {
-		state.Logger.Error(err)
+		state.Logger.Error("Error updating team info", zap.Error(err), zap.String("uid", d.Auth.ID), zap.String("tid", teamId))
 		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
@@ -117,7 +118,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		_, err = tx.Exec(d.Context, "UPDATE teams SET short = $1 WHERE id = $2", payload.Short, teamId)
 
 		if err != nil {
-			state.Logger.Error(err)
+			state.Logger.Error("Error updating team info", zap.Error(err), zap.String("uid", d.Auth.ID), zap.String("tid", teamId))
 			return uapi.DefaultResponse(http.StatusInternalServerError)
 		}
 	}
@@ -126,7 +127,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		_, err = tx.Exec(d.Context, "UPDATE teams SET tags = $1 WHERE id = $2", payload.Tags, teamId)
 
 		if err != nil {
-			state.Logger.Error(err)
+			state.Logger.Error("Error updating team info", zap.Error(err), zap.String("uid", d.Auth.ID), zap.String("tid", teamId))
 			return uapi.DefaultResponse(http.StatusInternalServerError)
 		}
 	}
@@ -144,7 +145,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		_, err = tx.Exec(d.Context, "UPDATE teams SET extra_links = $1 WHERE id = $2", payload.ExtraLinks, teamId)
 
 		if err != nil {
-			state.Logger.Error(err)
+			state.Logger.Error("Error updating team info", zap.Error(err), zap.String("uid", d.Auth.ID), zap.String("tid", teamId))
 			return uapi.DefaultResponse(http.StatusInternalServerError)
 		}
 	}
@@ -152,7 +153,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	err = tx.Commit(d.Context)
 
 	if err != nil {
-		state.Logger.Error(err)
+		state.Logger.Error("Error committing transaction", zap.Error(err), zap.String("uid", d.Auth.ID), zap.String("tid", teamId))
 		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
@@ -198,7 +199,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	})
 
 	if err != nil {
-		state.Logger.Error(err)
+		state.Logger.Error("Error sending team edit webhook", zap.Error(err), zap.String("uid", d.Auth.ID), zap.String("tid", teamId))
 	}
 
 	return uapi.DefaultResponse(http.StatusNoContent)
