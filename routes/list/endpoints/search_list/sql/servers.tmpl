@@ -14,7 +14,7 @@ AND (cardinality($5::text[]) = 0 OR tags {{.TagMode}} $5) -- Where TagMode is on
 
 {{if .Query}}
 AND (
-    name @@ $6 OR short @@ $6 OR server_id = $7) 
+    name @@ $6 OR name ILIKE $6 OR short @@ $6 OR server_id = $7) 
 {{end}}
 
 GROUP BY server_id 
