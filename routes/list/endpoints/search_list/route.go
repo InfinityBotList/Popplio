@@ -35,7 +35,7 @@ var (
 	botsSql        string
 	botSqlTemplate *template.Template
 
-	// go:embed sql/servers.tmpl
+	//go:embed sql/servers.tmpl
 	serversSql        string
 	serverSqlTemplate *template.Template
 )
@@ -48,8 +48,8 @@ type searchSqlTemplateCtx struct {
 }
 
 func Setup() {
-	botSqlTemplate = template.Must(template.New("sql").Parse(botsSql))
-	serverSqlTemplate = template.Must(template.New("sql").Parse(serversSql))
+	botSqlTemplate = template.Must(template.New("sqlA").Parse(botsSql))
+	serverSqlTemplate = template.Must(template.New("sqlB").Parse(serversSql))
 }
 
 func Docs() *docs.Doc {
@@ -143,6 +143,8 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 				args = append(args, "%"+strings.ToLower(payload.Query)+"%", strings.ToLower(payload.Query)) // 8-9
 			}
 
+			state.Logger.Debug("SQL result", zap.String("sql", sqlString.String()), zap.String("targetType", "bot"))
+
 			rows, err := state.Pool.Query(
 				d.Context,
 				sqlString.String(),
@@ -151,7 +153,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 			)
 
 			if err != nil {
-				state.Logger.Error("Failed to query", zap.Error(err), zap.String("sql", sqlString.String()))
+				state.Logger.Error("Failed to query", zap.Error(err), zap.String("targetType", "bot"))
 				return uapi.DefaultResponse(http.StatusInternalServerError)
 			}
 
@@ -161,8 +163,6 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 				state.Logger.Error("Failed to collect rows", zap.Error(err), zap.String("sql", sqlString.String()))
 				return uapi.DefaultResponse(http.StatusInternalServerError)
 			}
-
-			state.Logger.Debug("SQL result", zap.String("sql", sqlString.String()), zap.String("targetType", "bot"))
 
 			for i := range bots {
 				botUser, err := dovewing.GetUser(d.Context, bots[i].BotID, state.DovewingPlatformDiscord)
@@ -190,6 +190,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 			sr.Bots = bots
 		case "server":
 			sr.TargetTypes = append(sr.TargetTypes, "server")
+
 			sqlString := &strings.Builder{}
 
 			err = serverSqlTemplate.Execute(sqlString, searchSqlTemplateCtx{
@@ -204,18 +205,18 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 			}
 
 			args := []any{
-				payload.Servers.From,   // 1
-				payload.Servers.To,     // 2
-				payload.Votes.From,     // 3
-				payload.Votes.To,       // 4
-				payload.Shards.From,    // 5
-				payload.Shards.To,      // 6
-				payload.TagFilter.Tags, // 7
+				payload.TotalMembers.From, // 1
+				payload.TotalMembers.To,   // 2
+				payload.Votes.From,        // 3
+				payload.Votes.To,          // 4
+				payload.TagFilter.Tags,    // 5
 			}
 
 			if payload.Query != "" {
-				args = append(args, "%"+strings.ToLower(payload.Query)+"%", strings.ToLower(payload.Query)) // 8-9
+				args = append(args, "%"+strings.ToLower(payload.Query)+"%", strings.ToLower(payload.Query)) // 6-7
 			}
+
+			state.Logger.Debug("SQL result", zap.String("sql", sqlString.String()), zap.String("targetType", "server"))
 
 			rows, err := state.Pool.Query(
 				d.Context,
@@ -225,7 +226,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 			)
 
 			if err != nil {
-				state.Logger.Error("Failed to query", zap.Error(err), zap.String("sql", sqlString.String()))
+				state.Logger.Error("Failed to query", zap.Error(err), zap.String("targetType", "server"))
 				return uapi.DefaultResponse(http.StatusInternalServerError)
 			}
 
@@ -235,8 +236,6 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 				state.Logger.Error("Failed to collect rows", zap.Error(err), zap.String("sql", sqlString.String()))
 				return uapi.DefaultResponse(http.StatusInternalServerError)
 			}
-
-			state.Logger.Debug("SQL result", zap.String("sql", sqlString.String()), zap.String("targetType", "server"))
 
 			for i := range servers {
 				var code string

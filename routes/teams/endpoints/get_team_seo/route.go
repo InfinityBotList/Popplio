@@ -12,6 +12,7 @@ import (
 	"github.com/google/uuid"
 	docs "github.com/infinitybotlist/eureka/doclib"
 	"github.com/infinitybotlist/eureka/uapi"
+	"github.com/jackc/pgx/v5/pgtype"
 	"go.uber.org/zap"
 
 	"github.com/go-chi/chi/v5"
@@ -54,12 +55,12 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 
 	var id string
 	var name string
-	var short string
+	var short pgtype.Text
 	err := state.Pool.QueryRow(d.Context, "SELECT id, name, short FROM teams WHERE id = $1", tid).Scan(&id, &name, &short)
 
 	if err != nil {
 		state.Logger.Error("Error getting team SEO info [db queryrow]", zap.Error(err), zap.String("id", tid))
-		return uapi.DefaultResponse(http.StatusNotFound)
+		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
 	avatar := assetmanager.AvatarInfo(assetmanager.AssetTargetTypeTeams, id)
@@ -77,11 +78,11 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		Name:   name,
 		Avatar: avatarPath,
 		Short: func() string {
-			if short == "" {
+			if !short.Valid || short.String == "" {
 				return "View the team " + name + " on Infinity List"
 			}
 
-			return short
+			return short.String
 		}(),
 	}
 
