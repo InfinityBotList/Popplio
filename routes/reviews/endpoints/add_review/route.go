@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/infinitybotlist/eureka/uapi/ratelimit"
+	"go.uber.org/zap"
 
 	docs "github.com/infinitybotlist/eureka/doclib"
 	"github.com/infinitybotlist/eureka/uapi"
@@ -19,13 +20,7 @@ import (
 	"github.com/go-playground/validator/v10"
 )
 
-type CreateReview struct {
-	Content  string `db:"content" json:"content" validate:"required,min=5,max=4000" msg:"Content must be between 5 and 4000 characters"`
-	Stars    int32  `db:"stars" json:"stars" validate:"required,min=1,max=5" msg:"Stars must be between 1 and 5 stars"`
-	ParentID string `db:"parent_id" json:"parent_id" validate:"omitempty,uuid" msg:"Parent ID must be a valid UUID if provided"`
-}
-
-var compiledMessages = uapi.CompileValidationErrors(CreateReview{})
+var compiledMessages = uapi.CompileValidationErrors(types.CreateReview{})
 
 func Docs() *docs.Doc {
 	return &docs.Doc{
@@ -54,7 +49,7 @@ func Docs() *docs.Doc {
 				Schema:      docs.IdSchema,
 			},
 		},
-		Req:  CreateReview{},
+		Req:  types.CreateReview{},
 		Resp: types.ApiError{},
 	}
 }
@@ -67,7 +62,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	}.Limit(d.Context, r)
 
 	if err != nil {
-		state.Logger.Error(err)
+		state.Logger.Error("Error while ratelimiting", zap.Error(err), zap.String("bucket", "review"))
 		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
@@ -81,9 +76,9 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		}
 	}
 
-	var payload CreateReview
+	var payload types.CreateReview
 
-	hresp, ok := uapi.MarshalReq(r, &payload)
+	hresp, ok := uapi.MarshalReqWithHeaders(r, &payload, limit.Headers())
 
 	if !ok {
 		return hresp
@@ -109,7 +104,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		err = state.Pool.QueryRow(d.Context, "SELECT COUNT(*) FROM bots WHERE bot_id = $1", targetId).Scan(&count)
 
 		if err != nil {
-			state.Logger.Error(err)
+			state.Logger.Error("Failed to query bot count [db count]", zap.Error(err), zap.String("bot_id", targetId))
 			return uapi.DefaultResponse(http.StatusInternalServerError)
 		}
 
@@ -126,7 +121,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		err = state.Pool.QueryRow(d.Context, "SELECT COUNT(*) FROM servers WHERE server_id = $1", targetId).Scan(&count)
 
 		if err != nil {
-			state.Logger.Error(err)
+			state.Logger.Error("Failed to query server count [db count]", zap.Error(err), zap.String("server_id", targetId))
 			return uapi.DefaultResponse(http.StatusInternalServerError)
 		}
 
@@ -150,7 +145,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		err = state.Pool.QueryRow(d.Context, "SELECT COUNT(*) FROM reviews WHERE author = $1 AND target_id = $2 AND target_type = $3 AND parent_id IS NULL", d.Auth.ID, targetId, targetType).Scan(&count)
 
 		if err != nil {
-			state.Logger.Error(err)
+			state.Logger.Error("Failed to query root review count [db count]", zap.Error(err), zap.String("author", d.Auth.ID), zap.String("target_id", targetId), zap.String("target_type", targetType))
 			return uapi.DefaultResponse(http.StatusInternalServerError)
 		}
 
@@ -169,7 +164,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		err = state.Pool.QueryRow(d.Context, "SELECT COUNT(*) FROM reviews WHERE id = $1", payload.ParentID).Scan(&count)
 
 		if err != nil {
-			state.Logger.Error(err)
+			state.Logger.Error("Failed to query parent review count [db count]", zap.Error(err), zap.String("parent_id", payload.ParentID))
 			return uapi.DefaultResponse(http.StatusInternalServerError)
 		}
 
@@ -180,7 +175,14 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 			}
 		}
 
-		if assets.Nest(d.Context, payload.ParentID) > 2 {
+		nest, err := assets.Nest(d.Context, payload.ParentID)
+
+		if err != nil {
+			state.Logger.Error("Nesting engine failed unexpectedly", zap.Error(err), zap.String("parent_id", payload.ParentID))
+			return uapi.DefaultResponse(http.StatusInternalServerError)
+		}
+
+		if nest > 2 {
 			return uapi.HttpResponse{
 				Status: http.StatusBadRequest,
 				Json:   types.ApiError{Message: "Maximum nesting for reviews reached"},
@@ -197,7 +199,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	}
 
 	if err != nil {
-		state.Logger.Error(err)
+		state.Logger.Error("Failed to insert review", zap.Error(err), zap.String("author", d.Auth.ID), zap.String("target_id", targetId), zap.String("target_type", targetType))
 		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
@@ -207,35 +209,43 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 			Data: events.WebhookBotNewReviewData{
 				ReviewID: reviewId,
 				Content:  payload.Content,
+				Stars:    payload.Stars,
 			},
 			UserID: d.Auth.ID,
 			BotID:  targetId,
 		})
 
 		if err != nil {
-			state.Logger.Error(err)
+			state.Logger.Error("Failed to send webhook", zap.Error(err), zap.String("bot_id", targetId), zap.String("user_id", d.Auth.ID), zap.String("review_id", reviewId))
 		}
 	case "server":
 		err = serverhooks.Send(serverhooks.With{
 			Data: events.WebhookServerNewReviewData{
 				ReviewID: reviewId,
 				Content:  payload.Content,
+				Stars:    payload.Stars,
 			},
 			UserID:   d.Auth.ID,
 			ServerID: targetId,
 		})
 
 		if err != nil {
-			state.Logger.Error(err)
+			state.Logger.Error("Failed to send webhook", zap.Error(err), zap.String("server_id", targetId), zap.String("user_id", d.Auth.ID), zap.String("review_id", reviewId))
 		}
 	default:
-		state.Logger.Error("Unknown target type: " + targetType)
+		state.Logger.Error("Unknown target type", zap.String("target_type", targetType), zap.String("review_id", reviewId))
 	}
 
 	state.Redis.Del(d.Context, "rv-"+targetId+"-"+targetType)
 
 	// Trigger a garbage collection step to remove any orphaned reviews
-	go assets.GCTrigger(targetId, targetType)
+	go func() {
+		err = assets.GCTrigger(targetId, targetType)
+
+		if err != nil {
+			state.Logger.Error("Failed to trigger GC: ", zap.Error(err))
+		}
+	}()
 
 	return uapi.DefaultResponse(http.StatusNoContent)
 }

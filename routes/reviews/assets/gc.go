@@ -2,6 +2,7 @@ package assets
 
 import (
 	"context"
+	"fmt"
 	"popplio/db"
 	"popplio/state"
 	"popplio/types"
@@ -16,24 +17,26 @@ var (
 )
 
 // Helper function to trigger a GC
-func GCTrigger(targetId, targetType string) {
+func GCTrigger(targetId, targetType string) error {
 	rows, err := state.Pool.Query(state.Context, "SELECT "+reviewCols+" FROM reviews WHERE target_id = $1 AND target_type = $2 ORDER BY created_at ASC", targetId, targetType)
 
 	if err != nil {
-		state.Logger.Error(err)
+		return fmt.Errorf("failed to query reviews: %w", err)
 	}
 
 	reviews, err := pgx.CollectRows(rows, pgx.RowToStructByName[types.Review])
 
 	if err != nil {
-		state.Logger.Error(err)
+		return fmt.Errorf("failed to collect rows: %w", err)
 	}
 
 	err = GarbageCollect(state.Context, reviews)
 
 	if err != nil {
-		state.Logger.Error(err)
+		return fmt.Errorf("failed to garbage collect: %w", err)
 	}
+
+	return nil
 }
 
 // The GC step is needed to kill any reviews whose parent has been deleted etc.

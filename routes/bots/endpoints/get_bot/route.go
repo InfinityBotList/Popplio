@@ -74,7 +74,7 @@ Officially recognized targets:
 	}
 }
 
-func handleAnalytics(r *http.Request, id, target string) {
+func handleAnalytics(r *http.Request, id, target string) error {
 	switch target {
 	case "page":
 		// Get IP from request and hash it
@@ -84,8 +84,7 @@ func handleAnalytics(r *http.Request, id, target string) {
 		tx, err := state.Pool.Begin(state.Context)
 
 		if err != nil {
-			state.Logger.Error("Error creating transaction during handleAnalytics", zap.Error(err), zap.String("id", id), zap.String("target", target), zap.String("targetType", "bot"))
-			return
+			return fmt.Errorf("error creating transaction: %w", err)
 		}
 
 		defer tx.Rollback(state.Context)
@@ -93,8 +92,7 @@ func handleAnalytics(r *http.Request, id, target string) {
 		_, err = tx.Exec(state.Context, "UPDATE bots SET clicks = clicks + 1 WHERE bot_id = $1", id)
 
 		if err != nil {
-			state.Logger.Error("Error updating clicks count during handleAnalytics", zap.Error(err), zap.String("id", id), zap.String("target", target), zap.String("targetType", "bot"))
-			return
+			return fmt.Errorf("error updating clicks count: %w", err)
 		}
 
 		// Check if the IP has already clicked the bot by checking the unique_clicks row
@@ -103,8 +101,7 @@ func handleAnalytics(r *http.Request, id, target string) {
 		err = tx.QueryRow(state.Context, "SELECT $1 = ANY(unique_clicks) FROM bots WHERE bot_id = $2", hashedIp, id).Scan(&hasClicked)
 
 		if err != nil {
-			state.Logger.Error("Error checking for any unique clicks from this user during handleAnalytics", zap.Error(err), zap.String("id", id), zap.String("target", target), zap.String("targetType", "bot"))
-			return
+			return fmt.Errorf("error checking for any unique clicks from this user: %w", err)
 		}
 
 		if !hasClicked {
@@ -113,8 +110,7 @@ func handleAnalytics(r *http.Request, id, target string) {
 			_, err = tx.Exec(state.Context, "UPDATE bots SET unique_clicks = array_append(unique_clicks, $1) WHERE bot_id = $2", hashedIp, id)
 
 			if err != nil {
-				state.Logger.Error("Error adding new unique click for user during handleAnalytics", zap.Error(err), zap.String("id", id), zap.String("target", target), zap.String("targetType", "bot"))
-				return
+				return fmt.Errorf("error adding new unique click for user: %w", err)
 			}
 		}
 
@@ -122,17 +118,18 @@ func handleAnalytics(r *http.Request, id, target string) {
 		err = tx.Commit(state.Context)
 
 		if err != nil {
-			state.Logger.Error("Error committing transaction during handleAnalytics", zap.Error(err), zap.String("id", id), zap.String("target", target), zap.String("targetType", "bot"))
-			return
+			return fmt.Errorf("error committing transaction: %w", err)
 		}
 	case "invite":
 		// Update clicks
 		_, err := state.Pool.Exec(state.Context, "UPDATE bots SET invite_clicks = invite_clicks + 1 WHERE bot_id = $1", id)
 
 		if err != nil {
-			state.Logger.Error("Error updating invite clicks during handleAnalytics", zap.Error(err), zap.String("id", id), zap.String("target", target), zap.String("targetType", "bot"))
+			return fmt.Errorf("error updating invite clicks: %w", err)
 		}
 	}
+
+	return nil
 }
 
 func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
@@ -154,7 +151,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	}
 
 	if err != nil {
-		state.Logger.Error("Error while getting bot [db fetch]", zap.Error(err), zap.String("id", id), zap.String("target", target))
+		state.Logger.Error("Error while getting bot [db collect]", zap.Error(err), zap.String("id", id), zap.String("target", target))
 		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
@@ -196,7 +193,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 
 	if err != nil {
 		state.Logger.Error("Error while getting bot user [dovewing fetch]", zap.Error(err), zap.String("id", id), zap.String("target", target), zap.String("botID", bot.BotID))
-		return uapi.DefaultResponse(http.StatusNotFound)
+		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
 	bot.User = botUser
@@ -206,7 +203,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 
 	if err != nil {
 		state.Logger.Error("Error while getting bot unique clicks [db fetch]", zap.Error(err), zap.String("id", id), zap.String("target", target), zap.String("botID", bot.BotID))
-		return uapi.DefaultResponse(http.StatusNotFound)
+		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
 	bot.UniqueClicks = uniqueClicks
@@ -225,7 +222,13 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	bot.Vanity = code
 	bot.Banner = assetmanager.BannerInfo(assetmanager.AssetTargetTypeBots, bot.BotID)
 
-	go handleAnalytics(r, id, target)
+	go func() {
+		err = handleAnalytics(r, id, target)
+
+		if err != nil {
+			state.Logger.Error("Error while handling analytics", zap.Error(err), zap.String("id", id), zap.String("target", target))
+		}
+	}()
 
 	if r.URL.Query().Get("short") == "true" {
 		bot.Long = ""

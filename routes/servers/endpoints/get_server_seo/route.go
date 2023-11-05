@@ -11,6 +11,7 @@ import (
 	docs "github.com/infinitybotlist/eureka/doclib"
 	"github.com/infinitybotlist/eureka/uapi"
 	"github.com/jackc/pgx/v5"
+	"go.uber.org/zap"
 
 	"github.com/go-chi/chi/v5"
 )
@@ -53,7 +54,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	}
 
 	if err != nil {
-		state.Logger.Error(err)
+		state.Logger.Error("Error while getting server [queryrow]", zap.Error(err), zap.String("serverID", id))
 		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 

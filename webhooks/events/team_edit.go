@@ -26,9 +26,9 @@ func (n WebhookTeamEditData) Event() WebhookType {
 }
 
 func (n WebhookTeamEditData) CreateHookParams(creator *dovetypes.PlatformUser, targets Target) *discordgo.WebhookParams {
-	name := convertChangesetToFields[string](n.Name)
-	short := convertChangesetToFields[string](n.Short)
-	tags := convertChangesetToFields[[]string](n.Tags)
+	name := convertChangesetToFields[string]("Name", n.Name)
+	short := convertChangesetToFields[string]("Short", n.Short)
+	tags := convertChangesetToFields[[]string]("Tags", n.Tags)
 	return &discordgo.WebhookParams{
 		Embeds: []*discordgo.MessageEmbed{
 			{

@@ -1,6 +1,8 @@
 package events
 
 import (
+	"fmt"
+
 	"github.com/bwmarrin/discordgo"
 	docs "github.com/infinitybotlist/eureka/doclib"
 	"github.com/infinitybotlist/eureka/dovewing/dovetypes"
@@ -10,6 +12,7 @@ const WebhookTypeBotEditReview WebhookType = "BOT_EDIT_REVIEW"
 
 type WebhookBotEditReviewData struct {
 	ReviewID string            `json:"review_id" description:"The ID of the review"`
+	Stars    Changeset[int32]  `json:"stars" description:"The number of stars the auther gave to the review"`
 	Content  Changeset[string] `json:"content" description:"The content of the review"`
 }
 
@@ -34,14 +37,18 @@ func (n WebhookBotEditReviewData) CreateHookParams(creator *dovetypes.PlatformUs
 				Color:       0x8A6BFD,
 				Fields: []*discordgo.MessageEmbedField{
 					{
-						Name:   "Review ID:",
+						Name:   "Review ID",
 						Value:  n.ReviewID,
 						Inline: true,
 					},
 					{
-						Name:   "User ID:",
+						Name:   "User ID",
 						Value:  creator.ID,
 						Inline: true,
+					},
+					{
+						Name:  "Stars",
+						Value: fmt.Sprintf("%d/5 -> %d/5", n.Stars.Old, n.Stars.New),
 					},
 					{
 						Name: "Old Content",

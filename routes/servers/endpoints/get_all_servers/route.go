@@ -14,6 +14,7 @@ import (
 	docs "github.com/infinitybotlist/eureka/doclib"
 	"github.com/infinitybotlist/eureka/uapi"
 	"github.com/jackc/pgx/v5"
+	"go.uber.org/zap"
 )
 
 const perPage = 12
@@ -51,7 +52,12 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	pageNum, err := strconv.ParseUint(page, 10, 32)
 
 	if err != nil {
-		return uapi.DefaultResponse(http.StatusBadRequest)
+		return uapi.HttpResponse{
+			Status: http.StatusBadRequest,
+			Json: types.ApiError{
+				Message: "Invalid page number",
+			},
+		}
 	}
 
 	// Check cache, this is how we can avoid hefty ratelimits
@@ -73,14 +79,14 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	rows, err = state.Pool.Query(d.Context, "SELECT "+indexServerCols+" FROM servers ORDER BY created_at DESC LIMIT $1 OFFSET $2", limit, offset)
 
 	if err != nil {
-		state.Logger.Error(err)
+		state.Logger.Error("Failed to query servers [db query]", zap.Error(err), zap.Uint64("page", pageNum), zap.Int("limit", limit), zap.Uint64("offset", offset))
 		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
 	servers, err := pgx.CollectRows(rows, pgx.RowToStructByName[types.IndexServer])
 
 	if err != nil {
-		state.Logger.Error(err)
+		state.Logger.Error("Failed to query servers [collect]", zap.Error(err), zap.Uint64("page", pageNum), zap.Int("limit", limit), zap.Uint64("offset", offset))
 		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
@@ -91,7 +97,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		err = state.Pool.QueryRow(d.Context, "SELECT code FROM vanity WHERE itag = $1", servers[i].VanityRef).Scan(&code)
 
 		if err != nil {
-			state.Logger.Error(err)
+			state.Logger.Error("Failed to query vanity [db queryrow]", zap.Error(err), zap.String("server_id", servers[i].ServerID))
 			return uapi.DefaultResponse(http.StatusInternalServerError)
 		}
 
@@ -104,7 +110,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	err = state.Pool.QueryRow(d.Context, "SELECT COUNT(*) FROM servers").Scan(&count)
 
 	if err != nil {
-		state.Logger.Error(err)
+		state.Logger.Error("Failed to query servers [db count]", zap.Error(err), zap.Uint64("page", pageNum), zap.Int("limit", limit), zap.Uint64("offset", offset))
 		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 

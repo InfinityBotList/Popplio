@@ -1,6 +1,8 @@
 package events
 
 import (
+	"fmt"
+
 	"github.com/bwmarrin/discordgo"
 	docs "github.com/infinitybotlist/eureka/doclib"
 	"github.com/infinitybotlist/eureka/dovewing/dovetypes"
@@ -11,6 +13,7 @@ const WebhookTypeServerNewReview WebhookType = "SERVER_NEW_REVIEW"
 type WebhookServerNewReviewData struct {
 	ReviewID string `json:"review_id" description:"The ID of the review"`
 	Content  string `json:"content" description:"The content of the review"`
+	Stars    int32  `json:"stars" description:"The number of stars the auther gave to the review"`
 }
 
 func (v WebhookServerNewReviewData) TargetType() string {
@@ -41,6 +44,11 @@ func (n WebhookServerNewReviewData) CreateHookParams(creator *dovetypes.Platform
 					{
 						Name:   "User ID:",
 						Value:  creator.ID,
+						Inline: true,
+					},
+					{
+						Name:   "Stars:",
+						Value:  fmt.Sprintf("%d/5", n.Stars),
 						Inline: true,
 					},
 					{

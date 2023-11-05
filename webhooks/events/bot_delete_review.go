@@ -8,23 +8,23 @@ import (
 	"github.com/infinitybotlist/eureka/dovewing/dovetypes"
 )
 
-const WebhookTypeBotNewReview WebhookType = "BOT_NEW_REVIEW"
+const WebhookTypeBotDeleteReview WebhookType = "BOT_DELETE_REVIEW"
 
-type WebhookBotNewReviewData struct {
+type WebhookBotDeleteReviewData struct {
 	ReviewID string `json:"review_id" description:"The ID of the review"`
-	Content  string `json:"content" description:"The content of the review"`
-	Stars    int32  `json:"stars" description:"The number of stars the auther gave to the review"`
+	Content  string `json:"content" description:"The content of the review at time of deletion"`
+	Stars    int32  `json:"stars" description:"The number of stars the auther gave to the review at time of deletion"`
 }
 
-func (v WebhookBotNewReviewData) TargetType() string {
+func (v WebhookBotDeleteReviewData) TargetType() string {
 	return "bot"
 }
 
-func (n WebhookBotNewReviewData) Event() WebhookType {
-	return WebhookTypeBotNewReview
+func (n WebhookBotDeleteReviewData) Event() WebhookType {
+	return WebhookTypeBotDeleteReview
 }
 
-func (n WebhookBotNewReviewData) CreateHookParams(creator *dovetypes.PlatformUser, targets Target) *discordgo.WebhookParams {
+func (n WebhookBotDeleteReviewData) CreateHookParams(creator *dovetypes.PlatformUser, targets Target) *discordgo.WebhookParams {
 	return &discordgo.WebhookParams{
 		Embeds: []*discordgo.MessageEmbed{
 			{
@@ -32,8 +32,8 @@ func (n WebhookBotNewReviewData) CreateHookParams(creator *dovetypes.PlatformUse
 				Thumbnail: &discordgo.MessageEmbedThumbnail{
 					URL: targets.Bot.Avatar,
 				},
-				Title:       "📝 New Review!",
-				Description: ":heart: " + creator.DisplayName + " has left a review for bot " + targets.Bot.Username,
+				Title:       ":x: Bot Review Deleted!",
+				Description: creator.DisplayName + " has deleted his review for bot " + targets.Bot.Username,
 				Color:       0x8A6BFD,
 				Fields: []*discordgo.MessageEmbedField{
 					{
@@ -52,7 +52,7 @@ func (n WebhookBotNewReviewData) CreateHookParams(creator *dovetypes.PlatformUse
 						Inline: true,
 					},
 					{
-						Name: "Review Content",
+						Name: "Content",
 						Value: func() string {
 							if len(n.Content) > 1000 {
 								return n.Content[:1000] + "..."
@@ -73,22 +73,22 @@ func (n WebhookBotNewReviewData) CreateHookParams(creator *dovetypes.PlatformUse
 	}
 }
 
-func (n WebhookBotNewReviewData) Docs() *docs.WebhookDoc {
+func (n WebhookBotDeleteReviewData) Docs() *docs.WebhookDoc {
 	return &docs.WebhookDoc{
-		Name:    "NewBotReview",
-		Summary: "New Bot Review",
+		Name:    "DeleteBotReview",
+		Summary: "Delete Bot Review",
 		Tags: []string{
 			"Webhooks",
 		},
-		Description: `This webhook is sent when a user creates a new review on a bot.`,
+		Description: `This webhook is sent when a user deletes their review on a bot.`,
 		Format: WebhookResponse{
-			Type: WebhookBotNewReviewData{}.Event(),
-			Data: WebhookBotNewReviewData{},
+			Type: WebhookBotDeleteReviewData{}.Event(),
+			Data: WebhookBotDeleteReviewData{},
 		},
-		FormatName: "WebhookResponse-WebhookBotNewReviewData",
+		FormatName: "WebhookResponse-WebhookDeleteBotReviewData",
 	}
 }
 
 func init() {
-	RegisterEvent(WebhookBotNewReviewData{})
+	RegisterEvent(WebhookBotDeleteReviewData{})
 }

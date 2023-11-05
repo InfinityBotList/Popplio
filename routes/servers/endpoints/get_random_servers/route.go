@@ -11,6 +11,7 @@ import (
 	docs "github.com/infinitybotlist/eureka/doclib"
 	"github.com/infinitybotlist/eureka/uapi"
 	"github.com/jackc/pgx/v5"
+	"go.uber.org/zap"
 )
 
 var (
@@ -32,14 +33,14 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	rows, err := state.Pool.Query(d.Context, "SELECT "+indexServerCols+" FROM servers WHERE (type = 'approved' OR type = 'certified') ORDER BY RANDOM() LIMIT 3")
 
 	if err != nil {
-		state.Logger.Error(err)
+		state.Logger.Error("Failed to query servers [db query]", zap.Error(err))
 		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
 	servers, err := pgx.CollectRows(rows, pgx.RowToStructByName[types.IndexServer])
 
 	if err != nil {
-		state.Logger.Error(err)
+		state.Logger.Error("Failed to query servers [db collect]", zap.Error(err))
 		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
@@ -49,7 +50,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		err = state.Pool.QueryRow(d.Context, "SELECT code FROM vanity WHERE itag = $1", servers[i].VanityRef).Scan(&code)
 
 		if err != nil {
-			state.Logger.Error(err)
+			state.Logger.Error("Failed to query vanity [db queryrow]", zap.Error(err), zap.String("server_id", servers[i].ServerID))
 			return uapi.DefaultResponse(http.StatusInternalServerError)
 		}
 

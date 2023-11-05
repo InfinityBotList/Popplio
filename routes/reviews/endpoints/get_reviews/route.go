@@ -13,6 +13,7 @@ import (
 	"github.com/infinitybotlist/eureka/dovewing"
 	"github.com/infinitybotlist/eureka/uapi"
 	"github.com/jackc/pgx/v5"
+	"go.uber.org/zap"
 
 	"github.com/go-chi/chi/v5"
 )
@@ -71,14 +72,14 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	rows, err := state.Pool.Query(d.Context, "SELECT "+reviewCols+" FROM reviews WHERE target_id = $1 AND target_type = $2 ORDER BY created_at ASC", targetId, targetType)
 
 	if err != nil {
-		state.Logger.Error(err)
+		state.Logger.Error("Failed to query reviews [db query]", zap.Error(err), zap.String("target_id", targetId), zap.String("target_type", targetType))
 		return uapi.DefaultResponse(http.StatusNotFound)
 	}
 
 	reviews, err := pgx.CollectRows(rows, pgx.RowToStructByName[types.Review])
 
 	if err != nil {
-		state.Logger.Error(err)
+		state.Logger.Error("Failed to query reviews [collect]", zap.Error(err), zap.String("target_id", targetId), zap.String("target_type", targetType))
 		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
@@ -86,7 +87,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		user, err := dovewing.GetUser(d.Context, reviews[i].AuthorID, state.DovewingPlatformDiscord)
 
 		if err != nil {
-			state.Logger.Error(err)
+			state.Logger.Error("Failed to get user [dovewing]", zap.Error(err), zap.String("author_id", reviews[i].AuthorID))
 			continue
 		}
 
