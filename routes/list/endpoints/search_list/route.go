@@ -97,7 +97,10 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	}
 
 	if len(payload.TargetTypes) == 0 {
-		payload.TargetTypes = []string{"bot"}
+		return uapi.HttpResponse{
+			Status: http.StatusBadRequest,
+			Json:   types.ApiError{Message: "No target types specified"},
+		}
 	}
 
 	if payload.TagFilter.TagMode != types.TagModeAll && payload.TagFilter.TagMode != types.TagModeAny {
