@@ -46,7 +46,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
-	typeRows, err := state.Pool.Query(state.Context, "SELECT "+templateTypesCols+" FROM staff_templates_types ORDER BY created_at DESC")
+	typeRows, err := state.Pool.Query(state.Context, "SELECT "+templateTypesCols+" FROM staff_template_types ORDER BY created_at DESC")
 
 	if err != nil {
 		state.Logger.Error("Failed to fetch staff templates types list [db fetch]", zap.Error(err))

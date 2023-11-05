@@ -68,3 +68,8 @@ type BoosterStatus struct {
 	Remark    string `json:"remark,omitempty" description:"Any issues found when checking booster status"`
 	IsBooster bool   `json:"is_booster" description:"Whether the user is a booster"`
 }
+
+type UserDataTask struct {
+	Status string `json:"statuses"`
+	Output string `json:"output"`
+}

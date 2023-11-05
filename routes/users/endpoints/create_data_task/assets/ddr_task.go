@@ -1,214 +1,111 @@
 package assets
 
 import (
+	"fmt"
 	"popplio/state"
 	"time"
 
-	"github.com/jackc/pgx/v5"
+	"github.com/infinitybotlist/eureka/dovewing"
 	jsoniter "github.com/json-iterator/go"
+	"go.uber.org/zap"
 )
 
-var json = jsoniter.ConfigCompatibleWithStandardLibrary
-
-type TableStruct struct {
-	ForeignTable      string `db:"foreign_table_name"`
-	TableName         string `db:"table_name"`
-	ColumnName        string `db:"column_name"`
-	ForeignColumnName string `db:"foreign_column_name"`
-}
-
-const ddrStr = `
-SELECT 
-  tbl.relname AS table_name,
-  col.attname AS column_name,
-  referenced_tbl.relname AS foreign_table_name,
-  referenced_field.attname AS foreign_column_name
-FROM pg_constraint c
-    INNER JOIN pg_namespace AS sh ON sh.oid = c.connamespace
-    INNER JOIN (SELECT oid, unnest(conkey) as conkey FROM pg_constraint) con ON c.oid = con.oid
-    INNER JOIN pg_class tbl ON tbl.oid = c.conrelid
-    INNER JOIN pg_attribute col ON (col.attrelid = tbl.oid AND col.attnum = con.conkey)
-    INNER JOIN pg_class referenced_tbl ON c.confrelid = referenced_tbl.oid
-    INNER JOIN pg_namespace AS referenced_sh ON referenced_sh.oid = referenced_tbl.relnamespace
-    INNER JOIN (SELECT oid, unnest(confkey) as confkey FROM pg_constraint) conf ON c.oid = conf.oid
-    INNER JOIN pg_attribute referenced_field ON (referenced_field.attrelid = c.confrelid AND referenced_field.attnum = conf.confkey)
-WHERE c.contype = 'f'`
-
-func addStatus(taskId, status string) {
-	// Get existing error
-	existing, err := state.Redis.Get(state.Context, taskId+"_status").Result()
-
-	if err != nil {
-		state.Logger.Error(err)
-		existing = "[]"
-	}
-
-	// Parse existing status
-	var statuses []string
-
-	if err := json.UnmarshalFromString(existing, &statuses); err != nil {
-		state.Logger.Error(err)
-		statuses = []string{}
-	}
-
-	// Append new status
-	statuses = append(statuses, status)
-
-	// Set new status
-	bytes, err := json.MarshalToString(statuses)
-
-	if err != nil {
-		state.Logger.Error(err)
-		return
-	}
-
-	if err := state.Redis.Set(state.Context, taskId+"_status", bytes, time.Hour*4).Err(); err != nil {
-		state.Logger.Error(err)
-	}
-}
+var json = jsoniter.ConfigFastest
 
 func DataTask(taskId string, id string, ip string, del bool) {
-	ctx := state.Context
+	l, _ := newTaskLogger(taskId)
 
-	addStatus(taskId, "Fetching basic user data")
+	l.Info("Starting DR/DDR task", zap.String("id", id), zap.Bool("del", del))
 
-	data, err := state.Pool.Query(ctx, ddrStr)
+	tableRefs, err := getAllTableRefs()
 
 	if err != nil {
-		state.Logger.Error(err)
-
-		addStatus(taskId, "ERROR: db error [whirlpool]: "+err.Error())
+		l.Error("Failed to get table refs", zap.Error(err), zap.String("id", id), zap.Bool("del", del))
 		return
 	}
 
-	keys, err := pgx.CollectRows(data, pgx.RowToStructByName[TableStruct])
+	collectedData := map[string]any{}
 
-	if err != nil {
-		state.Logger.Error(err)
-
-		addStatus(taskId, "ERROR: db error [riptide]: "+err.Error())
-		return
-	}
-
-	keys = append(keys, TableStruct{
-		ForeignTable:      "users",
-		TableName:         "users",
-		ColumnName:        "user_id",
-		ForeignColumnName: "user_id",
-	})
-
-	finalDump := make(map[string]any)
-
-	for _, key := range keys {
-		addStatus(taskId, "Fetching data for table: "+key.TableName)
-
-		if key.ForeignTable != "users" {
-			addStatus(taskId, "Skipping table: "+key.TableName+" (fkey: "+key.ForeignTable+")")
+	for _, tableRef := range tableRefs {
+		if _, ok := collectedData[tableRef.TableName]; ok {
+			l.Error("Duplicate table. Ignoring/skipping", zap.String("table", tableRef.TableName), zap.String("foreignTable", tableRef.ForeignTable), zap.String("column", tableRef.ColumnName), zap.String("id", id))
 			continue
 		}
 
-		sqlStmt := "SELECT * FROM " + key.TableName + " WHERE " + key.ColumnName + "= $1"
+		l.Info("Handling table", zap.String("table", tableRef.TableName), zap.String("foreignTable", tableRef.ForeignTable), zap.String("column", tableRef.ColumnName), zap.String("id", id))
 
-		stmtRes, err := state.Pool.Query(ctx, sqlStmt, id)
+		fkTableOps, ok := tablesOps[tableRef.ForeignTable]
 
-		if err != nil {
-			state.Logger.Error(err)
+		if !ok {
+			l.Warn("Failed to get table ops for foreign table", zap.String("table", tableRef.TableName), zap.String("foreignTable", tableRef.ForeignTable), zap.String("column", tableRef.ColumnName), zap.String("id", id))
 		}
 
-		var rows []map[string]any
+		defaultOp := fkTableOps["default"]
+		tableOp := fkTableOps[tableRef.TableName]
 
-		mappedRow, err := pgx.CollectRows(stmtRes, pgx.RowToMap)
+		if tableOp.Fetch == nil {
+			if defaultOp.Fetch == nil {
+				l.Warn("Failed to get fetch op for table", zap.String("table", tableRef.TableName), zap.String("foreignTable", tableRef.ForeignTable), zap.String("column", tableRef.ColumnName), zap.String("id", id))
 
-		if err != nil {
-			state.Logger.Error(err)
-
-			addStatus(taskId, "ERROR: db error [catnip]: "+err.Error())
-			return
+				tableOp.Fetch = func(l *zap.Logger, tableName, columnName, id string) (any, error) {
+					return map[string]string{
+						"message": fmt.Sprintf("Failed to get fetch op for table %s with column name %s and id %s", tableName, columnName, id),
+					}, nil
+				}
+			} else {
+				tableOp.Fetch = defaultOp.Fetch
+			}
 		}
 
-		rows = append(rows, mappedRow...)
+		rows, err := tableOp.Fetch(l, tableRef.TableName, tableRef.ColumnName, id)
+
+		if err != nil {
+			l.Error("Failed to fetch table", zap.String("table", tableRef.TableName), zap.String("foreignTable", tableRef.ForeignTable), zap.String("column", tableRef.ColumnName), zap.String("id", id), zap.Error(err))
+		} else {
+			collectedData[tableRef.TableName] = rows
+		}
 
 		if del {
-			if key.TableName == "team_members" {
-				// Ensure team is not empty
-				tmRows, err := state.Pool.Query(ctx, "SELECT COUNT(*) FROM team_members WHERE "+key.ColumnName+" = $1", id)
+			if tableOp.Delete == nil {
+				if defaultOp.Delete == nil {
+					l.Warn("Failed to get delete op for table", zap.String("table", tableRef.TableName), zap.String("foreignTable", tableRef.ForeignTable), zap.String("column", tableRef.ColumnName), zap.String("id", id))
 
-				if err != nil {
-					state.Logger.Error(err)
-
-					addStatus(taskId, "ERROR: db error [lungwort]: "+err.Error())
-					return
-				}
-
-				for tmRows.Next() {
-					var count int64
-
-					if err := tmRows.Scan(&count); err != nil {
-						state.Logger.Error(err)
-
-						addStatus(taskId, "ERROR: db error [poppy]: "+err.Error())
-						return
+					tableOp.Delete = func(l *zap.Logger, tableName, columnName, id string) error {
+						return nil
 					}
-
-					if count == 1 {
-						// Delete the team as well
-						_, err := state.Pool.Exec(ctx, "DELETE FROM teams WHERE id = $1", id)
-
-						if err != nil {
-							state.Logger.Error(err)
-
-							addStatus(taskId, "ERROR: db error [piplup]: "+err.Error())
-							return
-						}
-					}
+				} else {
+					tableOp.Delete = defaultOp.Delete
 				}
 			}
 
-			sqlStmt = "DELETE FROM " + key.TableName + " WHERE " + key.ColumnName + "= $1"
-
-			_, err := state.Pool.Exec(ctx, sqlStmt, id)
+			err = tableOp.Delete(l, tableRef.TableName, tableRef.ColumnName, id)
 
 			if err != nil {
-				state.Logger.Error(err)
-
-				addStatus(taskId, "ERROR: db error [primrose]: "+err.Error())
-				return
+				l.Error("Failed to delete table", zap.String("table", tableRef.TableName), zap.String("foreignTable", tableRef.ForeignTable), zap.String("column", tableRef.ColumnName), zap.String("id", id), zap.Error(err))
 			}
 		}
-
-		finalDump[key.TableName] = rows
 	}
 
 	// Delete from psql user_cache if `del` is true
 	if del {
-		_, err := state.Pool.Exec(ctx, "DELETE FROM internal_user_cache WHERE id = $1", id)
+		for _, dovewingPlatform := range []*dovewing.DiscordState{state.DovewingPlatformDiscord} {
+			l.Info("Deleting from user_cache [dovewing]", zap.String("id", id), zap.String("platform", dovewingPlatform.PlatformName()))
+			res, err := dovewing.ClearUser(state.Context, id, dovewingPlatform, dovewing.ClearUserReq{})
 
-		if err != nil {
-			// Just log it, don't return as it's not critical
-			state.Logger.Error(err)
+			if err != nil {
+				l.Error("Error clearing user [dovewing]", zap.Error(err), zap.String("id", id), zap.String("platform", dovewingPlatform.PlatformName()))
+			}
 
-			finalDump["internal_user_cache"] = map[string]any{
-				"message": "Failed to delete from internal_user_cache",
-				"error":   true,
-				"ctx":     err.Error(),
-			}
-		} else {
-			finalDump["internal_user_cache"] = map[string]any{
-				"message": "Successfully deleted from internal_user_cache",
-				"error":   false,
-				"ctx":     nil,
-			}
+			l.Info("Cleared user [dovewing]", zap.String("id", id), zap.String("platform", dovewingPlatform.PlatformName()), zap.Any("res", res))
 		}
 	}
 
-	bytes, err := json.Marshal(finalDump)
+	bytes, err := json.Marshal(collectedData)
 
 	if err != nil {
-		state.Logger.Error("Failed to encode data")
-
-		addStatus(taskId, "ERROR: failed to encode data [sandstorm]: "+err.Error())
+		l.Error("Failed to encode final collected data", zap.Error(err), zap.String("id", id), zap.Bool("del", del))
 		return
 	}
 
-	state.Redis.Set(ctx, taskId+"_out", string(bytes), 15*time.Minute)
+	state.Redis.Set(state.Context, "task:output:"+taskId, string(bytes), 15*time.Minute)
 }

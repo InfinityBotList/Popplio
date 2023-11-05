@@ -8,15 +8,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	docs "github.com/infinitybotlist/eureka/doclib"
 	"github.com/infinitybotlist/eureka/uapi"
-	jsoniter "github.com/json-iterator/go"
 )
-
-var json = jsoniter.ConfigCompatibleWithStandardLibrary
-
-type DataTask struct {
-	Statuses []string `json:"statuses"`
-	Output   string   `json:"output"`
-}
 
 func Docs() *docs.Doc {
 	return &docs.Doc{
@@ -38,7 +30,7 @@ func Docs() *docs.Doc {
 				Schema:      docs.IdSchema,
 			},
 		},
-		Resp: DataTask{},
+		Resp: types.UserDataTask{},
 	}
 }
 
@@ -54,34 +46,15 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	}
 
 	// Get the tasks status output
-	statusesRaw := state.Redis.Get(d.Context, "data:"+taskId+"_status").Val()
+	status := state.Redis.Get(d.Context, "task:status:"+taskId).Val()
 
-	if statusesRaw == "" {
-		return uapi.HttpResponse{
-			Status: http.StatusNotFound,
-			Json:   types.ApiError{Message: "Task has invalid status"},
-		}
-	}
-
-	// Parse statuses
-	var statuses []string
-
-	err := json.Unmarshal([]byte(statusesRaw), &statuses)
-
-	if err != nil {
-		return uapi.HttpResponse{
-			Status: http.StatusInternalServerError,
-			Data:   err.Error(),
-		}
-	}
-
-	output := state.Redis.Get(d.Context, "data:"+taskId+"_out").Val()
+	output := state.Redis.Get(d.Context, "task:output:"+taskId).Val()
 
 	return uapi.HttpResponse{
 		Status: http.StatusOK,
-		Json: DataTask{
-			Statuses: statuses,
-			Output:   output,
+		Json: types.UserDataTask{
+			Status: status,
+			Output: output,
 		},
 	}
 }
