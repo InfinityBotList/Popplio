@@ -2,6 +2,7 @@ package apps
 
 import (
 	"popplio/api"
+	"popplio/routes/apps/endpoints/create_app"
 	"popplio/routes/apps/endpoints/get_apps_list"
 	"popplio/routes/apps/endpoints/get_apps_meta"
 
@@ -36,6 +37,20 @@ func (b Router) Routes(r *chi.Mux) {
 				URLVar:       "user_id",
 				Type:         api.TargetTypeUser,
 				AllowedScope: "ban_exempt", // Ensure banned users can view their own apps
+			},
+		},
+	}.Route(r)
+	uapi.Route{
+		Pattern: "/users/{user_id}/apps",
+		OpId:    "create_app",
+		Method:  uapi.POST,
+		Docs:    create_app.Docs,
+		Handler: create_app.Route,
+		Auth: []uapi.AuthType{
+			{
+				URLVar:       "user_id",
+				Type:         api.TargetTypeUser,
+				AllowedScope: "ban_exempt", // Ensure banned users can create apps
 			},
 		},
 	}.Route(r)

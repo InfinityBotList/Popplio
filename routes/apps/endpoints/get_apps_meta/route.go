@@ -2,6 +2,7 @@ package get_apps_meta
 
 import (
 	"net/http"
+	"popplio/apps"
 	"popplio/types"
 
 	docs "github.com/infinitybotlist/eureka/doclib"
@@ -18,9 +19,9 @@ func Docs() *docs.Doc {
 
 func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	return uapi.HttpResponse{
-		Status: http.StatusServiceUnavailable,
-		Json: types.ApiError{
-			Message: "Applications are currently disabled due to an ongoing rewrite.",
+		Json: types.AppMeta{
+			Positions: apps.Apps,
+			Stable:    apps.Stable,
 		},
 	}
 }
