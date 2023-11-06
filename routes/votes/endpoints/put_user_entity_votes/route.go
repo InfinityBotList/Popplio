@@ -359,7 +359,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 			err = bothooks.Send(bothooks.With{
 				UserID: uid,
 				BotID:  targetId,
-				Data: events.WebhookBotVoteData{
+				Data: events.WebhookNewVoteData{
 					Votes:   nvc,
 					PerUser: vi.VoteInfo.PerUser,
 				},
@@ -368,7 +368,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 			err = teamhooks.Send(teamhooks.With{
 				UserID: uid,
 				TeamID: targetId,
-				Data: events.WebhookTeamVoteData{
+				Data: events.WebhookNewVoteData{
 					Votes:    nvc,
 					PerUser:  vi.VoteInfo.PerUser,
 					Downvote: upvote == "false",
@@ -378,7 +378,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 			err = serverhooks.Send(serverhooks.With{
 				UserID:   uid,
 				ServerID: targetId,
-				Data: events.WebhookServerVoteData{
+				Data: events.WebhookNewVoteData{
 					Votes:    nvc,
 					PerUser:  vi.VoteInfo.PerUser,
 					Downvote: upvote == "false",

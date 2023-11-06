@@ -3,6 +3,7 @@ package test_webhook
 import (
 	"net/http"
 	"reflect"
+	"slices"
 	"time"
 
 	"popplio/state"
@@ -119,7 +120,8 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 
 	for _, evt := range events.Registry {
 		if string(evt.Event.Event()) == eventType {
-			if evt.Event.TargetType() != targetType {
+			tgtTypes := evt.Event.TargetTypes()
+			if slices.Contains(tgtTypes, targetType) {
 				return uapi.HttpResponse{
 					Status: http.StatusBadRequest,
 					Json: types.ApiError{

@@ -4,36 +4,44 @@ import (
 	"fmt"
 
 	"github.com/bwmarrin/discordgo"
-	docs "github.com/infinitybotlist/eureka/doclib"
 	"github.com/infinitybotlist/eureka/dovewing/dovetypes"
 )
 
-const WebhookTypeBotDeleteReview WebhookType = "BOT_DELETE_REVIEW"
-
-type WebhookBotDeleteReviewData struct {
+type WebhookDeleteReviewData struct {
 	ReviewID string `json:"review_id" description:"The ID of the review"`
 	Content  string `json:"content" description:"The content of the review at time of deletion"`
 	Stars    int32  `json:"stars" description:"The number of stars the auther gave to the review at time of deletion"`
 }
 
-func (v WebhookBotDeleteReviewData) TargetType() string {
-	return "bot"
+func (v WebhookDeleteReviewData) TargetTypes() []string {
+	return []string{
+		"bot",
+		"server",
+	}
 }
 
-func (n WebhookBotDeleteReviewData) Event() WebhookType {
-	return WebhookTypeBotDeleteReview
+func (n WebhookDeleteReviewData) Event() string {
+	return "DELETE_REVIEW"
 }
 
-func (n WebhookBotDeleteReviewData) CreateHookParams(creator *dovetypes.PlatformUser, targets Target) *discordgo.WebhookParams {
+func (n WebhookDeleteReviewData) Summary() string {
+	return "Delete Review"
+}
+
+func (n WebhookDeleteReviewData) Description() string {
+	return "This webhook is sent when a user delete their review on an entity."
+}
+
+func (n WebhookDeleteReviewData) CreateHookParams(creator *dovetypes.PlatformUser, targets Target) *discordgo.WebhookParams {
 	return &discordgo.WebhookParams{
 		Embeds: []*discordgo.MessageEmbed{
 			{
-				URL: "https://botlist.site/" + targets.Bot.ID,
+				URL: "https://botlist.site/" + targets.GetID(),
 				Thumbnail: &discordgo.MessageEmbedThumbnail{
-					URL: targets.Bot.Avatar,
+					URL: targets.GetAvatarURL(),
 				},
 				Title:       ":x: Bot Review Deleted!",
-				Description: creator.DisplayName + " has deleted his review for bot " + targets.Bot.Username,
+				Description: creator.DisplayName + " has deleted his review for " + targets.GetTargetName(),
 				Color:       0x8A6BFD,
 				Fields: []*discordgo.MessageEmbedField{
 					{
@@ -64,7 +72,7 @@ func (n WebhookBotDeleteReviewData) CreateHookParams(creator *dovetypes.Platform
 					},
 					{
 						Name:   "Review Page",
-						Value:  "[View " + targets.Bot.Username + "](https://botlist.site/" + targets.Bot.ID + ")",
+						Value:  targets.GetViewLink(),
 						Inline: true,
 					},
 				},
@@ -73,22 +81,6 @@ func (n WebhookBotDeleteReviewData) CreateHookParams(creator *dovetypes.Platform
 	}
 }
 
-func (n WebhookBotDeleteReviewData) Docs() *docs.WebhookDoc {
-	return &docs.WebhookDoc{
-		Name:    "DeleteBotReview",
-		Summary: "Delete Bot Review",
-		Tags: []string{
-			"Webhooks",
-		},
-		Description: `This webhook is sent when a user deletes their review on a bot.`,
-		Format: WebhookResponse{
-			Type: WebhookBotDeleteReviewData{}.Event(),
-			Data: WebhookBotDeleteReviewData{},
-		},
-		FormatName: "WebhookResponse-WebhookDeleteBotReviewData",
-	}
-}
-
 func init() {
-	RegisterEvent(WebhookBotDeleteReviewData{})
+	RegisterEvent(WebhookDeleteReviewData{})
 }

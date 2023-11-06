@@ -4,36 +4,44 @@ import (
 	"fmt"
 
 	"github.com/bwmarrin/discordgo"
-	docs "github.com/infinitybotlist/eureka/doclib"
 	"github.com/infinitybotlist/eureka/dovewing/dovetypes"
 )
 
-const WebhookTypeServerEditReview WebhookType = "SERVER_EDIT_REVIEW"
-
-type WebhookServerEditReviewData struct {
+type WebhookEditReviewData struct {
 	ReviewID string            `json:"review_id" description:"The ID of the review"`
 	Stars    Changeset[int32]  `json:"stars" description:"The number of stars the auther gave to the review"`
 	Content  Changeset[string] `json:"content" description:"The content of the review"`
 }
 
-func (v WebhookServerEditReviewData) TargetType() string {
-	return "server"
+func (v WebhookEditReviewData) TargetTypes() []string {
+	return []string{
+		"bot",
+		"server",
+	}
 }
 
-func (n WebhookServerEditReviewData) Event() WebhookType {
-	return WebhookTypeServerEditReview
+func (n WebhookEditReviewData) Event() string {
+	return "EDIT_REVIEW"
 }
 
-func (n WebhookServerEditReviewData) CreateHookParams(creator *dovetypes.PlatformUser, targets Target) *discordgo.WebhookParams {
+func (n WebhookEditReviewData) Summary() string {
+	return "Edit Review"
+}
+
+func (n WebhookEditReviewData) Description() string {
+	return "This webhook is sent when a user edits an existing review on an entity."
+}
+
+func (n WebhookEditReviewData) CreateHookParams(creator *dovetypes.PlatformUser, targets Target) *discordgo.WebhookParams {
 	return &discordgo.WebhookParams{
 		Embeds: []*discordgo.MessageEmbed{
 			{
-				URL: "https://botlist.site/" + targets.Server.ID,
+				URL: "https://botlist.site/" + targets.GetID(),
 				Thumbnail: &discordgo.MessageEmbedThumbnail{
-					URL: targets.Server.Avatar,
+					URL: targets.GetAvatarURL(),
 				},
 				Title:       "📝 Review Editted!",
-				Description: ":heart: " + creator.DisplayName + " has editted a review for server" + targets.Server.Name,
+				Description: ":heart: " + creator.DisplayName + " has editted a review for " + targets.GetTargetName(),
 				Color:       0x8A6BFD,
 				Fields: []*discordgo.MessageEmbedField{
 					{
@@ -74,7 +82,7 @@ func (n WebhookServerEditReviewData) CreateHookParams(creator *dovetypes.Platfor
 					},
 					{
 						Name:   "Review Page",
-						Value:  "[View " + targets.Server.Name + "](https://botlist.site/" + targets.Server.ID + ")",
+						Value:  targets.GetViewLink(),
 						Inline: true,
 					},
 				},
@@ -83,22 +91,6 @@ func (n WebhookServerEditReviewData) CreateHookParams(creator *dovetypes.Platfor
 	}
 }
 
-func (n WebhookServerEditReviewData) Docs() *docs.WebhookDoc {
-	return &docs.WebhookDoc{
-		Name:    "EditServerReview",
-		Summary: "Edit Server Review",
-		Tags: []string{
-			"Webhooks",
-		},
-		Description: `This webhook is sent when a user edits an existing review on a server.`,
-		Format: WebhookResponse{
-			Type: WebhookServerEditReviewData{}.Event(),
-			Data: WebhookServerEditReviewData{},
-		},
-		FormatName: "WebhookResponse-WebhookEditServerReviewData",
-	}
-}
-
 func init() {
-	RegisterEvent(WebhookServerEditReviewData{})
+	RegisterEvent(WebhookEditReviewData{})
 }

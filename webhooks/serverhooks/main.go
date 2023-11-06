@@ -9,6 +9,7 @@ import (
 	"popplio/types"
 	"popplio/webhooks/events"
 	"popplio/webhooks/sender"
+	"slices"
 	"time"
 
 	"github.com/infinitybotlist/eureka/dovewing"
@@ -28,7 +29,8 @@ type With struct {
 
 // Fills in Server and Creator from IDs
 func Send(with With) error {
-	if with.Data.TargetType() != EntityType {
+	targetTypes := with.Data.TargetTypes()
+	if !slices.Contains(targetTypes, EntityType) {
 		return errors.New("invalid event type")
 	}
 

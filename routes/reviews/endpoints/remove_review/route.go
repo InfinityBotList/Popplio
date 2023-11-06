@@ -75,7 +75,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	switch targetType {
 	case "bot":
 		err = bothooks.Send(bothooks.With{
-			Data: events.WebhookBotDeleteReviewData{
+			Data: events.WebhookDeleteReviewData{
 				ReviewID: rid,
 				Content:  content,
 				Stars:    stars,
@@ -89,7 +89,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		}
 	case "server":
 		err = serverhooks.Send(serverhooks.With{
-			Data: events.WebhookServerDeleteReviewData{
+			Data: events.WebhookDeleteReviewData{
 				ReviewID: rid,
 				Content:  content,
 				Stars:    stars,

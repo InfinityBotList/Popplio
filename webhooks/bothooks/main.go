@@ -9,6 +9,7 @@ import (
 	"popplio/state"
 	"popplio/webhooks/events"
 	"popplio/webhooks/sender"
+	"slices"
 	"time"
 
 	"github.com/infinitybotlist/eureka/dovewing"
@@ -32,7 +33,8 @@ func Send(with With) error {
 		return nil
 	}
 
-	if with.Data.TargetType() != EntityType {
+	targetTypes := with.Data.TargetTypes()
+	if !slices.Contains(targetTypes, EntityType) {
 		return errors.New("invalid event type")
 	}
 

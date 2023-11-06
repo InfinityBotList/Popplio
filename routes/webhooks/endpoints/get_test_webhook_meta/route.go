@@ -2,6 +2,7 @@ package get_test_webhook_meta
 
 import (
 	"net/http"
+	"slices"
 
 	"popplio/state"
 	"popplio/teams"
@@ -70,7 +71,8 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	var data = types.GetTestWebhookMeta{}
 
 	for _, evt := range events.Registry {
-		if evt.Event.TargetType() == targetType {
+		evtTgtType := evt.Event.TargetTypes()
+		if slices.Contains(evtTgtType, targetType) {
 			data.Types = append(data.Types, types.TestWebhookType{
 				Type: string(evt.Event.Event()),
 				Data: evt.TestVars,

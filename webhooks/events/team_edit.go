@@ -4,11 +4,8 @@ import (
 	"popplio/types"
 
 	"github.com/bwmarrin/discordgo"
-	docs "github.com/infinitybotlist/eureka/doclib"
 	"github.com/infinitybotlist/eureka/dovewing/dovetypes"
 )
-
-const WebhookTypeTeamEdit WebhookType = "TEAM_EDIT"
 
 type WebhookTeamEditData struct {
 	Name       Changeset[string]       `json:"name" description:"The changeset of the name"`
@@ -17,12 +14,20 @@ type WebhookTeamEditData struct {
 	ExtraLinks Changeset[[]types.Link] `json:"extra_links" description:"The changeset of the extra links"`
 }
 
-func (n WebhookTeamEditData) TargetType() string {
-	return "team"
+func (n WebhookTeamEditData) TargetTypes() []string {
+	return []string{"team"}
 }
 
-func (n WebhookTeamEditData) Event() WebhookType {
-	return WebhookTypeTeamEdit
+func (n WebhookTeamEditData) Event() string {
+	return "TEAM_EDIT"
+}
+
+func (n WebhookTeamEditData) Summary() string {
+	return "Team Edit"
+}
+
+func (n WebhookTeamEditData) Description() string {
+	return "This webhook is sent when a user edits the basic settings of a team (name/short/tags) is changed."
 }
 
 func (n WebhookTeamEditData) CreateHookParams(creator *dovetypes.PlatformUser, targets Target) *discordgo.WebhookParams {
@@ -32,17 +37,12 @@ func (n WebhookTeamEditData) CreateHookParams(creator *dovetypes.PlatformUser, t
 	return &discordgo.WebhookParams{
 		Embeds: []*discordgo.MessageEmbed{
 			{
-				URL: "https://botlist.site/teams/" + targets.Team.Name,
+				URL: "https://botlist.site/teams/" + targets.GetID(),
 				Thumbnail: &discordgo.MessageEmbedThumbnail{
-					URL: func() string {
-						if targets.Team.Avatar.Path != "" {
-							return targets.Team.Avatar.Path
-						}
-						return targets.Team.Avatar.DefaultPath
-					}(),
+					URL: targets.GetAvatarURL(),
 				},
 				Title:       "📝 Team Update!",
-				Description: ":heart: " + creator.DisplayName + " has updated the name/description of your team " + targets.Team.Name,
+				Description: ":heart: " + creator.DisplayName + " has updated the name/description of " + targets.GetTargetName(),
 				Color:       0x8A6BFD,
 				Fields: []*discordgo.MessageEmbedField{
 					{
@@ -59,22 +59,6 @@ func (n WebhookTeamEditData) CreateHookParams(creator *dovetypes.PlatformUser, t
 				},
 			},
 		},
-	}
-}
-
-func (n WebhookTeamEditData) Docs() *docs.WebhookDoc {
-	return &docs.WebhookDoc{
-		Name:    "EditTeam",
-		Summary: "Edit Team",
-		Tags: []string{
-			"Webhooks",
-		},
-		Description: `This webhook is sent when a user edits the basic settings of a team (name/avatar) is changed.`,
-		Format: WebhookResponse{
-			Type: WebhookTeamEditData{}.Event(),
-			Data: WebhookTeamEditData{},
-		},
-		FormatName: "WebhookResponse-WebhookTeamEditData",
 	}
 }
 

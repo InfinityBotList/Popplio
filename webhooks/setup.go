@@ -3,8 +3,8 @@ package webhooks
 import (
 	"popplio/webhooks/bothooks"
 	"popplio/webhooks/bothooks_legacy"
-	"popplio/webhooks/events"
 	"popplio/webhooks/sender"
+	"popplio/webhooks/serverhooks"
 	"popplio/webhooks/teamhooks"
 
 	docs "github.com/infinitybotlist/eureka/doclib"
@@ -21,8 +21,9 @@ type WebhookDriver interface {
 }
 
 var RegisteredDrivers = map[string]WebhookDriver{
-	bothooks.EntityType:  bothooks.Driver{},
-	teamhooks.EntityType: teamhooks.Driver{},
+	bothooks.EntityType:    bothooks.Driver{},
+	serverhooks.EntityType: serverhooks.Driver{},
+	teamhooks.EntityType:   teamhooks.Driver{},
 }
 
 // Setup code
@@ -31,8 +32,6 @@ func Setup() {
 		"Webhooks",
 		"Webhooks are a way to receive events from Infinity Bot List in real time. You can use webhooks to receive events such as new votes, new reviews, and more.",
 	)
-
-	events.Setup()
 
 	for _, driver := range RegisteredDrivers {
 		driver.Register()

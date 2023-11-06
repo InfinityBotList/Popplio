@@ -11,6 +11,7 @@ import (
 	"popplio/types"
 	"popplio/webhooks/events"
 	"popplio/webhooks/sender"
+	"slices"
 	"strings"
 	"time"
 
@@ -36,7 +37,8 @@ type With struct {
 
 // Fills in Team and Creator from IDs
 func Send(with With) error {
-	if with.Data.TargetType() != EntityType {
+	targetTypes := with.Data.TargetTypes()
+	if !slices.Contains(targetTypes, EntityType) {
 		return errors.New("invalid event type")
 	}
 
