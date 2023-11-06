@@ -4,11 +4,64 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"strconv"
+	"time"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
+
+type SandboxTx struct {
+	sp        *SandboxPool
+	tx        pgx.Tx
+	committed bool
+}
+
+func (s *SandboxTx) QueryRow(ctx context.Context, sql string, args ...interface{}) pgx.Row {
+	s.sp.Log("QueryRow", sql, "with arguments:", args)
+	return s.tx.QueryRow(ctx, sql, args...)
+}
+
+func (s *SandboxTx) Exec(ctx context.Context, sql string, args ...interface{}) error {
+	s.sp.Log("Exec", sql, "with arguments:", args)
+
+	if os.Getenv("NO_COMMIT") == "" && s.sp.AllowCommit {
+		s.sp.Log("Exec", "Allowing commit")
+		_, err := s.tx.Exec(ctx, sql, args...)
+
+		if err != nil {
+			return err
+		}
+	} else {
+		s.sp.Log("Exec", "Denying exec silently")
+	}
+
+	return nil
+}
+
+func (s *SandboxTx) Rollback(ctx context.Context) error {
+	if s.committed {
+		s.sp.Log("Rollback", "Already committed, not rolling back")
+	} else {
+		s.sp.Log("Rollback", "Rolling back")
+	}
+	return s.tx.Rollback(ctx)
+}
+
+func (s *SandboxTx) Query(ctx context.Context, sql string, args ...interface{}) (pgx.Rows, error) {
+	s.sp.Log("Query", sql, "with arguments:", args)
+	return s.tx.Query(ctx, sql, args...)
+}
+
+func (s *SandboxTx) Commit(ctx context.Context) error {
+	if os.Getenv("NO_COMMIT") == "" && s.sp.AllowCommit {
+		s.sp.Log("Commit", "Allowing commit")
+		s.committed = true
+		return s.tx.Commit(ctx)
+	}
+
+	s.sp.Log("Commit", "Denying commit silently")
+	return nil
+}
 
 type SandboxPool struct {
 	AllowCommit bool
@@ -55,30 +108,17 @@ func (s *SandboxPool) Query(ctx context.Context, sql string, args ...interface{}
 	return s.pool.Query(ctx, sql, args...)
 }
 
-func (s *SandboxPool) Transaction(ctx context.Context, calls []func(tx pgx.Tx)) error {
-	if os.Getenv("NO_COMMIT") == "" && s.AllowCommit {
-		panic("creating a transaction is not allowed in this scope")
-	}
-
-	s.Log("Transaction", "with", strconv.Itoa(len(calls)), "calls started")
+func (s *SandboxPool) Begin(ctx context.Context) (*SandboxTx, error) {
 	tx, err := s.pool.Begin(ctx)
-	defer tx.Rollback(ctx)
 
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	for _, call := range calls {
-		call(tx)
-	}
+	s.Log("Begin", "Beginning transaction at time =", time.Now())
 
-	s.Log("Transaction", "with", strconv.Itoa(len(calls)), "calls committed")
-
-	err = tx.Commit(ctx)
-
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return &SandboxTx{
+		sp: s,
+		tx: tx,
+	}, nil
 }

@@ -2,8 +2,14 @@ package migrations
 
 import (
 	"context"
+	"crypto/aes"
+	"crypto/cipher"
+	"crypto/rand"
+	"crypto/sha256"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"os"
 	"os/exec"
@@ -13,7 +19,10 @@ import (
 	"kitehelper/common"
 	"kitehelper/downloader"
 	"kitehelper/migrate"
+	"kitehelper/migrate/migrations/types"
 
+	"github.com/davecgh/go-spew/spew"
+	"github.com/infinitybotlist/eureka/crypto"
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
@@ -661,6 +670,295 @@ var migs = []migrate.Migration{
 
 			if len(failedIds) > 0 {
 				fmt.Println("Failed to migrate team avatars with ids", strings.Join(failedIds, ","))
+			}
+		},
+	},
+	{
+		ID:   "migrate_tickets",
+		Name: "Migrate tickets",
+		HasMigrated: func(pool *common.SandboxPool) error {
+			if !colExists(pool, "tickets", "enc_key") {
+				err := pool.Exec(context.Background(), "ALTER TABLE tickets ADD COLUMN enc_key TEXT")
+
+				if err != nil {
+					panic(err)
+				}
+			}
+
+			var count int64
+
+			err := pool.QueryRow(ctx, "SELECT COUNT(*) FROM tickets WHERE enc_key IS NULL").Scan(&count)
+
+			if err != nil {
+				panic(err)
+			}
+
+			if count == 0 {
+				return errors.New("tickets do not need migration")
+			}
+
+			return nil
+		},
+		Function: func(pool *common.SandboxPool) {
+			tx, err := pool.Begin(ctx)
+
+			if err != nil {
+				panic(err)
+			}
+
+			rows, err := tx.Query(ctx, "SELECT id, messages FROM tickets WHERE enc_key IS NULL")
+
+			if err != nil {
+				panic(err)
+			}
+
+			defer rows.Close()
+
+			tmt := []types.TableMigrationType{}
+
+			for rows.Next() {
+				var id string
+				var messages []byte
+
+				err = rows.Scan(&id, &messages)
+
+				if err != nil {
+					panic(err)
+				}
+
+				var msgData []*types.Message
+
+				fmt.Println(string(messages))
+
+				err = json.Unmarshal(messages, &msgData)
+
+				if err != nil {
+					panic(fmt.Sprint(id, ": ", err))
+				}
+
+				tmt = append(tmt, types.TableMigrationType{
+					ID:       id,
+					Messages: msgData,
+				})
+			}
+
+			fPath := os.Getenv("FPATH")
+
+			if fPath == "" {
+				panic("FPATH not set. This must be set to the path of the file storage")
+			}
+
+			for _, t := range tmt {
+				migrate.StatusBoldBlue("Migrating attachments of ticket", t.ID)
+
+				err := os.RemoveAll(fPath + "/" + t.ID)
+
+				if err != nil {
+					panic(err)
+				}
+
+				err = os.MkdirAll(fPath+"/"+t.ID, 0775)
+
+				if err != nil {
+					panic(err)
+				}
+
+				encKey := crypto.RandString(4096)
+
+				err = tx.Exec(ctx, "UPDATE tickets SET enc_key = $1 WHERE id = $2", encKey, t.ID)
+
+				if err != nil {
+					panic(err)
+				}
+
+				keyHash := sha256.New()
+				keyHash.Write([]byte(encKey))
+				keySum := keyHash.Sum(nil)
+
+				for _, msg := range t.Messages {
+					if len(msg.Attachments) == 0 {
+						continue
+					}
+
+					migrate.StatusBoldBlue("=> Message", msg.ID)
+
+					for _, at := range msg.Attachments {
+						// Download the attachment
+						url := at.ProxyURL
+
+						if url == "" {
+							url = at.URL
+						}
+
+						migrate.StatusBoldYellow("===>", at.ID, "-", at.Name, "|", url)
+
+						attachmentData, err := downloader.DownloadFileWithProgress(url)
+
+						if err != nil {
+							panic(err)
+						}
+
+						// AES512-GCM encrypt the attachment
+						c, err := aes.NewCipher(keySum)
+
+						if err != nil {
+							panic(err)
+						}
+
+						gcm, err := cipher.NewGCM(c)
+
+						if err != nil {
+							panic(err)
+						}
+
+						aesNonce := make([]byte, gcm.NonceSize())
+						if _, err = io.ReadFull(rand.Reader, aesNonce); err != nil {
+							panic(err)
+						}
+
+						data := gcm.Seal(aesNonce, aesNonce, attachmentData, nil)
+
+						err = os.WriteFile(fPath+"/"+t.ID+"/"+at.ID+".encBlob", data, 0775)
+
+						if err != nil {
+							panic(err)
+						}
+					}
+				}
+			}
+
+			err = tx.Commit(ctx)
+
+			if err != nil {
+				panic(err)
+			}
+		},
+	},
+	{
+		ID:   "tickets_remove_url",
+		Name: "Remove url/proxy_url from ticket attachments",
+		HasMigrated: func(pool *common.SandboxPool) error {
+			if os.Getenv("TICKETS_REMOVE_URL") == "" {
+				return errors.New("tickets do not need migration")
+			}
+
+			return nil
+		},
+		Function: func(pool *common.SandboxPool) {
+			tx, err := pool.Begin(ctx)
+
+			if err != nil {
+				panic(err)
+			}
+
+			rows, err := tx.Query(ctx, "SELECT id, messages FROM tickets WHERE enc_key IS NOT NULL")
+
+			if err != nil {
+				panic(err)
+			}
+
+			defer rows.Close()
+
+			tmt := []types.TableMigrationType{}
+
+			for rows.Next() {
+				var id string
+				var messages []byte
+
+				err = rows.Scan(&id, &messages)
+
+				if err != nil {
+					panic(err)
+				}
+
+				var msgData []*types.Message
+
+				err = json.Unmarshal(messages, &msgData)
+
+				if err != nil {
+					panic(fmt.Sprint(id, ": ", err))
+				}
+
+				tmt = append(tmt, types.TableMigrationType{
+					ID:       id,
+					Messages: msgData,
+				})
+			}
+
+			fPath := os.Getenv("FPATH")
+
+			if fPath == "" {
+				panic("FPATH not set. This must be set to the path of the file storage")
+			}
+
+			for _, t := range tmt {
+				migrate.StatusBoldBlue("Fixing attachments of ticket", t.ID)
+
+				// Ensure that all attachments exists
+				for i := range t.Messages {
+					if len(t.Messages[i].Attachments) == 0 {
+						continue
+					}
+
+					migrate.StatusBoldBlue("=> Fixing message", t.Messages[i].ID)
+
+					newAttachmentList := []types.Attachment{}
+					var fixed int64
+					for _, at := range t.Messages[i].Attachments {
+						if at.URL != "" || at.ProxyURL != "" {
+							// Ensure attachment file exists as an encBlob file
+							f, err := os.Stat(fPath + "/" + t.ID + "/" + at.ID + ".encBlob")
+
+							if err != nil {
+								panic("Attachment file does not exist: " + fPath + "/" + t.ID + "/" + at.ID + ".encBlob")
+							}
+
+							if f.IsDir() {
+								panic("Attachment file is a directory: " + fPath + "/" + t.ID + "/" + at.ID + ".encBlob")
+							}
+
+							if f.Mode() != 0775 {
+								panic("Attachment file is not 0775: " + fPath + "/" + t.ID + "/" + at.ID + ".encBlob")
+							}
+
+							// Remove url and proxy_url
+							at.URL = ""
+							at.ProxyURL = ""
+
+							if at.Filename != "" {
+								at.Name = at.Filename
+							} else if at.Name == "" {
+								panic("Attachment has no name: " + fPath + "/" + t.ID + "/" + at.ID + ".encBlob")
+							}
+						}
+
+						// Update the attachment
+						newAttachmentList = append(newAttachmentList, at)
+
+						fixed++
+					}
+
+					// Update the message
+					t.Messages[i].Attachments = newAttachmentList
+					spew.Dump(newAttachmentList)
+
+					migrate.StatusBoldBlue("=> Fixed", fixed, "attachments")
+
+					time.Sleep(500 * time.Millisecond)
+				}
+
+				// Update messages
+				err = tx.Exec(ctx, "UPDATE tickets SET messages = $1 WHERE id = $2", t.Messages, t.ID)
+
+				if err != nil {
+					panic(err)
+				}
+			}
+
+			err = tx.Commit(ctx)
+
+			if err != nil {
+				panic(err)
 			}
 		},
 	},
