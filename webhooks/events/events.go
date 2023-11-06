@@ -3,12 +3,14 @@ package events
 import (
 	"fmt"
 	"os"
+	"popplio/state"
 	"popplio/types"
 	"reflect"
 
 	"github.com/bwmarrin/discordgo"
 	docs "github.com/infinitybotlist/eureka/doclib"
 	"github.com/infinitybotlist/eureka/dovewing/dovetypes"
+	"go.uber.org/zap"
 )
 
 type EventRegistry struct {
@@ -27,7 +29,26 @@ type WebhookEvent interface {
 	Description() string
 }
 
+var eventList = []WebhookEvent{}
+
+// Adds an event to be registered. This should be called in the init() function of the event
+//
+// Note that this function does not register the event, it just adds it to the list of events to be registered.
+// This is because `doclib` and `state` are not initialized until after state setyp
 func RegisterEvent(a WebhookEvent) {
+	eventList = append(eventList, a)
+}
+
+// Register all events
+func RegisterAllEvents() {
+	for _, a := range eventList {
+		state.Logger.Error("Webhook event register", zap.String("event", a.Event()))
+		registerEventImpl(a)
+	}
+}
+
+// Internal implementation to register an event
+func registerEventImpl(a WebhookEvent) {
 	docs.AddWebhook(&docs.WebhookDoc{
 		Name:    a.Event(),
 		Summary: a.Summary(),

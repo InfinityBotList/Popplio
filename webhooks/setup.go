@@ -3,6 +3,7 @@ package webhooks
 import (
 	"popplio/webhooks/bothooks"
 	"popplio/webhooks/bothooks_legacy"
+	"popplio/webhooks/events"
 	"popplio/webhooks/sender"
 	"popplio/webhooks/serverhooks"
 	"popplio/webhooks/teamhooks"
@@ -32,6 +33,8 @@ func Setup() {
 		"Webhooks",
 		"Webhooks are a way to receive events from Infinity Bot List in real time. You can use webhooks to receive events such as new votes, new reviews, and more.",
 	)
+
+	events.RegisterAllEvents()
 
 	for _, driver := range RegisteredDrivers {
 		driver.Register()
