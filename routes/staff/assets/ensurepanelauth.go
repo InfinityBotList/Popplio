@@ -7,6 +7,10 @@ import (
 	"popplio/state"
 )
 
+type capabilities struct {
+	CanManageApps bool `json:"can_manage_apps"`
+}
+
 func EnsurePanelAuth(ctx context.Context, r *http.Request) (string, error) {
 	if r.Header.Get("Authorization") == "" {
 		return "", errors.New("missing authorization header")

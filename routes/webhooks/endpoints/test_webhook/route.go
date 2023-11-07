@@ -121,7 +121,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	for _, evt := range events.Registry {
 		if string(evt.Event.Event()) == eventType {
 			tgtTypes := evt.Event.TargetTypes()
-			if slices.Contains(tgtTypes, targetType) {
+			if !slices.Contains(tgtTypes, targetType) {
 				return uapi.HttpResponse{
 					Status: http.StatusBadRequest,
 					Json: types.ApiError{
