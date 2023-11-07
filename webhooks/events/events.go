@@ -6,6 +6,7 @@ import (
 	"popplio/state"
 	"popplio/types"
 	"reflect"
+	"time"
 
 	"github.com/bwmarrin/discordgo"
 	docs "github.com/infinitybotlist/eureka/doclib"
@@ -140,12 +141,11 @@ type Target struct {
 }
 
 type WebhookResponse struct {
-	Creator   *dovetypes.PlatformUser `json:"creator" description:"The user who created the action/event (e.g voted for the bot or made a review)"`
-	CreatedAt int64                   `json:"created_at" description:"The time in *seconds* (unix epoch) of when the action/event was performed"`
-	Type      string                  `json:"type" dynexample:"true" description:"The type of the webhook event"`
-	Data      WebhookEvent            `json:"data" dynschema:"true" description:"The data of the webhook event"`
-	Targets   Target                  `json:"targets" description:"The target of the webhook, can be one of. or a possible combination of bot, team and server"`
-	Metadata  WebhookMetadata         `json:"metadata" description:"Metadata about the webhook event"`
+	Creator  *dovetypes.PlatformUser `json:"creator" description:"The user who created the action/event (e.g voted for the bot or made a review)"`
+	Type     string                  `json:"type" dynexample:"true" description:"The type of the webhook event"`
+	Data     WebhookEvent            `json:"data" dynschema:"true" description:"The data of the webhook event"`
+	Targets  Target                  `json:"targets" description:"The target of the webhook, can be one of. or a possible combination of bot, team and server"`
+	Metadata WebhookMetadata         `json:"metadata" description:"Metadata about the webhook event"`
 }
 
 // Core structs
@@ -156,18 +156,20 @@ type Changeset[T any] struct {
 }
 
 type WebhookMetadata struct {
-	Test bool `json:"test" description:"Whether the vote was a test vote or not"`
+	CreatedAt int64 `json:"created_at" description:"The time in *seconds* (unix epoch) of when the action/event was performed"`
+	Test      bool  `json:"test" description:"Whether the vote was a test vote or not"`
 }
 
-func DefaultWebhookMetadata() *WebhookMetadata {
-	return &WebhookMetadata{
-		Test: false,
-	}
-}
-
+// Given a webhook metadata object, parse it and return a valid/parsed one
+//
+// The created_at field will be set to the current time IF it is not set
 func ParseWebhookMetadata(w *WebhookMetadata) WebhookMetadata {
 	if w == nil {
-		w = DefaultWebhookMetadata()
+		w = &WebhookMetadata{}
+	}
+
+	if w.CreatedAt == 0 {
+		w.CreatedAt = time.Now().Unix()
 	}
 
 	return *w

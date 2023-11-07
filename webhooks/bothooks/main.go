@@ -10,7 +10,6 @@ import (
 	"popplio/webhooks/events"
 	"popplio/webhooks/sender"
 	"slices"
-	"time"
 
 	"github.com/infinitybotlist/eureka/dovewing"
 	"go.uber.org/zap"
@@ -65,10 +64,9 @@ func Send(with With) error {
 		Targets: events.Target{
 			Bot: bot,
 		},
-		CreatedAt: time.Now().Unix(),
-		Type:      with.Data.Event(),
-		Data:      with.Data,
-		Metadata:  events.ParseWebhookMetadata(with.Metadata),
+		Type:     with.Data.Event(),
+		Data:     with.Data,
+		Metadata: events.ParseWebhookMetadata(with.Metadata),
 	}
 
 	return sender.Send(&sender.WebhookSendState{

@@ -10,7 +10,6 @@ import (
 	"popplio/webhooks/events"
 	"popplio/webhooks/sender"
 	"slices"
-	"time"
 
 	"github.com/infinitybotlist/eureka/dovewing"
 	"github.com/jackc/pgx/v5"
@@ -72,10 +71,9 @@ func Send(with With) error {
 				Short:  short,
 			},
 		},
-		CreatedAt: time.Now().Unix(),
-		Type:      with.Data.Event(),
-		Data:      with.Data,
-		Metadata:  events.ParseWebhookMetadata(with.Metadata),
+		Type:     with.Data.Event(),
+		Data:     with.Data,
+		Metadata: events.ParseWebhookMetadata(with.Metadata),
 	}
 
 	return sender.Send(&sender.WebhookSendState{
