@@ -9,6 +9,7 @@ import (
 	"popplio/routes/staff/assets"
 	"popplio/state"
 	"popplio/types"
+	"slices"
 	"strings"
 
 	docs "github.com/infinitybotlist/eureka/doclib"
@@ -52,7 +53,8 @@ func Docs() *docs.Doc {
 
 func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	var err error
-	d.Auth.ID, err = assets.EnsurePanelAuth(d.Context, r)
+	var caps []string
+	d.Auth.ID, caps, err = assets.EnsurePanelAuth(d.Context, r)
 
 	if err != nil {
 		return uapi.HttpResponse{
@@ -61,27 +63,12 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		}
 	}
 
-	// Check if the user has the permission to approve/deny the app
-	var iblhdev bool
-	var hadmin bool
-
-	err = state.Pool.QueryRow(d.Context, "SELECT iblhdev, hadmin FROM users WHERE user_id = $1", d.Auth.ID).Scan(&iblhdev, &hadmin)
-
-	if err != nil {
-		state.Logger.Error("Failed to fetch user from database", zap.Error(err), zap.String("userId", d.Auth.ID))
-		return uapi.HttpResponse{
-			Status: http.StatusInternalServerError,
-			Json: types.ApiError{
-				Message: "An error occurred while fetching the user from the database.",
-			},
-		}
-	}
-
-	if !iblhdev && !hadmin {
+	// Check if the user has the permission to manage apps
+	if !slices.Contains(caps, assets.CapManageApps) {
 		return uapi.HttpResponse{
 			Status: http.StatusForbidden,
 			Json: types.ApiError{
-				Message: "You do not have permission to approve/deny apps.",
+				Message: "You do not have permission to manage apps.",
 			},
 		}
 	}

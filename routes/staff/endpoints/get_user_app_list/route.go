@@ -6,6 +6,7 @@ import (
 	"popplio/routes/staff/assets"
 	"popplio/state"
 	"popplio/types"
+	"slices"
 	"strings"
 
 	"github.com/go-chi/chi/v5"
@@ -40,7 +41,8 @@ func Docs() *docs.Doc {
 
 func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	var err error
-	d.Auth.ID, err = assets.EnsurePanelAuth(d.Context, r)
+	var caps []string
+	d.Auth.ID, caps, err = assets.EnsurePanelAuth(d.Context, r)
 
 	if err != nil {
 		return uapi.HttpResponse{
@@ -50,21 +52,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	}
 
 	// Check if the user has the permission to view apps
-	var admin bool
-
-	err = state.Pool.QueryRow(d.Context, "SELECT admin FROM users WHERE user_id = $1", d.Auth.ID).Scan(&admin)
-
-	if err != nil {
-		state.Logger.Error("Failed to fetch user from database", zap.Error(err), zap.String("userId", d.Auth.ID))
-		return uapi.HttpResponse{
-			Status: http.StatusInternalServerError,
-			Json: types.ApiError{
-				Message: "An error occurred while fetching the user from the database.",
-			},
-		}
-	}
-
-	if !admin {
+	if !slices.Contains(caps, assets.CapViewApps) {
 		return uapi.HttpResponse{
 			Status: http.StatusForbidden,
 			Json: types.ApiError{
