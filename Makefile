@@ -12,14 +12,6 @@ ts:
 	rm -rvf $(CDN_PATH)/dev/bindings/popplio
 	~/go/bin/tygo generate
 
-	# Because tygo cant replace all instances of TeamPermission and other useful modifications
-	sed -i 's:export type TeamPermission = string; //:// Note that:g' $(CDN_PATH)/dev/bindings/popplio/types.ts
-
-	# Two steps to replace all instances of TeamPermission with TeamPermissions while keeping TeamPermissions intact	
-	sed -i 's:TeamPermissions:TeamPermission:g' $(CDN_PATH)/dev/bindings/popplio/types.ts
-
-	sed -i 's:TeamPermission:TeamPermissions:g' $(CDN_PATH)/dev/bindings/popplio/types.ts
-
 	# Copy over go types
 	mkdir $(CDN_PATH)/dev/bindings/popplio/go
 	cp -rf types $(CDN_PATH)/dev/bindings/popplio/go

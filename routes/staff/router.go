@@ -1,8 +1,6 @@
 package staff
 
 import (
-	"popplio/routes/staff/endpoints/get_full_app_list"
-	"popplio/routes/staff/endpoints/get_user_app_list"
 	"popplio/routes/staff/endpoints/manage_app"
 
 	"github.com/go-chi/chi/v5"
@@ -26,21 +24,5 @@ func (b Router) Routes(r *chi.Mux) {
 		Method:  uapi.PATCH,
 		Docs:    manage_app.Docs,
 		Handler: manage_app.Route,
-	}.Route(r)
-
-	uapi.Route{
-		Pattern: "/staff/users/{user_id}/apps",
-		OpId:    "get_user_app_list",
-		Method:  uapi.GET,
-		Docs:    get_user_app_list.Docs,
-		Handler: get_user_app_list.Route,
-	}.Route(r)
-
-	uapi.Route{
-		Pattern: "/staff/apps",
-		OpId:    "get_full_app_list",
-		Method:  uapi.GET,
-		Docs:    get_full_app_list.Docs,
-		Handler: get_full_app_list.Route,
 	}.Route(r)
 }
