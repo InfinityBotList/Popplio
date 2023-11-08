@@ -14,6 +14,8 @@ import (
 	"go.uber.org/zap"
 )
 
+var ErrNoPersist = errors.New("no persist") // This error should be returned when the app should not be persisted to the database for review
+
 func extraLogicResubmit(d uapi.RouteData, p types.Position, answers map[string]string) error {
 	// Get the bot ID
 	botID, ok := answers["id"]
@@ -90,8 +92,7 @@ func extraLogicResubmit(d uapi.RouteData, p types.Position, answers map[string]s
 		return fmt.Errorf("error sending embed to bot logs channel: %w", err)
 	}
 
-	// We don't want to actually create an application
-	return nil
+	return nil // Should it be ErrNoPersist?
 }
 
 func extraLogicCert(d uapi.RouteData, p types.Position, answers map[string]string) error {

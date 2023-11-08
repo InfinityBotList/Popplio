@@ -1,6 +1,7 @@
 package create_app
 
 import (
+	"errors"
 	"net/http"
 	"popplio/apps"
 	"popplio/state"
@@ -169,6 +170,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		answerMap[question.ID] = ans
 	}
 
+	var noPersistToDatabase bool
 	if position.ExtraLogic != nil {
 		err := position.ExtraLogic(d, *position, answerMap)
 
@@ -181,23 +183,32 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 				Status: http.StatusBadRequest,
 			}
 		}
+
+		if errors.Is(err, apps.ErrNoPersist) {
+			noPersistToDatabase = true
+		}
 	}
 
-	var appId = crypto.RandString(64)
+	var appId string
+	if !noPersistToDatabase {
+		appId = crypto.RandString(64)
 
-	_, err = state.Pool.Exec(
-		d.Context,
-		"INSERT INTO apps (app_id, user_id, position, questions, answers) VALUES ($1, $2, $3, $4, $5)",
-		appId,
-		d.Auth.ID,
-		payload.Position,
-		position.Questions,
-		answerMap,
-	)
+		_, err = state.Pool.Exec(
+			d.Context,
+			"INSERT INTO apps (app_id, user_id, position, questions, answers) VALUES ($1, $2, $3, $4, $5)",
+			appId,
+			d.Auth.ID,
+			payload.Position,
+			position.Questions,
+			answerMap,
+		)
 
-	if err != nil {
-		state.Logger.Error("Error inserting app", zap.Error(err), zap.String("user_id", d.Auth.ID), zap.String("position", payload.Position))
-		return uapi.DefaultResponse(http.StatusInternalServerError)
+		if err != nil {
+			state.Logger.Error("Error inserting app", zap.Error(err), zap.String("user_id", d.Auth.ID), zap.String("position", payload.Position))
+			return uapi.DefaultResponse(http.StatusInternalServerError)
+		}
+	} else {
+		appId = "Not Applicable (not persisted to database)"
 	}
 
 	// Send a message to APPS channel

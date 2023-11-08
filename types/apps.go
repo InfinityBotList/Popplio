@@ -29,7 +29,6 @@ type Position struct {
 	PositionDescription func(d uapi.RouteData, p Position) string                                    `json:"-"` // Used for custom position descriptions
 	AllowedForBanned    bool                                                                         `json:"-"` // If true, banned users can apply for this position
 	BannedOnly          bool                                                                         `json:"-"` // If true, only banned users can apply for this position
-	Dummy               bool                                                                         `json:"-"` // If true, the position does not actually persist to the database. This is just a marker and ExtraLogic is required to enforce this
 	ReviewLogic         func(d uapi.RouteData, resp AppResponse, reason string, approved bool) error `json:"-"` // If set, this function will be called when the position is reviewed. If it returns true, the app will be approved/denied
 }
 

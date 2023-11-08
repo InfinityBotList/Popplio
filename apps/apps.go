@@ -194,7 +194,6 @@ Some points to note:
 		Name:       "Bot Resubmission",
 		Hidden:     true, // Mostly done by ibl next
 		ExtraLogic: extraLogicResubmit,
-		Dummy:      true,
 		Tags:       []string{"Resubmissions"},
 		Questions: []types.Question{
 			{
