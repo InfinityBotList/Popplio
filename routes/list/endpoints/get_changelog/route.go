@@ -27,7 +27,7 @@ func Docs() *docs.Doc {
 }
 
 func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
-	rows, err := state.Pool.Query(d.Context, "SELECT "+changelogEntryCols+" FROM changelogs ORDER BY version DESC")
+	rows, err := state.Pool.Query(d.Context, "SELECT "+changelogEntryCols+" FROM changelogs ORDER BY version::semver DESC")
 
 	if err != nil {
 		state.Logger.Error("Failed to fetch changelog entries [rows]", zap.Error(err))
