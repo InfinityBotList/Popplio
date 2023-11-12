@@ -15,7 +15,6 @@ import (
 	"github.com/go-playground/validator/v10"
 	"github.com/go-playground/validator/v10/non-standard/validators"
 	"github.com/infinitybotlist/eureka/dovewing"
-	"github.com/infinitybotlist/eureka/dovewing/dovetypes"
 	"github.com/infinitybotlist/eureka/genconfig"
 	"github.com/infinitybotlist/eureka/snippets"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -57,10 +56,6 @@ func nonVulgar(fl validator.FieldLevel) bool {
 	default:
 		return false
 	}
-}
-
-func updateDb(u *dovetypes.PlatformUser) error {
-	return nil
 }
 
 func Setup() {
@@ -135,7 +130,6 @@ func Setup() {
 		Logger:         Logger,
 		Context:        Context,
 		Redis:          Redis,
-		OnUpdate:       updateDb,
 		UserExpiryTime: 8 * time.Hour,
 	}
 
