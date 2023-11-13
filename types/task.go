@@ -20,6 +20,6 @@ type Task struct {
 	Statuses  []map[string]any   `db:"statuses" json:"statuses" validate:"required" description:"The task statuses."`
 	ForUser   pgtype.Text        `db:"for_user" json:"for_user" description:"The user this task is for."`
 	Expiry    pgtype.Interval    `db:"expiry" json:"expiry" validate:"required" description:"The task expiry."`
-	Status    string             `db:"status" json:"status" validate:"required" description:"The task status."`
+	State     string             `db:"state" json:"state" validate:"required" description:"The tasks current state (pending/completed etc)."`
 	CreatedAt pgtype.Timestamptz `db:"created_at" json:"created_at" description:"The time the task was created."`
 }
