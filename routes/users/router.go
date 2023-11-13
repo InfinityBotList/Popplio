@@ -4,7 +4,6 @@ import (
 	"popplio/api"
 	"popplio/routes/users/endpoints/check_booster_status"
 	"popplio/routes/users/endpoints/create_data_task"
-	"popplio/routes/users/endpoints/get_data_task"
 	"popplio/routes/users/endpoints/get_user"
 	"popplio/routes/users/endpoints/get_user_perms"
 	"popplio/routes/users/endpoints/get_user_seo"
@@ -45,14 +44,6 @@ func (b Router) Routes(r *chi.Mux) {
 				Type:   api.TargetTypeUser,
 			},
 		},
-	}.Route(r)
-
-	uapi.Route{
-		Pattern: "/users/{id}/data/{tid}",
-		OpId:    "get_data_task",
-		Method:  uapi.GET,
-		Docs:    get_data_task.Docs,
-		Handler: get_data_task.Route,
 	}.Route(r)
 
 	uapi.Route{

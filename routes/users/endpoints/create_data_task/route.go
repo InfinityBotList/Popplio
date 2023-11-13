@@ -11,7 +11,6 @@ import (
 	"github.com/infinitybotlist/eureka/uapi/ratelimit"
 	"go.uber.org/zap"
 
-	"github.com/infinitybotlist/eureka/crypto"
 	docs "github.com/infinitybotlist/eureka/doclib"
 	"github.com/infinitybotlist/eureka/uapi"
 )
@@ -56,7 +55,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 
 	limit, err := ratelimit.Ratelimit{
 		Expiry:      1 * time.Hour,
-		MaxRequests: 1,
+		MaxRequests: 5,
 		Bucket:      "data_request",
 	}.Limit(d.Context, r)
 
@@ -75,20 +74,37 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		}
 	}
 
-	taskId := crypto.RandString(196)
+	taskName := "data_request"
 
-	err = state.Redis.Set(d.Context, "data:"+taskId+"_status", "[]", time.Hour*4).Err()
-
-	if err != nil {
-		return uapi.HttpResponse{
-			Status: http.StatusInternalServerError,
-			Data:   err.Error(),
-		}
+	if reqType == "true" {
+		taskName = "data_delete"
 	}
 
 	remoteIp := strings.Split(strings.ReplaceAll(r.Header.Get("X-Forwarded-For"), " ", ""), ",")
 
-	go assets.DataTask("data:"+taskId, d.Auth.ID, remoteIp[0], reqType == "true")
+	var taskId string
+
+	err = state.Pool.QueryRow(d.Context, "INSERT INTO tasks (task_name, for_user, expiry, output) VALUES ($1, $2, $3, $4) RETURNING task_id",
+		taskName,
+		d.Auth.ID,
+		time.Hour*1,
+		map[string]any{
+			"meta": map[string]any{
+				"request_ip": remoteIp[0],
+			},
+		},
+	).Scan(&taskId)
+
+	if err != nil {
+		return uapi.HttpResponse{
+			Status: http.StatusInternalServerError,
+			Json: types.ApiError{
+				Message: "Error creating task:" + err.Error(),
+			},
+		}
+	}
+
+	go assets.DataTask(taskId, d.Auth.ID, remoteIp[0], reqType == "true")
 
 	return uapi.HttpResponse{
 		Json: DataTaskResponse{TaskID: taskId},

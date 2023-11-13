@@ -3,7 +3,6 @@ package assets
 import (
 	"fmt"
 	"popplio/state"
-	"time"
 
 	"github.com/infinitybotlist/eureka/dovewing"
 	jsoniter "github.com/json-iterator/go"
@@ -15,7 +14,7 @@ var json = jsoniter.ConfigFastest
 func DataTask(taskId string, id string, ip string, del bool) {
 	l, _ := newTaskLogger(taskId)
 
-	l.Info("Starting DR/DDR task", zap.String("id", id), zap.Bool("del", del))
+	l.Info("Started DR/DDR task", zap.String("id", id), zap.Bool("del", del))
 
 	tableRefs, err := getAllTableRefs()
 
@@ -38,6 +37,7 @@ func DataTask(taskId string, id string, ip string, del bool) {
 
 		if !ok {
 			l.Warn("Failed to get table ops for foreign table", zap.String("table", tableRef.TableName), zap.String("foreignTable", tableRef.ForeignTable), zap.String("column", tableRef.ColumnName), zap.String("id", id))
+			fkTableOps = tablesOps["default"]
 		}
 
 		defaultOp := fkTableOps["default"]
@@ -100,12 +100,14 @@ func DataTask(taskId string, id string, ip string, del bool) {
 		}
 	}
 
-	bytes, err := json.Marshal(collectedData)
-
-	if err != nil {
-		l.Error("Failed to encode final collected data", zap.Error(err), zap.String("id", id), zap.Bool("del", del))
-		return
+	collectedData["meta"] = map[string]any{
+		"request_ip": ip,
 	}
 
-	state.Redis.Set(state.Context, "task:output:"+taskId, string(bytes), 15*time.Minute)
+	_, err = state.Pool.Exec(state.Context, "UPDATE tasks SET output = $1, state = $2 WHERE task_id = $3", collectedData, "completed", taskId)
+
+	if err != nil {
+		l.Error("Failed to update task", zap.Error(err), zap.String("id", id), zap.Bool("del", del))
+		return
+	}
 }

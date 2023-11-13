@@ -30,7 +30,7 @@ func Docs() *doclib.Doc {
 }
 
 func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
-	rows, err := state.Pool.Query(state.Context, "SELECT "+templateCols+" FROM staff_templates ORDER BY created_at DESC")
+	rows, err := state.Pool.Query(d.Context, "SELECT "+templateCols+" FROM staff_templates ORDER BY created_at DESC")
 
 	if err != nil {
 		state.Logger.Error("Failed to fetch staff templates list [db fetch]", zap.Error(err))
@@ -46,7 +46,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
-	typeRows, err := state.Pool.Query(state.Context, "SELECT "+templateTypesCols+" FROM staff_template_types ORDER BY created_at DESC")
+	typeRows, err := state.Pool.Query(d.Context, "SELECT "+templateTypesCols+" FROM staff_template_types ORDER BY created_at DESC")
 
 	if err != nil {
 		state.Logger.Error("Failed to fetch staff templates types list [db fetch]", zap.Error(err))

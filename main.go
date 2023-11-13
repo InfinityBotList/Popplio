@@ -30,6 +30,7 @@ import (
 	"popplio/routes/reviews"
 	"popplio/routes/servers"
 	"popplio/routes/staff"
+	"popplio/routes/tasks"
 	"popplio/routes/teams"
 	"popplio/routes/tickets"
 	"popplio/routes/users"
@@ -158,6 +159,7 @@ func main() {
 		reviews.Router{},
 		servers.Router{},
 		staff.Router{},
+		tasks.Router{},
 		teams.Router{},
 		tickets.Router{},
 		users.Router{},

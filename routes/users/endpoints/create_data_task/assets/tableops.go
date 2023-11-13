@@ -43,4 +43,10 @@ var tablesOps = map[string]map[string]TableOps{
 			Delete: defaultDeleteOp,
 		},
 	},
+	"default": {
+		"default": {
+			Fetch:  defaultFetchOp,
+			Delete: defaultDeleteOp,
+		},
+	},
 }

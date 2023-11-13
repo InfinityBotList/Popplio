@@ -34,7 +34,7 @@ func Docs() *docs.Doc {
 }
 
 func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
-	rows, err := state.Pool.Query(state.Context, "SELECT "+partnersCols+" FROM partners ORDER BY created_at DESC")
+	rows, err := state.Pool.Query(d.Context, "SELECT "+partnersCols+" FROM partners ORDER BY created_at DESC")
 
 	if err != nil {
 		state.Logger.Error("Failed to fetch partner list [db fetch]", zap.Error(err))
@@ -61,7 +61,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 			}
 		}
 
-		partners[i].User, err = dovewing.GetUser(state.Context, partners[i].UserID, state.DovewingPlatformDiscord)
+		partners[i].User, err = dovewing.GetUser(d.Context, partners[i].UserID, state.DovewingPlatformDiscord)
 
 		if err != nil {
 			state.Logger.Error("Failed to fetch partner user", zap.Error(err), zap.String("partner_id", partners[i].ID), zap.String("user_id", partners[i].UserID))
@@ -71,7 +71,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		partners[i].Avatar = assetmanager.AvatarInfo(assetmanager.AssetTargetTypePartners, partners[i].ID)
 	}
 
-	rows, err = state.Pool.Query(state.Context, "SELECT "+partnerTypesCols+" FROM partner_types ORDER BY created_at DESC")
+	rows, err = state.Pool.Query(d.Context, "SELECT "+partnerTypesCols+" FROM partner_types ORDER BY created_at DESC")
 
 	if err != nil {
 		state.Logger.Error("Failed to fetch partner types [db fetch]", zap.Error(err))

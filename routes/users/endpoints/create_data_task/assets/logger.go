@@ -1,11 +1,10 @@
 package assets
 
 import (
-	"bytes"
+	"fmt"
 	"os"
 	"popplio/state"
 	"sync"
-	"time"
 
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
@@ -14,49 +13,49 @@ import (
 type mutLogger struct {
 	sync.Mutex
 	taskId string
-	buf    *bytes.Buffer
 }
 
-func (m *mutLogger) pushBuf() {
+func (m *mutLogger) add(p []byte) error {
+	state.Logger.Info("add called", zap.String("taskId", m.taskId))
 	defer m.Unlock()
 	m.Lock()
 
-	// Get existing error
-	existing, err := state.Redis.Get(state.Context, "task:status:"+m.taskId).Result()
+	var data map[string]any
+
+	err := json.Unmarshal(p, &data)
 
 	if err != nil {
-		state.Logger.Error("Failed to get existing status", zap.Error(err), zap.String("task_id", m.taskId))
-		existing = ""
+		return fmt.Errorf("failed to unmarshal json: %w", err)
 	}
 
-	// Append new status
-	existing += "\n" + m.buf.String()
+	// For us, this is just an array append of the json
+	_, err = state.Pool.Exec(state.Context, "UPDATE tasks SET statuses = array_append(statuses, $1) WHERE task_id = $2", data, m.taskId)
 
-	if err := state.Redis.Set(state.Context, "task:status:"+m.taskId, existing, time.Hour*4).Err(); err != nil {
-		state.Logger.Error("Failed to set status", zap.Error(err), zap.String("task_id", m.taskId))
+	if err != nil {
+		return fmt.Errorf("failed to update statuses: %w", err)
 	}
 
-	// Reset buffer
-	m.buf.Reset()
+	return nil
 }
 
 func (m *mutLogger) Write(p []byte) (n int, err error) {
-	m.Lock()
-	defer m.Unlock()
-	return m.buf.Write(p)
+	state.Logger.Info("Write called", zap.String("taskId", m.taskId))
+	err = m.add(p)
+
+	if err != nil {
+		state.Logger.Error("[dwWriter] Failed to add to buffer", zap.Error(err), zap.String("taskId", m.taskId))
+	}
+
+	return len(p), err
 }
 
 func (m *mutLogger) Sync() error {
-	m.pushBuf()
 	return nil
 }
 
 func newTaskLogger(taskId string) (*zap.Logger, *mutLogger) {
-	buf := bytes.NewBuffer([]byte{})
-
 	ml := &mutLogger{
 		taskId: taskId,
-		buf:    buf,
 	}
 
 	logger := zap.New(zapcore.NewCore(

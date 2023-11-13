@@ -151,7 +151,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	go func() {
 		state.Logger.Info("Giving perks", zap.Any("payload", payload))
 
-		err = assets.GivePerks(state.Context, payload)
+		err = assets.GivePerks(d.Context, payload)
 
 		if err != nil {
 			// Warn user about it as refunding is costly
