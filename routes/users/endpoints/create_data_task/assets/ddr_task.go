@@ -11,8 +11,23 @@ import (
 
 var json = jsoniter.ConfigFastest
 
-func DataTask(taskId string, id string, ip string, del bool) {
+func DataTask(taskId, id, ip string, del bool) {
+	var done bool
+
 	l, _ := newTaskLogger(taskId)
+
+	// Fail failed tasks
+	defer func() {
+		if !done {
+			l.Error("Failed to complete task", zap.String("id", id), zap.Bool("del", del))
+
+			_, err := state.Pool.Exec(state.Context, "UPDATE tasks SET state = $1 WHERE task_id = $2", "failed", taskId)
+
+			if err != nil {
+				l.Error("Failed to update task", zap.Error(err), zap.String("id", id), zap.Bool("del", del))
+			}
+		}
+	}()
 
 	l.Info("Started DR/DDR task", zap.String("id", id), zap.Bool("del", del))
 
@@ -110,4 +125,6 @@ func DataTask(taskId string, id string, ip string, del bool) {
 		l.Error("Failed to update task", zap.Error(err), zap.String("id", id), zap.Bool("del", del))
 		return
 	}
+
+	done = true
 }
