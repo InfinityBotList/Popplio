@@ -60,6 +60,8 @@ type Server struct {
 	PremiumPeriodLength time.Duration      `db:"premium_period_length" json:"premium_period_length" description:"The period of premium for the server in nanoseconds"`
 	CaptchaOptOut       bool               `db:"captcha_opt_out" json:"captcha_opt_out" description:"Whether the server should have captchas shown if the user has captcha_sponsor_enabled"`
 	CreatedAt           pgtype.Timestamptz `db:"created_at" json:"created_at" description:"The server's creation date"`
+	ClaimedBy           pgtype.Text        `db:"claimed_by" json:"claimed_by" description:"The user who claimed the server"`
+	LastClaimed         pgtype.Timestamptz `db:"last_claimed" json:"last_claimed" description:"The server's last claimed date"`
 }
 
 type ServerSettingsUpdate struct {
