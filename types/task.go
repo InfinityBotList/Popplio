@@ -2,6 +2,10 @@ package types
 
 import "github.com/jackc/pgx/v5/pgtype"
 
+type TaskCreateResponse struct {
+	TaskID string `json:"task_id" description:"The ID of the newly created task"`
+}
+
 // @ci table=tasks
 //
 // Tasks are background processes that can be run on the server.

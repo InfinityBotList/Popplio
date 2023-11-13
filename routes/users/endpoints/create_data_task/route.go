@@ -15,10 +15,6 @@ import (
 	"github.com/infinitybotlist/eureka/uapi"
 )
 
-type DataTaskResponse struct {
-	TaskID string `json:"task_id"`
-}
-
 func Docs() *docs.Doc {
 	return &docs.Doc{
 		Summary:     "Create Data Task",
@@ -39,7 +35,7 @@ func Docs() *docs.Doc {
 				Schema:      docs.IdSchema,
 			},
 		},
-		Resp: DataTaskResponse{},
+		Resp: types.TaskCreateResponse{},
 	}
 }
 
@@ -107,6 +103,6 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	go assets.DataTask(taskId, d.Auth.ID, remoteIp[0], reqType == "true")
 
 	return uapi.HttpResponse{
-		Json: DataTaskResponse{TaskID: taskId},
+		Json: types.TaskCreateResponse{TaskID: taskId},
 	}
 }
