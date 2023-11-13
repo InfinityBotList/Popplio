@@ -1,9 +1,13 @@
 package types
 
-import "github.com/jackc/pgx/v5/pgtype"
+import (
+	"github.com/jackc/pgx/v5/pgtype"
+)
 
 type TaskCreateResponse struct {
-	TaskID string `json:"task_id" description:"The ID of the newly created task"`
+	TaskID   string          `json:"task_id" description:"The ID of the newly created task"`
+	TaskName string          `db:"task_name" json:"task_name" validate:"required" description:"The task name."`
+	Expiry   pgtype.Interval `db:"expiry" json:"expiry" validate:"required" description:"The task expiry."`
 }
 
 // @ci table=tasks

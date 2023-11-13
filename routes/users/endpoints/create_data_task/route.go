@@ -9,11 +9,14 @@ import (
 	"time"
 
 	"github.com/infinitybotlist/eureka/uapi/ratelimit"
+	"github.com/jackc/pgx/v5/pgtype"
 	"go.uber.org/zap"
 
 	docs "github.com/infinitybotlist/eureka/doclib"
 	"github.com/infinitybotlist/eureka/uapi"
 )
+
+const dataTaskExpiryTime = time.Hour * 1
 
 func Docs() *docs.Doc {
 	return &docs.Doc{
@@ -83,7 +86,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	err = state.Pool.QueryRow(d.Context, "INSERT INTO tasks (task_name, for_user, expiry, output) VALUES ($1, $2, $3, $4) RETURNING task_id",
 		taskName,
 		d.Auth.ID,
-		time.Hour*1,
+		dataTaskExpiryTime,
 		map[string]any{
 			"meta": map[string]any{
 				"request_ip": remoteIp[0],
@@ -103,6 +106,10 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	go assets.DataTask(taskId, d.Auth.ID, remoteIp[0], reqType == "true")
 
 	return uapi.HttpResponse{
-		Json: types.TaskCreateResponse{TaskID: taskId},
+		Json: types.TaskCreateResponse{
+			TaskID:   taskId,
+			TaskName: taskName,
+			Expiry:   pgtype.Interval{Microseconds: int64(dataTaskExpiryTime / time.Microsecond)},
+		},
 	}
 }
