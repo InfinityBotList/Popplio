@@ -9,8 +9,8 @@ import (
 
 type WebhookNewVoteData struct {
 	Votes    int  `json:"votes" description:"The number of votes the entity received"`
-	Downvote bool `json:"downvote" description:"Whether the vote was a downvote"`
 	PerUser  int  `json:"per_user" description:"The number of votes the user has given"`
+	Downvote bool `json:"downvote" description:"Whether the vote was a downvote"`
 }
 
 func (v WebhookNewVoteData) TargetTypes() []string {
