@@ -7,6 +7,7 @@ import (
 	"popplio/state"
 
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 // The Review Nest Engine calculates the depths of reviews
@@ -16,7 +17,7 @@ func Nest(ctx context.Context, id string) (int, error) {
 	var reachedRoot bool
 
 	for !reachedRoot {
-		var parent string
+		var parent pgtype.Text
 		err := state.Pool.QueryRow(ctx, "SELECT parent_id FROM reviews WHERE id = $1", id).Scan(&parent)
 
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -27,10 +28,10 @@ func Nest(ctx context.Context, id string) (int, error) {
 			return depth, fmt.Errorf("failed to query parent_id of id %s: %w", id, err)
 		}
 
-		if parent == "" {
+		if !parent.Valid || parent.String == "" {
 			reachedRoot = true
 		} else {
-			id = parent
+			id = parent.String
 			depth++
 		}
 	}
