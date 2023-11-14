@@ -26,12 +26,19 @@ func (d Driver) PullPending() *sender.WebhookPullPending {
 				return sender.WebhookEntity{}, err
 			}
 
-			return sender.WebhookEntity{
+			entity := sender.WebhookEntity{
 				EntityID:   bot.ID,
 				EntityName: bot.Username,
 				EntityType: EntityType,
-				InsecureSecret: config.UseLegacyWebhooks(id),
-			}, nil
+			}
+
+			// TODO: Hack until legacy webhooks is truly removed
+			if config.UseLegacyWebhooks(id) {
+				trueVal := true
+				entity.SimpleAuth = &trueVal
+			}
+
+			return entity, nil
 		},
 	}
 }

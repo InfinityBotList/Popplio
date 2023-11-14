@@ -87,11 +87,12 @@ func SendLegacy(webhook WebhookPostLegacy) error {
 	}
 
 	// Send webhook
+	trueVal := true
 	entity := sender.WebhookEntity{
-		EntityID:       webhook.BotID,
-		EntityType:     EntityType,
-		EntityName:     dBot.Username,
-		InsecureSecret: true,
+		EntityID:   webhook.BotID,
+		EntityType: EntityType,
+		EntityName: dBot.Username,
+		SimpleAuth: &trueVal,
 	}
 
 	return sender.Send(&sender.WebhookSendState{

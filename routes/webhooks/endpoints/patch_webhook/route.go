@@ -96,6 +96,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		return hresp
 	}
 
+	// Special case of clear
 	if payload.Clear {
 		_, err = state.Pool.Exec(d.Context, "DELETE FROM webhooks WHERE target_id = $1 AND target_type = $2", targetId, targetType)
 
@@ -121,7 +122,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		}
 	}
 
-	state.Pool.Exec(d.Context, "INSERT INTO webhooks (target_id, target_type, url, secret) VALUES ($1, $2, $3, $4) ON CONFLICT (target_id, target_type) DO UPDATE SET url = $3, secret = $4, broken = false", targetId, targetType, payload.WebhookURL, payload.WebhookSecret)
+	state.Pool.Exec(d.Context, "INSERT INTO webhooks (target_id, target_type, url, secret, simple_auth) VALUES ($1, $2, $3, $4, $5) ON CONFLICT (target_id, target_type) DO UPDATE SET url = $3, secret = $4, broken = false, simple_auth = $5", targetId, targetType, payload.WebhookURL, payload.WebhookSecret, payload.SimpleAuth)
 
 	if err != nil {
 		state.Logger.Error("Error while updating webhook", zap.Error(err), zap.String("userID", d.Auth.ID))

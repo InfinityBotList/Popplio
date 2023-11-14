@@ -33,8 +33,8 @@ var json = jsoniter.ConfigCompatibleWithStandardLibrary
 
 // The Secret
 type Secret struct {
-	UseInsecure bool // whether to use insecure mode (no encryption), used by legacy webhooks
-	Raw         string
+	SimpleAuth bool // whether to use simple auth mode (no encryption) or not
+	Raw        string
 }
 
 func (s Secret) Sign(data []byte) string {
@@ -83,8 +83,10 @@ type WebhookEntity struct {
 	// the name of the webhook's target
 	EntityName string
 
-	// whether or not the secret is 'insecure' or not
-	InsecureSecret bool
+	// Override whether or not the authentication is 'simple' (no auth header) or not
+	//
+	// TODO: Hack until legacy webhooks is truly removed
+	SimpleAuth *bool
 }
 
 func (e WebhookEntity) Validate() bool {
@@ -109,9 +111,9 @@ func Send(d *WebhookSendState) error {
 
 	if d.wdata == nil {
 		var url, secret string
-		var broken bool
+		var broken, simpleAuth bool
 
-		err := state.Pool.QueryRow(state.Context, "SELECT url, secret, broken FROM webhooks WHERE target_id = $1 AND target_type = $2", d.Entity.EntityID, d.Entity.EntityType).Scan(&url, &secret, &broken)
+		err := state.Pool.QueryRow(state.Context, "SELECT url, secret, broken, simple_auth FROM webhooks WHERE target_id = $1 AND target_type = $2", d.Entity.EntityID, d.Entity.EntityType).Scan(&url, &secret, &broken, &simpleAuth)
 
 		if errors.Is(err, pgx.ErrNoRows) {
 			return fmt.Errorf("webhook not found for %s", d.Entity.EntityID)
@@ -129,10 +131,15 @@ func Send(d *WebhookSendState) error {
 		d.wdata = &webhookData{
 			url: url,
 			sign: Secret{
-				Raw:         secret,
-				UseInsecure: d.Entity.InsecureSecret,
+				Raw:        secret,
+				SimpleAuth: simpleAuth,
 			},
 		}
+	}
+
+	// Override simpleauth flag if requested/set
+	if d.Entity.SimpleAuth != nil {
+		d.wdata.sign.SimpleAuth = *d.Entity.SimpleAuth
 	}
 
 	// Handle webhook event
@@ -172,8 +179,8 @@ func Send(d *WebhookSendState) error {
 					wdata: &webhookData{
 						url: d.wdata.url,
 						sign: Secret{
-							Raw:         crypto.RandString(128),
-							UseInsecure: d.Entity.InsecureSecret,
+							Raw:        crypto.RandString(128),
+							SimpleAuth: d.wdata.sign.SimpleAuth,
 						},
 					},
 					Data:   d.Data,
@@ -208,7 +215,7 @@ func Send(d *WebhookSendState) error {
 	var req *http.Request
 	var err error
 
-	if d.wdata.sign.UseInsecure {
+	if d.wdata.sign.SimpleAuth {
 		req, err = http.NewRequestWithContext(state.Context, "POST", d.wdata.url, bytes.NewReader(d.Data))
 
 		if err != nil {
@@ -261,7 +268,7 @@ func Send(d *WebhookSendState) error {
 	}
 
 	req.Header.Set("Content-Type", "text/plain")
-	req.Header.Set("User-Agent", "Popplio/v7.0.0 (https://infinitybots.gg)")
+	req.Header.Set("User-Agent", "Popplio/v8.0.0 (https://infinitybots.gg)")
 
 	resp, err := client.Do(req)
 
@@ -297,7 +304,7 @@ func Send(d *WebhookSendState) error {
 
 		if err != nil {
 			state.Logger.Error("Failed to update webhook logs with response", zap.Error(err), zap.String("logID", d.LogID), zap.String("userID", d.UserID), zap.String("entityID", d.Entity.EntityID), zap.Bool("badIntent", d.BadIntent))
-			return err
+			return fmt.Errorf("webhook failed to validate auth and failed to remove webhook from db: %w", err)
 		}
 
 		err = notifications.PushNotification(d.UserID, types.Alert{

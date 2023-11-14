@@ -7,15 +7,30 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-// @ci table=webhooks, unfilled=1
+/*
+CREATE TABLE webhooks (
+    id UUID NOT NULL DEFAULT uuid_generate_v4(),
+    target_id TEXT NOT NULL,
+    target_type TEXT NOT NULL,
+    url TEXT NOT NULL CHECK (url <> ''),
+    secret TEXT NOT NULL CHECK (secret <> ''),
+    broken BOOLEAN NOT NULL DEFAULT FALSE, -- Whether or not the webhook is broken
+    simple_auth BOOLEAN NOT NULL DEFAULT FALSE, -- Whether or not the webhook should use simple auth
+    created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+    UNIQUE (target_id, target_type)
+);
+*/
+
+// @ci table=webhooks
 //
-// Webhook (omits secret)
+// Represents a webhook on IBL
 type Webhook struct {
 	ID         pgtype.UUID `db:"id" json:"id" description:"The bot's internal ID. An artifact of database migrations."`
-	Url        string      `db:"url" json:"url" description:"The URL of the webhook."`
 	TargetID   string      `db:"target_id" json:"target_id" description:"The target ID."`
 	TargetType string      `db:"target_type" json:"target_type" description:"The target type (bot/team etc.)."`
+	Url        string      `db:"url" json:"url" description:"The URL of the webhook."`
 	Broken     bool        `db:"broken" json:"broken" description:"Whether the webhook is broken."`
+	SimpleAuth bool        `db:"simple_auth" json:"simple_auth" description:"Whether the webhook should use simple auth (unencrypted, just authentication headers) or not."`
 	CreatedAt  time.Time   `db:"created_at" json:"created_at" description:"The time when the webhook was created."`
 }
 
@@ -51,13 +66,14 @@ type WebhookLogEntry struct {
 }
 
 type PatchWebhook struct {
-	WebhookURL    string `json:"webhook_url"`
-	WebhookSecret string `json:"webhook_secret"`
-	Clear         bool   `json:"clear"`
+	WebhookURL    string `json:"webhook_url" description:"The URL of the webhook."`
+	WebhookSecret string `json:"webhook_secret" description:"The secret of the webhook."`
+	SimpleAuth    bool   `json:"simple_auth" description:"Whether the webhook should use simple auth (unencrypted, just authentication headers) or not."`
+	Clear         bool   `json:"clear" description:"Whether to clear the webhook."`
 }
 
 type GetTestWebhookMeta struct {
-	Types []TestWebhookType `json:"data"`
+	Types []TestWebhookType `json:"data" description:"The types of webhooks to test."`
 }
 
 type TestWebhookType struct {
