@@ -54,7 +54,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 
 	limit, err := ratelimit.Ratelimit{
 		Expiry:      1 * time.Hour,
-		MaxRequests: 5,
+		MaxRequests: 50,
 		Bucket:      "data_request",
 	}.Limit(d.Context, r)
 
@@ -103,7 +103,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		}
 	}
 
-	go assets.DataTask(taskId, d.Auth.ID, remoteIp[0], reqType == "true")
+	go assets.DataTask(taskId, taskName, d.Auth.ID, remoteIp[0])
 
 	return uapi.HttpResponse{
 		Json: types.TaskCreateResponse{

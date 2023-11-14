@@ -8,14 +8,14 @@ import (
 )
 
 type TableRef struct {
-	ForeignTable      string `db:"foreign_table_name"`
+	ForeignTableName  string `db:"foreign_table_name"`
 	TableName         string `db:"table_name"`
 	ColumnName        string `db:"column_name"`
 	ForeignColumnName string `db:"foreign_column_name"`
 }
 
-func getAllTableRefs() ([]TableRef, error) {
-	rows, err := state.Pool.Query(
+func getAllTableRefs(tx pgx.Tx) ([]TableRef, error) {
+	rows, err := tx.Query(
 		state.Context,
 		`
 SELECT 
@@ -46,7 +46,7 @@ WHERE c.contype = 'f'`,
 	}
 
 	keys = append(keys, TableRef{
-		ForeignTable:      "users",
+		ForeignTableName:  "users",
 		TableName:         "users",
 		ColumnName:        "user_id",
 		ForeignColumnName: "user_id",

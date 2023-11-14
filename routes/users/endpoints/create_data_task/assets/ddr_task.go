@@ -1,7 +1,6 @@
 package assets
 
 import (
-	"fmt"
 	"popplio/state"
 
 	"github.com/infinitybotlist/eureka/dovewing"
@@ -11,7 +10,9 @@ import (
 
 var json = jsoniter.ConfigFastest
 
-func DataTask(taskId, id, ip string, del bool) {
+func DataTask(taskId, taskName, id, ip string) {
+	del := taskName == "data_delete"
+
 	var done bool
 
 	l, _ := newTaskLogger(taskId)
@@ -29,74 +30,113 @@ func DataTask(taskId, id, ip string, del bool) {
 		}
 	}()
 
+	tx, err := state.Pool.Begin(state.Context)
+
+	if err != nil {
+		l.Error("Failed to begin transaction", zap.Error(err), zap.String("id", id), zap.Bool("del", del))
+		return
+	}
+
+	defer tx.Rollback(state.Context)
+
+	_, err = tx.Exec(state.Context, "DELETE FROM tasks WHERE task_name = $1 AND task_id != $2 AND for_user = $3", taskName, taskId, id)
+
+	if err != nil {
+		l.Error("Failed to delete old data tasks", zap.Error(err), zap.String("id", id), zap.Bool("del", del))
+		return
+	}
+
 	l.Info("Started DR/DDR task", zap.String("id", id), zap.Bool("del", del))
 
-	tableRefs, err := getAllTableRefs()
+	tableRefs, err := getAllTableRefs(tx)
 
 	if err != nil {
 		l.Error("Failed to get table refs", zap.Error(err), zap.String("id", id), zap.Bool("del", del))
 		return
 	}
 
-	collectedData := map[string]any{}
-
+	// Begin fetching data recursively
+	collectedData := map[string][]any{}
+	cachedEntityIds := map[string][]string{}
 	for _, tableRef := range tableRefs {
-		if _, ok := collectedData[tableRef.TableName]; ok {
-			l.Error("Duplicate table. Ignoring/skipping", zap.String("table", tableRef.TableName), zap.String("foreignTable", tableRef.ForeignTable), zap.String("column", tableRef.ColumnName), zap.String("id", id))
+		fOp, ok := tableOps[tableRef.ForeignTableName]
+
+		if !ok {
+			l.Warn("Cannot fetch table due to no support for its foreign ref", zap.String("table", tableRef.TableName), zap.String("foreignTable", tableRef.ForeignTableName), zap.String("column", tableRef.ColumnName), zap.String("id", id))
 			continue
 		}
 
-		l.Info("Handling table", zap.String("table", tableRef.TableName), zap.String("foreignTable", tableRef.ForeignTable), zap.String("column", tableRef.ColumnName), zap.String("id", id))
+		var entityIds []string
 
-		fkTableOps, ok := tablesOps[tableRef.ForeignTable]
-
-		if !ok {
-			l.Warn("Failed to get table ops for foreign table", zap.String("table", tableRef.TableName), zap.String("foreignTable", tableRef.ForeignTable), zap.String("column", tableRef.ColumnName), zap.String("id", id))
-			fkTableOps = tablesOps["default"]
-		}
-
-		defaultOp := fkTableOps["default"]
-		tableOp := fkTableOps[tableRef.TableName]
-
-		if tableOp.Fetch == nil {
-			if defaultOp.Fetch == nil {
-				l.Warn("Failed to get fetch op for table", zap.String("table", tableRef.TableName), zap.String("foreignTable", tableRef.ForeignTable), zap.String("column", tableRef.ColumnName), zap.String("id", id))
-
-				tableOp.Fetch = func(l *zap.Logger, tableName, columnName, id string) (any, error) {
-					return map[string]string{
-						"message": fmt.Sprintf("Failed to get fetch op for table %s with column name %s and id %s", tableName, columnName, id),
-					}, nil
-				}
-			} else {
-				tableOp.Fetch = defaultOp.Fetch
-			}
-		}
-
-		rows, err := tableOp.Fetch(l, tableRef.TableName, tableRef.ColumnName, id)
-
-		if err != nil {
-			l.Error("Failed to fetch table", zap.String("table", tableRef.TableName), zap.String("foreignTable", tableRef.ForeignTable), zap.String("column", tableRef.ColumnName), zap.String("id", id), zap.Error(err))
+		if ids, ok := cachedEntityIds[tableRef.ForeignTableName]; ok {
+			entityIds = ids
 		} else {
-			collectedData[tableRef.TableName] = rows
-		}
-
-		if del {
-			if tableOp.Delete == nil {
-				if defaultOp.Delete == nil {
-					l.Warn("Failed to get delete op for table", zap.String("table", tableRef.TableName), zap.String("foreignTable", tableRef.ForeignTable), zap.String("column", tableRef.ColumnName), zap.String("id", id))
-
-					tableOp.Delete = func(l *zap.Logger, tableName, columnName, id string) error {
-						return nil
-					}
-				} else {
-					tableOp.Delete = defaultOp.Delete
-				}
-			}
-
-			err = tableOp.Delete(l, tableRef.TableName, tableRef.ColumnName, id)
+			entityIds, err := fOp.GetIdsForUser(tx, l, id)
 
 			if err != nil {
-				l.Error("Failed to delete table", zap.String("table", tableRef.TableName), zap.String("foreignTable", tableRef.ForeignTable), zap.String("column", tableRef.ColumnName), zap.String("id", id), zap.Error(err))
+				l.Error("Failed to get ids", zap.String("table", tableRef.TableName), zap.String("foreignTable", tableRef.ForeignTableName), zap.String("column", tableRef.ColumnName), zap.String("id", id), zap.Error(err))
+				continue
+			}
+
+			cachedEntityIds[tableRef.ForeignTableName] = entityIds
+		}
+
+		var fkeysNotAdded bool
+		if _, ok := collectedData[tableRef.ForeignTableName]; !ok {
+			fkeysNotAdded = true
+		}
+
+		// Handle the entities now
+		for _, entityId := range entityIds {
+			l.Info("Fetching table", zap.String("table", tableRef.TableName), zap.String("foreignTable", tableRef.ForeignTableName), zap.String("column", tableRef.ColumnName), zap.String("id", id), zap.String("entityId", entityId))
+			rows, err := fOp.Fetch(tx, l, tableRef.TableName, tableRef.ColumnName, entityId)
+
+			if err != nil {
+				l.Error("Failed to fetch table", zap.String("table", tableRef.TableName), zap.String("foreignTable", tableRef.ForeignTableName), zap.String("column", tableRef.ColumnName), zap.String("id", id), zap.Error(err))
+				continue
+			}
+
+			for _, row := range rows {
+				if _, ok := collectedData[tableRef.TableName]; !ok {
+					collectedData[tableRef.TableName] = []any{}
+				}
+
+				collectedData[tableRef.TableName] = append(collectedData[tableRef.TableName], row)
+			}
+
+			if del {
+				err = fOp.Delete(tx, l, tableRef.TableName, tableRef.ColumnName, entityId)
+
+				if err != nil {
+					l.Error("Failed to delete table", zap.String("table", tableRef.TableName), zap.String("foreignTable", tableRef.ForeignTableName), zap.String("column", tableRef.ColumnName), zap.String("id", id), zap.Error(err))
+				}
+			}
+
+			// Fetch the foreign table's data
+			if fkeysNotAdded {
+				l.Info("Fetching foreign table", zap.String("table", tableRef.TableName), zap.String("foreignTable", tableRef.ForeignTableName), zap.String("column", tableRef.ColumnName), zap.String("id", id), zap.String("entityId", entityId))
+				rows, err := fOp.Fetch(tx, l, tableRef.ForeignTableName, tableRef.ForeignColumnName, entityId)
+
+				if err != nil {
+					l.Error("Failed to fetch table", zap.String("table", tableRef.TableName), zap.String("foreignTable", tableRef.ForeignTableName), zap.String("column", tableRef.ColumnName), zap.String("id", id), zap.Error(err))
+					continue
+				}
+
+				for _, row := range rows {
+					if _, ok := collectedData[tableRef.ForeignTableName]; !ok {
+						collectedData[tableRef.ForeignTableName] = []any{}
+					}
+
+					collectedData[tableRef.ForeignTableName] = append(collectedData[tableRef.ForeignTableName], row)
+				}
+
+				if del {
+					err = fOp.Delete(tx, l, tableRef.ForeignTableName, tableRef.ForeignColumnName, entityId)
+
+					if err != nil {
+						l.Error("Failed to delete foreign table", zap.String("table", tableRef.TableName), zap.String("foreignTable", tableRef.ForeignTableName), zap.String("column", tableRef.ColumnName), zap.String("id", id), zap.Error(err))
+					}
+				}
 			}
 		}
 	}
@@ -115,14 +155,24 @@ func DataTask(taskId, id, ip string, del bool) {
 		}
 	}
 
-	collectedData["meta"] = map[string]any{
-		"request_ip": ip,
+	finalOutput := map[string]any{
+		"data": collectedData,
+		"meta": map[string]any{
+			"request_ip": ip,
+		},
 	}
 
-	_, err = state.Pool.Exec(state.Context, "UPDATE tasks SET output = $1, state = $2 WHERE task_id = $3", collectedData, "completed", taskId)
+	_, err = tx.Exec(state.Context, "UPDATE tasks SET output = $1, state = $2 WHERE task_id = $3", finalOutput, "completed", taskId)
 
 	if err != nil {
 		l.Error("Failed to update task", zap.Error(err), zap.String("id", id), zap.Bool("del", del))
+		return
+	}
+
+	err = tx.Commit(state.Context)
+
+	if err != nil {
+		l.Error("Failed to commit transaction", zap.Error(err), zap.String("id", id), zap.Bool("del", del))
 		return
 	}
 
