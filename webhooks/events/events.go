@@ -117,10 +117,11 @@ func registerEventImpl(a WebhookEvent) {
 		}
 
 		cols = append(cols, types.TestWebhookVariables{
-			ID:    f.Tag.Get("json"),
-			Name:  label,
-			Value: f.Tag.Get("testvalue"),
-			Type:  fieldType,
+			ID:          f.Tag.Get("json"),
+			Name:        label,
+			Description: f.Tag.Get("description"),
+			Value:       f.Tag.Get("testvalue"),
+			Type:        fieldType,
 		})
 	}
 

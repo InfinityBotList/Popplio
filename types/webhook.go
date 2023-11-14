@@ -82,8 +82,9 @@ type TestWebhookType struct {
 }
 
 type TestWebhookVariables struct {
-	ID    string      `json:"id" description:"The ID of the variable."`
-	Name  string      `json:"name" description:"The name of the variable."`
-	Value string      `json:"value" description:"The default value of the variable."`
-	Type  WebhookType `json:"type" description:"The type of the variable."`
+	ID          string      `json:"id" description:"The ID of the variable."`
+	Name        string      `json:"name" description:"The name of the variable."`
+	Description string      `json:"description" description:"The description of the variable."`
+	Value       string      `json:"value" description:"The default value of the variable."`
+	Type        WebhookType `json:"type" description:"The type of the variable."`
 }
