@@ -9,7 +9,7 @@ import (
 	"go.uber.org/zap"
 )
 
-func defaultFetchOp(tx pgx.Tx, l *zap.Logger, tableName, columnName, id string) ([]map[string]any, error) {
+func defaultFetcher(tx pgx.Tx, l *zap.Logger, tableName, columnName, id string) ([]map[string]any, error) {
 	l.Info("Fetching table", zap.String("table", tableName), zap.String("column", columnName), zap.String("id", id))
 	rows, err := tx.Query(state.Context, "SELECT * FROM "+tableName+" WHERE "+columnName+" = $1", id)
 
@@ -20,7 +20,7 @@ func defaultFetchOp(tx pgx.Tx, l *zap.Logger, tableName, columnName, id string) 
 	return pgx.CollectRows(rows, pgx.RowToMap)
 }
 
-func defaultDeleteOp(tx pgx.Tx, l *zap.Logger, tableName, columnName, id string) error {
+func defaultDeleter(tx pgx.Tx, l *zap.Logger, tableName, columnName, id string) error {
 	l.Info("Deleting from table", zap.String("table", tableName), zap.String("column", columnName), zap.String("id", id))
 	_, err := tx.Exec(state.Context, "DELETE FROM "+tableName+" WHERE "+columnName+" = $1", id)
 
@@ -31,14 +31,29 @@ func defaultDeleteOp(tx pgx.Tx, l *zap.Logger, tableName, columnName, id string)
 	return nil
 }
 
-type TableOps struct {
+// Table Logic represents a list of foreign keys for a table
+type TableLogic struct {
 	// GetIdsForUser returns a list of IDs for the user that should be fetched/deleted
 	GetIdsForUser func(tx pgx.Tx, l *zap.Logger, id string) ([]string, error)
-	Fetch         func(tx pgx.Tx, l *zap.Logger, tableName, columnName, id string) ([]map[string]any, error)
-	Delete        func(tx pgx.Tx, l *zap.Logger, tableName, columnName, id string) error
+
+	// Fetch returns a list of rows for the given table, column and ID
+	Fetch func(tx pgx.Tx, l *zap.Logger, tableName, columnName, id string) ([]map[string]any, error)
+
+	// Delete deletes all rows for the given table, column and ID
+	Delete func(tx pgx.Tx, l *zap.Logger, tableName, columnName, id string) error
 }
 
-var tableOps = map[string]TableOps{
+// Table specific converters
+//
+// This is run on the table name, not the foreign key
+type TableTransformers struct {
+	// Convert converts data to the final data for a fetch. This is called on both 'data_request' and 'data_delete'
+	//
+	// This is useful when having secrets in the database that should not be exposed
+	Fetch []func(data []map[string]any) ([]map[string]any, error)
+}
+
+var tableLogic = map[string]TableLogic{
 	"teams": {
 		GetIdsForUser: func(tx pgx.Tx, l *zap.Logger, id string) ([]string, error) {
 			// Select all team IDs
@@ -69,14 +84,43 @@ var tableOps = map[string]TableOps{
 
 			return teamIds, nil
 		},
-		Fetch:  defaultFetchOp,
-		Delete: defaultDeleteOp,
+		Fetch:  defaultFetcher,
+		Delete: defaultDeleter,
 	},
 	"users": {
 		GetIdsForUser: func(tx pgx.Tx, l *zap.Logger, id string) ([]string, error) {
 			return []string{id}, nil
 		},
-		Fetch:  defaultFetchOp,
-		Delete: defaultDeleteOp,
+		Fetch:  defaultFetcher,
+		Delete: defaultDeleter,
+	},
+}
+
+var tableTransformer = map[string]TableTransformers{
+	"staffpanel__authchain": {
+		Fetch: []func(data []map[string]any) ([]map[string]any, error){
+			func(data []map[string]any) ([]map[string]any, error) {
+				for i := range data {
+					// Redact tokens to avoid leaking them
+					data[i]["token"] = "REDACTED"
+					data[i]["popplio_token"] = "REDACTED"
+				}
+
+				return data, nil
+			},
+		},
+	},
+	"staffpanel__paneldata": {
+		Fetch: []func(data []map[string]any) ([]map[string]any, error){
+			func(data []map[string]any) ([]map[string]any, error) {
+				for i := range data {
+					// Redact MFA tokens to avoid leaking them
+					data[i]["mfa_secret"] = "REDACTED"
+					data[i]["mfa_verified"] = "REDACTED"
+				}
+
+				return data, nil
+			},
+		},
 	},
 }

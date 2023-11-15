@@ -59,7 +59,7 @@ func DataTask(taskId, taskName, id, ip string) {
 	collectedData := map[string][]any{}
 	cachedEntityIds := map[string][]string{}
 	for _, tableRef := range tableRefs {
-		fOp, ok := tableOps[tableRef.ForeignTableName]
+		fOp, ok := tableLogic[tableRef.ForeignTableName]
 
 		if !ok {
 			l.Warn("Cannot fetch table due to no support for its foreign ref", zap.String("table", tableRef.TableName), zap.String("foreignTable", tableRef.ForeignTableName), zap.String("column", tableRef.ColumnName), zap.String("id", id))
@@ -81,60 +81,47 @@ func DataTask(taskId, taskName, id, ip string) {
 			cachedEntityIds[tableRef.ForeignTableName] = entityIds
 		}
 
-		var fkeysNotAdded bool
+		var handleKeys = [][3]string{
+			{"main", tableRef.TableName, tableRef.ColumnName},
+		}
 		if _, ok := collectedData[tableRef.ForeignTableName]; !ok {
-			fkeysNotAdded = true
+			handleKeys = append(handleKeys, [3]string{"foreign", tableRef.ForeignTableName, tableRef.ForeignColumnName})
 		}
 
 		// Handle the entities now
 		for _, entityId := range entityIds {
-			l.Info("Fetching table", zap.String("table", tableRef.TableName), zap.String("foreignTable", tableRef.ForeignTableName), zap.String("column", tableRef.ColumnName), zap.String("id", id), zap.String("entityId", entityId))
-			rows, err := fOp.Fetch(tx, l, tableRef.TableName, tableRef.ColumnName, entityId)
-
-			if err != nil {
-				l.Error("Failed to fetch table", zap.String("table", tableRef.TableName), zap.String("foreignTable", tableRef.ForeignTableName), zap.String("column", tableRef.ColumnName), zap.String("id", id), zap.Error(err))
-				continue
-			}
-
-			for _, row := range rows {
-				if _, ok := collectedData[tableRef.TableName]; !ok {
-					collectedData[tableRef.TableName] = []any{}
-				}
-
-				collectedData[tableRef.TableName] = append(collectedData[tableRef.TableName], row)
-			}
-
-			if del {
-				err = fOp.Delete(tx, l, tableRef.TableName, tableRef.ColumnName, entityId)
+			for _, handleKey := range handleKeys {
+				l.Info("Fetching table", zap.String("type", handleKey[0]), zap.String("table", handleKey[1]), zap.String("foreignTable", tableRef.ForeignTableName), zap.String("column", handleKey[2]), zap.String("id", id), zap.String("entityId", entityId))
+				rows, err := fOp.Fetch(tx, l, handleKey[1], handleKey[2], entityId)
 
 				if err != nil {
-					l.Error("Failed to delete table", zap.String("table", tableRef.TableName), zap.String("foreignTable", tableRef.ForeignTableName), zap.String("column", tableRef.ColumnName), zap.String("id", id), zap.Error(err))
-				}
-			}
-
-			// Fetch the foreign table's data
-			if fkeysNotAdded {
-				l.Info("Fetching foreign table", zap.String("table", tableRef.TableName), zap.String("foreignTable", tableRef.ForeignTableName), zap.String("column", tableRef.ColumnName), zap.String("id", id), zap.String("entityId", entityId))
-				rows, err := fOp.Fetch(tx, l, tableRef.ForeignTableName, tableRef.ForeignColumnName, entityId)
-
-				if err != nil {
-					l.Error("Failed to fetch table", zap.String("table", tableRef.TableName), zap.String("foreignTable", tableRef.ForeignTableName), zap.String("column", tableRef.ColumnName), zap.String("id", id), zap.Error(err))
+					l.Error("Failed to fetch table", zap.String("type", handleKey[0]), zap.String("table", handleKey[1]), zap.String("foreignTable", tableRef.ForeignTableName), zap.String("column", handleKey[2]), zap.String("id", id), zap.String("entityId", entityId))
 					continue
 				}
 
+				// Run transformers
+				for _, transformer := range tableTransformer[tableRef.ForeignTableName].Fetch {
+					rows, err = transformer(rows)
+
+					if err != nil {
+						l.Error("Failed to transform table", zap.String("type", handleKey[0]), zap.String("table", handleKey[1]), zap.String("foreignTable", tableRef.ForeignTableName), zap.String("column", handleKey[2]), zap.String("id", id), zap.String("entityId", entityId))
+						continue
+					}
+				}
+
 				for _, row := range rows {
-					if _, ok := collectedData[tableRef.ForeignTableName]; !ok {
-						collectedData[tableRef.ForeignTableName] = []any{}
+					if _, ok := collectedData[handleKey[1]]; !ok {
+						collectedData[handleKey[1]] = []any{}
 					}
 
-					collectedData[tableRef.ForeignTableName] = append(collectedData[tableRef.ForeignTableName], row)
+					collectedData[handleKey[1]] = append(collectedData[handleKey[1]], row)
 				}
 
 				if del {
-					err = fOp.Delete(tx, l, tableRef.ForeignTableName, tableRef.ForeignColumnName, entityId)
+					err = fOp.Delete(tx, l, handleKey[1], handleKey[2], entityId)
 
 					if err != nil {
-						l.Error("Failed to delete foreign table", zap.String("table", tableRef.TableName), zap.String("foreignTable", tableRef.ForeignTableName), zap.String("column", tableRef.ColumnName), zap.String("id", id), zap.Error(err))
+						l.Error("Failed to delete table", zap.String("type", handleKey[0]), zap.String("table", handleKey[1]), zap.String("foreignTable", tableRef.ForeignTableName), zap.String("column", handleKey[2]), zap.String("id", id), zap.String("entityId", entityId))
 					}
 				}
 			}
