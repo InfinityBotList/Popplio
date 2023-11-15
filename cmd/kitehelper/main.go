@@ -4,6 +4,7 @@ import (
 	"fmt"
 	_ "kitehelper/icb/icb_migrations"
 	"kitehelper/migrate"
+	"kitehelper/rebuildfkeys"
 	"kitehelper/tests"
 	"kitehelper/validatetable"
 	"os"
@@ -45,6 +46,10 @@ var cmds = map[string]command{
 	"validate-table": {
 		Func: validatetable.ValidateTable,
 		Help: "Validate a table",
+	},
+	"rebuild-fkeys": {
+		Func: rebuildfkeys.RebuildFKeys,
+		Help: "Rebuild foreign keys",
 	},
 }
 

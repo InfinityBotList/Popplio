@@ -103,7 +103,7 @@ func DataTask(taskId, taskName, id, ip string) {
 		// Handle the entities now
 		for _, entityId := range entityIds {
 			for _, handleKey := range handleKeys {
-				l.Info("Fetching table", zap.String("type", handleKey[0]), zap.String("table", handleKey[1]), zap.String("foreignTable", tableRef.ForeignTableName), zap.String("column", handleKey[2]), zap.String("id", id), zap.String("entityId", entityId))
+				l.Info("Fetching column for table", zap.String("type", handleKey[0]), zap.String("table", handleKey[1]), zap.String("foreignTable", tableRef.ForeignTableName), zap.String("column", handleKey[2]), zap.String("id", id), zap.String("entityId", entityId))
 				rows, err := fOp.Fetch(tx, l, handleKey[1], handleKey[2], entityId)
 
 				if err != nil {
@@ -112,11 +112,20 @@ func DataTask(taskId, taskName, id, ip string) {
 				}
 
 				// Run transformers
-				for _, transformer := range tableTransformer[handleKey[1]].Fetch {
+				for i, transformer := range tableTransformer[handleKey[1]].Fetch {
 					rows, err = transformer(rows)
 
 					if err != nil {
-						l.Error("Failed to transform table", zap.String("type", handleKey[0]), zap.String("table", handleKey[1]), zap.String("foreignTable", tableRef.ForeignTableName), zap.String("column", handleKey[2]), zap.String("id", id), zap.String("entityId", entityId))
+						l.Error("Failed to transform table", zap.String("transform", handleKey[1]), zap.Int("index", i), zap.String("type", handleKey[0]), zap.String("table", handleKey[1]), zap.String("foreignTable", tableRef.ForeignTableName), zap.String("column", handleKey[2]), zap.String("id", id), zap.String("entityId", entityId))
+						continue
+					}
+				}
+
+				for i, transformer := range tableTransformer["*"].Fetch {
+					rows, err = transformer(rows)
+
+					if err != nil {
+						l.Error("Failed to apply default transforms", zap.String("transform", "*"), zap.Int("index", i), zap.String("type", handleKey[0]), zap.String("table", handleKey[1]), zap.String("foreignTable", tableRef.ForeignTableName), zap.String("column", handleKey[2]), zap.String("id", id), zap.String("entityId", entityId))
 						continue
 					}
 				}

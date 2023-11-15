@@ -60,7 +60,7 @@ var tableLogic = map[string]TableLogic{
 			// Select all team IDs
 			var teamIds []string
 
-			rows, err := tx.Query(state.Context, "SELECT team_id, flags FROM team_members WHERE user_id = $1", id)
+			rows, err := tx.Query(state.Context, "SELECT team_id, flags, data_holder FROM team_members WHERE user_id = $1", id)
 
 			if err != nil {
 				return nil, fmt.Errorf("failed to query table: %w", err)
@@ -69,15 +69,20 @@ var tableLogic = map[string]TableLogic{
 			for rows.Next() {
 				var teamId string
 				var flags []string
+				var dataHolder bool
 
-				err = rows.Scan(&teamId, &flags)
+				err = rows.Scan(&teamId, &flags, &dataHolder)
 
 				if err != nil {
 					return nil, fmt.Errorf("failed to scan row: %w", err)
 				}
 
 				if teams.NewPermMan(flags).HasRaw("global." + teams.PermissionOwner) {
-					teamIds = append(teamIds, teamId)
+					if dataHolder {
+						teamIds = append(teamIds, teamId)
+					} else {
+						l.Info("User is not a data holder for team", zap.String("team_id", teamId), zap.String("user_id", id))
+					}
 				} else {
 					l.Warn("User does not have permission to dump team", zap.String("team_id", teamId), zap.String("user_id", id))
 				}
@@ -129,13 +134,35 @@ var tableTransformer = map[string]TableTransformers{
 			func(data []map[string]any) ([]map[string]any, error) {
 				for i := range data {
 					// Redact tokens to avoid leaking them but only if theyre not in a team
-					if data[i]["team_owner"] == nil {
+					if data[i]["team_owner"] != nil {
 						data[i]["api_token"] = "REDACTED_AS_IN_A_TEAM"
 					}
+				}
 
-					// Format itag as a UUID
-					if itag, ok := data[i]["itag"].([16]byte); ok {
-						data[i]["itag"] = validators.EncodeUUID(itag)
+				return data, nil
+			},
+		},
+	},
+	"*": {
+		Fetch: []func(data []map[string]any) ([]map[string]any, error){
+			func(data []map[string]any) ([]map[string]any, error) {
+				var uuidKeys []string
+				for i := range data {
+					// Format [16]byte as a UUID as this is always true for our purposes
+					if len(uuidKeys) == 0 {
+						for key := range data[i] {
+							if k, ok := data[i][key].([16]byte); ok {
+								data[i][key] = validators.EncodeUUID(k)
+								uuidKeys = append(uuidKeys, key)
+							}
+						}
+					} else {
+						// Fast path
+						for _, key := range uuidKeys {
+							if k, ok := data[i][key].([16]byte); ok {
+								data[i][key] = validators.EncodeUUID(k)
+							}
+						}
 					}
 				}
 

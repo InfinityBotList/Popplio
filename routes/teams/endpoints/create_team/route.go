@@ -88,7 +88,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	}
 
 	// Add the user to the team
-	_, err = tx.Exec(d.Context, "INSERT INTO team_members (team_id, user_id, flags) VALUES ($1, $2, $3)", teamId, d.Auth.ID, []string{"global." + teams.PermissionOwner})
+	_, err = tx.Exec(d.Context, "INSERT INTO team_members (team_id, user_id, flags, data_holder) VALUES ($1, $2, $3, true)", teamId, d.Auth.ID, []string{"global." + teams.PermissionOwner})
 
 	if err != nil {
 		state.Logger.Error("Error adding user to team", zap.Error(err), zap.String("user_id", d.Auth.ID))

@@ -1,10 +1,17 @@
-package assets
+package rebuildfkeys
 
 import (
+	"context"
 	"fmt"
-	"popplio/state"
+	"kitehelper/common"
 
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
+)
+
+var (
+	ctx = context.Background()
+	sp  *common.SandboxPool
 )
 
 type TableRef struct {
@@ -15,9 +22,9 @@ type TableRef struct {
 	ForeignColumnName string `db:"foreign_column_name"`
 }
 
-func getAllTableRefs(tx pgx.Tx) ([]TableRef, error) {
-	rows, err := tx.Query(
-		state.Context,
+func getAllTableRefs() ([]TableRef, error) {
+	rows, err := sp.Query(
+		ctx,
 		`
 SELECT 
   c.conname AS constraint_name,
@@ -47,12 +54,56 @@ WHERE c.contype = 'f'`,
 		return nil, fmt.Errorf("failed to collect rows: %w", err)
 	}
 
-	keys = append(keys, TableRef{
-		ForeignTableName:  "users",
-		TableName:         "users",
-		ColumnName:        "user_id",
-		ForeignColumnName: "user_id",
-	})
-
 	return keys, nil
+}
+
+func RebuildFKeys(progname string, args []string) {
+	_pool, err := pgxpool.New(ctx, "postgres:///infinity")
+
+	if err != nil {
+		panic(err)
+	}
+
+	sp = common.NewSandboxPool(_pool)
+
+	// Get a list of all tables
+	tables, err := getAllTableRefs()
+
+	if err != nil {
+		panic(err)
+	}
+
+	sp.AllowCommit = true
+
+	spTx, err := sp.Begin(ctx)
+
+	if err != nil {
+		panic(err)
+	}
+
+	defer spTx.Rollback(ctx)
+
+	for i, table := range tables {
+		fmt.Printf("[%d/%d] %s (%s/%s -> %s/%s)\n", i+1, len(tables), table.ConstraintName, table.TableName, table.ColumnName, table.ForeignTableName, table.ForeignColumnName)
+
+		err = spTx.Exec(ctx, fmt.Sprintf("ALTER TABLE %s DROP CONSTRAINT %s", table.TableName, table.ConstraintName))
+
+		if err != nil {
+			fmt.Println("failed to drop constraint:", err)
+			continue
+		}
+
+		err = spTx.Exec(ctx, fmt.Sprintf("ALTER TABLE %s ADD CONSTRAINT %s FOREIGN KEY (%s) REFERENCES %s(%s)", table.TableName, table.ConstraintName, table.ColumnName, table.ForeignTableName, table.ForeignColumnName))
+
+		if err != nil {
+			fmt.Println("failed to add constraint:", err)
+			continue
+		}
+	}
+
+	err = spTx.Commit(ctx)
+
+	if err != nil {
+		panic(err)
+	}
 }
