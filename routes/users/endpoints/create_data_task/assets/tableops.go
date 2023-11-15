@@ -123,4 +123,21 @@ var tableTransformer = map[string]TableTransformers{
 			},
 		},
 	},
+	"bots": {
+		Fetch: []func(data []map[string]any) ([]map[string]any, error){
+			func(data []map[string]any) ([]map[string]any, error) {
+				for i := range data {
+					// Redact tokens to avoid leaking them but only if theyre not in a team
+					if data[i]["team_owner"] == nil {
+						data[i]["api_token"] = "REDACTED_AS_IN_A_TEAM"
+					}
+
+					// Format itag as a UUID
+					data[i]["itag"] = fmt.Sprintf("%x-%x-%x-%x", data[i]["itag"].([]byte)[0:4], data[i]["itag"].([]byte)[4:6], data[i]["itag"].([]byte)[6:8], data[i]["itag"].([]byte)[8:10])
+				}
+
+				return data, nil
+			},
+		},
+	},
 }

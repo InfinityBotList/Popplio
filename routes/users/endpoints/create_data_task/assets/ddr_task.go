@@ -100,7 +100,7 @@ func DataTask(taskId, taskName, id, ip string) {
 				}
 
 				// Run transformers
-				for _, transformer := range tableTransformer[tableRef.ForeignTableName].Fetch {
+				for _, transformer := range tableTransformer[handleKey[1]].Fetch {
 					rows, err = transformer(rows)
 
 					if err != nil {
