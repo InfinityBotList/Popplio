@@ -10,6 +10,11 @@ import (
 
 var json = jsoniter.ConfigFastest
 
+type deleteCall struct {
+	fOp  TableLogic
+	keys [3]string
+}
+
 func DataTask(taskId, taskName, id, ip string) {
 	del := taskName == "data_delete"
 
@@ -70,6 +75,8 @@ func DataTask(taskId, taskName, id, ip string) {
 	// Begin fetching data recursively
 	collectedData := map[string][]any{}
 	cachedEntityIds := map[string][]string{}
+
+	deleteCalls := []deleteCall{}
 	for _, tableRef := range tableRefs {
 		fOp, ok := tableLogic[tableRef.ForeignTableName]
 
@@ -107,7 +114,7 @@ func DataTask(taskId, taskName, id, ip string) {
 				rows, err := fOp.Fetch(tx, l, handleKey[1], handleKey[2], entityId)
 
 				if err != nil {
-					l.Error("Failed to fetch table", zap.String("type", handleKey[0]), zap.String("table", handleKey[1]), zap.String("foreignTable", tableRef.ForeignTableName), zap.String("column", handleKey[2]), zap.String("id", id), zap.String("entityId", entityId))
+					l.Error("Failed to fetch table", zap.Error(err), zap.String("type", handleKey[0]), zap.String("table", handleKey[1]), zap.String("foreignTable", tableRef.ForeignTableName), zap.String("column", handleKey[2]), zap.String("id", id), zap.String("entityId", entityId))
 					continue
 				}
 
@@ -116,7 +123,7 @@ func DataTask(taskId, taskName, id, ip string) {
 					rows, err = transformer(rows)
 
 					if err != nil {
-						l.Error("Failed to transform table", zap.String("transform", handleKey[1]), zap.Int("index", i), zap.String("type", handleKey[0]), zap.String("table", handleKey[1]), zap.String("foreignTable", tableRef.ForeignTableName), zap.String("column", handleKey[2]), zap.String("id", id), zap.String("entityId", entityId))
+						l.Error("Failed to transform table", zap.Error(err), zap.String("transform", handleKey[1]), zap.Int("index", i), zap.String("type", handleKey[0]), zap.String("table", handleKey[1]), zap.String("foreignTable", tableRef.ForeignTableName), zap.String("column", handleKey[2]), zap.String("id", id), zap.String("entityId", entityId))
 						continue
 					}
 				}
@@ -125,7 +132,7 @@ func DataTask(taskId, taskName, id, ip string) {
 					rows, err = transformer(rows)
 
 					if err != nil {
-						l.Error("Failed to apply default transforms", zap.String("transform", "*"), zap.Int("index", i), zap.String("type", handleKey[0]), zap.String("table", handleKey[1]), zap.String("foreignTable", tableRef.ForeignTableName), zap.String("column", handleKey[2]), zap.String("id", id), zap.String("entityId", entityId))
+						l.Error("Failed to apply default transforms", zap.Error(err), zap.String("transform", "*"), zap.Int("index", i), zap.String("type", handleKey[0]), zap.String("table", handleKey[1]), zap.String("foreignTable", tableRef.ForeignTableName), zap.String("column", handleKey[2]), zap.String("id", id), zap.String("entityId", entityId))
 						continue
 					}
 				}
@@ -139,11 +146,14 @@ func DataTask(taskId, taskName, id, ip string) {
 				}
 
 				if del {
-					err = fOp.Delete(tx, l, handleKey[1], handleKey[2], entityId)
-
-					if err != nil {
-						l.Error("Failed to delete table", zap.String("type", handleKey[0]), zap.String("table", handleKey[1]), zap.String("foreignTable", tableRef.ForeignTableName), zap.String("column", handleKey[2]), zap.String("id", id), zap.String("entityId", entityId))
-					}
+					deleteCalls = append(deleteCalls, deleteCall{
+						fOp: fOp,
+						keys: [3]string{
+							handleKey[1],
+							handleKey[2],
+							entityId,
+						},
+					})
 				}
 			}
 		}
@@ -151,6 +161,34 @@ func DataTask(taskId, taskName, id, ip string) {
 
 	// Delete from psql user_cache if `del` is true
 	if del {
+		var apiToken string
+
+		err = tx.QueryRow(state.Context, "SELECT api_token FROM users WHERE user_id = $1", id).Scan(&apiToken)
+
+		if err != nil {
+			l.Error("Failed to get api token", zap.Error(err), zap.String("id", id), zap.Bool("del", del))
+			return
+		}
+
+		for _, deleteCall := range deleteCalls {
+			if deleteCall.keys[0] == "users" {
+				continue
+			}
+			l.Info("Deleting from table", zap.String("table", deleteCall.keys[0]), zap.String("column", deleteCall.keys[1]), zap.String("id", id), zap.String("entityId", deleteCall.keys[2]))
+			err = deleteCall.fOp.Delete(tx, l, deleteCall.keys[0], deleteCall.keys[1], deleteCall.keys[2])
+
+			if err != nil {
+				l.Info("Failed to delete from table", zap.Error(err), zap.String("table", deleteCall.keys[0]), zap.String("column", deleteCall.keys[1]), zap.String("id", id), zap.String("entityId", deleteCall.keys[2]))
+			}
+		}
+
+		_, err = tx.Exec(state.Context, "DELETE FROM users WHERE user_id = $1", id)
+
+		if err != nil {
+			l.Error("Failed to delete user", zap.Error(err), zap.String("id", id), zap.Bool("del", del))
+			return
+		}
+
 		for _, dovewingPlatform := range []*dovewing.DiscordState{state.DovewingPlatformDiscord} {
 			l.Info("Deleting from user_cache [dovewing]", zap.String("id", id), zap.String("platform", dovewingPlatform.PlatformName()))
 			res, err := dovewing.ClearUser(state.Context, id, dovewingPlatform, dovewing.ClearUserReq{})
@@ -160,6 +198,13 @@ func DataTask(taskId, taskName, id, ip string) {
 			}
 
 			l.Info("Cleared user [dovewing]", zap.String("id", id), zap.String("platform", dovewingPlatform.PlatformName()), zap.Any("res", res))
+		}
+
+		_, err = tx.Exec(state.Context, "INSERT INTO users (user_id, api_token) VALUES ($1, $2)", id, apiToken)
+
+		if err != nil {
+			l.Error("Failed to reinsert user", zap.Error(err), zap.String("id", id), zap.Bool("del", del))
+			return
 		}
 	}
 

@@ -93,7 +93,7 @@ func RebuildFKeys(progname string, args []string) {
 			continue
 		}
 
-		err = spTx.Exec(ctx, fmt.Sprintf("ALTER TABLE %s ADD CONSTRAINT %s FOREIGN KEY (%s) REFERENCES %s(%s)", table.TableName, table.ConstraintName, table.ColumnName, table.ForeignTableName, table.ForeignColumnName))
+		err = spTx.Exec(ctx, fmt.Sprintf("ALTER TABLE %s ADD CONSTRAINT %s FOREIGN KEY (%s) REFERENCES %s(%s) ON UPDATE CASCADE ON DELETE CASCADE", table.TableName, table.ConstraintName, table.ColumnName, table.ForeignTableName, table.ForeignColumnName))
 
 		if err != nil {
 			fmt.Println("failed to add constraint:", err)
