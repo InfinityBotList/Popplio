@@ -19,6 +19,18 @@ func DataTask(taskId, taskName, id, ip string) {
 
 	// Fail failed tasks
 	defer func() {
+		err := recover()
+
+		if err != nil {
+			l.Error("Panic", zap.Any("err", err), zap.String("id", id), zap.Bool("del", del))
+
+			_, err := state.Pool.Exec(state.Context, "UPDATE tasks SET state = $1 WHERE task_id = $2", "failed", taskId)
+
+			if err != nil {
+				l.Error("Failed to update task", zap.Error(err), zap.String("id", id), zap.Bool("del", del))
+			}
+		}
+
 		if !done {
 			l.Error("Failed to complete task", zap.String("id", id), zap.Bool("del", del))
 

@@ -10,9 +10,9 @@ import (
 	"popplio/assetmanager"
 	"popplio/config"
 	"popplio/db"
-	"popplio/routes/bots/assets"
 	"popplio/state"
 	"popplio/types"
+	"popplio/validators"
 
 	docs "github.com/infinitybotlist/eureka/doclib"
 	"github.com/infinitybotlist/eureka/dovewing"
@@ -168,14 +168,14 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		row, err := state.Pool.Query(d.Context, "SELECT "+teamCols+" FROM teams WHERE id = $1", bot.TeamOwnerID)
 
 		if err != nil {
-			state.Logger.Error("Error while getting bot team owner [db fetch]", zap.Error(err), zap.String("id", id), zap.String("target", target), zap.String("teamOwner", assets.EncodeUUID(bot.TeamOwnerID.Bytes)))
+			state.Logger.Error("Error while getting bot team owner [db fetch]", zap.Error(err), zap.String("id", id), zap.String("target", target), zap.String("teamOwner", validators.EncodeUUID(bot.TeamOwnerID.Bytes)))
 			return uapi.DefaultResponse(http.StatusInternalServerError)
 		}
 
 		eto, err := pgx.CollectOneRow(row, pgx.RowToStructByName[types.Team])
 
 		if err != nil {
-			state.Logger.Error("Error while getting bot team owner [collect]", zap.Error(err), zap.String("id", id), zap.String("target", target), zap.String("teamOwner", assets.EncodeUUID(bot.TeamOwnerID.Bytes)))
+			state.Logger.Error("Error while getting bot team owner [collect]", zap.Error(err), zap.String("id", id), zap.String("target", target), zap.String("teamOwner", validators.EncodeUUID(bot.TeamOwnerID.Bytes)))
 			return uapi.DefaultResponse(http.StatusInternalServerError)
 		}
 

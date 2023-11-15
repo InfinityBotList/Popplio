@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"popplio/state"
 	"popplio/teams"
+	"popplio/validators"
 
 	"github.com/jackc/pgx/v5"
 	"go.uber.org/zap"
@@ -134,7 +135,7 @@ var tableTransformer = map[string]TableTransformers{
 
 					// Format itag as a UUID
 					if itag, ok := data[i]["itag"].([16]byte); ok {
-						data[i]["itag"] = fmt.Sprintf("%x-%x-%x-%x", itag[0:4], itag[4:6], itag[6:8], itag[8:10])
+						data[i]["itag"] = validators.EncodeUUID(itag)
 					}
 				}
 

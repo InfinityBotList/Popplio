@@ -3,10 +3,10 @@ package patch_bot_team
 import (
 	"fmt"
 	"net/http"
-	"popplio/routes/bots/assets"
 	"popplio/state"
 	"popplio/teams"
 	"popplio/types"
+	"popplio/validators"
 
 	docs "github.com/infinitybotlist/eureka/doclib"
 	"github.com/infinitybotlist/eureka/uapi"
@@ -140,7 +140,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 					},
 					{
 						Name:  "Old Team",
-						Value: fmt.Sprintf("[View Team](%s/team/%s)", state.Config.Sites.Frontend, assets.EncodeUUID(currentBotTeam.Bytes)),
+						Value: fmt.Sprintf("[View Team](%s/team/%s)", state.Config.Sites.Frontend, validators.EncodeUUID(currentBotTeam.Bytes)),
 					},
 					{
 						Name:  "New Team",
