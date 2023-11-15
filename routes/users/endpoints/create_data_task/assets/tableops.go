@@ -133,7 +133,9 @@ var tableTransformer = map[string]TableTransformers{
 					}
 
 					// Format itag as a UUID
-					data[i]["itag"] = fmt.Sprintf("%x-%x-%x-%x", data[i]["itag"].([]byte)[0:4], data[i]["itag"].([]byte)[4:6], data[i]["itag"].([]byte)[6:8], data[i]["itag"].([]byte)[8:10])
+					if itag, ok := data[i]["itag"].([16]byte); ok {
+						data[i]["itag"] = fmt.Sprintf("%x-%x-%x-%x", itag[0:4], itag[4:6], itag[6:8], itag[8:10])
+					}
 				}
 
 				return data, nil
