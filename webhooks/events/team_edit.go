@@ -2,16 +2,17 @@ package events
 
 import (
 	"popplio/types"
+	"popplio/webhooks/core/events"
 
 	"github.com/bwmarrin/discordgo"
 	"github.com/infinitybotlist/eureka/dovewing/dovetypes"
 )
 
 type WebhookTeamEditData struct {
-	Name       Changeset[string]       `json:"name" description:"The changeset of the name"`
-	Short      Changeset[string]       `json:"short" description:"The changeset of the short description"`
-	Tags       Changeset[[]string]     `json:"tags" description:"The changeset of the tags"`
-	ExtraLinks Changeset[[]types.Link] `json:"extra_links" description:"The changeset of the extra links"`
+	Name       events.Changeset[string]       `json:"name" description:"The changeset of the name"`
+	Short      events.Changeset[string]       `json:"short" description:"The changeset of the short description"`
+	Tags       events.Changeset[[]string]     `json:"tags" description:"The changeset of the tags"`
+	ExtraLinks events.Changeset[[]types.Link] `json:"extra_links" description:"The changeset of the extra links"`
 }
 
 func (n WebhookTeamEditData) TargetTypes() []string {
@@ -30,10 +31,10 @@ func (n WebhookTeamEditData) Description() string {
 	return "This webhook is sent when a user edits the basic settings of a team (name/short/tags) is changed."
 }
 
-func (n WebhookTeamEditData) CreateHookParams(creator *dovetypes.PlatformUser, targets Target) *discordgo.WebhookParams {
-	name := convertChangesetToFields[string]("Name", n.Name)
-	short := convertChangesetToFields[string]("Short", n.Short)
-	tags := convertChangesetToFields[[]string]("Tags", n.Tags)
+func (n WebhookTeamEditData) CreateHookParams(creator *dovetypes.PlatformUser, targets events.Target) *discordgo.WebhookParams {
+	name := events.ConvertChangesetToFields[string]("Name", n.Name)
+	short := events.ConvertChangesetToFields[string]("Short", n.Short)
+	tags := events.ConvertChangesetToFields[[]string]("Tags", n.Tags)
 	return &discordgo.WebhookParams{
 		Embeds: []*discordgo.MessageEmbed{
 			{
@@ -63,5 +64,5 @@ func (n WebhookTeamEditData) CreateHookParams(creator *dovetypes.PlatformUser, t
 }
 
 func init() {
-	RegisterEvent(WebhookTeamEditData{})
+	events.RegisterEvent(WebhookTeamEditData{})
 }

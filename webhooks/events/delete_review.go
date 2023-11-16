@@ -2,6 +2,7 @@ package events
 
 import (
 	"fmt"
+	"popplio/webhooks/core/events"
 
 	"github.com/bwmarrin/discordgo"
 	"github.com/infinitybotlist/eureka/dovewing/dovetypes"
@@ -32,7 +33,7 @@ func (n WebhookDeleteReviewData) Description() string {
 	return "This webhook is sent when a user delete their review on an entity."
 }
 
-func (n WebhookDeleteReviewData) CreateHookParams(creator *dovetypes.PlatformUser, targets Target) *discordgo.WebhookParams {
+func (n WebhookDeleteReviewData) CreateHookParams(creator *dovetypes.PlatformUser, targets events.Target) *discordgo.WebhookParams {
 	return &discordgo.WebhookParams{
 		Embeds: []*discordgo.MessageEmbed{
 			{
@@ -82,5 +83,5 @@ func (n WebhookDeleteReviewData) CreateHookParams(creator *dovetypes.PlatformUse
 }
 
 func init() {
-	RegisterEvent(WebhookDeleteReviewData{})
+	events.RegisterEvent(WebhookDeleteReviewData{})
 }

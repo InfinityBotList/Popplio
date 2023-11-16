@@ -2,15 +2,17 @@ package events
 
 import (
 	"fmt"
+	"popplio/webhooks/core/events"
 
 	"github.com/bwmarrin/discordgo"
 	"github.com/infinitybotlist/eureka/dovewing/dovetypes"
 )
 
 type WebhookNewReviewData struct {
-	ReviewID string `json:"review_id" description:"The ID of the review"`
-	Content  string `json:"content" description:"The content of the review"`
-	Stars    int32  `json:"stars" description:"The number of stars the auther gave to the review"`
+	ReviewID    string `json:"review_id" description:"The ID of the review"`
+	Content     string `json:"content" description:"The content of the review"`
+	Stars       int32  `json:"stars" description:"The number of stars the auther gave to the review"`
+	OwnerReview bool   `json:"owner_review" description:"Whether or not the review was left by the owner of the entity"`
 }
 
 func (v WebhookNewReviewData) TargetTypes() []string {
@@ -32,7 +34,7 @@ func (n WebhookNewReviewData) Description() string {
 	return "This webhook is sent when a user creates a new review on an entity."
 }
 
-func (n WebhookNewReviewData) CreateHookParams(creator *dovetypes.PlatformUser, targets Target) *discordgo.WebhookParams {
+func (n WebhookNewReviewData) CreateHookParams(creator *dovetypes.PlatformUser, targets events.Target) *discordgo.WebhookParams {
 	return &discordgo.WebhookParams{
 		Embeds: []*discordgo.MessageEmbed{
 			{
@@ -71,6 +73,16 @@ func (n WebhookNewReviewData) CreateHookParams(creator *dovetypes.PlatformUser, 
 						Inline: true,
 					},
 					{
+						Name: "Owner Review",
+						Value: func() string {
+							if n.OwnerReview {
+								return "Yes"
+							}
+
+							return "No"
+						}(),
+					},
+					{
 						Name:   "Review Page",
 						Value:  targets.GetViewLink(),
 						Inline: true,
@@ -82,5 +94,5 @@ func (n WebhookNewReviewData) CreateHookParams(creator *dovetypes.PlatformUser, 
 }
 
 func init() {
-	RegisterEvent(WebhookNewReviewData{})
+	events.RegisterEvent(WebhookNewReviewData{})
 }

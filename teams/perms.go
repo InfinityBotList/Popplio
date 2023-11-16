@@ -64,6 +64,12 @@ const (
 	// Ability to delete assets for the entity
 	PermissionDeleteAssets Permission = "delete_assets"
 
+	// Ability to create owner reviews for the entity
+	PermissionCreateOwnerReview Permission = "create_owner_review"
+
+	// Ability to edit owner reviews for the entity
+	PermissionEditOwnerReview Permission = "edit_owner_review"
+
 	// Ability to delete the entity
 	PermissionDelete Permission = "delete"
 
@@ -166,6 +172,26 @@ var PermDetails = []types.PermissionData{
 		Name:              "Delete {entity} Assets",
 		Desc:              "Delete assets for {entity} on the team",
 		SupportedEntities: []string{"bot", "server", "team", "global"},
+	},
+	{
+		ID:   PermissionCreateOwnerReview,
+		Name: "Create {entity} Owner Review",
+		Desc: "Create an owner review for {entity} on the team. This is a very dangerous permission and should usually never be given to anyone.",
+		SupportedEntities: []string{
+			"bot",
+			"server",
+			"global",
+		},
+	},
+	{
+		ID:   PermissionEditOwnerReview,
+		Name: "Edit {entity} Owner Review",
+		Desc: "Edit an owner review for {entity} on the team. This is a very dangerous permission and should usually never be given to anyone.",
+		SupportedEntities: []string{
+			"bot",
+			"server",
+			"global",
+		},
 	},
 	{
 		ID:   PermissionDelete,

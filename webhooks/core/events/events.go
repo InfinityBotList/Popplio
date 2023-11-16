@@ -176,7 +176,7 @@ func ParseWebhookMetadata(w *WebhookMetadata) WebhookMetadata {
 	return *w
 }
 
-func convertChangesetToFields[T any](name string, c Changeset[T]) []*discordgo.MessageEmbedField {
+func ConvertChangesetToFields[T any](name string, c Changeset[T]) []*discordgo.MessageEmbedField {
 	return []*discordgo.MessageEmbedField{
 		{
 			Name: "Old " + name,

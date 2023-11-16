@@ -1,6 +1,7 @@
 package events
 
 import (
+	"popplio/webhooks/core/events"
 	"strconv"
 
 	"github.com/bwmarrin/discordgo"
@@ -33,7 +34,7 @@ func (v WebhookNewVoteData) Description() string {
 	return "This webhook is sent when a user votes for an entity."
 }
 
-func (v WebhookNewVoteData) CreateHookParams(creator *dovetypes.PlatformUser, targets Target) *discordgo.WebhookParams {
+func (v WebhookNewVoteData) CreateHookParams(creator *dovetypes.PlatformUser, targets events.Target) *discordgo.WebhookParams {
 	return &discordgo.WebhookParams{
 		Embeds: []*discordgo.MessageEmbed{
 			{
@@ -80,5 +81,5 @@ func (v WebhookNewVoteData) CreateHookParams(creator *dovetypes.PlatformUser, ta
 	}
 }
 func init() {
-	RegisterEvent(WebhookNewVoteData{})
+	events.RegisterEvent(WebhookNewVoteData{})
 }

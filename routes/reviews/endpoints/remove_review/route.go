@@ -5,9 +5,8 @@ import (
 	"popplio/routes/reviews/assets"
 	"popplio/state"
 	"popplio/types"
-	"popplio/webhooks/bothooks"
+	"popplio/webhooks/core/drivers"
 	"popplio/webhooks/events"
-	"popplio/webhooks/serverhooks"
 
 	docs "github.com/infinitybotlist/eureka/doclib"
 	"github.com/infinitybotlist/eureka/uapi"
@@ -72,37 +71,19 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
-	switch targetType {
-	case "bot":
-		err = bothooks.Send(bothooks.With{
-			Data: events.WebhookDeleteReviewData{
-				ReviewID: rid,
-				Content:  content,
-				Stars:    stars,
-			},
-			UserID: d.Auth.ID,
-			BotID:  targetId,
-		})
+	err = drivers.Send(drivers.With{
+		Data: events.WebhookDeleteReviewData{
+			ReviewID: rid,
+			Content:  content,
+			Stars:    stars,
+		},
+		UserID:     d.Auth.ID,
+		TargetID:   targetId,
+		TargetType: targetType,
+	})
 
-		if err != nil {
-			state.Logger.Error("Failed to send webhook", zap.Error(err), zap.String("bot_id", targetId), zap.String("user_id", d.Auth.ID), zap.String("review_id", rid))
-		}
-	case "server":
-		err = serverhooks.Send(serverhooks.With{
-			Data: events.WebhookDeleteReviewData{
-				ReviewID: rid,
-				Content:  content,
-				Stars:    stars,
-			},
-			UserID:   d.Auth.ID,
-			ServerID: targetId,
-		})
-
-		if err != nil {
-			state.Logger.Error("Failed to send webhook", zap.Error(err), zap.String("server_id", targetId), zap.String("user_id", d.Auth.ID), zap.String("review_id", rid))
-		}
-	default:
-		state.Logger.Error("Unknown target type: " + targetType)
+	if err != nil {
+		state.Logger.Error("Failed to send webhook", zap.Error(err), zap.String("target_id", targetId), zap.String("target_type", targetType), zap.String("user_id", d.Auth.ID), zap.String("review_id", rid))
 	}
 
 	state.Redis.Del(d.Context, "rv-"+targetId+"-"+targetType)

@@ -1,31 +1,12 @@
 package webhooks
 
 import (
-	"popplio/webhooks/bothooks"
 	"popplio/webhooks/bothooks_legacy"
-	"popplio/webhooks/events"
-	"popplio/webhooks/sender"
-	"popplio/webhooks/serverhooks"
-	"popplio/webhooks/teamhooks"
+	"popplio/webhooks/core/drivers"
+	"popplio/webhooks/core/events"
 
 	docs "github.com/infinitybotlist/eureka/doclib"
 )
-
-// A webhook driver
-//
-// TODO: This will also be used to handle retries in the future
-type WebhookDriver interface {
-	PullPending() *sender.WebhookPullPending
-
-	// If any specific setup is required for the driver, it can be done here
-	Register()
-}
-
-var RegisteredDrivers = map[string]WebhookDriver{
-	bothooks.EntityType:    bothooks.Driver{},
-	serverhooks.EntityType: serverhooks.Driver{},
-	teamhooks.EntityType:   teamhooks.Driver{},
-}
 
 // Setup code
 func Setup() {
@@ -35,16 +16,7 @@ func Setup() {
 	)
 
 	events.RegisterAllEvents()
-
-	for _, driver := range RegisteredDrivers {
-		driver.Register()
-
-		pullPending := driver.PullPending()
-
-		if pullPending != nil {
-			go sender.PullPending(*pullPending)
-		}
-	}
+	go drivers.PullPendingForAll()
 
 	legacyDocs()
 }

@@ -37,6 +37,8 @@ type japidata struct {
 }
 
 func CheckBot(ctx context.Context, fallbackBotId, clientId string) (*types.DiscordBotMeta, error) {
+	//var fallbackToDiscord bool
+
 	// Convert client id to int
 	cidInt, err := strconv.ParseInt(clientId, 10, 64)
 

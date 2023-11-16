@@ -13,11 +13,9 @@ import (
 	"popplio/state"
 	"popplio/types"
 	"popplio/votes"
-	"popplio/webhooks/bothooks"
 	"popplio/webhooks/bothooks_legacy"
+	"popplio/webhooks/core/drivers"
 	"popplio/webhooks/events"
-	"popplio/webhooks/serverhooks"
-	"popplio/webhooks/teamhooks"
 
 	"github.com/bwmarrin/discordgo"
 	docs "github.com/infinitybotlist/eureka/doclib"
@@ -354,37 +352,15 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 			return
 		}
 
-		switch targetType {
-		case "bot":
-			err = bothooks.Send(bothooks.With{
-				UserID: uid,
-				BotID:  targetId,
-				Data: events.WebhookNewVoteData{
-					Votes:   nvc,
-					PerUser: vi.VoteInfo.PerUser,
-				},
-			})
-		case "team":
-			err = teamhooks.Send(teamhooks.With{
-				UserID: uid,
-				TeamID: targetId,
-				Data: events.WebhookNewVoteData{
-					Votes:    nvc,
-					PerUser:  vi.VoteInfo.PerUser,
-					Downvote: upvote == "false",
-				},
-			})
-		case "server":
-			err = serverhooks.Send(serverhooks.With{
-				UserID:   uid,
-				ServerID: targetId,
-				Data: events.WebhookNewVoteData{
-					Votes:    nvc,
-					PerUser:  vi.VoteInfo.PerUser,
-					Downvote: upvote == "false",
-				},
-			})
-		}
+		err = drivers.Send(drivers.With{
+			UserID:     uid,
+			TargetID:   targetId,
+			TargetType: targetType,
+			Data: events.WebhookNewVoteData{
+				Votes:   nvc,
+				PerUser: vi.VoteInfo.PerUser,
+			},
+		})
 
 		var msg types.Alert
 

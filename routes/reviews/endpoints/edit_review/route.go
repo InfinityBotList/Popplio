@@ -5,9 +5,9 @@ import (
 	"popplio/routes/reviews/assets"
 	"popplio/state"
 	"popplio/types"
-	"popplio/webhooks/bothooks"
+	"popplio/webhooks/core/drivers"
+	cevents "popplio/webhooks/core/events"
 	"popplio/webhooks/events"
-	"popplio/webhooks/serverhooks"
 
 	docs "github.com/infinitybotlist/eureka/doclib"
 	"github.com/infinitybotlist/eureka/uapi"
@@ -17,12 +17,7 @@ import (
 	"github.com/go-playground/validator/v10"
 )
 
-type EditReview struct {
-	Content string `db:"content" json:"content" validate:"required,min=5,max=4000" msg:"Content must be between 5 and 4000 characters"`
-	Stars   int32  `db:"stars" json:"stars" validate:"required,min=1,max=5" msg:"Stars must be between 1 and 5 stars"`
-}
-
-var compiledMessages = uapi.CompileValidationErrors(EditReview{})
+var compiledMessages = uapi.CompileValidationErrors(types.EditReview{})
 
 func Docs() *docs.Doc {
 	return &docs.Doc{
@@ -44,13 +39,13 @@ func Docs() *docs.Doc {
 				Schema:      docs.IdSchema,
 			},
 		},
-		Req:  EditReview{},
+		Req:  types.EditReview{},
 		Resp: types.ApiError{},
 	}
 }
 
 func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
-	var payload EditReview
+	var payload types.EditReview
 
 	hresp, ok := uapi.MarshalReq(r, &payload)
 
@@ -73,8 +68,9 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	var targetType string
 	var content string
 	var stars int32
+	var ownerReview bool
 
-	err = state.Pool.QueryRow(d.Context, "SELECT author, target_id, target_type, content, stars FROM reviews WHERE id = $1", rid).Scan(&author, &targetId, &targetType, &content, &stars)
+	err = state.Pool.QueryRow(d.Context, "SELECT author, target_id, target_type, content, stars, owner_review FROM reviews WHERE id = $1", rid).Scan(&author, &targetId, &targetType, &content, &stars, &ownerReview)
 
 	if err != nil {
 		state.Logger.Error("Failed to query review [db queryrow]", zap.Error(err), zap.String("rid", rid))
@@ -97,49 +93,26 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
-	switch targetType {
-	case "bot":
-		err = bothooks.Send(bothooks.With{
-			Data: events.WebhookEditReviewData{
-				ReviewID: rid,
-				Content: events.Changeset[string]{
-					Old: content,
-					New: payload.Content,
-				},
-				Stars: events.Changeset[int32]{
-					Old: stars,
-					New: payload.Stars,
-				},
+	err = drivers.Send(drivers.With{
+		Data: events.WebhookEditReviewData{
+			ReviewID:    rid,
+			OwnerReview: ownerReview,
+			Content: cevents.Changeset[string]{
+				Old: content,
+				New: payload.Content,
 			},
-			UserID: d.Auth.ID,
-			BotID:  targetId,
-		})
-
-		if err != nil {
-			state.Logger.Error("Failed to send webhook", zap.Error(err), zap.String("bot_id", targetId), zap.String("user_id", d.Auth.ID), zap.String("review_id", rid))
-		}
-	case "server":
-		err = serverhooks.Send(serverhooks.With{
-			Data: events.WebhookEditReviewData{
-				ReviewID: rid,
-				Content: events.Changeset[string]{
-					Old: content,
-					New: payload.Content,
-				},
-				Stars: events.Changeset[int32]{
-					Old: stars,
-					New: payload.Stars,
-				},
+			Stars: cevents.Changeset[int32]{
+				Old: stars,
+				New: payload.Stars,
 			},
-			UserID:   d.Auth.ID,
-			ServerID: targetId,
-		})
+		},
+		UserID:     d.Auth.ID,
+		TargetID:   targetId,
+		TargetType: targetType,
+	})
 
-		if err != nil {
-			state.Logger.Error("Failed to send webhook", zap.Error(err), zap.String("server_id", targetId), zap.String("user_id", d.Auth.ID), zap.String("review_id", rid))
-		}
-	default:
-		state.Logger.Error("Unknown target type: " + targetType)
+	if err != nil {
+		state.Logger.Error("Failed to send webhook", zap.Error(err), zap.String("target_id", targetId), zap.String("target_type", targetType), zap.String("user_id", d.Auth.ID), zap.String("review_id", rid))
 	}
 
 	state.Redis.Del(d.Context, "rv-"+targetId+"-"+targetType)

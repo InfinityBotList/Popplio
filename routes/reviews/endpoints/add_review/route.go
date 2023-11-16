@@ -4,13 +4,14 @@ import (
 	"net/http"
 	"popplio/routes/reviews/assets"
 	"popplio/state"
+	"popplio/teams"
 	"popplio/types"
-	"popplio/webhooks/bothooks"
+	"popplio/webhooks/core/drivers"
 	"popplio/webhooks/events"
-	"popplio/webhooks/serverhooks"
 	"time"
 
 	"github.com/infinitybotlist/eureka/uapi/ratelimit"
+	"github.com/jackc/pgx/v5/pgtype"
 	"go.uber.org/zap"
 
 	docs "github.com/infinitybotlist/eureka/doclib"
@@ -85,7 +86,6 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	}
 
 	// Validate the payload
-
 	err = state.Validator.Struct(payload)
 
 	if err != nil {
@@ -135,6 +135,25 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		return uapi.HttpResponse{
 			Status: http.StatusNotImplemented,
 			Json:   types.ApiError{Message: "Support for this target type has not been implemented yet"},
+		}
+	}
+
+	if payload.OwnerReview {
+		perms, err := teams.GetEntityPerms(d.Context, d.Auth.ID, targetType, targetId)
+
+		if err != nil {
+			state.Logger.Error("Error getting entity perms", zap.Error(err), zap.String("uid", d.Auth.ID), zap.String("target_id", targetId), zap.String("target_type", targetType))
+			return uapi.HttpResponse{
+				Status: http.StatusBadRequest,
+				Json:   types.ApiError{Message: "Error getting user perms: " + err.Error()},
+			}
+		}
+
+		if !perms.Has(targetType, teams.PermissionCreateOwnerReview) {
+			return uapi.HttpResponse{
+				Status: http.StatusForbidden,
+				Json:   types.ApiError{Message: "You do not have permission to create an owner review for this " + targetType},
+			}
 		}
 	}
 
@@ -191,49 +210,33 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	}
 
 	// Create the review
-	var reviewId string
-	if payload.ParentID == "" {
-		err = state.Pool.QueryRow(d.Context, "INSERT INTO reviews (author, target_id, target_type, content, stars) VALUES ($1, $2, $3, $4, $5) RETURNING id", d.Auth.ID, targetId, targetType, payload.Content, payload.Stars).Scan(&reviewId)
-	} else {
-		err = state.Pool.QueryRow(d.Context, "INSERT INTO reviews (author, target_id, target_type, content, stars, parent_id) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id", d.Auth.ID, targetId, targetType, payload.Content, payload.Stars, payload.ParentID).Scan(&reviewId)
+	var parentId = pgtype.Text{
+		Valid:  payload.ParentID != "",
+		String: payload.ParentID,
 	}
+
+	var reviewId string
+	err = state.Pool.QueryRow(d.Context, "INSERT INTO reviews (author, target_id, target_type, content, stars, parent_id, owner_review) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id", d.Auth.ID, targetId, targetType, payload.Content, payload.Stars, parentId, payload.OwnerReview).Scan(&reviewId)
 
 	if err != nil {
 		state.Logger.Error("Failed to insert review", zap.Error(err), zap.String("author", d.Auth.ID), zap.String("target_id", targetId), zap.String("target_type", targetType))
 		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
-	switch targetType {
-	case "bot":
-		err = bothooks.Send(bothooks.With{
-			Data: events.WebhookNewReviewData{
-				ReviewID: reviewId,
-				Content:  payload.Content,
-				Stars:    payload.Stars,
-			},
-			UserID: d.Auth.ID,
-			BotID:  targetId,
-		})
+	err = drivers.Send(drivers.With{
+		Data: events.WebhookNewReviewData{
+			ReviewID:    reviewId,
+			Content:     payload.Content,
+			Stars:       payload.Stars,
+			OwnerReview: payload.OwnerReview,
+		},
+		UserID:     d.Auth.ID,
+		TargetID:   targetId,
+		TargetType: targetType,
+	})
 
-		if err != nil {
-			state.Logger.Error("Failed to send webhook", zap.Error(err), zap.String("bot_id", targetId), zap.String("user_id", d.Auth.ID), zap.String("review_id", reviewId))
-		}
-	case "server":
-		err = serverhooks.Send(serverhooks.With{
-			Data: events.WebhookNewReviewData{
-				ReviewID: reviewId,
-				Content:  payload.Content,
-				Stars:    payload.Stars,
-			},
-			UserID:   d.Auth.ID,
-			ServerID: targetId,
-		})
-
-		if err != nil {
-			state.Logger.Error("Failed to send webhook", zap.Error(err), zap.String("server_id", targetId), zap.String("user_id", d.Auth.ID), zap.String("review_id", reviewId))
-		}
-	default:
-		state.Logger.Error("Unknown target type", zap.String("target_type", targetType), zap.String("review_id", reviewId))
+	if err != nil {
+		state.Logger.Error("Failed to send webhook", zap.Error(err), zap.String("target_id", targetId), zap.String("target_type", targetType), zap.String("user_id", d.Auth.ID), zap.String("review_id", reviewId))
 	}
 
 	state.Redis.Del(d.Context, "rv-"+targetId+"-"+targetType)

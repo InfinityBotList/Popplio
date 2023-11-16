@@ -2,15 +2,17 @@ package events
 
 import (
 	"fmt"
+	"popplio/webhooks/core/events"
 
 	"github.com/bwmarrin/discordgo"
 	"github.com/infinitybotlist/eureka/dovewing/dovetypes"
 )
 
 type WebhookEditReviewData struct {
-	ReviewID string            `json:"review_id" description:"The ID of the review"`
-	Stars    Changeset[int32]  `json:"stars" description:"The number of stars the auther gave to the review"`
-	Content  Changeset[string] `json:"content" description:"The content of the review"`
+	ReviewID    string                   `json:"review_id" description:"The ID of the review"`
+	Stars       events.Changeset[int32]  `json:"stars" description:"The number of stars the auther gave to the review"`
+	Content     events.Changeset[string] `json:"content" description:"The content of the review"`
+	OwnerReview bool                     `json:"owner_review" description:"Whether or not the review was left by the owner of the entity"`
 }
 
 func (v WebhookEditReviewData) TargetTypes() []string {
@@ -32,7 +34,7 @@ func (n WebhookEditReviewData) Description() string {
 	return "This webhook is sent when a user edits an existing review on an entity."
 }
 
-func (n WebhookEditReviewData) CreateHookParams(creator *dovetypes.PlatformUser, targets Target) *discordgo.WebhookParams {
+func (n WebhookEditReviewData) CreateHookParams(creator *dovetypes.PlatformUser, targets events.Target) *discordgo.WebhookParams {
 	return &discordgo.WebhookParams{
 		Embeds: []*discordgo.MessageEmbed{
 			{
@@ -81,6 +83,16 @@ func (n WebhookEditReviewData) CreateHookParams(creator *dovetypes.PlatformUser,
 						Inline: true,
 					},
 					{
+						Name: "Owner Review",
+						Value: func() string {
+							if n.OwnerReview {
+								return "Yes"
+							}
+
+							return "No"
+						}(),
+					},
+					{
 						Name:   "Review Page",
 						Value:  targets.GetViewLink(),
 						Inline: true,
@@ -92,5 +104,5 @@ func (n WebhookEditReviewData) CreateHookParams(creator *dovetypes.PlatformUser,
 }
 
 func init() {
-	RegisterEvent(WebhookEditReviewData{})
+	events.RegisterEvent(WebhookEditReviewData{})
 }

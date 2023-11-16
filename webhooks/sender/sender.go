@@ -17,7 +17,7 @@ import (
 	"popplio/notifications"
 	"popplio/state"
 	"popplio/types"
-	"popplio/webhooks/events"
+	"popplio/webhooks/core/events"
 	"strconv"
 	"strings"
 	"time"
@@ -397,8 +397,6 @@ func Send(d *WebhookSendState) error {
 }
 
 func sendDiscord(userId, url string, entity WebhookEntity, params *discordgo.WebhookParams) (validUrl bool, err error) {
-	state.Logger.Info("discord webhook send")
-
 	validPrefixes := []string{
 		"https://discordapp.com/",
 		"https://discord.com/",
@@ -445,7 +443,7 @@ func sendDiscord(userId, url string, entity WebhookEntity, params *discordgo.Web
 			_, err := state.Pool.Exec(state.Context, "UPDATE webhooks SET broken = true WHERE target_id = $1 AND target_type = $2", entity.EntityID, entity.EntityType)
 
 			if err != nil {
-				state.Logger.Error("Failed to update webhook logs with response", zap.Error(err), zap.String("userID", userId), zap.String("entityID", entity.EntityID))
+				state.Logger.Error("Failed to update webhook logs with response", zap.Error(err), zap.String("userID", userId), zap.String("entityID", entity.EntityID), zap.String("entityType", entity.EntityType), zap.Int("status", resp.StatusCode))
 				return true, err
 			}
 		}
@@ -464,83 +462,4 @@ func sendDiscord(userId, url string, entity WebhookEntity, params *discordgo.Web
 	}
 
 	return true, nil
-}
-
-// The data required to create a pull
-type WebhookPullPending struct {
-	// the entity type
-	EntityType string
-
-	// get an entity
-	GetEntity func(id string) (WebhookEntity, error)
-
-	// If a entity may not support pulls, implement this function to determine if it does
-	// If this function is not implemented, it will be assumed that the entity supports pulls
-	SupportsPulls func(id string) (bool, error)
-}
-
-// Pulls all pending webhooks from the database and sends them
-//
-// Do not call this directly/normally, this is handled automatically in 'core'
-func PullPending(p WebhookPullPending) {
-	if p.SupportsPulls != nil {
-		// Check if the entity supports pulls
-		supports, err := p.SupportsPulls("")
-
-		if err != nil {
-			state.Logger.Error("Failed to check if entity supports pulls", zap.Error(err))
-			return
-		}
-
-		if !supports {
-			return
-		}
-	}
-
-	// Fetch every pending bot webhook from webhook_logs
-	rows, err := state.Pool.Query(state.Context, "SELECT id, target_id, user_id, data FROM webhook_logs WHERE state = $1 AND target_type = $2 AND bad_intent = false", "PENDING", p.EntityType)
-
-	if err != nil {
-		state.Logger.Error("Failed to fetch pending webhooks", zap.Error(err))
-		return
-	}
-
-	defer rows.Close()
-
-	for rows.Next() {
-		var (
-			id       string
-			targetId string
-			userId   string
-			data     []byte
-		)
-
-		err := rows.Scan(&id, &targetId, &userId, &data)
-
-		if err != nil {
-			state.Logger.Error("Failed to scan pending webhook", zap.Error(err))
-			continue
-		}
-
-		entity, err := p.GetEntity(targetId)
-
-		if err != nil {
-			state.Logger.Error("Failed to get entity for webhook", zap.Error(err), zap.String("entityID", targetId))
-			continue
-		}
-
-		entity.EntityType = p.EntityType
-
-		// Send webhook
-		err = Send(&WebhookSendState{
-			Data:   data,
-			LogID:  id,
-			UserID: userId,
-			Entity: entity,
-		})
-
-		if err != nil {
-			state.Logger.Error("Failed to send webhook", zap.Error(err), zap.String("entityID", targetId))
-		}
-	}
 }

@@ -7,7 +7,7 @@ import (
 	"popplio/state"
 	"popplio/teams"
 	"popplio/types"
-	"popplio/webhooks/events"
+	"popplio/webhooks/core/events"
 
 	docs "github.com/infinitybotlist/eureka/doclib"
 	"github.com/infinitybotlist/eureka/uapi"

@@ -9,10 +9,8 @@ import (
 	"popplio/state"
 	"popplio/teams"
 	"popplio/types"
-	"popplio/webhooks/bothooks"
-	"popplio/webhooks/events"
-	"popplio/webhooks/serverhooks"
-	"popplio/webhooks/teamhooks"
+	"popplio/webhooks/core/drivers"
+	"popplio/webhooks/core/events"
 
 	"github.com/infinitybotlist/eureka/uapi/ratelimit"
 	"go.uber.org/zap"
@@ -152,62 +150,21 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		return hresp
 	}
 
-	switch targetType {
-	case "bot":
-		err := bothooks.Send(bothooks.With{
-			UserID: d.Auth.ID,
-			BotID:  targetId,
-			Data:   event,
-			Metadata: &events.WebhookMetadata{
-				Test: true,
-			},
-		})
+	err = drivers.Send(drivers.With{
+		UserID:     d.Auth.ID,
+		TargetID:   targetId,
+		TargetType: targetType,
+		Data:       event,
+		Metadata: &events.WebhookMetadata{
+			Test: true,
+		},
+	})
 
-		if err != nil {
-			state.Logger.Error("Error while sending webhook", zap.Error(err), zap.String("userID", d.Auth.ID), zap.String("botID", targetId), zap.String("eventType", eventType))
-			return uapi.HttpResponse{
-				Status: http.StatusBadRequest,
-				Json:   types.ApiError{Message: err.Error()},
-			}
-		}
-	case "team":
-		err := teamhooks.Send(teamhooks.With{
-			UserID: d.Auth.ID,
-			TeamID: targetId,
-			Data:   event,
-			Metadata: &events.WebhookMetadata{
-				Test: true,
-			},
-		})
-
-		if err != nil {
-			state.Logger.Error("Error while sending webhook", zap.Error(err), zap.String("userID", d.Auth.ID), zap.String("teamID", targetId), zap.String("eventType", eventType))
-			return uapi.HttpResponse{
-				Status: http.StatusBadRequest,
-				Json:   types.ApiError{Message: err.Error()},
-			}
-		}
-	case "server":
-		err := serverhooks.Send(serverhooks.With{
-			UserID:   d.Auth.ID,
-			ServerID: targetId,
-			Data:     event,
-			Metadata: &events.WebhookMetadata{
-				Test: true,
-			},
-		})
-
-		if err != nil {
-			state.Logger.Error("Error while sending webhook", zap.Error(err), zap.String("userID", d.Auth.ID), zap.String("serverID", targetId), zap.String("eventType", eventType))
-			return uapi.HttpResponse{
-				Status: http.StatusBadRequest,
-				Json:   types.ApiError{Message: err.Error()},
-			}
-		}
-	default:
+	if err != nil {
+		state.Logger.Error("Error while sending webhook", zap.Error(err), zap.String("userID", d.Auth.ID), zap.String("targetId", targetId), zap.String("targetType", targetType), zap.String("eventType", eventType))
 		return uapi.HttpResponse{
 			Status: http.StatusBadRequest,
-			Json:   types.ApiError{Message: "Invalid target type"},
+			Json:   types.ApiError{Message: err.Error()},
 		}
 	}
 

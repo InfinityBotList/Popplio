@@ -6,8 +6,9 @@ import (
 	"popplio/teams"
 	"popplio/types"
 	"popplio/validators"
+	"popplio/webhooks/core/drivers"
+	cevents "popplio/webhooks/core/events"
 	"popplio/webhooks/events"
-	"popplio/webhooks/teamhooks"
 
 	docs "github.com/infinitybotlist/eureka/doclib"
 	"github.com/infinitybotlist/eureka/uapi"
@@ -157,45 +158,52 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
-	err = teamhooks.Send(teamhooks.With{
+	err = drivers.Send(drivers.With{
 		Data: events.WebhookTeamEditData{
-			Name: events.Changeset[string]{
+			Name: cevents.Changeset[string]{
 				Old: oldName,
 				New: payload.Name,
 			},
-			Short: func() events.Changeset[string] {
+			Short: func() cevents.Changeset[string] {
 				if payload.Short == nil {
-					return events.Changeset[string]{}
+					return cevents.Changeset[string]{
+						Old: oldShort.String,
+						New: "",
+					}
 				}
 
-				return events.Changeset[string]{
+				return cevents.Changeset[string]{
 					Old: oldShort.String,
 					New: *payload.Short,
 				}
 			}(),
-			Tags: func() events.Changeset[[]string] {
+			Tags: func() cevents.Changeset[[]string] {
 				if payload.Tags == nil {
-					return events.Changeset[[]string]{}
+					return cevents.Changeset[[]string]{}
 				}
 
-				return events.Changeset[[]string]{
+				return cevents.Changeset[[]string]{
 					Old: oldTags,
 					New: *payload.Tags,
 				}
 			}(),
-			ExtraLinks: func() events.Changeset[[]types.Link] {
+			ExtraLinks: func() cevents.Changeset[[]types.Link] {
 				if payload.ExtraLinks == nil {
-					return events.Changeset[[]types.Link]{}
+					return cevents.Changeset[[]types.Link]{
+						Old: oldExtraLinks,
+						New: []types.Link{},
+					}
 				}
 
-				return events.Changeset[[]types.Link]{
+				return cevents.Changeset[[]types.Link]{
 					Old: oldExtraLinks,
 					New: *payload.ExtraLinks,
 				}
 			}(),
 		},
-		UserID: d.Auth.ID,
-		TeamID: teamId,
+		UserID:     d.Auth.ID,
+		TargetType: "team",
+		TargetID:   teamId,
 	})
 
 	if err != nil {
