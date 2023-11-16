@@ -37,7 +37,7 @@ type japidata struct {
 }
 
 func CheckBot(ctx context.Context, fallbackBotId, clientId string) (*types.DiscordBotMeta, error) {
-	//var fallbackToDiscord bool
+	var fetchErrors = map[string]string{}
 
 	// Convert client id to int
 	cidInt, err := strconv.ParseInt(clientId, 10, 64)
@@ -64,32 +64,90 @@ func CheckBot(ctx context.Context, fallbackBotId, clientId string) (*types.Disco
 	resp, err := cli.Do(req)
 
 	if err != nil {
-		return nil, fmt.Errorf("error making request: %s", err.Error())
-	}
-
-	if resp.StatusCode == http.StatusTooManyRequests {
-		return nil, fmt.Errorf("we're being ratelimited by our anti-abuse provider! Please try again in %s seconds", resp.Header.Get("Retry-After"))
-	} else if resp.StatusCode > 400 {
-		return nil, fmt.Errorf("we couldn't find a bot with that client ID! Status code: %d", resp.StatusCode)
-	}
-
-	defer resp.Body.Close()
-
-	if resp.StatusCode != 200 {
-		return nil, errors.New("we couldn't find a bot with that client ID! Status code: " + strconv.Itoa(resp.StatusCode))
-	}
-
-	var data japidata
-
-	err = json.NewDecoder(resp.Body).Decode(&data)
-
-	if err != nil {
-		return nil, err
+		fetchErrors["japi.doError"] = err.Error()
+		resp = &http.Response{
+			Status:     "418 I'm a teapot",
+			StatusCode: http.StatusTeapot,
+		}
 	}
 
 	var metadata *types.DiscordBotMeta
+	switch {
+	// 429, fallback
+	case resp.StatusCode == http.StatusTooManyRequests:
+		fetchErrors["japi.ratelimit"] = fmt.Sprintf("we're being ratelimited by our anti-abuse provider! Please try again in %s seconds", resp.Header.Get("Retry-After"))
+	// 5** server error fallback
+	case resp.StatusCode > 500:
+		fetchErrors["japi.server"] = fmt.Sprintf("the JAPI server is having issues! Status code: %d", resp.StatusCode)
+	// 408, fallback
+	case resp.StatusCode == http.StatusRequestTimeout:
+		fetchErrors["japi.timeout"] = "the JAPI server is taking too long to respond!"
+	// 418, fallback
+	case resp.StatusCode == http.StatusTeapot:
+		fetchErrors["japi.status"] = "the JAPI server did not respond to the request correctly!"
+	// 4** client error should not be fallback'd
+	case resp.StatusCode > 400:
+		return nil, fmt.Errorf("we couldn't find a bot with that client ID! Status code: %d", resp.StatusCode)
+	// 2** is an invalid response, fallback
+	case resp.StatusCode > 200:
+		fetchErrors["japi.status"] = fmt.Sprintf("the JAPI server returned an invalid status code! Status code: %d", resp.StatusCode)
+	case resp.StatusCode == 200:
+		defer resp.Body.Close()
 
-	if data.Data.Message != "" {
+		var data japidata
+
+		err = json.NewDecoder(resp.Body).Decode(&data)
+
+		if err != nil {
+			return nil, err
+		}
+
+		if data.Data.Message != "" {
+			fetchErrors["japi.message"] = data.Data.Message
+		}
+
+		if data.Data.Bot == nil || data.Data.Application == nil {
+			return nil, errors.New("woah there, we found an application with no associated bot?")
+		}
+
+		if data.Data.Bot.ID == "" {
+			return nil, errors.New("woah there, we found an application with no associated bot?")
+		}
+
+		if !data.Cached {
+			state.Logger.With(
+				zap.String("bot_id", data.Data.Bot.ID),
+				zap.String("client_id", clientId),
+			).Info("JAPI cache MISS")
+		} else {
+			state.Logger.With(
+				zap.String("bot_id", data.Data.Bot.ID),
+				zap.String("client_id", clientId),
+			).Info("JAPI cache HIT")
+		}
+
+		user, err := dovewing.GetUser(ctx, data.Data.Bot.ID, state.DovewingPlatformDiscord)
+
+		if err != nil {
+			return nil, errors.New("please contact support, an error has occured while trying to fetch basic info")
+		}
+
+		metadata = &types.DiscordBotMeta{
+			BotID:       data.Data.Bot.ID,
+			ClientID:    clientId,
+			Name:        user.Username,
+			GuildCount:  data.Data.Bot.ApproximateGuildCount,
+			BotPublic:   data.Data.Application.BotPublic,
+			Avatar:      user.Avatar,
+			Flags:       data.Data.Bot.PublicFlagsArray,
+			Description: data.Data.Application.Description,
+			Tags:        data.Data.Application.Tags,
+			FetchErrors: fetchErrors,
+			Fallback:    false,
+		}
+	}
+
+	if metadata == nil {
 		// Fallback to RPC, but this is less accurate
 		req, err := http.NewRequestWithContext(ctx, "GET", state.Config.Meta.PopplioProxy+"/api/v10/applications/"+clientId+"/rpc", nil)
 
@@ -139,51 +197,13 @@ func CheckBot(ctx context.Context, fallbackBotId, clientId string) (*types.Disco
 		}
 
 		metadata = &types.DiscordBotMeta{
-			BotID:     fallbackBotId,
-			ClientID:  clientId,
-			Name:      user.Username,
-			Avatar:    user.Avatar,
-			BotPublic: rpcFallbackData.BotPublic,
-			Fallback:  true,
-		}
-	} else {
-		if data.Data.Bot == nil || data.Data.Application == nil {
-			return nil, errors.New("woah there, we found an application with no associated bot?")
-		}
-
-		if data.Data.Bot.ID == "" {
-			return nil, errors.New("woah there, we found an application with no associated bot?")
-		}
-
-		if !data.Cached {
-			state.Logger.With(
-				zap.String("bot_id", data.Data.Bot.ID),
-				zap.String("client_id", clientId),
-			).Info("JAPI cache MISS")
-		} else {
-			state.Logger.With(
-				zap.String("bot_id", data.Data.Bot.ID),
-				zap.String("client_id", clientId),
-			).Info("JAPI cache HIT")
-		}
-
-		user, err := dovewing.GetUser(ctx, data.Data.Bot.ID, state.DovewingPlatformDiscord)
-
-		if err != nil {
-			return nil, errors.New("please contact support, an error has occured while trying to fetch basic info")
-		}
-
-		metadata = &types.DiscordBotMeta{
-			BotID:       data.Data.Bot.ID,
+			BotID:       fallbackBotId,
 			ClientID:    clientId,
 			Name:        user.Username,
-			GuildCount:  data.Data.Bot.ApproximateGuildCount,
-			BotPublic:   data.Data.Application.BotPublic,
 			Avatar:      user.Avatar,
-			Flags:       data.Data.Bot.PublicFlagsArray,
-			Description: data.Data.Application.Description,
-			Tags:        data.Data.Application.Tags,
-			Fallback:    false,
+			BotPublic:   rpcFallbackData.BotPublic,
+			FetchErrors: fetchErrors,
+			Fallback:    true,
 		}
 	}
 

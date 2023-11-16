@@ -140,17 +140,18 @@ type ListIndexBot struct {
 }
 
 type DiscordBotMeta struct {
-	BotID       string   `json:"bot_id" description:"The bot's ID"`
-	ClientID    string   `json:"client_id" description:"The bot's client ID"`
-	Name        string   `json:"name" description:"The bot's name"`
-	Avatar      string   `json:"avatar" description:"The bot's avatar"`
-	ListType    string   `json:"list_type" description:"If this is empty, then it is not on the list"`
-	GuildCount  int      `json:"guild_count" description:"The bot's guild count"`
-	BotPublic   bool     `json:"bot_public" description:"Whether or not the bot is public"`
-	Flags       []string `json:"flags" description:"The bot's flags"`
-	Description string   `json:"description" description:"The suggested description for the bot"`
-	Tags        []string `json:"tags" description:"The suggested tags for the bot"`
-	Fallback    bool     `json:"fallback" description:"Whether or not we had to fallback to RPC from JAPI.rest"`
+	BotID       string            `json:"bot_id" description:"The bot's ID"`
+	ClientID    string            `json:"client_id" description:"The bot's client ID"`
+	Name        string            `json:"name" description:"The bot's name"`
+	Avatar      string            `json:"avatar" description:"The bot's avatar"`
+	ListType    string            `json:"list_type" description:"If this is empty, then it is not on the list"`
+	GuildCount  int               `json:"guild_count" description:"The bot's guild count"`
+	BotPublic   bool              `json:"bot_public" description:"Whether or not the bot is public"`
+	Flags       []string          `json:"flags" description:"The bot's flags"`
+	Description string            `json:"description" description:"The suggested description for the bot"`
+	Tags        []string          `json:"tags" description:"The suggested tags for the bot"`
+	Fallback    bool              `json:"fallback" description:"Whether or not we had to fallback to RPC from JAPI.rest"`
+	FetchErrors map[string]string `json:"fetch_errors" description:"The errors that occurred when fetching the bot"`
 }
 
 type PatchBotTeam struct {
