@@ -23,6 +23,7 @@ func (b Router) Routes(r *chi.Mux) {
 		Method:  uapi.GET,
 		Docs:    get_task.Docs,
 		Handler: get_task.Route,
+		AuthOptional: true,
 		Auth: []uapi.AuthType{
 			{
 				URLVar: "id",

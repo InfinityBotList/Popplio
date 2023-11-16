@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/infinitybotlist/eureka/crypto"
 	"github.com/infinitybotlist/eureka/uapi/ratelimit"
 	"github.com/jackc/pgx/v5/pgtype"
 	"go.uber.org/zap"
@@ -81,10 +82,14 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 
 	remoteIp := strings.Split(strings.ReplaceAll(r.Header.Get("X-Forwarded-For"), " ", ""), ",")
 
+	taskKey := crypto.RandString(128)
 	var taskId string
 
-	err = state.Pool.QueryRow(d.Context, "INSERT INTO tasks (task_name, for_user, expiry, output) VALUES ($1, $2, $3, $4) RETURNING task_id",
+	allowUnauthenticated := (taskName == "data_delete") // Only data deletions need unauthenticated access to task data
+
+	err = state.Pool.QueryRow(d.Context, "INSERT INTO tasks (task_name, task_key, for_user, expiry, output, allow_unauthenticated) VALUES ($1, $2, $3, $4, $5, $6) RETURNING task_id",
 		taskName,
+		taskKey,
 		d.Auth.ID,
 		dataTaskExpiryTime,
 		map[string]any{
@@ -92,6 +97,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 				"request_ip": remoteIp[0],
 			},
 		},
+		allowUnauthenticated,
 	).Scan(&taskId)
 
 	if err != nil {
@@ -107,9 +113,14 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 
 	return uapi.HttpResponse{
 		Json: types.TaskCreateResponse{
-			TaskID:   taskId,
-			TaskName: taskName,
-			Expiry:   pgtype.Interval{Microseconds: int64(dataTaskExpiryTime / time.Microsecond)},
+			TaskID: taskId,
+			TaskKey: pgtype.Text{
+				Valid:  true,
+				String: taskKey,
+			},
+			TaskName:             taskName,
+			Expiry:               pgtype.Interval{Microseconds: int64(dataTaskExpiryTime / time.Microsecond)},
+			AllowUnauthenticated: allowUnauthenticated,
 		},
 	}
 }

@@ -39,6 +39,13 @@ func Docs() *docs.Doc {
 				In:          "path",
 				Schema:      docs.IdSchema,
 			},
+			{
+				Name:        "tkey",
+				Description: "The task key if required. This is used to authenticate the request.",
+				Required:    false,
+				In:          "query",
+				Schema:      docs.IdSchema,
+			},
 		},
 		Resp: types.Task{},
 	}
@@ -47,6 +54,7 @@ func Docs() *docs.Doc {
 func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	// Check that the user owns the task
 	taskId := chi.URLParam(r, "tid")
+	userId := chi.URLParam(r, "id")
 
 	if taskId == "" {
 		return uapi.HttpResponse{
@@ -82,6 +90,24 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	if err != nil {
 		state.Logger.Error("Failed to fetch task [db fetch]", zap.Error(err))
 		return uapi.DefaultResponse(http.StatusInternalServerError)
+	}
+
+	if task.TaskKey.Valid {
+		if task.TaskKey.String != r.URL.Query().Get("tkey") {
+			return uapi.HttpResponse{
+				Status: http.StatusUnauthorized,
+				Json:   types.ApiError{Message: "Invalid task key"},
+			}
+		}
+	}
+
+	if task.AllowUnauthenticated {
+		d.Auth.ID = userId
+	} else if d.Auth.ID == "" {
+		return uapi.HttpResponse{
+			Status: http.StatusUnauthorized,
+			Json:   types.ApiError{Message: "You must be authenticated to access this task"},
+		}
 	}
 
 	if task.ForUser.Valid {

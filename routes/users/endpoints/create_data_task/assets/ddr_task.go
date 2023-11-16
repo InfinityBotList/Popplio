@@ -161,15 +161,6 @@ func DataTask(taskId, taskName, id, ip string) {
 
 	// Delete from psql user_cache if `del` is true
 	if del {
-		var apiToken string
-
-		err = tx.QueryRow(state.Context, "SELECT api_token FROM users WHERE user_id = $1", id).Scan(&apiToken)
-
-		if err != nil {
-			l.Error("Failed to get api token", zap.Error(err), zap.String("id", id), zap.Bool("del", del))
-			return
-		}
-
 		for _, deleteCall := range deleteCalls {
 			if deleteCall.keys[0] == "users" {
 				continue
@@ -198,13 +189,6 @@ func DataTask(taskId, taskName, id, ip string) {
 			}
 
 			l.Info("Cleared user [dovewing]", zap.String("id", id), zap.String("platform", dovewingPlatform.PlatformName()), zap.Any("res", res))
-		}
-
-		_, err = tx.Exec(state.Context, "INSERT INTO users (user_id, api_token) VALUES ($1, $2)", id, apiToken)
-
-		if err != nil {
-			l.Error("Failed to reinsert user", zap.Error(err), zap.String("id", id), zap.Bool("del", del))
-			return
 		}
 	}
 
