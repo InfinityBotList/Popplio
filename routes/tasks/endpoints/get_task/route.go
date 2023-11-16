@@ -40,7 +40,7 @@ func Docs() *docs.Doc {
 				Schema:      docs.IdSchema,
 			},
 			{
-				Name:        "tkey",
+				Name:        "task_key",
 				Description: "The task key if required. This is used to authenticate the request.",
 				Required:    false,
 				In:          "query",
@@ -93,7 +93,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	}
 
 	if task.TaskKey.Valid {
-		if task.TaskKey.String != r.URL.Query().Get("tkey") {
+		if task.TaskKey.String != r.URL.Query().Get("task_key") {
 			return uapi.HttpResponse{
 				Status: http.StatusUnauthorized,
 				Json:   types.ApiError{Message: "Invalid task key"},

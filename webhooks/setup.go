@@ -4,6 +4,8 @@ import (
 	"popplio/webhooks/bothooks_legacy"
 	"popplio/webhooks/core/drivers"
 	"popplio/webhooks/core/events"
+	_ "popplio/webhooks/events"
+	_ "popplio/webhooks/hooks"
 
 	docs "github.com/infinitybotlist/eureka/doclib"
 )

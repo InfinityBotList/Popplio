@@ -159,6 +159,13 @@ func DataTask(taskId, taskName, id, ip string) {
 		}
 	}
 
+	finalOutput := map[string]any{
+		"data": collectedData,
+		"meta": map[string]any{
+			"request_ip": ip,
+		},
+	}
+
 	// Delete from psql user_cache if `del` is true
 	if del {
 		for _, deleteCall := range deleteCalls {
@@ -190,13 +197,6 @@ func DataTask(taskId, taskName, id, ip string) {
 
 			l.Info("Cleared user [dovewing]", zap.String("id", id), zap.String("platform", dovewingPlatform.PlatformName()), zap.Any("res", res))
 		}
-	}
-
-	finalOutput := map[string]any{
-		"data": collectedData,
-		"meta": map[string]any{
-			"request_ip": ip,
-		},
 	}
 
 	_, err = tx.Exec(state.Context, "UPDATE tasks SET output = $1, state = $2 WHERE task_id = $3", finalOutput, "completed", taskId)
