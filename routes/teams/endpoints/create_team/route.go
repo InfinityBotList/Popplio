@@ -10,6 +10,8 @@ import (
 	docs "github.com/infinitybotlist/eureka/doclib"
 	"github.com/infinitybotlist/eureka/uapi"
 	"go.uber.org/zap"
+	"golang.org/x/text/cases"
+	"golang.org/x/text/language"
 
 	"github.com/go-playground/validator/v10"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -69,6 +71,22 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		el = *payload.ExtraLinks
 	}
 
+	var isTeamNsfw = false
+
+	if payload.NSFW != nil {
+		isTeamNsfw = *payload.NSFW
+	}
+
+	if payload.Tags != nil {
+		tagList := *payload.Tags
+
+		for _, tag := range tagList {
+			if cases.Lower(language.English).String(tag) == "nsfw" {
+				isTeamNsfw = true
+			}
+		}
+	}
+
 	// Create the team
 	tx, err := state.Pool.Begin(d.Context)
 
@@ -80,7 +98,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	defer tx.Rollback(d.Context)
 
 	var teamId pgtype.UUID
-	err = tx.QueryRow(d.Context, "INSERT INTO teams (name, short, tags, extra_links) VALUES ($1, $2, $3, $4) RETURNING id", payload.Name, payload.Short, payload.Tags, el).Scan(&teamId)
+	err = tx.QueryRow(d.Context, "INSERT INTO teams (name, short, tags, extra_links, nsfw) VALUES ($1, $2, $3, $4, $5) RETURNING id", payload.Name, payload.Short, payload.Tags, el, isTeamNsfw).Scan(&teamId)
 
 	if err != nil {
 		state.Logger.Error("Error creating team", zap.Error(err), zap.String("user_id", d.Auth.ID))

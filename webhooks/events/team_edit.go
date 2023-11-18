@@ -13,6 +13,7 @@ type WebhookTeamEditData struct {
 	Short      events.Changeset[string]       `json:"short" description:"The changeset of the short description"`
 	Tags       events.Changeset[[]string]     `json:"tags" description:"The changeset of the tags"`
 	ExtraLinks events.Changeset[[]types.Link] `json:"extra_links" description:"The changeset of the extra links"`
+	NSFW       events.Changeset[bool]         `json:"nsfw" description:"The changeset of the nsfw status"`
 }
 
 func (n WebhookTeamEditData) TargetTypes() []string {
@@ -35,6 +36,8 @@ func (n WebhookTeamEditData) CreateHookParams(creator *dovetypes.PlatformUser, t
 	name := events.ConvertChangesetToFields[string]("Name", n.Name)
 	short := events.ConvertChangesetToFields[string]("Short", n.Short)
 	tags := events.ConvertChangesetToFields[[]string]("Tags", n.Tags)
+	extraLinks := events.ConvertChangesetToFields[[]types.Link]("Extra Links", n.ExtraLinks)
+	nsfw := events.ConvertChangesetToFields[bool]("NSFW", n.NSFW)
 	return &discordgo.WebhookParams{
 		Embeds: []*discordgo.MessageEmbed{
 			{
@@ -57,6 +60,10 @@ func (n WebhookTeamEditData) CreateHookParams(creator *dovetypes.PlatformUser, t
 					short[1],
 					tags[0],
 					tags[1],
+					extraLinks[0],
+					extraLinks[1],
+					nsfw[0],
+					nsfw[1],
 				},
 			},
 		},

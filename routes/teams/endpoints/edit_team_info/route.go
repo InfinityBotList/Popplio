@@ -14,6 +14,8 @@ import (
 	"github.com/infinitybotlist/eureka/uapi"
 	"github.com/jackc/pgx/v5/pgtype"
 	"go.uber.org/zap"
+	"golang.org/x/text/cases"
+	"golang.org/x/text/language"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-playground/validator/v10"
@@ -99,8 +101,9 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	var oldShort pgtype.Text
 	var oldTags []string
 	var oldExtraLinks []types.Link
+	var oldNsfw bool
 
-	err = tx.QueryRow(d.Context, "SELECT name, short, tags, extra_links FROM teams WHERE id = $1", teamId).Scan(&oldName, &oldShort, &oldTags, &oldExtraLinks)
+	err = tx.QueryRow(d.Context, "SELECT name, short, tags, extra_links, nsfw FROM teams WHERE id = $1", teamId).Scan(&oldName, &oldShort, &oldTags, &oldExtraLinks, &oldNsfw)
 
 	if err != nil {
 		state.Logger.Error("Error getting team info [db queryrow]", zap.Error(err), zap.String("uid", d.Auth.ID), zap.String("tid", teamId))
@@ -144,6 +147,30 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		}
 
 		_, err = tx.Exec(d.Context, "UPDATE teams SET extra_links = $1 WHERE id = $2", payload.ExtraLinks, teamId)
+
+		if err != nil {
+			state.Logger.Error("Error updating team info", zap.Error(err), zap.String("uid", d.Auth.ID), zap.String("tid", teamId))
+			return uapi.DefaultResponse(http.StatusInternalServerError)
+		}
+	}
+
+	var isTeamNsfw = false
+	if payload.NSFW != nil {
+		isTeamNsfw = *payload.NSFW
+	}
+
+	if payload.Tags != nil {
+		tagList := *payload.Tags
+
+		for _, tag := range tagList {
+			if cases.Lower(language.English).String(tag) == "nsfw" {
+				isTeamNsfw = true
+			}
+		}
+	}
+
+	if isTeamNsfw != oldNsfw {
+		_, err = tx.Exec(d.Context, "UPDATE teams SET nsfw = $1 WHERE id = $2", isTeamNsfw, teamId)
 
 		if err != nil {
 			state.Logger.Error("Error updating team info", zap.Error(err), zap.String("uid", d.Auth.ID), zap.String("tid", teamId))
@@ -200,6 +227,10 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 					New: *payload.ExtraLinks,
 				}
 			}(),
+			NSFW: cevents.Changeset[bool]{
+				Old: oldNsfw,
+				New: isTeamNsfw,
+			},
 		},
 		UserID:     d.Auth.ID,
 		TargetType: "team",
