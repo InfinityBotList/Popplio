@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"popplio/routes/reviews/assets"
 	"popplio/state"
+	"popplio/teams"
 	"popplio/types"
 	"popplio/webhooks/core/drivers"
 	cevents "popplio/webhooks/core/events"
@@ -77,12 +78,31 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		return uapi.DefaultResponse(http.StatusNotFound)
 	}
 
-	if author != d.Auth.ID {
-		return uapi.HttpResponse{
-			Status: http.StatusForbidden,
-			Json: types.ApiError{
-				Message: "You are not the author of this review",
-			},
+	if ownerReview {
+		perms, err := teams.GetEntityPerms(d.Context, d.Auth.ID, targetType, targetId)
+
+		if err != nil {
+			state.Logger.Error("Error getting entity perms", zap.Error(err), zap.String("uid", d.Auth.ID), zap.String("target_id", targetId), zap.String("target_type", targetType))
+			return uapi.HttpResponse{
+				Status: http.StatusBadRequest,
+				Json:   types.ApiError{Message: "Error getting user perms: " + err.Error()},
+			}
+		}
+
+		if !perms.Has(targetType, teams.PermissionEditOwnerReview) {
+			return uapi.HttpResponse{
+				Status: http.StatusForbidden,
+				Json:   types.ApiError{Message: "You do not have permission to edit an owner review for this " + targetType},
+			}
+		}
+	} else {
+		if author != d.Auth.ID {
+			return uapi.HttpResponse{
+				Status: http.StatusForbidden,
+				Json: types.ApiError{
+					Message: "You are not the author of this review",
+				},
+			}
 		}
 	}
 

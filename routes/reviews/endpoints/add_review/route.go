@@ -131,6 +131,23 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 				Json:   types.ApiError{Message: "Server not found"},
 			}
 		}
+	case "team":
+		// Check if the team exists
+		var count int64
+
+		err = state.Pool.QueryRow(d.Context, "SELECT COUNT(*) FROM teams WHERE id = $1", targetId).Scan(&count)
+
+		if err != nil {
+			state.Logger.Error("Failed to query team count [db count]", zap.Error(err), zap.String("team_id", targetId))
+			return uapi.DefaultResponse(http.StatusInternalServerError)
+		}
+
+		if count == 0 {
+			return uapi.HttpResponse{
+				Status: http.StatusBadRequest,
+				Json:   types.ApiError{Message: "Team not found"},
+			}
+		}
 	default:
 		return uapi.HttpResponse{
 			Status: http.StatusNotImplemented,

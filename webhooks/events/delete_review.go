@@ -9,9 +9,10 @@ import (
 )
 
 type WebhookDeleteReviewData struct {
-	ReviewID string `json:"review_id" description:"The ID of the review"`
-	Content  string `json:"content" description:"The content of the review at time of deletion"`
-	Stars    int32  `json:"stars" description:"The number of stars the auther gave to the review at time of deletion"`
+	ReviewID    string `json:"review_id" description:"The ID of the review"`
+	Content     string `json:"content" description:"The content of the review at time of deletion"`
+	Stars       int32  `json:"stars" description:"The number of stars the auther gave to the review at time of deletion"`
+	OwnerReview bool   `json:"owner_review" description:"Whether or not the review was an owner review"`
 }
 
 func (v WebhookDeleteReviewData) TargetTypes() []string {
@@ -74,6 +75,11 @@ func (n WebhookDeleteReviewData) CreateHookParams(creator *dovetypes.PlatformUse
 					{
 						Name:   "Review Page",
 						Value:  targets.GetViewLink(),
+						Inline: true,
+					},
+					{
+						Name:   "Owner Review",
+						Value:  fmt.Sprintf("%t", n.OwnerReview),
 						Inline: true,
 					},
 				},
