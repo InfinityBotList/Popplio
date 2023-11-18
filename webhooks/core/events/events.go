@@ -99,6 +99,8 @@ func registerEventImpl(a WebhookEvent) {
 				fieldType = changesetOf(types.WebhookTypeText)
 			case Changeset[int], Changeset[int8], Changeset[int16], Changeset[int32], Changeset[int64]:
 				fieldType = changesetOf(types.WebhookTypeNumber)
+			case Changeset[bool]:
+				fieldType = changesetOf(types.WebhookTypeBoolean)
 			default:
 				panic("Illegal field type: " + string(a.Event()) + "->" + f.Name + " <struct>")
 			}
