@@ -1,7 +1,6 @@
 package config
 
 var legacyWebhooks = [...]string{
-	"827234880122650654",  // Succubus, marshall
 	"845214061511180298",  // Wyvern, Ben/Connor
 	"587152333519978559",  // Primo, compiles (Dan), ashmw (AshMW)
 	"892836355074306058",  // GamingBuddy, muckmuck96
