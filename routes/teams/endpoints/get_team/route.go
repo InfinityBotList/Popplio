@@ -86,6 +86,17 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
+	var code string
+
+	err = state.Pool.QueryRow(d.Context, "SELECT code FROM vanity WHERE itag = $1", team.VanityRef).Scan(&code)
+
+	if err != nil {
+		state.Logger.Error("Error while getting bot vanity code [db fetch]", zap.Error(err), zap.String("id", id), zap.String("teamId", team.ID))
+		return uapi.DefaultResponse(http.StatusInternalServerError)
+	}
+
+	team.Vanity = code
+
 	return uapi.HttpResponse{
 		Json: team,
 	}

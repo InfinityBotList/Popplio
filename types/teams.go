@@ -35,6 +35,8 @@ type Team struct {
 	ExtraLinks []Link         `db:"extra_links" json:"extra_links" description:"The teams's links that it wishes to advertise"`
 	Entities   *TeamEntities  `db:"-" json:"entities" description:"The entities of the team"` // Must be handled internally
 	NSFW       bool           `db:"nsfw" json:"nsfw" description:"Whether the team is NSFW (primarily makes NSFW content)"`
+	VanityRef  pgtype.UUID    `db:"vanity_ref" json:"vanity_ref" description:"The corresponding vanities itag, this also works to ensure that all teams have an associated vanity"`
+	Vanity     string         `db:"-" json:"vanity" description:"The team's vanity URL" ci:"internal"` // Must be parsed internally
 }
 
 type TeamBulkFetch struct {
@@ -67,7 +69,7 @@ type CreateEditTeam struct {
 }
 
 type CreateTeamResponse struct {
-	TeamID pgtype.UUID `json:"team_id"`
+	TeamID string `json:"team_id" description:"The ID of the created team"`
 }
 
 type PermissionResponse struct {

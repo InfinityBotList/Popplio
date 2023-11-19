@@ -6,7 +6,10 @@ import (
 	"popplio/teams"
 	"popplio/types"
 	"popplio/validators"
+	"strings"
 
+	"github.com/google/uuid"
+	"github.com/infinitybotlist/eureka/crypto"
 	docs "github.com/infinitybotlist/eureka/doclib"
 	"github.com/infinitybotlist/eureka/uapi"
 	"go.uber.org/zap"
@@ -97,8 +100,60 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 
 	defer tx.Rollback(d.Context)
 
-	var teamId pgtype.UUID
-	err = tx.QueryRow(d.Context, "INSERT INTO teams (name, short, tags, extra_links, nsfw) VALUES ($1, $2, $3, $4, $5) RETURNING id", payload.Name, payload.Short, payload.Tags, el, isTeamNsfw).Scan(&teamId)
+	// Create vanity
+	vanity := strings.ToLower(payload.Name)
+
+	var repl = [][2]string{
+		{" ", "-"},
+		{"_", "-"},
+		{".", ""},
+	}
+
+	for _, r := range repl {
+		vanity = strings.ReplaceAll(vanity, r[0], r[1])
+	}
+
+	var count int64
+	err = tx.QueryRow(d.Context, "SELECT COUNT(*) FROM vanity WHERE code = $1", vanity).Scan(&count)
+
+	if err != nil {
+		state.Logger.Error("Error while checking vanity", zap.Error(err), zap.String("userID", d.Auth.ID), zap.String("vanity", vanity))
+		return uapi.DefaultResponse(http.StatusInternalServerError)
+	}
+
+	for count > 0 {
+		newVanity := vanity + "-" + crypto.RandString(8)
+
+		var nc int64
+		err = tx.QueryRow(d.Context, "SELECT COUNT(*) FROM vanity WHERE code = $1", newVanity).Scan(&nc)
+
+		if err != nil {
+			state.Logger.Error("Error while checking vanity", zap.Error(err), zap.String("userID", d.Auth.ID), zap.String("vanity", vanity))
+			return uapi.DefaultResponse(http.StatusInternalServerError)
+		}
+
+		if nc == 0 {
+			vanity = newVanity
+			break
+		}
+	}
+
+	var teamId = uuid.New().String()
+
+	if teamId == "" {
+		state.Logger.Error("Error generating team ID", zap.Error(err), zap.String("user_id", d.Auth.ID))
+		return uapi.DefaultResponse(http.StatusInternalServerError)
+	}
+
+	var itag pgtype.UUID
+	err = tx.QueryRow(d.Context, "INSERT INTO vanity (code, target_id, target_type) VALUES ($1, $2, $3) RETURNING itag", vanity, teamId, "team").Scan(&itag)
+
+	if err != nil {
+		state.Logger.Error("Error while inserting vanity", zap.Error(err), zap.String("userID", d.Auth.ID), zap.String("teamId", teamId), zap.String("vanity", vanity))
+		return uapi.DefaultResponse(http.StatusInternalServerError)
+	}
+
+	_, err = tx.Exec(d.Context, "INSERT INTO teams (id, name, short, tags, extra_links, nsfw, vanity_ref) VALUES ($1, $2, $3, $4, $5, $6, $7)", teamId, payload.Name, payload.Short, payload.Tags, el, isTeamNsfw, itag)
 
 	if err != nil {
 		state.Logger.Error("Error creating team", zap.Error(err), zap.String("user_id", d.Auth.ID))

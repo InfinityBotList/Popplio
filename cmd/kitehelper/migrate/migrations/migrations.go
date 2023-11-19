@@ -962,6 +962,132 @@ var migs = []migrate.Migration{
 			}
 		},
 	},
+	{
+		ID:   "create_vanity_teams",
+		Name: "Create vanity for teams",
+		HasMigrated: func(pool *common.SandboxPool) error {
+			if colExists(pool, "teams", "vanity_ref") {
+				return errors.New("table vanity_ref already exists")
+			}
+
+			return nil
+		},
+		Function: func(pool *common.SandboxPool) {
+			tx, err := pool.Begin(ctx)
+
+			if err != nil {
+				panic(err)
+			}
+
+			// Add column vanity_ref to teams
+			err = tx.Exec(context.Background(), "ALTER TABLE teams ADD COLUMN vanity_ref UUID REFERENCES vanity(itag)")
+
+			if err != nil {
+				panic(err)
+			}
+
+			// Fetch all team ids and names
+			rows, err := tx.Query(context.Background(), "SELECT id, name FROM teams")
+
+			if err != nil {
+				panic(err)
+			}
+
+			createdVanities := map[string]string{}
+			for rows.Next() {
+				var id string
+				var name string
+
+				err = rows.Scan(&id, &name)
+
+				if err != nil {
+					panic(err)
+				}
+
+				vanity := strings.ToLower(name)
+
+				var repl = [][2]string{
+					{" ", "-"},
+					{"_", "-"},
+					{".", ""},
+				}
+
+				for _, r := range repl {
+					vanity = strings.ReplaceAll(vanity, r[0], r[1])
+				}
+
+				createdVanities[id] = vanity
+			}
+
+			rows.Close()
+
+			for id, vanity := range createdVanities {
+				var count int64
+				err = tx.QueryRow(context.Background(), "SELECT COUNT(*) FROM vanity WHERE code = $1", vanity).Scan(&count)
+
+				if err != nil {
+					panic(err)
+				}
+
+				for count > 0 {
+					newVanity := vanity + "-" + crypto.RandString(8)
+
+					var nc int64
+					err = tx.QueryRow(context.Background(), "SELECT COUNT(*) FROM vanity WHERE code = $1", newVanity).Scan(&nc)
+
+					if err != nil {
+						panic(err)
+					}
+
+					if nc == 0 {
+						vanity = newVanity
+						break
+					}
+				}
+
+				migrate.StatusBoldBlue("Setting vanity for team", id, "to", vanity)
+
+				// Insert into vanity
+				var itag pgtype.UUID
+				err = tx.QueryRow(context.Background(), "INSERT INTO vanity (target_id, target_type, code) VALUES ($1, $2, $3) RETURNING itag", id, "team", vanity).Scan(&itag)
+
+				if err != nil {
+					panic(err)
+				}
+
+				// Update teams
+				err = tx.Exec(context.Background(), "UPDATE teams SET vanity_ref = $1 WHERE id = $2", itag, id)
+
+				if err != nil {
+					panic(err)
+				}
+			}
+
+			var nullCount int64
+			err = tx.QueryRow(context.Background(), "SELECT COUNT(*) FROM teams WHERE vanity_ref IS NULL").Scan(&nullCount)
+
+			if err != nil {
+				panic(err)
+			}
+
+			if nullCount > 0 {
+				panic(fmt.Sprintf("nullCount > 0: %d", nullCount))
+			}
+
+			// Set vanity_ref to not null
+			err = tx.Exec(context.Background(), "ALTER TABLE teams ALTER COLUMN vanity_ref SET NOT NULL")
+
+			if err != nil {
+				panic(err)
+			}
+
+			err = tx.Commit(ctx)
+
+			if err != nil {
+				panic(err)
+			}
+		},
+	},
 }
 
 func init() {

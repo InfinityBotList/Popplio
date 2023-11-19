@@ -113,13 +113,13 @@ var PermDetails = []types.PermissionData{
 	{
 		ID:                PermissionSetVanity,
 		Name:              "Set {entity} Vanity",
-		Desc:              "Set vanity URL for {entity_plural} on the team",
-		SupportedEntities: []string{"bot", "server", "global"},
+		Desc:              "Set vanity URL for a {entity} on the team",
+		SupportedEntities: []string{"bot", "team", "server", "global"},
 	},
 	{
 		ID:                PermissionRequestCertification,
 		Name:              "Request Certification for {entity}",
-		Desc:              "Request certification for {entity} on the team",
+		Desc:              "Request certification for a {entity} on the team",
 		SupportedEntities: []string{"bot", "global"},
 	},
 	{
@@ -131,7 +131,7 @@ var PermDetails = []types.PermissionData{
 	{
 		ID:                PermissionResetAPITokens,
 		Name:              "Reset {entity} Token",
-		Desc:              "Reset the API token of {entity_plural} on the team. This is seperate from viewing existing {entity} tokens as that is a much greater security risk",
+		Desc:              "Reset the API token of a {entity} on the team. This is seperate from viewing existing {entity} tokens as that is a much greater security risk",
 		SupportedEntities: []string{"bot", "server"},
 	},
 	{

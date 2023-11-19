@@ -2,6 +2,7 @@ package hooks
 
 import (
 	"errors"
+	"fmt"
 	"popplio/assetmanager"
 	"popplio/db"
 	"popplio/state"
@@ -52,9 +53,20 @@ func (td TeamDriver) Construct(userId, id string) (*events.Target, *sender.Webho
 	team.Banner = assetmanager.BannerInfo(assetmanager.AssetTargetTypeTeams, team.ID)
 	team.Avatar = assetmanager.AvatarInfo(assetmanager.AssetTargetTypeTeams, team.ID)
 
+	var code string
+
+	err = state.Pool.QueryRow(state.Context, "SELECT code FROM vanity WHERE itag = $1", team.VanityRef).Scan(&code)
+
+	if err != nil {
+		return nil, nil, fmt.Errorf("error while getting bot vanity code [db fetch]: %w", err)
+	}
+
+	team.Vanity = code
+
 	targets := events.Target{
 		Team: &team,
 	}
+
 	entity := sender.WebhookEntity{
 		EntityID:   team.ID,
 		EntityName: team.Name,
