@@ -79,5 +79,12 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
+	err = tx.Commit(d.Context)
+
+	if err != nil {
+		state.Logger.Error("Error committing transaction", zap.Error(err), zap.String("target_id", targetId), zap.String("target_type", targetType))
+		return uapi.DefaultResponse(http.StatusInternalServerError)
+	}
+
 	return uapi.DefaultResponse(http.StatusNoContent)
 }

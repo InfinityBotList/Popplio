@@ -319,7 +319,24 @@ func Send(d *WebhookSendState) error {
 
 		return errors.New("webhook returned not found thus removing it from the database")
 
-	case resp.StatusCode == 401 || resp.StatusCode == 403 || resp.StatusCode == 418:
+	case resp.StatusCode == http.StatusTeapot || resp.StatusCode == http.StatusNotImplemented || resp.StatusCode == http.StatusServiceUnavailable:
+		d.cancelSend("TEAPOT_INVALID")
+
+		if d.Event != nil {
+			err = notifications.PushNotification(d.UserID, types.Alert{
+				Type:    types.AlertTypeError,
+				Message: "This bot can't respond to " + d.Event.Type + " events at this time!",
+				Title:   "Webhook Error",
+			})
+
+			if err != nil {
+				state.Logger.Error("Failed to send notification", zap.Error(err), zap.String("logID", d.LogID), zap.String("userID", d.UserID), zap.String("entityID", d.Entity.EntityID), zap.Bool("badIntent", d.BadIntent))
+			}
+		}
+
+		return errors.New("webhook returned teapot [unsupported event/internal error in initial processing]")
+
+	case resp.StatusCode == 401 || resp.StatusCode == 403:
 		if d.BadIntent {
 			// webhook auth is invalid as intended,
 			d.cancelSend("SUCCESS")
@@ -329,7 +346,7 @@ func Send(d *WebhookSendState) error {
 			// webhook auth is invalid, return error
 			d.cancelSend("WEBHOOK_AUTH_INVALID")
 			err = notifications.PushNotification(d.UserID, types.Alert{
-				Type:    types.AlertTypeInfo,
+				Type:    types.AlertTypeError,
 				Message: "Webhook could not be securely authenticated by the bot at this time. Please try again later.",
 				Title:   "Webhook Auth Error",
 			})
