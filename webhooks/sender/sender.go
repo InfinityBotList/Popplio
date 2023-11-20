@@ -480,23 +480,6 @@ func send(d *webhookSendState, webhook *webhookData, pBytes *[]byte) error {
 
 		return errors.New("webhook returned not found thus removing it from the database")
 
-	case resp.StatusCode == http.StatusTeapot || resp.StatusCode == http.StatusNotImplemented || resp.StatusCode == http.StatusServiceUnavailable:
-		d.cancelSend("TEAPOT_INVALID")
-
-		if d.Event != nil {
-			err = notifications.PushNotification(d.UserID, types.Alert{
-				Type:    types.AlertTypeError,
-				Message: "This bot can't respond to " + d.Event.Type + " events at this time!",
-				Title:   "Webhook Error",
-			})
-
-			if err != nil {
-				state.Logger.Error("Failed to send notification", zap.Error(err), zap.String("logID", d.LogID), zap.String("userID", d.UserID), zap.String("entityID", d.Entity.EntityID), zap.Bool("badIntent", d.BadIntent))
-			}
-		}
-
-		return errors.New("webhook returned teapot [unsupported event/internal error in initial processing]")
-
 	case resp.StatusCode == 401 || resp.StatusCode == 403:
 		if d.BadIntent {
 			// webhook auth is invalid as intended,
