@@ -4,34 +4,22 @@ import (
 	"net/http"
 	"slices"
 
-	"popplio/state"
-	"popplio/teams"
 	"popplio/types"
 	"popplio/webhooks/core/events"
 
 	docs "github.com/infinitybotlist/eureka/doclib"
 	"github.com/infinitybotlist/eureka/uapi"
-	"go.uber.org/zap"
-
-	"github.com/go-chi/chi/v5"
 )
 
 func Docs() *docs.Doc {
 	return &docs.Doc{
 		Summary:     "Get Test Webhook Metadata",
-		Description: "Responds with the metadata of all webhooks that can currently be tested.",
-		Resp:        types.GetTestWebhookMeta{},
+		Description: "Responds with the metadata of all webhooks that can currently be tested. Note that this does not require any specific permission",
+		Resp:        types.GetWebhookMeta{},
 		Params: []docs.Parameter{
 			{
 				Name:        "uid",
 				Description: "The user's ID",
-				Required:    true,
-				In:          "path",
-				Schema:      docs.IdSchema,
-			},
-			{
-				Name:        "target_id",
-				Description: "The target ID to return webhook logs for",
 				Required:    true,
 				In:          "path",
 				Schema:      docs.IdSchema,
@@ -49,26 +37,8 @@ func Docs() *docs.Doc {
 
 func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	targetType := r.URL.Query().Get("target_type")
-	targetId := chi.URLParam(r, "target_id")
 
-	perms, err := teams.GetEntityPerms(d.Context, d.Auth.ID, targetType, targetId)
-
-	if err != nil {
-		state.Logger.Error("Error getting user perms", zap.Error(err), zap.String("userID", d.Auth.ID))
-		return uapi.HttpResponse{
-			Status: http.StatusBadRequest,
-			Json:   types.ApiError{Message: "Error getting user perms: " + err.Error()},
-		}
-	}
-
-	if !perms.Has(targetType, teams.PermissionTestWebhooks) {
-		return uapi.HttpResponse{
-			Status: http.StatusForbidden,
-			Json:   types.ApiError{Message: "You do not have permission to test webhooks on this entity"},
-		}
-	}
-
-	var data = types.GetTestWebhookMeta{}
+	var data = types.GetWebhookMeta{}
 
 	for _, evt := range events.Registry {
 		evtTgtType := evt.Event.TargetTypes()

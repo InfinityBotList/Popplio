@@ -1,4 +1,4 @@
-package get_webhook
+package get_webhook_list
 
 import (
 	"errors"
@@ -23,9 +23,9 @@ var (
 
 func Docs() *docs.Doc {
 	return &docs.Doc{
-		Summary:     "Get Webhook",
-		Description: "Gets non-sensitive webhook data of a specific entity. **Requires authentication**",
-		Resp:        types.Webhook{},
+		Summary:     "Get Webhooks",
+		Description: "Gets a list of webhooks of a specific entity (excluding the secret due to security concerns). **Requires authentication**",
+		Resp:        []types.Webhook{},
 		Params: []docs.Parameter{
 			{
 				Name:        "uid",
@@ -36,14 +36,14 @@ func Docs() *docs.Doc {
 			},
 			{
 				Name:        "target_id",
-				Description: "The target ID to return webhook data for",
+				Description: "The target ID to return webhooks for",
 				Required:    true,
 				In:          "path",
 				Schema:      docs.IdSchema,
 			},
 			{
 				Name:        "target_type",
-				Description: "The entity type to return webhook data for.",
+				Description: "The entity type to return webhooks for.",
 				Required:    true,
 				In:          "query",
 				Schema:      docs.IdSchema,
@@ -69,7 +69,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	if !perms.Has(targetType, teams.PermissionGetWebhooks) {
 		return uapi.HttpResponse{
 			Status: http.StatusForbidden,
-			Json:   types.ApiError{Message: "You do not have permission to fetch webhook data for this entity"},
+			Json:   types.ApiError{Message: "You do not have permission to fetch webhooks for this entity"},
 		}
 	}
 
@@ -80,10 +80,12 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
-	webhook, err := pgx.CollectOneRow(rows, pgx.RowToStructByName[types.Webhook])
+	webhook, err := pgx.CollectRows(rows, pgx.RowToStructByName[types.Webhook])
 
 	if errors.Is(err, pgx.ErrNoRows) {
-		return uapi.DefaultResponse(http.StatusNotFound)
+		return uapi.HttpResponse{
+			Json: []types.Webhook{},
+		}
 	}
 
 	if err != nil {

@@ -3,7 +3,7 @@ package webhooks
 import (
 	"popplio/api"
 	"popplio/routes/webhooks/endpoints/get_test_webhook_meta"
-	"popplio/routes/webhooks/endpoints/get_webhook"
+	"popplio/routes/webhooks/endpoints/get_webhook_list"
 	"popplio/routes/webhooks/endpoints/get_webhook_logs"
 	"popplio/routes/webhooks/endpoints/patch_webhook"
 	"popplio/routes/webhooks/endpoints/test_webhook"
@@ -25,8 +25,8 @@ func (b Router) Routes(r *chi.Mux) {
 		Pattern: "/users/{uid}/webhooks/{target_id}",
 		OpId:    "get_webhook",
 		Method:  uapi.GET,
-		Docs:    get_webhook.Docs,
-		Handler: get_webhook.Route,
+		Docs:    get_webhook_list.Docs,
+		Handler: get_webhook_list.Route,
 		Auth: []uapi.AuthType{
 			{
 				Type:   api.TargetTypeUser,
@@ -64,7 +64,7 @@ func (b Router) Routes(r *chi.Mux) {
 	}.Route(r)
 
 	uapi.Route{
-		Pattern: "/users/{uid}/webhooks/{target_id}/test",
+		Pattern: "/users/{uid}/webhooks/test/meta",
 		OpId:    "get_test_webhook_meta",
 		Method:  uapi.GET,
 		Docs:    get_test_webhook_meta.Docs,

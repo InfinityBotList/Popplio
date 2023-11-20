@@ -69,15 +69,16 @@ type WebhookLogEntry struct {
 }
 
 type PatchWebhook struct {
+	WebhookID      string   `json:"webhook_id" description:"The ID of the webhook to update. If not set, the webhook will be created."`
 	Name           string   `json:"name" description:"The name of the webhook."`
 	WebhookURL     string   `json:"webhook_url" description:"The URL of the webhook."`
 	WebhookSecret  string   `json:"webhook_secret" description:"The secret of the webhook."`
 	SimpleAuth     bool     `json:"simple_auth" description:"Whether the webhook should use simple auth (unencrypted, just authentication headers) or not."`
 	EventWhitelist []string `json:"event_whitelist" description:"The events that are whitelisted for this webhook. Note that if unset, all events are whitelisted."`
-	Clear          bool     `json:"clear" description:"Whether to clear the webhook."`
+	Delete         bool     `json:"delete" description:"Whether to clear the webhook."`
 }
 
-type GetTestWebhookMeta struct {
+type GetWebhookMeta struct {
 	Types []TestWebhookType `json:"data" description:"The types of webhooks to test."`
 }
 
