@@ -499,6 +499,13 @@ func send(d *webhookSendState, webhook *webhookData, pBytes *[]byte) error {
 				state.Logger.Error("Failed to send notification", zap.Error(err), zap.String("logID", d.LogID), zap.String("userID", d.UserID), zap.String("entityID", d.Entity.EntityID), zap.Bool("badIntent", d.BadIntent))
 			}
 
+			// Set webhook to broken
+			_, err := state.Pool.Exec(state.Context, "UPDATE webhooks SET broken = true WHERE target_id = $1 AND target_type = $2", d.Entity.EntityID, d.Entity.EntityType)
+
+			if err != nil {
+				return errors.New("webhook failed to validate auth and failed to remove webhook from db")
+			}
+
 			return errors.New("webhook auth error:" + strconv.Itoa(resp.StatusCode))
 		}
 
