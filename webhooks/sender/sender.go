@@ -17,6 +17,7 @@ import (
 	"net"
 	"net/http"
 	"net/url"
+	"popplio/db"
 	"popplio/notifications"
 	"popplio/state"
 	"popplio/types"
@@ -38,7 +39,7 @@ var ErrNoWebhooks = errors.New("no webhooks found")
 
 // Represents a internal webhook to fanout
 type webhookData struct {
-	ID             string   `json:"id" description:"The ID of the webhook log."`
+	ID             string   `db:"id"`
 	Secret         string   `db:"secret"`
 	Url            string   `db:"url"`
 	Broken         bool     `db:"broken"`
@@ -46,7 +47,11 @@ type webhookData struct {
 	EventWhitelist []string `db:"event_whitelist"`
 }
 
-var json = jsoniter.ConfigCompatibleWithStandardLibrary
+var (
+	json      = jsoniter.ConfigCompatibleWithStandardLibrary
+	wdColsArr = db.GetCols(webhookData{})
+	wdCols    = strings.Join(wdColsArr, ",")
+)
 
 // The Secret
 type Secret struct {
@@ -161,7 +166,7 @@ func Send(d *WebhookData) (*WebhookSendResult, error) {
 		panic("no event set in sendstate and this should never happen")
 	}
 
-	rows, err := state.Pool.Query(state.Context, "SELECT url, secret, broken, simple_auth, event_whitelist FROM webhooks WHERE target_id = $1 AND target_type = $2", d.Entity.EntityID, d.Entity.EntityType)
+	rows, err := state.Pool.Query(state.Context, "SELECT "+wdCols+" FROM webhooks WHERE target_id = $1 AND target_type = $2", d.Entity.EntityID, d.Entity.EntityType)
 
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch webhooks: %w", err)
@@ -239,6 +244,10 @@ func Send(d *WebhookData) (*WebhookSendResult, error) {
 		}
 
 		sendStates[webhook.ID] = st.SendState
+	}
+
+	if len(sendStates) == 0 {
+		return nil, ErrNoWebhooks
 	}
 
 	if len(webhErrors) > 0 {

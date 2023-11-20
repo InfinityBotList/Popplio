@@ -106,13 +106,13 @@ func Send(with With) error {
 	res, err := sender.Send(d)
 
 	if err != nil {
-		err = notifications.PushNotification(d.UserID, types.Alert{
+		perr := notifications.PushNotification(d.UserID, types.Alert{
 			Type:    types.AlertTypeError,
-			Message: fmt.Sprintf("Failed to send webhooks: %s with send states of %s", err.Error(), res.SendStates),
+			Message: fmt.Sprintf("Failed to send webhooks: %s", err.Error()),
 			Title:   "Webhook Send Successful!",
 		})
 
-		if err != nil {
+		if perr != nil {
 			state.Logger.Error("Error when push notification for erroring webhook", zap.Error(err), zap.String("logID", d.LogID), zap.String("userID", d.UserID), zap.String("entityID", d.Entity.EntityID), zap.Any("sendState", res.SendStates))
 		}
 	}

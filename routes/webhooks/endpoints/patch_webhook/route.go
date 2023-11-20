@@ -122,11 +122,32 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		}
 	}
 
-	state.Pool.Exec(d.Context, "INSERT INTO webhooks (target_id, target_type, url, secret, simple_auth, name, event_whitelist) VALUES ($1, $2, $3, $4, $5, $6, $7) ON CONFLICT (target_id, target_type) DO UPDATE SET url = $3, secret = $4, broken = false, simple_auth = $5, name = $6, event_whitelist = $7", targetId, targetType, payload.WebhookURL, payload.WebhookSecret, payload.SimpleAuth, payload.Name, payload.EventWhitelist)
+	if len(payload.EventWhitelist) == 0 {
+		payload.EventWhitelist = []string{}
+	}
+
+	var count int64
+	err = state.Pool.QueryRow(d.Context, "SELECT COUNT(*) FROM webhooks WHERE target_id = $1 AND target_type = $2", targetId, targetType).Scan(&count)
 
 	if err != nil {
-		state.Logger.Error("Error while updating webhook", zap.Error(err), zap.String("userID", d.Auth.ID))
+		state.Logger.Error("Error while checking webhook", zap.Error(err), zap.String("userID", d.Auth.ID))
 		return uapi.DefaultResponse(http.StatusInternalServerError)
+	}
+
+	if count == 0 {
+		_, err = state.Pool.Exec(d.Context, "INSERT INTO webhooks (target_id, target_type, url, secret, simple_auth, name, event_whitelist) VALUES ($1, $2, $3, $4, $5, $6, $7)", targetId, targetType, payload.WebhookURL, payload.WebhookSecret, payload.SimpleAuth, payload.Name, payload.EventWhitelist)
+
+		if err != nil {
+			state.Logger.Error("Error while inserting webhook", zap.Error(err), zap.String("userID", d.Auth.ID))
+			return uapi.DefaultResponse(http.StatusInternalServerError)
+		}
+	} else {
+		_, err = state.Pool.Exec(d.Context, "UPDATE webhooks SET url = $3, secret = $4, broken = false, simple_auth = $5, name = $6, event_whitelist = $7 WHERE target_id = $1 AND target_type = $2", targetId, targetType, payload.WebhookURL, payload.WebhookSecret, payload.SimpleAuth, payload.Name, payload.EventWhitelist)
+
+		if err != nil {
+			state.Logger.Error("Error while updating webhook", zap.Error(err), zap.String("userID", d.Auth.ID))
+			return uapi.DefaultResponse(http.StatusInternalServerError)
+		}
 	}
 
 	return uapi.DefaultResponse(http.StatusNoContent)
