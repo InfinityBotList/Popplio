@@ -15,7 +15,7 @@ func Docs() *docs.Doc {
 	return &docs.Doc{
 		Summary:     "Get Test Webhook Metadata",
 		Description: "Responds with the metadata of all webhooks that can currently be tested. Note that this does not require any specific permission",
-		Resp:        types.GetWebhookMeta{},
+		Resp:        types.GetTestWebhookMeta{},
 		Params: []docs.Parameter{
 			{
 				Name:        "uid",
@@ -38,7 +38,7 @@ func Docs() *docs.Doc {
 func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	targetType := r.URL.Query().Get("target_type")
 
-	var data = types.GetWebhookMeta{}
+	var data = types.GetTestWebhookMeta{}
 
 	for _, evt := range events.Registry {
 		evtTgtType := evt.Event.TargetTypes()

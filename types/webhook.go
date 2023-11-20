@@ -78,7 +78,7 @@ type PatchWebhook struct {
 	Delete         bool     `json:"delete" description:"Whether to clear the webhook."`
 }
 
-type GetWebhookMeta struct {
+type GetTestWebhookMeta struct {
 	Types []TestWebhookType `json:"data" description:"The types of webhooks to test."`
 }
 
