@@ -64,17 +64,11 @@ func (b Router) Routes(r *chi.Mux) {
 	}.Route(r)
 
 	uapi.Route{
-		Pattern: "/users/{uid}/webhooks/test/meta",
+		Pattern: "/webhooks/test/meta",
 		OpId:    "get_test_webhook_meta",
 		Method:  uapi.GET,
 		Docs:    get_test_webhook_meta.Docs,
 		Handler: get_test_webhook_meta.Route,
-		Auth: []uapi.AuthType{
-			{
-				Type:   api.TargetTypeUser,
-				URLVar: "uid",
-			},
-		},
 	}.Route(r)
 
 	uapi.Route{
