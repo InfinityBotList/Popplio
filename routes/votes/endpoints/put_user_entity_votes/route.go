@@ -8,12 +8,9 @@ import (
 	"strconv"
 	"strings"
 
-	"popplio/config"
-	"popplio/notifications"
 	"popplio/state"
 	"popplio/types"
 	"popplio/votes"
-	"popplio/webhooks/bothooks_legacy"
 	"popplio/webhooks/core/drivers"
 	"popplio/webhooks/events"
 
@@ -22,11 +19,8 @@ import (
 	"github.com/infinitybotlist/eureka/dovewing"
 	"github.com/infinitybotlist/eureka/uapi"
 	"go.uber.org/zap"
-	"golang.org/x/text/cases"
-	"golang.org/x/text/language"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/jackc/pgx/v5/pgtype"
 	jsoniter "github.com/json-iterator/go"
 )
 
@@ -336,22 +330,6 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	go func() {
 		err = nil // Be sure error is empty before we start
 
-		if targetType == "bot" && config.UseLegacyWebhooks(targetId) {
-			state.Logger.Info("Using legacy webhooks", zap.String("targetId", targetId), zap.String("targetType", targetType), zap.String("userId", uid))
-
-			err = bothooks_legacy.SendLegacy(bothooks_legacy.WebhookPostLegacy{
-				BotID:  targetId,
-				UserID: uid,
-				Votes:  nvc,
-			})
-
-			if err != nil {
-				state.Logger.Error("Failed to send legacy webhook", zap.Error(err))
-			}
-
-			return
-		}
-
 		err = drivers.Send(drivers.With{
 			UserID:     uid,
 			TargetID:   targetId,
@@ -361,63 +339,6 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 				PerUser: vi.VoteInfo.PerUser,
 			},
 		})
-
-		var msg types.Alert
-
-		if err != nil {
-			if entityInfo != nil {
-				msg = types.Alert{
-					Type:    types.AlertTypeError,
-					Title:   "Whoa There!",
-					Message: "We couldn't notify " + targetType + " " + entityInfo.Name + ": " + err.Error() + ".",
-					Icon:    entityInfo.Avatar,
-					URL: pgtype.Text{
-						String: entityInfo.VoteURL,
-						Valid:  true,
-					},
-				}
-			} else {
-				msg = types.Alert{
-					Type:    types.AlertTypeError,
-					Title:   "Whoa There!",
-					Message: "We couldn't notify " + targetType + " " + targetId + ": " + err.Error() + ".",
-					URL: pgtype.Text{
-						String: "https://botlist.site/" + targetType + "/" + targetId,
-						Valid:  true,
-					},
-				}
-			}
-		} else {
-			if entityInfo != nil {
-				msg = types.Alert{
-					Type:    types.AlertTypeSuccess,
-					Title:   cases.Title(language.English).String(targetType) + " Notified!",
-					Message: "Successfully alerted " + targetType + " " + entityInfo.Name + " to your vote with target ID of " + targetId + ".",
-					Icon:    entityInfo.Avatar,
-					URL: pgtype.Text{
-						String: entityInfo.VoteURL,
-						Valid:  true,
-					},
-				}
-			} else {
-				msg = types.Alert{
-					Type:    types.AlertTypeSuccess,
-					Title:   cases.Title(language.English).String(targetType) + " Notified!",
-					Message: "Successfully alerted " + targetType + " " + targetId + " to your vote with target ID of " + targetId + ".",
-					URL: pgtype.Text{
-						String: "https://botlist.site/" + targetType + "/" + targetId,
-						Valid:  true,
-					},
-				}
-
-			}
-		}
-
-		err = notifications.PushNotification(uid, msg)
-
-		if err != nil {
-			state.Logger.Error("Failed to send push notification", zap.Error(err), zap.String("userId", uid), zap.String("targetId", targetId), zap.String("targetType", targetType))
-		}
 	}()
 
 	return uapi.DefaultResponse(http.StatusNoContent)

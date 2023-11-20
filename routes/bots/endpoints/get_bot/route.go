@@ -8,7 +8,6 @@ import (
 	"strings"
 
 	"popplio/assetmanager"
-	"popplio/config"
 	"popplio/db"
 	"popplio/state"
 	"popplio/types"
@@ -207,8 +206,6 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	}
 
 	bot.UniqueClicks = uniqueClicks
-
-	bot.LegacyWebhooks = config.UseLegacyWebhooks(bot.BotID)
 
 	var code string
 

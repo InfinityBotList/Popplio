@@ -3,7 +3,9 @@ package drivers
 import (
 	"errors"
 	"fmt"
+	"popplio/notifications"
 	"popplio/state"
+	"popplio/types"
 	"popplio/webhooks/core/events"
 	"popplio/webhooks/sender"
 	"slices"
@@ -95,11 +97,27 @@ func Send(with With) error {
 		Metadata: events.ParseWebhookMetadata(with.Metadata),
 	}
 
-	return sender.Send(&sender.WebhookSendState{
+	d := &sender.WebhookSendState{
 		UserID: resp.Creator.ID,
 		Entity: *entity,
 		Event:  resp,
-	})
+	}
+
+	err = sender.Send(d)
+
+	if err != nil {
+		err = notifications.PushNotification(d.UserID, types.Alert{
+			Type:    types.AlertTypeError,
+			Message: fmt.Sprintf("Failed to send webhook: %s with send state %s", err.Error(), d.SendState),
+			Title:   "Webhook Send Successful!",
+		})
+
+		if err != nil {
+			state.Logger.Error("Error when push notification for erroring webhook", zap.Error(err), zap.String("logID", d.LogID), zap.String("userID", d.UserID), zap.String("entityID", d.Entity.EntityID), zap.String("sendState", d.SendState))
+		}
+	}
+
+	return err
 }
 
 // Pulls all pending webhooks from the database and sends them
@@ -122,10 +140,10 @@ func PullPending(p ConstructableWebhook) error {
 			id       string
 			targetId string
 			userId   string
-			data     []byte
+			event    *events.WebhookResponse
 		)
 
-		err := rows.Scan(&id, &targetId, &userId, &data)
+		err := rows.Scan(&id, &targetId, &userId, &event)
 
 		if err != nil {
 			state.Logger.Error("Failed to scan pending webhook", zap.Error(err))
@@ -157,7 +175,7 @@ func PullPending(p ConstructableWebhook) error {
 
 		// Send webhook
 		err = sender.Send(&sender.WebhookSendState{
-			Data:   data,
+			Event:  event,
 			LogID:  id,
 			UserID: userId,
 			Entity: *entity,

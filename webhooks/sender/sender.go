@@ -2,6 +2,7 @@ package sender
 
 import (
 	"bytes"
+	"context"
 	"crypto/aes"
 	"crypto/cipher"
 	"crypto/hmac"
@@ -13,11 +14,15 @@ import (
 	"fmt"
 	"io"
 	rand2 "math/rand"
+	"net"
 	"net/http"
+	"net/url"
 	"popplio/notifications"
 	"popplio/state"
 	"popplio/types"
 	"popplio/webhooks/core/events"
+	"popplio/webhooks/core/utils"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -44,17 +49,16 @@ func (s Secret) Sign(data []byte) string {
 }
 
 type webhookData struct {
-	sign Secret
-	url  string
+	sign        Secret
+	url         string
+	resolvedIps []string
+	cachedData  *[]byte // This should never be used outside of sending bad intent hooks
 }
 
 // Internal structs
 type WebhookSendState struct {
 	// webhook event (used for discord webhooks)
 	Event *events.WebhookResponse
-
-	// the data to send
-	Data []byte
 
 	// is it a bad intent: intentionally bad auth to trigger 401 check
 	BadIntent bool
@@ -67,6 +71,9 @@ type WebhookSendState struct {
 
 	// The entity itself
 	Entity WebhookEntity
+
+	// Send state, this is automatically set by Send
+	SendState string
 
 	// low-level data
 	wdata *webhookData
@@ -94,7 +101,16 @@ func (e WebhookEntity) Validate() bool {
 }
 
 func (st *WebhookSendState) cancelSend(saveState string) {
-	state.Logger.Warn("Cancelling webhook send", zap.String("logID", st.LogID), zap.String("userID", st.UserID), zap.String("entityID", st.Entity.EntityID), zap.Bool("badIntent", st.BadIntent))
+	if saveState != "SUCCESS" {
+		state.Logger.Info("Cancelling webhook send", zap.String("logID", st.LogID), zap.String("userID", st.UserID), zap.String("entityID", st.Entity.EntityID), zap.Bool("badIntent", st.BadIntent))
+	}
+
+	if st.SendState != "" {
+		state.Logger.Warn("SendState is already set", zap.String("logID", st.LogID), zap.String("userID", st.UserID), zap.String("entityID", st.Entity.EntityID), zap.Bool("badIntent", st.BadIntent), zap.String("sendState", st.SendState))
+		return
+	}
+
+	st.SendState = saveState
 
 	_, err := state.Pool.Exec(state.Context, "UPDATE webhook_logs SET state = $1, tries = tries + 1 WHERE id = $2", saveState, st.LogID)
 
@@ -112,8 +128,9 @@ func Send(d *WebhookSendState) error {
 	if d.wdata == nil {
 		var url, secret string
 		var broken, simpleAuth bool
+		var eventWhitelist []string
 
-		err := state.Pool.QueryRow(state.Context, "SELECT url, secret, broken, simple_auth FROM webhooks WHERE target_id = $1 AND target_type = $2", d.Entity.EntityID, d.Entity.EntityType).Scan(&url, &secret, &broken, &simpleAuth)
+		err := state.Pool.QueryRow(state.Context, "SELECT url, secret, broken, simple_auth, event_whitelist FROM webhooks WHERE target_id = $1 AND target_type = $2", d.Entity.EntityID, d.Entity.EntityType).Scan(&url, &secret, &broken, &simpleAuth, &eventWhitelist)
 
 		if errors.Is(err, pgx.ErrNoRows) {
 			return fmt.Errorf("webhook not found for %s", d.Entity.EntityID)
@@ -126,6 +143,14 @@ func Send(d *WebhookSendState) error {
 		if broken {
 			state.Logger.Error("webhook is broken for " + d.Entity.EntityID)
 			return fmt.Errorf("webhook has been flagged as broken for %s", d.Entity.EntityID)
+		}
+
+		if eventWhitelist != nil && len(eventWhitelist) > 0 {
+			// Check if event is whitelisted
+			if !slices.Contains(eventWhitelist, d.Event.Type) {
+				d.cancelSend("SUCCESS__EVENT_NOT_WHITELISTED")
+				return nil
+			}
 		}
 
 		d.wdata = &webhookData{
@@ -142,32 +167,72 @@ func Send(d *WebhookSendState) error {
 		d.wdata.sign.SimpleAuth = *d.Entity.SimpleAuth
 	}
 
-	// Handle webhook event
-	if d.Event != nil {
-		params := d.Event.Data.CreateHookParams(d.Event.Creator, d.Event.Targets)
+	if d.Event == nil {
+		return errors.New("no event set in sendstate")
+	}
 
-		ok, err := sendDiscord(
-			d.Event.Creator.ID,
-			d.wdata.url,
-			d.Entity,
-			params,
-		)
+	// Unmarshal event data if no data is set
+	if !d.BadIntent {
+		prefix, err := utils.GetDiscordWebhookInfo(d.wdata.url)
 
-		if err != nil {
-			state.Logger.Error("failed to send discord webhook", zap.Error(err), zap.String("logID", d.LogID), zap.String("userID", d.UserID), zap.String("entityID", d.Entity.EntityID), zap.Bool("badIntent", d.BadIntent))
-			return err
+		if err != nil && !errors.Is(err, utils.ErrNotActuallyWebhook) {
+			return fmt.Errorf("error while checking webhook: %w", err)
 		}
 
-		if ok {
+		if prefix != "" && !errors.Is(err, utils.ErrNotActuallyWebhook) {
+			params := d.Event.Data.CreateHookParams(d.Event.Creator, d.Event.Targets)
+
+			err = SendDiscord(
+				d.wdata.url,
+				prefix,
+				d.Entity,
+				params,
+			)
+
+			if err != nil {
+				return fmt.Errorf("failed to send discord webhook: %w", err)
+			}
+
 			return nil
 		}
+	}
 
-		d.Data, err = json.Marshal(d.Event)
+	if d.wdata.cachedData == nil {
+		cd, err := json.Marshal(d.Event)
 
 		if err != nil {
 			state.Logger.Error("failed to marshal webhook payload", zap.Error(err), zap.String("logID", d.LogID), zap.String("userID", d.UserID), zap.String("entityID", d.Entity.EntityID), zap.Bool("badIntent", d.BadIntent))
 			return fmt.Errorf("failed to marshal webhook payload: %w", err)
 		}
+
+		d.wdata.cachedData = &cd
+	}
+
+	// Resolve URL first to avoid SSRF
+	if len(d.wdata.resolvedIps) == 0 {
+		url, err := url.ParseRequestURI(d.wdata.url)
+
+		if err != nil {
+			d.cancelSend("INVALID_REQUEST_URL")
+			return err
+		}
+
+		timeoutCtx, cancel := context.WithTimeout(state.Context, 5*time.Second)
+		defer cancel()
+		ip, err := net.DefaultResolver.LookupHost(timeoutCtx, url.Hostname())
+
+		if err != nil {
+			d.cancelSend("CNAME_LOOKUP_FAILURE")
+			return err
+		}
+
+		d.wdata.resolvedIps = ip
+	}
+
+	state.Logger.Info("Resolved webhook IP", zap.String("logID", d.LogID), zap.String("userID", d.UserID), zap.String("entityID", d.Entity.EntityID), zap.Bool("badIntent", d.BadIntent), zap.Strings("resolvedIp", d.wdata.resolvedIps))
+	if slices.Contains(d.wdata.resolvedIps, "127.0.0.1") {
+		d.cancelSend("LOCALHOST_URL")
+		return errors.New("localhost url")
 	}
 
 	// Randomly send a bad webhook with invalid auth
@@ -182,8 +247,9 @@ func Send(d *WebhookSendState) error {
 							Raw:        crypto.RandString(128),
 							SimpleAuth: d.wdata.sign.SimpleAuth,
 						},
+						cachedData: d.wdata.cachedData, // Avoid expensive marhsals by reusing the cached data
 					},
-					Data:   d.Data,
+					Event:  d.Event,
 					UserID: d.UserID,
 					Entity: d.Entity,
 				}
@@ -194,10 +260,17 @@ func Send(d *WebhookSendState) error {
 		}
 	}
 
+	// This case should be unreachable
+	if d.wdata.cachedData == nil {
+		panic("cached data is nil")
+	}
+
+	data := *d.wdata.cachedData
+
 	if d.LogID == "" {
 		// Add to webhook logs for automatic retry
 		var logID string
-		err := state.Pool.QueryRow(state.Context, "INSERT INTO webhook_logs (target_id, target_type, user_id, url, data, bad_intent) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id", d.Entity.EntityID, d.Entity.EntityType, d.UserID, d.wdata.url, d.Data, d.BadIntent).Scan(&logID)
+		err := state.Pool.QueryRow(state.Context, "INSERT INTO webhook_logs (target_id, target_type, user_id, url, data, bad_intent) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id", d.Entity.EntityID, d.Entity.EntityType, d.UserID, d.wdata.url, data, d.BadIntent).Scan(&logID)
 
 		if err != nil {
 			return err
@@ -216,7 +289,7 @@ func Send(d *WebhookSendState) error {
 	var err error
 
 	if d.wdata.sign.SimpleAuth {
-		req, err = http.NewRequestWithContext(state.Context, "POST", d.wdata.url, bytes.NewReader(d.Data))
+		req, err = http.NewRequestWithContext(state.Context, "POST", d.wdata.url, bytes.NewReader(data))
 
 		if err != nil {
 			return err
@@ -249,7 +322,7 @@ func Send(d *WebhookSendState) error {
 			return err
 		}
 
-		postData := []byte(hex.EncodeToString(gcm.Seal(aesNonce, aesNonce, d.Data, nil)))
+		postData := []byte(hex.EncodeToString(gcm.Seal(aesNonce, aesNonce, data, nil)))
 
 		// HMAC with encrypted request body
 		tok1 := d.wdata.sign.Sign(postData)
@@ -413,45 +486,21 @@ func Send(d *WebhookSendState) error {
 	return nil
 }
 
-func sendDiscord(userId, url string, entity WebhookEntity, params *discordgo.WebhookParams) (validUrl bool, err error) {
-	validPrefixes := []string{
-		"https://discordapp.com/",
-		"https://discord.com/",
-		"https://canary.discord.com/",
-		"https://ptb.discord.com/",
-	}
-
-	var flag bool
-	var prefix string
-	for _, p := range validPrefixes {
-		if strings.HasPrefix(url, p) {
-			flag = true
-			prefix = p
-			break
-		}
-	}
-
-	if !flag {
-		return false, nil
-	}
-
+// Sends a webhook via discord
+func SendDiscord(url, prefix string, entity WebhookEntity, params *discordgo.WebhookParams) error {
 	// Remove out prefix
 	url = state.Config.Meta.PopplioProxy + "/" + strings.TrimPrefix(url, prefix)
-
-	if !strings.Contains(url, "/webhooks/") {
-		return true, errors.New("invalid discord webhook url")
-	}
 
 	payload, err := json.Marshal(params)
 
 	if err != nil {
-		return true, err
+		return err
 	}
 
 	resp, err := http.Post(url, "application/json", bytes.NewReader(payload))
 
 	if err != nil {
-		return true, err
+		return err
 	}
 
 	for _, code := range []int{404, 401, 403, 410} {
@@ -460,23 +509,13 @@ func sendDiscord(userId, url string, entity WebhookEntity, params *discordgo.Web
 			_, err := state.Pool.Exec(state.Context, "UPDATE webhooks SET broken = true WHERE target_id = $1 AND target_type = $2", entity.EntityID, entity.EntityType)
 
 			if err != nil {
-				state.Logger.Error("Failed to update webhook logs with response", zap.Error(err), zap.String("userID", userId), zap.String("entityID", entity.EntityID), zap.String("entityType", entity.EntityType), zap.Int("status", resp.StatusCode))
-				return true, err
+				state.Logger.Error("Failed to update webhook logs with response", zap.Error(err), zap.String("entityID", entity.EntityID), zap.String("entityType", entity.EntityType), zap.Int("status", resp.StatusCode))
+				return fmt.Errorf("webhook is broken (404/401/403/410) and failed to remove webhook from db: %w", err)
 			}
+
+			return errors.New("webhook is broken (404/401/403/410)")
 		}
 	}
 
-	state.Logger.Info("discord webhook send", zap.Int("status", resp.StatusCode), zap.String("url", url), zap.String("entityID", entity.EntityID), zap.String("userID", userId))
-
-	err = notifications.PushNotification(userId, types.Alert{
-		Type:    types.AlertTypeSuccess,
-		Message: "Successfully notified " + entity.EntityName + " of this action.",
-		Title:   "Webhook Send Successful!",
-	})
-
-	if err != nil {
-		state.Logger.Error("Failed to send notification", zap.Error(err), zap.String("userID", userId), zap.String("entityID", entity.EntityID))
-	}
-
-	return true, nil
+	return nil
 }

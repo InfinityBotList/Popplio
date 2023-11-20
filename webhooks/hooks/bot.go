@@ -2,7 +2,6 @@ package hooks
 
 import (
 	"fmt"
-	"popplio/config"
 	"popplio/state"
 	"popplio/webhooks/core/drivers"
 	"popplio/webhooks/core/events"
@@ -37,18 +36,10 @@ func (bd BotDriver) Construct(userId, id string) (*events.Target, *sender.Webhoo
 }
 
 func (bd BotDriver) CanBeConstructed(userId, targetId string) (bool, error) {
-	if config.UseLegacyWebhooks(targetId) {
-		return false, nil
-	}
-
 	return true, nil
 }
 
 func (bd BotDriver) SupportsPullPending(userId, targetId string) (bool, error) {
-	if config.UseLegacyWebhooks(targetId) {
-		return false, nil
-	}
-
 	return true, nil
 }
 

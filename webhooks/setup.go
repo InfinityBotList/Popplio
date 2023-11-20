@@ -1,7 +1,6 @@
 package webhooks
 
 import (
-	"popplio/webhooks/bothooks_legacy"
 	"popplio/webhooks/core/drivers"
 	"popplio/webhooks/core/events"
 	_ "popplio/webhooks/events"
@@ -19,20 +18,4 @@ func Setup() {
 
 	events.RegisterAllEvents()
 	go drivers.PullPendingForAll()
-
-	legacyDocs()
-}
-
-// UNFORTUNATELY needed
-func legacyDocs() {
-	docs.AddWebhook(&docs.WebhookDoc{
-		Name:    "Legacy",
-		Summary: "Legacy Webhooks",
-		Tags: []string{
-			"Webhooks",
-		},
-		Description: `(older) v1 webhooks. Only supports Votes`,
-		Format:      bothooks_legacy.WebhookDataLegacy{},
-		FormatName:  "WebhookLegacyResponse",
-	})
 }
