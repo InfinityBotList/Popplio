@@ -200,7 +200,6 @@ func Send(d *WebhookData) (*WebhookSendResult, error) {
 		if len(webhook.EventWhitelist) > 0 {
 			// Check if event is whitelisted
 			if !slices.Contains(webhook.EventWhitelist, d.Event.Type) {
-				sendStates[webhook.ID] = "EVENT_NOT_WHITELISTED"
 				continue
 			}
 		}
