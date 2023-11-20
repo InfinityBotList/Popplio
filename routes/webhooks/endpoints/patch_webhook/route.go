@@ -122,7 +122,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		}
 	}
 
-	state.Pool.Exec(d.Context, "INSERT INTO webhooks (target_id, target_type, url, secret, simple_auth) VALUES ($1, $2, $3, $4, $5) ON CONFLICT (target_id, target_type) DO UPDATE SET url = $3, secret = $4, broken = false, simple_auth = $5", targetId, targetType, payload.WebhookURL, payload.WebhookSecret, payload.SimpleAuth)
+	state.Pool.Exec(d.Context, "INSERT INTO webhooks (target_id, target_type, url, secret, simple_auth, name, event_whitelist) VALUES ($1, $2, $3, $4, $5, $6, $7) ON CONFLICT (target_id, target_type) DO UPDATE SET url = $3, secret = $4, broken = false, simple_auth = $5, name = $6, event_whitelist = $7", targetId, targetType, payload.WebhookURL, payload.WebhookSecret, payload.SimpleAuth, payload.Name, payload.EventWhitelist)
 
 	if err != nil {
 		state.Logger.Error("Error while updating webhook", zap.Error(err), zap.String("userID", d.Auth.ID))

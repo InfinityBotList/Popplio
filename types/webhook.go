@@ -26,6 +26,7 @@ CREATE TABLE webhooks (
 // Represents a webhook on IBL
 type Webhook struct {
 	ID             pgtype.UUID `db:"id" json:"id" description:"The bot's internal ID. An artifact of database migrations."`
+	Name           string      `db:"name" json:"name" description:"The name of the webhook."`
 	TargetID       string      `db:"target_id" json:"target_id" description:"The target ID."`
 	TargetType     string      `db:"target_type" json:"target_type" description:"The target type (bot/team etc.)."`
 	Url            string      `db:"url" json:"url" description:"The URL of the webhook."`
@@ -51,6 +52,7 @@ const (
 // Webhook log
 type WebhookLogEntry struct {
 	ID         pgtype.UUID             `db:"id" json:"id" description:"The ID of the webhook log."`
+	WebhookID  pgtype.UUID             `db:"webhook_id" json:"webhook_id" description:"The ID of the webhook."`
 	TargetID   string                  `db:"target_id" json:"target_id" description:"The target ID."`
 	TargetType string                  `db:"target_type" json:"target_type" description:"The target type (bot/team etc.)."`
 	UserID     string                  `db:"user_id" json:"-"`
@@ -67,10 +69,12 @@ type WebhookLogEntry struct {
 }
 
 type PatchWebhook struct {
-	WebhookURL    string `json:"webhook_url" description:"The URL of the webhook."`
-	WebhookSecret string `json:"webhook_secret" description:"The secret of the webhook."`
-	SimpleAuth    bool   `json:"simple_auth" description:"Whether the webhook should use simple auth (unencrypted, just authentication headers) or not."`
-	Clear         bool   `json:"clear" description:"Whether to clear the webhook."`
+	Name           string   `json:"name" description:"The name of the webhook."`
+	WebhookURL     string   `json:"webhook_url" description:"The URL of the webhook."`
+	WebhookSecret  string   `json:"webhook_secret" description:"The secret of the webhook."`
+	SimpleAuth     bool     `json:"simple_auth" description:"Whether the webhook should use simple auth (unencrypted, just authentication headers) or not."`
+	EventWhitelist []string `json:"event_whitelist" description:"The events that are whitelisted for this webhook. Note that if unset, all events are whitelisted."`
+	Clear          bool     `json:"clear" description:"Whether to clear the webhook."`
 }
 
 type GetTestWebhookMeta struct {

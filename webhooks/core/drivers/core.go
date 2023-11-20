@@ -97,23 +97,23 @@ func Send(with With) error {
 		Metadata: events.ParseWebhookMetadata(with.Metadata),
 	}
 
-	d := &sender.WebhookSendState{
+	d := &sender.WebhookData{
 		UserID: resp.Creator.ID,
 		Entity: *entity,
 		Event:  resp,
 	}
 
-	err = sender.Send(d)
+	res, err := sender.Send(d)
 
 	if err != nil {
 		err = notifications.PushNotification(d.UserID, types.Alert{
 			Type:    types.AlertTypeError,
-			Message: fmt.Sprintf("Failed to send webhook: %s with send state %s", err.Error(), d.SendState),
+			Message: fmt.Sprintf("Failed to send webhooks: %s with send states of %s", err.Error(), res.SendStates),
 			Title:   "Webhook Send Successful!",
 		})
 
 		if err != nil {
-			state.Logger.Error("Error when push notification for erroring webhook", zap.Error(err), zap.String("logID", d.LogID), zap.String("userID", d.UserID), zap.String("entityID", d.Entity.EntityID), zap.String("sendState", d.SendState))
+			state.Logger.Error("Error when push notification for erroring webhook", zap.Error(err), zap.String("logID", d.LogID), zap.String("userID", d.UserID), zap.String("entityID", d.Entity.EntityID), zap.Any("sendState", res.SendStates))
 		}
 	}
 
@@ -174,7 +174,7 @@ func PullPending(p ConstructableWebhook) error {
 		}
 
 		// Send webhook
-		err = sender.Send(&sender.WebhookSendState{
+		_, err = sender.Send(&sender.WebhookData{
 			Event:  event,
 			LogID:  id,
 			UserID: userId,

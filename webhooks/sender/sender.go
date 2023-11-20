@@ -34,12 +34,23 @@ import (
 	"go.uber.org/zap"
 )
 
+var ErrNoWebhooks = errors.New("no webhooks found")
+
+// Represents a internal webhook to fanout
+type webhookData struct {
+	ID             string   `json:"id" description:"The ID of the webhook log."`
+	Secret         string   `db:"secret"`
+	Url            string   `db:"url"`
+	Broken         bool     `db:"broken"`
+	SimpleAuth     bool     `db:"simple_auth"`
+	EventWhitelist []string `db:"event_whitelist"`
+}
+
 var json = jsoniter.ConfigCompatibleWithStandardLibrary
 
 // The Secret
 type Secret struct {
-	SimpleAuth bool // whether to use simple auth mode (no encryption) or not
-	Raw        string
+	Raw string
 }
 
 func (s Secret) Sign(data []byte) string {
@@ -48,20 +59,16 @@ func (s Secret) Sign(data []byte) string {
 	return hex.EncodeToString(h.Sum(nil))
 }
 
-type webhookData struct {
-	sign        Secret
-	url         string
-	resolvedIps []string
-	cachedData  *[]byte // This should never be used outside of sending bad intent hooks
-}
-
-// Internal structs
-type WebhookSendState struct {
+// Internal structure to store a webhook send state
+type webhookSendState struct {
 	// webhook event (used for discord webhooks)
 	Event *events.WebhookResponse
 
-	// is it a bad intent: intentionally bad auth to trigger 401 check
+	// Is it a bad intent: intentionally bad auth to trigger 401 check
 	BadIntent bool
+
+	// Webhook data
+	Webhook *webhookData
 
 	// Automatically set fields
 	LogID string
@@ -75,8 +82,29 @@ type WebhookSendState struct {
 	// Send state, this is automatically set by Send
 	SendState string
 
-	// low-level data
-	wdata *webhookData
+	// Internal cached list of resolved IPs for SSRF protection
+	ResolvedIps []string
+}
+
+func (st *webhookSendState) cancelSend(saveState string) {
+	if saveState != "SUCCESS" {
+		state.Logger.Info("Cancelling webhook send", zap.String("logID", st.LogID), zap.String("userID", st.UserID), zap.String("entityID", st.Entity.EntityID), zap.Bool("badIntent", st.BadIntent))
+	}
+
+	if st.SendState != "" {
+		state.Logger.Warn("SendState is already set", zap.String("logID", st.LogID), zap.String("userID", st.UserID), zap.String("entityID", st.Entity.EntityID), zap.Bool("badIntent", st.BadIntent), zap.String("sendState", st.SendState))
+		return
+	}
+
+	st.SendState = saveState
+
+	if st.LogID != "" {
+		_, err := state.Pool.Exec(state.Context, "UPDATE webhook_logs SET state = $1, tries = tries + 1 WHERE id = $2", saveState, st.LogID)
+
+		if err != nil {
+			state.Logger.Error("Failed to update webhook logs with new status", zap.Error(err), zap.String("logID", st.LogID), zap.String("userID", st.UserID), zap.String("entityID", st.Entity.EntityID), zap.Bool("badIntent", st.BadIntent))
+		}
+	}
 }
 
 // An abstraction over an entity whether that be a bot/team/server
@@ -100,80 +128,150 @@ func (e WebhookEntity) Validate() bool {
 	return e.EntityID != "" && e.EntityType != "" && e.EntityName != ""
 }
 
-func (st *WebhookSendState) cancelSend(saveState string) {
-	if saveState != "SUCCESS" {
-		state.Logger.Info("Cancelling webhook send", zap.String("logID", st.LogID), zap.String("userID", st.UserID), zap.String("entityID", st.Entity.EntityID), zap.Bool("badIntent", st.BadIntent))
-	}
+// External state that should be used by public function definitions
+type WebhookData struct {
+	// webhook event (used for discord webhooks)
+	Event *events.WebhookResponse
 
-	if st.SendState != "" {
-		state.Logger.Warn("SendState is already set", zap.String("logID", st.LogID), zap.String("userID", st.UserID), zap.String("entityID", st.Entity.EntityID), zap.Bool("badIntent", st.BadIntent), zap.String("sendState", st.SendState))
-		return
-	}
+	// Is it a bad intent: intentionally bad auth to trigger 401 check
+	BadIntent bool
 
-	st.SendState = saveState
+	// Log ID (pull pending etc)
+	LogID string
 
-	_, err := state.Pool.Exec(state.Context, "UPDATE webhook_logs SET state = $1, tries = tries + 1 WHERE id = $2", saveState, st.LogID)
+	// user id that triggered the webhook
+	UserID string
 
-	if err != nil {
-		state.Logger.Error("Failed to update webhook logs with new status", zap.Error(err), zap.String("logID", st.LogID), zap.String("userID", st.UserID), zap.String("entityID", st.Entity.EntityID), zap.Bool("badIntent", st.BadIntent))
-	}
+	// The entity itself
+	Entity WebhookEntity
 }
 
-// Creates a webhook response, retrying if needed
-func Send(d *WebhookSendState) error {
+// Represents a webhook send result
+type WebhookSendResult struct {
+	SendStates map[string]string
+}
+
+// Creates a webhook response fanning it out to multiple webhooks if needed, retrying if needed
+func Send(d *WebhookData) (*WebhookSendResult, error) {
 	if !d.Entity.Validate() {
 		panic("invalid webhook entity")
 	}
 
-	if d.wdata == nil {
-		var url, secret string
-		var broken, simpleAuth bool
-		var eventWhitelist []string
+	if d.Event == nil {
+		panic("no event set in sendstate and this should never happen")
+	}
 
-		err := state.Pool.QueryRow(state.Context, "SELECT url, secret, broken, simple_auth, event_whitelist FROM webhooks WHERE target_id = $1 AND target_type = $2", d.Entity.EntityID, d.Entity.EntityType).Scan(&url, &secret, &broken, &simpleAuth, &eventWhitelist)
+	rows, err := state.Pool.Query(state.Context, "SELECT url, secret, broken, simple_auth, event_whitelist FROM webhooks WHERE target_id = $1 AND target_type = $2", d.Entity.EntityID, d.Entity.EntityType)
 
-		if errors.Is(err, pgx.ErrNoRows) {
-			return fmt.Errorf("webhook not found for %s", d.Entity.EntityID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch webhooks: %w", err)
+	}
+
+	webhooks, err := pgx.CollectRows(rows, pgx.RowToStructByName[webhookData])
+
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, ErrNoWebhooks
+	}
+
+	if err != nil {
+		return nil, fmt.Errorf("failed to collect webhooks: %w", err)
+	}
+
+	dataBytes, err := json.Marshal(d.Event)
+
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal webhook payload: %w", err)
+	}
+
+	// Send to each webhook
+	var webhErrors map[string]error
+	var sendStates = make(map[string]string)
+	for _, webhook := range webhooks {
+		if webhook.Broken {
+			continue
 		}
 
-		if err != nil {
-			return err
-		}
-
-		if broken {
-			state.Logger.Error("webhook is broken for " + d.Entity.EntityID)
-			return fmt.Errorf("webhook has been flagged as broken for %s", d.Entity.EntityID)
-		}
-
-		if eventWhitelist != nil && len(eventWhitelist) > 0 {
+		// Basic checks
+		if len(webhook.EventWhitelist) > 0 {
 			// Check if event is whitelisted
-			if !slices.Contains(eventWhitelist, d.Event.Type) {
-				d.cancelSend("SUCCESS__EVENT_NOT_WHITELISTED")
-				return nil
+			if !slices.Contains(webhook.EventWhitelist, d.Event.Type) {
+				continue
 			}
 		}
 
-		d.wdata = &webhookData{
-			url: url,
-			sign: Secret{
-				Raw:        secret,
-				SimpleAuth: simpleAuth,
-			},
+		// Create a log entry
+		var logID string
+		if d.LogID == "" {
+			err := state.Pool.QueryRow(state.Context, "INSERT INTO webhook_logs (target_id, target_type, user_id, url, data, bad_intent, webhook_id) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id", d.Entity.EntityID, d.Entity.EntityType, d.UserID, webhook.Url, dataBytes, d.BadIntent, webhook.ID).Scan(&logID)
+
+			if err != nil {
+				if webhErrors == nil {
+					webhErrors = make(map[string]error)
+				}
+
+				webhErrors[webhook.ID] = err
+
+				continue
+			}
+		} else {
+			logID = d.LogID
 		}
+
+		st := &webhookSendState{
+			Event:     d.Event,
+			BadIntent: d.BadIntent,
+			Webhook:   &webhook,
+			LogID:     logID,
+			UserID:    d.UserID,
+			Entity:    d.Entity,
+		}
+
+		err = send(st, &webhook, &dataBytes)
+
+		if err != nil {
+			if webhErrors == nil {
+				webhErrors = make(map[string]error)
+			}
+
+			webhErrors[webhook.ID] = err
+
+			continue
+		}
+
+		sendStates[webhook.ID] = st.SendState
 	}
 
-	// Override simpleauth flag if requested/set
-	if d.Entity.SimpleAuth != nil {
-		d.wdata.sign.SimpleAuth = *d.Entity.SimpleAuth
+	if len(webhErrors) > 0 {
+		var errStr = strings.Builder{}
+		for url, err := range webhErrors {
+			errStr.WriteString(fmt.Sprintf("%s: %s\n", url, err.Error()))
+		}
+
+		return nil, errors.New(errStr.String())
 	}
 
-	if d.Event == nil {
-		return errors.New("no event set in sendstate")
+	res := &WebhookSendResult{
+		SendStates: sendStates,
 	}
+
+	return res, nil
+}
+
+// Internal definition for send
+func send(d *webhookSendState, webhook *webhookData, pBytes *[]byte) error {
+	if !d.Entity.Validate() {
+		panic("invalid webhook entity")
+	}
+
+	if pBytes == nil {
+		panic("pBytes is nil")
+	}
+
+	data := *pBytes
 
 	// Unmarshal event data if no data is set
 	if !d.BadIntent {
-		prefix, err := utils.GetDiscordWebhookInfo(d.wdata.url)
+		prefix, err := utils.GetDiscordWebhookInfo(webhook.Url)
 
 		if err != nil && !errors.Is(err, utils.ErrNotActuallyWebhook) {
 			return fmt.Errorf("error while checking webhook: %w", err)
@@ -183,7 +281,7 @@ func Send(d *WebhookSendState) error {
 			params := d.Event.Data.CreateHookParams(d.Event.Creator, d.Event.Targets)
 
 			err = SendDiscord(
-				d.wdata.url,
+				webhook.Url,
 				prefix,
 				d.Entity,
 				params,
@@ -197,20 +295,9 @@ func Send(d *WebhookSendState) error {
 		}
 	}
 
-	if d.wdata.cachedData == nil {
-		cd, err := json.Marshal(d.Event)
-
-		if err != nil {
-			state.Logger.Error("failed to marshal webhook payload", zap.Error(err), zap.String("logID", d.LogID), zap.String("userID", d.UserID), zap.String("entityID", d.Entity.EntityID), zap.Bool("badIntent", d.BadIntent))
-			return fmt.Errorf("failed to marshal webhook payload: %w", err)
-		}
-
-		d.wdata.cachedData = &cd
-	}
-
 	// Resolve URL first to avoid SSRF
-	if len(d.wdata.resolvedIps) == 0 {
-		url, err := url.ParseRequestURI(d.wdata.url)
+	if len(d.ResolvedIps) == 0 {
+		url, err := url.ParseRequestURI(webhook.Url)
 
 		if err != nil {
 			d.cancelSend("INVALID_REQUEST_URL")
@@ -226,11 +313,11 @@ func Send(d *WebhookSendState) error {
 			return err
 		}
 
-		d.wdata.resolvedIps = ip
+		d.ResolvedIps = ip
 	}
 
-	state.Logger.Info("Resolved webhook IP", zap.String("logID", d.LogID), zap.String("userID", d.UserID), zap.String("entityID", d.Entity.EntityID), zap.Bool("badIntent", d.BadIntent), zap.Strings("resolvedIp", d.wdata.resolvedIps))
-	if slices.Contains(d.wdata.resolvedIps, "127.0.0.1") {
+	state.Logger.Info("Resolved webhook IP", zap.String("logID", d.LogID), zap.String("userID", d.UserID), zap.String("entityID", d.Entity.EntityID), zap.Bool("badIntent", d.BadIntent), zap.Strings("resolvedIp", d.ResolvedIps))
+	if slices.Contains(d.ResolvedIps, "127.0.0.1") {
 		d.cancelSend("LOCALHOST_URL")
 		return errors.New("localhost url")
 	}
@@ -239,44 +326,28 @@ func Send(d *WebhookSendState) error {
 	if !d.BadIntent {
 		if rand2.Float64() < 0.4 {
 			go func() {
-				badD := &WebhookSendState{
-					BadIntent: true,
-					wdata: &webhookData{
-						url: d.wdata.url,
-						sign: Secret{
-							Raw:        crypto.RandString(128),
-							SimpleAuth: d.wdata.sign.SimpleAuth,
-						},
-						cachedData: d.wdata.cachedData, // Avoid expensive marhsals by reusing the cached data
-					},
-					Event:  d.Event,
-					UserID: d.UserID,
-					Entity: d.Entity,
+				var logID string
+				err := state.Pool.QueryRow(state.Context, "INSERT INTO webhook_logs (target_id, target_type, user_id, url, data, bad_intent, webhook_id) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id", d.Entity.EntityID, d.Entity.EntityType, d.UserID, webhook.Url, data, d.BadIntent, webhook.ID).Scan(&logID)
+
+				if err != nil {
+					state.Logger.Error("Failed to insert webhook log", zap.Error(err), zap.String("logID", d.LogID), zap.String("userID", d.UserID), zap.String("entityID", d.Entity.EntityID), zap.Bool("badIntent", d.BadIntent))
+					return
+				}
+
+				badD := &webhookSendState{
+					Event:       d.Event,
+					BadIntent:   true,
+					Webhook:     webhook,
+					UserID:      d.UserID,
+					LogID:       logID,
+					Entity:      d.Entity,
+					ResolvedIps: d.ResolvedIps,
 				}
 
 				// Retry with bad intent
-				Send(badD)
+				send(badD, webhook, pBytes)
 			}()
 		}
-	}
-
-	// This case should be unreachable
-	if d.wdata.cachedData == nil {
-		panic("cached data is nil")
-	}
-
-	data := *d.wdata.cachedData
-
-	if d.LogID == "" {
-		// Add to webhook logs for automatic retry
-		var logID string
-		err := state.Pool.QueryRow(state.Context, "INSERT INTO webhook_logs (target_id, target_type, user_id, url, data, bad_intent) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id", d.Entity.EntityID, d.Entity.EntityType, d.UserID, d.wdata.url, data, d.BadIntent).Scan(&logID)
-
-		if err != nil {
-			return err
-		}
-
-		d.LogID = logID
 	}
 
 	state.Logger.Info("Sending webhook", zap.String("logID", d.LogID), zap.String("userID", d.UserID), zap.String("entityID", d.Entity.EntityID), zap.Bool("badIntent", d.BadIntent))
@@ -285,24 +356,31 @@ func Send(d *WebhookSendState) error {
 		Timeout: 30 * time.Second,
 	}
 
+	var secret string
+	if d.BadIntent {
+		secret = crypto.RandString(128)
+	} else {
+		secret = webhook.Secret
+	}
+
 	var req *http.Request
 	var err error
 
-	if d.wdata.sign.SimpleAuth {
-		req, err = http.NewRequestWithContext(state.Context, "POST", d.wdata.url, bytes.NewReader(data))
+	if webhook.SimpleAuth {
+		req, err = http.NewRequestWithContext(state.Context, "POST", webhook.Url, bytes.NewReader(data))
 
 		if err != nil {
 			return err
 		}
 
-		req.Header.Set("Authorization", d.wdata.sign.Raw)
-		req.Header.Set("X-Webhook-Protocol", "legacy-insecure")
+		req.Header.Set("Authorization", secret)
+		req.Header.Set("X-Webhook-Protocol", "simple-auth")
 	} else {
 		// Generate HMAC token using nonce and signed header for further randomization
 		nonce := crypto.RandString(16)
 
 		keyHash := sha256.New()
-		keyHash.Write([]byte(d.wdata.sign.Raw + nonce))
+		keyHash.Write([]byte(secret + nonce))
 
 		// Encrypt request body with hashed
 		c, err := aes.NewCipher(keyHash.Sum(nil))
@@ -325,11 +403,11 @@ func Send(d *WebhookSendState) error {
 		postData := []byte(hex.EncodeToString(gcm.Seal(aesNonce, aesNonce, data, nil)))
 
 		// HMAC with encrypted request body
-		tok1 := d.wdata.sign.Sign(postData)
+		tok1 := Secret{Raw: secret}.Sign(postData)
 
 		finalToken := Secret{Raw: nonce}.Sign([]byte(tok1))
 
-		req, err = http.NewRequestWithContext(state.Context, "POST", d.wdata.url, bytes.NewReader(postData))
+		req, err = http.NewRequestWithContext(state.Context, "POST", webhook.Url, bytes.NewReader(postData))
 
 		if err != nil {
 			return err
