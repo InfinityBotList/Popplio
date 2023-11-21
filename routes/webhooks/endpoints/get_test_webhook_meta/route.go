@@ -18,13 +18,6 @@ func Docs() *docs.Doc {
 		Resp:        types.GetTestWebhookMeta{},
 		Params: []docs.Parameter{
 			{
-				Name:        "uid",
-				Description: "The user's ID",
-				Required:    true,
-				In:          "path",
-				Schema:      docs.IdSchema,
-			},
-			{
 				Name:        "target_type",
 				Description: "The entity type to return logs for. Must be `bot` or `team` (other entity types coming soon)",
 				Required:    true,

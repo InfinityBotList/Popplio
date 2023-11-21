@@ -8,6 +8,7 @@ import (
 	"popplio/state"
 	"popplio/teams"
 	"popplio/types"
+	"popplio/webhooks/core/utils"
 
 	docs "github.com/infinitybotlist/eureka/doclib"
 	"github.com/infinitybotlist/eureka/uapi"
@@ -124,11 +125,11 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 			}
 		}
 
-		if v.WebhookURL == "" || v.WebhookSecret == "" {
+		if v.WebhookURL == "" {
 			return uapi.HttpResponse{
 				Status: http.StatusBadRequest,
 				Json: types.ApiError{
-					Message: fmt.Sprintf("Both a URL and a secret must be specified: %s", v.Name),
+					Message: fmt.Sprintf("A secret must be specified: %s", v.Name),
 				},
 			}
 		}
@@ -161,13 +162,37 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 				}
 			}
 
-			_, err = tx.Exec(d.Context, "UPDATE webhooks SET url = $4, secret = $5, broken = false, simple_auth = $6, name = $7, event_whitelist = $8 WHERE target_id = $1 AND target_type = $2 AND id = $3", targetId, targetType, v.WebhookID, v.WebhookURL, v.WebhookSecret, v.SimpleAuth, v.Name, v.EventWhitelist)
+			_, err = tx.Exec(d.Context, "UPDATE webhooks SET url = $4, broken = false, simple_auth = $5, name = $6, event_whitelist = $7 WHERE target_id = $1 AND target_type = $2 AND id = $3", targetId, targetType, v.WebhookID, v.WebhookURL, v.SimpleAuth, v.Name, v.EventWhitelist)
 
 			if err != nil {
 				state.Logger.Error("Error while updating webhook", zap.Error(err), zap.String("userID", d.Auth.ID))
 				return uapi.DefaultResponse(http.StatusInternalServerError)
 			}
+
+			if v.WebhookSecret != "" {
+				_, err = tx.Exec(d.Context, "UPDATE webhooks SET secret = $1 WHERE target_id = $2 AND target_type = $3 AND id = $4", v.WebhookSecret, targetId, targetType, v.WebhookID)
+
+				if err != nil {
+					state.Logger.Error("Error while updating webhook", zap.Error(err), zap.String("userID", d.Auth.ID))
+					return uapi.DefaultResponse(http.StatusInternalServerError)
+				}
+			}
 		} else {
+			if v.WebhookSecret == "" {
+				if prefix, err := utils.GetDiscordWebhookInfo(v.WebhookURL); prefix != "" && err == nil {
+					v.WebhookSecret = "discordWebhook"
+				}
+			}
+
+			if v.WebhookSecret == "" {
+				return uapi.HttpResponse{
+					Status: http.StatusBadRequest,
+					Json: types.ApiError{
+						Message: fmt.Sprintf("A secret must be specified for new webhooks: %s", v.Name),
+					},
+				}
+			}
+
 			var count int64
 
 			err = tx.QueryRow(d.Context, "SELECT COUNT(*) FROM webhooks WHERE target_id = $1 AND target_type = $2", targetId, targetType).Scan(&count)

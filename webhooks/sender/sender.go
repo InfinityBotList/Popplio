@@ -300,6 +300,7 @@ func send(d *webhookSendState, webhook *webhookData, pBytes *[]byte) error {
 				return fmt.Errorf("failed to send discord webhook: %w", err)
 			}
 
+			d.cancelSend("SUCCESS")
 			return nil
 		}
 	}

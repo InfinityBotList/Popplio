@@ -1,6 +1,7 @@
 package events
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"popplio/state"
@@ -11,6 +12,7 @@ import (
 	"github.com/bwmarrin/discordgo"
 	docs "github.com/infinitybotlist/eureka/doclib"
 	"github.com/infinitybotlist/eureka/dovewing/dovetypes"
+	"github.com/mitchellh/mapstructure"
 	"go.uber.org/zap"
 )
 
@@ -31,6 +33,7 @@ type WebhookEvent interface {
 }
 
 var eventList = []WebhookEvent{}
+var eventMapToType = map[string]WebhookEvent{}
 
 // Adds an event to be registered. This should be called in the init() function of the event
 //
@@ -38,6 +41,7 @@ var eventList = []WebhookEvent{}
 // This is because `doclib` and `state` are not initialized until after state setyp
 func RegisterEvent(a WebhookEvent) {
 	eventList = append(eventList, a)
+	eventMapToType[a.Event()] = a
 }
 
 // Register all events
@@ -149,6 +153,55 @@ type WebhookResponse struct {
 	Data     WebhookEvent            `json:"data" dynschema:"true" description:"The data of the webhook event"`
 	Targets  Target                  `json:"targets" description:"The target of the webhook, can be one of. or a possible combination of bot, team and server"`
 	Metadata WebhookMetadata         `json:"metadata" description:"Metadata about the webhook event"`
+}
+
+// UnmarshalJSON implements json.Unmarshaler
+//
+// This is used to unmarshal the webhook response into a valid webhook event
+func (wr *WebhookResponse) UnmarshalJSON(b []byte) error {
+	var smap map[string]any
+
+	err := json.Unmarshal(b, &smap)
+
+	if err != nil {
+		return fmt.Errorf("failed to unmarshal webhook response: %w", err)
+	}
+
+	typ, ok := smap["type"].(string)
+
+	if !ok {
+		return fmt.Errorf("failed to unmarshal webhook response: type not a string")
+	}
+
+	evt, ok := eventMapToType[typ]
+
+	if !ok {
+		return fmt.Errorf("failed to unmarshal webhook response: invalid type")
+	}
+
+	wr.Type = typ
+	wr.Data = evt
+
+	// decoder to copy map values to my struct using json tags
+	cfg := &mapstructure.DecoderConfig{
+		Metadata: nil,
+		Result:   wr,
+		TagName:  "json",
+		Squash:   true,
+	}
+
+	decoder, e := mapstructure.NewDecoder(cfg)
+	if e != nil {
+		return e
+	}
+	// copy map to struct
+	e = decoder.Decode(smap)
+
+	if e != nil {
+		return e
+	}
+
+	return nil
 }
 
 // Core structs

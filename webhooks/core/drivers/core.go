@@ -135,6 +135,13 @@ func PullPending(p ConstructableWebhook) error {
 
 	defer rows.Close()
 
+	var eventData []struct {
+		ID       string
+		TargetID string
+		UserID   string
+		Event    *events.WebhookResponse
+	}
+
 	for rows.Next() {
 		var (
 			id       string
@@ -150,11 +157,22 @@ func PullPending(p ConstructableWebhook) error {
 			continue
 		}
 
+		eventData = append(eventData, struct {
+			ID       string
+			TargetID string
+			UserID   string
+			Event    *events.WebhookResponse
+		}{ID: id, TargetID: targetId, UserID: userId, Event: event})
+	}
+
+	for _, v := range eventData {
+		state.Logger.Info("Pulled event", zap.Any("event", v.Event), zap.Bool("isTestEvent", v.Event.Metadata.Test))
+
 		// Check if the entity supports pulls
-		supports, err := p.SupportsPullPending(userId, targetId)
+		supports, err := p.SupportsPullPending(v.UserID, v.TargetID)
 
 		if err != nil {
-			state.Logger.Error("Failed to check if entity supports pulls", zap.Error(err), zap.String("targetId", targetId), zap.String("targetType", targetType))
+			state.Logger.Error("Failed to check if entity supports pulls", zap.Error(err), zap.String("targetId", v.TargetID), zap.String("targetType", targetType))
 			return fmt.Errorf("failed to check if entity supports pulls: %w", err)
 		}
 
@@ -162,10 +180,10 @@ func PullPending(p ConstructableWebhook) error {
 			continue
 		}
 
-		_, entity, err := p.Construct(userId, targetId)
+		_, entity, err := p.Construct(v.UserID, v.TargetID)
 
 		if err != nil {
-			state.Logger.Error("Failed to get entity for webhook", zap.Error(err), zap.String("entityID", targetId))
+			state.Logger.Error("Failed to get entity for webhook", zap.Error(err), zap.String("entityID", v.TargetID))
 			continue
 		}
 
@@ -175,14 +193,24 @@ func PullPending(p ConstructableWebhook) error {
 
 		// Send webhook
 		_, err = sender.Send(&sender.WebhookData{
-			Event:  event,
-			LogID:  id,
-			UserID: userId,
+			Event:  v.Event,
+			LogID:  v.ID,
+			UserID: v.UserID,
 			Entity: *entity,
 		})
 
+		if errors.Is(err, sender.ErrNoWebhooks) {
+			_, err = state.Pool.Exec(state.Context, "UPDATE webhook_logs SET state = $1 WHERE id = $2", "NO_WEBHOOKS", v.ID)
+
+			if err != nil {
+				state.Logger.Error("Failed to update webhook state", zap.Error(err), zap.String("entityID", v.TargetID))
+				continue
+			}
+		}
+
 		if err != nil {
-			state.Logger.Error("Failed to send pending webhook", zap.Error(err), zap.String("entityID", targetId))
+			state.Logger.Error("Failed to send pending webhook", zap.Error(err), zap.String("entityID", v.TargetID))
+			continue
 		}
 	}
 
