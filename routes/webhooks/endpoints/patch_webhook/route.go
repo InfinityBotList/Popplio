@@ -108,7 +108,30 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	for _, v := range payload {
 		// Special case of clear
 		if v.Delete {
-			_, err = tx.Exec(d.Context, "DELETE FROM webhooks WHERE target_id = $1 AND target_type = $2", targetId, targetType)
+			if v.WebhookID == "" {
+				return uapi.HttpResponse{
+					Status: http.StatusBadRequest,
+					Json:   types.ApiError{Message: "Webhook ID must be specified to delete a webhook"},
+				}
+			}
+
+			var count int64
+
+			err = tx.QueryRow(d.Context, "SELECT COUNT(*) FROM webhooks WHERE target_id = $1 AND target_type = $2 AND id = $3", targetId, targetType, v.WebhookID).Scan(&count)
+
+			if err != nil {
+				state.Logger.Error("Error while checking webhook", zap.Error(err), zap.String("userID", d.Auth.ID))
+				return uapi.DefaultResponse(http.StatusInternalServerError)
+			}
+
+			if count == 0 {
+				return uapi.HttpResponse{
+					Status: http.StatusBadRequest,
+					Json:   types.ApiError{Message: fmt.Sprintf("Webhook ID %s does not exist", v.WebhookID)},
+				}
+			}
+
+			_, err = tx.Exec(d.Context, "DELETE FROM webhooks WHERE target_id = $1 AND target_type = $2 AND id = $3", targetId, targetType, v.WebhookID)
 
 			if err != nil {
 				state.Logger.Error("Error while deleting webhook", zap.Error(err), zap.String("userID", d.Auth.ID))
