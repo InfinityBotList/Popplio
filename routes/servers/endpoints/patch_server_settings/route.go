@@ -25,6 +25,7 @@ func updateServerArgs(server types.ServerSettingsUpdate) []any {
 		server.Short,
 		server.Long,
 		server.ExtraLinks,
+		server.State,
 		server.Tags,
 		server.NSFW,
 		server.CaptchaOptOut,
