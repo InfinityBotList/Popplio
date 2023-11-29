@@ -219,8 +219,8 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 
 	var channel = state.Config.Channels.Apps
 
-	if position.Channel != "" {
-		channel = position.Channel
+	if position.Channel != nil {
+		channel = position.Channel()
 	}
 
 	_, err = state.Discord.ChannelMessageSendComplex(channel, &discordgo.MessageSend{

@@ -25,7 +25,7 @@ type Position struct {
 	Closed    bool       `json:"closed"`
 
 	// Internal fields
-	Channel             string                                                                       `json:"-"`
+	Channel             func() string                                                                `json:"-"`
 	ExtraLogic          func(d uapi.RouteData, p Position, answers map[string]string) error          `json:"-"`
 	PositionDescription func(d uapi.RouteData, p Position) string                                    `json:"-"` // Used for custom position descriptions
 	AllowedForBanned    bool                                                                         `json:"-"` // If true, banned users can apply for this position
