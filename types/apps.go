@@ -40,7 +40,7 @@ type AppMeta struct {
 
 type AppResponse struct {
 	AppID          string                  `db:"app_id" json:"app_id"`
-	User           *dovetypes.PlatformUser `db:"-" json:"user"`
+	User           *dovetypes.PlatformUser `db:"-" json:"user,omitempty"`
 	UserID         string                  `db:"user_id" json:"user_id"`
 	Questions      []Question              `db:"questions" json:"questions"`
 	Answers        map[string]string       `db:"answers" json:"answers"`

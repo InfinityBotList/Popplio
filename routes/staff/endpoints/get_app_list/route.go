@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	docs "github.com/infinitybotlist/eureka/doclib"
+	"github.com/infinitybotlist/eureka/dovewing"
 	"github.com/infinitybotlist/eureka/uapi"
 	"go.uber.org/zap"
 
@@ -79,6 +80,17 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	if err != nil {
 		state.Logger.Error("Failed to fetch application list [collection]", zap.Error(err))
 		return uapi.DefaultResponse(http.StatusNotFound)
+	}
+
+	for i := range app {
+		user, err := dovewing.GetUser(d.Context, app[i].UserID, state.DovewingPlatformDiscord)
+
+		if err != nil {
+			state.Logger.Error("Failed to fetch application list [user fetch]", zap.String("userId", app[i].UserID), zap.Error(err))
+			return uapi.DefaultResponse(http.StatusInternalServerError)
+		}
+
+		app[i].User = user
 	}
 
 	return uapi.HttpResponse{
