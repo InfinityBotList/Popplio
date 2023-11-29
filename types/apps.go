@@ -3,6 +3,7 @@ package types
 import (
 	"time"
 
+	"github.com/infinitybotlist/eureka/dovewing/dovetypes"
 	"github.com/infinitybotlist/eureka/uapi"
 )
 
@@ -24,7 +25,7 @@ type Position struct {
 	Closed    bool       `json:"closed"`
 
 	// Internal fields
-	Channel             func() string                                                                `json:"-"`
+	Channel             string                                                                       `json:"-"`
 	ExtraLogic          func(d uapi.RouteData, p Position, answers map[string]string) error          `json:"-"`
 	PositionDescription func(d uapi.RouteData, p Position) string                                    `json:"-"` // Used for custom position descriptions
 	AllowedForBanned    bool                                                                         `json:"-"` // If true, banned users can apply for this position
@@ -38,14 +39,15 @@ type AppMeta struct {
 }
 
 type AppResponse struct {
-	AppID          string            `db:"app_id" json:"app_id"`
-	UserID         string            `db:"user_id" json:"user_id"`
-	Questions      []Question        `db:"questions" json:"questions"`
-	Answers        map[string]string `db:"answers" json:"answers"`
-	State          string            `db:"state" json:"state"`
-	CreatedAt      time.Time         `db:"created_at" json:"created_at"`
-	Position       string            `db:"position" json:"position"`
-	ReviewFeedback *string           `db:"review_feedback" json:"review_feedback"`
+	AppID          string                  `db:"app_id" json:"app_id"`
+	User           *dovetypes.PlatformUser `db:"-" json:"user"`
+	UserID         string                  `db:"user_id" json:"user_id"`
+	Questions      []Question              `db:"questions" json:"questions"`
+	Answers        map[string]string       `db:"answers" json:"answers"`
+	State          string                  `db:"state" json:"state"`
+	CreatedAt      time.Time               `db:"created_at" json:"created_at"`
+	Position       string                  `db:"position" json:"position"`
+	ReviewFeedback *string                 `db:"review_feedback" json:"review_feedback"`
 }
 
 type AppListResponse struct {

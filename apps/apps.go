@@ -231,9 +231,7 @@ You can only have up to one ban appeal at any given point of time. Abusing the s
 		Hidden:      true, // We don't want it to be prominently shown
 		ReviewLogic: reviewLogicBanAppeal,
 		Tags:        []string{"Ban Appeal"},
-		Channel: func() string {
-			return state.Config.Channels.BanAppeals
-		},
+		Channel:     state.Config.Channels.BanAppeals,
 		PositionDescription: func(d uapi.RouteData, p types.Position) string {
 			return "User <@" + d.Auth.ID + "> wants to be unbanned now? :thinking:"
 		},
