@@ -65,9 +65,9 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 
 	var row pgx.Rows
 	if userId != "" {
-		row, err = state.Pool.Query(d.Context, "SELECT "+appCols+" FROM apps WHERE user_id = $1", userId)
+		row, err = state.Pool.Query(d.Context, "SELECT "+appCols+" FROM apps WHERE user_id = $1 ORDER BY created_at DESC", userId)
 	} else {
-		row, err = state.Pool.Query(d.Context, "SELECT "+appCols+" FROM apps")
+		row, err = state.Pool.Query(d.Context, "SELECT "+appCols+" FROM apps ORDER BY created_at DESC")
 	}
 
 	if err != nil {
