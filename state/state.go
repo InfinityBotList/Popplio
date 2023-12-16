@@ -152,16 +152,16 @@ func Setup() {
 	}())
 
 	if err != nil {
-		panic(err)
+		Logger.Error("Paypal setup failed, disabling paypal support", zap.Error(err))
+	} else {
+		_, err = c.GetAccessToken(Context)
+
+		if err != nil {
+			Logger.Error("Paypal setup [oauth2] failed, disabling paypal support", zap.Error(err))
+		} else {
+			Paypal = c
+		}
 	}
-
-	_, err = c.GetAccessToken(Context)
-
-	if err != nil {
-		panic(err)
-	}
-
-	Paypal = c
 
 	stripe.Key = Config.Meta.StripeSecretKey.Parse()
 

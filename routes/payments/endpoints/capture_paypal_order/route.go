@@ -35,6 +35,15 @@ func Docs() *docs.Doc {
 }
 
 func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
+	if state.Paypal == nil {
+		return uapi.HttpResponse{
+			Status: http.StatusServiceUnavailable,
+			Json: types.ApiError{
+				Message: "Paypal is currently not available as a payment option. Please contact support!",
+			},
+		}
+	}
+
 	refId := chi.URLParam(r, "ref_id")
 
 	if refId == "" {

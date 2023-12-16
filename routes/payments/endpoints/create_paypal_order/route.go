@@ -43,6 +43,15 @@ func Docs() *docs.Doc {
 }
 
 func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
+	if state.Paypal == nil {
+		return uapi.HttpResponse{
+			Status: http.StatusServiceUnavailable,
+			Json: types.ApiError{
+				Message: "Paypal is currently not available as a payment option. Please contact support!",
+			},
+		}
+	}
+
 	limit, err := ratelimit.Ratelimit{
 		Expiry:      1 * time.Minute,
 		MaxRequests: 2,
