@@ -12,8 +12,8 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	docs "github.com/infinitybotlist/eureka/doclib"
+	"github.com/infinitybotlist/eureka/ratelimit"
 	"github.com/infinitybotlist/eureka/uapi"
-	"github.com/infinitybotlist/eureka/uapi/ratelimit"
 	"go.uber.org/zap"
 )
 

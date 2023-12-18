@@ -2,7 +2,6 @@ package get_user_seo
 
 import (
 	"net/http"
-	"time"
 
 	"popplio/state"
 	"popplio/types"
@@ -35,16 +34,6 @@ func Docs() *docs.Doc {
 func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	name := chi.URLParam(r, "id")
 
-	cache := state.Redis.Get(d.Context, "seou:"+name).Val()
-	if cache != "" {
-		return uapi.HttpResponse{
-			Data: cache,
-			Headers: map[string]string{
-				"X-Popplio-Cached": "true",
-			},
-		}
-	}
-
 	var about string
 	var userId string
 	err := state.Pool.QueryRow(d.Context, "SELECT about, user_id FROM users WHERE user_id = $1", name).Scan(&about, &userId)
@@ -69,8 +58,6 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	}
 
 	return uapi.HttpResponse{
-		Json:      seo,
-		CacheKey:  "seou:" + name,
-		CacheTime: 30 * time.Minute,
+		Json: seo,
 	}
 }

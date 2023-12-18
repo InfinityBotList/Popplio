@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
-	"time"
 
 	"popplio/assetmanager"
 	"popplio/db"
@@ -36,17 +35,6 @@ func Docs() *docs.Doc {
 }
 
 func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
-	// Check cache, this is how we can avoid hefty ratelimits
-	cache := state.Redis.Get(d.Context, "indexcache:bots").Val()
-	if cache != "" {
-		return uapi.HttpResponse{
-			Data: cache,
-			Headers: map[string]string{
-				"X-Popplio-Cached": "true",
-			},
-		}
-	}
-
 	listIndex := types.ListIndexBot{}
 
 	// Certified Bots
@@ -125,9 +113,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	}
 
 	return uapi.HttpResponse{
-		Json:      listIndex,
-		CacheKey:  "indexcache:bots",
-		CacheTime: 3 * time.Minute,
+		Json: listIndex,
 	}
 }
 

@@ -45,7 +45,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	}
 
 	var totalStaff int64
-	err = state.Pool.QueryRow(d.Context, "SELECT COUNT(*) FROM users WHERE staff = true").Scan(&totalStaff)
+	err = state.Pool.QueryRow(d.Context, "SELECT COUNT(*) FROM staff_members").Scan(&totalStaff)
 
 	if err != nil {
 		state.Logger.Error("Failed to fetch user count", zap.Error(err))

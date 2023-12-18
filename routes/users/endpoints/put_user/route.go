@@ -9,7 +9,7 @@ import (
 	"popplio/state"
 	"popplio/types"
 
-	"github.com/infinitybotlist/eureka/uapi/ratelimit"
+	"github.com/infinitybotlist/eureka/ratelimit"
 
 	docs "github.com/infinitybotlist/eureka/doclib"
 	"github.com/infinitybotlist/eureka/uapi"
@@ -369,7 +369,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		apiToken = crypto.RandString(128)
 		_, err = state.Pool.Exec(
 			d.Context,
-			"INSERT INTO users (user_id, api_token, extra_links, staff, developer, certified) VALUES ($1, $2, $3, false, false, false)",
+			"INSERT INTO users (user_id, api_token, extra_links, developer, certified) VALUES ($1, $2, $3, false, false)",
 			user.ID,
 			apiToken,
 			[]types.Link{},

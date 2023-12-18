@@ -22,13 +22,37 @@ var (
 func Docs() *docs.Doc {
 	return &docs.Doc{
 		Summary:     "Get List Team",
-		Description: "Gets an up to date listing of the staff team of the list",
+		Description: "Gets an up to date listing of the staff team of the list. This is currently broken and does not handle permissions yet (TODO)",
 		Resp:        types.StaffTeam{},
 	}
 }
 
 func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
-	rows, err := state.Pool.Query(d.Context, "SELECT "+userPermCols+" FROM users WHERE staff = true")
+	// Not yet fully implemented
+	sms, err := state.Pool.Query(d.Context, "SELECT user_id FROM staff_members")
+
+	if err != nil {
+		state.Logger.Error("Failed to fetch staff team [sms]", zap.Error(err))
+		return uapi.DefaultResponse(http.StatusInternalServerError)
+	}
+
+	defer sms.Close()
+
+	var staffIds []string
+
+	for sms.Next() {
+		var id string
+		err := sms.Scan(&id)
+
+		if err != nil {
+			state.Logger.Error("Failed to fetch staff team [sms]", zap.Error(err))
+			return uapi.DefaultResponse(http.StatusInternalServerError)
+		}
+
+		staffIds = append(staffIds, id)
+	}
+
+	rows, err := state.Pool.Query(d.Context, "SELECT "+userPermCols+" FROM users WHERE user_id = ANY($1)", staffIds)
 
 	if err != nil {
 		state.Logger.Error("Failed to fetch staff team [rows]", zap.Error(err))

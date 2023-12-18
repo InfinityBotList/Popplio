@@ -12,7 +12,7 @@ import (
 	"popplio/webhooks/core/drivers"
 	"popplio/webhooks/core/events"
 
-	"github.com/infinitybotlist/eureka/uapi/ratelimit"
+	"github.com/infinitybotlist/eureka/ratelimit"
 	"go.uber.org/zap"
 
 	docs "github.com/infinitybotlist/eureka/doclib"

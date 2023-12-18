@@ -7,7 +7,7 @@ import (
 	"popplio/types"
 	"time"
 
-	"github.com/infinitybotlist/eureka/uapi/ratelimit"
+	"github.com/infinitybotlist/eureka/ratelimit"
 	"go.uber.org/zap"
 
 	"github.com/go-chi/chi/v5"

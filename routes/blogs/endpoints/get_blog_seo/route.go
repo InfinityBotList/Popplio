@@ -4,7 +4,6 @@ import (
 	"net/http"
 	"popplio/state"
 	"popplio/types"
-	"time"
 
 	"github.com/go-chi/chi/v5"
 	docs "github.com/infinitybotlist/eureka/doclib"
@@ -32,16 +31,6 @@ func Docs() *docs.Doc {
 func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	slug := chi.URLParam(r, "slug")
 
-	cache := state.Redis.Get(d.Context, "seoblog:"+slug).Val()
-	if cache != "" {
-		return uapi.HttpResponse{
-			Data: cache,
-			Headers: map[string]string{
-				"X-Popplio-Cached": "true",
-			},
-		}
-	}
-
 	var title string
 	var description string
 
@@ -60,8 +49,6 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	}
 
 	return uapi.HttpResponse{
-		Json:      seo,
-		CacheKey:  "seoblog:" + slug,
-		CacheTime: 30 * time.Minute,
+		Json: seo,
 	}
 }

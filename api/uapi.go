@@ -150,7 +150,6 @@ func Setup() {
 			TargetTypeBot:    "bot",
 			TargetTypeServer: "server",
 		},
-		Redis:   state.Redis,
 		Context: state.Context,
 		Constants: &uapi.UAPIConstants{
 			ResourceNotFound:    constants.ResourceNotFound,

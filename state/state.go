@@ -11,6 +11,10 @@ import (
 
 	"popplio/config"
 
+	"github.com/infinitybotlist/eureka/dovewing/dovetypes"
+	hredis "github.com/infinitybotlist/eureka/hotcache/redis"
+	"github.com/infinitybotlist/eureka/ratelimit"
+
 	"github.com/bwmarrin/discordgo"
 	"github.com/go-playground/validator/v10"
 	"github.com/go-playground/validator/v10/non-standard/validators"
@@ -126,10 +130,13 @@ func Setup() {
 
 	// Load dovewing state
 	baseDovewingState := dovewing.BaseState{
-		Pool:           Pool,
-		Logger:         Logger,
-		Context:        Context,
-		Redis:          Redis,
+		Pool:    Pool,
+		Logger:  Logger,
+		Context: Context,
+		PlatformUserCache: hredis.RedisHotCache[dovetypes.PlatformUser]{
+			Redis:  Redis,
+			Prefix: "rl:",
+		},
 		UserExpiryTime: 8 * time.Hour,
 	}
 
@@ -142,6 +149,13 @@ func Setup() {
 	if err != nil {
 		panic(err)
 	}
+
+	ratelimit.SetupState(&ratelimit.RLState{
+		HotCache: hredis.RedisHotCache[int]{
+			Redis:  Redis,
+			Prefix: "rl:",
+		},
+	})
 
 	c, err := paypal.NewClient(Config.Meta.PaypalClientID.Parse(), Config.Meta.PaypalSecret.Parse(), func() string {
 		if config.CurrentEnv == config.CurrentEnvStaging {

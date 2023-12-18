@@ -24,13 +24,7 @@ type User struct {
 	StaffRPCLastVerify               pgtype.Timestamptz      `db:"staff_rpc_last_verify" json:"staff_rpc_last_verify"`
 	StaffOnboardSessionCode          pgtype.Text             `db:"staff_onboard_session_code" json:"-"`
 	StaffOnboardCurrentOnboardRespId pgtype.Text             `db:"staff_onboard_current_onboard_resp_id" json:"-"`
-	Staff                            bool                    `db:"staff" json:"staff"`
-	Admin                            bool                    `db:"admin" json:"admin"`
-	HAdmin                           bool                    `db:"hadmin" json:"hadmin"`
 	Certified                        bool                    `db:"certified" json:"certified"`
-	IBLDev                           bool                    `db:"ibldev" json:"ibldev"`
-	IBLHDev                          bool                    `db:"iblhdev" json:"iblhdev"`
-	Owner                            bool                    `db:"owner" json:"owner"`
 	BotDeveloper                     bool                    `db:"developer" json:"bot_developer"`
 	BugHunters                       bool                    `db:"bug_hunters" json:"bug_hunters"`
 	CaptchaSponsorEnabled            bool                    `db:"captcha_sponsor_enabled" json:"captcha_sponsor_enabled"`
@@ -50,12 +44,6 @@ type UserPerm struct {
 	Banned                bool                    `db:"banned" json:"banned"`
 	CaptchaSponsorEnabled bool                    `db:"captcha_sponsor_enabled" json:"captcha_sponsor_enabled"`
 	VoteBanned            bool                    `db:"vote_banned" json:"vote_banned"`
-	Staff                 bool                    `db:"staff" json:"staff"`
-	Admin                 bool                    `db:"admin" json:"admin"`
-	HAdmin                bool                    `db:"hadmin" json:"hadmin"`
-	IBLDev                bool                    `db:"ibldev" json:"ibldev"`
-	IBLHDev               bool                    `db:"iblhdev" json:"iblhdev"`
-	Owner                 bool                    `db:"owner" json:"owner"`
 }
 
 type ProfileUpdate struct {

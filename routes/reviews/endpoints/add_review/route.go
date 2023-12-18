@@ -10,7 +10,7 @@ import (
 	"popplio/webhooks/events"
 	"time"
 
-	"github.com/infinitybotlist/eureka/uapi/ratelimit"
+	"github.com/infinitybotlist/eureka/ratelimit"
 	"github.com/jackc/pgx/v5/pgtype"
 	"go.uber.org/zap"
 

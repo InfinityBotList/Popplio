@@ -3,7 +3,6 @@ package get_reviews
 import (
 	"net/http"
 	"strings"
-	"time"
 
 	"popplio/db"
 	"popplio/state"
@@ -58,17 +57,6 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		}
 	}
 
-	// Check cache, this is how we can avoid hefty ratelimits
-	cache := state.Redis.Get(d.Context, "rv-"+targetId+"-"+targetType).Val()
-	if cache != "" {
-		return uapi.HttpResponse{
-			Data: cache,
-			Headers: map[string]string{
-				"X-Popplio-Cached": "true",
-			},
-		}
-	}
-
 	rows, err := state.Pool.Query(d.Context, "SELECT "+reviewCols+" FROM reviews WHERE target_id = $1 AND target_type = $2 ORDER BY created_at ASC", targetId, targetType)
 
 	if err != nil {
@@ -99,8 +87,6 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	}
 
 	return uapi.HttpResponse{
-		Json:      allReviews,
-		CacheKey:  "rv-" + targetId + "-" + targetType,
-		CacheTime: time.Minute * 3,
+		Json: allReviews,
 	}
 }

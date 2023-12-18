@@ -3,7 +3,6 @@ package get_pack_seo
 import (
 	"errors"
 	"net/http"
-	"time"
 
 	"popplio/state"
 	"popplio/types"
@@ -36,16 +35,6 @@ func Docs() *docs.Doc {
 func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	id := chi.URLParam(r, "id")
 
-	cache := state.Redis.Get(d.Context, "seop:"+id).Val()
-	if cache != "" {
-		return uapi.HttpResponse{
-			Data: cache,
-			Headers: map[string]string{
-				"X-Popplio-Cached": "true",
-			},
-		}
-	}
-
 	var short string
 	var packName string
 	err := state.Pool.QueryRow(d.Context, "SELECT name, short FROM packs WHERE url = $1", id).Scan(&packName, &short)
@@ -67,8 +56,6 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	}
 
 	return uapi.HttpResponse{
-		Json:      seoData,
-		CacheKey:  "seop:" + id,
-		CacheTime: 30 * time.Minute,
+		Json: seoData,
 	}
 }

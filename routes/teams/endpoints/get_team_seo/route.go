@@ -3,7 +3,6 @@ package get_team_seo
 import (
 	"net/http"
 	"strconv"
-	"time"
 
 	"popplio/assetmanager"
 	"popplio/state"
@@ -37,16 +36,6 @@ func Docs() *docs.Doc {
 
 func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	tid := chi.URLParam(r, "id")
-
-	cache := state.Redis.Get(d.Context, "seot:"+tid).Val()
-	if cache != "" {
-		return uapi.HttpResponse{
-			Data: cache,
-			Headers: map[string]string{
-				"X-Popplio-Cached": "true",
-			},
-		}
-	}
 
 	// Convert ID to UUID
 	if _, err := uuid.Parse(tid); err != nil {
@@ -87,8 +76,6 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	}
 
 	return uapi.HttpResponse{
-		Json:      seoData,
-		CacheKey:  "seot:" + name,
-		CacheTime: 2 * time.Minute,
+		Json: seoData,
 	}
 }

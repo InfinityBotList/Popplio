@@ -4,7 +4,6 @@ import (
 	"errors"
 	"net/http"
 	"strings"
-	"time"
 
 	"popplio/db"
 	"popplio/state"
@@ -14,6 +13,7 @@ import (
 	"github.com/infinitybotlist/eureka/dovewing"
 	"github.com/infinitybotlist/eureka/uapi"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgtype"
 	"go.uber.org/zap"
 
 	"github.com/bwmarrin/discordgo"
@@ -60,31 +60,21 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	}
 
 	if userId != d.Auth.ID {
-		// Check if user is staff
-		var staff bool
+		// Check if user is a staff member
+		var count pgtype.Int8
 
-		err = state.Pool.QueryRow(d.Context, "SELECT staff FROM users WHERE user_id = $1", d.Auth.ID).Scan(&staff)
+		err = state.Pool.QueryRow(d.Context, "SELECT COUNT(*) FROM staff_members WHERE user_id = $1", d.Auth.ID).Scan(&count)
 
 		if err != nil {
 			state.Logger.Error("Error getting user", zap.Error(err), zap.String("user_id", d.Auth.ID))
 			return uapi.DefaultResponse(http.StatusInternalServerError)
 		}
 
-		if !staff {
+		if !count.Valid || count.Int64 == 0 {
 			return uapi.HttpResponse{
 				Status: http.StatusForbidden,
 				Json:   types.ApiError{Message: "You do not have permission to view this ticket"},
 			}
-		}
-	}
-
-	cache := state.Redis.Get(d.Context, "tik-"+ticketId).Val()
-	if cache != "" {
-		return uapi.HttpResponse{
-			Data: cache,
-			Headers: map[string]string{
-				"X-Popplio-Cached": "true",
-			},
 		}
 	}
 
@@ -142,8 +132,6 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	}
 
 	return uapi.HttpResponse{
-		Json:      ticket,
-		CacheKey:  "tik-" + ticketId,
-		CacheTime: time.Minute * 3,
+		Json: ticket,
 	}
 }

@@ -4,7 +4,6 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
-	"time"
 
 	"popplio/db"
 	"popplio/state"
@@ -51,17 +50,9 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	pageNum, err := strconv.ParseUint(page, 10, 32)
 
 	if err != nil {
-		return uapi.DefaultResponse(http.StatusBadRequest)
-	}
-
-	// Check cache, this is how we can avoid hefty ratelimits
-	cache := state.Redis.Get(d.Context, "pca-"+strconv.FormatUint(pageNum, 10)).Val()
-	if cache != "" {
 		return uapi.HttpResponse{
-			Data: cache,
-			Headers: map[string]string{
-				"X-Popplio-Cached": "true",
-			},
+			Status: http.StatusBadRequest,
+			Json:   types.ApiError{Message: "Invalid page number"},
 		}
 	}
 
@@ -98,8 +89,6 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	}
 
 	return uapi.HttpResponse{
-		Json:      data,
-		CacheKey:  "pca-" + strconv.FormatUint(pageNum, 10),
-		CacheTime: 1 * time.Minute,
+		Json: data,
 	}
 }

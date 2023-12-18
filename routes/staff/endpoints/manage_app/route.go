@@ -36,7 +36,7 @@ var (
 func Docs() *docs.Doc {
 	return &docs.Doc{
 		Summary:     "Staff: Manage Application",
-		Description: "Approves or denies an application. **Is staff-only and requires the ``iblhdev`` or the ``hadmin`` permission(s)**. Returns a 204 on success.",
+		Description: "Approves or denies an application. Returns a 204 on success.",
 		Req:         ManageApp{},
 		Params: []docs.Parameter{
 			{
@@ -165,7 +165,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		embeds = []*discordgo.MessageEmbed{
 			{
 				Title:       "Application Approved",
-				URL:         state.Config.Sites.Frontend.Production() + "/admin/panel",
+				URL:         state.Config.Sites.Panel.Production() + "/panel/apps",
 				Description: fmt.Sprintf("<@%s> has approved an application by <@%s> for the position of %s", d.Auth.ID, app.UserID, app.Position),
 				Color:       0x00ff00,
 				Fields: []*discordgo.MessageEmbedField{
@@ -222,7 +222,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		embeds = []*discordgo.MessageEmbed{
 			{
 				Title:       "Application Denied",
-				URL:         state.Config.Sites.Frontend.Production() + "/admin/panel",
+				URL:         state.Config.Sites.Panel.Production() + "/panel/apps",
 				Description: fmt.Sprintf("<@%s> has denied an application by <@%s> for the position of %s", d.Auth.ID, app.UserID, app.Position),
 				Color:       0xff0000,
 				Fields: []*discordgo.MessageEmbedField{

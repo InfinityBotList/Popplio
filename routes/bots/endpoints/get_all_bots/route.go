@@ -4,7 +4,6 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
-	"time"
 
 	"popplio/assetmanager"
 	"popplio/db"
@@ -54,17 +53,6 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 
 	if err != nil {
 		return uapi.DefaultResponse(http.StatusBadRequest)
-	}
-
-	// Check cache, this is how we can avoid hefty ratelimits
-	cache := state.Redis.Get(d.Context, "allbots-"+strconv.FormatUint(pageNum, 10)).Val()
-	if cache != "" {
-		return uapi.HttpResponse{
-			Data: cache,
-			Headers: map[string]string{
-				"X-Popplio-Cached": "true",
-			},
-		}
 	}
 
 	limit := perPage
@@ -126,8 +114,6 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	}
 
 	return uapi.HttpResponse{
-		Json:      data,
-		CacheKey:  "allbots-" + strconv.FormatUint(pageNum, 10),
-		CacheTime: 10 * time.Minute,
+		Json: data,
 	}
 }
