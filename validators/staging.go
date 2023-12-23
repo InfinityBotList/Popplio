@@ -2,28 +2,26 @@ package validators
 
 import (
 	"context"
-	"errors"
+	"fmt"
 	"popplio/config"
-	"popplio/state"
-
-	"github.com/jackc/pgx/v5/pgtype"
+	"popplio/validators/kittycat/ext"
+	"popplio/validators/kittycat/perms"
 )
 
 // For staging, ensure user is in whitelist
 //
 // This is because staging uses test keys
 func StagingCheckSensitive(ctx context.Context, userId string) error {
-	// For staging, ensure user is a hdev or owner
-	//
 	// This is because staging uses test keys
 	if config.CurrentEnv == config.CurrentEnvStaging {
-		var positions []pgtype.UUID
-		var permOverrides []string
+		sp, err := ext.GetUserStaffPerms(ctx, userId)
 
-		rec, err := state.Pool.QueryRow(ctx, "SELECT positions, perm_overrides FROM staff_members WHERE user_id = $1", userId)
+		if err != nil {
+			return fmt.Errorf("failed to get user staff perms: %w", err)
+		}
 
-		if !hdev && !owner {
-			return errors.New("user is not a hdev/owner while being in a staging/test environment")
+		if !perms.HasPerm(sp.Resolve(), perms.Build("popplio_staging", "sensitive")) {
+			return fmt.Errorf("user does not have the popplio_staging.sensitive staff permission")
 		}
 	}
 

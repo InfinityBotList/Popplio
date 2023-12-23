@@ -1,6 +1,6 @@
 module popplio
 
-go 1.18
+go 1.21
 
 require (
 	github.com/bwmarrin/discordgo v0.27.2-0.20231208125110-f7800efc52b8
@@ -9,7 +9,7 @@ require (
 	github.com/google/uuid v1.5.0
 	github.com/infinitybotlist/eureka v0.6.5
 	github.com/mileusna/useragent v1.3.4
-	github.com/wk8/go-ordered-map/v2 v2.1.8 // indirect
+	github.com/wk8/go-ordered-map/v2 v2.1.8
 	gopkg.in/yaml.v3 v3.0.1
 )
 
@@ -23,7 +23,7 @@ require (
 
 require (
 	github.com/buger/jsonparser v1.1.1 // indirect
-	github.com/deckarep/golang-set/v2 v2.5.0 // indirect
+	github.com/deckarep/golang-set/v2 v2.5.0
 	github.com/gabriel-vasile/mimetype v1.4.3 // indirect
 	github.com/go-playground/locales v0.14.1 // indirect
 	github.com/go-playground/universal-translator v0.18.1 // indirect
@@ -50,7 +50,6 @@ require (
 	github.com/jackc/puddle/v2 v2.2.1 // indirect
 	github.com/josharian/intern v1.0.0 // indirect
 	github.com/mailru/easyjson v0.7.7 // indirect
-	go.uber.org/atomic v1.11.0 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
 	golang.org/x/crypto v0.16.0 // indirect
 	golang.org/x/text v0.14.0

@@ -1,4 +1,4 @@
-package kittycat
+package perms
 
 import "testing"
 

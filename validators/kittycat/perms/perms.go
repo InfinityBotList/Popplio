@@ -312,7 +312,7 @@ pub fn check_patch_changes(manager_perms: &[String], current_perms: &[String], n
 }
 */
 
-package kittycat
+package perms
 
 // AI-converted from https://www.codeconvert.ai/app with some manual fixes
 
