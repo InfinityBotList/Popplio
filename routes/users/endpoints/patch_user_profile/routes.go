@@ -55,8 +55,29 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		}
 	}
 
+	if len(profile.About) > 1000 {
+		return uapi.HttpResponse{
+			Status: http.StatusBadRequest,
+			Json:   types.ApiError{Message: "About me is over 1000 characters!"},
+		}
+	}
+
+	tx, err := state.Pool.Begin(d.Context)
+
+	if err != nil {
+		state.Logger.Error("Error while starting transaction", zap.Error(err), zap.String("userID", d.Auth.ID))
+		return uapi.DefaultResponse(http.StatusInternalServerError)
+	}
+
+	_, err = tx.Exec(d.Context, "UPDATE users SET updated_at = NOW() WHERE user_id = $1", id)
+
+	if err != nil {
+		state.Logger.Error("Error while updating updated_at", zap.Error(err), zap.String("userID", d.Auth.ID))
+		return uapi.DefaultResponse(http.StatusInternalServerError)
+	}
+
 	// Update extra links
-	_, err = state.Pool.Exec(d.Context, "UPDATE users SET extra_links = $1 WHERE user_id = $2", profile.ExtraLinks, id)
+	_, err = tx.Exec(d.Context, "UPDATE users SET extra_links = $1 WHERE user_id = $2", profile.ExtraLinks, id)
 
 	if err != nil {
 		state.Logger.Error("Error while updating extra links", zap.Error(err), zap.String("userID", d.Auth.ID))
@@ -64,15 +85,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	}
 
 	if profile.About != "" {
-		if len(profile.About) > 1000 {
-			return uapi.HttpResponse{
-				Status: http.StatusBadRequest,
-				Json:   types.ApiError{Message: "About me is over 1000 characters!"},
-			}
-		}
-
-		// Update about, captcha_sponsor_enabled
-		_, err = state.Pool.Exec(d.Context, "UPDATE users SET about = $1 WHERE user_id = $2", profile.About, id)
+		_, err = tx.Exec(d.Context, "UPDATE users SET about = $1 WHERE user_id = $2", profile.About, id)
 
 		if err != nil {
 			state.Logger.Error("Error while updating about", zap.Error(err), zap.String("userID", d.Auth.ID))
@@ -81,7 +94,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	}
 
 	if profile.CaptchaSponsorEnabled != nil {
-		_, err = state.Pool.Exec(d.Context, "UPDATE users SET captcha_sponsor_enabled = $1 WHERE user_id = $2", *profile.CaptchaSponsorEnabled, id)
+		_, err = tx.Exec(d.Context, "UPDATE users SET captcha_sponsor_enabled = $1 WHERE user_id = $2", *profile.CaptchaSponsorEnabled, id)
 
 		if err != nil {
 			state.Logger.Error("Error while updating captcha sponsor enabled", zap.Error(err), zap.String("userID", d.Auth.ID))
@@ -89,7 +102,12 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		}
 	}
 
-	state.Redis.Del(d.Context, "uc-"+id)
+	err = tx.Commit(d.Context)
+
+	if err != nil {
+		state.Logger.Error("Error while committing transaction", zap.Error(err), zap.String("userID", d.Auth.ID))
+		return uapi.DefaultResponse(http.StatusInternalServerError)
+	}
 
 	return uapi.DefaultResponse(http.StatusNoContent)
 }

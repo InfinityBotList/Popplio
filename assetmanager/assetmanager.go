@@ -71,3 +71,11 @@ func BannerInfo(targetType AssetTargetType, targetId string) *types.AssetMetadat
 func AvatarInfo(targetType AssetTargetType, targetId string) *types.AssetMetadata {
 	return info("avatar", "avatars/"+targetType.String()+"/"+targetId+".webp", "avatars/default.webp")
 }
+
+func ResolveAssetMetadataToUrl(t *types.AssetMetadata) string {
+	if t.Exists {
+		return state.Config.Sites.CDN + "/" + t.Path
+	} else {
+		return state.Config.Sites.CDN + "/" + t.DefaultPath
+	}
+}

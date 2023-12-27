@@ -111,6 +111,13 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	}
 
 	// Update the team
+	_, err = tx.Exec(d.Context, "UPDATE teams SET updated_at = NOW() WHERE id = $1", teamId)
+
+	if err != nil {
+		state.Logger.Error("Error updating team updated_at", zap.Error(err), zap.String("uid", d.Auth.ID), zap.String("tid", teamId))
+		return uapi.DefaultResponse(http.StatusInternalServerError)
+	}
+
 	_, err = tx.Exec(d.Context, "UPDATE teams SET name = $1 WHERE id = $2", payload.Name, teamId)
 
 	if err != nil {

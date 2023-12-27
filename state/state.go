@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"popplio/config"
+	"popplio/seo"
 
 	"github.com/infinitybotlist/eureka/dovewing/dovetypes"
 	hredis "github.com/infinitybotlist/eureka/hotcache/redis"
@@ -43,6 +44,7 @@ var (
 	Config           *config.Config
 	StripeWebhSecret string
 	StripeWebhIPList []string
+	SeoMapGenerator  = &seo.MapGenerator{}
 )
 
 func nonVulgar(fl validator.FieldLevel) bool {

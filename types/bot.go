@@ -83,6 +83,7 @@ type Bot struct {
 	Note                pgtype.Text             `db:"approval_note" json:"approval_note" description:"The note for the bot's approval"`
 	CreatedAt           pgtype.Timestamptz      `db:"created_at" json:"created_at" description:"The bot's creation date"`
 	ClaimedBy           pgtype.Text             `db:"claimed_by" json:"claimed_by" description:"The user who claimed the bot"`
+	UpdatedAt           pgtype.Timestamptz      `db:"updated_at" json:"updated_at" description:"The bot's last update date"`
 	LastClaimed         pgtype.Timestamptz      `db:"last_claimed" json:"last_claimed" description:"The bot's last claimed date"`
 	TeamOwnerID         pgtype.UUID             `db:"team_owner" json:"-"`
 	TeamOwner           *Team                   `db:"-" json:"team_owner" description:"If the bot is in a team, who owns the bot. If not in a team, this will be null and owner will instead be set" ci:"internal"` // Must be parsed internally

@@ -1,6 +1,8 @@
 package types
 
 import (
+	"time"
+
 	"github.com/infinitybotlist/eureka/dovewing/dovetypes"
 	"github.com/jackc/pgx/v5/pgtype"
 )
@@ -28,6 +30,8 @@ type User struct {
 	UserTeams             []Team                  `db:"-" json:"user_teams" ci:"internal"` // Must be handled internally
 	UserBots              []IndexBot              `db:"-" json:"user_bots" ci:"internal"`  // Must be handled internally
 	UserPacks             []IndexBotPack          `db:"-" json:"user_packs" ci:"internal"` // Must be handled internally
+	CreatedAt             time.Time               `db:"created_at" json:"created_at" description:"The time the user was created"`
+	UpdatedAt             time.Time               `db:"updated_at" json:"updated_at" description:"The time the user was last updated"`
 }
 
 type UserPerm struct {

@@ -147,7 +147,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	botArgs = append(botArgs, id)
 
 	// Update the bot
-	_, err = state.Pool.Exec(d.Context, "UPDATE bots SET "+updateSqlStr+" WHERE bot_id=$"+strconv.Itoa(len(botArgs)), botArgs...)
+	_, err = state.Pool.Exec(d.Context, "UPDATE bots SET "+updateSqlStr+", updated_at = NOW() WHERE bot_id=$"+strconv.Itoa(len(botArgs)), botArgs...)
 
 	if err != nil {
 		state.Logger.Error("Failed to update bot: ", zap.Error(err), zap.String("userID", d.Auth.ID), zap.String("botID", id))
