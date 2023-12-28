@@ -29,7 +29,7 @@ func Docs() *docs.Doc {
 }
 
 func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
-	rows, err := state.Pool.Query(d.Context, "SELECT "+blogCols+" FROM blogs ORDER BY created_at DESC")
+	rows, err := state.Pool.Query(d.Context, "SELECT "+blogCols+" FROM blogs WHERE draft = false ORDER BY created_at DESC")
 
 	if err != nil {
 		state.Logger.Error("Error while fetching blog posts [db query]", zap.Error(err))
