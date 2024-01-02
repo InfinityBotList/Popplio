@@ -20,22 +20,24 @@ func PushNotification(userId string, notif types.Alert) error {
 		notif.AlertData = map[string]any{}
 	}
 
-	_, err = state.Pool.Exec(
-		state.Context,
-		"INSERT INTO alerts (user_id, type, url, message, title, icon, alert_data, priority) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)",
-		userId,
-		notif.Type,
-		notif.URL,
-		notif.Message,
-		notif.Title,
-		notif.Icon,
-		notif.AlertData,
-		notif.Priority,
-	)
+	if notif.NoSave {
+		_, err = state.Pool.Exec(
+			state.Context,
+			"INSERT INTO alerts (user_id, type, url, message, title, icon, alert_data, priority) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)",
+			userId,
+			notif.Type,
+			notif.URL,
+			notif.Message,
+			notif.Title,
+			notif.Icon,
+			notif.AlertData,
+			notif.Priority,
+		)
 
-	if err != nil {
-		state.Logger.Error("Error inserting alert", zap.Error(err), zap.String("user_id", userId), zap.Any("alert", notif))
-		return err
+		if err != nil {
+			state.Logger.Error("Error inserting alert", zap.Error(err), zap.String("user_id", userId), zap.Any("alert", notif))
+			return err
+		}
 	}
 
 	bytes, err := json.Marshal(notif)

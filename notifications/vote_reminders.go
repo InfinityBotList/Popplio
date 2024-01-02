@@ -73,6 +73,7 @@ func vrCheck() error {
 				Message: "You can vote for the " + targetType + " " + entityInfo.Name + " now!",
 				Title:   "Vote for " + entityInfo.Name + "!",
 				Icon:    entityInfo.Avatar,
+				NoSave:  true, // Spammy and fills up db very quickly
 			}
 
 			err = PushNotification(userId, message)

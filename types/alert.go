@@ -30,6 +30,7 @@ type Alert struct {
 	AlertData map[string]any     `db:"alert_data" json:"alert_data"`          // Optional
 	Icon      string             `db:"icon" json:"icon"`                      // Optional
 	Priority  AlertPriority      `db:"priority" json:"priority" enum:"1,2,3"` // Optional
+	NoSave    bool               `db:"-" json:"-"`                            // This is an internal field used to determine whether or not to save the alert to the database or not
 }
 
 type AlertList struct {

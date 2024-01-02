@@ -45,6 +45,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 			Data: cache,
 			Headers: map[string]string{
 				"X-Popplio-Cached": "true",
+				"Content-Type":     "application/xml",
 			},
 		}
 	}
