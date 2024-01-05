@@ -51,11 +51,11 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	// Check ownership
 	var userId string
 
-	err := state.Pool.QueryRow(d.Context, "SELECT user_id FROM tickets WHERE id = $1 AND user", ticketId).Scan(&userId)
+	err := state.Pool.QueryRow(d.Context, "SELECT user_id FROM tickets WHERE id = $1", ticketId).Scan(&userId)
 
 	if err != nil {
 		state.Logger.Error("Error getting ticket", zap.Error(err), zap.String("ticket_id", ticketId))
-		return uapi.DefaultResponse(http.StatusNotFound)
+		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
 	if userId != d.Auth.ID {
