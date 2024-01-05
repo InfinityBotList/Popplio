@@ -13,7 +13,6 @@ import (
 	"github.com/infinitybotlist/eureka/dovewing"
 	"github.com/infinitybotlist/eureka/uapi"
 	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgtype"
 	"go.uber.org/zap"
 
 	"github.com/bwmarrin/discordgo"
@@ -52,7 +51,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	// Check ownership
 	var userId string
 
-	err := state.Pool.QueryRow(d.Context, "SELECT user_id FROM tickets WHERE id = $1", ticketId).Scan(&userId)
+	err := state.Pool.QueryRow(d.Context, "SELECT user_id FROM tickets WHERE id = $1 AND user", ticketId).Scan(&userId)
 
 	if err != nil {
 		state.Logger.Error("Error getting ticket", zap.Error(err), zap.String("ticket_id", ticketId))
@@ -60,21 +59,9 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	}
 
 	if userId != d.Auth.ID {
-		// Check if user is a staff member
-		var count pgtype.Int8
-
-		err = state.Pool.QueryRow(d.Context, "SELECT COUNT(*) FROM staff_members WHERE user_id = $1", d.Auth.ID).Scan(&count)
-
-		if err != nil {
-			state.Logger.Error("Error getting user", zap.Error(err), zap.String("user_id", d.Auth.ID))
-			return uapi.DefaultResponse(http.StatusInternalServerError)
-		}
-
-		if !count.Valid || count.Int64 == 0 {
-			return uapi.HttpResponse{
-				Status: http.StatusForbidden,
-				Json:   types.ApiError{Message: "You do not have permission to view this ticket"},
-			}
+		return uapi.HttpResponse{
+			Status: http.StatusForbidden,
+			Json:   types.ApiError{Message: "You do not have permission to view this ticket"},
 		}
 	}
 
