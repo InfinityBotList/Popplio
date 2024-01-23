@@ -67,7 +67,7 @@ var openapi []byte
 func corsMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// limit body to 10mb
-		r.Body = http.MaxBytesReader(w, r.Body, 10*1024*1024)
+		r.Body = http.MaxBytesReader(w, r.Body, 50*1024*1024)
 
 		if r.Header.Get("User-Auth") != "" {
 			if strings.HasPrefix(r.Header.Get("User-Auth"), "User ") {

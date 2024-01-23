@@ -24,7 +24,7 @@ import (
 	"golang.org/x/image/webp"
 )
 
-const maxAssetSize = 10 * 1024 * 1024
+const maxAssetSize = 50 * 1024 * 1024
 const bannerMaxX = 0 // STILL DECIDING
 const bannerMaxY = 0 // STILL DECIDING
 const avatarMaxX = 0 // STILL DECIDING
