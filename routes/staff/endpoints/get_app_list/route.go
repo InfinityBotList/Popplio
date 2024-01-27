@@ -6,7 +6,8 @@ import (
 	"popplio/routes/staff/assets"
 	"popplio/state"
 	"popplio/types"
-	"slices"
+	"popplio/validators/kittycat/ext"
+	"popplio/validators/kittycat/perms"
 	"strings"
 
 	docs "github.com/infinitybotlist/eureka/doclib"
@@ -41,8 +42,7 @@ func Docs() *docs.Doc {
 
 func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	var err error
-	var caps []string
-	d.Auth.ID, caps, err = assets.EnsurePanelAuth(d.Context, r)
+	d.Auth.ID, err = assets.EnsurePanelAuth(d.Context, r)
 
 	if err != nil {
 		return uapi.HttpResponse{
@@ -51,8 +51,19 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		}
 	}
 
+	permList, err := ext.GetUserStaffPerms(d.Context, d.Auth.ID)
+
+	if err != nil {
+		return uapi.HttpResponse{
+			Status: http.StatusFailedDependency,
+			Json:   types.ApiError{Message: err.Error()},
+		}
+	}
+
+	resolvedPerms := permList.Resolve()
+
 	// Check if the user has the permission to view apps
-	if !slices.Contains(caps, assets.CapViewApps) {
+	if !perms.HasPerm(resolvedPerms, "apps.view") {
 		return uapi.HttpResponse{
 			Status: http.StatusForbidden,
 			Json: types.ApiError{

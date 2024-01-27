@@ -27,6 +27,7 @@ type User struct {
 	About                 pgtype.Text             `db:"about" json:"about"`
 	VoteBanned            bool                    `db:"vote_banned" json:"vote_banned"`
 	Banned                bool                    `db:"banned" json:"banned"`
+	Staff                 bool                    `db:"-" json:"staff" ci:"internal"`      // Must be handled internally
 	UserTeams             []Team                  `db:"-" json:"user_teams" ci:"internal"` // Must be handled internally
 	UserBots              []IndexBot              `db:"-" json:"user_bots" ci:"internal"`  // Must be handled internally
 	UserPacks             []IndexBotPack          `db:"-" json:"user_packs" ci:"internal"` // Must be handled internally
