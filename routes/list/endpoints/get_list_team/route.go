@@ -15,8 +15,8 @@ import (
 )
 
 var (
-	userPermColsArr = db.GetCols(types.UserPerm{})
-	userPermCols    = strings.Join(userPermColsArr, ",")
+	staffMemberCols   = strings.Join(db.GetCols(types.StaffMember{}), ",")
+	staffPositionCols = strings.Join(db.GetCols(types.StaffPosition{}), ",")
 )
 
 func Docs() *docs.Doc {
@@ -28,59 +28,63 @@ func Docs() *docs.Doc {
 }
 
 func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
-	// Not yet fully implemented
-	sms, err := state.Pool.Query(d.Context, "SELECT user_id FROM staff_members")
+	sms, err := state.Pool.Query(d.Context, "SELECT "+staffMemberCols+" FROM staff_members")
 
 	if err != nil {
 		state.Logger.Error("Failed to fetch staff team [sms]", zap.Error(err))
 		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
-	defer sms.Close()
-
-	var staffIds []string
-
-	for sms.Next() {
-		var id string
-		err := sms.Scan(&id)
-
-		if err != nil {
-			state.Logger.Error("Failed to fetch staff team [sms]", zap.Error(err))
-			return uapi.DefaultResponse(http.StatusInternalServerError)
-		}
-
-		staffIds = append(staffIds, id)
-	}
-
-	rows, err := state.Pool.Query(d.Context, "SELECT "+userPermCols+" FROM users WHERE user_id = ANY($1)", staffIds)
-
-	if err != nil {
-		state.Logger.Error("Failed to fetch staff team [rows]", zap.Error(err))
-		return uapi.DefaultResponse(http.StatusInternalServerError)
-	}
-
-	users, err := pgx.CollectRows(rows, pgx.RowToStructByName[types.UserPerm])
+	staffMembers, err := pgx.CollectRows(sms, pgx.RowToStructByName[types.StaffMember])
 
 	if err != nil {
 		state.Logger.Error("Failed to fetch staff team [collect]", zap.Error(err))
 		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
-	for i, user := range users {
-		user, err := dovewing.GetUser(d.Context, user.ID, state.DovewingPlatformDiscord)
+	var posCache = map[[16]byte]types.StaffPosition{}
+
+	for i, staffMember := range staffMembers {
+		user, err := dovewing.GetUser(d.Context, staffMember.ID, state.DovewingPlatformDiscord)
 
 		if err != nil {
-			state.Logger.Error("Failed to fetch staff team member [dovewing]", zap.Error(err), zap.String("id", user.ID))
+			state.Logger.Error("Failed to fetch staff team member [dovewing]", zap.Error(err), zap.String("id", staffMember.ID))
 			return uapi.DefaultResponse(http.StatusInternalServerError)
 		}
 
-		users[i].User = user
+		staffMembers[i].User = user
+		staffMembers[i].Positions = make([]types.StaffPosition, len(staffMember.PositionIDs))
+
+		for j, position := range staffMember.PositionIDs {
+			if pos, ok := posCache[position.Bytes]; ok {
+				staffMembers[i].Positions[j] = pos
+				continue
+			}
+
+			row, err := state.Pool.Query(d.Context, "SELECT "+staffPositionCols+" FROM staff_positions WHERE id = $1", position)
+
+			if err != nil {
+				state.Logger.Error("Failed to fetch staff position [pos]", zap.Error(err), zap.Any("id", position.Bytes))
+				return uapi.DefaultResponse(http.StatusInternalServerError)
+			}
+
+			pos, err := pgx.CollectOneRow(row, pgx.RowToStructByName[types.StaffPosition])
+
+			if err != nil {
+				state.Logger.Error("Failed to fetch staff position [collect]", zap.Error(err), zap.Any("id", position.Bytes))
+				return uapi.DefaultResponse(http.StatusInternalServerError)
+			}
+
+			staffMembers[i].Positions[j] = pos
+
+			posCache[position.Bytes] = pos
+		}
 	}
 
 	return uapi.HttpResponse{
 		Status: http.StatusOK,
 		Json: types.StaffTeam{
-			Members: users,
+			Members: staffMembers,
 		},
 	}
 }

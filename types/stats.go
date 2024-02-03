@@ -19,7 +19,3 @@ type StatusDocs struct {
 	Key3 string `json:"key3" description:"Some key-value pairs from our status API"`
 	Etc  string `json:"etc" description:"And so on..."`
 }
-
-type StaffTeam struct {
-	Members []UserPerm `json:"members"`
-}

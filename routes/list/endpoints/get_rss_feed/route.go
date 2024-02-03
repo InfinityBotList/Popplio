@@ -126,7 +126,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	var collector = seo.IDCollector{}
 
 	// Get new bots
-	rows, err := state.Pool.Query(d.Context, "SELECT bot_id FROM bots ORDER BY created_at DESC LIMIT $1 OFFSET $2", limit, offset)
+	rows, err := state.Pool.Query(d.Context, "SELECT bot_id FROM bots WHERE (type = 'approved' AND type = 'certified') ORDER BY created_at DESC LIMIT $1 OFFSET $2", limit, offset)
 
 	if err != nil {
 		state.Logger.Error("Failed to get bots [row query] for generating RSS feed", zap.Error(err))
@@ -178,7 +178,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	}
 
 	// Get premium bots
-	rows, err = state.Pool.Query(d.Context, "SELECT bot_id FROM bots WHERE premium = true ORDER BY created_at DESC LIMIT $1 OFFSET $2", limit, offset)
+	rows, err = state.Pool.Query(d.Context, "SELECT bot_id FROM bots WHERE premium = true AND WHERE (type = 'approved' AND type = 'certified') ORDER BY created_at DESC LIMIT $1 OFFSET $2", limit, offset)
 
 	if err != nil {
 		state.Logger.Error("Failed to get bots [row query] for generating RSS feed", zap.Error(err))

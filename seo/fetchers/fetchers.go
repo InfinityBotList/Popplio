@@ -122,7 +122,7 @@ func (b *BotFetcher) Fetch(ctx context.Context, mg *seo.MapGenerator, id string)
 	var createdAt time.Time
 	var updatedAt time.Time
 
-	err := state.Pool.QueryRow(ctx, "SELECT short, owner, team_owner, created_at, updated_at FROM bots WHERE bot_id = $1", id).Scan(&short, &owner, &teamOwner, &createdAt, &updatedAt)
+	err := state.Pool.QueryRow(ctx, "SELECT short, owner, team_owner, created_at, updated_at FROM bots WHERE bot_id = $1 AND (type = 'approved' OR type = 'certified')", id).Scan(&short, &owner, &teamOwner, &createdAt, &updatedAt)
 
 	if err != nil {
 		return nil, err

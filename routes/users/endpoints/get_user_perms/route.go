@@ -70,6 +70,18 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 
 	up.User = user
 
+	// Fetch staff status
+	var positions int
+
+	err = state.Pool.QueryRow(d.Context, "SELECT cardinality(positions) FROM staff_members WHERE user_id = $1", user.ID).Scan(&positions)
+
+	if !errors.Is(err, pgx.ErrNoRows) && err != nil {
+		state.Logger.Error("Error while getting staff status", zap.Error(err), zap.String("userID", user.ID))
+		return uapi.DefaultResponse(http.StatusInternalServerError)
+	}
+
+	up.Staff = positions > 0
+
 	return uapi.HttpResponse{
 		Json: up,
 	}
