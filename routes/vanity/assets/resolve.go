@@ -37,8 +37,33 @@ func resolveImpl(ctx context.Context, code string, src string) (*types.Vanity, e
 }
 
 func ResolveVanity(ctx context.Context, code string) (*types.Vanity, error) {
+	// First check bot_id and client_id to avoid vanity stealing
+	var botId string
+
+	err := state.Pool.QueryRow(ctx, "SELECT bot_id FROM bots WHERE client_id = $1", code).Scan(&botId)
+
+	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+		return nil, err
+	}
+
+	if botId != "" {
+		return resolveImpl(ctx, botId, "target_id")
+	}
+
+	// Then check server id
+	var serverId string
+
+	err = state.Pool.QueryRow(ctx, "SELECT server_id FROM servers WHERE server_id = $1", code).Scan(&serverId)
+
+	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+		return nil, err
+	}
+
+	if serverId != "" {
+		return resolveImpl(ctx, serverId, "target_id")
+	}
+
 	var v *types.Vanity
-	var err error
 	for _, src := range []string{"code", "target_id"} {
 		v, err = resolveImpl(ctx, code, src)
 
@@ -51,31 +76,6 @@ func ResolveVanity(ctx context.Context, code string) (*types.Vanity, error) {
 		}
 
 		break
-	}
-
-	// If all fails, try checking client_id of bots
-	if v == nil {
-		var count int64
-
-		err = state.Pool.QueryRow(ctx, "SELECT COUNT(*) FROM bots WHERE client_id = $1", code).Scan(&count)
-
-		if err != nil {
-			return nil, err
-		}
-
-		if count == 0 {
-			return nil, nil
-		}
-
-		var botId string
-
-		err = state.Pool.QueryRow(ctx, "SELECT bot_id FROM bots WHERE client_id = $1", code).Scan(&botId)
-
-		if err != nil {
-			return nil, err
-		}
-
-		return resolveImpl(ctx, botId, "target_id")
 	}
 
 	return v, nil
