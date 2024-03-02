@@ -337,7 +337,7 @@ func send(d *webhookSendState, webhook *webhookData, pBytes *[]byte) error {
 		if rand2.Float64() < 0.4 {
 			go func() {
 				var logID string
-				err := state.Pool.QueryRow(state.Context, "INSERT INTO webhook_logs (target_id, target_type, user_id, url, data, bad_intent, webhook_id) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id", d.Entity.EntityID, d.Entity.EntityType, d.UserID, webhook.Url, data, d.BadIntent, webhook.ID).Scan(&logID)
+				err := state.Pool.QueryRow(state.Context, "INSERT INTO webhook_logs (target_id, target_type, user_id, url, data, bad_intent, webhook_id) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id", d.Entity.EntityID, d.Entity.EntityType, d.UserID, webhook.Url, data, true, webhook.ID).Scan(&logID)
 
 				if err != nil {
 					state.Logger.Error("Failed to insert webhook log", zap.Error(err), zap.String("logID", d.LogID), zap.String("userID", d.UserID), zap.String("entityID", d.Entity.EntityID), zap.Bool("badIntent", d.BadIntent))
