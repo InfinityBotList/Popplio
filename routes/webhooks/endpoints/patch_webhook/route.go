@@ -131,7 +131,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 				}
 			}
 
-			_, err = tx.Exec(d.Context, "DELETE FROM webhook_logs WHERE target_id = $1 AND target_type = $2 AND id = $3", targetId, targetType, v.WebhookID)
+			_, err = tx.Exec(d.Context, "DELETE FROM webhook_logs WHERE target_id = $1 AND target_type = $2 AND webhook_id = $3", targetId, targetType, v.WebhookID)
 
 			if err != nil {
 				state.Logger.Error("Error while deleting webhook logs", zap.Error(err), zap.String("userID", d.Auth.ID))
