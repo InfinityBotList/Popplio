@@ -8,6 +8,8 @@ import (
 	"popplio/db"
 	"popplio/state"
 	"popplio/types"
+	"popplio/validators/kittycat/ext"
+	"popplio/validators/kittycat/perms"
 
 	docs "github.com/infinitybotlist/eureka/doclib"
 	"github.com/infinitybotlist/eureka/dovewing"
@@ -59,9 +61,21 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	}
 
 	if userId != d.Auth.ID {
-		return uapi.HttpResponse{
-			Status: http.StatusForbidden,
-			Json:   types.ApiError{Message: "You do not have permission to view this ticket"},
+		// Check if they are staff with popplio.tickets permission
+		sp, err := ext.GetUserStaffPerms(d.Context, d.Auth.ID)
+
+		if err != nil {
+			return uapi.HttpResponse{
+				Status: http.StatusInternalServerError,
+				Json:   types.ApiError{Message: "Failed to get user staff perms: " + err.Error()},
+			}
+		}
+
+		if !perms.HasPerm(sp.Resolve(), perms.Build("popplio", "tickets")) {
+			return uapi.HttpResponse{
+				Status: http.StatusForbidden,
+				Json:   types.ApiError{Message: "You do not have permission to view this ticket [popplio.tickets is required]"},
+			}
 		}
 	}
 
