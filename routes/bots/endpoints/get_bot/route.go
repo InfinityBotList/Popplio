@@ -28,6 +28,12 @@ var (
 
 	teamColsArr = db.GetCols(types.Team{})
 	teamCols    = strings.Join(teamColsArr, ",")
+
+	cacheServerColsArr = db.GetCols(types.CacheServer{})
+	cacheServerCols    = strings.Join(cacheServerColsArr, ",")
+
+	cacheServerBotColsArr = db.GetCols(types.CacheServerBot{})
+	cacheServerBotCols    = strings.Join(cacheServerBotColsArr, ",")
 )
 
 func Docs() *docs.Doc {
@@ -62,8 +68,8 @@ Officially recognized targets:
 				Schema:   docs.IdSchema,
 			},
 			{
-				Name:        "short",
-				Description: "Avoid sending large fields. Currently this is only the long description of the bot",
+				Name:        "include",
+				Description: "What extra fields to include, comma-seperated.\n`long` => bot long description\n`cache_servers` => base cache server info\n`cache_servers.bots` => cache server bot information, requires `cache_servers` to be included",
 				Required:    false,
 				In:          "query",
 				Schema:      docs.IdSchema,
@@ -227,8 +233,73 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		}
 	}()
 
-	if r.URL.Query().Get("short") == "true" {
-		bot.Long = ""
+	// Handle extra includes
+	if r.URL.Query().Get("include") != "" {
+		includesSplit := strings.Split(r.URL.Query().Get("include"), ",")
+
+		for _, include := range includesSplit {
+			switch include {
+			case "long":
+				// Fetch long description
+				var long string
+				err := state.Pool.QueryRow(d.Context, "SELECT long FROM bots WHERE bot_id = $1", bot.BotID).Scan(&long)
+
+				if err != nil {
+					state.Logger.Error("Error while getting bot long description [db fetch]", zap.Error(err), zap.String("id", id), zap.String("target", target), zap.String("botID", bot.BotID))
+					return uapi.DefaultResponse(http.StatusInternalServerError)
+				}
+
+				bot.Long = long
+			case "cache_servers":
+				if bot.Type != "approved" && bot.Type != "certified" {
+					continue // Only approved/certified bots have cache servers
+				}
+
+				var guildId string
+				err := state.Pool.QueryRow(d.Context, "SELECT guild_id FROM cache_server_bots WHERE bot_id = $1", bot.BotID).Scan(&guildId)
+
+				if err != nil {
+					state.Logger.Error("Error while getting bot cache server base info [db fetch]", zap.Error(err), zap.String("id", id), zap.String("target", target), zap.String("botID", bot.BotID))
+					return uapi.DefaultResponse(http.StatusInternalServerError)
+				}
+
+				row, err := state.Pool.Query(d.Context, "SELECT "+cacheServerCols+" FROM cache_servers WHERE guild_id = $1", guildId)
+
+				if err != nil {
+					state.Logger.Error("Error while getting bot cache server base info [db fetch]", zap.Error(err), zap.String("id", id), zap.String("target", target), zap.String("botID", bot.BotID))
+					return uapi.DefaultResponse(http.StatusInternalServerError)
+				}
+
+				cacheServer, err := pgx.CollectOneRow(row, pgx.RowToStructByName[types.CacheServer])
+
+				if err != nil {
+					state.Logger.Error("Error while getting bot cache server base info [collect]", zap.Error(err), zap.String("id", id), zap.String("target", target), zap.String("botID", bot.BotID))
+					return uapi.DefaultResponse(http.StatusInternalServerError)
+				}
+
+				bot.CacheServer = &cacheServer
+			case "cache_servers.bots":
+				if bot.CacheServer == nil {
+					continue // This requires the base cache server info
+				}
+
+				row, err := state.Pool.Query(d.Context, "SELECT "+cacheServerBotCols+" FROM cache_server_bots WHERE guild_id = $1", bot.CacheServer.GuildID)
+
+				if err != nil {
+					state.Logger.Error("Error while getting bot cache server bot info [db fetch]", zap.Error(err), zap.String("id", id), zap.String("target", target), zap.String("botID", bot.BotID))
+					return uapi.DefaultResponse(http.StatusInternalServerError)
+				}
+
+				cacheServerBots, err := pgx.CollectRows(row, pgx.RowToStructByName[types.CacheServerBot])
+
+				if err != nil {
+					state.Logger.Error("Error while getting bot cache server bot info [collect]", zap.Error(err), zap.String("id", id), zap.String("target", target), zap.String("botID", bot.BotID))
+					return uapi.DefaultResponse(http.StatusInternalServerError)
+				}
+
+				bot.CacheServer.Bots = cacheServerBots
+			}
+		}
 	}
 
 	return uapi.HttpResponse{

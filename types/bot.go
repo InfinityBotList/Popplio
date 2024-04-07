@@ -55,7 +55,7 @@ type Bot struct {
 	Owner                  pgtype.Text             `db:"owner" json:"-"`
 	MainOwner              *dovetypes.PlatformUser `db:"-" json:"owner" description:"The bot owner's user information. If in a team, this will be null and team_owner will instead be set" ci:"internal"` // Must be parsed internally
 	Short                  string                  `db:"short" json:"short" description:"The bot's short description"`
-	Long                   string                  `db:"long" json:"long,omitempty" description:"The bot's long description in raw format (HTML/markdown etc. based on the bots settings)."`
+	Long                   string                  `db:"-" json:"long,omitempty" description:"The bot's long description in raw format (HTML/markdown etc. based on the bots settings). May not always be present (e.g. 'long' not in include)"`
 	Library                string                  `db:"library" json:"library" description:"The bot's library"`
 	NSFW                   bool                    `db:"nsfw" json:"nsfw" description:"Whether the bot is NSFW or not"`
 	Premium                bool                    `db:"premium" json:"premium" description:"Whether the bot is a premium bot or not"`
@@ -89,6 +89,26 @@ type Bot struct {
 	TeamOwner              *Team                   `db:"-" json:"team_owner" description:"If the bot is in a team, who owns the bot. If not in a team, this will be null and owner will instead be set" ci:"internal"` // Must be parsed internally
 	CaptchaOptOut          bool                    `db:"captcha_opt_out" json:"captcha_opt_out" description:"Whether the bot should have captchas shown if the user has captcha_sponsor_enabled"`
 	CacheServerUninvitable pgtype.Text             `db:"cache_server_uninvitable" json:"cache_server_uninvitable" description:"Whether the bot could be invited to a cache server or not for presences and 'Try It Out' (WIP)"`
+	CacheServer            *CacheServer            `db:"-" json:"cache_server,omitempty" description:"The cache server the bot is in. May not always be present" ci:"internal"` // Must be parsed internally
+}
+
+type CacheServer struct {
+	GuildID        string             `db:"guild_id" json:"guild_id" description:"The guild ID"`
+	BotsRole       string             `db:"bots_role" json:"bots_role" description:"The bots role ID"`
+	SystemBotsRole string             `db:"system_bots_role" json:"system_bots_role" description:"The system bots role ID"`
+	LogsChannel    string             `db:"logs_channel" json:"logs_channel" description:"The logs channel ID"`
+	StaffRole      string             `db:"staff_role" json:"staff_role" description:"The staff role ID"`
+	WelcomeChannel string             `db:"welcome_channel" json:"welcome_channel" description:"The welcome channel ID"`
+	InviteCode     string             `db:"invite_code" json:"invite_code" description:"The invite code"`
+	Name           string             `db:"name" json:"name" description:"The name of the cache server"`
+	CreatedAt      pgtype.Timestamptz `db:"created_at" json:"created_at" description:"The creation date of the cache server"`
+	Bots           []CacheServerBot   `db:"-" json:"bots,omitempty" description:"The bots in the cache server. May not always be present" ci:"internal"` // Must be parsed internally
+}
+
+type CacheServerBot struct {
+	BotID     string             `db:"bot_id" json:"bot_id" description:"The bot ID"`
+	CreatedAt pgtype.Timestamptz `db:"created_at" json:"created_at" description:"The creation date of the bot in the cache server"`
+	Added     int                `db:"added" json:"added" description:"How many attempts were needed to add the bot. Is usually 0"`
 }
 
 // @ci table=bots, unfilled=1

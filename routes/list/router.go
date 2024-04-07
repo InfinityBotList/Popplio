@@ -2,6 +2,7 @@ package list
 
 import (
 	"popplio/routes/list/endpoints/current_status"
+	"popplio/routes/list/endpoints/get_cache_servers"
 	"popplio/routes/list/endpoints/get_changelog"
 	"popplio/routes/list/endpoints/get_list_stats"
 	"popplio/routes/list/endpoints/get_list_team"
@@ -96,6 +97,14 @@ func (b Router) Routes(r *chi.Mux) {
 		Method:  uapi.GET,
 		Docs:    get_changelog.Docs,
 		Handler: get_changelog.Route,
+	}.Route(r)
+
+	uapi.Route{
+		Pattern: "/list/cache-servers",
+		OpId:    "get_cache_servers",
+		Method:  uapi.GET,
+		Docs:    get_cache_servers.Docs,
+		Handler: get_cache_servers.Route,
 	}.Route(r)
 
 	uapi.Route{
