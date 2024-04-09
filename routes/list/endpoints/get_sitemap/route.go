@@ -57,6 +57,34 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	sitemap.XMLNS = "http://www.sitemaps.org/schemas/sitemap/0.9"
 	sitemap.Urls = make([]*seo.SitemapURL, 0)
 
+	// Add the base URL's
+	baseRoutes := []string{
+		"",
+		"/bots/add",
+		"/about/changelogs",
+		"/about/partners",
+		"/about/team",
+		"/about/status",
+		"/about/blog",
+		"/bots/all",
+		"/bots/premium",
+		"/servers",
+		"/servers/all",
+		"/search/advanced",
+	}
+
+	// Get todays date as YYYY-MM-DD
+	today := time.Now().Format("2006-01-02")
+
+	for _, route := range baseRoutes {
+		sitemap.Urls = append(sitemap.Urls, &seo.SitemapURL{
+			Loc:        state.Config.Sites.Frontend.Parse() + route,
+			LastMod:    today,
+			ChangeFreq: "daily",
+			Priority:   "0.3",
+		})
+	}
+
 	var collector = seo.IDCollector{}
 
 	// Get new bots
@@ -77,7 +105,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	}
 
 	for _, id := range newBots {
-		err := state.SeoMapGenerator.AddToSitemap(d.Context, &fetchers.BotFetcher{}, &sitemap, "New Bots", id)
+		err := state.SeoMapGenerator.AddToSitemap(d.Context, &fetchers.BotFetcher{}, &sitemap, "New Bots", id, 0.9)
 
 		if err != nil {
 			state.Logger.Error("Failed to add bot to sitemap", zap.Error(err), zap.String("botId", id))
@@ -103,7 +131,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	}
 
 	for _, id := range certBots {
-		err := state.SeoMapGenerator.AddToSitemap(d.Context, &fetchers.BotFetcher{}, &sitemap, "Certified Bots", id)
+		err := state.SeoMapGenerator.AddToSitemap(d.Context, &fetchers.BotFetcher{}, &sitemap, "Certified Bots", id, 0.8)
 
 		if err != nil {
 			state.Logger.Error("Failed to add bot to sitemap", zap.Error(err), zap.String("botId", id))
@@ -129,7 +157,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	}
 
 	for _, id := range premiumBots {
-		err := state.SeoMapGenerator.AddToSitemap(d.Context, &fetchers.BotFetcher{}, &sitemap, "Premium Bots", id)
+		err := state.SeoMapGenerator.AddToSitemap(d.Context, &fetchers.BotFetcher{}, &sitemap, "Premium Bots", id, 0.9)
 
 		if err != nil {
 			state.Logger.Error("Failed to add bot to sitemap", zap.Error(err), zap.String("botId", id))
@@ -140,7 +168,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	// Add the next page as a sitemap
 	sitemap.Urls = append(sitemap.Urls, &seo.SitemapURL{
 		Loc:     state.Config.Sites.API.Parse() + "/list/sitemap.xml?page=" + strconv.FormatUint(pageNum+1, 10),
-		LastMod: time.Now().Format(time.RFC3339),
+		LastMod: today,
 	})
 
 	body, err := xml.Marshal(sitemap)

@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/xml"
 	"fmt"
-	"time"
 )
 
 // A standard xml sitemap
@@ -35,7 +34,7 @@ type SitemapURL struct {
 }
 
 // Adds a sitemap item to a feed
-func (m *MapGenerator) AddToSitemap(ctx context.Context, f Fetcher, sitemap *Sitemap, category, id string) error {
+func (m *MapGenerator) AddToSitemap(ctx context.Context, f Fetcher, sitemap *Sitemap, category, id string, priority float64) error {
 	e, err := m.Add(ctx, f, id)
 
 	if err != nil {
@@ -48,8 +47,8 @@ func (m *MapGenerator) AddToSitemap(ctx context.Context, f Fetcher, sitemap *Sit
 		Description: e.Description,
 		Loc:         e.URL,
 		ChangeFreq:  "daily",
-		LastMod:     e.UpdatedAt.Format(time.RFC3339),
-		Priority:    fmt.Sprint(0.5 + (0.5 * (time.Since(e.UpdatedAt).Hours() / 24 / 30))),
+		LastMod:     e.UpdatedAt.Format("2006-01-02"),
+		Priority:    fmt.Sprint(priority),
 	})
 
 	return nil
