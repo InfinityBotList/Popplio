@@ -59,8 +59,8 @@ Officially recognized targets:
 				Schema:   docs.IdSchema,
 			},
 			{
-				Name:        "short",
-				Description: "Avoid sending large fields. Currently this is only the long description of the bot",
+				Name:        "include",
+				Description: "What extra fields to include, comma-seperated.\n`long` => server long description",
 				Required:    false,
 				In:          "query",
 				Schema:      docs.IdSchema,
@@ -196,8 +196,25 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	server.Vanity = code
 	server.Banner = assetmanager.BannerInfo(assetmanager.AssetTargetTypeServers, server.ServerID)
 
-	if r.URL.Query().Get("short") == "true" {
-		server.Long = ""
+	// Handle extra includes
+	if r.URL.Query().Get("include") != "" {
+		includesSplit := strings.Split(r.URL.Query().Get("include"), ",")
+
+		for _, include := range includesSplit {
+			switch include {
+			case "long":
+				// Fetch long description
+				var long string
+				err := state.Pool.QueryRow(d.Context, "SELECT long FROM servers WHERE server_id = $1", server.ServerID).Scan(&long)
+
+				if err != nil {
+					state.Logger.Error("Error while getting bot server description [db fetch]", zap.Error(err), zap.String("id", id), zap.String("target", target), zap.String("serverID", server.ServerID))
+					return uapi.DefaultResponse(http.StatusInternalServerError)
+				}
+
+				server.Long = long
+			}
+		}
 	}
 
 	go func() {
