@@ -9,6 +9,7 @@ import (
 	"popplio/routes/list/endpoints/get_oauth_url"
 	"popplio/routes/list/endpoints/get_partners"
 	"popplio/routes/list/endpoints/get_rss_feed"
+	"popplio/routes/list/endpoints/get_sitemap"
 	"popplio/routes/list/endpoints/get_staff_templates"
 	"popplio/routes/list/endpoints/search_list"
 	"popplio/routes/list/endpoints/test_auth"
@@ -32,6 +33,14 @@ func (b Router) Routes(r *chi.Mux) {
 		Method:  uapi.GET,
 		Docs:    get_rss_feed.Docs,
 		Handler: get_rss_feed.Route,
+	}.Route(r)
+
+	uapi.Route{
+		Pattern: "/list/sitemap.xml",
+		OpId:    "get_sitemap",
+		Method:  uapi.GET,
+		Docs:    get_sitemap.Docs,
+		Handler: get_sitemap.Route,
 	}.Route(r)
 
 	uapi.Route{
