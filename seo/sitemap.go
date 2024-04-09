@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/xml"
 	"fmt"
+	"time"
 )
 
 // A standard xml sitemap
@@ -47,7 +48,7 @@ func (m *MapGenerator) AddToSitemap(ctx context.Context, f Fetcher, sitemap *Sit
 		Description: e.Description,
 		Loc:         e.URL,
 		ChangeFreq:  "daily",
-		LastMod:     e.UpdatedAt.Format("2006-01-02"),
+		LastMod:     e.UpdatedAt.Format(time.RFC3339),
 		Priority:    fmt.Sprint(priority),
 	})
 
