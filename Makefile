@@ -3,7 +3,7 @@ CDN_PATH := /silverpelt/cdn/ibl
 
 all:
 	CGO_ENABLED=0 go build -v 
-	systemctl reload popplio-staging
+	sudo systemctl reload popplio-staging
 build-cdocs:
 	cd docs/cdocs && FRONTEND_URL=https://botlist.site npm run build && cd ..
 tests:
