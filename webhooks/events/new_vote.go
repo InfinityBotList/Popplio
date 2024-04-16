@@ -10,7 +10,7 @@ import (
 
 type WebhookNewVoteData struct {
 	Votes    int  `json:"votes" description:"The number of votes the entity received"`
-	PerUser  int  `json:"per_user" description:"The number of votes the user has given"`
+	PerUser  int  `json:"per_user" description:"The number of votes the user has given to the entity. For example, if the vote is a double vote (weekend), this would be 2."`
 	Downvote bool `json:"downvote" description:"Whether the vote was a downvote"`
 }
 
