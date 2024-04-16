@@ -55,7 +55,7 @@ type Bot struct {
 	Owner                  pgtype.Text             `db:"owner" json:"-"`
 	MainOwner              *dovetypes.PlatformUser `db:"-" json:"owner" description:"The bot owner's user information. If in a team, this will be null and team_owner will instead be set" ci:"internal"` // Must be parsed internally
 	Short                  string                  `db:"short" json:"short" description:"The bot's short description"`
-	Long                   string                  `db:"-" json:"long,omitempty" description:"The bot's long description in raw format (HTML/markdown etc. based on the bots settings). May not always be present (e.g. 'long' not in include)" ci:"internal"` // Must be parsed internally
+	Long                   string                  `db:"-" json:"long,omitempty" description:"The bot's long description in raw format (HTML/markdown etc. based on the bots settings). May not always be present (e.g. 'long' not in include)" skip:"long" ci:"internal"` // Must be parsed internally
 	Library                string                  `db:"library" json:"library" description:"The bot's library"`
 	NSFW                   bool                    `db:"nsfw" json:"nsfw" description:"Whether the bot is NSFW or not"`
 	Premium                bool                    `db:"premium" json:"premium" description:"Whether the bot is a premium bot or not"`

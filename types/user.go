@@ -45,7 +45,7 @@ type UserPerm struct {
 	VoteBanned            bool                    `db:"vote_banned" json:"vote_banned"`
 }
 
-// @ci table=staff_members
+// @ci table=staff_members unfilled=1
 type StaffMember struct {
 	ID            string                  `db:"user_id" json:"-"`
 	User          *dovetypes.PlatformUser `db:"-" json:"user" ci:"internal"` // Must be handled internally

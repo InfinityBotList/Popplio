@@ -26,14 +26,14 @@ type PermissionData struct {
 type Team struct {
 	ID         string         `db:"id" json:"id" description:"The ID of the team"`
 	Name       string         `db:"name" json:"name" description:"The name of the team"`
-	Avatar     *AssetMetadata `db:"-" json:"avatar" description:"The avatar of the team"`
-	Banner     *AssetMetadata `db:"-" json:"banner" description:"Banner information/metadata"`
+	Avatar     *AssetMetadata `db:"-" json:"avatar" description:"The avatar of the team" ci:"internal"`      // Manually parsed using AssetManager
+	Banner     *AssetMetadata `db:"-" json:"banner" description:"Banner information/metadata" ci:"internal"` // Manually parsed using AssetManager
 	Short      pgtype.Text    `db:"short" json:"short" description:"The teams's short description if it has one, otherwise null"`
 	Tags       []string       `db:"tags" json:"tags" description:"The teams's tags if it has any, otherwise null"`
 	VoteBanned bool           `db:"vote_banned" json:"vote_banned" description:"Whether the team is banned from voting"`
 	Votes      int            `db:"votes" json:"votes" description:"The teams's vote count"`
 	ExtraLinks []Link         `db:"extra_links" json:"extra_links" description:"The teams's links that it wishes to advertise"`
-	Entities   *TeamEntities  `db:"-" json:"entities" description:"The entities of the team"` // Must be handled internally
+	Entities   *TeamEntities  `db:"-" json:"entities" description:"The entities of the team" ci:"internal"` // Must be handled internally
 	NSFW       bool           `db:"nsfw" json:"nsfw" description:"Whether the team is NSFW (primarily makes NSFW content)"`
 	VanityRef  pgtype.UUID    `db:"vanity_ref" json:"vanity_ref" description:"The corresponding vanities itag, this also works to ensure that all teams have an associated vanity"`
 	Vanity     string         `db:"-" json:"vanity" description:"The team's vanity URL" ci:"internal"` // Must be parsed internally
@@ -52,10 +52,14 @@ type TeamEntities struct {
 	Servers []IndexServer `json:"servers,omitempty" description:"Servers of the team"`
 }
 
+// @ci table=team_members
+//
+// Team Member represents a member of a team on Infinity List.
 type TeamMember struct {
 	ITag        pgtype.UUID             `db:"itag" json:"itag" description:"The ID of the team member"`
+	TeamID      string                  `db:"team_id" json:"team_id" description:"The ID of the team"`
 	UserID      string                  `db:"user_id" json:"-" description:"The ID of the user"`
-	User        *dovetypes.PlatformUser `db:"-" json:"user" description:"A user object representing the user"`
+	User        *dovetypes.PlatformUser `db:"-" json:"user" description:"A user object representing the user" ci:"internal"` // Must be handled internally
 	Flags       []string                `db:"flags" json:"flags" description:"The permissions/flags of the team member"`
 	CreatedAt   time.Time               `db:"created_at" json:"created_at" description:"The time the team member was added"`
 	Mentionable bool                    `db:"mentionable" json:"mentionable" description:"Whether the user is mentionable (for alerts in bot-logs etc.)"`

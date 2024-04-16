@@ -38,7 +38,7 @@ type Server struct {
 	TotalMembers        int                `db:"total_members" json:"total_members" description:"The server's total member count"`
 	OnlineMembers       int                `db:"online_members" json:"online_members" description:"The server's online member count"`
 	Short               string             `db:"short" json:"short" description:"The server's short description"`
-	Long                string             `db:"-" json:"long" description:"The server's long description in raw format (HTML/markdown etc. based on the servers settings). May not be included in responses (e.g. long is not set in include)" ci:"internal"` // Must be parsed internally
+	Long                string             `db:"-" json:"long" description:"The server's long description in raw format (HTML/markdown etc. based on the servers settings). May not be included in responses (e.g. long is not set in include)" skip:"long" ci:"internal"` // Must be parsed internally
 	Type                string             `db:"type" json:"type" description:"The server's type (e.g. pending/approved/certified/denied etc.)"`
 	State               string             `db:"state" json:"state" description:"The server's state (public, private, unlisted, defunct)"`
 	Tags                []string           `db:"tags" json:"tags" description:"The server's tags"`

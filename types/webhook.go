@@ -21,7 +21,7 @@ CREATE TABLE webhooks (
 );
 */
 
-// @ci table=webhooks
+// @ci table=webhooks unfilled=1
 //
 // Represents a webhook on IBL
 type Webhook struct {

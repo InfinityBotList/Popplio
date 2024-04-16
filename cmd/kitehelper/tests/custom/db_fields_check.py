@@ -66,6 +66,9 @@ print("Check 1: Check fields to ensure they actually exist on db")
 
 for struct_name, struct in structs.items():
     for field in struct.fields:
+        if field.tags.get("skip"):
+            continue
+
         col_name = field.tags.get("db") or field.tags.get("pdb")
         
         if field.internal():
@@ -99,6 +102,9 @@ for struct_name, struct in structs.items():
     field_db_col_names = []
 
     for field in struct.fields:
+        if field.tags.get("skip"):
+            field_db_col_names.append(field.tags.get("skip"))
+
         col_name = field.tags.get("db") or field.tags.get("pdb")
 
         if not col_name or col_name == "-":
