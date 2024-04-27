@@ -106,7 +106,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 
 	defer tx.Rollback(d.Context)
 
-	if len(payload.Perms) != 0 {
+	if payload.Perms != nil {
 		if !kittycat.HasPerm(managerPerms, kittycat.Build("team_member", teams.PermissionEdit)) {
 			return uapi.HttpResponse{
 				Status: http.StatusForbidden,
@@ -126,7 +126,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		}
 
 		// Perform initial checks
-		for _, perm := range payload.Perms {
+		for _, perm := range *payload.Perms {
 			if !teams.IsValidPerm(perm) {
 				return uapi.HttpResponse{
 					Status: http.StatusBadRequest,
@@ -140,7 +140,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		// Right now, we use perm overrides for this
 		// as we do not have a hierarchy system yet
 		newPermsResolved := kittycat.StaffPermissions{
-			PermOverrides: payload.Perms,
+			PermOverrides: *payload.Perms,
 		}.Resolve()
 
 		// First ensure that the manager can set these permissions
