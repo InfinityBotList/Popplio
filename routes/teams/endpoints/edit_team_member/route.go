@@ -63,10 +63,18 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		}
 	}
 
-	if count != 2 {
+	if d.Auth.ID != userId {
+		if count != 2 {
+			return uapi.HttpResponse{
+				Status: http.StatusBadRequest,
+				Json:   types.ApiError{Message: "Either the manager or the user is not on this team"},
+			}
+		}
+		// count == 1 if the user is the manager
+	} else if count != 1 {
 		return uapi.HttpResponse{
 			Status: http.StatusBadRequest,
-			Json:   types.ApiError{Message: "Either the manager or the user is not on this team"},
+			Json:   types.ApiError{Message: "User is not on this team"},
 		}
 	}
 
