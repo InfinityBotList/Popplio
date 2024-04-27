@@ -85,5 +85,5 @@ func (td TeamDriver) SupportsPullPending(userId, targetId string) (bool, error) 
 }
 
 func init() {
-	drivers.RegisterCoreWebhook(TeamDriver{})
+	drivers.RegisterDriver(TeamDriver{})
 }

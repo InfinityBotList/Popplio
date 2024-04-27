@@ -16,6 +16,6 @@ func Setup() {
 		"Webhooks are a way to receive events from Infinity Bot List in real time. You can use webhooks to receive events such as new votes, new reviews, and more.",
 	)
 
-	events.RegisterAllEvents()
+	events.RegisterAddedEvents()
 	go drivers.PullPendingForAll()
 }

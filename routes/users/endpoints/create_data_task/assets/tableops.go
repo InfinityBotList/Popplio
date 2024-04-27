@@ -6,6 +6,8 @@ import (
 	"popplio/teams"
 	"popplio/validators"
 
+	kittycat "github.com/infinitybotlist/kittycat/go"
+
 	"github.com/jackc/pgx/v5"
 	"go.uber.org/zap"
 )
@@ -77,14 +79,18 @@ var tableLogic = map[string]TableLogic{
 					return nil, fmt.Errorf("failed to scan row: %w", err)
 				}
 
-				if teams.NewPermMan(flags).HasRaw("global." + teams.PermissionOwner) {
-					if dataHolder {
+				if dataHolder {
+					teamIds = append(teamIds, teamId)
+				} else {
+					resolvedPerms := kittycat.StaffPermissions{
+						PermOverrides: flags,
+					}.Resolve()
+
+					if kittycat.HasPerm(resolvedPerms, kittycat.Build("global", teams.PermissionOwner)) {
 						teamIds = append(teamIds, teamId)
 					} else {
-						l.Info("User is not a data holder for team", zap.String("team_id", teamId), zap.String("user_id", id))
+						l.Warn("User does not have permission to dump team [!global.* and not data_holder]", zap.String("team_id", teamId), zap.String("user_id", id))
 					}
-				} else {
-					l.Warn("User does not have permission to dump team", zap.String("team_id", teamId), zap.String("user_id", id))
 				}
 			}
 

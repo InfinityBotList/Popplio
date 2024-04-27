@@ -11,6 +11,7 @@ import (
 	"github.com/bwmarrin/discordgo"
 	"github.com/infinitybotlist/eureka/dovewing"
 	"github.com/infinitybotlist/eureka/uapi"
+	kittycat "github.com/infinitybotlist/kittycat/go"
 	"go.uber.org/zap"
 )
 
@@ -39,7 +40,7 @@ func extraLogicResubmit(d uapi.RouteData, p types.Position, answers map[string]s
 	}
 
 	// Check if user has TeamPermissionResubmitBots
-	if !perms.Has("bot", teams.PermissionResubmit) {
+	if !kittycat.HasPerm(perms, kittycat.Build("bot", teams.PermissionResubmit)) {
 		return errors.New("you do not have permission to resubmit bots")
 	}
 
@@ -118,7 +119,7 @@ func extraLogicCert(d uapi.RouteData, p types.Position, answers map[string]strin
 	}
 
 	// Check if user has TeamPermissionCertifyBots
-	if !perms.Has("bot", teams.PermissionRequestCertification) {
+	if !kittycat.HasPerm(perms, kittycat.Build("bot", teams.PermissionRequestCertification)) {
 		return errors.New("you do not have permission to certify bots")
 	}
 

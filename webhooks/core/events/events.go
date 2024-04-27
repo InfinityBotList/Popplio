@@ -1,18 +1,13 @@
 package events
 
 import (
-	"encoding/json"
-	"fmt"
-	"os"
 	"popplio/state"
 	"popplio/types"
 	"reflect"
-	"time"
 
 	"github.com/bwmarrin/discordgo"
 	docs "github.com/infinitybotlist/eureka/doclib"
 	"github.com/infinitybotlist/eureka/dovewing/dovetypes"
-	"github.com/mitchellh/mapstructure"
 	"go.uber.org/zap"
 )
 
@@ -24,6 +19,9 @@ type EventRegistry struct {
 var Registry = []EventRegistry{}
 
 // Webhook events
+//
+// All events defined under the webhooks/events folder must implement this interface
+// to be considered an event
 type WebhookEvent interface {
 	TargetTypes() []string
 	Event() string
@@ -32,28 +30,45 @@ type WebhookEvent interface {
 	Description() string
 }
 
+// List of all events that have been added
 var eventList = []WebhookEvent{}
+
+// Map of event type to event
 var eventMapToType = map[string]WebhookEvent{}
 
 // Adds an event to be registered. This should be called in the init() function of the event
 //
-// Note that this function does not register the event, it just adds it to the list of events to be registered.
+// Note that this function technically does not register the event but rather just adds it
+// to the list of events to be registered.
+//
 // This is because `doclib` and `state` are not initialized until after state setyp
-func RegisterEvent(a WebhookEvent) {
+func AddEvent(a WebhookEvent) {
 	eventList = append(eventList, a)
-	eventMapToType[a.Event()] = a
 }
 
-// Register all events
-func RegisterAllEvents() {
+// Register all events that have been added
+func RegisterAddedEvents() {
 	for _, a := range eventList {
 		state.Logger.Error("Webhook event register", zap.String("event", a.Event()))
 		registerEventImpl(a)
 	}
 }
 
-// Internal implementation to register an event
+// Internal implementation to register an event which does the following tasks:
+//
+// - Adds the event to the documentation
+// - Decoonstructs the event for the Test Webhooks feature
+//
+// Point 2 is achieved by looping over all the fields of the event
+// using runtime reflection and handling changelogs/other primitive types
+// where encountered. For this reason, ensure that all types used in an event
+// are handled in the switch-case and add them there if not before use in an event.
+//
+// WARNING: This function is not concurrency safe and should only be run during initialization
 func registerEventImpl(a WebhookEvent) {
+	// Add the event to the map
+	eventMapToType[a.Event()] = a
+
 	docs.AddWebhook(&docs.WebhookDoc{
 		Name:    a.Event(),
 		Summary: a.Summary(),
@@ -68,6 +83,9 @@ func registerEventImpl(a WebhookEvent) {
 		FormatName: "WEBHOOK-" + a.Event(),
 	})
 
+	// Helper method to generate the changeset type
+	//
+	// Format returned: changeset/<type>
 	changesetOf := func(t types.WebhookType) types.WebhookType {
 		return types.WebhookType(string(types.WebhookTypeChangeset) + "/" + string(t))
 	}
@@ -80,6 +98,8 @@ func registerEventImpl(a WebhookEvent) {
 
 	var cols []types.TestWebhookVariables
 
+	// Deconstruct the event fields to create the list of fields
+	// for the test webhook feature
 	for _, f := range reflect.VisibleFields(refType) {
 		var fieldType string
 
@@ -131,261 +151,7 @@ func registerEventImpl(a WebhookEvent) {
 		})
 	}
 
-	if os.Getenv("DEBUG") == "true" {
-		fmt.Println(cols)
-	}
-
 	evt.TestVars = cols
 
 	Registry = append(Registry, evt)
-}
-
-// You can add targets here to extend the webhook system
-type Target struct {
-	Bot    *dovetypes.PlatformUser `json:"bot,omitempty" description:"If a bot event, the bot that the webhook is about"`
-	Server *types.SEO              `json:"server,omitempty" description:"If a server event, the server that the webhook is about"`
-	Team   *types.Team             `json:"team,omitempty" description:"If a team event, the team that the webhook is about"`
-}
-
-type WebhookResponse struct {
-	Creator  *dovetypes.PlatformUser `json:"creator" description:"The user who created the action/event (e.g voted for the bot or made a review)"`
-	Type     string                  `json:"type" dynexample:"true" description:"The type of the webhook event"`
-	Data     WebhookEvent            `json:"data" dynschema:"true" description:"The data of the webhook event"`
-	Targets  Target                  `json:"targets" description:"The target of the webhook, can be one of. or a possible combination of bot, team and server"`
-	Metadata WebhookMetadata         `json:"metadata" description:"Metadata about the webhook event"`
-}
-
-// UnmarshalJSON implements json.Unmarshaler
-//
-// This is used to unmarshal the webhook response into a valid webhook event
-func (wr *WebhookResponse) UnmarshalJSON(b []byte) error {
-	var smap map[string]any
-
-	err := json.Unmarshal(b, &smap)
-
-	if err != nil {
-		return fmt.Errorf("failed to unmarshal webhook response: %w", err)
-	}
-
-	typ, ok := smap["type"].(string)
-
-	if !ok {
-		return fmt.Errorf("failed to unmarshal webhook response: type not a string")
-	}
-
-	evt, ok := eventMapToType[typ]
-
-	if !ok {
-		return fmt.Errorf("failed to unmarshal webhook response: invalid type")
-	}
-
-	wr.Type = typ
-	wr.Data = evt
-
-	// decoder to copy map values to my struct using json tags
-	cfg := &mapstructure.DecoderConfig{
-		Metadata: nil,
-		Result:   wr,
-		TagName:  "json",
-		Squash:   true,
-	}
-
-	decoder, e := mapstructure.NewDecoder(cfg)
-	if e != nil {
-		return e
-	}
-	// copy map to struct
-	e = decoder.Decode(smap)
-
-	if e != nil {
-		return e
-	}
-
-	return nil
-}
-
-// Core structs
-// A changeset represents a change in a value
-type Changeset[T any] struct {
-	Old T `json:"old"`
-	New T `json:"new"`
-}
-
-type WebhookMetadata struct {
-	CreatedAt int64 `json:"created_at" description:"The time in *seconds* (unix epoch) of when the action/event was performed"`
-	Test      bool  `json:"test" description:"Whether the vote was a test vote or not"`
-}
-
-// Given a webhook metadata object, parse it and return a valid/parsed one
-//
-// The created_at field will be set to the current time IF it is not set
-func ParseWebhookMetadata(w *WebhookMetadata) WebhookMetadata {
-	if w == nil {
-		w = &WebhookMetadata{}
-	}
-
-	if w.CreatedAt == 0 {
-		w.CreatedAt = time.Now().Unix()
-	}
-
-	return *w
-}
-
-func ConvertChangesetToFields[T any](name string, c Changeset[T]) []*discordgo.MessageEmbedField {
-	return []*discordgo.MessageEmbedField{
-		{
-			Name: "Old " + name,
-			Value: func() string {
-				if len(fmt.Sprint(c.Old)) > 1000 {
-					return fmt.Sprint(c.Old)[:1000] + "..."
-				}
-
-				return fmt.Sprint(c.Old)
-			}(),
-			Inline: true,
-		},
-		{
-			Name: "New " + name,
-			Value: func() string {
-				if len(fmt.Sprint(c.New)) > 1000 {
-					return fmt.Sprint(c.New)[:1000] + "..."
-				}
-
-				return fmt.Sprint(c.New)
-			}(),
-			Inline: true,
-		},
-	}
-}
-
-// Abstract fetching to make events easier to implement
-
-// Gets the best/single target type of a webhook event
-func (t Target) GetBestTargetType() string {
-	if t.Bot != nil {
-		return "bot"
-	}
-
-	if t.Server != nil {
-		return "server"
-	}
-
-	if t.Team != nil {
-		return "team"
-	}
-
-	return "<unknown>"
-}
-
-// Get the target types of a webhook event
-func (t Target) GetTargetTypes() []string {
-	var types []string
-
-	if t.Bot != nil {
-		types = append(types, "bot")
-	}
-
-	if t.Server != nil {
-		types = append(types, "server")
-	}
-
-	if t.Team != nil {
-		types = append(types, "team")
-	}
-
-	return types
-}
-
-// Gets the ID of a target
-func (t Target) GetID() string {
-	if t.Bot != nil {
-		return t.Bot.ID
-	}
-
-	if t.Server != nil {
-		return t.Server.ID
-	}
-
-	if t.Team != nil {
-		return t.Team.ID
-	}
-
-	return "<unknown>"
-}
-
-// Get the username of a target
-func (t Target) GetUsername() string {
-	if t.Bot != nil {
-		return t.Bot.Username
-	}
-
-	if t.Server != nil {
-		return t.Server.Name
-	}
-
-	if t.Team != nil {
-		return t.Team.Name
-	}
-
-	return "<unknown>"
-}
-
-// Get the display name of a target
-func (t Target) GetDisplayName() string {
-	if t.Bot != nil {
-		return t.Bot.DisplayName
-	}
-
-	if t.Server != nil {
-		return t.Server.Name
-	}
-
-	if t.Team != nil {
-		return t.Team.Name
-	}
-
-	return "<unknown>"
-}
-
-// Get the avatar URL of a target
-func (t Target) GetAvatarURL() string {
-	if t.Bot != nil {
-		return t.Bot.Avatar
-	}
-
-	if t.Server != nil {
-		return t.Server.Avatar
-	}
-
-	if t.Team != nil {
-		if t.Team.Avatar.Path != "" {
-			return t.Team.Avatar.Path
-		}
-
-		return t.Team.Avatar.DefaultPath
-	}
-
-	return "https://cdn.infinitybots.gg/avatars/default.webp"
-}
-
-// Helper abstractions on target
-
-// Returns the target name'. Currently <target type> <username>
-func (t Target) GetTargetName() string {
-	return t.GetBestTargetType() + " " + t.GetUsername()
-}
-
-// Returns a link to the target
-func (t Target) GetTargetLink(header, path string) string {
-	// Teams do not support vanities at this time
-	if t.Team != nil {
-		return "[" + header + " " + t.GetUsername() + "](https://botlist.site/teams/" + t.GetID() + path + ")"
-	}
-
-	return "[" + header + " " + t.GetUsername() + "](https://botlist.site/" + t.GetID() + path + ")"
-}
-
-// Shorthand for t.GetTargetLink("View", "")
-func (t Target) GetViewLink() string {
-	return t.GetTargetLink("View", "")
 }

@@ -17,6 +17,7 @@ import (
 
 	docs "github.com/infinitybotlist/eureka/doclib"
 	"github.com/infinitybotlist/eureka/uapi"
+	kittycat "github.com/infinitybotlist/kittycat/go"
 
 	"github.com/go-chi/chi/v5"
 )
@@ -106,7 +107,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		}
 	}
 
-	if !perms.Has(targetType, teams.PermissionTestWebhooks) {
+	if !kittycat.HasPerm(perms, kittycat.Build(targetType, teams.PermissionTestWebhooks)) {
 		return uapi.HttpResponse{
 			Status:  http.StatusForbidden,
 			Headers: limit.Headers(),

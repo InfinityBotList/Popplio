@@ -12,6 +12,7 @@ import (
 
 	docs "github.com/infinitybotlist/eureka/doclib"
 	"github.com/infinitybotlist/eureka/uapi"
+	kittycat "github.com/infinitybotlist/kittycat/go"
 	"github.com/jackc/pgx/v5/pgtype"
 	"go.uber.org/zap"
 	"golang.org/x/text/cases"
@@ -70,7 +71,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	}
 
 	// Ensure manager has perms to edit this team
-	perms, err := teams.GetEntityPerms(d.Context, d.Auth.ID, "team", teamId)
+	managerPerms, err := teams.GetEntityPerms(d.Context, d.Auth.ID, "team", teamId)
 
 	if err != nil {
 		state.Logger.Error("Error getting user perms", zap.Error(err), zap.String("uid", d.Auth.ID), zap.String("tid", teamId))
@@ -80,7 +81,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		}
 	}
 
-	if !perms.Has("team", teams.PermissionEdit) {
+	if !kittycat.HasPerm(managerPerms, kittycat.Build("team", teams.PermissionEdit)) {
 		return uapi.HttpResponse{
 			Status: http.StatusForbidden,
 			Json:   types.ApiError{Message: "You do not have permission to edit this team's information (name/avatar/mention)"},

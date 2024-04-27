@@ -8,8 +8,9 @@ import (
 	"popplio/db"
 	"popplio/state"
 	"popplio/types"
-	"popplio/validators/kittycat/ext"
-	"popplio/validators/kittycat/perms"
+	"popplio/validators"
+
+	perms "github.com/infinitybotlist/kittycat/go"
 
 	docs "github.com/infinitybotlist/eureka/doclib"
 	"github.com/infinitybotlist/eureka/dovewing"
@@ -62,7 +63,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 
 	if userId != d.Auth.ID {
 		// Check if they are staff with popplio.tickets permission
-		sp, err := ext.GetUserStaffPerms(d.Context, d.Auth.ID)
+		sp, err := validators.GetUserStaffPerms(d.Context, d.Auth.ID)
 
 		if err != nil {
 			return uapi.HttpResponse{

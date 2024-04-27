@@ -1,10 +1,11 @@
-package ext
+package validators
 
 import (
 	"context"
 	"fmt"
 	"popplio/state"
-	"popplio/validators/kittycat/perms"
+
+	perms "github.com/infinitybotlist/kittycat/go"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"

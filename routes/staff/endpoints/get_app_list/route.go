@@ -7,9 +7,10 @@ import (
 	"popplio/routes/staff/assets"
 	"popplio/state"
 	"popplio/types"
-	"popplio/validators/kittycat/ext"
-	"popplio/validators/kittycat/perms"
+	"popplio/validators"
 	"strings"
+
+	perms "github.com/infinitybotlist/kittycat/go"
 
 	docs "github.com/infinitybotlist/eureka/doclib"
 	"github.com/infinitybotlist/eureka/dovewing"
@@ -52,7 +53,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		}
 	}
 
-	permList, err := ext.GetUserStaffPerms(d.Context, d.Auth.ID)
+	permList, err := validators.GetUserStaffPerms(d.Context, d.Auth.ID)
 
 	if err != nil {
 		return uapi.HttpResponse{

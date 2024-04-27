@@ -104,5 +104,5 @@ func (n WebhookEditReviewData) CreateHookParams(creator *dovetypes.PlatformUser,
 }
 
 func init() {
-	events.RegisterEvent(WebhookEditReviewData{})
+	events.AddEvent(WebhookEditReviewData{})
 }

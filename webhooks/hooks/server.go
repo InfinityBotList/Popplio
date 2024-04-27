@@ -58,5 +58,5 @@ func (sd ServerDriver) SupportsPullPending(userId, targetId string) (bool, error
 }
 
 func init() {
-	drivers.RegisterCoreWebhook(ServerDriver{})
+	drivers.RegisterDriver(ServerDriver{})
 }

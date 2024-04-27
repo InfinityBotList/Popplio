@@ -1,7 +1,6 @@
 package delete_team_member
 
 import (
-	"errors"
 	"net/http"
 	"popplio/state"
 	"popplio/teams"
@@ -9,9 +8,8 @@ import (
 
 	docs "github.com/infinitybotlist/eureka/doclib"
 	"github.com/infinitybotlist/eureka/uapi"
-	"github.com/jackc/pgx/v5"
+	kittycat "github.com/infinitybotlist/kittycat/go"
 	"go.uber.org/zap"
-	"golang.org/x/exp/slices"
 
 	"github.com/go-chi/chi/v5"
 )
@@ -51,14 +49,41 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	var teamId = chi.URLParam(r, "tid")
 	var userId = chi.URLParam(r, "mid")
 
-	// Ensure manager has perms to delete members
-	perms, err := teams.GetEntityPerms(d.Context, d.Auth.ID, "team", teamId)
+	userPerms, err := teams.GetEntityPerms(d.Context, userId, "team", teamId)
 
 	if err != nil {
 		state.Logger.Error("Error getting user perms", zap.Error(err), zap.String("uid", d.Auth.ID), zap.String("tid", teamId), zap.String("mid", userId))
 		return uapi.HttpResponse{
 			Status: http.StatusBadRequest,
 			Json:   types.ApiError{Message: "Error getting user perms: " + err.Error()},
+		}
+	}
+
+	if d.Auth.ID != userId {
+		// Ensure manager has perms to delete members
+		managerPerms, err := teams.GetEntityPerms(d.Context, d.Auth.ID, "team", teamId)
+
+		if err != nil {
+			state.Logger.Error("Error getting user perms", zap.Error(err), zap.String("uid", d.Auth.ID), zap.String("tid", teamId), zap.String("mid", userId))
+			return uapi.HttpResponse{
+				Status: http.StatusBadRequest,
+				Json:   types.ApiError{Message: "Error getting user perms: " + err.Error()},
+			}
+		}
+
+		if !kittycat.HasPerm(managerPerms, kittycat.Build("team_member", teams.PermissionDelete)) {
+			return uapi.HttpResponse{
+				Status: http.StatusForbidden,
+				Json:   types.ApiError{Message: "You do not have permission to delete members"},
+			}
+		}
+
+		// Ensure manager has permissions to remove all user perms
+		if err := kittycat.CheckPatchChanges(managerPerms, userPerms, []string{}); err != nil {
+			return uapi.HttpResponse{
+				Status: http.StatusForbidden,
+				Json:   types.ApiError{Message: "You do not have permission to delete this member:" + err.Error()},
+			}
 		}
 	}
 
@@ -71,31 +96,21 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 
 	defer tx.Rollback(d.Context)
 
-	// Get the old permissions of the user
-	var oldPerms []string
-	err = tx.QueryRow(d.Context, "SELECT flags FROM team_members WHERE team_id = $1 AND user_id = $2", teamId, userId).Scan(&oldPerms)
+	// Ensure that if perm is owner, then there is another owner
+	if !kittycat.HasPerm(userPerms, kittycat.Build("global", teams.PermissionOwner)) {
+		var ownerCount int
 
-	if errors.Is(err, pgx.ErrNoRows) {
-		return uapi.HttpResponse{
-			Status: http.StatusNotFound,
-			Json:   types.ApiError{Message: "User is not a member of this team"},
+		err = tx.QueryRow(d.Context, "SELECT COUNT(*) FROM team_members WHERE team_id = $1 AND flags && $2", teamId, []string{kittycat.Build("global", teams.PermissionOwner)}).Scan(&ownerCount)
+
+		if err != nil {
+			state.Logger.Error("Error getting owner count", zap.Error(err), zap.String("uid", d.Auth.ID), zap.String("tid", teamId), zap.String("mid", userId))
+			return uapi.DefaultResponse(http.StatusInternalServerError)
 		}
-	}
 
-	if d.Auth.ID != userId {
-		if !perms.Has("team_member", teams.PermissionDelete) {
+		if ownerCount < 2 {
 			return uapi.HttpResponse{
-				Status: http.StatusForbidden,
-				Json:   types.ApiError{Message: "You do not have permission to delete this member"},
-			}
-		}
-
-		for _, perm := range oldPerms {
-			if !perms.HasRaw(perm) {
-				return uapi.HttpResponse{
-					Status: http.StatusForbidden,
-					Json:   types.ApiError{Message: "You do not have permission to delete this member, missing permission: " + perm},
-				}
+				Status: http.StatusBadRequest,
+				Json:   types.ApiError{Message: "There needs to be one other global owner before you can remove yourself from owner"},
 			}
 		}
 	}
@@ -105,25 +120,6 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	if err != nil {
 		state.Logger.Error("Error deleting member", zap.Error(err), zap.String("uid", d.Auth.ID), zap.String("tid", teamId), zap.String("mid", userId))
 		return uapi.DefaultResponse(http.StatusInternalServerError)
-	}
-
-	// Ensure that if perms includes owner, that there is at least one other owner
-	if slices.Contains(oldPerms, "global."+teams.PermissionOwner) {
-		var ownerCount int
-
-		err = tx.QueryRow(d.Context, "SELECT COUNT(*) FROM team_members WHERE team_id = $1 AND user_id != $2 AND flags && $3", teamId, userId, []string{"global." + teams.PermissionOwner}).Scan(&ownerCount)
-
-		if err != nil {
-			state.Logger.Error("Error getting owner count", zap.Error(err), zap.String("uid", d.Auth.ID), zap.String("tid", teamId), zap.String("mid", userId))
-			return uapi.DefaultResponse(http.StatusInternalServerError)
-		}
-
-		if ownerCount == 0 {
-			return uapi.HttpResponse{
-				Status: http.StatusBadRequest,
-				Json:   types.ApiError{Message: "There needs to be one other owner before you can remove yourself from owner"},
-			}
-		}
 	}
 
 	err = tx.Commit(d.Context)

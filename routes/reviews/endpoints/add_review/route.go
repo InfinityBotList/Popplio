@@ -16,6 +16,7 @@ import (
 
 	docs "github.com/infinitybotlist/eureka/doclib"
 	"github.com/infinitybotlist/eureka/uapi"
+	kittycat "github.com/infinitybotlist/kittycat/go"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-playground/validator/v10"
@@ -166,7 +167,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 			}
 		}
 
-		if !perms.Has(targetType, teams.PermissionCreateOwnerReview) {
+		if !kittycat.HasPerm(perms, kittycat.Build(targetType, teams.PermissionCreateOwnerReview)) {
 			return uapi.HttpResponse{
 				Status: http.StatusForbidden,
 				Json:   types.ApiError{Message: "You do not have permission to create an owner review for this " + targetType},

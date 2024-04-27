@@ -13,6 +13,7 @@ import (
 	docs "github.com/infinitybotlist/eureka/doclib"
 	"github.com/infinitybotlist/eureka/dovewing"
 	"github.com/infinitybotlist/eureka/uapi"
+	kittycat "github.com/infinitybotlist/kittycat/go"
 	"github.com/jackc/pgx/v5"
 	"go.uber.org/zap"
 )
@@ -95,7 +96,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		}
 	}
 
-	if !perms.Has(targetType, teams.PermissionGetWebhookLogs) {
+	if !kittycat.HasPerm(perms, kittycat.Build(targetType, teams.PermissionGetWebhookLogs)) {
 		return uapi.HttpResponse{
 			Status: http.StatusForbidden,
 			Json:   types.ApiError{Message: "You do not have permission to get webhooks logs on this entity"},

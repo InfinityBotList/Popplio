@@ -81,5 +81,5 @@ func (v WebhookNewVoteData) CreateHookParams(creator *dovetypes.PlatformUser, ta
 	}
 }
 func init() {
-	events.RegisterEvent(WebhookNewVoteData{})
+	events.AddEvent(WebhookNewVoteData{})
 }

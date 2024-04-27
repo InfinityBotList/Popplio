@@ -1,6 +1,8 @@
 module popplio
 
-go 1.21
+go 1.21.5
+
+toolchain go1.22.1
 
 require (
 	github.com/bwmarrin/discordgo v0.27.2-0.20240202235938-7f80bc797881
@@ -20,6 +22,8 @@ require (
 	github.com/stripe/stripe-go/v75 v75.11.0
 	golang.org/x/image v0.15.0
 )
+
+require github.com/infinitybotlist/kittycat/go v0.0.0-20240229082615-47e9bf994f59 // indirect
 
 require (
 	github.com/buger/jsonparser v1.1.1 // indirect

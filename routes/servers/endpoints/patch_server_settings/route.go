@@ -13,6 +13,7 @@ import (
 
 	docs "github.com/infinitybotlist/eureka/doclib"
 	"github.com/infinitybotlist/eureka/uapi"
+	kittycat "github.com/infinitybotlist/kittycat/go"
 	"go.uber.org/zap"
 
 	"github.com/bwmarrin/discordgo"
@@ -84,7 +85,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
-	if !perms.Has("server", teams.PermissionEdit) {
+	if !kittycat.HasPerm(perms, kittycat.Build("server", teams.PermissionEdit)) {
 		return uapi.HttpResponse{
 			Status: http.StatusForbidden,
 			Json:   types.ApiError{Message: "You do not have permission to edit server settings"},

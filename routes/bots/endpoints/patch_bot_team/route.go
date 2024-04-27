@@ -10,6 +10,7 @@ import (
 
 	docs "github.com/infinitybotlist/eureka/doclib"
 	"github.com/infinitybotlist/eureka/uapi"
+	kittycat "github.com/infinitybotlist/kittycat/go"
 	"github.com/jackc/pgx/v5/pgtype"
 	"go.uber.org/zap"
 
@@ -82,7 +83,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
-	if !perms.Has("bot", teams.PermissionDelete) {
+	if !kittycat.HasPerm(perms, kittycat.Build("bot", teams.PermissionDelete)) {
 		return uapi.HttpResponse{
 			Status: http.StatusForbidden,
 			Json:   types.ApiError{Message: "You must be able to delete the bot in the current team to transfer it"},
@@ -96,7 +97,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
-	if !newTeamPerms.Has("bot", teams.PermissionAdd) {
+	if !kittycat.HasPerm(newTeamPerms, kittycat.Build("bot", teams.PermissionAdd)) {
 		return uapi.HttpResponse{
 			Status: http.StatusForbidden,
 			Json:   types.ApiError{Message: "You must be able to add the bot in the new team to transfer it"},

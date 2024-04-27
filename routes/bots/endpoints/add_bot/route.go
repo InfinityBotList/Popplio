@@ -22,6 +22,7 @@ import (
 	docs "github.com/infinitybotlist/eureka/doclib"
 	"github.com/infinitybotlist/eureka/dovewing"
 	"github.com/infinitybotlist/eureka/uapi"
+	kittycat "github.com/infinitybotlist/kittycat/go"
 
 	"github.com/bwmarrin/discordgo"
 	"github.com/go-playground/validator/v10"
@@ -291,7 +292,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 			}
 		}
 
-		if !perms.Has("bot", teams.PermissionAdd) {
+		if !kittycat.HasPerm(perms, kittycat.Build("bot", teams.PermissionAdd)) {
 			return uapi.HttpResponse{
 				Status: http.StatusForbidden,
 				Json:   types.ApiError{Message: "You do not have permission to add new bots to this team"},

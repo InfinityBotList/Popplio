@@ -88,14 +88,9 @@ type AddTeamMember struct {
 }
 
 type EditTeamMember struct {
-	PermUpdate  *PermissionUpdate `json:"perm_update" description:"The permissions to update"`
-	Mentionable *bool             `json:"mentionable" description:"Whether the user is mentionable Whether the user is mentionable (for alerts in bot-logs etc.)"`
-	DataHolder  *bool             `db:"data_holder" json:"data_holder" description:"Whether the user is a data holder responsible for all data on the team. That is, should performing mass-scale operations on them affect the team"`
-}
-
-type PermissionUpdate struct {
-	Add    []string `json:"add" description:"Add must be the list of permissions to add"`
-	Remove []string `json:"remove" description:"Remove must be the list of permissions to remove"`
+	Perms       []string `json:"perms" description:"The permissions to set. If empty, will not update"`
+	Mentionable *bool    `json:"mentionable" description:"Whether the user is mentionable Whether the user is mentionable (for alerts in bot-logs etc.)"`
+	DataHolder  *bool    `db:"data_holder" json:"data_holder" description:"Whether the user is a data holder responsible for all data on the team. That is, should performing mass-scale operations on them affect the team"`
 }
 
 type UserEntityPerms struct {

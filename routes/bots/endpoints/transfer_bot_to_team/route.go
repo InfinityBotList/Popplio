@@ -9,6 +9,7 @@ import (
 
 	docs "github.com/infinitybotlist/eureka/doclib"
 	"github.com/infinitybotlist/eureka/uapi"
+	kittycat "github.com/infinitybotlist/kittycat/go"
 	"go.uber.org/zap"
 
 	"github.com/bwmarrin/discordgo"
@@ -118,7 +119,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		}
 	}
 
-	if !newTeamPerms.Has("bot", teams.PermissionAdd) {
+	if !kittycat.HasPerm(newTeamPerms, kittycat.Build("bot", teams.PermissionAdd)) {
 		return uapi.HttpResponse{
 			Status: http.StatusForbidden,
 			Json:   types.ApiError{Message: "You must be able to add the bot in the new team to transfer it"},

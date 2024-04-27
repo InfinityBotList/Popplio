@@ -89,5 +89,5 @@ func (n WebhookDeleteReviewData) CreateHookParams(creator *dovetypes.PlatformUse
 }
 
 func init() {
-	events.RegisterEvent(WebhookDeleteReviewData{})
+	events.AddEvent(WebhookDeleteReviewData{})
 }

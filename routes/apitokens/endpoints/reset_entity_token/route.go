@@ -10,6 +10,7 @@ import (
 	"github.com/infinitybotlist/eureka/crypto"
 	docs "github.com/infinitybotlist/eureka/doclib"
 	"github.com/infinitybotlist/eureka/uapi"
+	kittycat "github.com/infinitybotlist/kittycat/go"
 	"go.uber.org/zap"
 )
 
@@ -65,7 +66,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		}
 	}
 
-	if !perms.Has(targetType, teams.PermissionResetAPITokens) {
+	if !kittycat.HasPerm(perms, kittycat.Build(targetType, teams.PermissionResetAPITokens)) {
 		return uapi.HttpResponse{
 			Status: http.StatusForbidden,
 			Json:   types.ApiError{Message: "You do not have permission to view existing tokens of this entity"},

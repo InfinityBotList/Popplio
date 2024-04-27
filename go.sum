@@ -82,6 +82,8 @@ github.com/infinitybotlist/eureka v0.6.5 h1:Bnn5bYUHWLBiy3kpokFcN6DezAnCDGY59GZ6
 github.com/infinitybotlist/eureka v0.6.5/go.mod h1:XY/H8htZ4EQJwyfwnDrLuKg5M7DGoo6835ZJSKSswCg=
 github.com/infinitybotlist/eureka v0.7.0 h1:H3kFqV3ptwqzwADuci21kJMKeOZdHee3npS8O7YxGqQ=
 github.com/infinitybotlist/eureka v0.7.0/go.mod h1:XY/H8htZ4EQJwyfwnDrLuKg5M7DGoo6835ZJSKSswCg=
+github.com/infinitybotlist/kittycat/go v0.0.0-20240229082615-47e9bf994f59 h1:3iRAn5faOAqvfrnXL6ClwpRruByeZl2iO5BOnwoZn+A=
+github.com/infinitybotlist/kittycat/go v0.0.0-20240229082615-47e9bf994f59/go.mod h1:AYyGvOSsNrb8mBFQnWi8D+Z84PClkglpK+DqzC1NRB8=
 github.com/invopop/yaml v0.2.0 h1:7zky/qH+O0DwAyoobXUqvVBwgBFRxKoQ/3FjcVpjTMY=
 github.com/invopop/yaml v0.2.0/go.mod h1:2XuRLgs/ouIrW3XNzuNj7J3Nvu/Dig5MXvbCEdiBN3Q=
 github.com/jackc/pgpassfile v1.0.0 h1:/6Hmqy13Ss2zCq62VdNG8tM1wchn8zjSGOBJ6icpsIM=

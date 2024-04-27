@@ -8,6 +8,7 @@ import (
 
 	docs "github.com/infinitybotlist/eureka/doclib"
 	"github.com/infinitybotlist/eureka/uapi"
+	kittycat "github.com/infinitybotlist/kittycat/go"
 	"go.uber.org/zap"
 
 	"github.com/go-chi/chi/v5"
@@ -50,7 +51,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	}
 
 	// Ensure manager has perms to edit member permissions etc.
-	perms, err := teams.GetEntityPerms(d.Context, d.Auth.ID, "team", teamId)
+	managerPerms, err := teams.GetEntityPerms(d.Context, d.Auth.ID, "team", teamId)
 
 	if err != nil {
 		state.Logger.Error("Error getting user perms", zap.Error(err), zap.String("uid", d.Auth.ID), zap.String("tid", teamId))
@@ -60,7 +61,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		}
 	}
 
-	if !perms.Has("team_member", teams.PermissionAdd) {
+	if !kittycat.HasPerm(managerPerms, kittycat.Build("team_member", teams.PermissionAdd)) {
 		return uapi.HttpResponse{
 			Status: http.StatusForbidden,
 			Json:   types.ApiError{Message: "You do not have permission to add members to this team"},
@@ -74,12 +75,23 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 				Json:   types.ApiError{Message: "Invalid permission: " + perm},
 			}
 		}
+	}
 
-		if !perms.HasRaw(perm) {
-			return uapi.HttpResponse{
-				Status: http.StatusForbidden,
-				Json:   types.ApiError{Message: "You do not have permission to give out permission " + perm},
-			}
+	// Resolve the permissions
+	//
+	// Right now, we use perm overrides for this
+	// as we do not have a hierarchy system yet
+	newPermsResolved := kittycat.StaffPermissions{
+		PermOverrides: payload.Perms,
+	}.Resolve()
+
+	// Check if the manager has perms to give all permissions in newPermsResolved
+	//
+	// This is equivalent to going from no perms to the selected permset
+	if err = kittycat.CheckPatchChanges(managerPerms, []string{}, newPermsResolved); err != nil {
+		return uapi.HttpResponse{
+			Status: http.StatusForbidden,
+			Json:   types.ApiError{Message: "You do not have permission to give out permissions: " + err.Error()},
 		}
 	}
 
@@ -126,10 +138,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		}
 	}
 
-	// Get unique perms from array
-	pm := teams.NewPermMan(payload.Perms).Perms()
-
-	_, err = tx.Exec(d.Context, "INSERT INTO team_members (team_id, user_id, flags) VALUES ($1, $2, $3)", teamId, payload.UserID, pm)
+	_, err = tx.Exec(d.Context, "INSERT INTO team_members (team_id, user_id, flags) VALUES ($1, $2, $3)", teamId, payload.UserID, payload.Perms)
 
 	if err != nil {
 		state.Logger.Error("Error adding member", zap.Error(err), zap.String("uid", d.Auth.ID), zap.String("tid", teamId))

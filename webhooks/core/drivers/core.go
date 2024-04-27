@@ -14,8 +14,8 @@ import (
 	"go.uber.org/zap"
 )
 
-// ConstructableWebhook represents the base driver interface for constructing webhooks
-type ConstructableWebhook interface {
+// Driver represents the base driver interface for constructing webhooks
+type Driver interface {
 	// Construct a webhook given a user ID and target ID
 	Construct(userId, id string) (*events.Target, *sender.WebhookEntity, error)
 
@@ -26,13 +26,20 @@ type ConstructableWebhook interface {
 	CanBeConstructed(userId, targetId string) (bool, error)
 
 	// Whether or not the entity supports 'pull pending' (restarting webhooks on server crash)
+	//
+	// Most drivers should return `true` (outside of the case of an emergency or a bug in the driver)
 	SupportsPullPending(userId, targetId string) (bool, error)
 }
 
-var Registry = map[string]ConstructableWebhook{}
+// Stores all registered drivers
+//
+// Note that because this is a map, it is impossible to have
+// two drivers with the same target type and it also impossible
+// to determine the order in which drivers are registered
+var DriverRegistry = map[string]Driver{}
 
-func RegisterCoreWebhook(webhook ConstructableWebhook) {
-	Registry[webhook.TargetType()] = webhook
+func RegisterDriver(driver Driver) {
+	DriverRegistry[driver.TargetType()] = driver
 }
 
 // Ergonomic webhook builder
@@ -44,20 +51,22 @@ type With struct {
 	Data       events.WebhookEvent
 }
 
+// Send takes a With struct, handles the construction of the webhook, and sends it
+// using sender.Send(). It also handles push notifications on success
 func Send(with With) error {
 	targetTypes := with.Data.TargetTypes()
 	if !slices.Contains(targetTypes, with.TargetType) {
 		return errors.New("invalid event type")
 	}
 
-	cd, ok := Registry[with.TargetType]
+	driver, ok := DriverRegistry[with.TargetType]
 
 	if !ok {
 		return errors.New("target type not registered")
 	}
 
 	// Check if the entity supports construction
-	supports, err := cd.CanBeConstructed(with.UserID, with.TargetID)
+	supports, err := driver.CanBeConstructed(with.UserID, with.TargetID)
 
 	if err != nil {
 		return fmt.Errorf("failed to check if entity supports construction: %w", err)
@@ -68,7 +77,7 @@ func Send(with With) error {
 	}
 
 	// Construct the webhook
-	target, entity, err := cd.Construct(with.UserID, with.TargetID)
+	target, entity, err := driver.Construct(with.UserID, with.TargetID)
 
 	if err != nil {
 		return err
@@ -122,8 +131,8 @@ func Send(with With) error {
 
 // Pulls all pending webhooks from the database and sends them
 //
-// Do not call this directly/normally, this is handled automatically in 'core'
-func PullPending(p ConstructableWebhook) error {
+// Do not call this directly/normally, this is handled automatically in setup.go
+func PullPending(p Driver) error {
 	targetType := p.TargetType()
 
 	// Fetch every pending bot webhook from webhook_logs
@@ -217,8 +226,9 @@ func PullPending(p ConstructableWebhook) error {
 	return nil
 }
 
+// Pulls pending webhooks for all drivers that have been registered
 func PullPendingForAll() error {
-	for _, v := range Registry {
+	for _, v := range DriverRegistry {
 		err := PullPending(v)
 
 		if err != nil {

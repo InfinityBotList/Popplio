@@ -12,6 +12,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	docs "github.com/infinitybotlist/eureka/doclib"
 	"github.com/infinitybotlist/eureka/uapi"
+	kittycat "github.com/infinitybotlist/kittycat/go"
 	"github.com/jackc/pgx/v5"
 	"go.uber.org/zap"
 )
@@ -66,7 +67,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		}
 	}
 
-	if !perms.Has(targetType, teams.PermissionGetWebhooks) {
+	if !kittycat.HasPerm(perms, kittycat.Build(targetType, teams.PermissionGetWebhooks)) {
 		return uapi.HttpResponse{
 			Status: http.StatusForbidden,
 			Json:   types.ApiError{Message: "You do not have permission to fetch webhooks for this entity"},

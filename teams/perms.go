@@ -12,6 +12,8 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 	"golang.org/x/exp/slices"
+
+	perms "github.com/infinitybotlist/kittycat/go"
 )
 
 // Permission is a set of permissions in a team
@@ -77,6 +79,8 @@ const (
 	PermissionDelete Permission = "delete"
 
 	// Owner of the entity, this can either be global or entity specific
+	//
+	// Note that this must be '*' for kittycat resolution
 	PermissionOwner Permission = "*"
 )
 
@@ -250,24 +254,23 @@ var PermDetails = []types.PermissionData{
 	},
 }
 
-type PermMan struct {
-	perms []string
-}
-
-// Resolves a permission into an entity and the perm name
-func ResolvePerm(perm Permission) (string, string, bool) {
+// Parses a permission into an entity and the perm name
+func ParsePerm(perm Permission) (string, string, bool) {
 	pSplit := strings.Split(perm, ".")
 
 	if len(pSplit) != 2 {
 		return "", "", false
 	}
 
+	// Remove negators if present
+	pSplit[0] = strings.TrimPrefix(pSplit[0], "~")
+
 	return pSplit[0], pSplit[1], true
 }
 
 // Returns whether a permission is valid or not
 func IsValidPerm(perm Permission) bool {
-	entity, flag, ok := ResolvePerm(perm)
+	entity, flag, ok := ParsePerm(perm)
 
 	if !ok {
 		return false
@@ -286,62 +289,14 @@ func IsValidPerm(perm Permission) bool {
 	return false
 }
 
-// NewPermMan creates a new permission manager from a list of permissions
-// It will remove duplicates and undefined permissions
-func NewPermMan(perms []string) *PermMan {
-	var uniquePerms = []string{}
-
-	for _, perm := range perms {
-		if !IsValidPerm(perm) {
-			continue
-		}
-
-		if !slices.Contains(uniquePerms, perm) {
-			uniquePerms = append(uniquePerms, perm)
-		}
-	}
-
-	return &PermMan{perms: uniquePerms}
-}
-
-// Has returns if the user can perform a specific operation on an entity
-func (f PermMan) Has(entity string, flag Permission) bool {
-	for _, p := range f.perms {
-		// From fastest to slowest
-		if p == "global."+PermissionOwner || p == entity+"."+PermissionOwner || p == "global."+flag || p == entity+"."+flag {
-			return true
-		}
-	}
-
-	return false
-}
-
-// Has raw returns if the user can perform an operation based on a full permission name
-func (f PermMan) HasRaw(flag string) bool {
-	entity, flag, ok := ResolvePerm(flag)
-
-	if !ok {
-		return false
-	}
-
-	return f.Has(entity, flag)
-}
-
-func (f *PermMan) Add(flag Permission) {
-	f.perms = append(f.perms, string(flag))
-}
-func (f *PermMan) Clear(flag Permission) {
-	f.perms = []string{}
-}
-func (f PermMan) Perms() []string {
-	return f.perms
-}
-
 // Returns the permission of an entity
 //
 // - If the entity is a bot, it will return the permissions of the bot's owner (or the permissions a user has on the team)
 // - If the entity is a team, it will return the permissions the user has on the team
-func GetEntityPerms(ctx context.Context, userId, targetType, targetId string) (*PermMan, error) {
+//
+// The returned positions are a resolved set of kittycat permissions that can then be used with standard
+// kittycat functions
+func GetEntityPerms(ctx context.Context, userId, targetType, targetId string) ([]string, error) {
 	var teamId string
 
 	switch targetType {
@@ -359,11 +314,13 @@ func GetEntityPerms(ctx context.Context, userId, targetType, targetId string) (*
 		}
 
 		if owner.Valid {
+			// Fast path, we dont even need to perform kittycat
+			// permission resolution here
 			if owner.String == userId {
-				return NewPermMan([]string{"global." + PermissionOwner}), nil
+				return []string{"global.*"}, nil
 			}
 
-			return NewPermMan([]string{}), nil
+			return []string{}, nil
 		}
 
 		teamId = teamOwner.String
@@ -403,5 +360,15 @@ func GetEntityPerms(ctx context.Context, userId, targetType, targetId string) (*
 		return nil, fmt.Errorf("error finding team member: %v", err)
 	}
 
-	return NewPermMan(teamPerms), nil
+	if len(teamPerms) == 0 {
+		// Skip resolution, just return an empty array
+		return []string{}, nil
+	}
+
+	// Right now, team permissions are treated as permission overrides
+	var resolvedPerms = perms.StaffPermissions{
+		PermOverrides: teamPerms,
+	}.Resolve()
+
+	return resolvedPerms, nil
 }

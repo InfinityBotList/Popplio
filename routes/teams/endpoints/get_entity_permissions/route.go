@@ -9,6 +9,7 @@ import (
 
 	docs "github.com/infinitybotlist/eureka/doclib"
 	"github.com/infinitybotlist/eureka/uapi"
+	kittycat "github.com/infinitybotlist/kittycat/go"
 	"go.uber.org/zap"
 
 	"github.com/go-chi/chi/v5"
@@ -17,7 +18,7 @@ import (
 func Docs() *docs.Doc {
 	return &docs.Doc{
 		Summary:     "Get Entity Permissions",
-		Description: "Returns the permissions a user has on an entity",
+		Description: "Returns the resolved permissions a user has on an entity",
 		Params: []docs.Parameter{
 			{
 				Name:        "id",
@@ -69,7 +70,9 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 
 	return uapi.HttpResponse{
 		Json: types.UserEntityPerms{
-			Perms: perms.Perms(),
+			Perms: kittycat.StaffPermissions{
+				PermOverrides: perms,
+			}.Resolve(),
 		},
 	}
 }

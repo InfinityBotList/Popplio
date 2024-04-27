@@ -33,11 +33,11 @@ func (n WebhookTeamEditData) Description() string {
 }
 
 func (n WebhookTeamEditData) CreateHookParams(creator *dovetypes.PlatformUser, targets events.Target) *discordgo.WebhookParams {
-	name := events.ConvertChangesetToFields[string]("Name", n.Name)
-	short := events.ConvertChangesetToFields[string]("Short", n.Short)
-	tags := events.ConvertChangesetToFields[[]string]("Tags", n.Tags)
-	extraLinks := events.ConvertChangesetToFields[[]types.Link]("Extra Links", n.ExtraLinks)
-	nsfw := events.ConvertChangesetToFields[bool]("NSFW", n.NSFW)
+	name := events.ConvertChangesetToEmbedFields[string]("Name", n.Name)
+	short := events.ConvertChangesetToEmbedFields[string]("Short", n.Short)
+	tags := events.ConvertChangesetToEmbedFields[[]string]("Tags", n.Tags)
+	extraLinks := events.ConvertChangesetToEmbedFields[[]types.Link]("Extra Links", n.ExtraLinks)
+	nsfw := events.ConvertChangesetToEmbedFields[bool]("NSFW", n.NSFW)
 	return &discordgo.WebhookParams{
 		Embeds: []*discordgo.MessageEmbed{
 			{
@@ -71,5 +71,5 @@ func (n WebhookTeamEditData) CreateHookParams(creator *dovetypes.PlatformUser, t
 }
 
 func init() {
-	events.RegisterEvent(WebhookTeamEditData{})
+	events.AddEvent(WebhookTeamEditData{})
 }

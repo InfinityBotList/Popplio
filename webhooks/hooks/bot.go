@@ -44,5 +44,5 @@ func (bd BotDriver) SupportsPullPending(userId, targetId string) (bool, error) {
 }
 
 func init() {
-	drivers.RegisterCoreWebhook(BotDriver{})
+	drivers.RegisterDriver(BotDriver{})
 }
