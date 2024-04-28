@@ -110,7 +110,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		if !kittycat.HasPerm(managerPerms, kittycat.Build("team_member", teams.PermissionEdit)) {
 			return uapi.HttpResponse{
 				Status: http.StatusForbidden,
-				Json:   types.ApiError{Message: "You do not have permission to edit this member"},
+				Json:   types.ApiError{Message: "You do not have permission to edit team members"},
 			}
 		}
 
@@ -151,7 +151,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 			}
 		}
 
-		if !kittycat.HasPerm(newPermsResolved, kittycat.Build("global", teams.PermissionOwner)) {
+		if !kittycat.HasPerm(newPermsResolved, kittycat.Build("global", teams.PermissionOwner)) && kittycat.HasPerm(currentUserPerms, kittycat.Build("global", teams.PermissionOwner)) {
 			// Ensure that if perm is owner, then there is another owner
 			var ownerCount int
 
