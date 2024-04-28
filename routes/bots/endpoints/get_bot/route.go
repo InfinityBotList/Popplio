@@ -258,6 +258,10 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 				var guildId string
 				err := state.Pool.QueryRow(d.Context, "SELECT guild_id FROM cache_server_bots WHERE bot_id = $1", bot.BotID).Scan(&guildId)
 
+				if errors.Is(err, pgx.ErrNoRows) {
+					continue // This bot doesn't have a cache server
+				}
+
 				if err != nil {
 					state.Logger.Error("Error while getting bot cache server base info [db fetch]", zap.Error(err), zap.String("id", id), zap.String("target", target), zap.String("botID", bot.BotID))
 					return uapi.DefaultResponse(http.StatusInternalServerError)
