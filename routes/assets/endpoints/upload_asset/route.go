@@ -225,7 +225,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		}
 	}
 
-	if !kittycat.HasPerm(perms, kittycat.Build(targetType, teams.PermissionDeleteAssets)) {
+	if !kittycat.HasPerm(perms, kittycat.Build(targetType, teams.PermissionUploadAssets)) {
 		return uapi.HttpResponse{
 			Status:  http.StatusForbidden,
 			Headers: limit.Headers(),

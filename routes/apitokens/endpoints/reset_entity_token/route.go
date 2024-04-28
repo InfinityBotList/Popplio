@@ -69,7 +69,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	if !kittycat.HasPerm(perms, kittycat.Build(targetType, teams.PermissionResetAPITokens)) {
 		return uapi.HttpResponse{
 			Status: http.StatusForbidden,
-			Json:   types.ApiError{Message: "You do not have permission to view existing tokens of this entity"},
+			Json:   types.ApiError{Message: "You do not have permission to reset api tokens of this entity"},
 		}
 	}
 
