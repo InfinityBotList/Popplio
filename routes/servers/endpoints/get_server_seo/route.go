@@ -3,7 +3,9 @@ package get_server_seo
 import (
 	"errors"
 	"net/http"
+	"strconv"
 
+	"popplio/assetmanager"
 	"popplio/state"
 	"popplio/types"
 
@@ -35,8 +37,8 @@ func Docs() *docs.Doc {
 func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	id := chi.URLParam(r, "id")
 
-	var name, avatar, short string
-	err := state.Pool.QueryRow(d.Context, "SELECT name, avatar, short FROM servers WHERE server_id = $1", id).Scan(&name, &avatar, &short)
+	var name, short string
+	err := state.Pool.QueryRow(d.Context, "SELECT name, short FROM servers WHERE server_id = $1", id).Scan(&name, &short)
 
 	if errors.Is(err, pgx.ErrNoRows) {
 		return uapi.DefaultResponse(http.StatusNotFound)
@@ -47,10 +49,20 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
+	avatar := assetmanager.AvatarInfo(assetmanager.AssetTargetTypeServers, id)
+
+	var avatarPath string
+
+	if avatar.Exists {
+		avatarPath = state.Config.Sites.CDN + "/" + avatar.Path + "?ts=" + strconv.FormatInt(avatar.LastModified.Unix(), 10)
+	} else {
+		avatarPath = state.Config.Sites.CDN + "/" + avatar.DefaultPath
+	}
+
 	seoData := types.SEO{
 		ID:     id,
 		Name:   name,
-		Avatar: avatar,
+		Avatar: avatarPath,
 		Short:  short,
 	}
 

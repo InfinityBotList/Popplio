@@ -104,6 +104,7 @@ func GetTeamEntities(ctx context.Context, teamId string, targets []string) (*typ
 				}
 
 				eto.Servers[i].Vanity = code
+				eto.Servers[i].Avatar = assetmanager.AvatarInfo(assetmanager.AssetTargetTypeServers, eto.Servers[i].ServerID)
 				eto.Servers[i].Banner = assetmanager.BannerInfo(assetmanager.AssetTargetTypeServers, eto.Servers[i].ServerID)
 			}
 		default:

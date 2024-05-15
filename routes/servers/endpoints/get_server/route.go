@@ -194,6 +194,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	}
 
 	server.Vanity = code
+	server.Avatar = assetmanager.AvatarInfo(assetmanager.AssetTargetTypeServers, server.ServerID)
 	server.Banner = assetmanager.BannerInfo(assetmanager.AssetTargetTypeServers, server.ServerID)
 
 	// Handle extra includes
