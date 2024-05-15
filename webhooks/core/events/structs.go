@@ -21,7 +21,7 @@ import (
 // You can add targets here to extend the webhook system
 type Target struct {
 	Bot    *dovetypes.PlatformUser `json:"bot,omitempty" description:"If a bot event, the bot that the webhook is about"`
-	Server *types.SEO              `json:"server,omitempty" description:"If a server event, the server that the webhook is about"`
+	Server *types.IndexServer      `json:"server,omitempty" description:"If a server event, the server that the webhook is about"`
 	Team   *types.Team             `json:"team,omitempty" description:"If a team event, the team that the webhook is about"`
 }
 
@@ -188,7 +188,7 @@ func (t Target) GetID() string {
 	}
 
 	if t.Server != nil {
-		return t.Server.ID
+		return t.Server.ServerID
 	}
 
 	if t.Team != nil {
@@ -239,7 +239,11 @@ func (t Target) GetAvatarURL() string {
 	}
 
 	if t.Server != nil {
-		return t.Server.Avatar
+		if t.Server.Avatar.Path != "" {
+			return t.Server.Avatar.Path
+		}
+
+		return t.Server.Avatar.DefaultPath
 	}
 
 	if t.Team != nil {
