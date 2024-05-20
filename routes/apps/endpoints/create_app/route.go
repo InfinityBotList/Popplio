@@ -6,9 +6,12 @@ import (
 	"popplio/apps"
 	"popplio/state"
 	"popplio/types"
+	"strconv"
+	"time"
 
 	docs "github.com/infinitybotlist/eureka/doclib"
 	"github.com/infinitybotlist/eureka/uapi"
+	"github.com/jackc/pgx/v5"
 	"go.uber.org/zap"
 
 	"github.com/bwmarrin/discordgo"
@@ -113,6 +116,40 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 			},
 			Status: http.StatusBadRequest,
 		}
+	}
+
+	if position.Cooldown > 0 {
+		// Fetch the time the last app the user created was on
+		var lastApp time.Time
+
+		err = state.Pool.QueryRow(d.Context, "SELECT created_at FROM apps WHERE user_id = $1 AND position = $2 ORDER BY created_at DESC LIMIT 1", d.Auth.ID, payload.Position).Scan(&lastApp)
+
+		if err != nil {
+			if !errors.Is(err, pgx.ErrNoRows) {
+				state.Logger.Error("Error getting last app", zap.Error(err), zap.String("user_id", d.Auth.ID), zap.String("position", payload.Position))
+				return uapi.HttpResponse{
+					Json: types.ApiError{
+						Message: "Error getting last app: " + err.Error(),
+					},
+				}
+			}
+		} else {
+			if time.Since(lastApp) < time.Duration(position.Cooldown) {
+				// Get the difference between the last app and the cooldown
+				waitFor := time.Since(lastApp) - time.Duration(position.Cooldown)
+
+				return uapi.HttpResponse{
+					Json: types.ApiError{
+						Message: "You must wait " + waitFor.String() + " before applying for this position again",
+					},
+					Status: http.StatusTooManyRequests,
+					Headers: map[string]string{
+						"Retry-After": strconv.FormatFloat(waitFor.Seconds(), 'f', 0, 64),
+					},
+				}
+			}
+		}
+
 	}
 
 	var answerMap = map[string]string{}

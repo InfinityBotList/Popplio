@@ -51,3 +51,14 @@ type UserVote struct {
 type HCaptchaInfo struct {
 	SiteKey string `json:"site_key"`
 }
+
+// @ci table=vote_credit_tiers
+//
+// VoteCreditTier represents a vote credit tier.
+type VoteCreditTier struct {
+	ID        string    `db:"id" json:"id" description:"The ID of the vote credit tier"`
+	Position  int       `db:"position" json:"position" description:"The position of the vote credit tier"`
+	Votes     int       `db:"votes" json:"votes" description:"The amount of votes the user needs to get this tier"`
+	Cents     int       `db:"cents" json:"cents" description:"The amount of cents the user gets off in this tier"`
+	CreatedAt time.Time `db:"created_at" json:"created_at"`
+}

@@ -1,7 +1,7 @@
 package types
 
 import (
-	"time"
+	"popplio/validators/timex"
 
 	"github.com/infinitybotlist/eureka/dovewing/dovetypes"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -75,7 +75,7 @@ type Bot struct {
 	Vanity                 string                  `db:"-" json:"vanity" description:"The bot's vanity URL" ci:"internal"` // Must be parsed internally
 	VoteBanned             bool                    `db:"vote_banned" json:"vote_banned" description:"Whether the bot is vote banned or not"`
 	StartPeriod            pgtype.Timestamptz      `db:"start_premium_period" json:"start_premium_period"`
-	PremiumPeriodLength    time.Duration           `db:"premium_period_length" json:"premium_period_length" description:"The period of premium for the bot in nanoseconds"`
+	PremiumPeriodLength    timex.Duration          `db:"premium_period_length" json:"premium_period_length" description:"The period of premium for the bot in nanoseconds"`
 	CertReason             pgtype.Text             `db:"cert_reason" json:"cert_reason" description:"The reason for the bot being certified"`
 	Uptime                 int                     `db:"uptime" json:"uptime" description:"The bot's total number of successful uptime checks"`
 	TotalUptime            int                     `db:"total_uptime" json:"total_uptime" description:"The bot's total number of uptime checks"`

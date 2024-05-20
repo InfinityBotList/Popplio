@@ -47,7 +47,7 @@ func Docs() *docs.Doc {
 			},
 			{
 				Name:        "target_id",
-				Description: "The bot ID",
+				Description: "The target ID",
 				Required:    true,
 				In:          "path",
 				Schema:      docs.IdSchema,

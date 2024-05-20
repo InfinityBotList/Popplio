@@ -1,32 +1,22 @@
-package get_user_entity_votes
+package get_vote_credit_tiers
 
 import (
 	"net/http"
 	"strings"
 
-	"popplio/state"
 	"popplio/types"
-	"popplio/votes"
 
 	docs "github.com/infinitybotlist/eureka/doclib"
 	"github.com/infinitybotlist/eureka/uapi"
-	"go.uber.org/zap"
 
 	"github.com/go-chi/chi/v5"
 )
 
 func Docs() *docs.Doc {
 	return &docs.Doc{
-		Summary:     "Get User Entity Votes",
-		Description: "Gets a vote a user has made for an entity. Note that for compatibility, a trailing 's' is removed",
+		Summary:     "Get Vote Credit Tiers",
+		Description: "Returns a list of all currently available vote credit tiers for an entity",
 		Params: []docs.Parameter{
-			{
-				Name:        "uid",
-				Description: "The users ID",
-				Required:    true,
-				In:          "path",
-				Schema:      docs.IdSchema,
-			},
 			{
 				Name:        "target_type",
 				Description: "The target type of the entity",
@@ -42,16 +32,15 @@ func Docs() *docs.Doc {
 				Schema:      docs.IdSchema,
 			},
 		},
-		Resp: types.UserVote{},
+		Resp: types.VoteCreditTier{},
 	}
 }
 
 func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
-	uid := chi.URLParam(r, "uid")
 	targetId := chi.URLParam(r, "target_id")
 	targetType := chi.URLParam(r, "target_type")
 
-	if uid == "" || targetId == "" || targetType == "" {
+	if targetId == "" || targetType == "" {
 		return uapi.HttpResponse{
 			Status: http.StatusBadRequest,
 			Json:   types.ApiError{Message: "Both target_id and target_type must be specified"},
@@ -60,17 +49,5 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 
 	targetType = strings.TrimSuffix(targetType, "s")
 
-	uv, err := votes.EntityVoteCheck(d.Context, uid, targetId, targetType)
-
-	if err != nil {
-		state.Logger.Error("Failed to get user entity votes", zap.Error(err), zap.String("userId", uid), zap.String("targetId", targetId), zap.String("targetType", targetType))
-		return uapi.HttpResponse{
-			Status: http.StatusBadRequest,
-			Json:   types.ApiError{Message: err.Error()},
-		}
-	}
-
-	return uapi.HttpResponse{
-		Json: uv,
-	}
+	return uapi.HttpResponse{}
 }

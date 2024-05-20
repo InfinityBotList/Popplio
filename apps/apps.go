@@ -4,6 +4,7 @@ package apps
 import (
 	"popplio/state"
 	"popplio/types"
+	"popplio/validators/timex"
 
 	"github.com/infinitybotlist/eureka/uapi"
 )
@@ -17,6 +18,7 @@ We are a welcoming and laid back team who is always willing to give new people a
 		Name:        "Staff Team",
 		Tags:        []string{"Staff", "Bot Reviewing"},
 		ReviewLogic: reviewLogicStaff,
+		Cooldown:    48 * timex.Hour,
 		Questions: []types.Question{
 			{
 				ID:          "experience",
@@ -78,8 +80,9 @@ Some experience in PostgreSQL and at least one of the below languages is require
 - Rust
 - TypeScript (Javascript with type-safety)
 - Go/Golang`,
-		Name: "Dev Team",
-		Tags: []string{"Golang", "Rust"},
+		Name:     "Dev Team",
+		Tags:     []string{"Golang", "Rust"},
+		Cooldown: 48 * timex.Hour,
 		Questions: []types.Question{
 			{
 				ID:          "sql-basics-1",

@@ -138,6 +138,7 @@ type GVCConn interface {
 	QueryRow(ctx context.Context, sql string, args ...any) pgx.Row
 }
 
+// Get the vote count for an entity
 func EntityGetVoteCount(ctx context.Context, c GVCConn, targetId, targetType string) (int, error) {
 	var upvotes int
 	var downvotes int
@@ -158,4 +159,52 @@ func EntityGetVoteCount(ctx context.Context, c GVCConn, targetId, targetType str
 	}
 
 	return upvotes - downvotes, nil
+}
+
+// Given a number of votes and the vote credit tiers, return the structure of how vote credits should be awarded
+// as a map of string to int
+//
+// Note that this function assumes that the vote credits tiers are sorted by position in ascending order
+func SlabSplitVotes(votes int, tiers []*types.VoteCreditTier) map[string]int {
+	/*
+		<div class="system">
+				<p>
+					Vote credits are tier based through slabs<br /><br />
+
+					(e.g.)For the following tiers<br /><br />
+				</p>
+				<OrderedList>
+					<ListItem>Tier 1: 100 votes at 0.10 cents</ListItem>
+					<ListItem>Tier 2: 200 votes at 0.05 cents</ListItem>
+					<ListItem>Tier 3: 50 votes at 0.025 cents</ListItem>
+				</OrderedList>
+				<p>Would mean 625 votes would be split as the following:</p>
+				<OrderedList>
+					<ListItem>100 votes: 0.10 cents [Tier 1]</ListItem>
+					<ListItem>Next 200 votes: 0.05 cents [Tier 2]</ListItem>
+					<ListItem>Next 50 votes: 0.025 cents [Tier 3]</ListItem>
+					<ListItem>Last 275 votes: 0.025 cents [last tier used at end of tiering]</ListItem>
+				</OrderedList>
+			</div>
+	*/
+
+	voteCredits := make(map[string]int)
+
+	var remainingVotes = votes
+
+	for _, tier := range tiers {
+		if remainingVotes <= 0 {
+			break
+		}
+
+		if remainingVotes >= tier.Votes {
+			voteCredits[tier.ID] = tier.Votes
+			remainingVotes -= tier.Votes
+		} else {
+			voteCredits[tier.ID] = remainingVotes
+			break
+		}
+	}
+
+	return voteCredits
 }

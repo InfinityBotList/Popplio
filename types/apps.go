@@ -1,6 +1,7 @@
 package types
 
 import (
+	"popplio/validators/timex"
 	"time"
 
 	"github.com/infinitybotlist/eureka/dovewing/dovetypes"
@@ -16,13 +17,14 @@ type Question struct {
 }
 
 type Position struct {
-	ID        string     `json:"id" validate:"required"`
-	Tags      []string   `json:"tags" validate:"required"`
-	Info      string     `json:"info" validate:"required"`
-	Name      string     `json:"name" validate:"required"`
-	Questions []Question `json:"questions" validate:"gt=0,required"`
-	Hidden    bool       `json:"hidden"`
-	Closed    bool       `json:"closed"`
+	ID        string         `json:"id" validate:"required"`
+	Tags      []string       `json:"tags" validate:"required"`
+	Info      string         `json:"info" validate:"required"`
+	Name      string         `json:"name" validate:"required"`
+	Questions []Question     `json:"questions" validate:"gt=0,required"`
+	Hidden    bool           `json:"hidden"`
+	Closed    bool           `json:"closed"`
+	Cooldown  timex.Duration `json:"cooldown"`
 
 	// Internal fields
 	Channel             func() string                                                                `json:"-"`
