@@ -10,7 +10,7 @@ import (
 	"popplio/validators"
 	"strings"
 
-	perms "github.com/infinitybotlist/kittycat/go"
+	kittycat "github.com/infinitybotlist/kittycat/go"
 
 	docs "github.com/infinitybotlist/eureka/doclib"
 	"github.com/infinitybotlist/eureka/dovewing"
@@ -65,7 +65,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	resolvedPerms := permList.Resolve()
 
 	// Check if the user has the permission to view apps
-	if !perms.HasPerm(resolvedPerms, "apps.view") {
+	if !kittycat.HasPerm(resolvedPerms, kittycat.Permission{Namespace: "apps", Perm: "view"}) {
 		return uapi.HttpResponse{
 			Status: http.StatusForbidden,
 			Json: types.ApiError{

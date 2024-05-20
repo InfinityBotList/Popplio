@@ -107,7 +107,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		}
 	}
 
-	if !kittycat.HasPerm(perms, kittycat.Build(targetType, teams.PermissionTestWebhooks)) {
+	if !kittycat.HasPerm(perms, kittycat.Permission{Namespace: targetType, Perm: teams.PermissionTestWebhooks}) {
 		return uapi.HttpResponse{
 			Status:  http.StatusForbidden,
 			Headers: limit.Headers(),

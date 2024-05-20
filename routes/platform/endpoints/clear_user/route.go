@@ -3,6 +3,7 @@ package clear_user
 import (
 	"net/http"
 
+	"popplio/assetmanager"
 	"popplio/state"
 	"popplio/types"
 
@@ -60,6 +61,32 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	if err != nil {
 		state.Logger.Error("Error clearing user [dovewing]", zap.Error(err), zap.String("id", id), zap.String("platform", platform))
 		return uapi.DefaultResponse(http.StatusNotFound)
+	}
+
+	if res.IsBot {
+		err = assetmanager.DeleteAvatar(assetmanager.AssetTargetTypeBots, id)
+
+		if err != nil {
+			state.Logger.Error("Error deleting bot avatar", zap.Error(err), zap.String("id", id))
+			return uapi.HttpResponse{
+				Status: http.StatusInternalServerError,
+				Json: types.ApiError{
+					Message: "Error deleting bot avatar: " + err.Error(),
+				},
+			}
+		}
+	} else {
+		err = assetmanager.DeleteAvatar(assetmanager.AssetTargetTypeUsers, id)
+
+		if err != nil {
+			state.Logger.Error("Error deleting user avatar", zap.Error(err), zap.String("id", id))
+			return uapi.HttpResponse{
+				Status: http.StatusInternalServerError,
+				Json: types.ApiError{
+					Message: "Error deleting user avatar: " + err.Error(),
+				},
+			}
+		}
 	}
 
 	return uapi.HttpResponse{

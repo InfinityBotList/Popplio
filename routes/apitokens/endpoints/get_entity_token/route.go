@@ -65,7 +65,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		}
 	}
 
-	if !kittycat.HasPerm(perms, kittycat.Build(targetType, teams.PermissionViewAPITokens)) {
+	if !kittycat.HasPerm(perms, kittycat.Permission{Namespace: targetType, Perm: teams.PermissionViewAPITokens}) {
 		return uapi.HttpResponse{
 			Status: http.StatusForbidden,
 			Json:   types.ApiError{Message: "You do not have permission to view existing tokens of this entity"},

@@ -296,7 +296,7 @@ func IsValidPerm(perm Permission) bool {
 //
 // The returned positions are a resolved set of kittycat permissions that can then be used with standard
 // kittycat functions
-func GetEntityPerms(ctx context.Context, userId, targetType, targetId string) ([]string, error) {
+func GetEntityPerms(ctx context.Context, userId, targetType, targetId string) ([]perms.Permission, error) {
 	var teamId string
 
 	switch targetType {
@@ -317,10 +317,15 @@ func GetEntityPerms(ctx context.Context, userId, targetType, targetId string) ([
 			// Fast path, we dont even need to perform kittycat
 			// permission resolution here
 			if owner.String == userId {
-				return []string{"global.*"}, nil
+				return []perms.Permission{
+					{
+						Namespace: "global",
+						Perm:      PermissionOwner,
+					},
+				}, nil
 			}
 
-			return []string{}, nil
+			return []perms.Permission{}, nil
 		}
 
 		teamId = teamOwner.String
@@ -353,7 +358,7 @@ func GetEntityPerms(ctx context.Context, userId, targetType, targetId string) ([
 	err := state.Pool.QueryRow(ctx, "SELECT flags FROM team_members WHERE team_id = $1 AND user_id = $2", teamId, userId).Scan(&teamPerms)
 
 	if errors.Is(err, pgx.ErrNoRows) {
-		return nil, fmt.Errorf("user not found in team")
+		return []perms.Permission{}, nil
 	}
 
 	if err != nil {
@@ -362,12 +367,13 @@ func GetEntityPerms(ctx context.Context, userId, targetType, targetId string) ([
 
 	if len(teamPerms) == 0 {
 		// Skip resolution, just return an empty array
-		return []string{}, nil
+		return []perms.Permission{}, nil
 	}
 
 	// Right now, team permissions are treated as permission overrides
+	// TODO: support hierarchy based permissions in the future
 	var resolvedPerms = perms.StaffPermissions{
-		PermOverrides: teamPerms,
+		PermOverrides: perms.PFSS(teamPerms),
 	}.Resolve()
 
 	return resolvedPerms, nil

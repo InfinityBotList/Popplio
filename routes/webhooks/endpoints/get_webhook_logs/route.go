@@ -96,7 +96,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		}
 	}
 
-	if !kittycat.HasPerm(perms, kittycat.Build(targetType, teams.PermissionGetWebhookLogs)) {
+	if !kittycat.HasPerm(perms, kittycat.Permission{Namespace: targetType, Perm: teams.PermissionGetWebhookLogs}) {
 		return uapi.HttpResponse{
 			Status: http.StatusForbidden,
 			Json:   types.ApiError{Message: "You do not have permission to get webhooks logs on this entity"},

@@ -32,19 +32,21 @@ import (
 )
 
 var (
-	Pool                    *pgxpool.Pool
-	Paypal                  *paypal.Client
-	Redis                   *redis.Client
-	DovewingPlatformDiscord *dovewing.DiscordState
-	Discord                 *discordgo.Session
-	Logger                  *zap.Logger
-	Context                 = context.Background()
-	Validator               = validator.New()
+	Pool      *pgxpool.Pool
+	Paypal    *paypal.Client
+	Redis     *redis.Client
+	Discord   *discordgo.Session
+	Logger    *zap.Logger
+	Context   = context.Background()
+	Validator = validator.New()
 
 	Config           *config.Config
 	StripeWebhSecret string
 	StripeWebhIPList []string
 	SeoMapGenerator  = &seo.MapGenerator{}
+
+	BaseDovewingState       dovewing.BaseState
+	DovewingPlatformDiscord dovewing.Platform
 )
 
 func nonVulgar(fl validator.FieldLevel) bool {
@@ -131,7 +133,7 @@ func Setup() {
 	Logger = snippets.CreateZap()
 
 	// Load dovewing state
-	baseDovewingState := dovewing.BaseState{
+	BaseDovewingState = dovewing.BaseState{
 		Pool:    Pool,
 		Logger:  Logger,
 		Context: Context,
@@ -145,7 +147,7 @@ func Setup() {
 	DovewingPlatformDiscord, err = dovewing.DiscordStateConfig{
 		Session:        Discord,
 		PreferredGuild: Config.Servers.Main,
-		BaseState:      &baseDovewingState,
+		BaseState:      &BaseDovewingState,
 	}.New()
 
 	if err != nil {

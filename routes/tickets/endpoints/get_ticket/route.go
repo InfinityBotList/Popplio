@@ -72,7 +72,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 			}
 		}
 
-		if !perms.HasPerm(sp.Resolve(), perms.Build("popplio", "tickets")) {
+		if !perms.HasPerm(sp.Resolve(), perms.Permission{Namespace: "popplio", Perm: "tickets"}) {
 			return uapi.HttpResponse{
 				Status: http.StatusForbidden,
 				Json:   types.ApiError{Message: "You do not have permission to view this ticket [popplio.tickets is required]"},

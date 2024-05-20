@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"popplio/state"
 
-	perms "github.com/infinitybotlist/kittycat/go"
+	kittycat "github.com/infinitybotlist/kittycat/go"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -17,7 +17,7 @@ type sp struct {
 	Perms []string `db:"perms"`
 }
 
-func GetUserStaffPerms(ctx context.Context, userId string) (*perms.StaffPermissions, error) {
+func GetUserStaffPerms(ctx context.Context, userId string) (*kittycat.StaffPermissions, error) {
 	var positions []pgtype.UUID
 	var permOverrides []string
 
@@ -41,14 +41,14 @@ func GetUserStaffPerms(ctx context.Context, userId string) (*perms.StaffPermissi
 		return nil, fmt.Errorf("failed to collect rows: %w", err)
 	}
 
-	var sp = perms.StaffPermissions{
-		PermOverrides: permOverrides,
-		UserPositions: make([]perms.PartialStaffPosition, len(posFull)),
+	var sp = kittycat.StaffPermissions{
+		PermOverrides: kittycat.PFSS(permOverrides),
+		UserPositions: make([]kittycat.PartialStaffPosition, len(posFull)),
 	}
 	for _, pos := range posFull {
-		sp.UserPositions = append(sp.UserPositions, perms.PartialStaffPosition{
+		sp.UserPositions = append(sp.UserPositions, kittycat.PartialStaffPosition{
 			ID:    pos.ID,
-			Perms: pos.Perms,
+			Perms: kittycat.PFSS(pos.Perms),
 			Index: pos.Index,
 		})
 	}

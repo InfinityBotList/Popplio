@@ -9,7 +9,6 @@ import (
 
 	docs "github.com/infinitybotlist/eureka/doclib"
 	"github.com/infinitybotlist/eureka/uapi"
-	kittycat "github.com/infinitybotlist/kittycat/go"
 	"go.uber.org/zap"
 
 	"github.com/go-chi/chi/v5"
@@ -70,9 +69,13 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 
 	return uapi.HttpResponse{
 		Json: types.UserEntityPerms{
-			Perms: kittycat.StaffPermissions{
-				PermOverrides: perms,
-			}.Resolve(),
+			Perms: func() []string {
+				var fperms []string
+				for _, perm := range perms {
+					fperms = append(fperms, perm.String())
+				}
+				return fperms
+			}(),
 		},
 	}
 }

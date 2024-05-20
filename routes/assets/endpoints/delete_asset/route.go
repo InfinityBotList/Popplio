@@ -1,14 +1,13 @@
 package delete_asset
 
 import (
-	"errors"
-	"io/fs"
 	"net/http"
-	"os"
 	"popplio/state"
 	"popplio/teams"
 	"popplio/types"
 	"time"
+
+	"popplio/assetmanager"
 
 	"github.com/go-chi/chi/v5"
 	docs "github.com/infinitybotlist/eureka/doclib"
@@ -17,32 +16,6 @@ import (
 	kittycat "github.com/infinitybotlist/kittycat/go"
 	"go.uber.org/zap"
 )
-
-// Deletes a file if it exists
-func deleteFileIfExists(path string) error {
-	st, err := os.Stat(path)
-
-	if err != nil {
-		if errors.Is(err, fs.ErrNotExist) {
-			return nil
-		}
-
-		return err
-	}
-
-	if st.IsDir() {
-		return errors.New("path is a directory")
-	}
-
-	// Delete file
-	err = os.Remove(path)
-
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
 
 func Docs() *docs.Doc {
 	return &docs.Doc{
@@ -140,7 +113,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		}
 	}
 
-	if !kittycat.HasPerm(perms, kittycat.Build(targetType, teams.PermissionDeleteAssets)) {
+	if !kittycat.HasPerm(perms, kittycat.Permission{Namespace: targetType, Perm: teams.PermissionDeleteAssets}) {
 		return uapi.HttpResponse{
 			Status:  http.StatusForbidden,
 			Headers: limit.Headers(),
@@ -148,9 +121,19 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		}
 	}
 
+	tt, err := assetmanager.AssetTargetTypeFromString(targetType)
+
+	if err != nil {
+		return uapi.HttpResponse{
+			Status:  http.StatusBadRequest,
+			Headers: limit.Headers(),
+			Json:    types.ApiError{Message: err.Error()},
+		}
+	}
+
 	switch assetType {
 	case "banner":
-		err = deleteFileIfExists(state.Config.Meta.CDNPath + "/banners/" + targetType + "s/" + targetId + ".webp")
+		err = assetmanager.DeleteBanner(tt, targetId)
 
 		if err != nil {
 			return uapi.HttpResponse{
@@ -165,7 +148,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 			Headers: limit.Headers(),
 		}
 	case "avatar":
-		err = deleteFileIfExists(state.Config.Meta.CDNPath + "/avatars/" + targetType + "s/" + targetId + ".webp")
+		err = assetmanager.DeleteAvatar(tt, targetId)
 
 		if err != nil {
 			return uapi.HttpResponse{

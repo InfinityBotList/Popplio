@@ -81,7 +81,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		}
 	}
 
-	if !kittycat.HasPerm(managerPerms, kittycat.Build("team", teams.PermissionEdit)) {
+	if !kittycat.HasPerm(managerPerms, kittycat.Permission{Namespace: "team", Perm: teams.PermissionEdit}) {
 		return uapi.HttpResponse{
 			Status: http.StatusForbidden,
 			Json:   types.ApiError{Message: "You do not have permission to edit this team's information (name/avatar/mention)"},

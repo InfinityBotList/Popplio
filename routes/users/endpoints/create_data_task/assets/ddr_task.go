@@ -187,7 +187,7 @@ func DataTask(taskId, taskName, id, ip string) {
 			return
 		}
 
-		for _, dovewingPlatform := range []*dovewing.DiscordState{state.DovewingPlatformDiscord} {
+		for _, dovewingPlatform := range []dovewing.Platform{state.DovewingPlatformDiscord} {
 			l.Info("Deleting from user_cache [dovewing]", zap.String("id", id), zap.String("platform", dovewingPlatform.PlatformName()))
 			res, err := dovewing.ClearUser(state.Context, id, dovewingPlatform, dovewing.ClearUserReq{})
 

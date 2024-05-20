@@ -292,7 +292,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 			}
 		}
 
-		if !kittycat.HasPerm(perms, kittycat.Build("bot", teams.PermissionAdd)) {
+		if !kittycat.HasPerm(perms, kittycat.Permission{Namespace: "bot", Perm: teams.PermissionAdd}) {
 			return uapi.HttpResponse{
 				Status: http.StatusForbidden,
 				Json:   types.ApiError{Message: "You do not have permission to add new bots to this team"},

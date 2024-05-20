@@ -90,7 +90,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 			}
 		}
 
-		if !kittycat.HasPerm(perms, kittycat.Build(targetType, teams.PermissionEditOwnerReview)) {
+		if !kittycat.HasPerm(perms, kittycat.Permission{Namespace: targetType, Perm: teams.PermissionEditOwnerReview}) {
 			return uapi.HttpResponse{
 				Status: http.StatusForbidden,
 				Json:   types.ApiError{Message: "You do not have permission to edit an owner review for this " + targetType},

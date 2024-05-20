@@ -1,14 +1,18 @@
 package assetmanager
 
 import (
+	"errors"
 	"os"
 	"popplio/state"
 	"popplio/types"
+	"strconv"
+	"time"
 )
 
 type AssetTargetType int
 
 const (
+	AssetTargetTypeUsers    AssetTargetType = iota
 	AssetTargetTypeBots     AssetTargetType = iota
 	AssetTargetTypeServers  AssetTargetType = iota
 	AssetTargetTypeTeams    AssetTargetType = iota
@@ -17,6 +21,8 @@ const (
 
 func (a AssetTargetType) String() string {
 	switch a {
+	case AssetTargetTypeUsers:
+		return "users"
 	case AssetTargetTypeBots:
 		return "bots"
 	case AssetTargetTypeServers:
@@ -27,6 +33,23 @@ func (a AssetTargetType) String() string {
 		return "partners"
 	default:
 		panic("invalid asset target type")
+	}
+}
+
+func AssetTargetTypeFromString(s string) (AssetTargetType, error) {
+	switch s {
+	case "users":
+		return AssetTargetTypeUsers, nil
+	case "bots":
+		return AssetTargetTypeBots, nil
+	case "servers":
+		return AssetTargetTypeServers, nil
+	case "teams":
+		return AssetTargetTypeTeams, nil
+	case "partners":
+		return AssetTargetTypePartners, nil
+	default:
+		return 0, errors.New("invalid asset target type")
 	}
 }
 
@@ -74,8 +97,20 @@ func AvatarInfo(targetType AssetTargetType, targetId string) *types.AssetMetadat
 
 func ResolveAssetMetadataToUrl(t *types.AssetMetadata) string {
 	if t.Exists {
-		return state.Config.Sites.CDN + "/" + t.Path
+		if t.LastModified == nil {
+			// Use a very old time here
+			t.LastModified = &time.Time{}
+		}
+		return state.Config.Sites.CDN + "/" + t.Path + "?ts=" + strconv.FormatInt(t.LastModified.Unix(), 10)
 	} else {
 		return state.Config.Sites.CDN + "/" + t.DefaultPath
 	}
+}
+
+func DeleteAvatar(targetType AssetTargetType, targetId string) error {
+	return DeleteFileIfExists(state.Config.Meta.CDNPath + "/avatars/" + targetType.String() + "s/" + targetId + ".webp")
+}
+
+func DeleteBanner(targetType AssetTargetType, targetId string) error {
+	return DeleteFileIfExists(state.Config.Meta.CDNPath + "/banners/" + targetType.String() + "s/" + targetId + ".webp")
 }

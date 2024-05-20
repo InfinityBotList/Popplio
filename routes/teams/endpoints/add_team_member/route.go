@@ -61,7 +61,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		}
 	}
 
-	if !kittycat.HasPerm(managerPerms, kittycat.Build("team_member", teams.PermissionAdd)) {
+	if !kittycat.HasPerm(managerPerms, kittycat.Permission{Namespace: "team_member", Perm: teams.PermissionAdd}) {
 		return uapi.HttpResponse{
 			Status: http.StatusForbidden,
 			Json:   types.ApiError{Message: "You do not have permission to add members to this team"},
@@ -82,13 +82,13 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	// Right now, we use perm overrides for this
 	// as we do not have a hierarchy system yet
 	newPermsResolved := kittycat.StaffPermissions{
-		PermOverrides: payload.Perms,
+		PermOverrides: kittycat.PFSS(payload.Perms),
 	}.Resolve()
 
 	// Check if the manager has perms to give all permissions in newPermsResolved
 	//
 	// This is equivalent to going from no perms to the selected permset
-	if err = kittycat.CheckPatchChanges(managerPerms, []string{}, newPermsResolved); err != nil {
+	if err = kittycat.CheckPatchChanges(managerPerms, []kittycat.Permission{}, newPermsResolved); err != nil {
 		return uapi.HttpResponse{
 			Status: http.StatusForbidden,
 			Json:   types.ApiError{Message: "You do not have permission to give out permissions: " + err.Error()},

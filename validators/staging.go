@@ -20,7 +20,7 @@ func StagingCheckSensitive(ctx context.Context, userId string) error {
 			return fmt.Errorf("failed to get user staff perms: %w", err)
 		}
 
-		if !perms.HasPerm(sp.Resolve(), perms.Build("popplio_staging", "sensitive")) {
+		if !perms.HasPerm(sp.Resolve(), perms.Permission{Namespace: "popplio_staging", Perm: "sensitive"}) {
 			return fmt.Errorf("user does not have the popplio_staging.sensitive staff permission")
 		}
 	}

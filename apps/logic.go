@@ -15,6 +15,9 @@ import (
 	"go.uber.org/zap"
 )
 
+var permBotResubmit = kittycat.Permission{Namespace: "bot", Perm: teams.PermissionResubmit}
+var permBotCertify = kittycat.Permission{Namespace: "bot", Perm: teams.PermissionRequestCertification}
+
 var ErrNoPersist = errors.New("no persist") // This error should be returned when the app should not be persisted to the database for review
 
 func extraLogicResubmit(d uapi.RouteData, p types.Position, answers map[string]string) error {
@@ -40,7 +43,7 @@ func extraLogicResubmit(d uapi.RouteData, p types.Position, answers map[string]s
 	}
 
 	// Check if user has TeamPermissionResubmitBots
-	if !kittycat.HasPerm(perms, kittycat.Build("bot", teams.PermissionResubmit)) {
+	if !kittycat.HasPerm(perms, permBotResubmit) {
 		return errors.New("you do not have permission to resubmit bots")
 	}
 
@@ -119,7 +122,7 @@ func extraLogicCert(d uapi.RouteData, p types.Position, answers map[string]strin
 	}
 
 	// Check if user has TeamPermissionCertifyBots
-	if !kittycat.HasPerm(perms, kittycat.Build("bot", teams.PermissionRequestCertification)) {
+	if !kittycat.HasPerm(perms, permBotCertify) {
 		return errors.New("you do not have permission to certify bots")
 	}
 

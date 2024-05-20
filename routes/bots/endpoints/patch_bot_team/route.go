@@ -83,7 +83,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
-	if !kittycat.HasPerm(perms, kittycat.Build("bot", teams.PermissionDelete)) {
+	if !kittycat.HasPerm(perms, kittycat.Permission{Namespace: "bot", Perm: teams.PermissionDelete}) {
 		return uapi.HttpResponse{
 			Status: http.StatusForbidden,
 			Json:   types.ApiError{Message: "You must be able to delete the bot in the current team to transfer it"},
@@ -97,7 +97,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
-	if !kittycat.HasPerm(newTeamPerms, kittycat.Build("bot", teams.PermissionAdd)) {
+	if !kittycat.HasPerm(newTeamPerms, kittycat.Permission{Namespace: "bot", Perm: teams.PermissionAdd}) {
 		return uapi.HttpResponse{
 			Status: http.StatusForbidden,
 			Json:   types.ApiError{Message: "You must be able to add the bot in the new team to transfer it"},

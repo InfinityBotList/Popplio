@@ -83,10 +83,10 @@ var tableLogic = map[string]TableLogic{
 					teamIds = append(teamIds, teamId)
 				} else {
 					resolvedPerms := kittycat.StaffPermissions{
-						PermOverrides: flags,
+						PermOverrides: kittycat.PFSS(flags),
 					}.Resolve()
 
-					if kittycat.HasPerm(resolvedPerms, kittycat.Build("global", teams.PermissionOwner)) {
+					if kittycat.HasPerm(resolvedPerms, kittycat.Permission{Namespace: "global", Perm: teams.PermissionOwner}) {
 						teamIds = append(teamIds, teamId)
 					} else {
 						l.Warn("User does not have permission to dump team [!global.* and not data_holder]", zap.String("team_id", teamId), zap.String("user_id", id))

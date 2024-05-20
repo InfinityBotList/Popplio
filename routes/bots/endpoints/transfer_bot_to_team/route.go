@@ -86,7 +86,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		}
 	}
 
-	if owner.Valid && owner.String != d.Auth.ID {
+	if owner.String != d.Auth.ID {
 		return uapi.HttpResponse{
 			Status: http.StatusForbidden,
 			Json:   types.ApiError{Message: "You must be the owner to transfer a bot to a team"},
@@ -119,7 +119,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		}
 	}
 
-	if !kittycat.HasPerm(newTeamPerms, kittycat.Build("bot", teams.PermissionAdd)) {
+	if !kittycat.HasPerm(newTeamPerms, kittycat.Permission{Namespace: "bot", Perm: teams.PermissionAdd}) {
 		return uapi.HttpResponse{
 			Status: http.StatusForbidden,
 			Json:   types.ApiError{Message: "You must be able to add the bot in the new team to transfer it"},

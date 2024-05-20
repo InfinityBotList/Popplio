@@ -38,6 +38,7 @@ import (
 	"popplio/routes/votes"
 	"popplio/routes/webhooks"
 	"popplio/state"
+	"popplio/state/bp"
 	"popplio/types"
 	poplhooks "popplio/webhooks"
 
@@ -100,6 +101,10 @@ func corsMiddleware(next http.Handler) http.Handler {
 
 func main() {
 	state.Setup()
+
+	var err error
+
+	state.BaseDovewingState.Middlewares = append(state.BaseDovewingState.Middlewares, bp.DovewingMiddleware)
 
 	docs.DocsSetupData = &docs.SetupData{
 		URL:         state.Config.Sites.API.Parse(),
@@ -220,7 +225,6 @@ func main() {
 	})
 
 	// Load openapi here to avoid large marshalling in every request
-	var err error
 	openapi, err = json.Marshal(docs.GetSchema())
 
 	if err != nil {

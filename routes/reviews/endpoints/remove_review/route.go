@@ -69,7 +69,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 			}
 		}
 
-		if !kittycat.HasPerm(perms, kittycat.Build(targetType, teams.PermissionDeleteOwnerReview)) {
+		if !kittycat.HasPerm(perms, kittycat.Permission{Namespace: targetType, Perm: teams.PermissionDeleteOwnerReview}) {
 			return uapi.HttpResponse{
 				Status: http.StatusForbidden,
 				Json:   types.ApiError{Message: "You do not have permission to delete an owner review for this " + targetType},

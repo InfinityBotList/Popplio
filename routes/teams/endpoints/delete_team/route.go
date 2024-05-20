@@ -51,7 +51,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		}
 	}
 
-	if !kittycat.HasPerm(perms, kittycat.Build("global", teams.PermissionOwner)) {
+	if !kittycat.HasPerm(perms, kittycat.Permission{Namespace: "global", Perm: teams.PermissionOwner}) {
 		return uapi.HttpResponse{
 			Status: http.StatusForbidden,
 			Json:   types.ApiError{Message: "Only global owners can delete teams"},

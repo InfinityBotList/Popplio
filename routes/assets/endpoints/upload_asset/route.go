@@ -1,140 +1,21 @@
 package upload_asset
 
 import (
-	"bytes"
 	"fmt"
-	"image"
-	"image/gif"
-	"image/jpeg"
-	"image/png"
 	"net/http"
-	"os"
-	"os/exec"
+	"popplio/assetmanager"
 	"popplio/state"
 	"popplio/teams"
 	"popplio/types"
 	"time"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/infinitybotlist/eureka/crypto"
 	docs "github.com/infinitybotlist/eureka/doclib"
 	"github.com/infinitybotlist/eureka/ratelimit"
 	"github.com/infinitybotlist/eureka/uapi"
 	kittycat "github.com/infinitybotlist/kittycat/go"
 	"go.uber.org/zap"
-	"golang.org/x/image/webp"
 )
-
-const maxAssetSize = 50 * 1024 * 1024
-const bannerMaxX = 0 // STILL DECIDING
-const bannerMaxY = 0 // STILL DECIDING
-const avatarMaxX = 0 // STILL DECIDING
-const avatarMaxY = 0 // STILL DECIDING
-
-func decodeImage(payload *types.Asset) (fileExt string, img image.Image, err error) {
-	reader := bytes.NewReader(payload.Content)
-
-	switch payload.ContentType {
-	case "image/png":
-		// decode image
-		img, err = png.Decode(reader)
-
-		if err != nil {
-			return "png", nil, fmt.Errorf("error decoding PNG: %s", err.Error())
-		}
-
-		return "png", img, nil
-	case "image/jpeg":
-		// decode image
-		img, err = jpeg.Decode(reader)
-
-		if err != nil {
-			return "jpg", nil, fmt.Errorf("error decoding JPEG: %s", err.Error())
-		}
-
-		return "jpg", img, nil
-	case "image/gif":
-		// decode image
-		img, err = gif.Decode(reader)
-
-		if err != nil {
-			return "gif", nil, fmt.Errorf("error decoding GIF: %s", err.Error())
-		}
-
-		return "gif", img, nil
-	case "image/webp":
-		// decode image
-		img, err = webp.Decode(reader)
-
-		if err != nil {
-			return "webp", nil, fmt.Errorf("error decoding GIF: %s", err.Error())
-		}
-
-		return "webp", img, nil
-	default:
-		return "", nil, fmt.Errorf("content type not implemented")
-	}
-}
-
-func encodeImageToFile(img image.Image, intermediary, outputPath string) error {
-	var tmpPath = os.TempDir() + "/pconv_" + crypto.RandString(128) + "." + intermediary
-
-	tmpfile, err := os.Create(tmpPath)
-
-	if err != nil {
-		return fmt.Errorf("error creating temp file: %s", err.Error())
-	}
-
-	if intermediary == "gif" {
-		err = gif.Encode(tmpfile, img, &gif.Options{})
-
-		if err != nil {
-			return fmt.Errorf("error encoding image to temp file: %s", err.Error())
-		}
-	} else {
-		err = jpeg.Encode(tmpfile, img, &jpeg.Options{Quality: 100})
-
-		if err != nil {
-			return fmt.Errorf("error encoding image to temp file: %s", err.Error())
-		}
-	}
-
-	err = tmpfile.Close()
-
-	if err != nil {
-		return fmt.Errorf("error closing temp file: %s", err.Error())
-	}
-
-	cmd := []string{"cwebp", "-q", "100", tmpPath, "-o", outputPath, "-v"}
-
-	if intermediary == "gif" {
-		cmd = []string{"gif2webp", "-q", "100", "-m", "3", tmpPath, "-o", outputPath, "-v"}
-	}
-
-	outbuf := bytes.NewBuffer(nil)
-
-	cmdExec := exec.Command(cmd[0], cmd[1:]...)
-	cmdExec.Stdout = outbuf
-	cmdExec.Stderr = outbuf
-	cmdExec.Env = os.Environ()
-
-	err = cmdExec.Run()
-
-	outputCmd := outbuf.String()
-
-	if err != nil {
-		return fmt.Errorf("error converting image: %s\n%s", err.Error(), outputCmd)
-	}
-
-	// Delete temp file
-	err = os.Remove(tmpPath)
-
-	if err != nil {
-		return fmt.Errorf("error deleting temp file: %s", err.Error())
-	}
-
-	return nil
-}
 
 func Docs() *docs.Doc {
 	return &docs.Doc{
@@ -225,7 +106,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		}
 	}
 
-	if !kittycat.HasPerm(perms, kittycat.Build(targetType, teams.PermissionUploadAssets)) {
+	if !kittycat.HasPerm(perms, kittycat.Permission{Namespace: targetType, Perm: teams.PermissionUploadAssets}) {
 		return uapi.HttpResponse{
 			Status:  http.StatusForbidden,
 			Headers: limit.Headers(),
@@ -250,7 +131,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		}
 	}
 
-	if len(payload.Content) == 0 || len(payload.Content) > maxAssetSize {
+	if len(payload.Content) == 0 || len(payload.Content) > assetmanager.MaxAssetSize {
 		return uapi.HttpResponse{
 			Status:  http.StatusBadRequest,
 			Headers: limit.Headers(),
@@ -268,7 +149,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 			}
 		}
 
-		fileExt, img, err := decodeImage(&payload)
+		fileExt, img, err := assetmanager.DecodeImage(&payload)
 
 		if err != nil {
 			state.Logger.Error("Error decoding image", zap.Error(err), zap.String("content_type", payload.ContentType), zap.String("type", payload.Type), zap.String("target_type", targetType), zap.String("target_id", targetId))
@@ -280,18 +161,18 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		}
 
 		// check image size
-		if bannerMaxX != 0 && bannerMaxY != 0 {
-			if img.Bounds().Dx() > bannerMaxX || img.Bounds().Dy() > bannerMaxY {
+		if assetmanager.BannerMaxX != 0 && assetmanager.BannerMaxY != 0 {
+			if img.Bounds().Dx() > assetmanager.BannerMaxX || img.Bounds().Dy() > assetmanager.BannerMaxY {
 				return uapi.HttpResponse{
 					Status:  http.StatusBadRequest,
 					Headers: limit.Headers(),
-					Json:    types.ApiError{Message: fmt.Sprintf("Image must be %dx%d or smaller", bannerMaxX, bannerMaxY)},
+					Json:    types.ApiError{Message: fmt.Sprintf("Image must be %dx%d or smaller", assetmanager.BannerMaxX, assetmanager.BannerMaxY)},
 				}
 			}
 		}
 
 		// Save image to temp file
-		err = encodeImageToFile(
+		err = assetmanager.EncodeImageToFile(
 			img,
 			func() string {
 				if fileExt == "gif" {
@@ -316,6 +197,14 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 			Headers: limit.Headers(),
 		}
 	case "avatar":
+		if targetType == "bot" {
+			return uapi.HttpResponse{
+				Status:  http.StatusBadRequest,
+				Headers: limit.Headers(),
+				Json:    types.ApiError{Message: "Cannot upload an avatar for a bot"},
+			}
+		}
+
 		if payload.ContentType == "" {
 			return uapi.HttpResponse{
 				Status:  http.StatusBadRequest,
@@ -324,7 +213,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 			}
 		}
 
-		fileExt, img, err := decodeImage(&payload)
+		fileExt, img, err := assetmanager.DecodeImage(&payload)
 
 		if err != nil {
 			return uapi.HttpResponse{
@@ -335,18 +224,18 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		}
 
 		// check image size
-		if avatarMaxX != 0 && avatarMaxY != 0 {
-			if img.Bounds().Dx() > avatarMaxX || img.Bounds().Dy() > avatarMaxY {
+		if assetmanager.AvatarMaxX != 0 && assetmanager.AvatarMaxY != 0 {
+			if img.Bounds().Dx() > assetmanager.AvatarMaxX || img.Bounds().Dy() > assetmanager.AvatarMaxY {
 				return uapi.HttpResponse{
 					Status:  http.StatusBadRequest,
 					Headers: limit.Headers(),
-					Json:    types.ApiError{Message: fmt.Sprintf("Image must be %dx%d or smaller", avatarMaxX, avatarMaxY)},
+					Json:    types.ApiError{Message: fmt.Sprintf("Image must be %dx%d or smaller", assetmanager.AvatarMaxX, assetmanager.AvatarMaxY)},
 				}
 			}
 		}
 
 		// Save image to temp file
-		err = encodeImageToFile(
+		err = assetmanager.EncodeImageToFile(
 			img,
 			func() string {
 				if fileExt == "gif" {

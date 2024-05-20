@@ -2,14 +2,8 @@ package migrations
 
 import (
 	"context"
-	"crypto/aes"
-	"crypto/cipher"
-	"crypto/rand"
-	"crypto/sha256"
-	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
 	"net/http"
 	"os"
 	"os/exec"
@@ -19,9 +13,7 @@ import (
 	"kitehelper/common"
 	"kitehelper/downloader"
 	"kitehelper/migrate"
-	"kitehelper/migrate/migrations/types"
 
-	"github.com/davecgh/go-spew/spew"
 	"github.com/infinitybotlist/eureka/crypto"
 	"github.com/jackc/pgx/v5/pgtype"
 )
@@ -674,295 +666,6 @@ var migs = []migrate.Migration{
 		},
 	},
 	{
-		ID:   "migrate_tickets",
-		Name: "Migrate tickets",
-		HasMigrated: func(pool *common.SandboxPool) error {
-			if !colExists(pool, "tickets", "enc_key") {
-				err := pool.Exec(context.Background(), "ALTER TABLE tickets ADD COLUMN enc_key TEXT")
-
-				if err != nil {
-					panic(err)
-				}
-			}
-
-			var count int64
-
-			err := pool.QueryRow(ctx, "SELECT COUNT(*) FROM tickets WHERE enc_key IS NULL").Scan(&count)
-
-			if err != nil {
-				panic(err)
-			}
-
-			if count == 0 {
-				return errors.New("tickets do not need migration")
-			}
-
-			return nil
-		},
-		Function: func(pool *common.SandboxPool) {
-			tx, err := pool.Begin(ctx)
-
-			if err != nil {
-				panic(err)
-			}
-
-			rows, err := tx.Query(ctx, "SELECT id, messages FROM tickets WHERE enc_key IS NULL")
-
-			if err != nil {
-				panic(err)
-			}
-
-			defer rows.Close()
-
-			tmt := []types.TableMigrationType{}
-
-			for rows.Next() {
-				var id string
-				var messages []byte
-
-				err = rows.Scan(&id, &messages)
-
-				if err != nil {
-					panic(err)
-				}
-
-				var msgData []*types.Message
-
-				fmt.Println(string(messages))
-
-				err = json.Unmarshal(messages, &msgData)
-
-				if err != nil {
-					panic(fmt.Sprint(id, ": ", err))
-				}
-
-				tmt = append(tmt, types.TableMigrationType{
-					ID:       id,
-					Messages: msgData,
-				})
-			}
-
-			fPath := os.Getenv("FPATH")
-
-			if fPath == "" {
-				panic("FPATH not set. This must be set to the path of the file storage")
-			}
-
-			for _, t := range tmt {
-				migrate.StatusBoldBlue("Migrating attachments of ticket", t.ID)
-
-				err := os.RemoveAll(fPath + "/" + t.ID)
-
-				if err != nil {
-					panic(err)
-				}
-
-				err = os.MkdirAll(fPath+"/"+t.ID, 0775)
-
-				if err != nil {
-					panic(err)
-				}
-
-				encKey := crypto.RandString(4096)
-
-				err = tx.Exec(ctx, "UPDATE tickets SET enc_key = $1 WHERE id = $2", encKey, t.ID)
-
-				if err != nil {
-					panic(err)
-				}
-
-				keyHash := sha256.New()
-				keyHash.Write([]byte(encKey))
-				keySum := keyHash.Sum(nil)
-
-				for _, msg := range t.Messages {
-					if len(msg.Attachments) == 0 {
-						continue
-					}
-
-					migrate.StatusBoldBlue("=> Message", msg.ID)
-
-					for _, at := range msg.Attachments {
-						// Download the attachment
-						url := at.ProxyURL
-
-						if url == "" {
-							url = at.URL
-						}
-
-						migrate.StatusBoldYellow("===>", at.ID, "-", at.Name, "|", url)
-
-						attachmentData, err := downloader.DownloadFileWithProgress(url)
-
-						if err != nil {
-							panic(err)
-						}
-
-						// AES512-GCM encrypt the attachment
-						c, err := aes.NewCipher(keySum)
-
-						if err != nil {
-							panic(err)
-						}
-
-						gcm, err := cipher.NewGCM(c)
-
-						if err != nil {
-							panic(err)
-						}
-
-						aesNonce := make([]byte, gcm.NonceSize())
-						if _, err = io.ReadFull(rand.Reader, aesNonce); err != nil {
-							panic(err)
-						}
-
-						data := gcm.Seal(aesNonce, aesNonce, attachmentData, nil)
-
-						err = os.WriteFile(fPath+"/"+t.ID+"/"+at.ID+".encBlob", data, 0775)
-
-						if err != nil {
-							panic(err)
-						}
-					}
-				}
-			}
-
-			err = tx.Commit(ctx)
-
-			if err != nil {
-				panic(err)
-			}
-		},
-	},
-	{
-		ID:   "tickets_remove_url",
-		Name: "Remove url/proxy_url from ticket attachments",
-		HasMigrated: func(pool *common.SandboxPool) error {
-			if os.Getenv("TICKETS_REMOVE_URL") == "" {
-				return errors.New("tickets do not need migration")
-			}
-
-			return nil
-		},
-		Function: func(pool *common.SandboxPool) {
-			tx, err := pool.Begin(ctx)
-
-			if err != nil {
-				panic(err)
-			}
-
-			rows, err := tx.Query(ctx, "SELECT id, messages FROM tickets WHERE enc_key IS NOT NULL")
-
-			if err != nil {
-				panic(err)
-			}
-
-			defer rows.Close()
-
-			tmt := []types.TableMigrationType{}
-
-			for rows.Next() {
-				var id string
-				var messages []byte
-
-				err = rows.Scan(&id, &messages)
-
-				if err != nil {
-					panic(err)
-				}
-
-				var msgData []*types.Message
-
-				err = json.Unmarshal(messages, &msgData)
-
-				if err != nil {
-					panic(fmt.Sprint(id, ": ", err))
-				}
-
-				tmt = append(tmt, types.TableMigrationType{
-					ID:       id,
-					Messages: msgData,
-				})
-			}
-
-			fPath := os.Getenv("FPATH")
-
-			if fPath == "" {
-				panic("FPATH not set. This must be set to the path of the file storage")
-			}
-
-			for _, t := range tmt {
-				migrate.StatusBoldBlue("Fixing attachments of ticket", t.ID)
-
-				// Ensure that all attachments exists
-				for i := range t.Messages {
-					if len(t.Messages[i].Attachments) == 0 {
-						continue
-					}
-
-					migrate.StatusBoldBlue("=> Fixing message", t.Messages[i].ID)
-
-					newAttachmentList := []types.Attachment{}
-					var fixed int64
-					for _, at := range t.Messages[i].Attachments {
-						if at.URL != "" || at.ProxyURL != "" {
-							// Ensure attachment file exists as an encBlob file
-							f, err := os.Stat(fPath + "/" + t.ID + "/" + at.ID + ".encBlob")
-
-							if err != nil {
-								panic("Attachment file does not exist: " + fPath + "/" + t.ID + "/" + at.ID + ".encBlob")
-							}
-
-							if f.IsDir() {
-								panic("Attachment file is a directory: " + fPath + "/" + t.ID + "/" + at.ID + ".encBlob")
-							}
-
-							if f.Mode() != 0775 {
-								panic("Attachment file is not 0775: " + fPath + "/" + t.ID + "/" + at.ID + ".encBlob")
-							}
-
-							// Remove url and proxy_url
-							at.URL = ""
-							at.ProxyURL = ""
-
-							if at.Filename != "" {
-								at.Name = at.Filename
-							} else if at.Name == "" {
-								panic("Attachment has no name: " + fPath + "/" + t.ID + "/" + at.ID + ".encBlob")
-							}
-						}
-
-						// Update the attachment
-						newAttachmentList = append(newAttachmentList, at)
-
-						fixed++
-					}
-
-					// Update the message
-					t.Messages[i].Attachments = newAttachmentList
-					spew.Dump(newAttachmentList)
-
-					migrate.StatusBoldBlue("=> Fixed", fixed, "attachments")
-
-					time.Sleep(500 * time.Millisecond)
-				}
-
-				// Update messages
-				err = tx.Exec(ctx, "UPDATE tickets SET messages = $1 WHERE id = $2", t.Messages, t.ID)
-
-				if err != nil {
-					panic(err)
-				}
-			}
-
-			err = tx.Commit(ctx)
-
-			if err != nil {
-				panic(err)
-			}
-		},
-	},
-	{
 		ID:   "create_vanity_teams",
 		Name: "Create vanity for teams",
 		HasMigrated: func(pool *common.SandboxPool) error {
@@ -1085,6 +788,150 @@ var migs = []migrate.Migration{
 
 			if err != nil {
 				panic(err)
+			}
+		},
+	},
+	{
+		ID:   "migrate_bot_avatars",
+		Name: "Migrate bot avatars",
+		HasMigrated: func(pool *common.SandboxPool) error {
+			if os.Getenv("BOTAVATARS_NEED_MIGRATION") != "" {
+				return nil
+			}
+
+			return nil
+		},
+		Function: func(pool *common.SandboxPool) {
+			// Create bots directory
+			err := os.MkdirAll(cdnPath+"/avatars/bots", 0755)
+
+			if err != nil {
+				panic(err)
+			}
+
+			rows, err := pool.Query(migrate.Ctx, "SELECT bots.bot_id, internal_user_cache__discord.avatar FROM bots LEFT JOIN internal_user_cache__discord ON bots.bot_id = internal_user_cache__discord.id")
+
+			if err != nil {
+				panic(err)
+			}
+
+			var i = 0
+			var failedIds = []string{}
+
+			defer rows.Close()
+
+			for rows.Next() {
+				var id string
+				var avatar string
+
+				err = rows.Scan(&id, &avatar)
+
+				if err != nil {
+					panic(err)
+				}
+
+				i++
+
+				fmt.Println(cdnUrl)
+
+				if strings.HasPrefix(avatar, "https://cdn.discordapp.com/embed/avatars/") {
+					migrate.StatusBoldYellow("Avatar for bot", id, "is a default avatar")
+					continue
+				}
+
+				// Check if $cdnPath/avatars/bots/$id.webp exists
+				var filePath = "avatars/bots/" + id + ".webp"
+				if _, err := os.Stat(cdnPath + "/" + filePath); err == nil {
+					// Banner already exists, ask for user input
+					if os.Getenv("ONLY_NEW") != "" {
+						migrate.StatusBoldYellow("Avatar for bot", id, "already exists [points to "+avatar+"]", "("+filePath+")")
+						continue
+					}
+
+					if !common.UserInputBoolean("Avatar for bot " + id + " already exists [points to " + avatar + "]" + "(" + filePath + ", do you want to overwrite it?") {
+						continue
+					}
+				}
+
+				migrate.StatusBoldBlue("Waiting 1 seconds to avoid rate limiting")
+				time.Sleep(1 * time.Second)
+
+				migrate.StatusBoldBlue("Migrating avatar for bot", id, "["+avatar+"]")
+
+				// First retrieve just the http headers of a CDN request without downloading the body
+				resp, err := http.Head(avatar)
+
+				if err != nil {
+					panic(err)
+				}
+
+				if resp.StatusCode != 200 {
+					if resp.StatusCode == 403 || resp.StatusCode == 404 {
+						migrate.StatusBoldBlue("OK, setting avatar to null")
+						continue
+					}
+
+					failedIds = append(failedIds, id)
+					migrate.StatusBoldYellow("Avatar for bot", id, "is invalid, got status code", resp.StatusCode)
+					continue
+				}
+
+				// Check if the content type is an image
+				if !strings.HasPrefix(resp.Header.Get("Content-Type"), "image/") {
+					migrate.StatusBoldYellow("Avatar for bot", id, "is invalid, got content type", resp.Header.Get("Content-Type"))
+					continue
+				}
+
+				fileExtension := strings.Split(resp.Header.Get("Content-Type"), "/")[1]
+
+				// Download the banner
+				bannerData, err := downloader.DownloadFileWithProgress(avatar)
+
+				if err != nil {
+					panic(err)
+				}
+
+				// Save the banner to the CDN
+				var preconv = "avatars/bots/preconv_" + id + "." + fileExtension
+
+				err = os.WriteFile(cdnPath+"/"+preconv, bannerData, 0644)
+
+				if err != nil {
+					panic(err)
+				}
+
+				// Convert to webp
+				cmd := []string{"cwebp", "-q", "100", cdnPath + "/" + preconv, "-o", cdnPath + "/" + filePath}
+
+				if fileExtension == "gif" {
+					cmd = []string{"gif2webp", "-q", "100", "-m", "3", cdnPath + "/" + preconv, "-o", cdnPath + "/" + filePath, "-v"}
+				}
+
+				cmdExec := exec.Command(cmd[0], cmd[1:]...)
+				cmdExec.Stdout = os.Stdout
+				cmdExec.Stderr = os.Stderr
+				cmdExec.Env = os.Environ()
+
+				err = cmdExec.Run()
+
+				if err != nil {
+					panic(err)
+				}
+
+				// Delete the original file
+				err = os.Remove(cdnPath + "/" + preconv)
+
+				if err != nil {
+					panic(err)
+				}
+			}
+
+			if i == 0 {
+				migrate.StatusBoldBlue("No avatars to migrate")
+			}
+
+			if len(failedIds) > 0 {
+				fmt.Println("Failed to migrate bot avatars with ids", strings.Join(failedIds, ","))
 			}
 		},
 	},
