@@ -70,7 +70,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	return uapi.HttpResponse{
 		Json: types.UserEntityPerms{
 			Perms: func() []string {
-				var fperms []string
+				var fperms = []string{}
 				for _, perm := range perms {
 					fperms = append(fperms, perm.String())
 				}
