@@ -152,12 +152,12 @@ type Invite struct {
 
 // List Index
 type ListIndexBot struct {
-	Certified     []IndexBot     `json:"certified"`
-	Premium       []IndexBot     `json:"premium"`
-	MostViewed    []IndexBot     `json:"most_viewed"`
-	Packs         []IndexBotPack `json:"packs"`
-	RecentlyAdded []IndexBot     `json:"recently_added"`
-	TopVoted      []IndexBot     `json:"top_voted"`
+	Certified     []IndexBot `json:"certified" description:"The certified bots"`
+	Premium       []IndexBot `json:"premium" description:"The premium bots"`
+	MostViewed    []IndexBot `json:"most_viewed" description:"The most viewed bots"`
+	Packs         []BotPack  `json:"packs" description:"The bot packs"`
+	RecentlyAdded []IndexBot `json:"recently_added" description:"The recently added bots"`
+	TopVoted      []IndexBot `json:"top_voted" description:"The top voted bots"`
 }
 
 type DiscordBotMeta struct {

@@ -1,16 +1,15 @@
 package get_pack
 
 import (
-	"errors"
 	"net/http"
 	"strings"
 
 	"popplio/db"
+	"popplio/routes/packs/assets"
 	"popplio/state"
 	"popplio/types"
 
 	docs "github.com/infinitybotlist/eureka/doclib"
-	"github.com/infinitybotlist/eureka/dovewing"
 	"github.com/infinitybotlist/eureka/uapi"
 	"go.uber.org/zap"
 
@@ -68,53 +67,14 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
-	ownerUser, err := dovewing.GetUser(d.Context, pack.Owner, state.DovewingPlatformDiscord)
+	err = assets.ResolveBotPack(d.Context, &pack)
 
 	if err != nil {
-		state.Logger.Error("Error querying dovewing for owner user", zap.Error(err), zap.String("url", id))
-		return uapi.DefaultResponse(http.StatusInternalServerError)
-	}
-
-	pack.ResolvedOwner = ownerUser
-
-	for _, botId := range pack.Bots {
-		row, err := state.Pool.Query(d.Context, "SELECT "+indexBotCols+" FROM bots WHERE bot_id = $1", botId)
-
-		if err != nil {
-			state.Logger.Error("Error querying bots table [db fetch]", zap.Error(err), zap.String("bot_id", botId))
-			return uapi.DefaultResponse(http.StatusInternalServerError)
+		state.Logger.Error("Error resolving bot pack", zap.Error(err), zap.String("url", id))
+		return uapi.HttpResponse{
+			Status: http.StatusInternalServerError,
+			Json:   types.ApiError{Message: "Error resolving bot pack: " + err.Error()},
 		}
-
-		bot, err := pgx.CollectOneRow(row, pgx.RowToStructByName[types.IndexBot])
-
-		if errors.Is(err, pgx.ErrNoRows) {
-			continue
-		}
-
-		if err != nil {
-			state.Logger.Error("Error querying bots table [collect]", zap.Error(err), zap.String("bot_id", botId))
-			return uapi.DefaultResponse(http.StatusInternalServerError)
-		}
-
-		var code string
-
-		err = state.Pool.QueryRow(d.Context, "SELECT code FROM vanity WHERE itag = $1", bot.VanityRef).Scan(&code)
-
-		if err != nil {
-			state.Logger.Error("Error querying vanity table [db fetch]", zap.Error(err), zap.String("botID", bot.BotID))
-			return uapi.DefaultResponse(http.StatusInternalServerError)
-		}
-
-		botUser, err := dovewing.GetUser(d.Context, botId, state.DovewingPlatformDiscord)
-
-		if err != nil {
-			state.Logger.Error("Error querying for bot user [dovewing]", zap.Error(err), zap.String("bot_id", botId))
-			return uapi.DefaultResponse(http.StatusInternalServerError)
-		}
-
-		bot.User = botUser
-
-		pack.ResolvedBots = append(pack.ResolvedBots, bot)
 	}
 
 	return uapi.HttpResponse{

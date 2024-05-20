@@ -76,11 +76,11 @@ type ServerSettingsUpdate struct {
 
 // List Index
 type ListIndexServer struct {
-	Certified     []IndexServer `json:"certified"`
-	Premium       []IndexServer `json:"premium"`
-	MostViewed    []IndexServer `json:"most_viewed"`
-	RecentlyAdded []IndexServer `json:"recently_added"`
-	TopVoted      []IndexServer `json:"top_voted"`
+	Certified     []IndexServer `json:"certified" description:"The certified servers (if any)"`
+	Premium       []IndexServer `json:"premium" description:"The premium servers, usually limited to 12"`
+	MostViewed    []IndexServer `json:"most_viewed" description:"The most viewed servers, usually limited to 12"`
+	RecentlyAdded []IndexServer `json:"recently_added" description:"The recently added servers, usually limited to 12"`
+	TopVoted      []IndexServer `json:"top_voted" description:"The top voted servers, usually limited to 12"`
 }
 
 type RandomServers struct {

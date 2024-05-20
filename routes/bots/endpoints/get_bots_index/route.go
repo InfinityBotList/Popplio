@@ -8,6 +8,7 @@ import (
 
 	"popplio/assetmanager"
 	"popplio/db"
+	"popplio/routes/packs/assets"
 	"popplio/state"
 	"popplio/types"
 
@@ -22,8 +23,8 @@ var (
 	indexBotColsArr = db.GetCols(types.IndexBot{})
 	indexBotCols    = strings.Join(indexBotColsArr, ",")
 
-	indexPackColsArr = db.GetCols(types.IndexBotPack{})
-	indexPackCols    = strings.Join(indexPackColsArr, ",")
+	packColsArr = db.GetCols(types.BotPack{})
+	packCols    = strings.Join(packColsArr, ",")
 )
 
 func Docs() *docs.Doc {
@@ -98,18 +99,30 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	}
 
 	// Packs
-	rows, err := state.Pool.Query(d.Context, "SELECT "+indexPackCols+" FROM packs ORDER BY created_at DESC")
+	rows, err := state.Pool.Query(d.Context, "SELECT "+packCols+" FROM packs ORDER BY created_at DESC LIMIT 12")
 
 	if err != nil {
 		state.Logger.Error("Error while getting packs [db fetch]", zap.Error(err))
 		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
-	listIndex.Packs, err = pgx.CollectRows(rows, pgx.RowToStructByName[types.IndexBotPack])
+	listIndex.Packs, err = pgx.CollectRows(rows, pgx.RowToStructByName[types.BotPack])
 
 	if err != nil {
 		state.Logger.Error("Error while getting packs [collect]", zap.Error(err))
 		return uapi.DefaultResponse(http.StatusInternalServerError)
+	}
+
+	for i := range listIndex.Packs {
+		err = assets.ResolveBotPack(d.Context, &listIndex.Packs[i])
+
+		if err != nil {
+			state.Logger.Error("Error while resolving user pack", zap.Error(err), zap.String("url", listIndex.Packs[i].URL))
+			return uapi.HttpResponse{
+				Status: http.StatusInternalServerError,
+				Json:   types.ApiError{Message: "Error resolving user pack: " + err.Error()},
+			}
+		}
 	}
 
 	return uapi.HttpResponse{

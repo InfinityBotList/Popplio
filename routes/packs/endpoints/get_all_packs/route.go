@@ -9,6 +9,8 @@ import (
 	"popplio/state"
 	"popplio/types"
 
+	"popplio/routes/packs/assets"
+
 	docs "github.com/infinitybotlist/eureka/doclib"
 	"github.com/infinitybotlist/eureka/uapi"
 	"github.com/jackc/pgx/v5"
@@ -18,15 +20,15 @@ import (
 const perPage = 12
 
 var (
-	indexPackColArr = db.GetCols(types.IndexBotPack{})
-	indexPackCols   = strings.Join(indexPackColArr, ",")
+	packColArr = db.GetCols(types.BotPack{})
+	packCols   = strings.Join(packColArr, ",")
 )
 
 func Docs() *docs.Doc {
 	return &docs.Doc{
 		Summary:     "Get All Packs",
-		Description: "Gets all packs on the list. Returns a ``Index`` object",
-		Resp:        types.PagedResult[[]types.IndexBotPack]{},
+		Description: "Gets all packs on the list. This endpoint is paginated.",
+		Resp:        types.PagedResult[[]types.BotPack]{},
 		RespName:    "PagedResultIndexBotPack",
 		Params: []docs.Parameter{
 			{
@@ -59,18 +61,30 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	limit := perPage
 	offset := (pageNum - 1) * perPage
 
-	rows, err := state.Pool.Query(d.Context, "SELECT "+indexPackCols+" FROM packs ORDER BY created_at DESC LIMIT $1 OFFSET $2", limit, offset)
+	rows, err := state.Pool.Query(d.Context, "SELECT "+packCols+" FROM packs ORDER BY created_at DESC LIMIT $1 OFFSET $2", limit, offset)
 
 	if err != nil {
 		state.Logger.Error("Error while querying packs [db fetch]", zap.Error(err))
 		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
-	packs, err := pgx.CollectRows(rows, pgx.RowToStructByName[types.IndexBotPack])
+	packs, err := pgx.CollectRows(rows, pgx.RowToStructByName[types.BotPack])
 
 	if err != nil {
 		state.Logger.Error("Error while querying packs [collect]", zap.Error(err))
 		return uapi.DefaultResponse(http.StatusInternalServerError)
+	}
+
+	for i := range packs {
+		err = assets.ResolveBotPack(d.Context, &packs[i])
+
+		if err != nil {
+			state.Logger.Error("Error resolving bot pack", zap.Error(err), zap.String("url", packs[i].URL))
+			return uapi.HttpResponse{
+				Status: http.StatusInternalServerError,
+				Json:   types.ApiError{Message: "Error resolving bot pack: " + err.Error()},
+			}
+		}
 	}
 
 	var count uint64
@@ -82,7 +96,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
-	data := types.PagedResult[[]types.IndexBotPack]{
+	data := types.PagedResult[[]types.BotPack]{
 		Count:   count,
 		PerPage: perPage,
 		Results: packs,

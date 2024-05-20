@@ -7,6 +7,7 @@ import (
 
 	"popplio/assetmanager"
 	"popplio/db"
+	"popplio/routes/packs/assets"
 	"popplio/state"
 	"popplio/teams/resolvers"
 	"popplio/types"
@@ -27,8 +28,8 @@ var (
 	indexBotColsArr = db.GetCols(types.IndexBot{})
 	indexBotCols    = strings.Join(indexBotColsArr, ",")
 
-	indexPackColsArr = db.GetCols(types.IndexBotPack{})
-	indexPackCols    = strings.Join(indexPackColsArr, ",")
+	packColsArr = db.GetCols(types.BotPack{})
+	packCols    = strings.Join(packColsArr, ",")
 
 	teamColsArr = db.GetCols(types.Team{})
 	teamCols    = strings.Join(teamColsArr, ",")
@@ -174,18 +175,30 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	}
 
 	// Packs
-	packsRows, err := state.Pool.Query(d.Context, "SELECT "+indexPackCols+" FROM packs WHERE owner = $1 ORDER BY created_at DESC", user.ID)
+	packsRows, err := state.Pool.Query(d.Context, "SELECT "+packCols+" FROM packs WHERE owner = $1 ORDER BY created_at DESC", user.ID)
 
 	if err != nil {
 		state.Logger.Error("Error while getting user packs [db fetch]", zap.Error(err), zap.String("userID", user.ID))
 		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
-	user.UserPacks, err = pgx.CollectRows(packsRows, pgx.RowToStructByName[types.IndexBotPack])
+	user.UserPacks, err = pgx.CollectRows(packsRows, pgx.RowToStructByName[types.BotPack])
 
 	if err != nil {
 		state.Logger.Error("Error while getting user packs [collect]", zap.Error(err), zap.String("userID", user.ID))
 		return uapi.DefaultResponse(http.StatusInternalServerError)
+	}
+
+	for i := range user.UserPacks {
+		err = assets.ResolveBotPack(d.Context, &user.UserPacks[i])
+
+		if err != nil {
+			state.Logger.Error("Error while resolving user pack", zap.Error(err), zap.String("userID", user.ID), zap.String("url", user.UserPacks[i].URL))
+			return uapi.HttpResponse{
+				Status: http.StatusInternalServerError,
+				Json:   types.ApiError{Message: "Error resolving user pack: " + err.Error()},
+			}
+		}
 	}
 
 	// Fetch staff status
@@ -195,7 +208,10 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 
 	if !errors.Is(err, pgx.ErrNoRows) && err != nil {
 		state.Logger.Error("Error while getting staff status", zap.Error(err), zap.String("userID", user.ID))
-		return uapi.DefaultResponse(http.StatusInternalServerError)
+		return uapi.HttpResponse{
+			Status: http.StatusInternalServerError,
+			Json:   types.ApiError{Message: "Error getting staff status: " + err.Error()},
+		}
 	}
 
 	user.Staff = positions > 0
