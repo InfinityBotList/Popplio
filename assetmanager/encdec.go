@@ -30,7 +30,7 @@ func DecodeImage(payload *types.Asset) (fileExt string, img image.Image, err err
 		img, err = png.Decode(reader)
 
 		if err != nil {
-			return "png", nil, fmt.Errorf("error decoding PNG: %s", err.Error())
+			// return "png", nil, fmt.Errorf("error decoding PNG: %s", err.Error())
 		}
 
 		return "png", img, nil

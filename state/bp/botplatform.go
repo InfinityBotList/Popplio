@@ -8,6 +8,7 @@ import (
 	"popplio/assetmanager"
 	"popplio/state"
 	"popplio/types"
+	"strings"
 	"time"
 
 	"github.com/infinitybotlist/eureka/dovewing"
@@ -105,7 +106,7 @@ func DovewingMiddleware(p dovewing.Platform, pu *dovetypes.PlatformUser) (*dovet
 
 	avatar := assetmanager.AvatarInfo(typ, pu.ID)
 
-	if !avatar.Exists || time.Since(*avatar.LastModified) > time.Hour*8 {
+	if (!avatar.Exists || time.Since(*avatar.LastModified) > time.Hour*8) && !strings.HasPrefix(pu.Avatar, "https://cdn.discordapp.com/embed/avatars") && !strings.HasPrefix(pu.Avatar, state.Config.Sites.CDN) {
 		state.Logger.Info("Updating avatar cache", zap.String("id", pu.ID))
 
 		err := updateAvatarCache(state.Context, typ.String(), pu.ID, pu.Avatar)
