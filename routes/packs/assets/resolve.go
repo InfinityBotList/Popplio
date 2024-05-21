@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"popplio/db"
+	"popplio/routes/bots/assets"
 	"popplio/state"
 	"popplio/types"
 	"strings"
@@ -46,21 +47,12 @@ func ResolveBotPack(ctx context.Context, pack *types.BotPack) error {
 			return fmt.Errorf("error querying bots table: %w", err)
 		}
 
-		var code string
-
-		err = state.Pool.QueryRow(ctx, "SELECT code FROM vanity WHERE itag = $1", bot.VanityRef).Scan(&code)
-
-		if err != nil {
-			return fmt.Errorf("error querying vanity table: %w", err)
-		}
-
-		botUser, err := dovewing.GetUser(ctx, botId, state.DovewingPlatformDiscord)
+		// Resolve the bot
+		err = assets.ResolveIndexBot(ctx, &bot)
 
 		if err != nil {
-			return fmt.Errorf("error querying for bot user: %w", err)
+			return fmt.Errorf("error occurred while resolving index bot: " + err.Error() + " botID: " + bot.BotID)
 		}
-
-		bot.User = botUser
 
 		pack.ResolvedBots = append(pack.ResolvedBots, bot)
 	}

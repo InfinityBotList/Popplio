@@ -7,6 +7,7 @@ import (
 
 	"popplio/assetmanager"
 	"popplio/db"
+	botAssets "popplio/routes/bots/assets"
 	"popplio/routes/packs/assets"
 	"popplio/state"
 	"popplio/teams/resolvers"
@@ -100,27 +101,17 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
+	// Resolve the userbots
 	for i := range user.UserBots {
-		userObj, err := dovewing.GetUser(d.Context, user.UserBots[i].BotID, state.DovewingPlatformDiscord)
+		err := botAssets.ResolveIndexBot(d.Context, &user.UserBots[i])
 
 		if err != nil {
-			state.Logger.Error("Error while getting bot user [dovewing]", zap.Error(err), zap.String("botID", user.UserBots[i].BotID))
-			return uapi.DefaultResponse(http.StatusInternalServerError)
+			state.Logger.Error("Error resolving indexbot", zap.Error(err), zap.String("botID", user.UserBots[i].BotID))
+			return uapi.HttpResponse{
+				Status: http.StatusInternalServerError,
+				Json:   types.ApiError{Message: "An error occurred while resolving index bot: " + err.Error() + " botID: " + user.UserBots[i].BotID},
+			}
 		}
-
-		user.UserBots[i].User = userObj
-
-		var code string
-
-		err = state.Pool.QueryRow(d.Context, "SELECT code FROM vanity WHERE itag = $1", user.UserBots[i].VanityRef).Scan(&code)
-
-		if err != nil {
-			state.Logger.Error("Error while getting vanity code", zap.Error(err), zap.String("botID", user.UserBots[i].BotID))
-			return uapi.DefaultResponse(http.StatusInternalServerError)
-		}
-
-		user.UserBots[i].Vanity = code
-		user.UserBots[i].Banner = assetmanager.BannerInfo(assetmanager.AssetTargetTypeBots, user.UserBots[i].BotID)
 	}
 
 	// Get user teams

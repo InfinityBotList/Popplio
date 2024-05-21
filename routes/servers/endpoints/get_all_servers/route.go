@@ -5,8 +5,8 @@ import (
 	"strconv"
 	"strings"
 
-	"popplio/assetmanager"
 	"popplio/db"
+	"popplio/routes/servers/assets"
 	"popplio/state"
 	"popplio/types"
 
@@ -78,20 +78,17 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
-	// Set the user for each server
+	// Resolve all servers
 	for i := range servers {
-		var code string
-
-		err = state.Pool.QueryRow(d.Context, "SELECT code FROM vanity WHERE itag = $1", servers[i].VanityRef).Scan(&code)
+		err := assets.ResolveIndexServer(d.Context, &servers[i])
 
 		if err != nil {
-			state.Logger.Error("Failed to query vanity [db queryrow]", zap.Error(err), zap.String("server_id", servers[i].ServerID))
-			return uapi.DefaultResponse(http.StatusInternalServerError)
+			state.Logger.Error("Error resolving indexserver", zap.Error(err), zap.String("serverID", servers[i].ServerID))
+			return uapi.HttpResponse{
+				Status: http.StatusInternalServerError,
+				Json:   types.ApiError{Message: "An error occurred while resolving index server: " + err.Error() + " serverID: " + servers[i].ServerID},
+			}
 		}
-
-		servers[i].Vanity = code
-		servers[i].Avatar = assetmanager.AvatarInfo(assetmanager.AssetTargetTypeServers, servers[i].ServerID)
-		servers[i].Banner = assetmanager.BannerInfo(assetmanager.AssetTargetTypeServers, servers[i].ServerID)
 	}
 
 	var count uint64

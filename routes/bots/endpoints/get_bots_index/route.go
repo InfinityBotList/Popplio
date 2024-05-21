@@ -2,18 +2,16 @@ package get_bots_index
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 	"strings"
 
-	"popplio/assetmanager"
 	"popplio/db"
+	botAssets "popplio/routes/bots/assets"
 	"popplio/routes/packs/assets"
 	"popplio/state"
 	"popplio/types"
 
 	docs "github.com/infinitybotlist/eureka/doclib"
-	"github.com/infinitybotlist/eureka/dovewing"
 	"github.com/infinitybotlist/eureka/uapi"
 	"github.com/jackc/pgx/v5"
 	"go.uber.org/zap"
@@ -137,25 +135,13 @@ func processRow(ctx context.Context, rows pgx.Rows) ([]types.IndexBot, error) {
 		return nil, err
 	}
 
+	// Set the user for each bot
 	for i := range bots {
-		botUser, err := dovewing.GetUser(ctx, bots[i].BotID, state.DovewingPlatformDiscord)
+		err := botAssets.ResolveIndexBot(ctx, &bots[i])
 
 		if err != nil {
 			return nil, err
 		}
-
-		bots[i].User = botUser
-
-		var code string
-
-		err = state.Pool.QueryRow(ctx, "SELECT code FROM vanity WHERE itag = $1", bots[i].VanityRef).Scan(&code)
-
-		if err != nil {
-			return nil, fmt.Errorf("error while getting vanity: %w", err)
-		}
-
-		bots[i].Vanity = code
-		bots[i].Banner = assetmanager.BannerInfo(assetmanager.AssetTargetTypeBots, bots[i].BotID)
 	}
 
 	return bots, nil

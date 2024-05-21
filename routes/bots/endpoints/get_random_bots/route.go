@@ -2,14 +2,13 @@ package get_random_bots
 
 import (
 	"net/http"
-	"popplio/assetmanager"
 	"popplio/db"
+	"popplio/routes/bots/assets"
 	"popplio/state"
 	"popplio/types"
 	"strings"
 
 	docs "github.com/infinitybotlist/eureka/doclib"
-	"github.com/infinitybotlist/eureka/dovewing"
 	"github.com/infinitybotlist/eureka/uapi"
 	"github.com/jackc/pgx/v5"
 	"go.uber.org/zap"
@@ -45,27 +44,17 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
+	// Set the user for each bot
 	for i := range bots {
-		botUser, err := dovewing.GetUser(d.Context, bots[i].BotID, state.DovewingPlatformDiscord)
+		err := assets.ResolveIndexBot(d.Context, &bots[i])
 
 		if err != nil {
-			state.Logger.Error("Error while getting random bots [dovewing]", zap.Error(err), zap.String("bot_id", bots[i].BotID))
-			return uapi.DefaultResponse(http.StatusInternalServerError)
+			state.Logger.Error("Error resolving indexbot", zap.Error(err), zap.String("botID", bots[i].BotID))
+			return uapi.HttpResponse{
+				Status: http.StatusInternalServerError,
+				Json:   types.ApiError{Message: "An error occurred while resolving index bot: " + err.Error() + " botID: " + bots[i].BotID},
+			}
 		}
-
-		bots[i].User = botUser
-
-		var code string
-
-		err = state.Pool.QueryRow(d.Context, "SELECT code FROM vanity WHERE itag = $1", bots[i].VanityRef).Scan(&code)
-
-		if err != nil {
-			state.Logger.Error("Error while getting random bots [vanity]", zap.Error(err), zap.String("bot_id", bots[i].BotID))
-			return uapi.DefaultResponse(http.StatusInternalServerError)
-		}
-
-		bots[i].Vanity = code
-		bots[i].Banner = assetmanager.BannerInfo(assetmanager.AssetTargetTypeBots, bots[i].BotID)
 	}
 
 	return uapi.HttpResponse{

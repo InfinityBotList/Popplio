@@ -2,12 +2,11 @@ package get_servers_index
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 	"strings"
 
-	"popplio/assetmanager"
 	"popplio/db"
+	"popplio/routes/servers/assets"
 	"popplio/state"
 	"popplio/types"
 
@@ -106,17 +105,11 @@ func processRow(ctx context.Context, rows pgx.Rows) ([]types.IndexServer, error)
 	}
 
 	for i := range servers {
-		var code string
-
-		err = state.Pool.QueryRow(ctx, "SELECT code FROM vanity WHERE itag = $1", servers[i].VanityRef).Scan(&code)
+		err := assets.ResolveIndexServer(ctx, &servers[i])
 
 		if err != nil {
-			return nil, fmt.Errorf("error while getting vanity: %w", err)
+			return nil, err
 		}
-
-		servers[i].Vanity = code
-		servers[i].Avatar = assetmanager.AvatarInfo(assetmanager.AssetTargetTypeServers, servers[i].ServerID)
-		servers[i].Banner = assetmanager.BannerInfo(assetmanager.AssetTargetTypeServers, servers[i].ServerID)
 	}
 
 	return servers, nil

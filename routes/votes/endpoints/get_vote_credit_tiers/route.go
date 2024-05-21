@@ -23,23 +23,8 @@ func Docs() *docs.Doc {
 	return &docs.Doc{
 		Summary:     "Get General Vote Credit Tiers",
 		Description: "Returns a list of all currently available vote credit tiers sorted in ascending order",
-		Params: []docs.Parameter{
-			{
-				Name:        "target_type",
-				Description: "The target type of the entity",
-				Required:    true,
-				In:          "path",
-				Schema:      docs.IdSchema,
-			},
-			{
-				Name:        "target_id",
-				Description: "The target ID",
-				Required:    true,
-				In:          "path",
-				Schema:      docs.IdSchema,
-			},
-		},
-		Resp: []types.VoteCreditTier{},
+		Params:      []docs.Parameter{},
+		Resp:        []types.VoteCreditTier{},
 	}
 }
 

@@ -2,8 +2,10 @@ package resolvers
 
 import (
 	"context"
-	"popplio/assetmanager"
+	"fmt"
 	"popplio/db"
+	botAssets "popplio/routes/bots/assets"
+	serverAssets "popplio/routes/servers/assets"
 	"popplio/state"
 	"popplio/types"
 	"strings"
@@ -64,22 +66,12 @@ func GetTeamEntities(ctx context.Context, teamId string, targets []string) (*typ
 			}
 
 			for i := range eto.Bots {
-				eto.Bots[i].User, err = dovewing.GetUser(ctx, eto.Bots[i].BotID, state.DovewingPlatformDiscord)
+				// Set the user for each bot
+				err = botAssets.ResolveIndexBot(ctx, &eto.Bots[i])
 
 				if err != nil {
-					return nil, err
+					return nil, fmt.Errorf("error occurred while resolving index bot: " + err.Error() + " botID: " + eto.Bots[i].BotID)
 				}
-
-				var code string
-
-				err = state.Pool.QueryRow(ctx, "SELECT code FROM vanity WHERE itag = $1", eto.Bots[i].VanityRef).Scan(&code)
-
-				if err != nil {
-					return nil, err
-				}
-
-				eto.Bots[i].Vanity = code
-				eto.Bots[i].Banner = assetmanager.BannerInfo(assetmanager.AssetTargetTypeBots, eto.Bots[i].BotID)
 			}
 		case "server":
 			indexServerRows, err := state.Pool.Query(ctx, "SELECT "+indexServerCols+" FROM servers WHERE team_owner = $1", teamId)
@@ -95,17 +87,11 @@ func GetTeamEntities(ctx context.Context, teamId string, targets []string) (*typ
 			}
 
 			for i := range eto.Servers {
-				var code string
-
-				err = state.Pool.QueryRow(ctx, "SELECT code FROM vanity WHERE itag = $1", eto.Servers[i].VanityRef).Scan(&code)
+				err := serverAssets.ResolveIndexServer(ctx, &eto.Servers[i])
 
 				if err != nil {
-					return nil, err
+					return nil, fmt.Errorf("error occurred while resolving index server: " + err.Error() + " serverID: " + eto.Servers[i].ServerID)
 				}
-
-				eto.Servers[i].Vanity = code
-				eto.Servers[i].Avatar = assetmanager.AvatarInfo(assetmanager.AssetTargetTypeServers, eto.Servers[i].ServerID)
-				eto.Servers[i].Banner = assetmanager.BannerInfo(assetmanager.AssetTargetTypeServers, eto.Servers[i].ServerID)
 			}
 		default:
 			isInvalid = true
