@@ -59,7 +59,7 @@ import (
 
 var json = jsoniter.ConfigCompatibleWithStandardLibrary
 
-//go:embed docs/docs.html
+//go:embed data/docs.html
 var docsHTML string
 
 var openapi []byte

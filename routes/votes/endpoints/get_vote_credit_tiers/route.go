@@ -1,6 +1,7 @@
 package get_vote_credit_tiers
 
 import (
+	"errors"
 	"net/http"
 	"strings"
 
@@ -10,6 +11,7 @@ import (
 
 	docs "github.com/infinitybotlist/eureka/doclib"
 	"github.com/infinitybotlist/eureka/uapi"
+	"github.com/jackc/pgx/v5"
 )
 
 var (
@@ -37,7 +39,7 @@ func Docs() *docs.Doc {
 				Schema:      docs.IdSchema,
 			},
 		},
-		Resp: types.VoteCreditTier{},
+		Resp: []types.VoteCreditTier{},
 	}
 }
 
@@ -51,7 +53,24 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		}
 	}
 
-	rows, err := state.Pool.Exec(d.Context, "SELECT "+voteCreditTiersCols+" FROM vote_credit_tiers WHERE target_type = $1 ORDER BY position ASC", targetType)
+	rows, err := state.Pool.Query(d.Context, "SELECT "+voteCreditTiersCols+" FROM vote_credit_tiers WHERE target_type = $1 ORDER BY position ASC", targetType)
 
-	return uapi.HttpResponse{}
+	if err != nil {
+		return uapi.HttpResponse{
+			Status: http.StatusInternalServerError,
+			Json:   types.ApiError{Message: "An error occurred while fetching vote credit tiers: " + err.Error()},
+		}
+	}
+
+	vcts, err := pgx.CollectRows(rows, pgx.RowToAddrOfStructByName[types.VoteCreditTier])
+
+	if errors.Is(err, pgx.ErrNoRows) {
+		return uapi.HttpResponse{
+			Json: []types.VoteCreditTier{},
+		}
+	}
+
+	return uapi.HttpResponse{
+		Json: vcts,
+	}
 }

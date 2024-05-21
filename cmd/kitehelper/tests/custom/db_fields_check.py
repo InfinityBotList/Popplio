@@ -1,7 +1,7 @@
 import pydantic
-import requests
 import typing
 import pathlib
+import json
 from __libast import Struct, parse_file_structs, debug
 
 # Schema
@@ -25,15 +25,12 @@ class SchemaList(pydantic.BaseModel):
 
         return None
 
-print("Fetching CI seed...")
+print("Loading CI seed...")
 
-ci_seed = requests.get("https://cdn.infinitybots.gg/dev/seed-ci.json")
+with open(f"data/seed-ci.json", "r") as f:
+    ci_seed = json.load(f)
 
-if ci_seed.status_code != 200:
-    print("Failed to fetch CI seed")
-    exit(1)
-
-ci_data = SchemaList(schemas=ci_seed.json())
+ci_data = SchemaList(schemas=ci_seed)
 
 # Loop over all files in thw types folder recursively
 structs: dict[str, Struct] = {}

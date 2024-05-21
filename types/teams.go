@@ -26,8 +26,8 @@ type PermissionData struct {
 type Team struct {
 	ID         string         `db:"id" json:"id" description:"The ID of the team"`
 	Name       string         `db:"name" json:"name" description:"The name of the team"`
-	Avatar     *AssetMetadata `db:"-" json:"avatar" description:"The avatar of the team" ci:"internal"`      // Manually parsed using AssetManager
-	Banner     *AssetMetadata `db:"-" json:"banner" description:"Banner information/metadata" ci:"internal"` // Manually parsed using AssetManager
+	Avatar     *AssetMetadata `db:"-" json:"avatar" description:"The avatar of the team" ci:"internal"`      // This is an asset that must be validated/loaded from CDN
+	Banner     *AssetMetadata `db:"-" json:"banner" description:"Banner information/metadata" ci:"internal"` // This is an asset that must be validated/loaded from CDN
 	Short      pgtype.Text    `db:"short" json:"short" description:"The teams's short description if it has one, otherwise null"`
 	Tags       []string       `db:"tags" json:"tags" description:"The teams's tags if it has any, otherwise null"`
 	VoteBanned bool           `db:"vote_banned" json:"vote_banned" description:"Whether the team is banned from voting"`

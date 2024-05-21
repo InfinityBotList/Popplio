@@ -5,6 +5,7 @@ import (
 	"popplio/routes/votes/endpoints/get_all_votes"
 	"popplio/routes/votes/endpoints/get_hcaptcha_info"
 	"popplio/routes/votes/endpoints/get_user_entity_votes"
+	"popplio/routes/votes/endpoints/get_vote_credit_tiers"
 	"popplio/routes/votes/endpoints/put_user_entity_votes"
 
 	"github.com/go-chi/chi/v5"
@@ -26,6 +27,22 @@ func (b Router) Routes(r *chi.Mux) {
 		Method:  uapi.GET,
 		Docs:    get_hcaptcha_info.Docs,
 		Handler: get_hcaptcha_info.Route,
+	}.Route(r)
+
+	uapi.Route{
+		Pattern: "/votes/credit-tiers",
+		OpId:    "get_vote_credit_tiers",
+		Method:  uapi.GET,
+		Docs:    get_vote_credit_tiers.Docs,
+		Handler: get_vote_credit_tiers.Route,
+	}.Route(r)
+
+	uapi.Route{
+		Pattern: "/users/{uid}/{target_type}/{target_id}/votes/@all",
+		OpId:    "get_all_votes",
+		Method:  uapi.GET,
+		Docs:    get_all_votes.Docs,
+		Handler: get_all_votes.Route,
 	}.Route(r)
 
 	uapi.Route{
