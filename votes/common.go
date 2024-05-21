@@ -138,7 +138,7 @@ type GVCConn interface {
 	QueryRow(ctx context.Context, sql string, args ...any) pgx.Row
 }
 
-// Get the vote count for an entity
+// Returns the exact (non-cached/approximate) vote count for an entity
 func EntityGetVoteCount(ctx context.Context, c GVCConn, targetId, targetType string) (int, error) {
 	var upvotes int
 	var downvotes int
@@ -165,7 +165,7 @@ func EntityGetVoteCount(ctx context.Context, c GVCConn, targetId, targetType str
 // as a map of string to int
 //
 // Note that this function assumes that the vote credits tiers are sorted by position in ascending order
-func SlabSplitVotes(votes int, tiers []*types.VoteCreditTier) map[string]int {
+func SlabSplitVotes(votes int, tiers []*types.VoteCreditTier) []int {
 	/*
 		<div class="system">
 				<p>
@@ -188,22 +188,28 @@ func SlabSplitVotes(votes int, tiers []*types.VoteCreditTier) map[string]int {
 			</div>
 	*/
 
-	voteCredits := make(map[string]int)
+	voteCredits := make([]int, len(tiers))
 
 	var remainingVotes = votes
 
-	for _, tier := range tiers {
+	for i := range tiers {
 		if remainingVotes <= 0 {
 			break
 		}
 
-		if remainingVotes >= tier.Votes {
-			voteCredits[tier.ID] = tier.Votes
-			remainingVotes -= tier.Votes
+		if remainingVotes >= tiers[i].Votes {
+			voteCredits[i] = tiers[i].Votes
+			remainingVotes -= tiers[i].Votes
 		} else {
-			voteCredits[tier.ID] = remainingVotes
+			voteCredits[i] = remainingVotes
+			remainingVotes = 0
 			break
 		}
+	}
+
+	// If there are remaining votes, then add them to the last tier
+	if remainingVotes > 0 {
+		voteCredits[len(tiers)-1] += remainingVotes
 	}
 
 	return voteCredits

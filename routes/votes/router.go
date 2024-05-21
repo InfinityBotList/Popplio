@@ -3,6 +3,7 @@ package votes
 import (
 	"popplio/api"
 	"popplio/routes/votes/endpoints/get_all_votes"
+	"popplio/routes/votes/endpoints/get_general_vote_credit_tiers"
 	"popplio/routes/votes/endpoints/get_hcaptcha_info"
 	"popplio/routes/votes/endpoints/get_user_entity_votes"
 	"popplio/routes/votes/endpoints/get_vote_credit_tiers"
@@ -31,6 +32,14 @@ func (b Router) Routes(r *chi.Mux) {
 
 	uapi.Route{
 		Pattern: "/votes/credit-tiers",
+		OpId:    "get_general_vote_credit_tiers",
+		Method:  uapi.GET,
+		Docs:    get_general_vote_credit_tiers.Docs,
+		Handler: get_general_vote_credit_tiers.Route,
+	}.Route(r)
+
+	uapi.Route{
+		Pattern: "/{target_type}/{target_id}/votes/credit-tiers",
 		OpId:    "get_vote_credit_tiers",
 		Method:  uapi.GET,
 		Docs:    get_vote_credit_tiers.Docs,

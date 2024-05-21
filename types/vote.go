@@ -63,3 +63,10 @@ type VoteCreditTier struct {
 	Cents      int       `db:"cents" json:"cents" description:"The amount of cents the user gets off in this tier"`
 	CreatedAt  time.Time `db:"created_at" json:"created_at"`
 }
+
+// Represents a summary of what would happen on redeeming vote credit tiers
+type VoteCreditTierRedeemSummary struct {
+	Tiers        []*VoteCreditTier `json:"tiers" description:"The vote credit tiers"`
+	VoteCount    int               `json:"vote_count" description:"The amount of votes the entity has"`
+	SlabOverview []int             `json:"slab_overview" description:"Slab-based overview with each index, i, representing the amount of votes in Tiers[i]"`
+}

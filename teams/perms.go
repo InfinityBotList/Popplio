@@ -75,6 +75,9 @@ const (
 	// Ability to delete owner reviews for the entity
 	PermissionDeleteOwnerReview Permission = "delete_owner_review"
 
+	// Ability to redeem vote credits for the entity
+	PermissionRedeemVoteCredits Permission = "redeem_vote_credits"
+
 	// Ability to delete the entity
 	PermissionDelete Permission = "delete"
 
@@ -210,6 +213,16 @@ var PermDetails = []types.PermissionData{
 			"bot",
 			"server",
 			"team",
+			"global",
+		},
+	},
+	{
+		ID:   PermissionRedeemVoteCredits,
+		Name: "Redeem Vote Credits ({entity})",
+		Desc: "Redeem vote credits for the entity",
+		SupportedEntities: []string{
+			"bot",
+			"server",
 			"global",
 		},
 	},
