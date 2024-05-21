@@ -4,18 +4,23 @@ import (
 	"net/http"
 	"strings"
 
+	"popplio/db"
+	"popplio/state"
 	"popplio/types"
 
 	docs "github.com/infinitybotlist/eureka/doclib"
 	"github.com/infinitybotlist/eureka/uapi"
+)
 
-	"github.com/go-chi/chi/v5"
+var (
+	voteCreditTiersColsArr = db.GetCols(types.VoteCreditTier{})
+	voteCreditTiersCols    = strings.Join(voteCreditTiersColsArr, ",")
 )
 
 func Docs() *docs.Doc {
 	return &docs.Doc{
-		Summary:     "Get Vote Credit Tiers",
-		Description: "Returns a list of all currently available vote credit tiers for an entity",
+		Summary:     "Get General Vote Credit Tiers",
+		Description: "Returns a list of all currently available vote credit tiers sorted in ascending order",
 		Params: []docs.Parameter{
 			{
 				Name:        "target_type",
@@ -37,17 +42,16 @@ func Docs() *docs.Doc {
 }
 
 func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
-	targetId := chi.URLParam(r, "target_id")
-	targetType := chi.URLParam(r, "target_type")
+	targetType := r.URL.Query().Get("target_type")
 
-	if targetId == "" || targetType == "" {
+	if targetType == "" {
 		return uapi.HttpResponse{
 			Status: http.StatusBadRequest,
-			Json:   types.ApiError{Message: "Both target_id and target_type must be specified"},
+			Json:   types.ApiError{Message: "Target Type is required to use this endpoint"},
 		}
 	}
 
-	targetType = strings.TrimSuffix(targetType, "s")
+	rows, err := state.Pool.Exec(d.Context, "SELECT "+voteCreditTiersCols+" FROM vote_credit_tiers WHERE target_type = $1 ORDER BY position ASC", targetType)
 
 	return uapi.HttpResponse{}
 }

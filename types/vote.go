@@ -56,9 +56,10 @@ type HCaptchaInfo struct {
 //
 // VoteCreditTier represents a vote credit tier.
 type VoteCreditTier struct {
-	ID        string    `db:"id" json:"id" description:"The ID of the vote credit tier"`
-	Position  int       `db:"position" json:"position" description:"The position of the vote credit tier"`
-	Votes     int       `db:"votes" json:"votes" description:"The amount of votes the user needs to get this tier"`
-	Cents     int       `db:"cents" json:"cents" description:"The amount of cents the user gets off in this tier"`
-	CreatedAt time.Time `db:"created_at" json:"created_at"`
+	ID         string    `db:"id" json:"id" description:"The ID of the vote credit tier"`
+	TargetType string    `db:"target_type" json:"target_type" description:"The target type of the entity"`
+	Position   int       `db:"position" json:"position" description:"The position of the vote credit tier"`
+	Votes      int       `db:"votes" json:"votes" description:"The amount of votes the user needs to get this tier"`
+	Cents      int       `db:"cents" json:"cents" description:"The amount of cents the user gets off in this tier"`
+	CreatedAt  time.Time `db:"created_at" json:"created_at"`
 }
