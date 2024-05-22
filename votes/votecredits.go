@@ -15,6 +15,9 @@ import (
 var (
 	voteCreditTiersColsArr = db.GetCols(types.VoteCreditTier{})
 	voteCreditTiersCols    = strings.Join(voteCreditTiersColsArr, ",")
+
+	entityVoteRedeemLogsColsArr = db.GetCols(types.EntityVoteRedeemLog{})
+	entityVoteRedeemLogsCols    = strings.Join(entityVoteRedeemLogsColsArr, ",")
 )
 
 // Returns a summary of the vote credit tiers of an entity
@@ -84,6 +87,41 @@ func EntityRedeemVoteCredits(
 	}
 
 	return nil
+}
+
+// Returns a summary of the entity vote redeem logs
+func EntityGetVoteRedeemLogsSummary(
+	ctx context.Context,
+	c DbConn,
+	targetId string,
+	targetType string,
+) (*types.EntityVoteRedeemLogSummary, error) {
+	rows, err := c.Query(ctx, "SELECT "+entityVoteRedeemLogsCols+" FROM entity_vote_redeem_logs WHERE target_id = $1 AND target_type = $2 ORDER BY created_at DESC", targetId, targetType)
+
+	if err != nil {
+		return nil, fmt.Errorf("could not fetch vote redeem logs [db fetch]: %w", err)
+	}
+
+	evrls, err := pgx.CollectRows(rows, pgx.RowToAddrOfStructByName[types.EntityVoteRedeemLog])
+
+	if errors.Is(err, pgx.ErrNoRows) {
+		evrls = []*types.EntityVoteRedeemLog{}
+	}
+
+	var totalCredits int
+	var redeemedCredits int
+
+	for i := range evrls {
+		totalCredits += evrls[i].Credits
+		redeemedCredits += evrls[i].RedeemedCredits
+	}
+
+	return &types.EntityVoteRedeemLogSummary{
+		Redeems:          evrls,
+		TotalCredits:     totalCredits,
+		RedeemedCredits:  redeemedCredits,
+		AvailableCredits: max(totalCredits-redeemedCredits, 0),
+	}, nil
 }
 
 // Given a number of votes and the vote credit tiers, return the structure of how vote credits should be awarded

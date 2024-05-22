@@ -7,6 +7,7 @@ import (
 	"popplio/routes/votes/endpoints/get_hcaptcha_info"
 	"popplio/routes/votes/endpoints/get_user_entity_votes"
 	"popplio/routes/votes/endpoints/get_vote_credit_tiers"
+	"popplio/routes/votes/endpoints/get_vote_redeem_logs"
 	"popplio/routes/votes/endpoints/put_user_entity_votes"
 	"popplio/routes/votes/endpoints/redeem_vote_credits"
 
@@ -45,6 +46,14 @@ func (b Router) Routes(r *chi.Mux) {
 		Method:  uapi.GET,
 		Docs:    get_vote_credit_tiers.Docs,
 		Handler: get_vote_credit_tiers.Route,
+	}.Route(r)
+
+	uapi.Route{
+		Pattern: "/{target_type}/{target_id}/votes/credits",
+		OpId:    "get_vote_redeem_logs",
+		Method:  uapi.GET,
+		Docs:    get_vote_redeem_logs.Docs,
+		Handler: get_vote_redeem_logs.Route,
 	}.Route(r)
 
 	uapi.Route{

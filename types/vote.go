@@ -73,3 +73,22 @@ type VoteCreditTierRedeemSummary struct {
 	SlabOverview []int             `json:"slab_overview" description:"Slab-based overview with each index, i, representing the amount of votes in Tiers[i]"`
 	TotalCredits int               `json:"total_credits" description:"The total amount of credits the user would get, in cents"`
 }
+
+// Represents a vote credit redeem log
+type EntityVoteRedeemLog struct {
+	ID              pgtype.UUID `db:"id" json:"id" description:"The ID of the vote credit redeem log"`
+	TargetID        string      `db:"target_id" json:"target_id" description:"The ID of the entity that was voted on"`
+	TargetType      string      `db:"target_type" json:"target_type" description:"The type of the entity that was voted on"`
+	Credits         int         `db:"credits" json:"credits" description:"The amount of credits redeemed"`
+	RedeemedCredits int         `db:"redeemed_credits" json:"redeemed_credits" description:"The amount of credits redeemed"`
+	CreatedAt       time.Time   `db:"created_at" json:"created_at"`
+	RedeemedAt      *time.Time  `db:"redeemed_at" json:"redeemed_at" description:"The last time the credits were redeemed for a transaction, if applicable"`
+}
+
+// Summary of the entity vote redeem log
+type EntityVoteRedeemLogSummary struct {
+	Redeems          []*EntityVoteRedeemLog `json:"redeems" description:"The vote credit redeem logs"`
+	TotalCredits     int                    `json:"total_credits" description:"The total amount of credits available"`
+	AvailableCredits int                    `json:"available_credits" description:"The total amount of credits that can be redeemed"`
+	RedeemedCredits  int                    `json:"redeemed_credits" description:"The total amount of credits that have been redeemed"`
+}

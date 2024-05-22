@@ -2,7 +2,7 @@
 CDN_PATH=/silverpelt/cdn/ibl/dev
 GIT_PATH=~/Popplio/staging/data
 
-ibl db new seed ${GIT_PATH}/seed.iblseed --db infinity --backup-tables automated_vote_resets,bot_whitelist,changelogs,partner_types,staff_template_types,staff_templates --extensions uuid-ossp\|citext\|semver,https://github.com/theory/pg-semver
+ibl db new seed ${GIT_PATH}/seed.iblseed --db infinity --backup-tables automated_vote_resets,bot_whitelist,changelogs,partner_types,staff_template_types,staff_templates,shop_items,shop_item_benefits,staff_positions --extensions uuid-ossp\|citext\|semver,https://github.com/theory/pg-semver
 cp ${GIT_PATH}/seed.iblseed ${CDN_PATH}/seed.iblseed
 
 ibl db gen-ci-schema ${GIT_PATH}/seed-ci.json
