@@ -6,6 +6,7 @@ import (
 	"popplio/assetmanager"
 	"popplio/state"
 	"popplio/types"
+	"popplio/votes"
 
 	"github.com/infinitybotlist/eureka/dovewing"
 )
@@ -30,5 +31,12 @@ func ResolveIndexBot(ctx context.Context, bot *types.IndexBot) error {
 
 	bot.Vanity = code
 	bot.Banner = assetmanager.BannerInfo(assetmanager.AssetTargetTypeBots, bot.BotID)
+
+	bot.Votes, err = votes.EntityGetVoteCount(ctx, state.Pool, bot.BotID, "bot")
+
+	if err != nil {
+		return fmt.Errorf("error getting vote count: %w", err)
+	}
+
 	return nil
 }

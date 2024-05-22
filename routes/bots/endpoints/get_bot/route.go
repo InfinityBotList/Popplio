@@ -12,6 +12,7 @@ import (
 	"popplio/state"
 	"popplio/types"
 	"popplio/validators"
+	"popplio/votes"
 
 	docs "github.com/infinitybotlist/eureka/doclib"
 	"github.com/infinitybotlist/eureka/dovewing"
@@ -146,18 +147,34 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 
 	if err != nil {
 		state.Logger.Error("Error while getting bot [db fetch]", zap.Error(err), zap.String("id", id), zap.String("target", target))
-		return uapi.DefaultResponse(http.StatusInternalServerError)
+		return uapi.HttpResponse{
+			Status: http.StatusInternalServerError,
+			Json: types.ApiError{
+				Message: "Error while getting bot [db fetch]: " + err.Error(),
+			},
+		}
 	}
 
 	bot, err := pgx.CollectOneRow(row, pgx.RowToStructByName[types.Bot])
 
 	if errors.Is(err, pgx.ErrNoRows) {
-		return uapi.DefaultResponse(http.StatusNotFound)
+		return uapi.HttpResponse{
+			Status: http.StatusNotFound,
+			Json: types.ApiError{
+				Message: "No bots could be found matching your query",
+			},
+		}
+
 	}
 
 	if err != nil {
 		state.Logger.Error("Error while getting bot [db collect]", zap.Error(err), zap.String("id", id), zap.String("target", target))
-		return uapi.DefaultResponse(http.StatusInternalServerError)
+		return uapi.HttpResponse{
+			Status: http.StatusInternalServerError,
+			Json: types.ApiError{
+				Message: "Error while getting bot [db collect]: " + err.Error(),
+			},
+		}
 	}
 
 	if bot.Owner.Valid {
@@ -165,7 +182,12 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 
 		if err != nil {
 			state.Logger.Error("Error while getting bot owner [dovewing fetch]", zap.Error(err), zap.String("id", id), zap.String("target", target), zap.String("owner", bot.Owner.String))
-			return uapi.DefaultResponse(http.StatusInternalServerError)
+			return uapi.HttpResponse{
+				Status: http.StatusInternalServerError,
+				Json: types.ApiError{
+					Message: "Error while getting bot [dovewing fetch]: " + err.Error(),
+				},
+			}
 		}
 
 		bot.MainOwner = ownerUser
@@ -174,14 +196,24 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 
 		if err != nil {
 			state.Logger.Error("Error while getting bot team owner [db fetch]", zap.Error(err), zap.String("id", id), zap.String("target", target), zap.String("teamOwner", validators.EncodeUUID(bot.TeamOwnerID.Bytes)))
-			return uapi.DefaultResponse(http.StatusInternalServerError)
+			return uapi.HttpResponse{
+				Status: http.StatusInternalServerError,
+				Json: types.ApiError{
+					Message: "Error while getting bot team owner [db fetch]: " + err.Error(),
+				},
+			}
 		}
 
 		eto, err := pgx.CollectOneRow(row, pgx.RowToStructByName[types.Team])
 
 		if err != nil {
-			state.Logger.Error("Error while getting bot team owner [collect]", zap.Error(err), zap.String("id", id), zap.String("target", target), zap.String("teamOwner", validators.EncodeUUID(bot.TeamOwnerID.Bytes)))
-			return uapi.DefaultResponse(http.StatusInternalServerError)
+			state.Logger.Error("Error while getting bot team owner [db collect]", zap.Error(err), zap.String("id", id), zap.String("target", target), zap.String("teamOwner", validators.EncodeUUID(bot.TeamOwnerID.Bytes)))
+			return uapi.HttpResponse{
+				Status: http.StatusInternalServerError,
+				Json: types.ApiError{
+					Message: "Error while getting bot team owner [db collect]: " + err.Error(),
+				},
+			}
 		}
 
 		eto.Entities = &types.TeamEntities{
@@ -198,7 +230,12 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 
 	if err != nil {
 		state.Logger.Error("Error while getting bot user [dovewing fetch]", zap.Error(err), zap.String("id", id), zap.String("target", target), zap.String("botID", bot.BotID))
-		return uapi.DefaultResponse(http.StatusInternalServerError)
+		return uapi.HttpResponse{
+			Status: http.StatusInternalServerError,
+			Json: types.ApiError{
+				Message: "Error while getting bot user [dovewing fetch]: " + err.Error(),
+			},
+		}
 	}
 
 	bot.User = botUser
@@ -208,7 +245,12 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 
 	if err != nil {
 		state.Logger.Error("Error while getting bot unique clicks [db fetch]", zap.Error(err), zap.String("id", id), zap.String("target", target), zap.String("botID", bot.BotID))
-		return uapi.DefaultResponse(http.StatusInternalServerError)
+		return uapi.HttpResponse{
+			Status: http.StatusInternalServerError,
+			Json: types.ApiError{
+				Message: "Error while getting bot unique clicks [db fetch]: " + err.Error(),
+			},
+		}
 	}
 
 	bot.UniqueClicks = uniqueClicks
@@ -219,11 +261,27 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 
 	if err != nil {
 		state.Logger.Error("Error while getting bot vanity code [db fetch]", zap.Error(err), zap.String("id", id), zap.String("target", target), zap.String("botID", bot.BotID))
-		return uapi.DefaultResponse(http.StatusInternalServerError)
+		return uapi.HttpResponse{
+			Status: http.StatusInternalServerError,
+			Json: types.ApiError{
+				Message: "Error while getting bot vanity code [db fetch]: " + err.Error(),
+			},
+		}
 	}
 
 	bot.Vanity = code
 	bot.Banner = assetmanager.BannerInfo(assetmanager.AssetTargetTypeBots, bot.BotID)
+
+	bot.Votes, err = votes.EntityGetVoteCount(d.Context, state.Pool, bot.BotID, "bot")
+
+	if err != nil {
+		return uapi.HttpResponse{
+			Status: http.StatusInternalServerError,
+			Json: types.ApiError{
+				Message: "Error while getting bot vote count [db fetch]: " + err.Error(),
+			},
+		}
+	}
 
 	go func() {
 		err = handleAnalytics(r, id, target)
@@ -246,7 +304,12 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 
 				if err != nil {
 					state.Logger.Error("Error while getting bot long description [db fetch]", zap.Error(err), zap.String("id", id), zap.String("target", target), zap.String("botID", bot.BotID))
-					return uapi.DefaultResponse(http.StatusInternalServerError)
+					return uapi.HttpResponse{
+						Status: http.StatusInternalServerError,
+						Json: types.ApiError{
+							Message: "Error while getting bot long description [db fetch]: " + err.Error(),
+						},
+					}
 				}
 
 				bot.Long = long
@@ -263,22 +326,37 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 				}
 
 				if err != nil {
-					state.Logger.Error("Error while getting bot cache server base info [db fetch]", zap.Error(err), zap.String("id", id), zap.String("target", target), zap.String("botID", bot.BotID))
-					return uapi.DefaultResponse(http.StatusInternalServerError)
+					state.Logger.Error("Error while getting bot cache server guild id info [db fetch]", zap.Error(err), zap.String("id", id), zap.String("target", target), zap.String("botID", bot.BotID))
+					return uapi.HttpResponse{
+						Status: http.StatusInternalServerError,
+						Json: types.ApiError{
+							Message: "Error while getting bot cache server guild id info [db fetch]: " + err.Error(),
+						},
+					}
 				}
 
 				row, err := state.Pool.Query(d.Context, "SELECT "+cacheServerCols+" FROM cache_servers WHERE guild_id = $1", guildId)
 
 				if err != nil {
 					state.Logger.Error("Error while getting bot cache server base info [db fetch]", zap.Error(err), zap.String("id", id), zap.String("target", target), zap.String("botID", bot.BotID))
-					return uapi.DefaultResponse(http.StatusInternalServerError)
+					return uapi.HttpResponse{
+						Status: http.StatusInternalServerError,
+						Json: types.ApiError{
+							Message: "Error while getting bot cache server base info [db fetch]: " + err.Error(),
+						},
+					}
 				}
 
 				cacheServer, err := pgx.CollectOneRow(row, pgx.RowToStructByName[types.CacheServer])
 
 				if err != nil {
-					state.Logger.Error("Error while getting bot cache server base info [collect]", zap.Error(err), zap.String("id", id), zap.String("target", target), zap.String("botID", bot.BotID))
-					return uapi.DefaultResponse(http.StatusInternalServerError)
+					state.Logger.Error("Error while getting bot cache server base info [db collect]", zap.Error(err), zap.String("id", id), zap.String("target", target), zap.String("botID", bot.BotID))
+					return uapi.HttpResponse{
+						Status: http.StatusInternalServerError,
+						Json: types.ApiError{
+							Message: "Error while getting bot cache server base info [db collect]: " + err.Error(),
+						},
+					}
 				}
 
 				bot.CacheServer = &cacheServer
@@ -291,14 +369,24 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 
 				if err != nil {
 					state.Logger.Error("Error while getting bot cache server bot info [db fetch]", zap.Error(err), zap.String("id", id), zap.String("target", target), zap.String("botID", bot.BotID))
-					return uapi.DefaultResponse(http.StatusInternalServerError)
+					return uapi.HttpResponse{
+						Status: http.StatusInternalServerError,
+						Json: types.ApiError{
+							Message: "Error while getting bot cache server bot info [db fetch]: " + err.Error(),
+						},
+					}
 				}
 
 				cacheServerBots, err := pgx.CollectRows(row, pgx.RowToStructByName[types.CacheServerBot])
 
 				if err != nil {
-					state.Logger.Error("Error while getting bot cache server bot info [collect]", zap.Error(err), zap.String("id", id), zap.String("target", target), zap.String("botID", bot.BotID))
-					return uapi.DefaultResponse(http.StatusInternalServerError)
+					state.Logger.Error("Error while getting bot cache server bot info [db collect]", zap.Error(err), zap.String("id", id), zap.String("target", target), zap.String("botID", bot.BotID))
+					return uapi.HttpResponse{
+						Status: http.StatusInternalServerError,
+						Json: types.ApiError{
+							Message: "Error while getting bot cache server bot info [db collect]: " + err.Error(),
+						},
+					}
 				}
 
 				bot.CacheServer.Bots = cacheServerBots

@@ -11,6 +11,7 @@ import (
 	"popplio/db"
 	"popplio/state"
 	"popplio/types"
+	"popplio/votes"
 
 	docs "github.com/infinitybotlist/eureka/doclib"
 	"github.com/infinitybotlist/eureka/uapi"
@@ -196,6 +197,17 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	server.Vanity = code
 	server.Avatar = assetmanager.AvatarInfo(assetmanager.AssetTargetTypeServers, server.ServerID)
 	server.Banner = assetmanager.BannerInfo(assetmanager.AssetTargetTypeServers, server.ServerID)
+
+	server.Votes, err = votes.EntityGetVoteCount(d.Context, state.Pool, server.ServerID, "server")
+
+	if err != nil {
+		return uapi.HttpResponse{
+			Status: http.StatusInternalServerError,
+			Json: types.ApiError{
+				Message: "Error while getting server vote count [db fetch]: " + err.Error(),
+			},
+		}
+	}
 
 	// Handle extra includes
 	if r.URL.Query().Get("include") != "" {

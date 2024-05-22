@@ -21,7 +21,7 @@ type IndexBot struct {
 	Type        string                  `db:"type" json:"type" description:"The bot's type (e.g. pending/approved/certified/denied etc.)"`
 	VanityRef   pgtype.UUID             `db:"vanity_ref" json:"vanity_ref" description:"The corresponding vanities itag, this also works to ensure that all bots have an associated vanity"`
 	Vanity      string                  `db:"-" json:"vanity" description:"The bot's vanity URL" ci:"internal"` // Must be parsed internally
-	Votes       int                     `db:"votes" json:"votes" description:"The bot's vote count"`
+	Votes       int                     `db:"-" json:"votes" description:"The bot's vote count" ci:"internal"`  // Votes are retrieved from entity_votes
 	Shards      int                     `db:"shards" json:"shards" description:"The bot's shard count"`
 	Library     string                  `db:"library" json:"library" description:"The bot's library"`
 	InviteClick int                     `db:"invite_clicks" json:"invite_clicks" description:"The bot's invite click count (via users inviting the bot from IBL)"`
@@ -64,7 +64,7 @@ type Bot struct {
 	Shards                 int                     `db:"shards" json:"shards" description:"The bot's shard count"`
 	ShardList              []int                   `db:"shard_list" json:"shard_list" description:"The number of servers per shard"`
 	Users                  int                     `db:"users" json:"users" description:"The bot's user count"`
-	Votes                  int                     `db:"votes" json:"votes" description:"The bot's vote count"`
+	Votes                  int                     `db:"-" json:"votes" description:"The bot's vote count" ci:"internal"` // Votes are retrieved from entity_votes
 	Clicks                 int                     `db:"clicks" json:"clicks" description:"The bot's total click count"`
 	UniqueClicks           int64                   `db:"-" json:"unique_clicks" description:"The bot's unique click count based on SHA256 hashed IPs" ci:"internal"` // Must be parsed internally
 	InviteClicks           int                     `db:"invite_clicks" json:"invite_clicks" description:"The bot's invite click count (via users inviting the bot from IBL)"`

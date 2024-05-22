@@ -8,6 +8,7 @@ import (
 	"popplio/routes/bots/assets"
 	"popplio/state"
 	"popplio/types"
+	"popplio/votes"
 	"strings"
 
 	"github.com/infinitybotlist/eureka/dovewing"
@@ -55,6 +56,12 @@ func ResolveBotPack(ctx context.Context, pack *types.BotPack) error {
 		}
 
 		pack.ResolvedBots = append(pack.ResolvedBots, bot)
+	}
+
+	pack.Votes, err = votes.EntityGetVoteCount(ctx, state.Pool, pack.URL, "pack")
+
+	if err != nil {
+		return fmt.Errorf("error getting vote count: %w", err)
 	}
 
 	return nil

@@ -47,7 +47,7 @@ func EntityGetVoteCreditsSummary(
 
 	return &types.VoteCreditTierRedeemSummary{
 		Tiers:        vcts,
-		VoteCount:    voteCount,
+		Votes:        voteCount,
 		SlabOverview: slabOverview,
 		TotalCredits: totalCredits,
 	}, nil

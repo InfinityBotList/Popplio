@@ -8,6 +8,7 @@ import (
 	"popplio/state"
 	"popplio/teams/resolvers"
 	"popplio/types"
+	"popplio/votes"
 	"strings"
 
 	"github.com/google/uuid"
@@ -96,6 +97,13 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	}
 
 	team.Vanity = code
+
+	team.Votes, err = votes.EntityGetVoteCount(d.Context, state.Pool, id, "team")
+
+	if err != nil {
+		state.Logger.Error("Error while getting team vote count", zap.Error(err), zap.String("id", id))
+		return uapi.DefaultResponse(http.StatusInternalServerError)
+	}
 
 	return uapi.HttpResponse{
 		Json: team,

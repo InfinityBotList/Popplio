@@ -231,40 +231,6 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
-	// Entity specific handling here, if desired
-	//
-	// Note that `votes` is a cached value based on new vote count
-	switch targetType {
-	case "bot":
-		_, err = tx.Exec(d.Context, "UPDATE bots SET votes = $1 WHERE bot_id = $2", nvc, targetId)
-
-		if err != nil {
-			state.Logger.Error("Failed to update bot vote count cache", zap.Error(err), zap.String("userId", uid), zap.String("targetId", targetId), zap.String("targetType", targetType))
-			return uapi.DefaultResponse(http.StatusInternalServerError)
-		}
-	case "pack":
-		_, err = tx.Exec(d.Context, "UPDATE packs SET votes = $1 WHERE url = $2", nvc, targetId)
-
-		if err != nil {
-			state.Logger.Error("Failed to update pack vote count cache", zap.Error(err), zap.String("userId", uid), zap.String("targetId", targetId), zap.String("targetType", targetType))
-			return uapi.DefaultResponse(http.StatusInternalServerError)
-		}
-	case "team":
-		_, err = tx.Exec(d.Context, "UPDATE teams SET votes = $1 WHERE id = $2", nvc, targetId)
-
-		if err != nil {
-			state.Logger.Error("Failed to update team vote count cache", zap.Error(err), zap.String("userId", uid), zap.String("targetId", targetId), zap.String("targetType", targetType))
-			return uapi.DefaultResponse(http.StatusInternalServerError)
-		}
-	case "server":
-		_, err = tx.Exec(d.Context, "UPDATE servers SET votes = $1 WHERE server_id = $2", nvc, targetId)
-
-		if err != nil {
-			state.Logger.Error("Failed to update server vote count cache", zap.Error(err), zap.String("userId", uid), zap.String("targetId", targetId), zap.String("targetType", targetType))
-			return uapi.DefaultResponse(http.StatusInternalServerError)
-		}
-	}
-
 	// Commit transaction
 	err = tx.Commit(d.Context)
 

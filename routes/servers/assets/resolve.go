@@ -6,6 +6,7 @@ import (
 	"popplio/assetmanager"
 	"popplio/state"
 	"popplio/types"
+	"popplio/votes"
 )
 
 func ResolveIndexServer(ctx context.Context, server *types.IndexServer) error {
@@ -20,5 +21,12 @@ func ResolveIndexServer(ctx context.Context, server *types.IndexServer) error {
 	server.Vanity = code
 	server.Avatar = assetmanager.AvatarInfo(assetmanager.AssetTargetTypeServers, server.ServerID)
 	server.Banner = assetmanager.BannerInfo(assetmanager.AssetTargetTypeServers, server.ServerID)
+
+	server.Votes, err = votes.EntityGetVoteCount(ctx, state.Pool, server.ServerID, "server")
+
+	if err != nil {
+		return fmt.Errorf("error getting vote count: %w", err)
+	}
+
 	return nil
 }

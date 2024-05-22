@@ -19,7 +19,7 @@ type IndexServer struct {
 	Type          string         `db:"type" json:"type" description:"The server's type (e.g. pending/approved/certified/denied etc.)"`
 	VanityRef     pgtype.UUID    `db:"vanity_ref" json:"vanity_ref" description:"The corresponding vanities itag, this also works to ensure that all servers have an associated vanity"`
 	Vanity        string         `db:"-" json:"vanity" description:"The server's vanity URL" ci:"internal"` // Must be parsed internally
-	Votes         int            `db:"votes" json:"votes" description:"The server's vote count"`
+	Votes         int            `db:"-" json:"votes" description:"The server's vote count" ci:"internal"`  // Votes are retrieved from entity_votes
 	InviteClicks  int            `db:"invite_clicks" json:"invite_clicks" description:"The server's invite click count (via users inviting the server from IBL)"`
 	Clicks        int            `db:"clicks" json:"clicks" description:"The server's view count"`
 	NSFW          bool           `db:"nsfw" json:"nsfw" description:"Whether the server is NSFW or not"`
@@ -53,7 +53,7 @@ type Server struct {
 	Clicks              int                `db:"clicks" json:"clicks" description:"The server's total click count"`
 	UniqueClicks        int64              `db:"-" json:"unique_clicks" description:"The server's unique click count based on SHA256 hashed IPs" ci:"internal"` // Must be parsed internally
 	NSFW                bool               `db:"nsfw" json:"nsfw" description:"Whether the serber is NSFW or not"`
-	Votes               int                `db:"votes" json:"votes" description:"The server's vote count"`
+	Votes               int                `db:"-" json:"votes" description:"The server's vote count" ci:"internal"` // Votes are retrieved from entity_votes
 	VoteBanned          bool               `db:"vote_banned" json:"vote_banned" description:"Whether the server is vote banned or not"`
 	Premium             bool               `db:"premium" json:"premium" description:"Whether the server is a premium server or not"`
 	StartPeriod         pgtype.Timestamptz `db:"start_premium_period" json:"start_premium_period"`

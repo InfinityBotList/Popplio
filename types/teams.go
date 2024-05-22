@@ -31,7 +31,7 @@ type Team struct {
 	Short      pgtype.Text    `db:"short" json:"short" description:"The teams's short description if it has one, otherwise null"`
 	Tags       []string       `db:"tags" json:"tags" description:"The teams's tags if it has any, otherwise null"`
 	VoteBanned bool           `db:"vote_banned" json:"vote_banned" description:"Whether the team is banned from voting"`
-	Votes      int            `db:"votes" json:"votes" description:"The teams's vote count"`
+	Votes      int            `db:"-" json:"votes" description:"The team's vote count" ci:"internal"` // Votes are retrieved from entity_votes
 	ExtraLinks []Link         `db:"extra_links" json:"extra_links" description:"The teams's links that it wishes to advertise"`
 	Entities   *TeamEntities  `db:"-" json:"entities" description:"The entities of the team" ci:"internal"` // Must be handled internally
 	NSFW       bool           `db:"nsfw" json:"nsfw" description:"Whether the team is NSFW (primarily makes NSFW content)"`

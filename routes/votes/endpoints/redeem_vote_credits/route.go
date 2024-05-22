@@ -1,4 +1,4 @@
-package redeem_vote_credit_tiers
+package redeem_vote_credits
 
 import (
 	"net/http"
@@ -18,9 +18,16 @@ import (
 
 func Docs() *docs.Doc {
 	return &docs.Doc{
-		Summary:     "Redeem Vote Credit Tiers",
-		Description: "Redeems all votes into credits towards the shop",
+		Summary:     "Redeem Vote Credits",
+		Description: "Redeems all votes into credits towards the shop based on the vote credit tiers",
 		Params: []docs.Parameter{
+			{
+				Name:        "uid",
+				Description: "The users ID",
+				Required:    true,
+				In:          "path",
+				Schema:      docs.IdSchema,
+			},
 			{
 				Name:        "target_type",
 				Description: "The target type of the entity",

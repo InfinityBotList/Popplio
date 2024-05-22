@@ -8,6 +8,7 @@ import (
 	"popplio/routes/votes/endpoints/get_user_entity_votes"
 	"popplio/routes/votes/endpoints/get_vote_credit_tiers"
 	"popplio/routes/votes/endpoints/put_user_entity_votes"
+	"popplio/routes/votes/endpoints/redeem_vote_credits"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/infinitybotlist/eureka/uapi"
@@ -44,6 +45,20 @@ func (b Router) Routes(r *chi.Mux) {
 		Method:  uapi.GET,
 		Docs:    get_vote_credit_tiers.Docs,
 		Handler: get_vote_credit_tiers.Route,
+	}.Route(r)
+
+	uapi.Route{
+		Pattern: "/users/{uid}/{target_type}/{target_id}/votes/credits",
+		OpId:    "redeem_vote_credits",
+		Method:  uapi.POST,
+		Docs:    redeem_vote_credits.Docs,
+		Handler: redeem_vote_credits.Route,
+		Auth: []uapi.AuthType{
+			{
+				URLVar: "uid",
+				Type:   api.TargetTypeUser,
+			},
+		},
 	}.Route(r)
 
 	uapi.Route{
