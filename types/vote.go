@@ -20,6 +20,8 @@ type EntityVote struct {
 	VoidedAt   pgtype.Timestamp `db:"voided_at" json:"voided_at" description:"The time the vote was voided, if it was voided"`
 	CreatedAt  time.Time        `db:"created_at" json:"created_at"`
 	VoteNum    int              `db:"vote_num" json:"vote_num" description:"The number of the vote (second vote of double vote will have vote_num as 2 etc.)"`
+	Credit     pgtype.UUID      `db:"credit_redeem" json:"credit_redeem" description:"If the vote has been redeemed for credits, what the ID of the credit redemption is"`
+	Immutable  bool             `db:"immutable" json:"immutable" description:"Whether or not the vote is immutable"`
 }
 
 // Vote Info
@@ -69,4 +71,5 @@ type VoteCreditTierRedeemSummary struct {
 	Tiers        []*VoteCreditTier `json:"tiers" description:"The vote credit tiers"`
 	VoteCount    int               `json:"vote_count" description:"The amount of votes the entity has"`
 	SlabOverview []int             `json:"slab_overview" description:"Slab-based overview with each index, i, representing the amount of votes in Tiers[i]"`
+	TotalCredits int               `json:"total_credits" description:"The total amount of credits the user would get, in cents"`
 }

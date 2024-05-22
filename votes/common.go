@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 )
 
 func GetDoubleVote() bool {
@@ -134,12 +135,14 @@ func EntityVoteCheck(ctx context.Context, userId, targetId, targetType string) (
 	}, nil
 }
 
-type GVCConn interface {
+type DbConn interface {
 	QueryRow(ctx context.Context, sql string, args ...any) pgx.Row
+	Query(ctx context.Context, sql string, args ...any) (pgx.Rows, error)
+	Exec(ctx context.Context, sql string, args ...any) (pgconn.CommandTag, error)
 }
 
 // Returns the exact (non-cached/approximate) vote count for an entity
-func EntityGetVoteCount(ctx context.Context, c GVCConn, targetId, targetType string) (int, error) {
+func EntityGetVoteCount(ctx context.Context, c DbConn, targetId, targetType string) (int, error) {
 	var upvotes int
 	var downvotes int
 
@@ -159,58 +162,4 @@ func EntityGetVoteCount(ctx context.Context, c GVCConn, targetId, targetType str
 	}
 
 	return upvotes - downvotes, nil
-}
-
-// Given a number of votes and the vote credit tiers, return the structure of how vote credits should be awarded
-// as a map of string to int
-//
-// Note that this function assumes that the vote credits tiers are sorted by position in ascending order
-func SlabSplitVotes(votes int, tiers []*types.VoteCreditTier) []int {
-	/*
-		<div class="system">
-				<p>
-					Vote credits are tier based through slabs<br /><br />
-
-					(e.g.)For the following tiers<br /><br />
-				</p>
-				<OrderedList>
-					<ListItem>Tier 1: 100 votes at 0.10 cents</ListItem>
-					<ListItem>Tier 2: 200 votes at 0.05 cents</ListItem>
-					<ListItem>Tier 3: 50 votes at 0.025 cents</ListItem>
-				</OrderedList>
-				<p>Would mean 625 votes would be split as the following:</p>
-				<OrderedList>
-					<ListItem>100 votes: 0.10 cents [Tier 1]</ListItem>
-					<ListItem>Next 200 votes: 0.05 cents [Tier 2]</ListItem>
-					<ListItem>Next 50 votes: 0.025 cents [Tier 3]</ListItem>
-					<ListItem>Last 275 votes: 0.025 cents [last tier used at end of tiering]</ListItem>
-				</OrderedList>
-			</div>
-	*/
-
-	voteCredits := make([]int, len(tiers))
-
-	var remainingVotes = votes
-
-	for i := range tiers {
-		if remainingVotes <= 0 {
-			break
-		}
-
-		if remainingVotes >= tiers[i].Votes {
-			voteCredits[i] = tiers[i].Votes
-			remainingVotes -= tiers[i].Votes
-		} else {
-			voteCredits[i] = remainingVotes
-			remainingVotes = 0
-			break
-		}
-	}
-
-	// If there are remaining votes, then add them to the last tier
-	if remainingVotes > 0 {
-		voteCredits[len(tiers)-1] += remainingVotes
-	}
-
-	return voteCredits
 }
