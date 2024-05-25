@@ -42,6 +42,18 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		src = "instatus"
 	}
 
+	// Check if response is on redis
+	cachedResp := state.Redis.Get(d.Context, "current_status:"+src)
+
+	if cachedResp.Val() != "" {
+		return uapi.HttpResponse{
+			Json: cachedResp.Val(),
+			Headers: map[string]string{
+				"X-Cache": "HIT",
+			},
+		}
+	}
+
 	switch src {
 	case "instatus":
 		res, err := http.Get(state.Config.Sites.Instatus + "/summary.json")
@@ -106,10 +118,6 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		if err != nil {
 			return uapi.DefaultResponse(http.StatusInternalServerError)
 		}
-
-		// Get type of monitor key
-		//monitorType := listStatus["monitors"].([]interface{})
-		//fmt.Println(monitorType)
 	default:
 		return uapi.HttpResponse{
 			Status: http.StatusBadRequest,
@@ -119,7 +127,13 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		}
 	}
 
+	// Cache response
+	state.Redis.Set(d.Context, "current_status:"+src, listStatus, 3*time.Minute)
+
 	return uapi.HttpResponse{
 		Json: listStatus,
+		Headers: map[string]string{
+			"X-Cache": "MISS",
+		},
 	}
 }

@@ -6,8 +6,9 @@ import (
 	"strings"
 	"text/template"
 
-	"popplio/assetmanager"
 	"popplio/db"
+	botAssets "popplio/routes/bots/assets"
+	serverAssets "popplio/routes/servers/assets"
 	"popplio/state"
 	"popplio/types"
 
@@ -143,7 +144,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 			}
 
 			if payload.Query != "" {
-				args = append(args, "%"+strings.ToLower(payload.Query)+"%", strings.ToLower(payload.Query)) // 8-9
+				args = append(args, strings.ToLower(payload.Query), "%"+strings.ToLower(payload.Query)+"%") // 8-9
 			}
 
 			state.Logger.Debug("SQL result", zap.String("sql", sqlString.String()), zap.String("targetType", "bot"))
@@ -157,37 +158,31 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 
 			if err != nil {
 				state.Logger.Error("Failed to query", zap.Error(err), zap.String("targetType", "bot"))
-				return uapi.DefaultResponse(http.StatusInternalServerError)
+				return uapi.HttpResponse{
+					Status: http.StatusInternalServerError,
+					Json:   types.ApiError{Message: "Error querying: " + err.Error()},
+				}
 			}
 
 			bots, err := pgx.CollectRows(rows, pgx.RowToStructByName[types.IndexBot])
 
 			if err != nil {
-				state.Logger.Error("Failed to collect rows", zap.Error(err), zap.String("sql", sqlString.String()))
-				return uapi.DefaultResponse(http.StatusInternalServerError)
+				state.Logger.Error("Failed to collect rows [bots]", zap.Error(err), zap.String("sql", sqlString.String()))
+				return uapi.HttpResponse{
+					Status: http.StatusInternalServerError,
+					Json:   types.ApiError{Message: "Error collecting rows: " + err.Error()},
+				}
 			}
 
 			for i := range bots {
-				botUser, err := dovewing.GetUser(d.Context, bots[i].BotID, state.DovewingPlatformDiscord)
+				err := botAssets.ResolveIndexBot(d.Context, &bots[i])
 
 				if err != nil {
-					state.Logger.Error("Failed to get user", zap.Error(err), zap.String("botID", bots[i].BotID))
-					return uapi.DefaultResponse(http.StatusInternalServerError)
+					return uapi.HttpResponse{
+						Status: http.StatusInternalServerError,
+						Json:   types.ApiError{Message: "Error resolving bot: " + err.Error()},
+					}
 				}
-
-				bots[i].User = botUser
-
-				var code string
-
-				err = state.Pool.QueryRow(d.Context, "SELECT code FROM vanity WHERE itag = $1", bots[i].VanityRef).Scan(&code)
-
-				if err != nil {
-					state.Logger.Error("Failed to get vanity code", zap.Error(err), zap.String("botID", bots[i].BotID))
-					return uapi.DefaultResponse(http.StatusInternalServerError)
-				}
-
-				bots[i].Vanity = code
-				bots[i].Banner = assetmanager.BannerInfo(assetmanager.AssetTargetTypeBots, bots[i].BotID)
 			}
 
 			sr.Bots = bots
@@ -241,18 +236,15 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 			}
 
 			for i := range servers {
-				var code string
-
-				err = state.Pool.QueryRow(d.Context, "SELECT code FROM vanity WHERE itag = $1", servers[i].VanityRef).Scan(&code)
+				err := serverAssets.ResolveIndexServer(d.Context, &servers[i])
 
 				if err != nil {
-					state.Logger.Error("Failed to get vanity code", zap.Error(err), zap.String("serverID", servers[i].ServerID))
-					return uapi.DefaultResponse(http.StatusInternalServerError)
+					state.Logger.Error("Failed to resolve server", zap.Error(err), zap.String("serverId", servers[i].ServerID))
+					return uapi.HttpResponse{
+						Status: http.StatusInternalServerError,
+						Json:   types.ApiError{Message: "Error resolving server: " + err.Error()},
+					}
 				}
-
-				servers[i].Vanity = code
-				servers[i].Avatar = assetmanager.AvatarInfo(assetmanager.AssetTargetTypeServers, servers[i].ServerID)
-				servers[i].Banner = assetmanager.BannerInfo(assetmanager.AssetTargetTypeServers, servers[i].ServerID)
 			}
 
 			sr.Servers = servers

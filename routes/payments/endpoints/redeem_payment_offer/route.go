@@ -130,6 +130,31 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 			}
 		}
 
+		var lastRedeemedBoosterOffer *time.Time
+		err = state.Pool.QueryRow(d.Context, "SELECT last_booster_claim FROM users WHERE user_id = $1", d.Auth.ID).Scan(&lastRedeemedBoosterOffer)
+
+		if err != nil {
+			state.Logger.Error("Error while checking last booster claim", zap.Error(err), zap.String("userID", d.Auth.ID))
+			return uapi.HttpResponse{
+				Status: http.StatusBadRequest,
+				Json: types.ApiError{
+					Message: "Error: " + err.Error(),
+				},
+			}
+		}
+
+		// Check the last time the user redeemed a booster offer
+		if lastRedeemedBoosterOffer != nil {
+			if time.Since(*lastRedeemedBoosterOffer) < 30*24*time.Hour {
+				return uapi.HttpResponse{
+					Status: http.StatusBadRequest,
+					Json: types.ApiError{
+						Message: "You can only redeem a booster offer once every 30 days",
+					},
+				}
+			}
+		}
+
 		err = assets.GivePerks(d.Context, payload)
 
 		if err != nil {

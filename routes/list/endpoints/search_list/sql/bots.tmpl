@@ -1,6 +1,8 @@
-SELECT DISTINCT {{.Cols}} FROM bots 
+SELECT 
+    {{.Cols}} 
+FROM bots 
 {{if .Query}}
-    {{range $table := .PlatformTables }}
+    {{range $table := .PlatformTables}}
     INNER JOIN {{$table}} {{$table}}_users ON bots.bot_id = {{$table}}_users.id
     {{end}}
 {{end}}
@@ -23,10 +25,11 @@ AND (cardinality($7::text[]) = 0 OR tags {{.TagMode}} $7) -- Where TagMode is on
 
 {{if .Query}}
 AND (
-    {{range $table := .PlatformTables }}
-        {{$table}}_users.username ILIKE $8 OR
+    short @@ $8 OR bot_id = $8 OR client_id = $8
+    {{range $index, $table := .PlatformTables}}
+        OR {{$table}}_users.username @@ $8 OR {{$table}}_users.username ILIKE $9
     {{end}}
-    short @@ $9 OR bot_id = $9 OR client_id = $9) 
+)
 {{end}}
 
 ORDER BY votes DESC, type DESC LIMIT 12
