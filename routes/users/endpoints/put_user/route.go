@@ -47,9 +47,10 @@ type oauthUser struct {
 func sendAuthLog(user oauthUser, req types.AuthorizeRequest, new bool) {
 	var banned bool
 	var voteBanned bool
-
+        var appBanned bool
+	
 	if !new {
-		err := state.Pool.QueryRow(state.Context, "SELECT banned, vote_banned FROM users WHERE user_id = $1", user.ID).Scan(&banned, &voteBanned)
+		err := state.Pool.QueryRow(state.Context, "SELECT banned, vote_banned, app_banned FROM users WHERE user_id = $1", user.ID).Scan(&banned, &voteBanned, &appBanned)
 
 		if err != nil {
 			state.Logger.Error("sendAuthLog: Failed to get user details from database", zap.Error(err), zap.String("user_id", user.ID))
@@ -99,6 +100,17 @@ func sendAuthLog(user oauthUser, req types.AuthorizeRequest, new bool) {
 						Name: "Vote Banned",
 						Value: func() string {
 							if voteBanned {
+								return "Yes"
+							}
+
+							return "No"
+						}(),
+						Inline: true,
+					},
+					{
+						Name: "App Banned",
+						Value: func() string {
+							if appBanned {
 								return "Yes"
 							}
 
