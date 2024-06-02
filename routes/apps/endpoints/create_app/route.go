@@ -100,6 +100,23 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		}
 	}
 
+	var appBanned bool
+        err = state.Pool.QueryRow(d.Context, "SELECT app_banned FROM users WHERE user_id = $1", d.Auth.ID).Scan(&appBanned)
+
+	if err != nil {
+	        state.Logger.Error("Error gettingstate.Pop banned state", zap.Error(err), zap.String("user_id", d.Auth.ID))
+		return uapi.DefaultResponse(http.StatusInternalServerError)
+	}
+
+        if appBanned {
+		return uapi.HttpResponse{
+			Json: types.ApiError{
+				Message: "You are currently banned from making applications on the site",
+			},
+			Status: http.StatusForbidden,
+		}
+	}
+
 	var userApps int64
 
 	err = state.Pool.QueryRow(d.Context, "SELECT COUNT(*) FROM apps WHERE user_id = $1 AND position = $2 AND state = 'pending'", d.Auth.ID, payload.Position).Scan(&userApps)
