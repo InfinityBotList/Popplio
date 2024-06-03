@@ -132,6 +132,7 @@ func GetEntityInfo(ctx context.Context, targetId, targetType string) (*EntityInf
 			URL:     state.Config.Sites.Frontend.Parse() + "/blog/" + targetId,
 			VoteURL: state.Config.Sites.Frontend.Parse() + "/blog/" + targetId,
 			Name:    targetId,
+			Avatar:  state.Config.Sites.CDN.Parse() + "/avatars/default.webp",
 		}, nil
 	default:
 		return nil, errors.New("unimplemented target type:" + targetType)
