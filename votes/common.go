@@ -25,6 +25,8 @@ func GetVoteTime() uint16 {
 // Returns core vote info about the entity (such as the amount of cooldown time the entity has)
 //
 // If user id is specified, then in the future special perks for the user will be returned as well
+//
+// If vote time is negative, then it is not possible to revote
 func EntityVoteInfo(ctx context.Context, userId, targetId, targetType string) (*types.VoteInfo, error) {
 	var defaultVoteEntity = types.VoteInfo{
 		PerUser: func() int {
@@ -63,6 +65,9 @@ func EntityVoteInfo(ctx context.Context, userId, targetId, targetType string) (*
 		if premium {
 			defaultVoteEntity.VoteTime = 4
 		}
+	case "blog":
+		defaultVoteEntity.PerUser = 1 // Only 1 vote per blog post
+	        defaultVoteEntity.VoteTime = -1 // No revotes allowed
 	}
 
 	return &defaultVoteEntity, nil
@@ -109,7 +114,7 @@ func EntityVoteCheck(ctx context.Context, userId, targetId, targetType string) (
 
 	var vw *types.VoteWait
 
-	if len(validVotes) > 0 {
+	if len(validVotes) > 0 && vi.VoteTime > 0 {
 		timeElapsed := time.Since(validVotes[0].CreatedAt)
 
 		timeToWait := int64(vi.VoteTime)*60*60*1000 - timeElapsed.Milliseconds()
