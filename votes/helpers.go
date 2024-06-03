@@ -97,8 +97,8 @@ func GetEntityInfo(ctx context.Context, targetId, targetType string) (*EntityInf
 
 		// Set entityInfo for log
 		return &EntityInfo{
-			URL:     "https://botlist.site/team/" + targetId,
-			VoteURL: "https://botlist.site/team/" + targetId + "/vote",
+			URL:     state.Config.Sites.Frontend.Parse() + "/team/" + targetId,
+			VoteURL: state.Config.Sites.Frontend.Parse() + "/team/" + targetId + "/vote",
 			Name:    name,
 			Avatar:  avatarPath,
 		}, nil
@@ -120,12 +120,18 @@ func GetEntityInfo(ctx context.Context, targetId, targetType string) (*EntityInf
 			return nil, errors.New("server is vote banned and cannot be voted for right now")
 		}
 
-		// Set entityInfo for log
-		return &EntityInfo{
-			URL:     "https://botlist.site/server/" + targetId,
-			VoteURL: "https://botlist.site/server/" + targetId + "/vote",
+   		// Set entityInfo for log
+                return &EntityInfo{
+			URL: state.Config.Sites.Frontend.Parse()+ "/server/" + targetId,
+			VoteURL: state.Config.Sites.Frontend.Parse() + "/server/" + targetId + "/vote",
 			Name:    name,
 			Avatar:  avatar,
+		}, nil
+	case "blog":
+	        return &EntityInfo{
+			URL:     state.Config.Sites.Frontend.Parse() + "/blog/" + targetId,
+			VoteURL: state.Config.Sites.Frontend.Parse() + "/blog/" + targetId,
+			Name:    targetId,
 		}, nil
 	default:
 		return nil, errors.New("unimplemented target type:" + targetType)
