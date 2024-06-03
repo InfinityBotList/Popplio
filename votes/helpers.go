@@ -55,17 +55,17 @@ func GetEntityInfo(ctx context.Context, targetId, targetType string) (*EntityInf
 
 		// Set entityInfo for log
 		return &EntityInfo{
-			URL:     "https://botlist.site/" + targetId,
-			VoteURL: "https://botlist.site/" + targetId + "/vote",
+			URL:     state.Config.Sites.Frontend.Parse() + "/bot/" + targetId,
+			VoteURL: state.Config.Sites.Frontend.Parse() + "/bot/" + targetId + "/vote",
 			Name:    botObj.Username,
 			Avatar:  botObj.Avatar,
 		}, nil
 	case "pack":
 		return &EntityInfo{
-			URL:     "https://botlist.site/pack/" + targetId,
-			VoteURL: "https://botlist.site/pack/" + targetId,
+			URL:     state.Config.Sites.Frontend.Parse() + "/pack/" + targetId,
+			VoteURL: state.Config.Sites.Frontend.Parse() + "/pack/" + targetId,
 			Name:    targetId,
-			Avatar:  "",
+			Avatar:  state.Config.Sites.CDN.Parse() + "/avatars/default.webp",
 		}, nil
 	case "team":
 		var name string
@@ -122,7 +122,7 @@ func GetEntityInfo(ctx context.Context, targetId, targetType string) (*EntityInf
 
    		// Set entityInfo for log
                 return &EntityInfo{
-			URL: state.Config.Sites.Frontend.Parse()+ "/server/" + targetId,
+			URL:     state.Config.Sites.Frontend.Parse()+ "/server/" + targetId,
 			VoteURL: state.Config.Sites.Frontend.Parse() + "/server/" + targetId + "/vote",
 			Name:    name,
 			Avatar:  avatar,
