@@ -13,10 +13,11 @@ import (
 )
 
 type EntityInfo struct {
-	Name    string
-	URL     string
-	VoteURL string
-	Avatar  string
+	Name        string
+	URL         string
+	VoteURL     string
+	Avatar      string
+	VoteCredits bool
 }
 
 // GetEntityInfo returns information about the entity that is being voted for including vote bans etc.
@@ -55,10 +56,11 @@ func GetEntityInfo(ctx context.Context, targetId, targetType string) (*EntityInf
 
 		// Set entityInfo for log
 		return &EntityInfo{
-			URL:     state.Config.Sites.Frontend.Parse() + "/bot/" + targetId,
-			VoteURL: state.Config.Sites.Frontend.Parse() + "/bot/" + targetId + "/vote",
-			Name:    botObj.Username,
-			Avatar:  botObj.Avatar,
+			URL:         state.Config.Sites.Frontend.Parse() + "/bot/" + targetId,
+			VoteURL:     state.Config.Sites.Frontend.Parse() + "/bot/" + targetId + "/vote",
+			Name:        botObj.Username,
+			Avatar:      botObj.Avatar,
+                        VoteCredits: true,
 		}, nil
 	case "pack":
 		return &EntityInfo{
@@ -122,10 +124,11 @@ func GetEntityInfo(ctx context.Context, targetId, targetType string) (*EntityInf
 
    		// Set entityInfo for log
                 return &EntityInfo{
-			URL:     state.Config.Sites.Frontend.Parse()+ "/server/" + targetId,
-			VoteURL: state.Config.Sites.Frontend.Parse() + "/server/" + targetId + "/vote",
-			Name:    name,
-			Avatar:  avatar,
+			URL:         state.Config.Sites.Frontend.Parse()+ "/server/" + targetId,
+			VoteURL:     state.Config.Sites.Frontend.Parse() + "/server/" + targetId + "/vote",
+			Name:        name,
+			Avatar:      avatar,
+			VoteCredits: true,
 		}, nil
 	case "blog":
 	        return &EntityInfo{
