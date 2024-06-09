@@ -41,16 +41,10 @@ type VoteWait struct {
 	Seconds int `json:"seconds"`
 }
 
-type ValidVote struct {
-	ID        pgtype.UUID `json:"id" description:"The ID of the vote"`
-	Upvote    bool        `json:"upvote" description:"Whether or not the vote was an upvote"`
-	CreatedAt time.Time   `json:"created_at" description:"The time the vote was created"`
-}
-
 // A user vote is a struct containing basic info on a users vote
 type UserVote struct {
 	HasVoted   bool         `json:"has_voted" description:"Whether or not the user has voted for the entity. If an entity supports multiple votes, this will be true if the user has voted in the last vote time, otherwise, it will be true if the user has voted at all"`
-	ValidVotes []*ValidVote `json:"valid_votes" description:"Some information about a valid vote"`
+	ValidVotes []EntityVote `json:"valid_votes" description:"A list of all non-voided votes the user has made on the entity"`
 	VoteInfo   *VoteInfo    `json:"vote_info" description:"Some information about the vote"`
 	Wait       *VoteWait    `json:"wait" description:"The time until the user can vote again"`
 }

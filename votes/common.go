@@ -5,15 +5,21 @@ import (
 	"errors"
 	"fmt"
 	"popplio/assetmanager"
+	"popplio/db"
 	"popplio/state"
 	"popplio/types"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/infinitybotlist/eureka/dovewing"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
-	"github.com/jackc/pgx/v5/pgtype"
+)
+
+var (
+	entityVoteColsArr = db.GetCols(types.EntityVote{})
+	entityVoteCols    = strings.Join(entityVoteColsArr, ",")
 )
 
 type DbConn interface {
@@ -242,7 +248,7 @@ func EntityVoteCheck(ctx context.Context, c DbConn, userId, targetId, targetType
 
 	rows, err = c.Query(
 		ctx,
-		"SELECT itag, created_at, upvote FROM entity_votes WHERE author = $1 AND target_id = $2 AND target_type = $3 AND void = false ORDER BY created_at DESC",
+		"SELECT "+entityVoteCols+" FROM entity_votes WHERE author = $1 AND target_id = $2 AND target_type = $3 AND void = false ORDER BY created_at DESC",
 		userId,
 		targetId,
 		targetType,
@@ -252,24 +258,12 @@ func EntityVoteCheck(ctx context.Context, c DbConn, userId, targetId, targetType
 		return nil, err
 	}
 
-	var validVotes []*types.ValidVote
+	validVotes, err := pgx.CollectRows(rows, pgx.RowToStructByName[types.EntityVote])
 
-	for rows.Next() {
-		var itag pgtype.UUID
-		var createdAt time.Time
-		var upvote bool
-
-		err = rows.Scan(&itag, &createdAt, &upvote)
-
-		if err != nil {
-			return nil, err
-		}
-
-		validVotes = append(validVotes, &types.ValidVote{
-			ID:        itag,
-			Upvote:    upvote,
-			CreatedAt: createdAt,
-		})
+	if errors.Is(err, pgx.ErrNoRows) {
+		validVotes = []types.EntityVote{}
+	} else if err != nil {
+		return nil, err
 	}
 
 	var vw *types.VoteWait
