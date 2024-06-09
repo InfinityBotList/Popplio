@@ -42,8 +42,9 @@ type VoteWait struct {
 }
 
 type ValidVote struct {
-	Upvote    bool      `json:"upvote" description:"Whether or not the vote was an upvote"`
-	CreatedAt time.Time `json:"created_at" description:"The time the vote was created"`
+	ID        pgtype.UUID `json:"id" description:"The ID of the vote"`
+	Upvote    bool        `json:"upvote" description:"Whether or not the vote was an upvote"`
+	CreatedAt time.Time   `json:"created_at" description:"The time the vote was created"`
 }
 
 // A user vote is a struct containing basic info on a users vote

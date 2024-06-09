@@ -164,7 +164,20 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		}
 	}
 
-	entityInfo, err := votes.GetEntityInfo(d.Context, state.Pool, targetId, targetType)
+	// Create a new entity vote
+	tx, err := state.Pool.Begin(d.Context)
+
+	if err != nil {
+		state.Logger.Error("Failed to create transaction [put_user_entity_votes]", zap.Error(err))
+		return uapi.HttpResponse{
+			Status: http.StatusInternalServerError,
+			Json:   types.ApiError{Message: "Failed to create transaction: " + err.Error()},
+		}
+	}
+
+	defer tx.Rollback(d.Context)
+
+	entityInfo, err := votes.GetEntityInfo(d.Context, tx, targetId, targetType)
 
 	if err != nil {
 		state.Logger.Error("Failed to fetch entity info", zap.Error(err), zap.String("userId", uid), zap.String("targetId", targetId), zap.String("targetType", targetType))
@@ -175,7 +188,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	}
 
 	// Now check the vote
-	vi, err := votes.EntityVoteCheck(d.Context, state.Pool, uid, targetId, targetType)
+	vi, err := votes.EntityVoteCheck(d.Context, tx, uid, targetId, targetType)
 
 	if err != nil {
 		state.Logger.Error("Failed to check vote", zap.Error(err), zap.String("userId", uid), zap.String("targetId", targetId), zap.String("targetType", targetType))
@@ -199,52 +212,53 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	if vi.HasVoted {
 		// If !Multiple Votes
 		if !vi.VoteInfo.MultipleVotes {
-			return uapi.HttpResponse{
-				Status: http.StatusBadRequest,
-				Json:   types.ApiError{Message: "You have already voted for this entity before!"},
-			}
-		}
+			if vi.ValidVotes[0].Upvote == upvote {
+				return uapi.HttpResponse{
+					Status: http.StatusBadRequest,
+					Json:   types.ApiError{Message: "You have already voted for this entity before!"},
+				}
+			} else {
+				// Remove all old votes by said user
+				_, err = tx.Exec(d.Context, "DELETE FROM entity_votes WHERE author = $1 AND target_id = $2 AND target_type = $3", uid, targetId, targetType)
 
-		var timeStr string
-		if vi.Wait != nil {
-			timeStr = fmt.Sprintf("%02d hours, %02d minutes. %02d seconds", vi.Wait.Hours, vi.Wait.Minutes, vi.Wait.Seconds)
+				if err != nil {
+					state.Logger.Error("Failed to delete old vote", zap.Error(err), zap.String("userId", uid), zap.String("targetId", targetId), zap.String("targetType", targetType))
+					return uapi.HttpResponse{
+						Status: http.StatusInternalServerError,
+						Json:   types.ApiError{Message: "Failed to delete old vote: " + err.Error()},
+					}
+				}
+			}
 		} else {
-			timeStr = "a while"
-		}
+			var timeStr string
+			if vi.Wait != nil {
+				timeStr = fmt.Sprintf("%02d hours, %02d minutes. %02d seconds", vi.Wait.Hours, vi.Wait.Minutes, vi.Wait.Seconds)
+			} else {
+				timeStr = "a while"
+			}
 
-		if len(vi.ValidVotes) > 1 {
+			if len(vi.ValidVotes) > 1 {
+				return uapi.HttpResponse{
+					Status: http.StatusBadRequest,
+					Json:   types.ApiError{Message: "Your last vote was a double vote, calm down for " + timeStr + "?"},
+				}
+			}
+
 			return uapi.HttpResponse{
 				Status: http.StatusBadRequest,
-				Json:   types.ApiError{Message: "Your last vote was a double vote, calm down for " + timeStr + "?"},
+				Json:   types.ApiError{Message: "Please wait " + timeStr + " before voting again"},
 			}
 		}
-
-		return uapi.HttpResponse{
-			Status: http.StatusBadRequest,
-			Json:   types.ApiError{Message: "Please wait " + timeStr + " before voting again"},
-		}
 	}
-
-	// Create a new entity vote
-	tx, err := state.Pool.Begin(d.Context)
-
-	if err != nil {
-		state.Logger.Error("Failed to create transaction [put_user_entity_votes]", zap.Error(err))
-		return uapi.HttpResponse{
-			Status: http.StatusInternalServerError,
-			Json:   types.ApiError{Message: "Failed to create transaction: " + err.Error()},
-		}
-	}
-
-	defer tx.Rollback(d.Context)
 
 	// Keep adding votes until, but not including vi.VoteInfo.PerUser
-	for i := 0; i < vi.VoteInfo.PerUser; i++ {
-		_, err = tx.Exec(d.Context, "INSERT INTO entity_votes (author, target_id, target_type, upvote, vote_num) VALUES ($1, $2, $3, $4, $5)", uid, targetId, targetType, upvote, i)
+	err = votes.EntityGiveVotes(d.Context, tx, upvote, uid, targetType, targetId, vi.VoteInfo)
 
-		if err != nil {
-			state.Logger.Error("Failed to insert vote", zap.Error(err), zap.String("userId", uid), zap.String("targetId", targetId), zap.String("targetType", targetType), zap.Bool("upvote", upvote))
-			return uapi.DefaultResponse(http.StatusInternalServerError)
+	if err != nil {
+		state.Logger.Error("Failed to give votes", zap.Error(err), zap.String("userId", uid), zap.String("targetId", targetId), zap.String("targetType", targetType))
+		return uapi.HttpResponse{
+			Status: http.StatusInternalServerError,
+			Json:   types.ApiError{Message: "Failed to give votes: " + err.Error()},
 		}
 	}
 
@@ -253,7 +267,10 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 
 	if err != nil {
 		state.Logger.Error("Failed to fetch new vote count", zap.Error(err), zap.String("userId", uid), zap.String("targetId", targetId), zap.String("targetType", targetType))
-		return uapi.DefaultResponse(http.StatusInternalServerError)
+		return uapi.HttpResponse{
+			Status: http.StatusInternalServerError,
+			Json:   types.ApiError{Message: "Failed to fetch new vote count: " + err.Error()},
+		}
 	}
 
 	// Commit transaction

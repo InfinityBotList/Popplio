@@ -2,11 +2,18 @@ package votes
 
 import (
 	"context"
+	"errors"
+	"fmt"
+	"popplio/assetmanager"
+	"popplio/state"
 	"popplio/types"
+	"strconv"
 	"time"
 
+	"github.com/infinitybotlist/eureka/dovewing"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 type DbConn interface {
@@ -18,6 +25,131 @@ type DbConn interface {
 func GetDoubleVote() bool {
 	weekday := time.Now().Weekday()
 	return weekday == time.Friday || weekday == time.Saturday || weekday == time.Sunday
+}
+
+type EntityInfo struct {
+	Name    string
+	URL     string
+	VoteURL string
+	Avatar  string
+}
+
+// GetEntityInfo returns information about the entity that is being voted for including vote bans etc.
+func GetEntityInfo(ctx context.Context, c DbConn, targetId, targetType string) (*EntityInfo, error) {
+	// Handle entity specific checks here, such as ensuring the entity actually exists
+	switch targetType {
+	case "bot":
+		var botType string
+		var voteBanned bool
+
+		err := c.QueryRow(ctx, "SELECT type, vote_banned FROM bots WHERE bot_id = $1", targetId).Scan(&botType, &voteBanned)
+
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, errors.New("bot not found")
+		}
+
+		if err != nil {
+			return nil, fmt.Errorf("failed to fetch bot data for this vote: %w", err)
+		}
+
+		if voteBanned {
+			return nil, errors.New("bot is vote banned and cannot be voted for right now")
+		}
+
+		if botType != "approved" && botType != "certified" {
+			return nil, errors.New("bot is not approved or certified and cannot be voted for right now")
+		}
+
+		botObj, err := dovewing.GetUser(ctx, targetId, state.DovewingPlatformDiscord)
+
+		if err != nil {
+			return nil, err
+		}
+
+		// Set entityInfo for log
+		return &EntityInfo{
+			URL:     state.Config.Sites.Frontend.Parse() + "/bot/" + targetId,
+			VoteURL: state.Config.Sites.Frontend.Parse() + "/bot/" + targetId + "/vote",
+			Name:    botObj.Username,
+			Avatar:  botObj.Avatar,
+		}, nil
+	case "pack":
+		return &EntityInfo{
+			URL:     state.Config.Sites.Frontend.Parse() + "/pack/" + targetId,
+			VoteURL: state.Config.Sites.Frontend.Parse() + "/pack/" + targetId,
+			Name:    targetId,
+			Avatar:  state.Config.Sites.CDN + "/avatars/default.webp",
+		}, nil
+	case "team":
+		var name string
+		var voteBanned bool
+
+		err := c.QueryRow(ctx, "SELECT name, vote_banned FROM teams WHERE id = $1", targetId).Scan(&name, &voteBanned)
+
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, errors.New("team not found")
+		}
+
+		if err != nil {
+			return nil, fmt.Errorf("failed to fetch team data for this vote: %w", err)
+		}
+
+		if voteBanned {
+			return nil, errors.New("team is vote banned and cannot be voted for right now")
+		}
+
+		avatar := assetmanager.AvatarInfo(assetmanager.AssetTargetTypeTeams, targetId)
+
+		var avatarPath string
+
+		if avatar.Exists {
+			avatarPath = state.Config.Sites.CDN + "/" + avatar.Path + "?ts=" + strconv.FormatInt(avatar.LastModified.Unix(), 10)
+		} else {
+			avatarPath = state.Config.Sites.CDN + "/" + avatar.DefaultPath
+		}
+
+		// Set entityInfo for log
+		return &EntityInfo{
+			URL:     state.Config.Sites.Frontend.Parse() + "/team/" + targetId,
+			VoteURL: state.Config.Sites.Frontend.Parse() + "/team/" + targetId + "/vote",
+			Name:    name,
+			Avatar:  avatarPath,
+		}, nil
+	case "server":
+		var name, avatar string
+		var voteBanned bool
+
+		err := c.QueryRow(ctx, "SELECT name, avatar, vote_banned FROM servers WHERE server_id = $1", targetId).Scan(&name, &avatar, &voteBanned)
+
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, errors.New("server not found")
+		}
+
+		if err != nil {
+			return nil, fmt.Errorf("failed to fetch server data for this vote: %w", err)
+		}
+
+		if voteBanned {
+			return nil, errors.New("server is vote banned and cannot be voted for right now")
+		}
+
+		// Set entityInfo for log
+		return &EntityInfo{
+			URL:     state.Config.Sites.Frontend.Parse() + "/server/" + targetId,
+			VoteURL: state.Config.Sites.Frontend.Parse() + "/server/" + targetId + "/vote",
+			Name:    name,
+			Avatar:  avatar,
+		}, nil
+	case "blog":
+		return &EntityInfo{
+			URL:     state.Config.Sites.Frontend.Parse() + "/blog/" + targetId,
+			VoteURL: state.Config.Sites.Frontend.Parse() + "/blog/" + targetId,
+			Name:    targetId,
+			Avatar:  state.Config.Sites.CDN + "/avatars/default.webp",
+		}, nil
+	default:
+		return nil, errors.New("unimplemented target type:" + targetType)
+	}
 }
 
 // Returns core vote info about the entity (such as the amount of cooldown time the entity has)
@@ -110,7 +242,7 @@ func EntityVoteCheck(ctx context.Context, c DbConn, userId, targetId, targetType
 
 	rows, err = c.Query(
 		ctx,
-		"SELECT created_at, upvote FROM entity_votes WHERE author = $1 AND target_id = $2 AND target_type = $3 AND void = false ORDER BY created_at DESC",
+		"SELECT itag, created_at, upvote FROM entity_votes WHERE author = $1 AND target_id = $2 AND target_type = $3 AND void = false ORDER BY created_at DESC",
 		userId,
 		targetId,
 		targetType,
@@ -123,16 +255,18 @@ func EntityVoteCheck(ctx context.Context, c DbConn, userId, targetId, targetType
 	var validVotes []*types.ValidVote
 
 	for rows.Next() {
+		var itag pgtype.UUID
 		var createdAt time.Time
 		var upvote bool
 
-		err = rows.Scan(&createdAt, &upvote)
+		err = rows.Scan(&itag, &createdAt, &upvote)
 
 		if err != nil {
 			return nil, err
 		}
 
 		validVotes = append(validVotes, &types.ValidVote{
+			ID:        itag,
 			Upvote:    upvote,
 			CreatedAt: createdAt,
 		})
@@ -201,4 +335,16 @@ func EntityGetVoteCount(ctx context.Context, c DbConn, targetId, targetType stri
 	}
 
 	return upvotes - downvotes, nil
+}
+
+func EntityGiveVotes(ctx context.Context, c DbConn, upvote bool, author, targetType, targetId string, vi *types.VoteInfo) error {
+	// Keep adding votes until, but not including vi.VoteInfo.PerUser
+	for i := 0; i < vi.PerUser; i++ {
+		_, err := c.Exec(ctx, "INSERT INTO entity_votes (author, target_id, target_type, upvote, vote_num) VALUES ($1, $2, $3, $4, $5)", author, targetId, targetType, upvote, i)
+
+		if err != nil {
+			return fmt.Errorf("failed to insert vote: %w", err)
+		}
+	}
+	return nil
 }
