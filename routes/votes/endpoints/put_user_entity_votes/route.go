@@ -262,6 +262,17 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		}
 	}
 
+	// Perform post-vote tasks
+	err = votes.EntityPostVote(d.Context, tx, uid, targetId, targetType)
+
+	if err != nil {
+		state.Logger.Error("Failed to perform post-vote tasks", zap.Error(err), zap.String("userId", uid), zap.String("targetId", targetId), zap.String("targetType", targetType))
+		return uapi.HttpResponse{
+			Status: http.StatusInternalServerError,
+			Json:   types.ApiError{Message: "Failed to perform post-vote tasks: " + err.Error()},
+		}
+	}
+
 	// Fetch new vote count
 	nvc, err := votes.EntityGetVoteCount(d.Context, tx, targetId, targetType)
 

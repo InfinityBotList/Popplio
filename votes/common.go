@@ -340,3 +340,26 @@ func EntityGiveVotes(ctx context.Context, c DbConn, upvote bool, author, targetT
 	}
 	return nil
 }
+
+// Helper function to perform post-vote tasks
+func EntityPostVote(ctx context.Context, c DbConn, author, targetType, targetId string) error {
+	nvc, err := EntityGetVoteCount(ctx, c, targetId, targetType)
+
+	if err != nil {
+		return fmt.Errorf("failed to get vote count: %w", err)
+	}
+
+	// Set the approximate vote count
+	switch targetType {
+	case "bot":
+		_, err = c.Exec(ctx, "UPDATE bots SET approximate_votes = $1 WHERE bot_id = $2", nvc, targetId)
+	case "server":
+		_, err = c.Exec(ctx, "UPDATE servers SET approximate_votes = $1 WHERE server_id = $2", nvc, targetId)
+	}
+
+	if err != nil {
+		return fmt.Errorf("failed to update vote count: %w", err)
+	}
+
+	return nil
+}
