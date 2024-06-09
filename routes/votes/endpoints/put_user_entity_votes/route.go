@@ -263,7 +263,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	}
 
 	// Perform post-vote tasks
-	err = votes.EntityPostVote(d.Context, tx, uid, targetType, targetId)
+	err = votes.EntityPostVote(d.Context, tx, targetType, targetId)
 
 	if err != nil {
 		state.Logger.Error("Failed to perform post-vote tasks", zap.Error(err), zap.String("userId", uid), zap.String("targetId", targetId), zap.String("targetType", targetType))
