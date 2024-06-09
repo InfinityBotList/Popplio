@@ -18,7 +18,7 @@ import (
 func Docs() *docs.Doc {
 	return &docs.Doc{
 		Summary:     "Get User Entity Votes",
-		Description: "Gets a vote a user has made for an entity. Note that for compatibility, a trailing 's' is removed",
+		Description: "Gets all votes a user has made for an entity. Note that for compatibility, a trailing 's' is removed",
 		Params: []docs.Parameter{
 			{
 				Name:        "uid",
@@ -60,7 +60,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 
 	targetType = strings.TrimSuffix(targetType, "s")
 
-	uv, err := votes.EntityVoteCheck(d.Context, uid, targetId, targetType)
+	uv, err := votes.EntityVoteCheck(d.Context, state.Pool, uid, targetId, targetType)
 
 	if err != nil {
 		state.Logger.Error("Failed to get user entity votes", zap.Error(err), zap.String("userId", uid), zap.String("targetId", targetId), zap.String("targetType", targetType))
