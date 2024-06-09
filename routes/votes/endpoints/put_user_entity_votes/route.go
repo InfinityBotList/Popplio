@@ -210,7 +210,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	}
 
 	if vi.HasVoted {
-		// If !Multiple Votes
+		// lacking MultipleVotes means that there can only be one vote per user for the entity
 		if !vi.VoteInfo.MultipleVotes {
 			if vi.ValidVotes[0].Upvote == upvote {
 				return uapi.HttpResponse{
