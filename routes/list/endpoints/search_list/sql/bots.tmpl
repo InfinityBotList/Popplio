@@ -13,8 +13,8 @@ AND (servers >= $1)
 AND (($2 = 0) OR (servers <= $2))
 
 -- Votes filter (3-4)
-AND (votes >= $3)
-AND (($4 = 0) OR (votes <= $4))
+AND (approximate_votes >= $3)
+AND (($4 = 0) OR (approximate_votes <= $4))
 
 -- Shards filter (5-6)
 AND (shards >= $5)
@@ -32,4 +32,4 @@ AND (
 )
 {{end}}
 
-ORDER BY votes DESC, type DESC LIMIT 12
+ORDER BY approximate_votes DESC, type DESC LIMIT 12

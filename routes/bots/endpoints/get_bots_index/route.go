@@ -37,7 +37,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	listIndex := types.ListIndexBot{}
 
 	// Certified Bots
-	certRows, err := state.Pool.Query(d.Context, "SELECT "+indexBotCols+" FROM bots WHERE type = 'certified' ORDER BY votes DESC LIMIT 9")
+	certRows, err := state.Pool.Query(d.Context, "SELECT "+indexBotCols+" FROM bots WHERE type = 'certified' ORDER BY approximate_votes DESC LIMIT 9")
 	if err != nil {
 		state.Logger.Error("Error while getting certified bots", zap.Error(err))
 		return uapi.DefaultResponse(http.StatusInternalServerError)
@@ -49,7 +49,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	}
 
 	// Premium Bots
-	premRows, err := state.Pool.Query(d.Context, "SELECT "+indexBotCols+" FROM bots WHERE premium = true ORDER BY votes DESC LIMIT 9")
+	premRows, err := state.Pool.Query(d.Context, "SELECT "+indexBotCols+" FROM bots WHERE premium = true ORDER BY approximate_votes DESC LIMIT 9")
 	if err != nil {
 		state.Logger.Error("Error while getting premium bots", zap.Error(err))
 		return uapi.DefaultResponse(http.StatusInternalServerError)
@@ -85,7 +85,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	}
 
 	// Top Voted Bots
-	topVotedRows, err := state.Pool.Query(d.Context, "SELECT "+indexBotCols+" FROM bots WHERE type = 'approved' OR type = 'certified' ORDER BY votes DESC LIMIT 9")
+	topVotedRows, err := state.Pool.Query(d.Context, "SELECT "+indexBotCols+" FROM bots WHERE type = 'approved' OR type = 'certified' ORDER BY approximate_votes DESC LIMIT 9")
 	if err != nil {
 		state.Logger.Error("Error while getting top voted bots", zap.Error(err))
 		return uapi.DefaultResponse(http.StatusInternalServerError)

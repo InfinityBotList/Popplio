@@ -1,8 +1,9 @@
-package notifications
+package votereminders
 
 import (
 	"fmt"
 	"popplio/config"
+	"popplio/notifications"
 	"popplio/state"
 	"popplio/types"
 	"popplio/votes"
@@ -76,7 +77,7 @@ func vrCheck() error {
 				NoSave:  true, // Spammy and fills up db very quickly
 			}
 
-			err = PushNotification(userId, message)
+			err = notifications.PushNotification(userId, message)
 
 			if err != nil {
 				state.Logger.Error("PushNotification returned an error", zap.Error(err), zap.String("userId", userId), zap.String("targetId", targetId), zap.String("targetType", targetType))

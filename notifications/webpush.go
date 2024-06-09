@@ -1,6 +1,7 @@
 package notifications
 
 import (
+	"encoding/json"
 	"fmt"
 	"popplio/state"
 	"popplio/types"

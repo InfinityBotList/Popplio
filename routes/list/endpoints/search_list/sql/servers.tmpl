@@ -6,8 +6,8 @@ AND (total_members >= $1)
 AND (($2 = 0) OR (total_members <= $2))
 
 -- Votes filter (3-4)
-AND (votes >= $3)
-AND (($4 = 0) OR (votes <= $4))
+AND (approximate_votes >= $3)
+AND (($4 = 0) OR (approximate_votes <= $4))
 
 -- Tags filter
 AND (cardinality($5::text[]) = 0 OR tags {{.TagMode}} $5) -- Where TagMode is one of @> = all, && = any
@@ -18,5 +18,5 @@ AND (
 {{end}}
 
 GROUP BY server_id 
-ORDER BY votes DESC, type DESC 
+ORDER BY approximate_votes DESC, type DESC 
 LIMIT 12

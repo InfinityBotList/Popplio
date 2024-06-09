@@ -319,18 +319,16 @@ func EntityGetVoteCount(ctx context.Context, c DbConn, targetId, targetType stri
 		return 0, err
 	}
 
-	// Bots can never have a downvote at this time
-	if targetType != "bot" {
-		err = c.QueryRow(ctx, "SELECT COUNT(*) FROM entity_votes WHERE target_id = $1 AND target_type = $2 AND void = false AND upvote = false", targetId, targetType).Scan(&downvotes)
+	err = c.QueryRow(ctx, "SELECT COUNT(*) FROM entity_votes WHERE target_id = $1 AND target_type = $2 AND void = false AND upvote = false", targetId, targetType).Scan(&downvotes)
 
-		if err != nil {
-			return 0, err
-		}
+	if err != nil {
+		return 0, err
 	}
 
 	return upvotes - downvotes, nil
 }
 
+// Helper function to give votes to an entity based on vote info
 func EntityGiveVotes(ctx context.Context, c DbConn, upvote bool, author, targetType, targetId string, vi *types.VoteInfo) error {
 	// Keep adding votes until, but not including vi.VoteInfo.PerUser
 	for i := 0; i < vi.PerUser; i++ {

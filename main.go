@@ -13,7 +13,7 @@ import (
 	"popplio/api"
 	poplapps "popplio/apps"
 	"popplio/constants"
-	"popplio/notifications"
+	"popplio/notifications/votereminders"
 	"popplio/routes/alerts"
 	"popplio/routes/apitokens"
 	"popplio/routes/apps"
@@ -241,7 +241,7 @@ func main() {
 		w.Write([]byte(constants.MethodNotAllowed))
 	})
 
-	go notifications.VrLoop()
+	go votereminders.VrLoop()
 
 	// If GOOS is windows, do normal http server
 	if runtime.GOOS == "linux" || runtime.GOOS == "darwin" {
