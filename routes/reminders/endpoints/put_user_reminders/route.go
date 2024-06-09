@@ -54,7 +54,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		return uapi.DefaultResponse(http.StatusBadRequest)
 	}
 
-	entityInfo, err := votes.GetEntityInfo(d.Context, targetId, targetType)
+	entityInfo, err := votes.GetEntityInfo(d.Context, state.Pool, targetId, targetType)
 
 	if err != nil {
 		state.Logger.Error("Error getting entity info", zap.Error(err), zap.String("target_id", targetId), zap.String("target_type", targetType))

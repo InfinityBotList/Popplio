@@ -26,8 +26,12 @@ type EntityVote struct {
 
 // Vote Info
 type VoteInfo struct {
-	PerUser  int    `json:"per_user" description:"The amount of votes a single vote creates on this entity"`
-	VoteTime uint16 `json:"vote_time" description:"The amount of time in hours until a user can vote again"`
+	PerUser           int    `json:"per_user" description:"The amount of votes a single vote creates on this entity"`
+	VoteTime          uint16 `json:"vote_time" description:"The amount of time in hours until a user can vote again"`
+	VoteCredits       bool   `json:"vote_credits" description:"Whether or not the entity supports vote credits"`
+	MultipleVotes     bool   `json:"multiple_votes" description:"Whether or not the entity supports multiple votes per time interval"`
+	SupportsUpvotes   bool   `json:"supports_upvotes" description:"Whether or not the entity supports upvotes"`
+	SupportsDownvotes bool   `json:"supports_downvotes" description:"Whether or not the entity supports downvotes"`
 }
 
 // Stores the hours, minutes and seconds until the user can vote again
@@ -44,7 +48,7 @@ type ValidVote struct {
 
 // A user vote is a struct containing basic info on a users vote
 type UserVote struct {
-	HasVoted   bool         `json:"has_voted" description:"Whether or not the user has voted"`
+	HasVoted   bool         `json:"has_voted" description:"Whether or not the user has voted for the entity. If an entity supports multiple votes, this will be true if the user has voted in the last vote time, otherwise, it will be true if the user has voted at all"`
 	ValidVotes []*ValidVote `json:"valid_votes" description:"Some information about a valid vote"`
 	VoteInfo   *VoteInfo    `json:"vote_info" description:"Some information about the vote"`
 	Wait       *VoteWait    `json:"wait" description:"The time until the user can vote again"`

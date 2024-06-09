@@ -13,24 +13,21 @@ import (
 )
 
 type EntityInfo struct {
-	Name        string
-	URL         string
-	VoteURL     string
-	Avatar      string
-	VoteCredits bool
+	Name    string
+	URL     string
+	VoteURL string
+	Avatar  string
 }
 
 // GetEntityInfo returns information about the entity that is being voted for including vote bans etc.
-//
-// TODO: Refactor vote ban checks to its own function
-func GetEntityInfo(ctx context.Context, targetId, targetType string) (*EntityInfo, error) {
+func GetEntityInfo(ctx context.Context, c DbConn, targetId, targetType string) (*EntityInfo, error) {
 	// Handle entity specific checks here, such as ensuring the entity actually exists
 	switch targetType {
 	case "bot":
 		var botType string
 		var voteBanned bool
 
-		err := state.Pool.QueryRow(ctx, "SELECT type, vote_banned FROM bots WHERE bot_id = $1", targetId).Scan(&botType, &voteBanned)
+		err := c.QueryRow(ctx, "SELECT type, vote_banned FROM bots WHERE bot_id = $1", targetId).Scan(&botType, &voteBanned)
 
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, errors.New("bot not found")
@@ -56,24 +53,23 @@ func GetEntityInfo(ctx context.Context, targetId, targetType string) (*EntityInf
 
 		// Set entityInfo for log
 		return &EntityInfo{
-			URL:         state.Config.Sites.Frontend.Parse() + "/bot/" + targetId,
-			VoteURL:     state.Config.Sites.Frontend.Parse() + "/bot/" + targetId + "/vote",
-			Name:        botObj.Username,
-			Avatar:      botObj.Avatar,
-                        VoteCredits: true,
+			URL:     state.Config.Sites.Frontend.Parse() + "/bot/" + targetId,
+			VoteURL: state.Config.Sites.Frontend.Parse() + "/bot/" + targetId + "/vote",
+			Name:    botObj.Username,
+			Avatar:  botObj.Avatar,
 		}, nil
 	case "pack":
 		return &EntityInfo{
 			URL:     state.Config.Sites.Frontend.Parse() + "/pack/" + targetId,
 			VoteURL: state.Config.Sites.Frontend.Parse() + "/pack/" + targetId,
 			Name:    targetId,
-			Avatar:  state.Config.Sites.CDN.Parse() + "/avatars/default.webp",
+			Avatar:  state.Config.Sites.CDN + "/avatars/default.webp",
 		}, nil
 	case "team":
 		var name string
 		var voteBanned bool
 
-		err := state.Pool.QueryRow(ctx, "SELECT name, vote_banned FROM teams WHERE id = $1", targetId).Scan(&name, &voteBanned)
+		err := c.QueryRow(ctx, "SELECT name, vote_banned FROM teams WHERE id = $1", targetId).Scan(&name, &voteBanned)
 
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, errors.New("team not found")
@@ -108,7 +104,7 @@ func GetEntityInfo(ctx context.Context, targetId, targetType string) (*EntityInf
 		var name, avatar string
 		var voteBanned bool
 
-		err := state.Pool.QueryRow(ctx, "SELECT name, avatar, vote_banned FROM servers WHERE server_id = $1", targetId).Scan(&name, &avatar, &voteBanned)
+		err := c.QueryRow(ctx, "SELECT name, avatar, vote_banned FROM servers WHERE server_id = $1", targetId).Scan(&name, &avatar, &voteBanned)
 
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, errors.New("server not found")
@@ -122,20 +118,19 @@ func GetEntityInfo(ctx context.Context, targetId, targetType string) (*EntityInf
 			return nil, errors.New("server is vote banned and cannot be voted for right now")
 		}
 
-   		// Set entityInfo for log
-                return &EntityInfo{
-			URL:         state.Config.Sites.Frontend.Parse()+ "/server/" + targetId,
-			VoteURL:     state.Config.Sites.Frontend.Parse() + "/server/" + targetId + "/vote",
-			Name:        name,
-			Avatar:      avatar,
-			VoteCredits: true,
+		// Set entityInfo for log
+		return &EntityInfo{
+			URL:     state.Config.Sites.Frontend.Parse() + "/server/" + targetId,
+			VoteURL: state.Config.Sites.Frontend.Parse() + "/server/" + targetId + "/vote",
+			Name:    name,
+			Avatar:  avatar,
 		}, nil
 	case "blog":
-	        return &EntityInfo{
+		return &EntityInfo{
 			URL:     state.Config.Sites.Frontend.Parse() + "/blog/" + targetId,
 			VoteURL: state.Config.Sites.Frontend.Parse() + "/blog/" + targetId,
 			Name:    targetId,
-			Avatar:  state.Config.Sites.CDN.Parse() + "/avatars/default.webp",
+			Avatar:  state.Config.Sites.CDN + "/avatars/default.webp",
 		}, nil
 	default:
 		return nil, errors.New("unimplemented target type:" + targetType)

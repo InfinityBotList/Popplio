@@ -52,7 +52,7 @@ func vrCheck() error {
 			continue
 		}
 
-		vi, err := votes.EntityVoteCheck(state.Context, userId, targetId, targetType)
+		vi, err := votes.EntityVoteCheck(state.Context, state.Pool, userId, targetId, targetType)
 
 		if err != nil {
 			state.Logger.Error("Error checking votes of entity", zap.Error(err), zap.String("userId", userId), zap.String("targetId", targetId), zap.String("targetType", targetType))
@@ -60,7 +60,7 @@ func vrCheck() error {
 		}
 
 		if !vi.HasVoted {
-			entityInfo, err := votes.GetEntityInfo(state.Context, targetId, targetType)
+			entityInfo, err := votes.GetEntityInfo(state.Context, state.Pool, targetId, targetType)
 
 			if err != nil {
 				state.Logger.Error("Error finding bot info", zap.Error(err), zap.String("targetId", targetId), zap.String("targetType", targetType))

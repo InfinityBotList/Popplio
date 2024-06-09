@@ -132,14 +132,17 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 
 	targetType = strings.TrimSuffix(targetType, "s")
 
-	upvote := r.URL.Query().Get("upvote")
+	// Check if upvote query parameter is valid
+	upvoteStr := r.URL.Query().Get("upvote")
 
-	if upvote != "true" && upvote != "false" {
+	if upvoteStr != "true" && upvoteStr != "false" {
 		return uapi.HttpResponse{
 			Status: http.StatusBadRequest,
-			Json:   types.ApiError{Message: "upvote must be either true or false"},
+			Json:   types.ApiError{Message: "upvote must be either `true` or `false`"},
 		}
 	}
+
+	upvote := upvoteStr == "true"
 
 	// Check if user is allowed to even make a vote right now.
 	var voteBanned bool
@@ -148,7 +151,10 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 
 	if err != nil {
 		state.Logger.Error("Failed to check if user is vote banned", zap.Error(err), zap.String("userId", uid))
-		return uapi.DefaultResponse(http.StatusInternalServerError)
+		return uapi.HttpResponse{
+			Status: http.StatusBadRequest,
+			Json:   types.ApiError{Message: "Error checking if user is vote banned: " + err.Error()},
+		}
 	}
 
 	if voteBanned {
@@ -158,18 +164,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		}
 	}
 
-	// Handle entity specific checks here, such as ensuring the entity actually exists
-	switch targetType {
-	case "bot":
-		if upvote == "false" {
-			return uapi.HttpResponse{
-				Status: http.StatusNotImplemented,
-				Json:   types.ApiError{Message: "Downvoting bots is not implemented yet"},
-			}
-		}
-	}
-
-	entityInfo, err := votes.GetEntityInfo(d.Context, targetId, targetType)
+	entityInfo, err := votes.GetEntityInfo(d.Context, state.Pool, targetId, targetType)
 
 	if err != nil {
 		state.Logger.Error("Failed to fetch entity info", zap.Error(err), zap.String("userId", uid), zap.String("targetId", targetId), zap.String("targetType", targetType))
@@ -180,20 +175,47 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	}
 
 	// Now check the vote
-	vi, err := votes.EntityVoteCheck(d.Context, uid, targetId, targetType)
+	vi, err := votes.EntityVoteCheck(d.Context, state.Pool, uid, targetId, targetType)
 
 	if err != nil {
 		state.Logger.Error("Failed to check vote", zap.Error(err), zap.String("userId", uid), zap.String("targetId", targetId), zap.String("targetType", targetType))
 		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
+	if !vi.VoteInfo.SupportsDownvotes && !upvote {
+		return uapi.HttpResponse{
+			Status: http.StatusBadRequest,
+			Json:   types.ApiError{Message: "This entity does not support downvotes"},
+		}
+	}
+
+	if !vi.VoteInfo.SupportsUpvotes && upvote {
+		return uapi.HttpResponse{
+			Status: http.StatusBadRequest,
+			Json:   types.ApiError{Message: "This entity does not support upvotes"},
+		}
+	}
+
 	if vi.HasVoted {
-		timeStr := fmt.Sprintf("%02d hours, %02d minutes. %02d seconds", vi.Wait.Hours, vi.Wait.Minutes, vi.Wait.Seconds)
+		// If !Multiple Votes
+		if !vi.VoteInfo.MultipleVotes {
+			return uapi.HttpResponse{
+				Status: http.StatusBadRequest,
+				Json:   types.ApiError{Message: "You have already voted for this entity before!"},
+			}
+		}
+
+		var timeStr string
+		if vi.Wait != nil {
+			timeStr = fmt.Sprintf("%02d hours, %02d minutes. %02d seconds", vi.Wait.Hours, vi.Wait.Minutes, vi.Wait.Seconds)
+		} else {
+			timeStr = "a while"
+		}
 
 		if len(vi.ValidVotes) > 1 {
 			return uapi.HttpResponse{
 				Status: http.StatusBadRequest,
-				Json:   types.ApiError{Message: "Your last vote was a double vote, calm down?: " + timeStr},
+				Json:   types.ApiError{Message: "Your last vote was a double vote, calm down for " + timeStr + "?"},
 			}
 		}
 
@@ -208,17 +230,20 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 
 	if err != nil {
 		state.Logger.Error("Failed to create transaction [put_user_entity_votes]", zap.Error(err))
-		return uapi.DefaultResponse(http.StatusInternalServerError)
+		return uapi.HttpResponse{
+			Status: http.StatusInternalServerError,
+			Json:   types.ApiError{Message: "Failed to create transaction: " + err.Error()},
+		}
 	}
 
 	defer tx.Rollback(d.Context)
 
 	// Keep adding votes until, but not including vi.VoteInfo.PerUser
 	for i := 0; i < vi.VoteInfo.PerUser; i++ {
-		_, err = tx.Exec(d.Context, "INSERT INTO entity_votes (author, target_id, target_type, upvote, vote_num) VALUES ($1, $2, $3, $4, $5)", uid, targetId, targetType, upvote == "true", i)
+		_, err = tx.Exec(d.Context, "INSERT INTO entity_votes (author, target_id, target_type, upvote, vote_num) VALUES ($1, $2, $3, $4, $5)", uid, targetId, targetType, upvote, i)
 
 		if err != nil {
-			state.Logger.Error("Failed to insert vote", zap.Error(err), zap.String("userId", uid), zap.String("targetId", targetId), zap.String("targetType", targetType), zap.String("upvote", upvote))
+			state.Logger.Error("Failed to insert vote", zap.Error(err), zap.String("userId", uid), zap.String("targetId", targetId), zap.String("targetType", targetType), zap.Bool("upvote", upvote))
 			return uapi.DefaultResponse(http.StatusInternalServerError)
 		}
 	}
@@ -240,59 +265,61 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	}
 
 	// Fetch user info to log it to server
-	userObj, err := dovewing.GetUser(d.Context, uid, state.DovewingPlatformDiscord)
+	go func() {
+		userObj, err := dovewing.GetUser(d.Context, uid, state.DovewingPlatformDiscord)
 
-	if err != nil {
-		state.Logger.Error("Failed to fetch user info", zap.Error(err), zap.String("userId", uid), zap.String("targetId", targetId), zap.String("targetType", targetType))
-		return uapi.DefaultResponse(http.StatusInternalServerError)
-	}
+		if err != nil {
+			state.Logger.Error("Failed to fetch user info", zap.Error(err), zap.String("userId", uid), zap.String("targetId", targetId), zap.String("targetType", targetType))
+			return
+		}
 
-	_, err = state.Discord.ChannelMessageSendComplex(state.Config.Channels.VoteLogs, &discordgo.MessageSend{
-		Embeds: []*discordgo.MessageEmbed{
-			{
-				URL: entityInfo.URL,
-				Thumbnail: &discordgo.MessageEmbedThumbnail{
-					URL: entityInfo.Avatar,
-				},
-				Title:       "🎉 Vote Count Updated!",
-				Description: ":heart:" + userObj.DisplayName + " has voted for " + targetType + ": " + entityInfo.Name,
-				Color:       0x8A6BFD,
-				Fields: []*discordgo.MessageEmbedField{
-					{
-						Name:   "Vote Count:",
-						Value:  strconv.Itoa(nvc),
-						Inline: true,
+		_, err = state.Discord.ChannelMessageSendComplex(state.Config.Channels.VoteLogs, &discordgo.MessageSend{
+			Embeds: []*discordgo.MessageEmbed{
+				{
+					URL: entityInfo.URL,
+					Thumbnail: &discordgo.MessageEmbedThumbnail{
+						URL: entityInfo.Avatar,
 					},
-					{
-						Name:   "Votes Added:",
-						Value:  strconv.Itoa(vi.VoteInfo.PerUser),
-						Inline: true,
-					},
-					{
-						Name:   "User ID:",
-						Value:  userObj.ID,
-						Inline: true,
-					},
-					{
-						Name:   "View " + targetType + "'s page",
-						Value:  "[View " + entityInfo.Name + "](" + entityInfo.URL + ")",
-						Inline: true,
-					},
-					{
-						Name:   "Vote Page",
-						Value:  "[Vote for " + entityInfo.Name + "](" + entityInfo.VoteURL + ")",
-						Inline: true,
+					Title:       "🎉 Vote Count Updated!",
+					Description: ":heart:" + userObj.DisplayName + " has voted for " + targetType + ": " + entityInfo.Name,
+					Color:       0x8A6BFD,
+					Fields: []*discordgo.MessageEmbedField{
+						{
+							Name:   "Vote Count:",
+							Value:  strconv.Itoa(nvc),
+							Inline: true,
+						},
+						{
+							Name:   "Votes Added:",
+							Value:  strconv.Itoa(vi.VoteInfo.PerUser),
+							Inline: true,
+						},
+						{
+							Name:   "User ID:",
+							Value:  userObj.ID,
+							Inline: true,
+						},
+						{
+							Name:   "View " + targetType + "'s page",
+							Value:  "[View " + entityInfo.Name + "](" + entityInfo.URL + ")",
+							Inline: true,
+						},
+						{
+							Name:   "Vote Page",
+							Value:  "[Vote for " + entityInfo.Name + "](" + entityInfo.VoteURL + ")",
+							Inline: true,
+						},
 					},
 				},
 			},
-		},
-	})
+		})
 
-	if err != nil {
-		state.Logger.Error("Failed to send vote log message", zap.Error(err), zap.String("userId", uid), zap.String("targetId", targetId), zap.String("targetType", targetType))
-	}
+		if err != nil {
+			state.Logger.Error("Failed to send vote log message", zap.Error(err), zap.String("userId", uid), zap.String("targetId", targetId), zap.String("targetType", targetType))
+		}
+	}()
 
-	// Send webhook in a goroutine refunding the vote if it failed
+	// Send webhook in a goroutine
 	go func() {
 		err = nil // Be sure error is empty before we start
 
@@ -305,6 +332,10 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 				PerUser: vi.VoteInfo.PerUser,
 			},
 		})
+
+		if err != nil {
+			state.Logger.Error("Failed to send webhook", zap.Error(err), zap.String("userId", uid), zap.String("targetId", targetId), zap.String("targetType", targetType))
+		}
 	}()
 
 	return uapi.DefaultResponse(http.StatusNoContent)
