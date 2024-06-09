@@ -342,7 +342,7 @@ func EntityGiveVotes(ctx context.Context, c DbConn, upvote bool, author, targetT
 }
 
 // Helper function to perform post-vote tasks
-func EntityPostVote(ctx context.Context, c DbConn, author, targetType, targetId string) error {
+func EntityPostVote(ctx context.Context, c DbConn, targetType, targetId string) error {
 	nvc, err := EntityGetVoteCount(ctx, c, targetId, targetType)
 
 	if err != nil {
