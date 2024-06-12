@@ -8,14 +8,11 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	docs "github.com/infinitybotlist/eureka/doclib"
+	"github.com/infinitybotlist/eureka/jsonimpl"
 	"github.com/infinitybotlist/eureka/uapi"
 	"github.com/plutov/paypal/v4"
 	"go.uber.org/zap"
-
-	jsoniter "github.com/json-iterator/go"
 )
-
-var json = jsoniter.ConfigCompatibleWithStandardLibrary
 
 func Docs() *docs.Doc {
 	return &docs.Doc{
@@ -138,14 +135,14 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 
 	var product assets.PerkData
 
-	err = json.Unmarshal([]byte(productJson), &product)
+	err = jsonimpl.Unmarshal([]byte(productJson), &product)
 
 	if err != nil {
 		// Refund the order
 		_, err = state.Paypal.RefundCapture(d.Context, orderId, paypal.RefundCaptureRequest{})
 
 		if err != nil {
-			state.Logger.Error("Failed to refund order [json.Unmarshal]", zap.Error(err), zap.String("order_id", orderId))
+			state.Logger.Error("Failed to refund order [jsonimpl.Unmarshal]", zap.Error(err), zap.String("order_id", orderId))
 			return uapi.HttpResponse{
 				Status: http.StatusInternalServerError,
 				Json: types.ApiError{

@@ -6,6 +6,7 @@ import (
 	"popplio/state"
 	"sync"
 
+	"github.com/infinitybotlist/eureka/jsonimpl"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 )
@@ -22,7 +23,7 @@ func (m *mutLogger) add(p []byte) error {
 
 	var data map[string]any
 
-	err := json.Unmarshal(p, &data)
+	err := jsonimpl.Unmarshal(p, &data)
 
 	if err != nil {
 		return fmt.Errorf("failed to unmarshal json: %w", err)

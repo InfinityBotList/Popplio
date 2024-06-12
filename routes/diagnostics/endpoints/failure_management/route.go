@@ -2,7 +2,6 @@ package failure_management
 
 import (
 	"bytes"
-	"encoding/json"
 	"io"
 	"net/http"
 	"popplio/state"
@@ -11,6 +10,7 @@ import (
 
 	"github.com/getsentry/sentry-go"
 	docs "github.com/infinitybotlist/eureka/doclib"
+	"github.com/infinitybotlist/eureka/jsonimpl"
 	"github.com/infinitybotlist/eureka/uapi"
 	"go.uber.org/zap"
 )
@@ -71,7 +71,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 				Dsn string `json:"dsn"`
 			}
 
-			err = json.Unmarshal(line, &dsnData)
+			err = jsonimpl.Unmarshal(line, &dsnData)
 
 			if err != nil {
 				return uapi.HttpResponse{

@@ -30,8 +30,8 @@ import (
 
 	"github.com/bwmarrin/discordgo"
 	"github.com/infinitybotlist/eureka/crypto"
+	"github.com/infinitybotlist/eureka/jsonimpl"
 	"github.com/jackc/pgx/v5"
-	jsoniter "github.com/json-iterator/go"
 	"go.uber.org/zap"
 )
 
@@ -48,7 +48,6 @@ type webhookData struct {
 }
 
 var (
-	json      = jsoniter.ConfigCompatibleWithStandardLibrary
 	wdColsArr = db.GetCols(webhookData{})
 	wdCols    = strings.Join(wdColsArr, ",")
 )
@@ -182,7 +181,7 @@ func Send(d *WebhookData) (*WebhookSendResult, error) {
 		return nil, fmt.Errorf("failed to collect webhooks: %w", err)
 	}
 
-	dataBytes, err := json.Marshal(d.Event)
+	dataBytes, err := jsonimpl.Marshal(d.Event)
 
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal webhook payload: %w", err)
@@ -569,7 +568,7 @@ func SendDiscord(url, prefix string, entity WebhookEntity, params *discordgo.Web
 	// Remove out prefix
 	url = state.Config.Meta.PopplioProxy + "/" + strings.TrimPrefix(url, prefix)
 
-	payload, err := json.Marshal(params)
+	payload, err := jsonimpl.Marshal(params)
 
 	if err != nil {
 		return err

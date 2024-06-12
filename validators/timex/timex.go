@@ -1,10 +1,10 @@
 package timex
 
 import (
-	"encoding/json"
 	"errors"
 	"time"
 
+	"github.com/infinitybotlist/eureka/jsonimpl"
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
@@ -22,12 +22,12 @@ var Week = Duration(time.Hour * 24 * 7)
 var Month = Duration(time.Hour * 24 * 30)
 
 func (d Duration) MarshalJSON() ([]byte, error) {
-	return json.Marshal(time.Duration(d).String())
+	return jsonimpl.Marshal(time.Duration(d).String())
 }
 
 func (d *Duration) UnmarshalJSON(b []byte) error {
 	var v interface{}
-	if err := json.Unmarshal(b, &v); err != nil {
+	if err := jsonimpl.Unmarshal(b, &v); err != nil {
 		return err
 	}
 	switch value := v.(type) {

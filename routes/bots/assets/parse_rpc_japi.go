@@ -2,7 +2,6 @@ package assets
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
@@ -12,6 +11,7 @@ import (
 	"time"
 
 	"github.com/infinitybotlist/eureka/dovewing"
+	"github.com/infinitybotlist/eureka/jsonimpl"
 	"go.uber.org/zap"
 )
 
@@ -96,7 +96,7 @@ func CheckBot(ctx context.Context, fallbackBotId, clientId string) (*types.Disco
 
 		var data japidata
 
-		err = json.NewDecoder(resp.Body).Decode(&data)
+		err = jsonimpl.UnmarshalReader(resp.Body, &data)
 
 		if err != nil {
 			return nil, err
@@ -175,7 +175,7 @@ func CheckBot(ctx context.Context, fallbackBotId, clientId string) (*types.Disco
 			BotPublic bool `json:"bot_public"`
 		}
 
-		err = json.NewDecoder(resp.Body).Decode(&rpcFallbackData)
+		err = jsonimpl.UnmarshalReader(resp.Body, &rpcFallbackData)
 
 		if err != nil {
 			return nil, err

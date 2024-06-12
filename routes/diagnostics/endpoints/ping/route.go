@@ -6,12 +6,9 @@ import (
 	"popplio/state"
 
 	docs "github.com/infinitybotlist/eureka/doclib"
+	"github.com/infinitybotlist/eureka/jsonimpl"
 	"github.com/infinitybotlist/eureka/uapi"
-
-	jsoniter "github.com/json-iterator/go"
 )
-
-var json = jsoniter.ConfigCompatibleWithStandardLibrary
 
 type Hello struct {
 	Message     string `json:"message"`
@@ -33,7 +30,7 @@ func Setup() {
 	}
 
 	var err error
-	helloWorld, err = json.Marshal(helloWorldB)
+	helloWorld, err = jsonimpl.Marshal(helloWorldB)
 
 	if err != nil {
 		panic(err)

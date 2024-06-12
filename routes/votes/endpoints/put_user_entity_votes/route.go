@@ -17,14 +17,12 @@ import (
 	"github.com/bwmarrin/discordgo"
 	docs "github.com/infinitybotlist/eureka/doclib"
 	"github.com/infinitybotlist/eureka/dovewing"
+	"github.com/infinitybotlist/eureka/jsonimpl"
 	"github.com/infinitybotlist/eureka/uapi"
 	"go.uber.org/zap"
 
 	"github.com/go-chi/chi/v5"
-	jsoniter "github.com/json-iterator/go"
 )
-
-var json = jsoniter.ConfigCompatibleWithStandardLibrary
 
 func Docs() *docs.Doc {
 	return &docs.Doc{
@@ -72,7 +70,7 @@ func hcaptcha(b []byte) {
 		Response string `json:"response"`
 	}
 
-	err := json.Unmarshal(b, &hcaptchaResp)
+	err := jsonimpl.Unmarshal(b, &hcaptchaResp)
 
 	if err != nil {
 		state.Logger.Error("Failed to unmarshal hcaptcha response", zap.Error(err))
@@ -95,7 +93,7 @@ func hcaptcha(b []byte) {
 			ErrorCodes []string `json:"error-codes"`
 		}
 
-		err = json.NewDecoder(resp.Body).Decode(&hcaptchaResp)
+		err = jsonimpl.UnmarshalReader(resp.Body, &hcaptchaResp)
 
 		if err != nil {
 			state.Logger.Error("Failed to decode hcaptcha response", zap.Error(err))

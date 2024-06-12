@@ -9,12 +9,9 @@ import (
 	"time"
 
 	docs "github.com/infinitybotlist/eureka/doclib"
+	"github.com/infinitybotlist/eureka/jsonimpl"
 	"github.com/infinitybotlist/eureka/uapi"
-
-	jsoniter "github.com/json-iterator/go"
 )
-
-var json = jsoniter.ConfigCompatibleWithStandardLibrary
 
 func Docs() *docs.Doc {
 	return &docs.Doc{
@@ -76,7 +73,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 			}
 		}
 
-		err = json.NewDecoder(res.Body).Decode(&listStatus)
+		err = jsonimpl.UnmarshalReader(res.Body, &listStatus)
 
 		if err != nil {
 			return uapi.DefaultResponse(http.StatusInternalServerError)
@@ -113,7 +110,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 			return uapi.DefaultResponse(http.StatusInternalServerError)
 		}
 
-		err = json.NewDecoder(res.Body).Decode(&listStatus)
+		err = jsonimpl.UnmarshalReader(res.Body, &listStatus)
 
 		if err != nil {
 			return uapi.DefaultResponse(http.StatusInternalServerError)
