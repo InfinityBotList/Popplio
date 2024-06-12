@@ -1,4 +1,4 @@
-package put_user
+package create_oauth2_login
 
 import (
 	"io"
@@ -17,7 +17,6 @@ import (
 	"github.com/bwmarrin/discordgo"
 	"github.com/go-playground/validator/v10"
 	"github.com/infinitybotlist/eureka/crypto"
-	"github.com/jackc/pgx/v5/pgtype"
 	jsoniter "github.com/json-iterator/go"
 	"go.uber.org/zap"
 	"golang.org/x/exp/slices"
@@ -30,7 +29,7 @@ var (
 
 func Docs() *docs.Doc {
 	return &docs.Doc{
-		Summary:     "Login User",
+		Summary:     "Create OAuth2 Login",
 		Description: "Takes in a ``code`` query parameter and returns a user ``token``. **Cannot be used outside of the site for security reasons but documented in case we wish to allow its use in the future.**",
 		Req:         types.AuthorizeRequest{},
 		Resp:        types.UserLogin{},
@@ -47,8 +46,8 @@ type oauthUser struct {
 func sendAuthLog(user oauthUser, req types.AuthorizeRequest, new bool) {
 	var banned bool
 	var voteBanned bool
-        var appBanned bool
-	
+	var appBanned bool
+
 	if !new {
 		err := state.Pool.QueryRow(state.Context, "SELECT banned, vote_banned, app_banned FROM users WHERE user_id = $1", user.ID).Scan(&banned, &voteBanned, &appBanned)
 
@@ -181,7 +180,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		return uapi.ValidatorErrorResponse(compiledMessages, errors)
 	}
 
-	if req.Protocol != "persepolis" {
+	if req.Protocol != "persepolis-infernoplex" {
 		return uapi.HttpResponse{
 			Json: types.ApiError{
 				Message: "Your client is outdated and is not supported. Please contact the developers of this client.",
@@ -374,16 +373,12 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		}
 	}
 
-	var apiToken string
-
 	if !exists {
 		// Create user
-		apiToken = crypto.RandString(128)
 		_, err = state.Pool.Exec(
 			d.Context,
-			"INSERT INTO users (user_id, api_token, extra_links, developer, certified) VALUES ($1, $2, $3, false, false)",
+			"INSERT INTO users (user_id, extra_links, developer, certified) VALUES ($1, $2, false, false)",
 			user.ID,
-			apiToken,
 			[]types.Link{},
 		)
 
@@ -400,11 +395,10 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 
 		go sendAuthLog(user, req, true)
 	} else {
-		// Get API token and ban state
+		// Get ban state
 		var banned bool
-		var tokenStr pgtype.Text
 
-		err = state.Pool.QueryRow(d.Context, "SELECT banned, api_token FROM users WHERE user_id = $1", user.ID).Scan(&banned, &tokenStr)
+		err = state.Pool.QueryRow(d.Context, "SELECT banned FROM users WHERE user_id = $1", user.ID).Scan(&banned)
 
 		if err != nil {
 			state.Logger.Error("Failed to get API token from database", zap.Error(err), zap.String("userID", user.ID))
@@ -438,15 +432,29 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 				Headers: limit.Headers(),
 			}
 		}
+	}
 
-		apiToken = tokenStr.String
+	var sessionToken = crypto.RandString(128)
+	_, err = state.Pool.Exec(d.Context, "INSERT INTO api_sessions (target_type, target_id, type, token, expiry) VALUES ('user', $1, $2, 'login', NOW() + INTERVAL '1 hour')", user.ID, sessionToken)
+
+	if err != nil {
+		state.Logger.Error("Failed to create session token", zap.Error(err), zap.String("userID", user.ID))
+		return uapi.HttpResponse{
+			Json: types.ApiError{
+				Message: "Failed to create session token",
+			},
+			Status:  http.StatusInternalServerError,
+			Headers: limit.Headers(),
+		}
 	}
 
 	// Create authUser and send
 	var authUser = types.UserLogin{
 		UserID: user.ID,
-		Token:  apiToken,
+		Token:  sessionToken,
 	}
+
+	go sendAuthLog(user, req, !exists)
 
 	return uapi.HttpResponse{
 		Json:    authUser,

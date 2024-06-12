@@ -8,7 +8,6 @@ import (
 	"popplio/routes/users/endpoints/get_user_perms"
 	"popplio/routes/users/endpoints/get_user_seo"
 	"popplio/routes/users/endpoints/patch_user_profile"
-	"popplio/routes/users/endpoints/put_user"
 	"popplio/routes/users/endpoints/reset_user_token"
 
 	"github.com/go-chi/chi/v5"
@@ -82,14 +81,6 @@ func (b Router) Routes(r *chi.Mux) {
 				Type:   api.TargetTypeUser,
 			},
 		},
-	}.Route(r)
-
-	uapi.Route{
-		Pattern: "/users",
-		OpId:    "put_user",
-		Method:  uapi.PUT,
-		Docs:    put_user.Docs,
-		Handler: put_user.Route,
 	}.Route(r)
 
 	uapi.Route{

@@ -3,6 +3,7 @@ package patch_server_settings
 import (
 	"fmt"
 	"net/http"
+	"popplio/assetmanager"
 	"popplio/state"
 	"popplio/teams"
 	"popplio/types"
@@ -140,14 +141,17 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
-	var name, avatar string
+	var name string
 
-	err = state.Pool.QueryRow(d.Context, "SELECT name, avatar FROM servers WHERE server_id = $1", id).Scan(&name, &avatar)
+	err = state.Pool.QueryRow(d.Context, "SELECT name FROM servers WHERE server_id = $1", id).Scan(&name)
 
 	if err != nil {
 		state.Logger.Error("Error while getting server info", zap.Error(err), zap.String("serverID", id))
 		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
+
+	// Resolve the avatar
+	avatar := assetmanager.AvatarInfo(assetmanager.AssetTargetTypeServers, id)
 
 	// Send a message to the bot logs channel
 	state.Discord.ChannelMessageSendComplex(state.Config.Channels.ModLogs, &discordgo.MessageSend{
@@ -157,7 +161,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 				URL:   state.Config.Sites.Frontend.Production() + "/servers/" + id,
 				Title: "Server Updated",
 				Thumbnail: &discordgo.MessageEmbedThumbnail{
-					URL: avatar,
+					URL: assetmanager.ResolveAssetMetadataToUrl(avatar),
 				},
 				Fields: []*discordgo.MessageEmbedField{
 					{
