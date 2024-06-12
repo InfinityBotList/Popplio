@@ -24,6 +24,9 @@ import (
 type Permission = string
 
 const (
+	// Ability to view sensitive information of the entity
+	PermissionViewSensitive Permission = "view_sensitive"
+
 	// Ability to add new entity to a team
 	PermissionAdd Permission = "add"
 
@@ -38,12 +41,6 @@ const (
 
 	// Ability to request certification for the entity
 	PermissionRequestCertification Permission = "request_cert"
-
-	// Ability to view existing API tokens for the entity
-	PermissionViewAPITokens Permission = "view_api_tokens"
-
-	// Ability to reset API tokens for the entity
-	PermissionResetAPITokens Permission = "reset_api_tokens"
 
 	// Ability to get webhooks for the entity
 	PermissionGetWebhooks Permission = "get_webhooks"
@@ -89,13 +86,25 @@ const (
 
 var PermDetails = []types.PermissionData{
 	{
+		ID:   PermissionViewSensitive,
+		Name: "View Sensitive on {entity}",
+		Desc: "View sensitive information about {entity} on the team",
+		SupportedEntities: []string{
+			"global",
+			"bot_session",
+			"server_session",
+		},
+	},
+	{
 		ID:   PermissionAdd,
 		Name: "Add {entity}",
 		Desc: "Add new {entity} to the team or allow transferring {entity} to this team",
 		SupportedEntities: []string{
 			"global",
 			"bot",
+			"bot_session",
 			"server",
+			"server_session",
 			"team_member",
 		},
 	},
@@ -106,7 +115,9 @@ var PermDetails = []types.PermissionData{
 		SupportedEntities: []string{
 			"global",
 			"bot",
+			"bot_session",
 			"server",
+			"server_session",
 			"team",
 			"team_member",
 		},
@@ -128,18 +139,6 @@ var PermDetails = []types.PermissionData{
 		Name:              "Request Certification for {entity}",
 		Desc:              "Request certification for a {entity} on the team",
 		SupportedEntities: []string{"bot", "global"},
-	},
-	{
-		ID:                PermissionViewAPITokens,
-		Name:              "View Existing {entity} Token",
-		Desc:              "View existing API tokens for {entity} on the team. *DANGEROUS and a potential security risk*",
-		SupportedEntities: []string{"bot", "server"},
-	},
-	{
-		ID:                PermissionResetAPITokens,
-		Name:              "Reset {entity} Token",
-		Desc:              "Reset the API token of a {entity} on the team. This is seperate from viewing existing {entity} tokens as that is a much greater security risk",
-		SupportedEntities: []string{"bot", "server"},
 	},
 	{
 		ID:                PermissionGetWebhooks,
@@ -232,7 +231,9 @@ var PermDetails = []types.PermissionData{
 		Desc: "Delete a {entity} from the team. This is a very dangerous permission and should usually never be given to anyone.",
 		SupportedEntities: []string{
 			"bot",
+			"bot_session",
 			"server",
+			"server_session",
 			"team_member",
 			"global",
 		},
@@ -249,7 +250,9 @@ var PermDetails = []types.PermissionData{
 		Desc: "Has full control on {entity}'s.",
 		SupportedEntities: []string{
 			"bot",
+			"bot_session",
 			"server",
+			"server_session",
 			"team_member",
 			"team",
 			"global",

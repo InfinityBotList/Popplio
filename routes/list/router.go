@@ -6,13 +6,11 @@ import (
 	"popplio/routes/list/endpoints/get_changelog"
 	"popplio/routes/list/endpoints/get_list_stats"
 	"popplio/routes/list/endpoints/get_list_team"
-	"popplio/routes/list/endpoints/get_oauth_url"
 	"popplio/routes/list/endpoints/get_partners"
 	"popplio/routes/list/endpoints/get_rss_feed"
 	"popplio/routes/list/endpoints/get_sitemap"
 	"popplio/routes/list/endpoints/get_staff_templates"
 	"popplio/routes/list/endpoints/search_list"
-	"popplio/routes/list/endpoints/test_auth"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/infinitybotlist/eureka/uapi"
@@ -61,14 +59,6 @@ func (b Router) Routes(r *chi.Mux) {
 	}.Route(r)
 
 	uapi.Route{
-		Pattern: "/list/auth-test",
-		OpId:    "test_auth",
-		Method:  uapi.POST,
-		Docs:    test_auth.Docs,
-		Handler: test_auth.Route,
-	}.Route(r)
-
-	uapi.Route{
 		Pattern: "/list/partners",
 		OpId:    "get_partners",
 		Method:  uapi.GET,
@@ -114,13 +104,5 @@ func (b Router) Routes(r *chi.Mux) {
 		Method:  uapi.GET,
 		Docs:    get_cache_servers.Docs,
 		Handler: get_cache_servers.Route,
-	}.Route(r)
-
-	uapi.Route{
-		Pattern: "/list/oauth2",
-		OpId:    "get_oauth_url",
-		Method:  uapi.GET,
-		Docs:    get_oauth_url.Docs,
-		Handler: get_oauth_url.Route,
 	}.Route(r)
 }

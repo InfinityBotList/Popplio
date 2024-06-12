@@ -61,6 +61,7 @@ type TeamMember struct {
 	UserID      string                  `db:"user_id" json:"-" description:"The ID of the user"`
 	User        *dovetypes.PlatformUser `db:"-" json:"user" description:"A user object representing the user" ci:"internal"` // Must be handled internally
 	Flags       []string                `db:"flags" json:"flags" description:"The permissions/flags of the team member"`
+	Service     string                  `db:"service" json:"service" description:"The service which added a team member (api/infernoplex) etc."`
 	CreatedAt   time.Time               `db:"created_at" json:"created_at" description:"The time the team member was added"`
 	Mentionable bool                    `db:"mentionable" json:"mentionable" description:"Whether the user is mentionable (for alerts in bot-logs etc.)"`
 	DataHolder  bool                    `db:"data_holder" json:"data_holder" description:"Whether the user is a data holder responsible for all data on the team. That is, should performing mass-scale operations on them affect the team"`
