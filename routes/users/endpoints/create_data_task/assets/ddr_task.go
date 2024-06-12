@@ -4,11 +4,8 @@ import (
 	"popplio/state"
 
 	"github.com/infinitybotlist/eureka/dovewing"
-	jsoniter "github.com/json-iterator/go"
 	"go.uber.org/zap"
 )
-
-var json = jsoniter.ConfigFastest
 
 type deleteCall struct {
 	fOp  TableLogic

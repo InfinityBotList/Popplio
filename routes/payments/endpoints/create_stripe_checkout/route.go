@@ -8,6 +8,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/infinitybotlist/eureka/jsonimpl"
 	"github.com/infinitybotlist/eureka/ratelimit"
 	"go.uber.org/zap"
 
@@ -15,12 +16,9 @@ import (
 	"github.com/infinitybotlist/eureka/uapi"
 
 	"github.com/go-playground/validator/v10"
-	jsoniter "github.com/json-iterator/go"
 	"github.com/stripe/stripe-go/v75"
 	"github.com/stripe/stripe-go/v75/checkout/session"
 )
-
-var json = jsoniter.ConfigCompatibleWithStandardLibrary
 
 var compiledMessages = uapi.CompileValidationErrors(assets.PerkData{})
 
@@ -94,7 +92,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		}
 	}
 
-	customId, err := json.Marshal(payload)
+	customId, err := jsonimpl.Marshal(payload)
 
 	if err != nil {
 		state.Logger.Error("Error while marshalling payload", zap.Error(err), zap.Any("payload", payload), zap.String("user_id", d.Auth.ID))

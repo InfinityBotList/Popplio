@@ -9,16 +9,14 @@ import (
 	"popplio/types"
 
 	docs "github.com/infinitybotlist/eureka/doclib"
+	"github.com/infinitybotlist/eureka/jsonimpl"
 	"github.com/infinitybotlist/eureka/uapi"
 	"go.uber.org/zap"
 
-	jsoniter "github.com/json-iterator/go"
 	"github.com/stripe/stripe-go/v75"
 	"github.com/stripe/stripe-go/v75/webhook"
 	"golang.org/x/exp/slices"
 )
-
-var json = jsoniter.ConfigCompatibleWithStandardLibrary
 
 func Docs() *docs.Doc {
 	return &docs.Doc{
@@ -79,7 +77,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 
 	switch event.Type {
 	case "checkout.session.completed":
-		err := json.Unmarshal(event.Data.Raw, &s)
+		err := jsonimpl.Unmarshal(event.Data.Raw, &s)
 		if err != nil {
 			state.Logger.Error("Failed to unmarshal event data", zap.Error(err))
 			return uapi.DefaultResponse(http.StatusInternalServerError)
@@ -94,7 +92,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		}
 
 	case "checkout.session.async_payment_succeeded":
-		err := json.Unmarshal(event.Data.Raw, &s)
+		err := jsonimpl.Unmarshal(event.Data.Raw, &s)
 		if err != nil {
 			state.Logger.Error("Failed to unmarshal event data", zap.Error(err))
 			return uapi.DefaultResponse(http.StatusInternalServerError)
@@ -102,7 +100,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 
 	case "checkout.session.async_payment_failed":
 		var s stripe.CheckoutSession
-		err := json.Unmarshal(event.Data.Raw, &s)
+		err := jsonimpl.Unmarshal(event.Data.Raw, &s)
 		if err != nil {
 			state.Logger.Error("Failed to unmarshal event data", zap.Error(err))
 			return uapi.DefaultResponse(http.StatusInternalServerError)
@@ -121,7 +119,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	// Fulfill the purchase...
 	var payload assets.PerkData
 
-	err = json.Unmarshal([]byte(s.ClientReferenceID), &payload)
+	err = jsonimpl.Unmarshal([]byte(s.ClientReferenceID), &payload)
 
 	if err != nil {
 		state.Logger.Error("Failed to unmarshal client reference id", zap.Error(err))

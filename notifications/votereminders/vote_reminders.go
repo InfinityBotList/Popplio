@@ -10,11 +10,8 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5/pgtype"
-	jsoniter "github.com/json-iterator/go"
 	"go.uber.org/zap"
 )
-
-var json = jsoniter.ConfigCompatibleWithStandardLibrary
 
 func VrLoop() {
 	if config.CurrentEnv != config.CurrentEnvProd {

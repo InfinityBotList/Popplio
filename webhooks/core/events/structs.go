@@ -1,13 +1,13 @@
 package events
 
 import (
-	"encoding/json"
 	"fmt"
 	"popplio/types"
 	"time"
 
 	"github.com/bwmarrin/discordgo"
 	"github.com/infinitybotlist/eureka/dovewing/dovetypes"
+	"github.com/infinitybotlist/eureka/jsonimpl"
 	"github.com/mitchellh/mapstructure"
 )
 
@@ -34,13 +34,13 @@ type WebhookResponse struct {
 	Metadata WebhookMetadata         `json:"metadata" description:"Metadata about the webhook event"`
 }
 
-// UnmarshalJSON implements json.Unmarshaler
+// UnmarshalJSON implements jsonimpl.Unmarshaler
 //
 // This is used to unmarshal the webhook response into a valid webhook event
 func (wr *WebhookResponse) UnmarshalJSON(b []byte) error {
 	var smap map[string]any
 
-	err := json.Unmarshal(b, &smap)
+	err := jsonimpl.Unmarshal(b, &smap)
 
 	if err != nil {
 		return fmt.Errorf("failed to unmarshal webhook response: %w", err)

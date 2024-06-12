@@ -9,6 +9,7 @@ import (
 	"popplio/state"
 	"popplio/types"
 
+	"github.com/infinitybotlist/eureka/jsonimpl"
 	"github.com/infinitybotlist/eureka/ratelimit"
 
 	docs "github.com/infinitybotlist/eureka/doclib"
@@ -17,13 +18,11 @@ import (
 	"github.com/bwmarrin/discordgo"
 	"github.com/go-playground/validator/v10"
 	"github.com/infinitybotlist/eureka/crypto"
-	jsoniter "github.com/json-iterator/go"
 	"go.uber.org/zap"
 	"golang.org/x/exp/slices"
 )
 
 var (
-	json             = jsoniter.ConfigCompatibleWithStandardLibrary
 	compiledMessages = uapi.CompileValidationErrors(types.AuthorizeRequest{})
 )
 
@@ -261,7 +260,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		AccessToken string `json:"access_token"`
 	}
 
-	err = json.Unmarshal(body, &token)
+	err = jsonimpl.Unmarshal(body, &token)
 
 	if err != nil {
 		state.Logger.Error("Failed to parse oauth2 token response from discord", zap.Error(err))
@@ -333,7 +332,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 
 	var user oauthUser
 
-	err = json.Unmarshal(body, &user)
+	err = jsonimpl.Unmarshal(body, &user)
 
 	if err != nil {
 		state.Logger.Error("Failed to parse oauth2 response from discord", zap.Error(err))

@@ -53,8 +53,15 @@ func PermLimits(d uapi.AuthData) []string {
 
 // Authorizes a request
 func Authorize(r uapi.Route, req *http.Request) (uapi.AuthData, uapi.HttpResponse, bool) {
+	if len(r.Auth) == 0 {
+		return uapi.AuthData{}, uapi.HttpResponse{}, true
+	}
+
 	authHeader := req.Header.Get("Authorization")
 
+	// If there is no auth header, and auth is not optional, return unauthorized
+	//
+	// Note that we do not set X-Session-Invalid here because the session is not invalid, it just has not been sent (likely due to a client bug?)
 	if len(r.Auth) > 0 && authHeader == "" && !r.AuthOptional {
 		return uapi.AuthData{}, uapi.DefaultResponse(http.StatusUnauthorized), false
 	}
@@ -91,6 +98,9 @@ func Authorize(r uapi.Route, req *http.Request) (uapi.AuthData, uapi.HttpRespons
 		return uapi.AuthData{}, uapi.HttpResponse{
 			Status: http.StatusUnauthorized,
 			Json:   types.ApiError{Message: "Your session's token may be invalid!"},
+			Headers: map[string]string{
+				"X-Session-Invalid": "true",
+			},
 		}, false
 	}
 
@@ -98,6 +108,9 @@ func Authorize(r uapi.Route, req *http.Request) (uapi.AuthData, uapi.HttpRespons
 		return uapi.AuthData{}, uapi.HttpResponse{
 			Status: http.StatusUnauthorized,
 			Json:   types.ApiError{Message: "Could not fetch any sessions: " + err.Error()},
+			Headers: map[string]string{
+				"X-Session-Invalid": "true",
+			},
 		}, false
 	}
 
@@ -105,6 +118,9 @@ func Authorize(r uapi.Route, req *http.Request) (uapi.AuthData, uapi.HttpRespons
 		return uapi.AuthData{}, uapi.HttpResponse{
 			Status: http.StatusUnauthorized,
 			Json:   types.ApiError{Message: "Invalid authorization prefix, expected " + authPrefix + " but got " + targetType},
+			Headers: map[string]string{
+				"X-Session-Invalid": "true",
+			},
 		}, false
 	}
 
@@ -143,6 +159,9 @@ func Authorize(r uapi.Route, req *http.Request) (uapi.AuthData, uapi.HttpRespons
 				return uapi.AuthData{}, uapi.HttpResponse{
 					Status: http.StatusInternalServerError,
 					Json:   types.ApiError{Message: "Could not fetch count of bots associated with this session: " + err.Error()},
+					Headers: map[string]string{
+						"X-Session-Invalid": "true",
+					},
 				}, false
 			}
 
@@ -150,6 +169,9 @@ func Authorize(r uapi.Route, req *http.Request) (uapi.AuthData, uapi.HttpRespons
 				return uapi.AuthData{}, uapi.HttpResponse{
 					Status: http.StatusNotFound,
 					Json:   types.ApiError{Message: "The bot associated with this session could not be found?"},
+					Headers: map[string]string{
+						"X-Session-Invalid": "true",
+					},
 				}, false
 			}
 
@@ -166,6 +188,9 @@ func Authorize(r uapi.Route, req *http.Request) (uapi.AuthData, uapi.HttpRespons
 				return uapi.AuthData{}, uapi.HttpResponse{
 					Status: http.StatusInternalServerError,
 					Json:   types.ApiError{Message: "Could not fetch count of servers associated with this session: " + err.Error()},
+					Headers: map[string]string{
+						"X-Session-Invalid": "true",
+					},
 				}, false
 			}
 
@@ -173,6 +198,9 @@ func Authorize(r uapi.Route, req *http.Request) (uapi.AuthData, uapi.HttpRespons
 				return uapi.AuthData{}, uapi.HttpResponse{
 					Status: http.StatusNotFound,
 					Json:   types.ApiError{Message: "The server associated with this session could not be found?"},
+					Headers: map[string]string{
+						"X-Session-Invalid": "true",
+					},
 				}, false
 			}
 
@@ -191,6 +219,9 @@ func Authorize(r uapi.Route, req *http.Request) (uapi.AuthData, uapi.HttpRespons
 				return uapi.AuthData{}, uapi.HttpResponse{
 					Status: http.StatusForbidden,
 					Json:   types.ApiError{Message: "You are not authorized to perform this action (URLVar does not match auth token)"},
+					Headers: map[string]string{
+						"X-Session-Invalid": "true",
+					},
 				}, false
 			}
 		}
@@ -200,12 +231,21 @@ func Authorize(r uapi.Route, req *http.Request) (uapi.AuthData, uapi.HttpRespons
 			return uapi.AuthData{}, uapi.HttpResponse{
 				Status: http.StatusForbidden,
 				Json:   types.ApiError{Message: "You are banned from the list. If you think this is a mistake, please contact support."},
+				Headers: map[string]string{
+					"X-Session-Invalid": "true",
+				},
 			}, false
 		}
 	}
 
-	if len(r.Auth) > 0 && !authData.Authorized && !r.AuthOptional {
-		return uapi.AuthData{}, uapi.DefaultResponse(http.StatusUnauthorized), false
+	if !authData.Authorized && !r.AuthOptional {
+		return uapi.AuthData{}, uapi.HttpResponse{
+			Status: http.StatusUnauthorized,
+			Json:   types.ApiError{Message: "You are not authorized to perform this action"},
+			Headers: map[string]string{
+				"X-Session-Invalid": "true",
+			},
+		}, false
 	}
 
 	return authData, uapi.HttpResponse{}, true

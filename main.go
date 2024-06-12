@@ -44,6 +44,7 @@ import (
 
 	"github.com/cloudflare/tableflip"
 	docs "github.com/infinitybotlist/eureka/doclib"
+	"github.com/infinitybotlist/eureka/jsonimpl"
 	"github.com/infinitybotlist/eureka/uapi"
 	"go.uber.org/zap"
 
@@ -53,11 +54,7 @@ import (
 	"github.com/go-chi/chi/v5/middleware"
 
 	_ "embed"
-
-	jsoniter "github.com/json-iterator/go"
 )
-
-var json = jsoniter.ConfigCompatibleWithStandardLibrary
 
 //go:embed data/docs.html
 var docsHTML string
@@ -85,7 +82,7 @@ func corsMiddleware(next http.Handler) http.Handler {
 
 		w.Header().Set("Access-Control-Allow-Origin", r.Header.Get("Origin"))
 		w.Header().Set("Access-Control-Allow-Credentials", "true")
-		w.Header().Set("Access-Control-Allow-Headers", "X-Client, Content-Type, Authorization")
+		w.Header().Set("Access-Control-Allow-Headers", "X-Client, Content-Type, Authorization, X-Session-Invalid")
 		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE")
 
 		if r.Method == "OPTIONS" {
@@ -225,7 +222,7 @@ func main() {
 	})
 
 	// Load openapi here to avoid large marshalling in every request
-	openapi, err = json.Marshal(docs.GetSchema())
+	openapi, err = jsonimpl.Marshal(docs.GetSchema())
 
 	if err != nil {
 		panic(err)

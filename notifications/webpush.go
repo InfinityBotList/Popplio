@@ -1,12 +1,12 @@
 package notifications
 
 import (
-	"encoding/json"
 	"fmt"
 	"popplio/state"
 	"popplio/types"
 
 	"github.com/SherClockHolmes/webpush-go"
+	"github.com/infinitybotlist/eureka/jsonimpl"
 	"go.uber.org/zap"
 )
 
@@ -41,7 +41,7 @@ func PushNotification(userId string, notif types.Alert) error {
 		}
 	}
 
-	bytes, err := json.Marshal(notif)
+	bytes, err := jsonimpl.Marshal(notif)
 
 	if err != nil {
 		return err
