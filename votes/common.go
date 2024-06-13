@@ -80,6 +80,22 @@ func GetEntityInfo(ctx context.Context, c DbConn, targetId, targetType string) (
 			Avatar:  botObj.Avatar,
 		}, nil
 	case "pack":
+		var voteBanned bool
+
+		err := c.QueryRow(ctx, "SELECT vote_banned FROM packs WHERE url = $1", targetId).Scan(&voteBanned)
+
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, errors.New("pack not found")
+		}
+
+		if err != nil {
+			return nil, fmt.Errorf("failed to fetch pack data for this vote: %w", err)
+		}
+
+		if voteBanned {
+			return nil, errors.New("pack is vote banned and cannot be voted for right now")
+		}
+
 		return &EntityInfo{
 			URL:     state.Config.Sites.Frontend.Parse() + "/pack/" + targetId,
 			VoteURL: state.Config.Sites.Frontend.Parse() + "/pack/" + targetId,
