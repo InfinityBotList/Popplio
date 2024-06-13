@@ -9,16 +9,16 @@ FROM bots
 WHERE (type = 'approved' OR type = 'certified')
 
 -- Guild count filter (1-2)
-AND (servers >= $1)
-AND (($2 = 0) OR (servers <= $2))
+AND ($1 = 0 OR servers >= $1)
+AND ($2 = 0 OR servers <= $2)
 
 -- Votes filter (3-4)
-AND (approximate_votes >= $3)
-AND (($4 = 0) OR (approximate_votes <= $4))
+AND ($3 = 0 OR approximate_votes >= $3)
+AND ($4 = 0 OR approximate_votes <= $4)
 
 -- Shards filter (5-6)
-AND (shards >= $5)
-AND (($6 = 0) OR (shards <= $6))
+AND ($5 = 0 OR shards >= $5)
+AND ($6 = 0 OR shards <= $6)
 
 -- Tags filter
 AND (cardinality($7::text[]) = 0 OR tags {{.TagMode}} $7) -- Where TagMode is one of @> = all, && = any
