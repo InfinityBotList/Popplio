@@ -4,10 +4,15 @@ import (
 	"net/http"
 	"popplio/state"
 	"popplio/types"
+	"popplio/validators"
+	"slices"
+	"strings"
+	"unicode"
 
 	docs "github.com/infinitybotlist/eureka/doclib"
 	"github.com/infinitybotlist/eureka/dovewing"
 	"github.com/infinitybotlist/eureka/uapi"
+	"go.uber.org/zap"
 
 	"github.com/go-playground/validator/v10"
 )
@@ -55,6 +60,31 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	if err != nil {
 		errors := err.(validator.ValidationErrors)
 		return uapi.ValidatorErrorResponse(compiledMessages, errors)
+	}
+
+	// Strip out unicode characters and validate pack URL
+	payload.URL = strings.Map(func(r rune) rune {
+		if r > unicode.MaxASCII {
+			return -1
+		}
+		return r
+	}, payload.URL)
+
+	systems, err := validators.GetWordBlacklistSystems(d.Context, payload.URL)
+
+	if err != nil {
+		state.Logger.Error("Error while getting word blacklist systems", zap.Error(err), zap.String("userID", d.Auth.ID))
+		return uapi.HttpResponse{
+			Status: http.StatusBadRequest,
+			Json:   types.ApiError{Message: "Error while getting word blacklist systems: " + err.Error()},
+		}
+	}
+
+	if slices.Contains(systems, "pack.url") {
+		return uapi.HttpResponse{
+			Status: http.StatusBadRequest,
+			Json:   types.ApiError{Message: "The chosen pack url is blacklisted"},
+		}
 	}
 
 	// Check that all bots exist

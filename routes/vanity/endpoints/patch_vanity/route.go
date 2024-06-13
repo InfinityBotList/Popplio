@@ -2,12 +2,14 @@ package patch_vanity
 
 import (
 	"net/http"
+	"slices"
 	"strings"
 	"unicode"
 
 	"popplio/state"
 	"popplio/teams"
 	"popplio/types"
+	"popplio/validators"
 
 	docs "github.com/infinitybotlist/eureka/doclib"
 	"github.com/infinitybotlist/eureka/uapi"
@@ -103,7 +105,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		}
 	}
 
-	// Strip out unicode characters
+	// Strip out unicode characters and validate vanity
 	vanity = strings.Map(func(r rune) rune {
 		if r > unicode.MaxASCII {
 			return -1
@@ -111,10 +113,21 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		return r
 	}, vanity)
 
-	if vanity == "undefined" || vanity == "null" || vanity == "blog" || vanity == "help" {
+	systems, err := validators.GetWordBlacklistSystems(d.Context, vanity)
+
+	if err != nil {
+		state.Logger.Error("Error while getting word blacklist systems", zap.Error(err), zap.String("userID", d.Auth.ID))
 		return uapi.HttpResponse{
 			Status: http.StatusBadRequest,
-			Json:   types.ApiError{Message: "Vanity cannot be undefined, blog, help or null"},
+			Json:   types.ApiError{Message: "Error while getting word blacklist systems: " + err.Error()},
+		}
+
+	}
+
+	if slices.Contains(systems, "vanity.code") {
+		return uapi.HttpResponse{
+			Status: http.StatusBadRequest,
+			Json:   types.ApiError{Message: "The chosen vanity is blacklisted"},
 		}
 	}
 
