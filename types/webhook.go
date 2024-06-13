@@ -30,7 +30,8 @@ type Webhook struct {
 	TargetID       string      `db:"target_id" json:"target_id" description:"The target ID."`
 	TargetType     string      `db:"target_type" json:"target_type" description:"The target type (bot/team etc.)."`
 	Url            string      `db:"url" json:"url" description:"The URL of the webhook."`
-	Broken         bool        `db:"broken" json:"broken" description:"Whether the webhook is broken."`
+	Broken         bool        `db:"broken" json:"broken" description:"Whether the webhook is marked as broken or not."`
+	FailedRequests int         `db:"failed_requests" json:"failed_requests" description:"The number of failed requests to the webhook."`
 	SimpleAuth     bool        `db:"simple_auth" json:"simple_auth" description:"Whether the webhook should use simple auth (unencrypted, just authentication headers) or not."`
 	EventWhitelist []string    `db:"event_whitelist" json:"event_whitelist" description:"The events that are whitelisted for this webhook. Note that if unset, all events are whitelisted."`
 	CreatedAt      time.Time   `db:"created_at" json:"created_at" description:"The time when the webhook was created."`
