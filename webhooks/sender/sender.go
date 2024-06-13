@@ -123,8 +123,6 @@ type WebhookEntity struct {
 	EntityName string
 
 	// Override whether or not the authentication is 'simple' (no auth header) or not
-	//
-	// TODO: Hack until legacy webhooks is truly removed
 	SimpleAuth *bool
 }
 
@@ -238,7 +236,7 @@ func Send(d *WebhookData) (*WebhookSendResult, error) {
 			}
 
 			webhErrors[webhook.ID] = err
-
+			sendStates[webhook.ID] = "INTERNAL_ERROR"
 			continue
 		}
 
@@ -434,7 +432,6 @@ func send(d *webhookSendState, webhook *webhookData, pBytes *[]byte) error {
 
 	if err != nil {
 		state.Logger.Error("Failed to send webhook", zap.Error(err), zap.String("logID", d.LogID), zap.String("userID", d.UserID), zap.String("entityID", d.Entity.EntityID), zap.Bool("badIntent", d.BadIntent))
-
 		d.cancelSend("REQUEST_SEND_FAILURE")
 		return err
 	}
@@ -448,11 +445,29 @@ func send(d *webhookSendState, webhook *webhookData, pBytes *[]byte) error {
 		body = []byte("Failed to read body: " + err.Error())
 	}
 
-	// Set response to body
-	_, err = state.Pool.Exec(state.Context, "UPDATE webhook_logs SET response = $1, status_code = $2 WHERE id = $3", body, resp.StatusCode, d.LogID)
+	var reqHeaders = map[string]string{}
+	for k, v := range req.Header {
+		if len(reqHeaders) > 10 {
+			break
+		}
+
+		reqHeaders[k] = strings.Join(v, ",")
+	}
+
+	var respHeaders = map[string]string{}
+	for k, v := range resp.Header {
+		if len(respHeaders) > 20 {
+			break
+		}
+
+		respHeaders[k] = strings.Join(v, ",")
+	}
+
+	_, err = state.Pool.Exec(state.Context, "UPDATE webhook_logs SET response = $1, status_code = $2, request_headers = $3, response_headers = $4 WHERE id = $5", body, resp.StatusCode, reqHeaders, respHeaders, d.LogID)
 
 	if err != nil {
 		state.Logger.Error("Failed to update webhook logs with response", zap.Error(err), zap.String("logID", d.LogID), zap.String("userID", d.UserID), zap.String("entityID", d.Entity.EntityID), zap.Bool("badIntent", d.BadIntent))
+		return fmt.Errorf("failed to update webhook logs with response: %w", err)
 	}
 
 	switch {
