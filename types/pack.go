@@ -6,6 +6,8 @@ import (
 	"github.com/infinitybotlist/eureka/dovewing/dovetypes"
 )
 
+// @ci table=packs, unfilled=1
+//
 // Represents a Bot Pack
 type BotPack struct {
 	Owner         string                  `db:"owner" json:"-" ci:"internal"`
@@ -18,4 +20,5 @@ type BotPack struct {
 	CreatedAt     time.Time               `db:"created_at" json:"created_at" description:"The pack's creation date"`
 	Bots          []string                `db:"bots" json:"bot_ids" description:"The pack's bot IDs"`
 	ResolvedBots  []IndexBot              `db:"-" json:"bots" ci:"internal" description:"The resolved bots in the pack"`
+	VoteBanned    bool                    `db:"vote_banned" json:"vote_banned" description:"Whether the pack is banned from voting"`
 }
