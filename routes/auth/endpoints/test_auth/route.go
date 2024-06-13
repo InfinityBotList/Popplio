@@ -51,9 +51,8 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		},
 	}
 
-	reqCtxd := r.WithContext(rctx)
-
 	r.Header.Set("Authorization", payload.Token)
+	reqCtxd := r.WithContext(rctx)
 
 	// Check auth
 	authData, hr, ok := api.Authorize(uapi.Route{

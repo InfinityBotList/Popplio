@@ -434,7 +434,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	}
 
 	var sessionToken = crypto.RandString(128)
-	_, err = state.Pool.Exec(d.Context, "INSERT INTO api_sessions (target_type, target_id, type, token, expiry) VALUES ('user', $1, $2, 'login', NOW() + INTERVAL '1 hour')", user.ID, sessionToken)
+	_, err = state.Pool.Exec(d.Context, "INSERT INTO api_sessions (target_type, target_id, type, token, expiry) VALUES ('user', $1, 'login', $2, NOW() + INTERVAL '1 hour')", user.ID, sessionToken)
 
 	if err != nil {
 		state.Logger.Error("Failed to create session token", zap.Error(err), zap.String("userID", user.ID))

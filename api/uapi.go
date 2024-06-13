@@ -69,10 +69,14 @@ func Authorize(r uapi.Route, req *http.Request) (uapi.AuthData, uapi.HttpRespons
 	authData := uapi.AuthData{}
 
 	// Before doing anything else, delete expired/old auths first
-	_, err := state.Pool.Exec(state.Context, "DELETE FROM api_sessions WHERE (expiry IS NOT NULL AND expiry < NOW())")
+	_, err := state.Pool.Exec(state.Context, "DELETE FROM api_sessions WHERE expiry < NOW()")
 
 	if err != nil {
 		state.Logger.Error("Failed to delete expired web API tokens [db delete]", zap.Error(err))
+		return uapi.AuthData{}, uapi.HttpResponse{
+			Status: http.StatusInternalServerError,
+			Json:   types.ApiError{Message: "Failed to delete expired web API tokens: " + err.Error()},
+		}, false
 	}
 
 	// Get the prefix from the auth header, if any, by splitNing it into 2 parts
@@ -97,7 +101,7 @@ func Authorize(r uapi.Route, req *http.Request) (uapi.AuthData, uapi.HttpRespons
 	if errors.Is(err, pgx.ErrNoRows) {
 		return uapi.AuthData{}, uapi.HttpResponse{
 			Status: http.StatusUnauthorized,
-			Json:   types.ApiError{Message: "Your session's token may be invalid!"},
+			Json:   types.ApiError{Message: "Invalid session token"},
 			Headers: map[string]string{
 				"X-Session-Invalid": "true",
 			},
@@ -106,11 +110,8 @@ func Authorize(r uapi.Route, req *http.Request) (uapi.AuthData, uapi.HttpRespons
 
 	if err != nil {
 		return uapi.AuthData{}, uapi.HttpResponse{
-			Status: http.StatusUnauthorized,
+			Status: http.StatusInternalServerError,
 			Json:   types.ApiError{Message: "Could not fetch any sessions: " + err.Error()},
-			Headers: map[string]string{
-				"X-Session-Invalid": "true",
-			},
 		}, false
 	}
 
@@ -142,7 +143,10 @@ func Authorize(r uapi.Route, req *http.Request) (uapi.AuthData, uapi.HttpRespons
 			err := state.Pool.QueryRow(state.Context, "SELECT banned FROM users WHERE user_id = $1", targetId).Scan(&banned)
 
 			if err != nil {
-				continue
+				return uapi.AuthData{}, uapi.HttpResponse{
+					Status: http.StatusInternalServerError,
+					Json:   types.ApiError{Message: "Could not fetch user associated with this session: " + err.Error()},
+				}, false
 			}
 
 			authData = uapi.AuthData{
@@ -159,9 +163,6 @@ func Authorize(r uapi.Route, req *http.Request) (uapi.AuthData, uapi.HttpRespons
 				return uapi.AuthData{}, uapi.HttpResponse{
 					Status: http.StatusInternalServerError,
 					Json:   types.ApiError{Message: "Could not fetch count of bots associated with this session: " + err.Error()},
-					Headers: map[string]string{
-						"X-Session-Invalid": "true",
-					},
 				}, false
 			}
 
@@ -188,9 +189,6 @@ func Authorize(r uapi.Route, req *http.Request) (uapi.AuthData, uapi.HttpRespons
 				return uapi.AuthData{}, uapi.HttpResponse{
 					Status: http.StatusInternalServerError,
 					Json:   types.ApiError{Message: "Could not fetch count of servers associated with this session: " + err.Error()},
-					Headers: map[string]string{
-						"X-Session-Invalid": "true",
-					},
 				}, false
 			}
 
@@ -236,6 +234,11 @@ func Authorize(r uapi.Route, req *http.Request) (uapi.AuthData, uapi.HttpRespons
 				},
 			}, false
 		}
+	}
+
+	authData.Data = map[string]any{
+		"session_id":  sessId,
+		"perm_limits": permLimits,
 	}
 
 	if !authData.Authorized && !r.AuthOptional {
