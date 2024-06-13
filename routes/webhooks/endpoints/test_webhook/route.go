@@ -45,7 +45,7 @@ func Docs() *docs.Doc {
 			},
 			{
 				Name:        "target_type",
-				Description: "The entity type to return logs for. Must be `bot` or `team` (other entity types coming soon)",
+				Description: "The entity type to return logs for.",
 				Required:    true,
 				In:          "query",
 				Schema:      docs.IdSchema,
@@ -150,6 +150,8 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	if !ok {
 		return hresp
 	}
+
+	state.Logger.Info("Sending test webhook", zap.String("userID", d.Auth.ID), zap.String("targetId", targetId), zap.String("targetType", targetType), zap.String("eventType", eventType))
 
 	err = drivers.Send(drivers.With{
 		UserID:     d.Auth.ID,
