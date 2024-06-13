@@ -35,14 +35,13 @@ import (
 	"go.uber.org/zap"
 )
 
-var ErrNoWebhooks = errors.New("no webhooks found")
-
 // Represents a internal webhook to fanout
 type webhookData struct {
 	ID             string   `db:"id"`
 	Secret         string   `db:"secret"`
 	Url            string   `db:"url"`
 	Broken         bool     `db:"broken"`
+	FailedRequests int      `db:"failed_requests"`
 	SimpleAuth     bool     `db:"simple_auth"`
 	EventWhitelist []string `db:"event_whitelist"`
 }
@@ -50,6 +49,9 @@ type webhookData struct {
 var (
 	wdColsArr = db.GetCols(webhookData{})
 	wdCols    = strings.Join(wdColsArr, ",")
+
+	ErrNoWebhooks                = errors.New("no webhooks found")
+	WebhookMaximumFailedRequests = 20 // Be very lenient
 )
 
 // The Secret
@@ -189,7 +191,7 @@ func Send(d *WebhookData) (*WebhookSendResult, error) {
 	var webhErrors map[string]error
 	var sendStates = make(map[string]string)
 	for _, webhook := range webhooks {
-		if webhook.Broken {
+		if webhook.Broken || webhook.FailedRequests >= WebhookMaximumFailedRequests {
 			continue
 		}
 
@@ -473,9 +475,9 @@ func send(d *webhookSendState, webhook *webhookData, pBytes *[]byte) error {
 	switch {
 	case resp.StatusCode == 404 || resp.StatusCode == 410:
 		// Remove from DB
-		d.cancelSend("WEBHOOK_BROKEN_404_410")
+		d.cancelSend("WEBHOOK_404_410")
 
-		_, err := state.Pool.Exec(state.Context, "UPDATE webhooks SET broken = true WHERE target_id = $1 AND target_type = $2", d.Entity.EntityID, d.Entity.EntityType)
+		_, err := state.Pool.Exec(state.Context, "UPDATE webhooks SET failed_requests = failed_requests + 1 WHERE target_id = $1 AND target_type = $2", d.Entity.EntityID, d.Entity.EntityType)
 
 		if err != nil {
 			state.Logger.Error("Failed to update webhook logs with response", zap.Error(err), zap.String("logID", d.LogID), zap.String("userID", d.UserID), zap.String("entityID", d.Entity.EntityID), zap.Bool("badIntent", d.BadIntent))
@@ -514,10 +516,10 @@ func send(d *webhookSendState, webhook *webhookData, pBytes *[]byte) error {
 			}
 
 			// Set webhook to broken
-			_, err := state.Pool.Exec(state.Context, "UPDATE webhooks SET broken = true WHERE target_id = $1 AND target_type = $2", d.Entity.EntityID, d.Entity.EntityType)
+			_, err := state.Pool.Exec(state.Context, "UPDATE webhooks SET failed_requests = failed_requests + 1 WHERE target_id = $1 AND target_type = $2", d.Entity.EntityID, d.Entity.EntityType)
 
 			if err != nil {
-				return errors.New("webhook failed to validate auth and failed to remove webhook from db")
+				return errors.New("webhook failed to validate auth and failed to mark request as failed")
 			}
 
 			return errors.New("webhook auth error:" + strconv.Itoa(resp.StatusCode))
@@ -553,13 +555,13 @@ func send(d *webhookSendState, webhook *webhookData, pBytes *[]byte) error {
 			}
 
 			// Set webhook to broken
-			_, err := state.Pool.Exec(state.Context, "UPDATE webhooks SET broken = true WHERE target_id = $1 AND target_type = $2", d.Entity.EntityID, d.Entity.EntityType)
+			_, err := state.Pool.Exec(state.Context, "UPDATE webhooks SET failed_requests = failed_requests + 1 WHERE target_id = $1 AND target_type = $2", d.Entity.EntityID, d.Entity.EntityType)
 
 			if err != nil {
-				return errors.New("webhook failed to validate auth and failed to remove webhook from db")
+				return errors.New("webhook failed to validate auth and failed to mark request as failed")
 			}
 
-			return errors.New("webhook failed to validate auth thus removing it from the database")
+			return errors.New("webhook failed to validate auth")
 		}
 
 		d.cancelSend("SUCCESS")
