@@ -1,20 +1,22 @@
 SELECT {{.Cols}} FROM servers 
 WHERE (type = 'approved' OR type = 'certified')
+AND state = 'public'
 
 -- Total Members filter (1-2)
-AND (total_members >= $1)
-AND (($2 = 0) OR (total_members <= $2))
+AND ($1 = 0 OR total_members >= $1)
+AND ($2 = 0 OR total_members <= $2)
 
 -- Votes filter (3-4)
-AND (approximate_votes >= $3)
-AND (($4 = 0) OR (approximate_votes <= $4))
+AND ($3 = 0 OR approximate_votes >= $3)
+AND ($4 = 0 OR approximate_votes <= $4)
 
 -- Tags filter
 AND (cardinality($5::text[]) = 0 OR tags {{.TagMode}} $5) -- Where TagMode is one of @> = all, && = any
 
 {{if .Query}}
 AND (
-    name @@ $6 OR name ILIKE $6 OR short @@ $6 OR server_id = $7) 
+    name ILIKE $6 OR name @@ $7 OR short @@ $7 OR server_id = $7
+) 
 {{end}}
 
 GROUP BY server_id 

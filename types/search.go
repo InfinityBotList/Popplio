@@ -1,8 +1,8 @@
 package types
 
 type SearchFilter struct {
-	From int64 `json:"from" validate:"min=0"`
-	To   int64 `json:"to" validate:"min=0"`
+	From int64 `json:"from" `
+	To   int64 `json:"to"`
 }
 
 type TagMode string
@@ -29,6 +29,6 @@ type SearchQuery struct {
 
 type SearchResponse struct {
 	TargetTypes []string      `json:"target_types"`
-	Bots        []IndexBot    `json:"bots"`
-	Servers     []IndexServer `json:"servers"`
+	Bots        []IndexBot    `json:"bots,omitempty"`
+	Servers     []IndexServer `json:"servers,omitempty"`
 }

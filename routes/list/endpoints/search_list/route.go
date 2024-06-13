@@ -251,6 +251,10 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		}
 	}
 
+	if len(sr.TargetTypes) == 0 {
+		sr.TargetTypes = []string{}
+	}
+
 	return uapi.HttpResponse{
 		Json: sr,
 	}

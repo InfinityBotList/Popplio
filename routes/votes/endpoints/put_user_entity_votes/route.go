@@ -238,7 +238,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 			if len(vi.ValidVotes) > 1 {
 				return uapi.HttpResponse{
 					Status: http.StatusBadRequest,
-					Json:   types.ApiError{Message: "Your last vote was a double vote, calm down for " + timeStr + "?"},
+					Json:   types.ApiError{Message: "Please wait " + timeStr + " before voting again. Your last vote was also a double vote!"},
 				}
 			}
 

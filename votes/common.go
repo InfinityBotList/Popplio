@@ -138,10 +138,10 @@ func GetEntityInfo(ctx context.Context, c DbConn, targetId, targetType string) (
 			Avatar:  avatarPath,
 		}, nil
 	case "server":
-		var name, avatar string
+		var name string
 		var voteBanned bool
 
-		err := c.QueryRow(ctx, "SELECT name, avatar, vote_banned FROM servers WHERE server_id = $1", targetId).Scan(&name, &avatar, &voteBanned)
+		err := c.QueryRow(ctx, "SELECT name, vote_banned FROM servers WHERE server_id = $1", targetId).Scan(&name, &voteBanned)
 
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, errors.New("server not found")
@@ -160,7 +160,7 @@ func GetEntityInfo(ctx context.Context, c DbConn, targetId, targetType string) (
 			URL:     state.Config.Sites.Frontend.Parse() + "/server/" + targetId,
 			VoteURL: state.Config.Sites.Frontend.Parse() + "/server/" + targetId + "/vote",
 			Name:    name,
-			Avatar:  avatar,
+			Avatar:  assetmanager.ResolveAssetMetadataToUrl(assetmanager.AvatarInfo(assetmanager.AssetTargetTypeServers, targetId)),
 		}, nil
 	case "blog":
 		return &EntityInfo{
