@@ -139,7 +139,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 				},
 			},
 		},
-	}, &paypal.PaymentSource{}, &paypal.ApplicationContext{
+	}, nil, &paypal.ApplicationContext{
 		ReturnURL: state.Config.Sites.API.Parse() + "/payments/paypal/capture/" + refId,
 		CancelURL: state.Config.Sites.Frontend.Parse() + "/payments/cancelled",
 	})
