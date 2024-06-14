@@ -50,12 +50,6 @@ type Config struct {
 	Notifications Notifications `yaml:"notifications" validate:"required"`
 	Servers       Servers       `yaml:"servers" validate:"required"`
 	Meta          Meta          `yaml:"meta" validate:"required"`
-	Hcaptcha      Hcaptcha      `yaml:"hcaptcha" validate:"required"`
-}
-
-type Hcaptcha struct {
-	SiteKey string `yaml:"site_key" comment:"Hcaptcha Site Key" validate:"required"`
-	Secret  string `yaml:"secret" comment:"Hcaptcha Secret" validate:"required"`
 }
 
 type DiscordAuth struct {
