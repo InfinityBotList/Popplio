@@ -30,13 +30,6 @@ func Docs() *docs.Doc {
 		Resp:        []types.Webhook{},
 		Params: []docs.Parameter{
 			{
-				Name:        "uid",
-				Description: "The user's ID",
-				Required:    true,
-				In:          "path",
-				Schema:      docs.IdSchema,
-			},
-			{
 				Name:        "target_type",
 				Description: "The entity type to return webhooks for.",
 				Required:    true,

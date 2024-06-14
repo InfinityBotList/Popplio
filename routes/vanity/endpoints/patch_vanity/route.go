@@ -29,13 +29,6 @@ func Docs() *docs.Doc {
 		Req:         types.PatchVanity{},
 		Params: []docs.Parameter{
 			{
-				Name:        "uid",
-				Description: "User ID",
-				Required:    true,
-				In:          "path",
-				Schema:      docs.IdSchema,
-			},
-			{
 				Name:        "target_type",
 				Description: "The target type of the entity",
 				Required:    true,
@@ -55,11 +48,10 @@ func Docs() *docs.Doc {
 }
 
 func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
-	uid := chi.URLParam(r, "uid")
 	targetId := chi.URLParam(r, "target_id")
 	targetType := validators.NormalizeTargetType(chi.URLParam(r, "target_type"))
 
-	if uid == "" || targetId == "" || targetType == "" {
+	if targetId == "" || targetType == "" {
 		return uapi.HttpResponse{
 			Status: http.StatusBadRequest,
 			Json:   types.ApiError{Message: "Both target_id, target_type must be specified"},

@@ -37,15 +37,14 @@ func (b Router) Routes(r *chi.Mux) {
 	}.Route(r)
 
 	uapi.Route{
-		Pattern: "/users/{uid}/{target_type}/{target_id}/vanity",
+		Pattern: "/{target_type}/{target_id}/vanity",
 		OpId:    "patch_vanity",
 		Method:  uapi.PATCH,
 		Docs:    patch_vanity.Docs,
 		Handler: patch_vanity.Route,
 		Auth: []uapi.AuthType{
 			{
-				URLVar: "uid",
-				Type:   api.TargetTypeUser,
+				Type: api.TargetTypeUser,
 			},
 		},
 	}.Route(r)
