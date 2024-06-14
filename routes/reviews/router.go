@@ -54,10 +54,6 @@ func (b Router) Routes(r *chi.Mux) {
 		Method:  uapi.DELETE,
 		Docs:    remove_review.Docs,
 		Handler: remove_review.Route,
-		Auth: []uapi.AuthType{
-			{
-				Type: api.TargetTypeUser,
-			},
-		},
+		Auth:    api.GetAllAuthTypes(),
 	}.Route(r)
 }
