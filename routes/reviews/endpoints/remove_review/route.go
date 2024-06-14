@@ -24,13 +24,6 @@ func Docs() *docs.Doc {
 		Description: "Deletes a review by review ID. The user must be the author of this review. This will automatically trigger a garbage collection task and returns 204 on success",
 		Params: []docs.Parameter{
 			{
-				Name:        "uid",
-				Description: "The users ID",
-				Required:    true,
-				In:          "path",
-				Schema:      docs.IdSchema,
-			},
-			{
 				Name:        "target_type",
 				Description: "The target type of the entity",
 				Required:    true,

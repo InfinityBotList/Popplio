@@ -33,24 +33,17 @@ func Docs() *docs.Doc {
 		RespName:    "PagedResultWebhookLogEntry",
 		Params: []docs.Parameter{
 			{
-				Name:        "uid",
-				Description: "The user's ID",
-				Required:    true,
-				In:          "path",
-				Schema:      docs.IdSchema,
-			},
-			{
 				Name:        "target_id",
-				Description: "The target ID to return webhook logs for",
+				Description: "The target ID of the entity",
 				Required:    true,
 				In:          "path",
 				Schema:      docs.IdSchema,
 			},
 			{
 				Name:        "target_type",
-				Description: "The entity type to return webhook logs for.",
+				Description: "The target type of the entity",
 				Required:    true,
-				In:          "query",
+				In:          "path",
 				Schema:      docs.IdSchema,
 			},
 			{

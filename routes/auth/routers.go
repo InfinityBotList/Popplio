@@ -23,7 +23,7 @@ func (b Router) Tag() (string, string) {
 
 func (b Router) Routes(r *chi.Mux) {
 	uapi.Route{
-		Pattern: "/sessions/{target_type}/{target_id}",
+		Pattern: "/{target_type}/{target_id}/sessions",
 		OpId:    "get_sessions",
 		Method:  uapi.GET,
 		Docs:    get_sessions.Docs,

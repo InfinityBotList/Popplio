@@ -31,13 +31,6 @@ func Docs() *docs.Doc {
 		Description: "Creates a new review for an entity. A user may have only one `root review` per entity. Triggers a garbage collection step to remove any orphaned reviews afterwards. Returns 204 on success",
 		Params: []docs.Parameter{
 			{
-				Name:        "uid",
-				Description: "The users ID",
-				Required:    true,
-				In:          "path",
-				Schema:      docs.IdSchema,
-			},
-			{
 				Name:        "target_type",
 				Description: "The target type of the entity",
 				Required:    true,

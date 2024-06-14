@@ -31,43 +31,40 @@ func (b Router) Routes(r *chi.Mux) {
 	}.Route(r)
 
 	uapi.Route{
-		Pattern: "/users/{uid}/{target_type}/{target_id}/reviews",
+		Pattern: "/{target_type}/{target_id}/reviews",
 		OpId:    "add_review",
 		Method:  uapi.POST,
 		Docs:    add_review.Docs,
 		Handler: add_review.Route,
 		Auth: []uapi.AuthType{
 			{
-				Type:   api.TargetTypeUser,
-				URLVar: "uid",
+				Type: api.TargetTypeUser,
 			},
 		},
 	}.Route(r)
 
 	uapi.Route{
-		Pattern: "/users/{uid}/{target_type}/{target_id}/reviews/{review_id}",
+		Pattern: "{target_type}/{target_id}/reviews/{review_id}",
 		OpId:    "edit_review",
 		Method:  uapi.PATCH,
 		Docs:    edit_review.Docs,
 		Handler: edit_review.Route,
 		Auth: []uapi.AuthType{
 			{
-				Type:   api.TargetTypeUser,
-				URLVar: "uid",
+				Type: api.TargetTypeUser,
 			},
 		},
 	}.Route(r)
 
 	uapi.Route{
-		Pattern: "/users/{uid}/{target_type}/{target_id}/reviews/{review_id}",
+		Pattern: "/{target_type}/{target_id}/reviews/{review_id}",
 		OpId:    "remove_review",
 		Method:  uapi.DELETE,
 		Docs:    remove_review.Docs,
 		Handler: remove_review.Route,
 		Auth: []uapi.AuthType{
 			{
-				Type:   api.TargetTypeUser,
-				URLVar: "uid",
+				Type: api.TargetTypeUser,
 			},
 		},
 	}.Route(r)
