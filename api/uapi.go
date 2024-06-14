@@ -285,9 +285,6 @@ func Authorize(r uapi.Route, req *http.Request) (uapi.AuthData, uapi.HttpRespons
 		return uapi.AuthData{}, uapi.HttpResponse{
 			Status: http.StatusUnauthorized,
 			Json:   types.ApiError{Message: "Authentication failed"},
-			Headers: map[string]string{
-				"X-Session-Invalid": "true",
-			},
 		}, false
 	}
 
