@@ -2,9 +2,7 @@ package put_user_entity_votes
 
 import (
 	"fmt"
-	"io"
 	"net/http"
-	"net/url"
 	"strconv"
 	"strings"
 
@@ -17,7 +15,6 @@ import (
 	"github.com/bwmarrin/discordgo"
 	docs "github.com/infinitybotlist/eureka/doclib"
 	"github.com/infinitybotlist/eureka/dovewing"
-	"github.com/infinitybotlist/eureka/jsonimpl"
 	"github.com/infinitybotlist/eureka/uapi"
 	"go.uber.org/zap"
 
@@ -62,61 +59,7 @@ func Docs() *docs.Doc {
 	}
 }
 
-func hcaptcha(b []byte) {
-	// OK, so we can handle hcaptcha
-	state.Logger.Info("Trying to handle hcaptcha")
-	var hcaptchaResp struct {
-		Key      string `json:"key"`
-		Response string `json:"response"`
-	}
-
-	err := jsonimpl.Unmarshal(b, &hcaptchaResp)
-
-	if err != nil {
-		state.Logger.Error("Failed to unmarshal hcaptcha response", zap.Error(err))
-	} else {
-		// We have a response, lets verify it
-		resp, err := http.PostForm("https://hcaptcha.com/siteverify", url.Values{
-			"secret":   {state.Config.Hcaptcha.Secret},
-			"response": {hcaptchaResp.Response},
-		})
-
-		if err != nil {
-			state.Logger.Error("Failed to verify hcaptcha", zap.Error(err))
-			return
-		}
-
-		defer resp.Body.Close()
-
-		var hcaptchaResp struct {
-			Success    bool     `json:"success"`
-			ErrorCodes []string `json:"error-codes"`
-		}
-
-		err = jsonimpl.UnmarshalReader(resp.Body, &hcaptchaResp)
-
-		if err != nil {
-			state.Logger.Error("Failed to decode hcaptcha response", zap.Error(err))
-			return
-		}
-
-		if !hcaptchaResp.Success {
-			state.Logger.Error("hcaptcha failed to verify token", zap.Strings("errorCodes", hcaptchaResp.ErrorCodes))
-			return
-		}
-
-		state.Logger.Info("hcaptcha siteverify check passed")
-	}
-}
-
 func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
-	// Try reading body if its there to handle hcaptcha
-	bytes, err := io.ReadAll(r.Body)
-
-	if err == nil && len(bytes) > 0 {
-		go hcaptcha(bytes)
-	}
-
 	uid := chi.URLParam(r, "uid")
 	targetId := chi.URLParam(r, "target_id")
 	targetType := chi.URLParam(r, "target_type")
@@ -145,7 +88,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	// Check if user is allowed to even make a vote right now.
 	var voteBanned bool
 
-	err = state.Pool.QueryRow(d.Context, "SELECT vote_banned FROM users WHERE user_id = $1", uid).Scan(&voteBanned)
+	err := state.Pool.QueryRow(d.Context, "SELECT vote_banned FROM users WHERE user_id = $1", uid).Scan(&voteBanned)
 
 	if err != nil {
 		state.Logger.Error("Failed to check if user is vote banned", zap.Error(err), zap.String("userId", uid))
