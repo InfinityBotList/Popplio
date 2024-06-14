@@ -75,7 +75,7 @@ func (b Router) Routes(r *chi.Mux) {
 	uapi.Route{
 		Pattern: "/users/{uid}/{target_type}/{target_id}/votes",
 		OpId:    "create_entity_vote",
-		Method:  uapi.POST,
+		Method:  uapi.PUT,
 		Docs:    create_entity_vote.Docs,
 		Handler: create_entity_vote.Route,
 		Auth: []uapi.AuthType{
