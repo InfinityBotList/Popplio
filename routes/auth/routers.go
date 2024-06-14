@@ -32,12 +32,6 @@ func (b Router) Routes(r *chi.Mux) {
 			{
 				Type: api.TargetTypeUser,
 			},
-			{
-				Type: api.TargetTypeBot,
-			},
-			{
-				Type: api.TargetTypeServer,
-			},
 		},
 	}.Route(r)
 
@@ -51,12 +45,6 @@ func (b Router) Routes(r *chi.Mux) {
 			{
 				Type: api.TargetTypeUser,
 			},
-			{
-				Type: api.TargetTypeBot,
-			},
-			{
-				Type: api.TargetTypeServer,
-			},
 		},
 	}.Route(r)
 
@@ -69,12 +57,6 @@ func (b Router) Routes(r *chi.Mux) {
 		Auth: []uapi.AuthType{
 			{
 				Type: api.TargetTypeUser,
-			},
-			{
-				Type: api.TargetTypeBot,
-			},
-			{
-				Type: api.TargetTypeServer,
 			},
 		},
 	}.Route(r)

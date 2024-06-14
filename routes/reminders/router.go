@@ -34,7 +34,7 @@ func (b Router) Routes(r *chi.Mux) {
 	}.Route(r)
 
 	uapi.Route{
-		Pattern: "/users/{uid}/reminders/{target_id}",
+		Pattern: "/users/{uid}/{target_type}/{target_id}/reminders",
 		OpId:    "put_user_reminders",
 		Method:  uapi.PUT,
 		Docs:    put_user_reminders.Docs,
@@ -48,7 +48,7 @@ func (b Router) Routes(r *chi.Mux) {
 	}.Route(r)
 
 	uapi.Route{
-		Pattern: "/users/{uid}/reminders/{target_id}",
+		Pattern: "/users/{uid}/{target_type}/{target_id}/reminders",
 		OpId:    "delete_user_reminders",
 		Method:  uapi.DELETE,
 		Docs:    delete_user_reminders.Docs,

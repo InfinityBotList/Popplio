@@ -6,6 +6,7 @@ import (
 	"popplio/notifications"
 	"popplio/state"
 	"popplio/types"
+	"popplio/validators"
 	"popplio/votes"
 
 	docs "github.com/infinitybotlist/eureka/doclib"
@@ -28,17 +29,17 @@ func Docs() *docs.Doc {
 				Schema:      docs.IdSchema,
 			},
 			{
-				Name:        "target_id",
-				Description: "The target ID of the entity",
+				Name:        "target_type",
+				Description: "The target type of the entity",
 				Required:    true,
 				In:          "path",
 				Schema:      docs.IdSchema,
 			},
 			{
-				Name:        "target_type",
-				Description: "The target type of the entity",
+				Name:        "target_id",
+				Description: "The target ID of the entity",
 				Required:    true,
-				In:          "query",
+				In:          "path",
 				Schema:      docs.IdSchema,
 			},
 		},
@@ -48,7 +49,7 @@ func Docs() *docs.Doc {
 
 func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	targetId := chi.URLParam(r, "target_id")
-	targetType := r.URL.Query().Get("target_type")
+	targetType := validators.NormalizeTargetType(chi.URLParam(r, "target_type"))
 
 	if targetId == "" || targetType == "" {
 		return uapi.DefaultResponse(http.StatusBadRequest)

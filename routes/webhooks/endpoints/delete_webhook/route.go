@@ -3,6 +3,7 @@ package delete_webhook
 import (
 	"net/http"
 
+	"popplio/api/authz"
 	"popplio/state"
 	"popplio/teams"
 	"popplio/types"
@@ -10,7 +11,7 @@ import (
 
 	docs "github.com/infinitybotlist/eureka/doclib"
 	"github.com/infinitybotlist/eureka/uapi"
-	kittycat "github.com/infinitybotlist/kittycat/go"
+	perms "github.com/infinitybotlist/kittycat/go"
 	"go.uber.org/zap"
 
 	"github.com/go-chi/chi/v5"
@@ -72,20 +73,19 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		}
 	}
 
-	perms, err := teams.GetEntityPerms(d.Context, d.Auth.ID, targetType, targetId)
+	// Perform entity specific checks
+	err := authz.EntityPermissionCheck(
+		d.Context,
+		d.Auth,
+		targetType,
+		targetId,
+		perms.Permission{Namespace: targetType, Perm: teams.PermissionDeleteWebhooks},
+	)
 
 	if err != nil {
-		state.Logger.Error("Error getting user perms", zap.Error(err), zap.String("userID", d.Auth.ID))
-		return uapi.HttpResponse{
-			Status: http.StatusBadRequest,
-			Json:   types.ApiError{Message: "Error getting user perms: " + err.Error()},
-		}
-	}
-
-	if !kittycat.HasPerm(perms, kittycat.Permission{Namespace: targetType, Perm: teams.PermissionCreateWebhooks}) {
 		return uapi.HttpResponse{
 			Status: http.StatusForbidden,
-			Json:   types.ApiError{Message: "You do not have permission to update this entities webhook settings"},
+			Json:   types.ApiError{Message: "Entity permission checks failed: " + err.Error()},
 		}
 	}
 

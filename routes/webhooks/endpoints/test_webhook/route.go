@@ -15,9 +15,11 @@ import (
 	"github.com/infinitybotlist/eureka/ratelimit"
 	"go.uber.org/zap"
 
+	"popplio/api/authz"
+
 	docs "github.com/infinitybotlist/eureka/doclib"
 	"github.com/infinitybotlist/eureka/uapi"
-	kittycat "github.com/infinitybotlist/kittycat/go"
+	perms "github.com/infinitybotlist/kittycat/go"
 
 	"github.com/go-chi/chi/v5"
 )
@@ -30,15 +32,15 @@ func Docs() *docs.Doc {
 		Resp:        types.ApiError{},
 		Params: []docs.Parameter{
 			{
-				Name:        "target_id",
-				Description: "The target ID of the entity",
+				Name:        "target_type",
+				Description: "The target type of the entity",
 				Required:    true,
 				In:          "path",
 				Schema:      docs.IdSchema,
 			},
 			{
-				Name:        "target_type",
-				Description: "The target type of the entity",
+				Name:        "target_id",
+				Description: "The target ID of the entity",
 				Required:    true,
 				In:          "path",
 				Schema:      docs.IdSchema,
@@ -89,22 +91,19 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		}
 	}
 
-	perms, err := teams.GetEntityPerms(d.Context, d.Auth.ID, targetType, targetId)
+	// Perform entity specific checks
+	err = authz.EntityPermissionCheck(
+		d.Context,
+		d.Auth,
+		targetType,
+		targetId,
+		perms.Permission{Namespace: targetType, Perm: teams.PermissionTestWebhooks},
+	)
 
 	if err != nil {
-		state.Logger.Error("Error getting user perms", zap.Error(err), zap.String("userID", d.Auth.ID))
 		return uapi.HttpResponse{
-			Status:  http.StatusBadRequest,
-			Headers: limit.Headers(),
-			Json:    types.ApiError{Message: "Error getting user perms: " + err.Error()},
-		}
-	}
-
-	if !kittycat.HasPerm(perms, kittycat.Permission{Namespace: targetType, Perm: teams.PermissionTestWebhooks}) {
-		return uapi.HttpResponse{
-			Status:  http.StatusForbidden,
-			Headers: limit.Headers(),
-			Json:    types.ApiError{Message: "You do not have permission to test webhooks on this entity"},
+			Status: http.StatusForbidden,
+			Json:   types.ApiError{Message: "Entity permission checks failed: " + err.Error()},
 		}
 	}
 

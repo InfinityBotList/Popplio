@@ -18,7 +18,7 @@ import (
 func Docs() *docs.Doc {
 	return &docs.Doc{
 		Summary:     "Get User Entity Votes",
-		Description: "Gets all votes a user has made for an entity. Note that for compatibility, a trailing 's' is removed",
+		Description: "Gets all valid (current) votes a user has made for an entity",
 		Params: []docs.Parameter{
 			{
 				Name:        "uid",

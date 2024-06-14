@@ -5,7 +5,8 @@ import (
 	"strings"
 	"time"
 
-	"popplio/routes/auth/assets"
+	"popplio/api"
+	"popplio/api/authz"
 	"popplio/state"
 	"popplio/teams"
 	"popplio/types"
@@ -17,6 +18,7 @@ import (
 	"github.com/infinitybotlist/eureka/crypto"
 	docs "github.com/infinitybotlist/eureka/doclib"
 	"github.com/infinitybotlist/eureka/uapi"
+	perms "github.com/infinitybotlist/kittycat/go"
 )
 
 var (
@@ -62,12 +64,12 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	targetType = strings.TrimSuffix(targetType, "s")
 
 	// Perform entity specific checks
-	err := assets.AuthEntityPermCheck(
+	err := authz.EntityPermissionCheck(
 		d.Context,
 		d.Auth,
 		targetType,
 		targetId,
-		teams.PermissionCreateSession,
+		perms.Permission{Namespace: targetType, Perm: teams.PermissionCreateSession},
 	)
 
 	if err != nil {
@@ -114,6 +116,46 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 
 	if len(createData.PermLimits) == 0 {
 		createData.PermLimits = []string{}
+	}
+
+	if d.Auth.TargetType == api.TargetTypeUser {
+		userPerms, err := teams.GetEntityPerms(
+			d.Context,
+			d.Auth.ID,
+			targetType,
+			targetId,
+		)
+
+		if err != nil {
+			state.Logger.Error("Error while getting entity perms", zap.Error(err))
+			return uapi.HttpResponse{
+				Status: http.StatusInternalServerError,
+				Json:   types.ApiError{Message: "Error while getting entity perms: " + err.Error()},
+			}
+		}
+
+		if !perms.HasPerm(userPerms, perms.Permission{Namespace: "global", Perm: "*"}) {
+			if len(createData.PermLimits) == 0 {
+				return uapi.HttpResponse{
+					Status: http.StatusForbidden,
+					Json:   types.ApiError{Message: "You must have Global Owner to create sessions without specifying a permission limit"},
+				}
+			}
+
+			for _, perm := range createData.PermLimits {
+				if !perms.HasPerm(userPerms, perms.PFS(perm)) {
+					return uapi.HttpResponse{
+						Status: http.StatusForbidden,
+						Json:   types.ApiError{Message: "User does not have permission to create sessions with the permission limit: " + perm},
+					}
+				}
+			}
+		}
+	} else {
+		return uapi.HttpResponse{
+			Status: http.StatusNotImplemented,
+			Json:   types.ApiError{Message: "Only users can create sessions at this time"},
+		}
 	}
 
 	// Create session

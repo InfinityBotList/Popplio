@@ -18,15 +18,15 @@ func Docs() *docs.Doc {
 		Resp:        types.GetTestWebhookMeta{},
 		Params: []docs.Parameter{
 			{
-				Name:        "target_id",
-				Description: "The target ID of the entity",
+				Name:        "target_type",
+				Description: "The target type of the entity",
 				Required:    true,
 				In:          "path",
 				Schema:      docs.IdSchema,
 			},
 			{
-				Name:        "target_type",
-				Description: "The target type of the entity",
+				Name:        "target_id",
+				Description: "The target ID of the entity",
 				Required:    true,
 				In:          "path",
 				Schema:      docs.IdSchema,
