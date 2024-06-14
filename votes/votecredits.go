@@ -63,6 +63,16 @@ func EntityRedeemVoteCredits(
 	targetId string,
 	targetType string,
 ) error {
+	vi, err := EntityVoteInfo(ctx, c, targetId, targetType)
+
+	if err != nil {
+		return fmt.Errorf("could not fetch vote info: %w", err)
+	}
+
+	if !vi.VoteCredits {
+		return errors.New("vote credits are not supported for this entity")
+	}
+
 	summary, err := EntityGetVoteCreditsSummary(ctx, c, targetId, targetType)
 
 	if err != nil {

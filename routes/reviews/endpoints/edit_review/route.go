@@ -2,6 +2,7 @@ package edit_review
 
 import (
 	"net/http"
+	"popplio/api"
 	"popplio/routes/reviews/assets"
 	"popplio/state"
 	"popplio/teams"
@@ -11,9 +12,11 @@ import (
 	cevents "popplio/webhooks/core/events"
 	"popplio/webhooks/events"
 
+	"popplio/api/authz"
+
 	docs "github.com/infinitybotlist/eureka/doclib"
 	"github.com/infinitybotlist/eureka/uapi"
-	kittycat "github.com/infinitybotlist/kittycat/go"
+	perms "github.com/infinitybotlist/kittycat/go"
 	"go.uber.org/zap"
 
 	"github.com/go-chi/chi/v5"
@@ -25,7 +28,7 @@ var compiledMessages = uapi.CompileValidationErrors(types.EditReview{})
 func Docs() *docs.Doc {
 	return &docs.Doc{
 		Summary:     "Edit Review",
-		Description: "Edits a review by review ID. The user must be the author of this review. This will automatically trigger a garbage collection task and returns 204 on success",
+		Description: "Edits a review by review ID. The user must be the author of this review. This will automatically trigger a garbage collection task. Note that non-users can only edit 'owner review's. Returns 204 on success",
 		Params: []docs.Parameter{
 			{
 				Name:        "target_type",
@@ -88,28 +91,43 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	}
 
 	if ownerReview {
-		perms, err := teams.GetEntityPerms(d.Context, d.Auth.ID, targetType, targetId)
+		// Perform entity specific checks
+		err := authz.EntityPermissionCheck(
+			d.Context,
+			d.Auth,
+			targetType,
+			targetId,
+			perms.Permission{Namespace: targetType, Perm: teams.PermissionEditOwnerReview},
+		)
 
 		if err != nil {
-			state.Logger.Error("Error getting entity perms", zap.Error(err), zap.String("uid", d.Auth.ID), zap.String("target_id", targetId), zap.String("target_type", targetType))
-			return uapi.HttpResponse{
-				Status: http.StatusBadRequest,
-				Json:   types.ApiError{Message: "Error getting user perms: " + err.Error()},
-			}
-		}
-
-		if !kittycat.HasPerm(perms, kittycat.Permission{Namespace: targetType, Perm: teams.PermissionEditOwnerReview}) {
 			return uapi.HttpResponse{
 				Status: http.StatusForbidden,
-				Json:   types.ApiError{Message: "You do not have permission to edit an owner review for this " + targetType},
+				Json:   types.ApiError{Message: "Entity permission checks failed: " + err.Error()},
 			}
 		}
 	} else {
-		if author != d.Auth.ID {
+		if d.Auth.TargetType != api.TargetTypeUser {
 			return uapi.HttpResponse{
 				Status: http.StatusForbidden,
 				Json: types.ApiError{
-					Message: "You are not the author of this review",
+					Message: "Only users may edit non-owner reviews",
+				},
+			}
+		} else if d.Auth.TargetType == api.TargetTypeUser {
+			if author != d.Auth.ID {
+				return uapi.HttpResponse{
+					Status: http.StatusForbidden,
+					Json: types.ApiError{
+						Message: "You are not the author of this review",
+					},
+				}
+			}
+		} else {
+			return uapi.HttpResponse{
+				Status: http.StatusInternalServerError,
+				Json: types.ApiError{
+					Message: "Unreachable condition reached!",
 				},
 			}
 		}

@@ -9,11 +9,13 @@ import (
 	"strconv"
 	"strings"
 
+	"popplio/api/authz"
+
 	"github.com/go-chi/chi/v5"
 	docs "github.com/infinitybotlist/eureka/doclib"
 	"github.com/infinitybotlist/eureka/dovewing"
 	"github.com/infinitybotlist/eureka/uapi"
-	kittycat "github.com/infinitybotlist/kittycat/go"
+	perms "github.com/infinitybotlist/kittycat/go"
 	"github.com/jackc/pgx/v5"
 	"go.uber.org/zap"
 )
@@ -33,15 +35,15 @@ func Docs() *docs.Doc {
 		RespName:    "PagedResultWebhookLogEntry",
 		Params: []docs.Parameter{
 			{
-				Name:        "target_id",
-				Description: "The target ID of the entity",
+				Name:        "target_type",
+				Description: "The target type of the entity",
 				Required:    true,
 				In:          "path",
 				Schema:      docs.IdSchema,
 			},
 			{
-				Name:        "target_type",
-				Description: "The target type of the entity",
+				Name:        "target_id",
+				Description: "The target ID of the entity",
 				Required:    true,
 				In:          "path",
 				Schema:      docs.IdSchema,
@@ -79,23 +81,23 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	limit := perPage
 	offset := (pageNum - 1) * perPage
 
-	perms, err := teams.GetEntityPerms(d.Context, d.Auth.ID, targetType, targetId)
+	// Perform entity specific checks
+	err = authz.EntityPermissionCheck(
+		d.Context,
+		d.Auth,
+		targetType,
+		targetId,
+		perms.Permission{Namespace: targetType, Perm: teams.PermissionGetWebhookLogs},
+	)
 
 	if err != nil {
-		state.Logger.Error("Error getting user perms", zap.Error(err), zap.String("userID", d.Auth.ID))
-		return uapi.HttpResponse{
-			Status: http.StatusBadRequest,
-			Json:   types.ApiError{Message: "Error getting user perms: " + err.Error()},
-		}
-	}
-
-	if !kittycat.HasPerm(perms, kittycat.Permission{Namespace: targetType, Perm: teams.PermissionGetWebhookLogs}) {
 		return uapi.HttpResponse{
 			Status: http.StatusForbidden,
-			Json:   types.ApiError{Message: "You do not have permission to get webhooks logs on this entity"},
+			Json:   types.ApiError{Message: "Entity permission checks failed: " + err.Error()},
 		}
 	}
 
+	// Fetch the logs
 	rows, err := state.Pool.Query(d.Context, "SELECT "+webhookLogCols+" FROM webhook_logs WHERE target_id = $1 AND target_type = $2 ORDER BY created_at DESC LIMIT $3 OFFSET $4", targetId, targetType, limit, offset)
 
 	if err != nil {

@@ -29,11 +29,7 @@ func (b Router) Routes(r *chi.Mux) {
 		Method:  uapi.GET,
 		Docs:    get_webhooks.Docs,
 		Handler: get_webhooks.Route,
-		Auth: []uapi.AuthType{
-			{
-				Type: api.TargetTypeUser,
-			},
-		},
+		Auth:    api.GetAllAuthTypes(),
 	}.Route(r)
 
 	uapi.Route{
@@ -42,11 +38,7 @@ func (b Router) Routes(r *chi.Mux) {
 		Method:  uapi.POST,
 		Docs:    add_webhook.Docs,
 		Handler: add_webhook.Route,
-		Auth: []uapi.AuthType{
-			{
-				Type: api.TargetTypeUser,
-			},
-		},
+		Auth:    api.GetAllAuthTypes(),
 	}.Route(r)
 
 	uapi.Route{
@@ -55,11 +47,7 @@ func (b Router) Routes(r *chi.Mux) {
 		Method:  uapi.POST,
 		Docs:    patch_webhook.Docs,
 		Handler: patch_webhook.Route,
-		Auth: []uapi.AuthType{
-			{
-				Type: api.TargetTypeUser,
-			},
-		},
+		Auth:    api.GetAllAuthTypes(),
 	}.Route(r)
 
 	uapi.Route{
@@ -68,11 +56,7 @@ func (b Router) Routes(r *chi.Mux) {
 		Method:  uapi.POST,
 		Docs:    delete_webhook.Docs,
 		Handler: delete_webhook.Route,
-		Auth: []uapi.AuthType{
-			{
-				Type: api.TargetTypeUser,
-			},
-		},
+		Auth:    api.GetAllAuthTypes(),
 	}.Route(r)
 
 	uapi.Route{
@@ -81,11 +65,7 @@ func (b Router) Routes(r *chi.Mux) {
 		Method:  uapi.GET,
 		Docs:    get_webhook_logs.Docs,
 		Handler: get_webhook_logs.Route,
-		Auth: []uapi.AuthType{
-			{
-				Type: api.TargetTypeUser,
-			},
-		},
+		Auth:    api.GetAllAuthTypes(),
 	}.Route(r)
 
 	uapi.Route{
@@ -102,10 +82,6 @@ func (b Router) Routes(r *chi.Mux) {
 		Method:  uapi.POST,
 		Docs:    test_webhook.Docs,
 		Handler: test_webhook.Route,
-		Auth: []uapi.AuthType{
-			{
-				Type: api.TargetTypeUser,
-			},
-		},
+		Auth:    api.GetAllAuthTypes(),
 	}.Route(r)
 }

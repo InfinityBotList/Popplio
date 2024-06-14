@@ -430,7 +430,6 @@ func GetEntityPerms(ctx context.Context, userId, targetType, targetId string) ([
 	}
 
 	// Right now, team permissions are treated as permission overrides
-	// TODO: support hierarchy based permissions in the future
 	var resolvedPerms = perms.StaffPermissions{
 		PermOverrides: perms.PFSS(teamPerms),
 	}.Resolve()

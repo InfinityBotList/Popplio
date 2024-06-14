@@ -3,6 +3,7 @@ package redeem_vote_credits
 import (
 	"net/http"
 
+	"popplio/api/authz"
 	"popplio/state"
 	"popplio/teams"
 	"popplio/types"
@@ -12,7 +13,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	docs "github.com/infinitybotlist/eureka/doclib"
 	"github.com/infinitybotlist/eureka/uapi"
-	kittycat "github.com/infinitybotlist/kittycat/go"
+	perms "github.com/infinitybotlist/kittycat/go"
 	"go.uber.org/zap"
 )
 
@@ -21,13 +22,6 @@ func Docs() *docs.Doc {
 		Summary:     "Redeem Vote Credits",
 		Description: "Redeems all votes into credits towards the shop based on the vote credit tiers",
 		Params: []docs.Parameter{
-			{
-				Name:        "uid",
-				Description: "The users ID",
-				Required:    true,
-				In:          "path",
-				Schema:      docs.IdSchema,
-			},
 			{
 				Name:        "target_type",
 				Description: "The target type of the entity",
@@ -58,20 +52,19 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		}
 	}
 
-	perms, err := teams.GetEntityPerms(d.Context, d.Auth.ID, targetType, targetId)
+	// Perform entity specific checks
+	err := authz.EntityPermissionCheck(
+		d.Context,
+		d.Auth,
+		targetType,
+		targetId,
+		perms.Permission{Namespace: targetType, Perm: teams.PermissionRedeemVoteCredits},
+	)
 
 	if err != nil {
-		state.Logger.Error("Error getting entity perms", zap.Error(err), zap.String("uid", d.Auth.ID), zap.String("target_id", targetId), zap.String("target_type", targetType))
-		return uapi.HttpResponse{
-			Status: http.StatusBadRequest,
-			Json:   types.ApiError{Message: "Error getting user perms: " + err.Error()},
-		}
-	}
-
-	if !kittycat.HasPerm(perms, kittycat.Permission{Namespace: targetType, Perm: teams.PermissionRedeemVoteCredits}) {
 		return uapi.HttpResponse{
 			Status: http.StatusForbidden,
-			Json:   types.ApiError{Message: "You do not have permission to redeem vote credits for this " + targetType},
+			Json:   types.ApiError{Message: "Entity permission checks failed: " + err.Error()},
 		}
 	}
 

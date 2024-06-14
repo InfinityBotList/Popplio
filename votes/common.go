@@ -179,7 +179,7 @@ func GetEntityInfo(ctx context.Context, c DbConn, targetId, targetType string) (
 // # If user id is specified, then in the future special perks for the user will be returned as well
 //
 // If vote time is negative, then it is not possible to revote
-func EntityVoteInfo(ctx context.Context, c DbConn, userId, targetId, targetType string) (*types.VoteInfo, error) {
+func EntityVoteInfo(ctx context.Context, c DbConn, targetId, targetType string) (*types.VoteInfo, error) {
 	var voteEntity = types.VoteInfo{
 		PerUser:           1,     // 1 vote per user
 		VoteTime:          12,    // per day
@@ -254,7 +254,7 @@ func EntityVoteInfo(ctx context.Context, c DbConn, userId, targetId, targetType 
 
 // Checks whether or not a user has voted for an entity
 func EntityVoteCheck(ctx context.Context, c DbConn, userId, targetId, targetType string) (*types.UserVote, error) {
-	vi, err := EntityVoteInfo(ctx, c, userId, targetId, targetType)
+	vi, err := EntityVoteInfo(ctx, c, targetId, targetType)
 
 	if err != nil {
 		return nil, err

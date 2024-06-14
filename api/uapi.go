@@ -23,7 +23,17 @@ const (
 	TargetTypeUser   = "user"
 	TargetTypeBot    = "bot"
 	TargetTypeServer = "server"
+	TargetTypeTeam   = "team"
 )
+
+// Returns all possible auth types
+func GetAllAuthTypes() []uapi.AuthType {
+	var types []uapi.AuthType
+	for k := range uapi.State.AuthTypeMap {
+		return append(types, uapi.AuthType{Type: k})
+	}
+	return types
+}
 
 type DefaultResponder struct{}
 
@@ -207,6 +217,32 @@ func Authorize(r uapi.Route, req *http.Request) (uapi.AuthData, uapi.HttpRespons
 				ID:         targetId,
 				Authorized: true,
 			}
+		case TargetTypeTeam:
+			var count int64
+			err := state.Pool.QueryRow(state.Context, "SELECT COUNT(*) FROM teams WHERE id = $1", targetId).Scan(&count)
+
+			if err != nil {
+				return uapi.AuthData{}, uapi.HttpResponse{
+					Status: http.StatusInternalServerError,
+					Json:   types.ApiError{Message: "Could not fetch count of teams associated with this session: " + err.Error()},
+				}, false
+			}
+
+			if count == 0 {
+				return uapi.AuthData{}, uapi.HttpResponse{
+					Status: http.StatusNotFound,
+					Json:   types.ApiError{Message: "The team associated with this session could not be found?"},
+					Headers: map[string]string{
+						"X-Session-Invalid": "true",
+					},
+				}, false
+			}
+
+			authData = uapi.AuthData{
+				TargetType: TargetTypeTeam,
+				ID:         targetId,
+				Authorized: true,
+			}
 		}
 
 		// Now handle the URLVar
@@ -262,6 +298,7 @@ func Setup() {
 			TargetTypeUser:   TargetTypeUser,
 			TargetTypeBot:    TargetTypeBot,
 			TargetTypeServer: TargetTypeServer,
+			TargetTypeTeam:   TargetTypeTeam,
 		},
 		Context: state.Context,
 		Constants: &uapi.UAPIConstants{
