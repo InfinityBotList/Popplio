@@ -30,7 +30,7 @@ var compiledMessages = uapi.CompileValidationErrors(types.CreateReview{})
 
 func Docs() *docs.Doc {
 	return &docs.Doc{
-		Summary:     "Create Bot Review",
+		Summary:     "Create Review",
 		Description: "Creates a new review for an entity. A user may have only one `root review` per entity. Triggers a garbage collection step to remove any orphaned reviews afterwards. Note that non-users can only create an 'owner review'. Returns 204 on success",
 		Params: []docs.Parameter{
 			{

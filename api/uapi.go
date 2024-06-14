@@ -28,6 +28,10 @@ const (
 
 // Returns all possible auth types
 func GetAllAuthTypes() []uapi.AuthType {
+	if len(uapi.State.AuthTypeMap) == 0 {
+		panic("No auth types defined")
+	}
+
 	var types []uapi.AuthType
 	for k := range uapi.State.AuthTypeMap {
 		return append(types, uapi.AuthType{Type: k})
@@ -280,7 +284,7 @@ func Authorize(r uapi.Route, req *http.Request) (uapi.AuthData, uapi.HttpRespons
 	if !authData.Authorized && !r.AuthOptional {
 		return uapi.AuthData{}, uapi.HttpResponse{
 			Status: http.StatusUnauthorized,
-			Json:   types.ApiError{Message: "You are not authorized to perform this action"},
+			Json:   types.ApiError{Message: "Authentication failed"},
 			Headers: map[string]string{
 				"X-Session-Invalid": "true",
 			},
