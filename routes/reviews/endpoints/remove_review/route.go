@@ -6,6 +6,7 @@ import (
 	"popplio/state"
 	"popplio/teams"
 	"popplio/types"
+	"popplio/validators"
 	"popplio/webhooks/core/drivers"
 	"popplio/webhooks/events"
 
@@ -30,8 +31,22 @@ func Docs() *docs.Doc {
 				Schema:      docs.IdSchema,
 			},
 			{
-				Name:        "rid",
-				Description: "The review ID",
+				Name:        "target_type",
+				Description: "The target type of the entity",
+				Required:    true,
+				In:          "path",
+				Schema:      docs.IdSchema,
+			},
+			{
+				Name:        "target_id",
+				Description: "The target ID of the entity",
+				Required:    true,
+				In:          "path",
+				Schema:      docs.IdSchema,
+			},
+			{
+				Name:        "review_id",
+				Description: "The review ID of the entity",
 				Required:    true,
 				In:          "path",
 				Schema:      docs.IdSchema,
@@ -42,16 +57,16 @@ func Docs() *docs.Doc {
 }
 
 func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
-	rid := chi.URLParam(r, "rid")
+	targetId := chi.URLParam(r, "target_id")
+	targetType := validators.NormalizeTargetType(chi.URLParam(r, "target_type"))
+	rid := chi.URLParam(r, "review_id")
 
 	var author string
-	var targetId string
-	var targetType string
 	var content string
 	var stars int32
 	var ownerReview bool
 
-	err := state.Pool.QueryRow(d.Context, "SELECT author, target_id, target_type, content, stars, owner_review FROM reviews WHERE id = $1", rid).Scan(&author, &targetId, &targetType, &content, &stars, &ownerReview)
+	err := state.Pool.QueryRow(d.Context, "SELECT author, content, stars, owner_review FROM reviews WHERE id = $1 AND target_id = $2 AND target_type = $3", rid, targetId, targetType).Scan(&author, &content, &stars, &ownerReview)
 
 	if err != nil {
 		state.Logger.Error("Failed to query review [db queryrow]", zap.Error(err), zap.String("rid", rid))

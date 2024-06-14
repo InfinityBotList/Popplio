@@ -6,6 +6,7 @@ import (
 	"popplio/state"
 	"popplio/teams"
 	"popplio/types"
+	"popplio/validators"
 	"popplio/webhooks/core/drivers"
 	"popplio/webhooks/events"
 	"time"
@@ -37,17 +38,17 @@ func Docs() *docs.Doc {
 				Schema:      docs.IdSchema,
 			},
 			{
-				Name:        "target_id",
-				Description: "The target id (bot/server ID)",
+				Name:        "target_type",
+				Description: "The target type of the entity",
 				Required:    true,
 				In:          "path",
 				Schema:      docs.IdSchema,
 			},
 			{
-				Name:        "target_type",
-				Description: "The target type (bot/server)",
+				Name:        "target_id",
+				Description: "The target ID of the entity",
 				Required:    true,
-				In:          "query",
+				In:          "path",
 				Schema:      docs.IdSchema,
 			},
 		},
@@ -95,7 +96,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	}
 
 	targetId := chi.URLParam(r, "target_id")
-	targetType := r.URL.Query().Get("target_type")
+	targetType := validators.NormalizeTargetType(chi.URLParam(r, "target_type"))
 
 	switch targetType {
 	case "bot":

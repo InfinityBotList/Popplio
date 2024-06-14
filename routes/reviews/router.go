@@ -23,7 +23,7 @@ func (b Router) Tag() (string, string) {
 
 func (b Router) Routes(r *chi.Mux) {
 	uapi.Route{
-		Pattern: "/reviews/{target_id}",
+		Pattern: "/{target_type}/{target_id}/reviews",
 		OpId:    "get_reviews",
 		Method:  uapi.GET,
 		Docs:    get_reviews.Docs,
@@ -31,7 +31,7 @@ func (b Router) Routes(r *chi.Mux) {
 	}.Route(r)
 
 	uapi.Route{
-		Pattern: "/users/{uid}/reviews/{target_id}",
+		Pattern: "/users/{uid}/{target_type}/{target_id}/reviews",
 		OpId:    "add_review",
 		Method:  uapi.POST,
 		Docs:    add_review.Docs,
@@ -45,7 +45,7 @@ func (b Router) Routes(r *chi.Mux) {
 	}.Route(r)
 
 	uapi.Route{
-		Pattern: "/users/{uid}/reviews/{rid}",
+		Pattern: "/users/{uid}/{target_type}/{target_id}/reviews/{review_id}",
 		OpId:    "edit_review",
 		Method:  uapi.PATCH,
 		Docs:    edit_review.Docs,
@@ -59,7 +59,7 @@ func (b Router) Routes(r *chi.Mux) {
 	}.Route(r)
 
 	uapi.Route{
-		Pattern: "/users/{uid}/reviews/{rid}",
+		Pattern: "/users/{uid}/{target_type}/{target_id}/reviews/{review_id}",
 		OpId:    "remove_review",
 		Method:  uapi.DELETE,
 		Docs:    remove_review.Docs,

@@ -11,6 +11,7 @@ import (
 	"popplio/types"
 	"popplio/validators"
 
+	"github.com/go-playground/validator/v10"
 	docs "github.com/infinitybotlist/eureka/doclib"
 	"github.com/infinitybotlist/eureka/uapi"
 	kittycat "github.com/infinitybotlist/kittycat/go"
@@ -19,10 +20,13 @@ import (
 	"github.com/go-chi/chi/v5"
 )
 
+var compiledMessages = uapi.CompileValidationErrors(types.PatchVanity{})
+
 func Docs() *docs.Doc {
 	return &docs.Doc{
 		Summary:     "Update Entity Vanity",
 		Description: "Updates an entities vanity. Returns 204 on success",
+		Req:         types.PatchVanity{},
 		Params: []docs.Parameter{
 			{
 				Name:        "uid",
@@ -32,24 +36,17 @@ func Docs() *docs.Doc {
 				Schema:      docs.IdSchema,
 			},
 			{
-				Name:        "target_id",
-				Description: "The bot ID",
+				Name:        "target_type",
+				Description: "The target type of the entity",
 				Required:    true,
 				In:          "path",
 				Schema:      docs.IdSchema,
 			},
 			{
-				Name:        "target_type",
-				Description: "The target type of the tntity",
+				Name:        "target_id",
+				Description: "The target ID of the entity",
 				Required:    true,
-				In:          "query",
-				Schema:      docs.IdSchema,
-			},
-			{
-				Name:        "vanity",
-				Description: "The new vanity",
-				Required:    true,
-				In:          "query",
+				In:          "path",
 				Schema:      docs.IdSchema,
 			},
 		},
@@ -60,20 +57,12 @@ func Docs() *docs.Doc {
 func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	uid := chi.URLParam(r, "uid")
 	targetId := chi.URLParam(r, "target_id")
-	targetType := r.URL.Query().Get("target_type")
-	vanity := r.URL.Query().Get("vanity")
+	targetType := validators.NormalizeTargetType(chi.URLParam(r, "target_type"))
 
 	if uid == "" || targetId == "" || targetType == "" {
 		return uapi.HttpResponse{
 			Status: http.StatusBadRequest,
-			Json:   types.ApiError{Message: "Both target_id and target_type must be specified"},
-		}
-	}
-
-	if vanity == "" {
-		return uapi.HttpResponse{
-			Status: http.StatusBadRequest,
-			Json:   types.ApiError{Message: "Vanity cannot be empty"},
+			Json:   types.ApiError{Message: "Both target_id, target_type must be specified"},
 		}
 	}
 
@@ -105,13 +94,37 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		}
 	}
 
+	// Read payload from body
+	var payload types.PatchVanity
+
+	hresp, ok := uapi.MarshalReq(r, &payload)
+
+	if !ok {
+		return hresp
+	}
+
+	// Validate the payload
+	err = state.Validator.Struct(payload)
+
+	if err != nil {
+		errors := err.(validator.ValidationErrors)
+		return uapi.ValidatorErrorResponse(compiledMessages, errors)
+	}
+
+	if payload.Code == "" {
+		return uapi.HttpResponse{
+			Status: http.StatusBadRequest,
+			Json:   types.ApiError{Message: "Vanity cannot be empty"},
+		}
+	}
+
 	// Strip out unicode characters and validate vanity
-	vanity = strings.Map(func(r rune) rune {
+	vanity := strings.Map(func(r rune) rune {
 		if r > unicode.MaxASCII {
 			return -1
 		}
 		return r
-	}, vanity)
+	}, payload.Code)
 
 	systems, err := validators.GetWordBlacklistSystems(d.Context, vanity)
 

@@ -70,7 +70,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		d.Auth,
 		targetType,
 		targetId,
-		teams.PermissionDelete,
+		teams.PermissionRevokeSession,
 	)
 
 	if err != nil {

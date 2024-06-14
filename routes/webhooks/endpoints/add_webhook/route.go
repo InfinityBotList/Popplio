@@ -1,4 +1,4 @@
-package patch_webhook
+package add_webhook
 
 import (
 	"fmt"
@@ -26,8 +26,8 @@ var compiledMessages = uapi.CompileValidationErrors(types.CreateWebhook{})
 
 func Docs() *docs.Doc {
 	return &docs.Doc{
-		Summary:     "Update Webhook",
-		Description: "Updates an existing webhook on an entity. Returns 204 on success. **Requires Edit Webhooks permission**",
+		Summary:     "Create Webhook",
+		Description: "Creates a new webhook for an entity. Returns 204 on success. **Requires Create Webhooks permission**",
 		Req:         types.CreateWebhook{},
 		Resp:        types.ApiError{},
 		Params: []docs.Parameter{
@@ -40,7 +40,7 @@ func Docs() *docs.Doc {
 			},
 			{
 				Name:        "target_type",
-				Description: "The target type of the entity",
+				Description: "The target type of the tntity",
 				Required:    true,
 				In:          "path",
 				Schema:      docs.IdSchema,
@@ -48,13 +48,6 @@ func Docs() *docs.Doc {
 			{
 				Name:        "target_id",
 				Description: "The target ID of the entity",
-				Required:    true,
-				In:          "path",
-				Schema:      docs.IdSchema,
-			},
-			{
-				Name:        "webhook_id",
-				Description: "The ID of the webhook to update",
 				Required:    true,
 				In:          "path",
 				Schema:      docs.IdSchema,
@@ -67,9 +60,8 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	uid := chi.URLParam(r, "uid")
 	targetId := chi.URLParam(r, "target_id")
 	targetType := validators.NormalizeTargetType(chi.URLParam(r, "target_type"))
-	webhookId := chi.URLParam(r, "webhook_id")
 
-	if uid == "" || targetId == "" || targetType == "" || webhookId == "" {
+	if uid == "" || targetId == "" || targetType == "" {
 		return uapi.HttpResponse{
 			Status: http.StatusBadRequest,
 			Json:   types.ApiError{Message: "Both target_id and target_type must be specified"},
@@ -105,7 +97,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	}
 
 	// Read payload from body
-	var payload types.PatchWebhook
+	var payload types.CreateWebhook
 
 	hresp, ok := uapi.MarshalReq(r, &payload)
 
@@ -156,21 +148,21 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 
 	var count int64
 
-	err = tx.QueryRow(d.Context, "SELECT COUNT(*) FROM webhooks WHERE target_id = $1 AND target_type = $2 AND id = $3", targetId, targetType, webhookId).Scan(&count)
+	err = tx.QueryRow(d.Context, "SELECT COUNT(*) FROM webhooks WHERE target_id = $1 AND target_type = $2", targetId, targetType).Scan(&count)
 
 	if err != nil {
 		state.Logger.Error("Error while checking webhook", zap.Error(err), zap.String("userID", d.Auth.ID))
 		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
-	if count == 0 {
+	if count >= MaximumWebhookCount {
 		return uapi.HttpResponse{
-			Status: http.StatusNotFound,
-			Json:   types.ApiError{Message: "Webhook not found"},
+			Status: http.StatusBadRequest,
+			Json:   types.ApiError{Message: fmt.Sprintf("An entity may only have a maximum of %d webhooks", MaximumWebhookCount)},
 		}
 	}
 
-	_, err = tx.Exec(d.Context, "UPDATE webhooks SET name = $1, url = $2, secret = $3, event_whitelist = $4, broken = false, failed_requests = 0 WHERE target_id = $5 AND target_type = $6 AND id = $7", payload.Name, payload.Url, payload.Secret, payload.EventWhitelist, targetId, targetType, webhookId)
+	_, err = tx.Exec(d.Context, "INSERT INTO webhooks (target_id, target_type, url, secret, simple_auth, name, event_whitelist) VALUES ($1, $2, $3, $4, $5, $6, $7)", targetId, targetType, payload.Url, payload.Secret, payload.SimpleAuth, payload.Name, payload.EventWhitelist)
 
 	if err != nil {
 		state.Logger.Error("Error while inserting webhook", zap.Error(err), zap.String("userID", d.Auth.ID))

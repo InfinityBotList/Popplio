@@ -8,6 +8,7 @@ import (
 	"popplio/db"
 	"popplio/state"
 	"popplio/types"
+	"popplio/validators"
 
 	docs "github.com/infinitybotlist/eureka/doclib"
 	"github.com/infinitybotlist/eureka/uapi"
@@ -27,7 +28,7 @@ func Docs() *docs.Doc {
 			{
 				Name:        "target_type",
 				Description: "The target type to filter by. If unset, will not filter by target type.",
-				Required:    true,
+				Required:    false,
 				In:          "query",
 				Schema:      docs.IdSchema,
 			},
@@ -37,7 +38,7 @@ func Docs() *docs.Doc {
 }
 
 func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
-	targetType := r.URL.Query().Get("target_type")
+	targetType := validators.NormalizeTargetType(r.URL.Query().Get("target_type"))
 
 	var rows pgx.Rows
 	var err error

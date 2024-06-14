@@ -4,10 +4,10 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
-	"strings"
 
 	"popplio/state"
 	"popplio/types"
+	"popplio/validators"
 	"popplio/votes"
 	"popplio/webhooks/core/drivers"
 	"popplio/webhooks/events"
@@ -62,7 +62,7 @@ func Docs() *docs.Doc {
 func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	uid := chi.URLParam(r, "uid")
 	targetId := chi.URLParam(r, "target_id")
-	targetType := chi.URLParam(r, "target_type")
+	targetType := validators.NormalizeTargetType(chi.URLParam(r, "target_type"))
 
 	if uid == "" || targetId == "" || targetType == "" {
 		return uapi.HttpResponse{
@@ -70,8 +70,6 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 			Json:   types.ApiError{Message: "Both target_id and target_type must be specified"},
 		}
 	}
-
-	targetType = strings.TrimSuffix(targetType, "s")
 
 	// Check if upvote query parameter is valid
 	upvoteStr := r.URL.Query().Get("upvote")

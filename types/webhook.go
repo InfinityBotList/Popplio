@@ -37,6 +37,23 @@ type Webhook struct {
 	CreatedAt      time.Time   `db:"created_at" json:"created_at" description:"The time when the webhook was created."`
 }
 
+// Represents the data to be sent to create a webhook
+type CreateWebhook struct {
+	Name           string   `json:"name" description:"The name of the webhook." validate:"required"`
+	Url            string   `json:"url" description:"The URL of the webhook." validate:"required"`
+	Secret         string   `json:"secret" description:"The secret of the webhook, only needed for custom (non-discord) webhooks"`
+	SimpleAuth     bool     `json:"simple_auth" description:"Whether the webhook should use simple auth (unencrypted, just authentication headers) or not."`
+	EventWhitelist []string `json:"event_whitelist" description:"The events that are whitelisted for this webhook. Note that if unset, all events are whitelisted."`
+}
+
+type PatchWebhook struct {
+	Name           string   `json:"name" description:"The name of the webhook." validate:"required"`
+	Url            string   `json:"url" description:"The URL of the webhook." validate:"required"`
+	Secret         string   `json:"secret" description:"The secret of the webhook, only needed for custom (non-discord) webhooks"`
+	SimpleAuth     bool     `json:"simple_auth" description:"Whether the webhook should use simple auth (unencrypted, just authentication headers) or not."`
+	EventWhitelist []string `json:"event_whitelist" description:"The events that are whitelisted for this webhook. Note that if unset, all events are whitelisted."`
+}
+
 type WebhookType = string
 
 const (
@@ -69,16 +86,6 @@ type WebhookLogEntry struct {
 	StatusCode      int                     `db:"status_code" json:"status_code" description:"The status code of the webhook request."`
 	RequestHeaders  map[string]any          `db:"request_headers" json:"request_headers" description:"The headers of the webhook request."`
 	ResponseHeaders map[string]any          `db:"response_headers" json:"response_headers" description:"The headers of the webhook response."`
-}
-
-type PatchWebhook struct {
-	WebhookID      string   `json:"webhook_id" description:"The ID of the webhook to update. If not set, the webhook will be created."`
-	Name           string   `json:"name" description:"The name of the webhook."`
-	WebhookURL     string   `json:"webhook_url" description:"The URL of the webhook."`
-	WebhookSecret  string   `json:"webhook_secret" description:"The secret of the webhook."`
-	SimpleAuth     bool     `json:"simple_auth" description:"Whether the webhook should use simple auth (unencrypted, just authentication headers) or not."`
-	EventWhitelist []string `json:"event_whitelist" description:"The events that are whitelisted for this webhook. Note that if unset, all events are whitelisted."`
-	Delete         bool     `json:"delete" description:"Whether to clear the webhook."`
 }
 
 type GetTestWebhookMeta struct {

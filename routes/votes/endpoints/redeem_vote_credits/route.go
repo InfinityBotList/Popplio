@@ -2,11 +2,11 @@ package redeem_vote_credits
 
 import (
 	"net/http"
-	"strings"
 
 	"popplio/state"
 	"popplio/teams"
 	"popplio/types"
+	"popplio/validators"
 	"popplio/votes"
 
 	"github.com/go-chi/chi/v5"
@@ -49,7 +49,7 @@ func Docs() *docs.Doc {
 
 func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	targetId := chi.URLParam(r, "target_id")
-	targetType := chi.URLParam(r, "target_type")
+	targetType := validators.NormalizeTargetType(chi.URLParam(r, "target_type"))
 
 	if targetId == "" || targetType == "" {
 		return uapi.HttpResponse{
@@ -57,8 +57,6 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 			Json:   types.ApiError{Message: "target_id and target_type are required"},
 		}
 	}
-
-	targetType = strings.TrimSuffix(targetType, "s")
 
 	perms, err := teams.GetEntityPerms(d.Context, d.Auth.ID, targetType, targetId)
 
