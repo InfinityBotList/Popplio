@@ -24,10 +24,7 @@ import (
 type Permission = string
 
 const (
-	// Ability to view sensitive information of the entity
-	PermissionViewSensitive Permission = "view_sensitive"
-
-	// Ability to add new entity to a team
+	// Ability to add a new entity
 	PermissionAdd Permission = "add"
 
 	// Ability to edit settings for the entity
@@ -42,11 +39,17 @@ const (
 	// Ability to request certification for the entity
 	PermissionRequestCertification Permission = "request_cert"
 
-	// Ability to get webhooks for the entity
+	// Ability to get webhooks of the entity
 	PermissionGetWebhooks Permission = "get_webhooks"
 
-	// Ability to edit webhooks for the entity
+	// Ability to create webhooks of the entity
+	PermissionCreateWebhooks Permission = "create_webhooks"
+
+	// Ability to edit webhooks of the entity
 	PermissionEditWebhooks Permission = "edit_webhooks"
+
+	// Ability to delete webhooks of the entity
+	PermissionDeleteWebhooks Permission = "delete_webhooks"
 
 	// Ability to test webhooks for the entity
 	PermissionTestWebhooks Permission = "test_webhooks"
@@ -72,6 +75,15 @@ const (
 	// Ability to delete owner reviews for the entity
 	PermissionDeleteOwnerReview Permission = "delete_owner_review"
 
+	// Ability to view sessions for the entity
+	PermissionViewSession Permission = "view_session"
+
+	// Ability to view sessions for the entity
+	PermissionCreateSession Permission = "create_session"
+
+	// Ability to revoke sessions for the entity
+	PermissionRevokeSession Permission = "revoke_session"
+
 	// Ability to redeem vote credits for the entity
 	PermissionRedeemVoteCredits Permission = "redeem_vote_credits"
 
@@ -86,25 +98,13 @@ const (
 
 var PermDetails = []types.PermissionData{
 	{
-		ID:   PermissionViewSensitive,
-		Name: "View Sensitive on {entity}",
-		Desc: "View sensitive information about {entity} on the team",
-		SupportedEntities: []string{
-			"global",
-			"bot_session",
-			"server_session",
-		},
-	},
-	{
 		ID:   PermissionAdd,
 		Name: "Add {entity}",
 		Desc: "Add new {entity} to the team or allow transferring {entity} to this team",
 		SupportedEntities: []string{
 			"global",
 			"bot",
-			"bot_session",
 			"server",
-			"server_session",
 			"team_member",
 		},
 	},
@@ -115,9 +115,7 @@ var PermDetails = []types.PermissionData{
 		SupportedEntities: []string{
 			"global",
 			"bot",
-			"bot_session",
 			"server",
-			"server_session",
 			"team",
 			"team_member",
 		},
@@ -143,13 +141,25 @@ var PermDetails = []types.PermissionData{
 	{
 		ID:                PermissionGetWebhooks,
 		Name:              "Get {entity} Webhooks",
-		Desc:              "Get {entity} webhook settings. This is independent of updating them (you can still update without this permission)",
+		Desc:              "Get {entity} webhooks. This is independent of updating them (you can still create/edit without this permission using the API)",
+		SupportedEntities: []string{"bot", "team", "server", "global"},
+	},
+	{
+		ID:                PermissionCreateWebhooks,
+		Name:              "Create {entity} Webhooks",
+		Desc:              "Create {entity} webhooks. Note that 'Test {entity} Webhooks' is a separate permission and is required to test webhooks.",
 		SupportedEntities: []string{"bot", "team", "server", "global"},
 	},
 	{
 		ID:                PermissionEditWebhooks,
 		Name:              "Edit {entity} Webhooks",
-		Desc:              "Edit {entity} webhook settings. Note that 'Test {entity} Webhooks' is a separate permission and is required to test webhooks.",
+		Desc:              "Edit {entity} webhooks. Note that 'Test {entity} Webhooks' is a separate permission and is required to test webhooks.",
+		SupportedEntities: []string{"bot", "team", "server", "global"},
+	},
+	{
+		ID:                PermissionDeleteWebhooks,
+		Name:              "Delete {entity} Webhooks",
+		Desc:              "Delete {entity} webhooks. Note that 'Test {entity} Webhooks' is a separate permission and is required to test webhooks.",
 		SupportedEntities: []string{"bot", "team", "server", "global"},
 	},
 	{
@@ -208,6 +218,39 @@ var PermDetails = []types.PermissionData{
 		ID:   PermissionDeleteOwnerReview,
 		Name: "Delete {entity} Owner Review",
 		Desc: "Delete an owner review for {entity} on the team.",
+		SupportedEntities: []string{
+			"bot",
+			"server",
+			"team",
+			"global",
+		},
+	},
+	{
+		ID:   PermissionViewSession,
+		Name: "View {entity} Sessions",
+		Desc: "View sessions associated with the {entity}.",
+		SupportedEntities: []string{
+			"bot",
+			"server",
+			"team",
+			"global",
+		},
+	},
+	{
+		ID:   PermissionCreateSession,
+		Name: "Create {entity} Sessions",
+		Desc: "Create new sessions for the {entity} allowing for API (programmatic) access to the entity.",
+		SupportedEntities: []string{
+			"bot",
+			"server",
+			"team",
+			"global",
+		},
+	},
+	{
+		ID:   PermissionRevokeSession,
+		Name: "Revoke {entity} Sessions",
+		Desc: "Revoke existing sessions on the {entity}.",
 		SupportedEntities: []string{
 			"bot",
 			"server",

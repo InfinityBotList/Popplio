@@ -2,10 +2,10 @@ package get_vote_credit_tiers
 
 import (
 	"net/http"
-	"strings"
 
 	"popplio/state"
 	"popplio/types"
+	"popplio/validators"
 	"popplio/votes"
 
 	"github.com/go-chi/chi/v5"
@@ -39,7 +39,7 @@ func Docs() *docs.Doc {
 
 func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	targetId := chi.URLParam(r, "target_id")
-	targetType := chi.URLParam(r, "target_type")
+	targetType := validators.NormalizeTargetType(chi.URLParam(r, "target_type"))
 
 	if targetId == "" || targetType == "" {
 		return uapi.HttpResponse{
@@ -47,8 +47,6 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 			Json:   types.ApiError{Message: "target_id and target_type are required"},
 		}
 	}
-
-	targetType = strings.TrimSuffix(targetType, "s")
 
 	summary, err := votes.EntityGetVoteCreditsSummary(d.Context, state.Pool, targetId, targetType)
 

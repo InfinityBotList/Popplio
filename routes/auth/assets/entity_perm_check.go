@@ -51,7 +51,7 @@ func AuthEntityPermCheck(
 	}
 
 	// Check if the user has the required permission
-	neededPerm := perms.Permission{Namespace: targetType + "_session", Perm: perm}
+	neededPerm := perms.Permission{Namespace: targetType, Perm: perm}
 	if !perms.HasPerm(entityPerms, neededPerm) {
 		return fmt.Errorf("%w: %s", ErrMissingPermission, neededPerm)
 	}

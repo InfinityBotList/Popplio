@@ -8,6 +8,7 @@ import (
 	"popplio/db"
 	"popplio/state"
 	"popplio/types"
+	"popplio/validators"
 
 	"github.com/go-chi/chi/v5"
 	docs "github.com/infinitybotlist/eureka/doclib"
@@ -65,7 +66,7 @@ func Docs() *docs.Doc {
 func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	uid := chi.URLParam(r, "uid")
 	targetId := chi.URLParam(r, "target_id")
-	targetType := chi.URLParam(r, "target_type")
+	targetType := validators.NormalizeTargetType(chi.URLParam(r, "target_type"))
 
 	page := r.URL.Query().Get("page")
 
@@ -79,8 +80,6 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 			Json:   types.ApiError{Message: "Both target_id and target_type must be specified"},
 		}
 	}
-
-	targetType = strings.TrimSuffix(targetType, "s")
 
 	pageNum, err := strconv.ParseUint(page, 10, 32)
 

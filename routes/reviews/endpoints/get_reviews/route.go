@@ -7,6 +7,7 @@ import (
 	"popplio/db"
 	"popplio/state"
 	"popplio/types"
+	"popplio/validators"
 
 	docs "github.com/infinitybotlist/eureka/doclib"
 	"github.com/infinitybotlist/eureka/dovewing"
@@ -28,17 +29,17 @@ func Docs() *docs.Doc {
 		Description: "Gets the reviews of a bot by its ID or vanity.",
 		Params: []docs.Parameter{
 			{
-				Name:        "target_id",
-				Description: "The target id (currently only bot ID)",
+				Name:        "target_type",
+				Description: "The target type of the entity",
 				Required:    true,
 				In:          "path",
 				Schema:      docs.IdSchema,
 			},
 			{
-				Name:        "target_type",
-				Description: "The target type (currently only bot)",
+				Name:        "target_id",
+				Description: "The target ID of the entity",
 				Required:    true,
-				In:          "query",
+				In:          "path",
 				Schema:      docs.IdSchema,
 			},
 		},
@@ -48,7 +49,7 @@ func Docs() *docs.Doc {
 
 func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	targetId := chi.URLParam(r, "target_id")
-	targetType := r.URL.Query().Get("target_type")
+	targetType := validators.NormalizeTargetType(chi.URLParam(r, "target_type"))
 
 	if targetId == "" || targetType == "" {
 		return uapi.HttpResponse{

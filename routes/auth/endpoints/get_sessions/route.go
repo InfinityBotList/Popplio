@@ -67,7 +67,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		d.Auth,
 		targetType,
 		targetId,
-		teams.PermissionViewSensitive,
+		teams.PermissionViewSession,
 	)
 
 	if err != nil {

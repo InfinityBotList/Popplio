@@ -1,4 +1,4 @@
-package get_webhook_list
+package get_webhooks
 
 import (
 	"errors"
@@ -7,6 +7,7 @@ import (
 	"popplio/state"
 	"popplio/teams"
 	"popplio/types"
+	"popplio/validators"
 	"strings"
 
 	"github.com/go-chi/chi/v5"
@@ -25,12 +26,19 @@ var (
 func Docs() *docs.Doc {
 	return &docs.Doc{
 		Summary:     "Get Webhooks",
-		Description: "Gets a list of webhooks of a specific entity (excluding the secret due to security concerns). **Requires authentication**",
+		Description: "Gets a list of webhooks of a specific entity (excluding the secret due to security concerns). **Requires the Get Webhooks permission**",
 		Resp:        []types.Webhook{},
 		Params: []docs.Parameter{
 			{
 				Name:        "uid",
 				Description: "The user's ID",
+				Required:    true,
+				In:          "path",
+				Schema:      docs.IdSchema,
+			},
+			{
+				Name:        "target_type",
+				Description: "The entity type to return webhooks for.",
 				Required:    true,
 				In:          "path",
 				Schema:      docs.IdSchema,
@@ -42,20 +50,13 @@ func Docs() *docs.Doc {
 				In:          "path",
 				Schema:      docs.IdSchema,
 			},
-			{
-				Name:        "target_type",
-				Description: "The entity type to return webhooks for.",
-				Required:    true,
-				In:          "query",
-				Schema:      docs.IdSchema,
-			},
 		},
 	}
 }
 
 func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
-	targetType := r.URL.Query().Get("target_type")
 	targetId := chi.URLParam(r, "target_id")
+	targetType := validators.NormalizeTargetType(chi.URLParam(r, "target_type"))
 
 	perms, err := teams.GetEntityPerms(d.Context, d.Auth.ID, targetType, targetId)
 
