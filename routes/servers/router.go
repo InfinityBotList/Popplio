@@ -85,13 +85,13 @@ func (b Router) Routes(r *chi.Mux) {
 		},
 		ExtData: map[string]any{
 			api.PERMISSION_CHECK_KEY: api.PermissionCheck{
-				NeededPermission: func(d uapi.Route, r *http.Request) (perms.Permission, error) {
-					return perms.Permission{
+				NeededPermission: func(d uapi.Route, r *http.Request, authData uapi.AuthData) (*perms.Permission, error) {
+					return &perms.Permission{
 						Namespace: api.TargetTypeServer,
 						Perm:      teams.PermissionEdit,
 					}, nil
 				},
-				GetTarget: func(d uapi.Route, r *http.Request) (string, string) {
+				GetTarget: func(d uapi.Route, r *http.Request, authData uapi.AuthData) (string, string) {
 					return api.TargetTypeServer, chi.URLParam(r, "sid")
 				},
 			},

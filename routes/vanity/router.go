@@ -49,8 +49,8 @@ func (b Router) Routes(r *chi.Mux) {
 		Auth:    api.GetAllAuthTypes(),
 		ExtData: map[string]any{
 			api.PERMISSION_CHECK_KEY: api.PermissionCheck{
-				NeededPermission: func(d uapi.Route, r *http.Request) (perms.Permission, error) {
-					return perms.Permission{
+				NeededPermission: func(d uapi.Route, r *http.Request, authData uapi.AuthData) (*perms.Permission, error) {
+					return &perms.Permission{
 						Namespace: validators.NormalizeTargetType(chi.URLParam(r, "target_type")),
 						Perm:      teams.PermissionSetVanity,
 					}, nil

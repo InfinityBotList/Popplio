@@ -10,6 +10,7 @@ import (
 	"popplio/assetmanager"
 	"popplio/db"
 	"popplio/state"
+	"popplio/teams/resolvers"
 	"popplio/types"
 	"popplio/validators"
 	"popplio/votes"
@@ -70,10 +71,14 @@ Officially recognized targets:
 			},
 			{
 				Name:        "include",
-				Description: "What extra fields to include, comma-seperated.\n`long` => bot long description\n`cache_servers` => base cache server info\n`cache_servers.bots` => cache server bot information, requires `cache_servers` to be included",
+				Description: "What extra fields to include, comma-seperated.`long` => bot long description\n`cache_servers` => base cache server info\n`cache_servers.bots` => cache server bot information, requires `cache_servers` to be included",
 				Required:    false,
 				In:          "query",
 				Schema:      docs.IdSchema,
+			},
+			{
+				Name:        "team_includes",
+				Description: "If the bot is team-owned, what entities of the team to include",
 			},
 		},
 		Resp: types.Bot{},
@@ -213,6 +218,31 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 				Json: types.ApiError{
 					Message: "Error while getting bot team owner [db collect]: " + err.Error(),
 				},
+			}
+		}
+
+		if r.URL.Query().Get("team_includes") != "" {
+			includesSplit := strings.Split(r.URL.Query().Get("team_includes"), ",")
+
+			if len(includesSplit) > 16 {
+				return uapi.HttpResponse{
+					Status: http.StatusBadRequest,
+					Json: types.ApiError{
+						Message: "Too many `team_includes`. Maximum is 16",
+					},
+				}
+			}
+
+			eto.Entities, err = resolvers.GetTeamEntities(d.Context, bot.TeamOwner.ID, includesSplit)
+
+			if err != nil {
+				state.Logger.Error("Error while getting team entities", zap.Error(err), zap.String("id", id), zap.String("target", target), zap.String("teamOwner", validators.EncodeUUID(bot.TeamOwnerID.Bytes)))
+				return uapi.HttpResponse{
+					Status: http.StatusInternalServerError,
+					Json: types.ApiError{
+						Message: "Error while getting team entities: " + err.Error(),
+					},
+				}
 			}
 		}
 

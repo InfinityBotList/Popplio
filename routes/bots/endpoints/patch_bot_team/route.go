@@ -3,6 +3,7 @@ package patch_bot_team
 import (
 	"fmt"
 	"net/http"
+	"popplio/api"
 	"popplio/state"
 	"popplio/teams"
 	"popplio/types"
@@ -33,7 +34,7 @@ The below are the requirements for this due to the above:
 - The user must have the "Delete Bots" permission in the team they are transferring the bot from
 - The user must have the "Add New Bots" permission in the team they are transferring the bot to
 
-The bots ownership will be transferred to to the team.
+The bots ownership will be transferred to the new team.
 
 Returns a 204 on success`,
 		Params: []docs.Parameter{
@@ -75,32 +76,33 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		}
 	}
 
-	// Validate for current team
-	perms, err := teams.GetEntityPerms(d.Context, d.Auth.ID, "bot", id)
+	err := api.AuthzEntityPermissionCheck(
+		d.Context,
+		d.Auth,
+		api.TargetTypeBot,
+		id,
+		kittycat.Permission{Namespace: api.TargetTypeBot, Perm: teams.PermissionDelete},
+	)
 
 	if err != nil {
-		state.Logger.Error("Error getting perms for bot: ", zap.Error(err), zap.String("botID", id), zap.String("userID", d.Auth.ID))
-		return uapi.DefaultResponse(http.StatusInternalServerError)
-	}
-
-	if !kittycat.HasPerm(perms, kittycat.Permission{Namespace: "bot", Perm: teams.PermissionDelete}) {
 		return uapi.HttpResponse{
 			Status: http.StatusForbidden,
-			Json:   types.ApiError{Message: "You must be able to delete the bot in the current team to transfer it"},
+			Json:   types.ApiError{Message: "You must be able to delete the bot in the old team to transfer it: " + err.Error()},
 		}
 	}
 
-	newTeamPerms, err := teams.GetEntityPerms(d.Context, d.Auth.ID, "team", payload.TeamID)
+	err = api.AuthzEntityPermissionCheck(
+		d.Context,
+		d.Auth,
+		api.TargetTypeTeam,
+		payload.TeamID,
+		kittycat.Permission{Namespace: api.TargetTypeBot, Perm: teams.PermissionAdd},
+	)
 
 	if err != nil {
-		state.Logger.Error("Error getting perms for team: ", zap.Error(err), zap.String("teamID", payload.TeamID), zap.String("userID", d.Auth.ID))
-		return uapi.DefaultResponse(http.StatusInternalServerError)
-	}
-
-	if !kittycat.HasPerm(newTeamPerms, kittycat.Permission{Namespace: "bot", Perm: teams.PermissionAdd}) {
 		return uapi.HttpResponse{
 			Status: http.StatusForbidden,
-			Json:   types.ApiError{Message: "You must be able to add the bot in the new team to transfer it"},
+			Json:   types.ApiError{Message: "You must be able to add the bot in the new team to transfer it: " + err.Error()},
 		}
 	}
 

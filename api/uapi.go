@@ -18,8 +18,8 @@ import (
 )
 
 type PermissionCheck struct {
-	NeededPermission func(d uapi.Route, r *http.Request) (perm.Permission, error)
-	GetTarget        func(d uapi.Route, r *http.Request) (targetType string, targetId string)
+	NeededPermission func(d uapi.Route, r *http.Request, authData uapi.AuthData) (*perm.Permission, error)
+	GetTarget        func(d uapi.Route, r *http.Request, authData uapi.AuthData) (targetType string, targetId string)
 }
 
 const (
@@ -129,8 +129,8 @@ func Authorize(r uapi.Route, req *http.Request) (uapi.AuthData, uapi.HttpRespons
 
 	// Check if the anything at all exists with said API token
 	var sessId string
-	var targetType string
 	var targetId string
+	var targetType string
 	var permLimits []string
 
 	err = state.Pool.QueryRow(state.Context, "SELECT id, target_id, target_type, perm_limits FROM api_sessions WHERE token = $1", authHeader).Scan(&sessId, &targetId, &targetType, &permLimits)
@@ -325,7 +325,7 @@ func Authorize(r uapi.Route, req *http.Request) (uapi.AuthData, uapi.HttpRespons
 	permCheck, ok := pc.(PermissionCheck)
 
 	if ok {
-		neededPerm, err := permCheck.NeededPermission(r, req)
+		neededPerm, err := permCheck.NeededPermission(r, req, authData)
 
 		if err != nil {
 			return uapi.AuthData{}, uapi.HttpResponse{
@@ -334,29 +334,31 @@ func Authorize(r uapi.Route, req *http.Request) (uapi.AuthData, uapi.HttpRespons
 			}, false
 		}
 
-		targetTypeOfEntity, targetIdOfEntity := permCheck.GetTarget(r, req)
+		if neededPerm != nil {
+			targetTypeOfEntity, targetIdOfEntity := permCheck.GetTarget(r, req, authData)
 
-		if targetTypeOfEntity == "" || targetIdOfEntity == "" {
-			return uapi.AuthData{}, uapi.HttpResponse{
-				Status: http.StatusBadRequest,
-				Json:   types.ApiError{Message: "Internal error: Both target_id and target_type must be specified in the route.ExtData[PERMISSION_CHECK_KEY]"},
-			}, false
-		}
+			if targetTypeOfEntity == "" || targetIdOfEntity == "" {
+				return uapi.AuthData{}, uapi.HttpResponse{
+					Status: http.StatusBadRequest,
+					Json:   types.ApiError{Message: "Internal error: Both target_id and target_type must be specified in the route.ExtData[PERMISSION_CHECK_KEY]"},
+				}, false
+			}
 
-		// Perform entity specific checks
-		err = AuthzEntityPermissionCheck(
-			req.Context(),
-			authData,
-			targetTypeOfEntity,
-			targetIdOfEntity,
-			neededPerm,
-		)
+			// Perform entity specific checks
+			err = AuthzEntityPermissionCheck(
+				req.Context(),
+				authData,
+				targetTypeOfEntity,
+				targetIdOfEntity,
+				*neededPerm,
+			)
 
-		if err != nil {
-			return authData, uapi.HttpResponse{
-				Status: http.StatusForbidden,
-				Json:   types.ApiError{Message: "Entity permission checks failed: " + err.Error()},
-			}, false
+			if err != nil {
+				return authData, uapi.HttpResponse{
+					Status: http.StatusForbidden,
+					Json:   types.ApiError{Message: "Entity permission checks failed: " + err.Error()},
+				}, false
+			}
 		}
 	}
 

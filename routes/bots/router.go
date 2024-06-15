@@ -79,17 +79,7 @@ func (b Router) Routes(r *chi.Mux) {
 			},
 		},
 		ExtData: map[string]any{
-			api.PERMISSION_CHECK_KEY: api.PermissionCheck{
-				NeededPermission: func(d uapi.Route, r *http.Request) (perms.Permission, error) {
-					return perms.Permission{
-						Namespace: api.TargetTypeBot,
-						Perm:      teams.PermissionAdd,
-					}, nil
-				},
-				GetTarget: func(d uapi.Route, r *http.Request) (string, string) {
-					return api.TargetTypeBot, chi.URLParam(r, "client_id")
-				},
-			},
+			api.PERMISSION_CHECK_KEY: nil,
 		},
 	}.Route(r)
 
@@ -153,13 +143,13 @@ func (b Router) Routes(r *chi.Mux) {
 		},
 		ExtData: map[string]any{
 			api.PERMISSION_CHECK_KEY: api.PermissionCheck{
-				NeededPermission: func(d uapi.Route, r *http.Request) (perms.Permission, error) {
-					return perms.Permission{
+				NeededPermission: func(d uapi.Route, r *http.Request, authData uapi.AuthData) (*perms.Permission, error) {
+					return &perms.Permission{
 						Namespace: api.TargetTypeBot,
 						Perm:      teams.PermissionDelete,
 					}, nil
 				},
-				GetTarget: func(d uapi.Route, r *http.Request) (string, string) {
+				GetTarget: func(d uapi.Route, r *http.Request, authData uapi.AuthData) (string, string) {
 					return api.TargetTypeBot, chi.URLParam(r, "id")
 				},
 			},
@@ -186,13 +176,13 @@ func (b Router) Routes(r *chi.Mux) {
 		},
 		ExtData: map[string]any{
 			api.PERMISSION_CHECK_KEY: api.PermissionCheck{
-				NeededPermission: func(d uapi.Route, r *http.Request) (perms.Permission, error) {
-					return perms.Permission{
+				NeededPermission: func(d uapi.Route, r *http.Request, authData uapi.AuthData) (*perms.Permission, error) {
+					return &perms.Permission{
 						Namespace: api.TargetTypeBot,
 						Perm:      teams.PermissionEdit,
 					}, nil
 				},
-				GetTarget: func(d uapi.Route, r *http.Request) (string, string) {
+				GetTarget: func(d uapi.Route, r *http.Request, authData uapi.AuthData) (string, string) {
 					return api.TargetTypeBot, chi.URLParam(r, "id")
 				},
 			},
@@ -212,24 +202,7 @@ func (b Router) Routes(r *chi.Mux) {
 			},
 		},
 		ExtData: map[string]any{
-			api.PERMISSION_CHECK_KEY: nil, // No authorization is needed for this endpoint beyond defaults
-		},
-	}.Route(r)
-
-	uapi.Route{
-		Pattern: "/users/{uid}/bots/{bid}/teams",
-		OpId:    "patch_bot_team",
-		Method:  uapi.PATCH,
-		Docs:    patch_bot_team.Docs,
-		Handler: patch_bot_team.Route,
-		Auth: []uapi.AuthType{
-			{
-				Type:   api.TargetTypeUser,
-				URLVar: "uid",
-			},
-		},
-		ExtData: map[string]any{
-			api.PERMISSION_CHECK_KEY: nil, // No authorization is needed for this endpoint beyond defaults
+			api.PERMISSION_CHECK_KEY: nil, // The endpoint itself handles authorization
 		},
 	}.Route(r)
 }

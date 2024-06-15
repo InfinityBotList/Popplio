@@ -37,13 +37,13 @@ func (b Router) Routes(r *chi.Mux) {
 		Auth:    api.GetAllAuthTypes(),
 		ExtData: map[string]any{
 			api.PERMISSION_CHECK_KEY: api.PermissionCheck{
-				NeededPermission: func(d uapi.Route, r *http.Request) (perms.Permission, error) {
-					return perms.Permission{
+				NeededPermission: func(d uapi.Route, r *http.Request, authData uapi.AuthData) (*perms.Permission, error) {
+					return &perms.Permission{
 						Namespace: validators.NormalizeTargetType(chi.URLParam(r, "target_type")),
 						Perm:      teams.PermissionGetWebhooks,
 					}, nil
 				},
-				GetTarget: func(d uapi.Route, r *http.Request) (string, string) {
+				GetTarget: func(d uapi.Route, r *http.Request, authData uapi.AuthData) (string, string) {
 					return validators.NormalizeTargetType(chi.URLParam(r, "target_type")), chi.URLParam(r, "target_id")
 				},
 			},
@@ -59,13 +59,13 @@ func (b Router) Routes(r *chi.Mux) {
 		Auth:    api.GetAllAuthTypes(),
 		ExtData: map[string]any{
 			api.PERMISSION_CHECK_KEY: api.PermissionCheck{
-				NeededPermission: func(d uapi.Route, r *http.Request) (perms.Permission, error) {
-					return perms.Permission{
+				NeededPermission: func(d uapi.Route, r *http.Request, authData uapi.AuthData) (*perms.Permission, error) {
+					return &perms.Permission{
 						Namespace: validators.NormalizeTargetType(chi.URLParam(r, "target_type")),
 						Perm:      teams.PermissionCreateWebhooks,
 					}, nil
 				},
-				GetTarget: func(d uapi.Route, r *http.Request) (string, string) {
+				GetTarget: func(d uapi.Route, r *http.Request, authData uapi.AuthData) (string, string) {
 					return validators.NormalizeTargetType(chi.URLParam(r, "target_type")), chi.URLParam(r, "target_id")
 				},
 			},
@@ -81,13 +81,13 @@ func (b Router) Routes(r *chi.Mux) {
 		Auth:    api.GetAllAuthTypes(),
 		ExtData: map[string]any{
 			api.PERMISSION_CHECK_KEY: api.PermissionCheck{
-				NeededPermission: func(d uapi.Route, r *http.Request) (perms.Permission, error) {
-					return perms.Permission{
+				NeededPermission: func(d uapi.Route, r *http.Request, authData uapi.AuthData) (*perms.Permission, error) {
+					return &perms.Permission{
 						Namespace: validators.NormalizeTargetType(chi.URLParam(r, "target_type")),
 						Perm:      teams.PermissionEditWebhooks,
 					}, nil
 				},
-				GetTarget: func(d uapi.Route, r *http.Request) (string, string) {
+				GetTarget: func(d uapi.Route, r *http.Request, authData uapi.AuthData) (string, string) {
 					return validators.NormalizeTargetType(chi.URLParam(r, "target_type")), chi.URLParam(r, "target_id")
 				},
 			},
@@ -103,13 +103,13 @@ func (b Router) Routes(r *chi.Mux) {
 		Auth:    api.GetAllAuthTypes(),
 		ExtData: map[string]any{
 			api.PERMISSION_CHECK_KEY: api.PermissionCheck{
-				NeededPermission: func(d uapi.Route, r *http.Request) (perms.Permission, error) {
-					return perms.Permission{
+				NeededPermission: func(d uapi.Route, r *http.Request, authData uapi.AuthData) (*perms.Permission, error) {
+					return &perms.Permission{
 						Namespace: validators.NormalizeTargetType(chi.URLParam(r, "target_type")),
 						Perm:      teams.PermissionDeleteWebhooks,
 					}, nil
 				},
-				GetTarget: func(d uapi.Route, r *http.Request) (string, string) {
+				GetTarget: func(d uapi.Route, r *http.Request, authData uapi.AuthData) (string, string) {
 					return validators.NormalizeTargetType(chi.URLParam(r, "target_type")), chi.URLParam(r, "target_id")
 				},
 			},
@@ -125,13 +125,13 @@ func (b Router) Routes(r *chi.Mux) {
 		Auth:    api.GetAllAuthTypes(),
 		ExtData: map[string]any{
 			api.PERMISSION_CHECK_KEY: api.PermissionCheck{
-				NeededPermission: func(d uapi.Route, r *http.Request) (perms.Permission, error) {
-					return perms.Permission{
+				NeededPermission: func(d uapi.Route, r *http.Request, authData uapi.AuthData) (*perms.Permission, error) {
+					return &perms.Permission{
 						Namespace: validators.NormalizeTargetType(chi.URLParam(r, "target_type")),
 						Perm:      teams.PermissionGetWebhookLogs,
 					}, nil
 				},
-				GetTarget: func(d uapi.Route, r *http.Request) (string, string) {
+				GetTarget: func(d uapi.Route, r *http.Request, authData uapi.AuthData) (string, string) {
 					return validators.NormalizeTargetType(chi.URLParam(r, "target_type")), chi.URLParam(r, "target_id")
 				},
 			},
@@ -155,13 +155,13 @@ func (b Router) Routes(r *chi.Mux) {
 		Auth:    api.GetAllAuthTypes(),
 		ExtData: map[string]any{
 			api.PERMISSION_CHECK_KEY: api.PermissionCheck{
-				NeededPermission: func(d uapi.Route, r *http.Request) (perms.Permission, error) {
-					return perms.Permission{
+				NeededPermission: func(d uapi.Route, r *http.Request, authData uapi.AuthData) (*perms.Permission, error) {
+					return &perms.Permission{
 						Namespace: validators.NormalizeTargetType(chi.URLParam(r, "target_type")),
 						Perm:      teams.PermissionTestWebhooks,
 					}, nil
 				},
-				GetTarget: func(d uapi.Route, r *http.Request) (string, string) {
+				GetTarget: func(d uapi.Route, r *http.Request, authData uapi.AuthData) (string, string) {
 					return validators.NormalizeTargetType(chi.URLParam(r, "target_type")), chi.URLParam(r, "target_id")
 				},
 			},
