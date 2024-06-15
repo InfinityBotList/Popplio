@@ -4,14 +4,12 @@ import (
 	"fmt"
 	"net/http"
 	"popplio/state"
-	"popplio/teams"
 	"popplio/types"
 
 	"github.com/bwmarrin/discordgo"
 	"github.com/go-chi/chi/v5"
 	docs "github.com/infinitybotlist/eureka/doclib"
 	"github.com/infinitybotlist/eureka/uapi"
-	kittycat "github.com/infinitybotlist/kittycat/go"
 	"go.uber.org/zap"
 )
 
@@ -22,14 +20,7 @@ func Docs() *docs.Doc {
 		Resp:        types.ApiError{},
 		Params: []docs.Parameter{
 			{
-				Name:        "uid",
-				Description: "User ID",
-				Required:    true,
-				In:          "path",
-				Schema:      docs.IdSchema,
-			},
-			{
-				Name:        "bid",
+				Name:        "id",
 				Description: "Bot ID",
 				Required:    true,
 				In:          "path",
@@ -40,24 +31,7 @@ func Docs() *docs.Doc {
 }
 
 func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
-	id := chi.URLParam(r, "bid")
-
-	perms, err := teams.GetEntityPerms(d.Context, d.Auth.ID, "bot", id)
-
-	if err != nil {
-		state.Logger.Error("Error while getting entity perms", zap.Error(err), zap.String("userID", d.Auth.ID), zap.String("targetType", "bot"), zap.String("targetID", id))
-		return uapi.HttpResponse{
-			Status: http.StatusBadRequest,
-			Json:   types.ApiError{Message: "Error getting user perms: " + err.Error()},
-		}
-	}
-
-	if !kittycat.HasPerm(perms, kittycat.Permission{Namespace: "bot", Perm: teams.PermissionDelete}) {
-		return uapi.HttpResponse{
-			Status: http.StatusForbidden,
-			Json:   types.ApiError{Message: "You do not have permission to delete this bot"},
-		}
-	}
+	id := chi.URLParam(r, "id")
 
 	// Delete bot, arcadia will automatically cleanout generic entities associated with the bot in a controlled manner
 	tx, err := state.Pool.Begin(d.Context)

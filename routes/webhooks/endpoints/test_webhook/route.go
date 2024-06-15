@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"popplio/state"
-	"popplio/teams"
 	"popplio/types"
 	"popplio/webhooks/core/drivers"
 	"popplio/webhooks/core/events"
@@ -15,11 +14,8 @@ import (
 	"github.com/infinitybotlist/eureka/ratelimit"
 	"go.uber.org/zap"
 
-	"popplio/api/authz"
-
 	docs "github.com/infinitybotlist/eureka/doclib"
 	"github.com/infinitybotlist/eureka/uapi"
-	perms "github.com/infinitybotlist/kittycat/go"
 
 	"github.com/go-chi/chi/v5"
 )
@@ -88,22 +84,6 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 			},
 			Headers: limit.Headers(),
 			Status:  http.StatusTooManyRequests,
-		}
-	}
-
-	// Perform entity specific checks
-	err = authz.EntityPermissionCheck(
-		d.Context,
-		d.Auth,
-		targetType,
-		targetId,
-		perms.Permission{Namespace: targetType, Perm: teams.PermissionTestWebhooks},
-	)
-
-	if err != nil {
-		return uapi.HttpResponse{
-			Status: http.StatusForbidden,
-			Json:   types.ApiError{Message: "Entity permission checks failed: " + err.Error()},
 		}
 	}
 

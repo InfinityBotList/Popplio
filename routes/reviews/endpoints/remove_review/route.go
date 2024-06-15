@@ -11,8 +11,6 @@ import (
 	"popplio/webhooks/core/drivers"
 	"popplio/webhooks/events"
 
-	"popplio/api/authz"
-
 	docs "github.com/infinitybotlist/eureka/doclib"
 	"github.com/infinitybotlist/eureka/uapi"
 	perms "github.com/infinitybotlist/kittycat/go"
@@ -71,7 +69,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 
 	if ownerReview {
 		// Perform entity specific checks
-		err := authz.EntityPermissionCheck(
+		err := api.AuthzEntityPermissionCheck(
 			d.Context,
 			d.Auth,
 			targetType,

@@ -1,4 +1,4 @@
-package create_entity_vote
+package create_user_entity_vote
 
 import (
 	"fmt"

@@ -20,13 +20,6 @@ func Docs() *docs.Doc {
 		Description: "Deletes a member from the team. Users can always delete themselves. Returns a 204 on success",
 		Params: []docs.Parameter{
 			{
-				Name:        "uid",
-				Description: "User ID",
-				Required:    true,
-				In:          "path",
-				Schema:      docs.IdSchema,
-			},
-			{
 				Name:        "tid",
 				Description: "Team ID",
 				Required:    true,
@@ -68,13 +61,6 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 			return uapi.HttpResponse{
 				Status: http.StatusBadRequest,
 				Json:   types.ApiError{Message: "Error getting user perms: " + err.Error()},
-			}
-		}
-
-		if !kittycat.HasPerm(managerPerms, kittycat.Permission{Namespace: "team_member", Perm: teams.PermissionDelete}) {
-			return uapi.HttpResponse{
-				Status: http.StatusForbidden,
-				Json:   types.ApiError{Message: "You do not have permission to delete members"},
 			}
 		}
 

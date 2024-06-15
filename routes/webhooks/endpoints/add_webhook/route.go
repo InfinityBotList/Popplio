@@ -6,7 +6,6 @@ import (
 	"strings"
 
 	"popplio/state"
-	"popplio/teams"
 	"popplio/types"
 	"popplio/validators"
 	"popplio/webhooks/core/utils"
@@ -14,10 +13,7 @@ import (
 	"github.com/go-playground/validator/v10"
 	docs "github.com/infinitybotlist/eureka/doclib"
 	"github.com/infinitybotlist/eureka/uapi"
-	perms "github.com/infinitybotlist/kittycat/go"
 	"go.uber.org/zap"
-
-	"popplio/api/authz"
 
 	"github.com/go-chi/chi/v5"
 )
@@ -73,22 +69,6 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		}
 	}
 
-	// Perform entity specific checks
-	err := authz.EntityPermissionCheck(
-		d.Context,
-		d.Auth,
-		targetType,
-		targetId,
-		perms.Permission{Namespace: targetType, Perm: teams.PermissionCreateWebhooks},
-	)
-
-	if err != nil {
-		return uapi.HttpResponse{
-			Status: http.StatusForbidden,
-			Json:   types.ApiError{Message: "Entity permission checks failed: " + err.Error()},
-		}
-	}
-
 	// Read payload from body
 	var payload types.CreateWebhook
 
@@ -99,7 +79,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	}
 
 	// Validate the payload
-	err = state.Validator.Struct(payload)
+	err := state.Validator.Struct(payload)
 
 	if err != nil {
 		errors := err.(validator.ValidationErrors)

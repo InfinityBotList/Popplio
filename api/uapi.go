@@ -3,6 +3,7 @@ package api
 
 import (
 	"errors"
+	"fmt"
 	"net/http"
 	"popplio/constants"
 	"popplio/state"
@@ -11,12 +12,19 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/infinitybotlist/eureka/uapi"
+	perm "github.com/infinitybotlist/kittycat/go"
 	"github.com/jackc/pgx/v5"
 	"go.uber.org/zap"
 )
 
+type PermissionCheck struct {
+	NeededPermission func(d uapi.Route, r *http.Request) (perm.Permission, error)
+	GetTarget        func(d uapi.Route, r *http.Request) (targetType string, targetId string)
+}
+
 const (
-	SESSION_EXPIRY = 60 * 30 // 30 minutes
+	SESSION_EXPIRY       = 60 * 30 // 30 minutes
+	PERMISSION_CHECK_KEY = "permissionCheck"
 )
 
 const (
@@ -49,8 +57,6 @@ func (d DefaultResponder) New(err string, ctx map[string]string) any {
 }
 
 // Returns the permission limits of a user
-//
-// Note: this is not actually used yet.
 func PermLimits(d uapi.AuthData) []string {
 	if !d.Authorized {
 		return []string{}
@@ -59,7 +65,24 @@ func PermLimits(d uapi.AuthData) []string {
 	permLimits, ok := d.Data["perm_limits"].([]string)
 
 	if !ok {
+		// Panic rather than risk leaking sensitive information
+		panic("Could not assert perm limits as []string")
+	}
+
+	return permLimits
+}
+
+// Returns the permissions a user has on the provided entity
+func EntityPerms(d uapi.AuthData) []string {
+	if !d.Authorized {
 		return []string{}
+	}
+
+	permLimits, ok := d.Data["entity_perms"].([]string)
+
+	if !ok {
+		// Panic rather than risk leaking sensitive information
+		panic("Could not assert perm limits as []string")
 	}
 
 	return permLimits
@@ -249,30 +272,32 @@ func Authorize(r uapi.Route, req *http.Request) (uapi.AuthData, uapi.HttpRespons
 			}
 		}
 
-		// Now handle the URLVar
-		if auth.URLVar != "" {
-			state.Logger.Info("Checking URL variable against user ID from auth token", zap.String("URLVar", auth.URLVar))
-			gotUserId := chi.URLParam(req, auth.URLVar)
-			if gotUserId != targetId {
+		if authData.Authorized {
+			// Now handle the URLVar
+			if auth.URLVar != "" {
+				state.Logger.Info("Checking URL variable against user ID from auth token", zap.String("URLVar", auth.URLVar))
+				gotUserId := chi.URLParam(req, auth.URLVar)
+				if gotUserId != targetId {
+					return uapi.AuthData{}, uapi.HttpResponse{
+						Status: http.StatusForbidden,
+						Json:   types.ApiError{Message: "You are not authorized to perform this action (URLVar does not match auth token)"},
+						Headers: map[string]string{
+							"X-Session-Invalid": "true",
+						},
+					}, false
+				}
+			}
+
+			// Banned users cannot use the API at all otherwise if not explicitly scoped to "ban_exempt"
+			if authData.Banned && auth.AllowedScope != "ban_exempt" {
 				return uapi.AuthData{}, uapi.HttpResponse{
 					Status: http.StatusForbidden,
-					Json:   types.ApiError{Message: "You are not authorized to perform this action (URLVar does not match auth token)"},
+					Json:   types.ApiError{Message: "You are banned from the list. If you think this is a mistake, please contact support."},
 					Headers: map[string]string{
 						"X-Session-Invalid": "true",
 					},
 				}, false
 			}
-		}
-
-		// Banned users cannot use the API at all otherwise if not explicitly scoped to "ban_exempt"
-		if authData.Banned && auth.AllowedScope != "ban_exempt" {
-			return uapi.AuthData{}, uapi.HttpResponse{
-				Status: http.StatusForbidden,
-				Json:   types.ApiError{Message: "You are banned from the list. If you think this is a mistake, please contact support."},
-				Headers: map[string]string{
-					"X-Session-Invalid": "true",
-				},
-			}, false
 		}
 	}
 
@@ -284,8 +309,55 @@ func Authorize(r uapi.Route, req *http.Request) (uapi.AuthData, uapi.HttpRespons
 	if !authData.Authorized && !r.AuthOptional {
 		return uapi.AuthData{}, uapi.HttpResponse{
 			Status: http.StatusUnauthorized,
-			Json:   types.ApiError{Message: "Authentication failed"},
+			Json:   types.ApiError{Message: "Authentication failed due to lack of target of type support? [!authData.Authorized && !r.AuthOptional]"},
 		}, false
+	}
+
+	pc, ok := r.ExtData[PERMISSION_CHECK_KEY]
+
+	if !ok {
+		return uapi.AuthData{}, uapi.HttpResponse{
+			Status: http.StatusInternalServerError,
+			Json:   types.ApiError{Message: "Internal server error: permissionCheck not found in route.ExtData"},
+		}, false
+	}
+
+	permCheck, ok := pc.(PermissionCheck)
+
+	if ok {
+		neededPerm, err := permCheck.NeededPermission(r, req)
+
+		if err != nil {
+			return uapi.AuthData{}, uapi.HttpResponse{
+				Status: http.StatusInternalServerError,
+				Json:   types.ApiError{Message: "Could not get needed permission for authorization: " + err.Error()},
+			}, false
+		}
+
+		targetTypeOfEntity, targetIdOfEntity := permCheck.GetTarget(r, req)
+
+		if targetTypeOfEntity == "" || targetIdOfEntity == "" {
+			return uapi.AuthData{}, uapi.HttpResponse{
+				Status: http.StatusBadRequest,
+				Json:   types.ApiError{Message: "Internal error: Both target_id and target_type must be specified in the route.ExtData[PERMISSION_CHECK_KEY]"},
+			}, false
+		}
+
+		// Perform entity specific checks
+		err = AuthzEntityPermissionCheck(
+			req.Context(),
+			authData,
+			targetTypeOfEntity,
+			targetIdOfEntity,
+			neededPerm,
+		)
+
+		if err != nil {
+			return authData, uapi.HttpResponse{
+				Status: http.StatusForbidden,
+				Json:   types.ApiError{Message: "Entity permission checks failed: " + err.Error()},
+			}, false
+		}
 	}
 
 	return authData, uapi.HttpResponse{}, true
@@ -312,5 +384,15 @@ func Setup() {
 			BodyRequired:        constants.BodyRequired,
 		},
 		DefaultResponder: DefaultResponder{},
+		BaseSanityCheck: func(r uapi.Route) error {
+			if len(r.Auth) > 0 {
+				// Check for permissionCheck
+				if _, ok := r.ExtData[PERMISSION_CHECK_KEY]; !ok {
+					return fmt.Errorf("%s not found in route.ExtData [%s]", PERMISSION_CHECK_KEY, r.OpId)
+				}
+			}
+
+			return nil
+		},
 	})
 }

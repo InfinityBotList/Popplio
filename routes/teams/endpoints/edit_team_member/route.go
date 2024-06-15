@@ -22,13 +22,6 @@ func Docs() *docs.Doc {
 		Description: "Edits a members permissions on a team. Returns a 204 on success",
 		Params: []docs.Parameter{
 			{
-				Name:        "uid",
-				Description: "User ID",
-				Required:    true,
-				In:          "path",
-				Schema:      docs.IdSchema,
-			},
-			{
 				Name:        "tid",
 				Description: "Team ID",
 				Required:    true,
@@ -109,13 +102,6 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	defer tx.Rollback(d.Context)
 
 	if payload.Perms != nil {
-		if !kittycat.HasPerm(managerPerms, kittycat.Permission{Namespace: "team_member", Perm: teams.PermissionEdit}) {
-			return uapi.HttpResponse{
-				Status: http.StatusForbidden,
-				Json:   types.ApiError{Message: "You do not have permission to edit team members"},
-			}
-		}
-
 		// Get the old permissions of the user
 		currentUserPerms, err := teams.GetEntityPerms(d.Context, userId, "team", teamId)
 

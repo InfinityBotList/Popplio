@@ -7,6 +7,7 @@ import (
 	"popplio/state"
 	"popplio/teams"
 	"popplio/types"
+	"popplio/validators"
 	"time"
 
 	"github.com/go-chi/chi/v5"
@@ -25,8 +26,8 @@ func Docs() *docs.Doc {
 		Resp:        types.ApiError{},
 		Params: []docs.Parameter{
 			{
-				Name:        "uid",
-				Description: "User ID",
+				Name:        "target_type",
+				Description: "The target type of the tntity",
 				Required:    true,
 				In:          "path",
 				Schema:      docs.IdSchema,
@@ -36,13 +37,6 @@ func Docs() *docs.Doc {
 				Description: "The bot ID",
 				Required:    true,
 				In:          "path",
-				Schema:      docs.IdSchema,
-			},
-			{
-				Name:        "target_type",
-				Description: "The target type of the tntity",
-				Required:    true,
-				In:          "query",
 				Schema:      docs.IdSchema,
 			},
 		},
@@ -73,7 +67,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 
 	uid := chi.URLParam(r, "uid")
 	targetId := chi.URLParam(r, "target_id")
-	targetType := r.URL.Query().Get("target_type")
+	targetType := validators.NormalizeTargetType(chi.URLParam(r, "target_type"))
 
 	if uid == "" || targetId == "" || targetType == "" {
 		return uapi.HttpResponse{

@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"popplio/api"
 	"popplio/db"
 	"popplio/routes/bots/assets"
 	"popplio/state"
@@ -75,18 +76,10 @@ func Setup() {
 func Docs() *docs.Doc {
 	return &docs.Doc{
 		Summary:     "Add Bot",
-		Description: "Adds a bot to the database. The main owner will be the user who created the bot. Returns 204 on success",
+		Description: "Adds a bot to the database. Returns 204 on success",
 		Req:         types.CreateBot{},
 		Resp:        types.ApiError{},
-		Params: []docs.Parameter{
-			{
-				Name:        "id",
-				Description: "The user's ID",
-				Required:    true,
-				In:          "path",
-				Schema:      docs.IdSchema,
-			},
-		},
+		Params:      []docs.Parameter{},
 	}
 }
 
@@ -172,16 +165,6 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		}
 	}
 
-	// Ensure the main owner exists
-	_, err = dovewing.GetUser(d.Context, d.Auth.ID, state.DovewingPlatformDiscord)
-
-	if err != nil {
-		return uapi.HttpResponse{
-			Status: http.StatusBadRequest,
-			Json:   types.ApiError{Message: "The main owner of this bot somehow does not exist: " + err.Error()},
-		}
-	}
-
 	metadata, err := assets.CheckBot(d.Context, payload.BotID, payload.ClientID)
 
 	if err != nil {
@@ -213,6 +196,10 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	}
 
 	id := internalData{}
+
+	if d.Auth.TargetType == api.TargetTypeTeam {
+		payload.TeamOwner = d.Auth.ID
+	}
 
 	id.Owner = d.Auth.ID
 	id.GuildCount = &metadata.GuildCount

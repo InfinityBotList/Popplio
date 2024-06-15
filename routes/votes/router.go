@@ -1,17 +1,21 @@
 package votes
 
 import (
+	"net/http"
 	"popplio/api"
-	"popplio/routes/votes/endpoints/create_entity_vote"
+	"popplio/routes/votes/endpoints/create_user_entity_vote"
 	"popplio/routes/votes/endpoints/get_all_votes"
 	"popplio/routes/votes/endpoints/get_general_vote_credit_tiers"
 	"popplio/routes/votes/endpoints/get_user_entity_votes"
 	"popplio/routes/votes/endpoints/get_vote_credit_tiers"
 	"popplio/routes/votes/endpoints/get_vote_redeem_logs"
 	"popplio/routes/votes/endpoints/redeem_vote_credits"
+	"popplio/teams"
+	"popplio/validators"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/infinitybotlist/eureka/uapi"
+	perms "github.com/infinitybotlist/kittycat/go"
 )
 
 const tagName = "Votes"
@@ -54,6 +58,19 @@ func (b Router) Routes(r *chi.Mux) {
 		Docs:    redeem_vote_credits.Docs,
 		Handler: redeem_vote_credits.Route,
 		Auth:    api.GetAllAuthTypes(),
+		ExtData: map[string]any{
+			api.PERMISSION_CHECK_KEY: api.PermissionCheck{
+				NeededPermission: func(d uapi.Route, r *http.Request) (perms.Permission, error) {
+					return perms.Permission{
+						Namespace: validators.NormalizeTargetType(chi.URLParam(r, "target_type")),
+						Perm:      teams.PermissionRedeemVoteCredits,
+					}, nil
+				},
+				GetTarget: func(d uapi.Route, r *http.Request) (string, string) {
+					return validators.NormalizeTargetType(chi.URLParam(r, "target_type")), chi.URLParam(r, "target_id")
+				},
+			},
+		},
 	}.Route(r)
 
 	uapi.Route{
@@ -74,15 +91,18 @@ func (b Router) Routes(r *chi.Mux) {
 
 	uapi.Route{
 		Pattern: "/users/{uid}/{target_type}/{target_id}/votes",
-		OpId:    "create_entity_vote",
+		OpId:    "create_user_entity_vote",
 		Method:  uapi.PUT,
-		Docs:    create_entity_vote.Docs,
-		Handler: create_entity_vote.Route,
+		Docs:    create_user_entity_vote.Docs,
+		Handler: create_user_entity_vote.Route,
 		Auth: []uapi.AuthType{
 			{
 				Type:   api.TargetTypeUser,
 				URLVar: "uid",
 			},
+		},
+		ExtData: map[string]any{
+			api.PERMISSION_CHECK_KEY: nil, // No authorization is needed for this endpoint beyond defaults
 		},
 	}.Route(r)
 }

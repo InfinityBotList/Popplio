@@ -18,17 +18,20 @@ func (b Router) Tag() (string, string) {
 
 func (b Router) Routes(r *chi.Mux) {
 	uapi.Route{
-		Pattern: "/users/{id}/tasks/{tid}",
-		OpId:    "get_task",
-		Method:  uapi.GET,
-		Docs:    get_task.Docs,
-		Handler: get_task.Route,
+		Pattern:      "/users/{id}/tasks/{tid}",
+		OpId:         "get_task",
+		Method:       uapi.GET,
+		Docs:         get_task.Docs,
+		Handler:      get_task.Route,
 		AuthOptional: true,
 		Auth: []uapi.AuthType{
 			{
 				URLVar: "id",
 				Type:   api.TargetTypeUser,
 			},
+		},
+		ExtData: map[string]any{
+			api.PERMISSION_CHECK_KEY: nil, // No authorization is needed for this endpoint beyond defaults
 		},
 	}.Route(r)
 }

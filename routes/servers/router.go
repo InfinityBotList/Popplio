@@ -1,6 +1,7 @@
 package servers
 
 import (
+	"net/http"
 	"popplio/api"
 	"popplio/routes/servers/endpoints/get_all_servers"
 	"popplio/routes/servers/endpoints/get_random_servers"
@@ -8,9 +9,11 @@ import (
 	"popplio/routes/servers/endpoints/get_server_seo"
 	"popplio/routes/servers/endpoints/get_servers_index"
 	"popplio/routes/servers/endpoints/patch_server_settings"
+	"popplio/teams"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/infinitybotlist/eureka/uapi"
+	perms "github.com/infinitybotlist/kittycat/go"
 )
 
 const tagName = "Servers"
@@ -63,16 +66,34 @@ func (b Router) Routes(r *chi.Mux) {
 	}.Route(r)
 
 	uapi.Route{
-		Pattern: "/users/{uid}/servers/{sid}/settings",
-		OpId:    "patch_bot_settings",
+		Pattern: "/servers/{id}/settings",
+		OpId:    "patch_server_settings",
 		Method:  uapi.PATCH,
 		Docs:    patch_server_settings.Docs,
 		Handler: patch_server_settings.Route,
 		Setup:   patch_server_settings.Setup,
 		Auth: []uapi.AuthType{
 			{
-				URLVar: "uid",
-				Type:   api.TargetTypeUser,
+				Type: api.TargetTypeUser,
+			},
+			{
+				Type: api.TargetTypeTeam,
+			},
+			{
+				Type: api.TargetTypeServer,
+			},
+		},
+		ExtData: map[string]any{
+			api.PERMISSION_CHECK_KEY: api.PermissionCheck{
+				NeededPermission: func(d uapi.Route, r *http.Request) (perms.Permission, error) {
+					return perms.Permission{
+						Namespace: api.TargetTypeServer,
+						Perm:      teams.PermissionEdit,
+					}, nil
+				},
+				GetTarget: func(d uapi.Route, r *http.Request) (string, string) {
+					return api.TargetTypeServer, chi.URLParam(r, "sid")
+				},
 			},
 		},
 	}.Route(r)

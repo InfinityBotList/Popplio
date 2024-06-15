@@ -1,6 +1,7 @@
 package auth
 
 import (
+	"net/http"
 	"popplio/api"
 	"popplio/routes/auth/endpoints/create_oauth2_login"
 	"popplio/routes/auth/endpoints/create_session"
@@ -8,9 +9,12 @@ import (
 	"popplio/routes/auth/endpoints/get_sessions"
 	"popplio/routes/auth/endpoints/revoke_session"
 	"popplio/routes/auth/endpoints/test_auth"
+	"popplio/teams"
+	"popplio/validators"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/infinitybotlist/eureka/uapi"
+	perms "github.com/infinitybotlist/kittycat/go"
 )
 
 const tagName = "API Tokens"
@@ -28,35 +32,62 @@ func (b Router) Routes(r *chi.Mux) {
 		Method:  uapi.GET,
 		Docs:    get_sessions.Docs,
 		Handler: get_sessions.Route,
-		Auth: []uapi.AuthType{
-			{
-				Type: api.TargetTypeUser,
+		Auth:    api.GetAllAuthTypes(),
+		ExtData: map[string]any{
+			api.PERMISSION_CHECK_KEY: api.PermissionCheck{
+				NeededPermission: func(d uapi.Route, r *http.Request) (perms.Permission, error) {
+					return perms.Permission{
+						Namespace: validators.NormalizeTargetType(chi.URLParam(r, "target_type")),
+						Perm:      teams.PermissionViewSession,
+					}, nil
+				},
+				GetTarget: func(d uapi.Route, r *http.Request) (string, string) {
+					return validators.NormalizeTargetType(chi.URLParam(r, "target_type")), chi.URLParam(r, "target_id")
+				},
 			},
 		},
 	}.Route(r)
 
 	uapi.Route{
-		Pattern: "/sessions/{target_type}/{target_id}",
+		Pattern: "/{target_type}/{target_id}/sessions",
 		OpId:    "create_session",
 		Method:  uapi.POST,
 		Docs:    create_session.Docs,
 		Handler: create_session.Route,
-		Auth: []uapi.AuthType{
-			{
-				Type: api.TargetTypeUser,
+		Auth:    api.GetAllAuthTypes(),
+		ExtData: map[string]any{
+			api.PERMISSION_CHECK_KEY: api.PermissionCheck{
+				NeededPermission: func(d uapi.Route, r *http.Request) (perms.Permission, error) {
+					return perms.Permission{
+						Namespace: validators.NormalizeTargetType(chi.URLParam(r, "target_type")),
+						Perm:      teams.PermissionCreateSession,
+					}, nil
+				},
+				GetTarget: func(d uapi.Route, r *http.Request) (string, string) {
+					return validators.NormalizeTargetType(chi.URLParam(r, "target_type")), chi.URLParam(r, "target_id")
+				},
 			},
 		},
 	}.Route(r)
 
 	uapi.Route{
-		Pattern: "/sessions/{target_type}/{target_id}",
+		Pattern: "/{target_type}/{target_id}/sessions/{session_id}",
 		OpId:    "revoke_session",
 		Method:  uapi.DELETE,
 		Docs:    revoke_session.Docs,
 		Handler: revoke_session.Route,
-		Auth: []uapi.AuthType{
-			{
-				Type: api.TargetTypeUser,
+		Auth:    api.GetAllAuthTypes(),
+		ExtData: map[string]any{
+			api.PERMISSION_CHECK_KEY: api.PermissionCheck{
+				NeededPermission: func(d uapi.Route, r *http.Request) (perms.Permission, error) {
+					return perms.Permission{
+						Namespace: validators.NormalizeTargetType(chi.URLParam(r, "target_type")),
+						Perm:      teams.PermissionRevokeSession,
+					}, nil
+				},
+				GetTarget: func(d uapi.Route, r *http.Request) (string, string) {
+					return validators.NormalizeTargetType(chi.URLParam(r, "target_type")), chi.URLParam(r, "target_id")
+				},
 			},
 		},
 	}.Route(r)

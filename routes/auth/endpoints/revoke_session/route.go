@@ -3,14 +3,10 @@ package revoke_session
 import (
 	"errors"
 	"net/http"
-	"strings"
 
 	"popplio/state"
 	"popplio/types"
-
-	"popplio/routes/auth/assets"
-
-	"popplio/teams"
+	"popplio/validators"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/jackc/pgx/v5"
@@ -44,7 +40,7 @@ func Docs() *docs.Doc {
 				Name:        "session_id",
 				Description: "The session ID to revoke",
 				Required:    true,
-				In:          "query",
+				In:          "path",
 				Schema:      docs.IdSchema,
 			},
 		},
@@ -53,45 +49,19 @@ func Docs() *docs.Doc {
 
 func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	targetId := chi.URLParam(r, "target_id")
-	targetType := chi.URLParam(r, "target_type")
+	targetType := validators.NormalizeTargetType(chi.URLParam(r, "target_type"))
+	sessionId := chi.URLParam(r, "session_id")
 
-	if targetId == "" || targetType == "" {
+	if targetId == "" || targetType == "" || sessionId == "" {
 		return uapi.HttpResponse{
 			Status: http.StatusBadRequest,
 			Json:   types.ApiError{Message: "Missing target_id or target_type"},
 		}
 	}
 
-	targetType = strings.TrimSuffix(targetType, "s")
-
-	// Perform entity specific checks
-	err := assets.AuthEntityPermCheck(
-		d.Context,
-		d.Auth,
-		targetType,
-		targetId,
-		teams.PermissionRevokeSession,
-	)
-
-	if err != nil {
-		return uapi.HttpResponse{
-			Status: http.StatusForbidden,
-			Json:   types.ApiError{Message: "Entity permission checks failed: " + err.Error()},
-		}
-	}
-
-	sessionId := r.URL.Query().Get("session_id")
-
-	if sessionId == "" {
-		return uapi.HttpResponse{
-			Status: http.StatusBadRequest,
-			Json:   types.ApiError{Message: "Missing session_id"},
-		}
-	}
-
 	var count int64
 
-	err = state.Pool.QueryRow(d.Context, "SELECT COUNT(*) FROM api_sessions WHERE user_id = $1 AND id = $2", d.Auth.ID, sessionId).Scan(&count)
+	err := state.Pool.QueryRow(d.Context, "SELECT COUNT(*) FROM api_sessions WHERE user_id = $1 AND id = $2", d.Auth.ID, sessionId).Scan(&count)
 
 	if errors.Is(err, pgx.ErrNoRows) {
 		return uapi.HttpResponse{
@@ -112,7 +82,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		}
 	}
 
-	_, err = state.Pool.Exec(d.Context, "DELETE FROM api_sessions WHERE id = $1", sessionId)
+	_, err = state.Pool.Exec(d.Context, "DELETE FROM api_sessions WHERE id = $1 AND target_id = $2 AND target_type = $3", sessionId, targetId, targetType)
 
 	if err != nil {
 		state.Logger.Error("Error while revoking user session", zap.Error(err))

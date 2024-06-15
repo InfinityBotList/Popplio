@@ -4,18 +4,14 @@ import (
 	"net/http"
 	"popplio/db"
 	"popplio/state"
-	"popplio/teams"
 	"popplio/types"
 	"strconv"
 	"strings"
-
-	"popplio/api/authz"
 
 	"github.com/go-chi/chi/v5"
 	docs "github.com/infinitybotlist/eureka/doclib"
 	"github.com/infinitybotlist/eureka/dovewing"
 	"github.com/infinitybotlist/eureka/uapi"
-	perms "github.com/infinitybotlist/kittycat/go"
 	"github.com/jackc/pgx/v5"
 	"go.uber.org/zap"
 )
@@ -80,22 +76,6 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 
 	limit := perPage
 	offset := (pageNum - 1) * perPage
-
-	// Perform entity specific checks
-	err = authz.EntityPermissionCheck(
-		d.Context,
-		d.Auth,
-		targetType,
-		targetId,
-		perms.Permission{Namespace: targetType, Perm: teams.PermissionGetWebhookLogs},
-	)
-
-	if err != nil {
-		return uapi.HttpResponse{
-			Status: http.StatusForbidden,
-			Json:   types.ApiError{Message: "Entity permission checks failed: " + err.Error()},
-		}
-	}
 
 	// Fetch the logs
 	rows, err := state.Pool.Query(d.Context, "SELECT "+webhookLogCols+" FROM webhook_logs WHERE target_id = $1 AND target_type = $2 ORDER BY created_at DESC LIMIT $3 OFFSET $4", targetId, targetType, limit, offset)

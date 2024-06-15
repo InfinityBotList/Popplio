@@ -5,17 +5,13 @@ import (
 	"net/http"
 	"popplio/db"
 	"popplio/state"
-	"popplio/teams"
 	"popplio/types"
 	"popplio/validators"
 	"strings"
 
-	"popplio/api/authz"
-
 	"github.com/go-chi/chi/v5"
 	docs "github.com/infinitybotlist/eureka/doclib"
 	"github.com/infinitybotlist/eureka/uapi"
-	perms "github.com/infinitybotlist/kittycat/go"
 	"github.com/jackc/pgx/v5"
 	"go.uber.org/zap"
 )
@@ -52,22 +48,6 @@ func Docs() *docs.Doc {
 func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	targetId := chi.URLParam(r, "target_id")
 	targetType := validators.NormalizeTargetType(chi.URLParam(r, "target_type"))
-
-	// Perform entity specific checks
-	err := authz.EntityPermissionCheck(
-		d.Context,
-		d.Auth,
-		targetType,
-		targetId,
-		perms.Permission{Namespace: targetType, Perm: teams.PermissionGetWebhooks},
-	)
-
-	if err != nil {
-		return uapi.HttpResponse{
-			Status: http.StatusForbidden,
-			Json:   types.ApiError{Message: "Entity permission checks failed: " + err.Error()},
-		}
-	}
 
 	rows, err := state.Pool.Query(d.Context, "SELECT "+webhookCols+" FROM webhooks WHERE target_id = $1 AND target_type = $2", targetId, targetType)
 

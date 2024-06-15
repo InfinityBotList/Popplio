@@ -3,9 +3,7 @@ package redeem_vote_credits
 import (
 	"net/http"
 
-	"popplio/api/authz"
 	"popplio/state"
-	"popplio/teams"
 	"popplio/types"
 	"popplio/validators"
 	"popplio/votes"
@@ -13,7 +11,6 @@ import (
 	"github.com/go-chi/chi/v5"
 	docs "github.com/infinitybotlist/eureka/doclib"
 	"github.com/infinitybotlist/eureka/uapi"
-	perms "github.com/infinitybotlist/kittycat/go"
 	"go.uber.org/zap"
 )
 
@@ -49,22 +46,6 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		return uapi.HttpResponse{
 			Status: http.StatusBadRequest,
 			Json:   types.ApiError{Message: "target_id and target_type are required"},
-		}
-	}
-
-	// Perform entity specific checks
-	err := authz.EntityPermissionCheck(
-		d.Context,
-		d.Auth,
-		targetType,
-		targetId,
-		perms.Permission{Namespace: targetType, Perm: teams.PermissionRedeemVoteCredits},
-	)
-
-	if err != nil {
-		return uapi.HttpResponse{
-			Status: http.StatusForbidden,
-			Json:   types.ApiError{Message: "Entity permission checks failed: " + err.Error()},
 		}
 	}
 

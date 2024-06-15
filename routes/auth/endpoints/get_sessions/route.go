@@ -4,13 +4,11 @@ import (
 	"errors"
 	"net/http"
 	"popplio/db"
-	"popplio/teams"
+	"popplio/validators"
 	"strings"
 
 	"popplio/state"
 	"popplio/types"
-
-	"popplio/routes/auth/assets"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/jackc/pgx/v5"
@@ -50,7 +48,7 @@ func Docs() *docs.Doc {
 
 func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	targetId := chi.URLParam(r, "target_id")
-	targetType := chi.URLParam(r, "target_type")
+	targetType := validators.NormalizeTargetType(chi.URLParam(r, "target_type"))
 
 	if targetId == "" || targetType == "" {
 		return uapi.HttpResponse{
@@ -60,22 +58,6 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	}
 
 	targetType = strings.TrimSuffix(targetType, "s")
-
-	// Perform entity specific checks
-	err := assets.AuthEntityPermCheck(
-		d.Context,
-		d.Auth,
-		targetType,
-		targetId,
-		teams.PermissionViewSession,
-	)
-
-	if err != nil {
-		return uapi.HttpResponse{
-			Status: http.StatusForbidden,
-			Json:   types.ApiError{Message: "Entity permission checks failed: " + err.Error()},
-		}
-	}
 
 	rows, err := state.Pool.Query(d.Context, "SELECT "+sessionCols+" FROM api_sessions WHERE target_id = $1 AND target_type = $2", targetId, targetType)
 

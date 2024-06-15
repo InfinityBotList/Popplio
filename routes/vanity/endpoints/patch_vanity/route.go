@@ -7,14 +7,12 @@ import (
 	"unicode"
 
 	"popplio/state"
-	"popplio/teams"
 	"popplio/types"
 	"popplio/validators"
 
 	"github.com/go-playground/validator/v10"
 	docs "github.com/infinitybotlist/eureka/doclib"
 	"github.com/infinitybotlist/eureka/uapi"
-	kittycat "github.com/infinitybotlist/kittycat/go"
 	"go.uber.org/zap"
 
 	"github.com/go-chi/chi/v5"
@@ -69,23 +67,6 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		}
 	}
 
-	perms, err := teams.GetEntityPerms(d.Context, d.Auth.ID, targetType, targetId)
-
-	if err != nil {
-		state.Logger.Error("Error getting user perms", zap.Error(err), zap.String("userID", d.Auth.ID))
-		return uapi.HttpResponse{
-			Status: http.StatusBadRequest,
-			Json:   types.ApiError{Message: "Error getting user perms: " + err.Error()},
-		}
-	}
-
-	if !kittycat.HasPerm(perms, kittycat.Permission{Namespace: targetType, Perm: teams.PermissionSetVanity}) {
-		return uapi.HttpResponse{
-			Status: http.StatusForbidden,
-			Json:   types.ApiError{Message: "You do not have permission to update this entities vanity"},
-		}
-	}
-
 	// Read payload from body
 	var payload types.PatchVanity
 
@@ -96,7 +77,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	}
 
 	// Validate the payload
-	err = state.Validator.Struct(payload)
+	err := state.Validator.Struct(payload)
 
 	if err != nil {
 		errors := err.(validator.ValidationErrors)

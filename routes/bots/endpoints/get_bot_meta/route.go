@@ -22,14 +22,7 @@ func Docs() *docs.Doc {
 		Resp:        types.DiscordBotMeta{},
 		Params: []docs.Parameter{
 			{
-				Name:        "uid",
-				Description: "The user's ID for authentication",
-				Required:    true,
-				In:          "path",
-				Schema:      docs.IdSchema,
-			},
-			{
-				Name:        "cid",
+				Name:        "client_id",
 				Description: "The client ID",
 				Required:    true,
 				In:          "path",
@@ -69,7 +62,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	}
 
 	fallbackId := r.URL.Query().Get("fallback_bot_id")
-	cid := chi.URLParam(r, "cid")
+	cid := chi.URLParam(r, "client_id")
 
 	// Get bot metadata
 	meta, err := assets.CheckBot(d.Context, fallbackId, cid)

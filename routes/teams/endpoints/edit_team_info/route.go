@@ -3,7 +3,6 @@ package edit_team_info
 import (
 	"net/http"
 	"popplio/state"
-	"popplio/teams"
 	"popplio/types"
 	"popplio/validators"
 	"popplio/webhooks/core/drivers"
@@ -12,7 +11,6 @@ import (
 
 	docs "github.com/infinitybotlist/eureka/doclib"
 	"github.com/infinitybotlist/eureka/uapi"
-	kittycat "github.com/infinitybotlist/kittycat/go"
 	"github.com/jackc/pgx/v5/pgtype"
 	"go.uber.org/zap"
 	"golang.org/x/text/cases"
@@ -31,13 +29,6 @@ func Docs() *docs.Doc {
 		Summary:     "Edit Team Info",
 		Description: "Edits a team. Returns a 204 on success.",
 		Params: []docs.Parameter{
-			{
-				Name:        "uid",
-				Description: "User ID",
-				Required:    true,
-				In:          "path",
-				Schema:      docs.IdSchema,
-			},
 			{
 				Name:        "tid",
 				Description: "Team ID",
@@ -68,24 +59,6 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	if err != nil {
 		errors := err.(validator.ValidationErrors)
 		return uapi.ValidatorErrorResponse(compiledMessages, errors)
-	}
-
-	// Ensure manager has perms to edit this team
-	managerPerms, err := teams.GetEntityPerms(d.Context, d.Auth.ID, "team", teamId)
-
-	if err != nil {
-		state.Logger.Error("Error getting user perms", zap.Error(err), zap.String("uid", d.Auth.ID), zap.String("tid", teamId))
-		return uapi.HttpResponse{
-			Status: http.StatusBadRequest,
-			Json:   types.ApiError{Message: "Error getting user perms: " + err.Error()},
-		}
-	}
-
-	if !kittycat.HasPerm(managerPerms, kittycat.Permission{Namespace: "team", Perm: teams.PermissionEdit}) {
-		return uapi.HttpResponse{
-			Status: http.StatusForbidden,
-			Json:   types.ApiError{Message: "You do not have permission to edit this team's information (name/avatar/mention)"},
-		}
 	}
 
 	tx, err := state.Pool.Begin(d.Context)

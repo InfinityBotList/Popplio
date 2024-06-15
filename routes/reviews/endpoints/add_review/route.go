@@ -12,8 +12,6 @@ import (
 	"popplio/webhooks/events"
 	"time"
 
-	"popplio/api/authz"
-
 	"github.com/infinitybotlist/eureka/ratelimit"
 	"github.com/jackc/pgx/v5/pgtype"
 	"go.uber.org/zap"
@@ -162,7 +160,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 
 	if payload.OwnerReview {
 		// Perform entity specific checks
-		err := authz.EntityPermissionCheck(
+		err := api.AuthzEntityPermissionCheck(
 			d.Context,
 			d.Auth,
 			targetType,

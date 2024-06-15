@@ -1,6 +1,7 @@
 package bots
 
 import (
+	"net/http"
 	"popplio/api"
 	"popplio/routes/bots/endpoints/add_bot"
 	"popplio/routes/bots/endpoints/delete_bot"
@@ -14,9 +15,11 @@ import (
 	"popplio/routes/bots/endpoints/patch_bot_team"
 	"popplio/routes/bots/endpoints/post_bot_stats"
 	"popplio/routes/bots/endpoints/transfer_bot_to_team"
+	"popplio/teams"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/infinitybotlist/eureka/uapi"
+	perms "github.com/infinitybotlist/kittycat/go"
 )
 
 const (
@@ -63,15 +66,30 @@ func (b Router) Routes(r *chi.Mux) {
 	}.Route(r)
 
 	uapi.Route{
-		Pattern: "/users/{uid}/bots/{cid}/meta",
+		Pattern: "/bots/{client_id}/meta",
 		OpId:    "get_bot_meta",
 		Method:  uapi.GET,
 		Docs:    get_bot_meta.Docs,
 		Handler: get_bot_meta.Route,
 		Auth: []uapi.AuthType{
 			{
-				URLVar: "uid",
-				Type:   api.TargetTypeUser,
+				Type: api.TargetTypeUser,
+			},
+			{
+				Type: api.TargetTypeTeam,
+			},
+		},
+		ExtData: map[string]any{
+			api.PERMISSION_CHECK_KEY: api.PermissionCheck{
+				NeededPermission: func(d uapi.Route, r *http.Request) (perms.Permission, error) {
+					return perms.Permission{
+						Namespace: api.TargetTypeBot,
+						Perm:      teams.PermissionAdd,
+					}, nil
+				},
+				GetTarget: func(d uapi.Route, r *http.Request) (string, string) {
+					return api.TargetTypeBot, chi.URLParam(r, "client_id")
+				},
 			},
 		},
 	}.Route(r)
@@ -95,39 +113,62 @@ func (b Router) Routes(r *chi.Mux) {
 				Type: api.TargetTypeBot,
 			},
 		},
+		ExtData: map[string]any{
+			api.PERMISSION_CHECK_KEY: nil, // No authorization is needed for this endpoint beyond defaults
+		},
 	}.Route(r)
 
 	uapi.Route{
-		Pattern: "/users/{id}/bots",
+		Pattern: "/bots",
 		OpId:    "add_bot",
 		Method:  uapi.PUT,
 		Docs:    add_bot.Docs,
 		Handler: add_bot.Route,
 		Auth: []uapi.AuthType{
 			{
-				URLVar: "id",
-				Type:   api.TargetTypeUser,
+				Type: api.TargetTypeUser,
+			},
+			{
+				Type: api.TargetTypeTeam,
 			},
 		},
 		Setup: add_bot.Setup,
+		ExtData: map[string]any{
+			api.PERMISSION_CHECK_KEY: nil, // The endpoint itself handles authorization
+		},
 	}.Route(r)
 
 	uapi.Route{
-		Pattern: "/users/{uid}/bots/{bid}",
+		Pattern: "/bots/{id}",
 		OpId:    "delete_bot",
 		Method:  uapi.DELETE,
 		Docs:    delete_bot.Docs,
 		Handler: delete_bot.Route,
 		Auth: []uapi.AuthType{
 			{
-				URLVar: "uid",
-				Type:   api.TargetTypeUser,
+				Type: api.TargetTypeUser,
+			},
+			{
+				Type: api.TargetTypeTeam,
+			},
+		},
+		ExtData: map[string]any{
+			api.PERMISSION_CHECK_KEY: api.PermissionCheck{
+				NeededPermission: func(d uapi.Route, r *http.Request) (perms.Permission, error) {
+					return perms.Permission{
+						Namespace: api.TargetTypeBot,
+						Perm:      teams.PermissionDelete,
+					}, nil
+				},
+				GetTarget: func(d uapi.Route, r *http.Request) (string, string) {
+					return api.TargetTypeBot, chi.URLParam(r, "id")
+				},
 			},
 		},
 	}.Route(r)
 
 	uapi.Route{
-		Pattern: "/users/{uid}/bots/{bid}/settings",
+		Pattern: "/bots/{id}/settings",
 		OpId:    "patch_bot_settings",
 		Method:  uapi.PATCH,
 		Docs:    patch_bot_settings.Docs,
@@ -135,8 +176,26 @@ func (b Router) Routes(r *chi.Mux) {
 		Setup:   patch_bot_settings.Setup,
 		Auth: []uapi.AuthType{
 			{
-				URLVar: "uid",
-				Type:   api.TargetTypeUser,
+				Type: api.TargetTypeUser,
+			},
+			{
+				Type: api.TargetTypeTeam,
+			},
+			{
+				Type: api.TargetTypeBot,
+			},
+		},
+		ExtData: map[string]any{
+			api.PERMISSION_CHECK_KEY: api.PermissionCheck{
+				NeededPermission: func(d uapi.Route, r *http.Request) (perms.Permission, error) {
+					return perms.Permission{
+						Namespace: api.TargetTypeBot,
+						Perm:      teams.PermissionEdit,
+					}, nil
+				},
+				GetTarget: func(d uapi.Route, r *http.Request) (string, string) {
+					return api.TargetTypeBot, chi.URLParam(r, "id")
+				},
 			},
 		},
 	}.Route(r)
@@ -153,6 +212,9 @@ func (b Router) Routes(r *chi.Mux) {
 				URLVar: "uid",
 			},
 		},
+		ExtData: map[string]any{
+			api.PERMISSION_CHECK_KEY: nil, // No authorization is needed for this endpoint beyond defaults
+		},
 	}.Route(r)
 
 	uapi.Route{
@@ -166,6 +228,26 @@ func (b Router) Routes(r *chi.Mux) {
 				Type:   api.TargetTypeUser,
 				URLVar: "uid",
 			},
+		},
+		ExtData: map[string]any{
+			api.PERMISSION_CHECK_KEY: nil, // No authorization is needed for this endpoint beyond defaults
+		},
+	}.Route(r)
+
+	uapi.Route{
+		Pattern: "/users/{uid}/bots/{bid}/teams",
+		OpId:    "patch_bot_team",
+		Method:  uapi.PATCH,
+		Docs:    patch_bot_team.Docs,
+		Handler: patch_bot_team.Route,
+		Auth: []uapi.AuthType{
+			{
+				Type:   api.TargetTypeUser,
+				URLVar: "uid",
+			},
+		},
+		ExtData: map[string]any{
+			api.PERMISSION_CHECK_KEY: nil, // No authorization is needed for this endpoint beyond defaults
 		},
 	}.Route(r)
 }

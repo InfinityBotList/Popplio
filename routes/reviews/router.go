@@ -37,6 +37,9 @@ func (b Router) Routes(r *chi.Mux) {
 		Docs:    add_review.Docs,
 		Handler: add_review.Route,
 		Auth:    api.GetAllAuthTypes(),
+		ExtData: map[string]any{
+			api.PERMISSION_CHECK_KEY: nil, // This endpoint has its own permission checks
+		},
 	}.Route(r)
 
 	uapi.Route{
@@ -46,6 +49,9 @@ func (b Router) Routes(r *chi.Mux) {
 		Docs:    edit_review.Docs,
 		Handler: edit_review.Route,
 		Auth:    api.GetAllAuthTypes(),
+		ExtData: map[string]any{
+			api.PERMISSION_CHECK_KEY: nil, // This endpoint has its own permission checks
+		},
 	}.Route(r)
 
 	uapi.Route{
@@ -55,5 +61,8 @@ func (b Router) Routes(r *chi.Mux) {
 		Docs:    remove_review.Docs,
 		Handler: remove_review.Route,
 		Auth:    api.GetAllAuthTypes(),
+		ExtData: map[string]any{
+			api.PERMISSION_CHECK_KEY: nil, // This endpoint has its own permission checks
+		},
 	}.Route(r)
 }

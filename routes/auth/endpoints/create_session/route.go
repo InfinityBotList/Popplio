@@ -6,10 +6,10 @@ import (
 	"time"
 
 	"popplio/api"
-	"popplio/api/authz"
 	"popplio/state"
 	"popplio/teams"
 	"popplio/types"
+	"popplio/validators"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-playground/validator/v10"
@@ -52,7 +52,7 @@ func Docs() *docs.Doc {
 
 func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	targetId := chi.URLParam(r, "target_id")
-	targetType := chi.URLParam(r, "target_type")
+	targetType := validators.NormalizeTargetType(chi.URLParam(r, "target_type"))
 
 	if targetId == "" || targetType == "" {
 		return uapi.HttpResponse{
@@ -63,22 +63,6 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 
 	targetType = strings.TrimSuffix(targetType, "s")
 
-	// Perform entity specific checks
-	err := authz.EntityPermissionCheck(
-		d.Context,
-		d.Auth,
-		targetType,
-		targetId,
-		perms.Permission{Namespace: targetType, Perm: teams.PermissionCreateSession},
-	)
-
-	if err != nil {
-		return uapi.HttpResponse{
-			Status: http.StatusForbidden,
-			Json:   types.ApiError{Message: "Entity permission checks failed: " + err.Error()},
-		}
-	}
-
 	var createData types.CreateSession
 
 	hresp, ok := uapi.MarshalReq(r, &createData)
@@ -87,7 +71,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		return hresp
 	}
 
-	err = state.Validator.Struct(createData)
+	err := state.Validator.Struct(createData)
 
 	if err != nil {
 		return uapi.ValidatorErrorResponse(compiledMessages, err.(validator.ValidationErrors))
@@ -118,7 +102,11 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		createData.PermLimits = []string{}
 	}
 
-	if d.Auth.TargetType == api.TargetTypeUser {
+	// The outer perm limit stores what permissions the session is limited to in creation
+	var outerPermLimit []perms.Permission
+
+	switch d.Auth.TargetType {
+	case api.TargetTypeUser:
 		userPerms, err := teams.GetEntityPerms(
 			d.Context,
 			d.Auth.ID,
@@ -134,27 +122,40 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 			}
 		}
 
-		if !perms.HasPerm(userPerms, perms.Permission{Namespace: "global", Perm: "*"}) {
-			if len(createData.PermLimits) == 0 {
-				return uapi.HttpResponse{
-					Status: http.StatusForbidden,
-					Json:   types.ApiError{Message: "You must have Global Owner to create sessions without specifying a permission limit"},
-				}
-			}
+		// Strip out all permissions not in permission limits
+		currentSessionPermLimits := perms.PFSS(api.PermLimits(d.Auth))
 
-			for _, perm := range createData.PermLimits {
-				if !perms.HasPerm(userPerms, perms.PFS(perm)) {
-					return uapi.HttpResponse{
-						Status: http.StatusForbidden,
-						Json:   types.ApiError{Message: "User does not have permission to create sessions with the permission limit: " + perm},
-					}
+		if len(currentSessionPermLimits) > 0 {
+			for _, perm := range userPerms {
+				if perms.HasPerm(currentSessionPermLimits, perm) {
+					outerPermLimit = append(outerPermLimit, perm)
 				}
 			}
 		}
-	} else {
-		return uapi.HttpResponse{
-			Status: http.StatusNotImplemented,
-			Json:   types.ApiError{Message: "Only users can create sessions at this time"},
+	default:
+		outerPermLimit = perms.PFSS(api.PermLimits(d.Auth))
+	}
+
+	// All permission limits must be resolved before being added to db
+	permLimits := perms.StaffPermissions{
+		PermOverrides: perms.PFSS(createData.PermLimits),
+	}.Resolve()
+
+	if !perms.HasPerm(outerPermLimit, perms.Permission{Namespace: "global", Perm: "*"}) {
+		if len(createData.PermLimits) == 0 {
+			return uapi.HttpResponse{
+				Status: http.StatusForbidden,
+				Json:   types.ApiError{Message: "You must have Global Owner to create sessions without specifying a permission limit"},
+			}
+		}
+
+		for _, perm := range permLimits {
+			if !perms.HasPerm(outerPermLimit, perm) {
+				return uapi.HttpResponse{
+					Status: http.StatusForbidden,
+					Json:   types.ApiError{Message: "User does not have permission to create sessions with the permission limit: " + perm.String()},
+				}
+			}
 		}
 	}
 
@@ -173,7 +174,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		createData.Name,
 		createData.Type,
 		expiry,
-		createData.PermLimits,
+		permLimits,
 	).Scan(&sessionId)
 
 	if err != nil {

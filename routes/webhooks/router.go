@@ -1,6 +1,7 @@
 package webhooks
 
 import (
+	"net/http"
 	"popplio/api"
 	"popplio/routes/webhooks/endpoints/add_webhook"
 	"popplio/routes/webhooks/endpoints/delete_webhook"
@@ -9,6 +10,10 @@ import (
 	"popplio/routes/webhooks/endpoints/get_webhooks"
 	"popplio/routes/webhooks/endpoints/patch_webhook"
 	"popplio/routes/webhooks/endpoints/test_webhook"
+	"popplio/teams"
+	"popplio/validators"
+
+	perms "github.com/infinitybotlist/kittycat/go"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/infinitybotlist/eureka/uapi"
@@ -30,6 +35,19 @@ func (b Router) Routes(r *chi.Mux) {
 		Docs:    get_webhooks.Docs,
 		Handler: get_webhooks.Route,
 		Auth:    api.GetAllAuthTypes(),
+		ExtData: map[string]any{
+			api.PERMISSION_CHECK_KEY: api.PermissionCheck{
+				NeededPermission: func(d uapi.Route, r *http.Request) (perms.Permission, error) {
+					return perms.Permission{
+						Namespace: validators.NormalizeTargetType(chi.URLParam(r, "target_type")),
+						Perm:      teams.PermissionGetWebhooks,
+					}, nil
+				},
+				GetTarget: func(d uapi.Route, r *http.Request) (string, string) {
+					return validators.NormalizeTargetType(chi.URLParam(r, "target_type")), chi.URLParam(r, "target_id")
+				},
+			},
+		},
 	}.Route(r)
 
 	uapi.Route{
@@ -39,6 +57,19 @@ func (b Router) Routes(r *chi.Mux) {
 		Docs:    add_webhook.Docs,
 		Handler: add_webhook.Route,
 		Auth:    api.GetAllAuthTypes(),
+		ExtData: map[string]any{
+			api.PERMISSION_CHECK_KEY: api.PermissionCheck{
+				NeededPermission: func(d uapi.Route, r *http.Request) (perms.Permission, error) {
+					return perms.Permission{
+						Namespace: validators.NormalizeTargetType(chi.URLParam(r, "target_type")),
+						Perm:      teams.PermissionCreateWebhooks,
+					}, nil
+				},
+				GetTarget: func(d uapi.Route, r *http.Request) (string, string) {
+					return validators.NormalizeTargetType(chi.URLParam(r, "target_type")), chi.URLParam(r, "target_id")
+				},
+			},
+		},
 	}.Route(r)
 
 	uapi.Route{
@@ -48,6 +79,19 @@ func (b Router) Routes(r *chi.Mux) {
 		Docs:    patch_webhook.Docs,
 		Handler: patch_webhook.Route,
 		Auth:    api.GetAllAuthTypes(),
+		ExtData: map[string]any{
+			api.PERMISSION_CHECK_KEY: api.PermissionCheck{
+				NeededPermission: func(d uapi.Route, r *http.Request) (perms.Permission, error) {
+					return perms.Permission{
+						Namespace: validators.NormalizeTargetType(chi.URLParam(r, "target_type")),
+						Perm:      teams.PermissionEditWebhooks,
+					}, nil
+				},
+				GetTarget: func(d uapi.Route, r *http.Request) (string, string) {
+					return validators.NormalizeTargetType(chi.URLParam(r, "target_type")), chi.URLParam(r, "target_id")
+				},
+			},
+		},
 	}.Route(r)
 
 	uapi.Route{
@@ -57,6 +101,19 @@ func (b Router) Routes(r *chi.Mux) {
 		Docs:    delete_webhook.Docs,
 		Handler: delete_webhook.Route,
 		Auth:    api.GetAllAuthTypes(),
+		ExtData: map[string]any{
+			api.PERMISSION_CHECK_KEY: api.PermissionCheck{
+				NeededPermission: func(d uapi.Route, r *http.Request) (perms.Permission, error) {
+					return perms.Permission{
+						Namespace: validators.NormalizeTargetType(chi.URLParam(r, "target_type")),
+						Perm:      teams.PermissionDeleteWebhooks,
+					}, nil
+				},
+				GetTarget: func(d uapi.Route, r *http.Request) (string, string) {
+					return validators.NormalizeTargetType(chi.URLParam(r, "target_type")), chi.URLParam(r, "target_id")
+				},
+			},
+		},
 	}.Route(r)
 
 	uapi.Route{
@@ -66,6 +123,19 @@ func (b Router) Routes(r *chi.Mux) {
 		Docs:    get_webhook_logs.Docs,
 		Handler: get_webhook_logs.Route,
 		Auth:    api.GetAllAuthTypes(),
+		ExtData: map[string]any{
+			api.PERMISSION_CHECK_KEY: api.PermissionCheck{
+				NeededPermission: func(d uapi.Route, r *http.Request) (perms.Permission, error) {
+					return perms.Permission{
+						Namespace: validators.NormalizeTargetType(chi.URLParam(r, "target_type")),
+						Perm:      teams.PermissionGetWebhookLogs,
+					}, nil
+				},
+				GetTarget: func(d uapi.Route, r *http.Request) (string, string) {
+					return validators.NormalizeTargetType(chi.URLParam(r, "target_type")), chi.URLParam(r, "target_id")
+				},
+			},
+		},
 	}.Route(r)
 
 	uapi.Route{
@@ -83,5 +153,18 @@ func (b Router) Routes(r *chi.Mux) {
 		Docs:    test_webhook.Docs,
 		Handler: test_webhook.Route,
 		Auth:    api.GetAllAuthTypes(),
+		ExtData: map[string]any{
+			api.PERMISSION_CHECK_KEY: api.PermissionCheck{
+				NeededPermission: func(d uapi.Route, r *http.Request) (perms.Permission, error) {
+					return perms.Permission{
+						Namespace: validators.NormalizeTargetType(chi.URLParam(r, "target_type")),
+						Perm:      teams.PermissionTestWebhooks,
+					}, nil
+				},
+				GetTarget: func(d uapi.Route, r *http.Request) (string, string) {
+					return validators.NormalizeTargetType(chi.URLParam(r, "target_type")), chi.URLParam(r, "target_id")
+				},
+			},
+		},
 	}.Route(r)
 }

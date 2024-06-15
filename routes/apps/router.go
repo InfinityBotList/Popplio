@@ -26,6 +26,7 @@ func (b Router) Routes(r *chi.Mux) {
 		Docs:    get_apps_meta.Docs,
 		Handler: get_apps_meta.Route,
 	}.Route(r)
+
 	uapi.Route{
 		Pattern: "/users/{user_id}/apps",
 		OpId:    "get_apps_list",
@@ -39,7 +40,11 @@ func (b Router) Routes(r *chi.Mux) {
 				AllowedScope: "ban_exempt", // Ensure banned users can view their own apps
 			},
 		},
+		ExtData: map[string]any{
+			api.PERMISSION_CHECK_KEY: nil, // No authorization is needed for this endpoint beyond defaults
+		},
 	}.Route(r)
+
 	uapi.Route{
 		Pattern: "/users/{user_id}/apps",
 		OpId:    "create_app",
@@ -52,6 +57,9 @@ func (b Router) Routes(r *chi.Mux) {
 				Type:         api.TargetTypeUser,
 				AllowedScope: "ban_exempt", // Ensure banned users can create apps
 			},
+		},
+		ExtData: map[string]any{
+			api.PERMISSION_CHECK_KEY: nil, // No authorization is needed for this endpoint beyond defaults
 		},
 	}.Route(r)
 }

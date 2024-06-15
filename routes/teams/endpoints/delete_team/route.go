@@ -3,13 +3,11 @@ package delete_team
 import (
 	"net/http"
 	"popplio/state"
-	"popplio/teams"
 	"popplio/types"
 
 	"github.com/go-chi/chi/v5"
 	docs "github.com/infinitybotlist/eureka/doclib"
 	"github.com/infinitybotlist/eureka/uapi"
-	kittycat "github.com/infinitybotlist/kittycat/go"
 	"go.uber.org/zap"
 )
 
@@ -18,13 +16,6 @@ func Docs() *docs.Doc {
 		Summary:     "Delete Team",
 		Description: "Deletes the team. Requires the 'Owner' permission. Returns a 204 on success",
 		Params: []docs.Parameter{
-			{
-				Name:        "uid",
-				Description: "User ID",
-				Required:    true,
-				In:          "path",
-				Schema:      docs.IdSchema,
-			},
 			{
 				Name:        "tid",
 				Description: "Team ID",
@@ -39,24 +30,6 @@ func Docs() *docs.Doc {
 
 func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	var teamId = chi.URLParam(r, "tid")
-
-	// Ensure manager has perms to edit member permissions etc.
-	perms, err := teams.GetEntityPerms(d.Context, d.Auth.ID, "team", teamId)
-
-	if err != nil {
-		state.Logger.Error("Error getting user perms", zap.Error(err), zap.String("uid", d.Auth.ID), zap.String("tid", teamId))
-		return uapi.HttpResponse{
-			Status: http.StatusBadRequest,
-			Json:   types.ApiError{Message: "Error getting user perms: " + err.Error()},
-		}
-	}
-
-	if !kittycat.HasPerm(perms, kittycat.Permission{Namespace: "global", Perm: teams.PermissionOwner}) {
-		return uapi.HttpResponse{
-			Status: http.StatusForbidden,
-			Json:   types.ApiError{Message: "Only global owners can delete teams"},
-		}
-	}
 
 	tx, err := state.Pool.Begin(d.Context)
 

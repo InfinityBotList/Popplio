@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"net/http"
 	"popplio/state"
-	"popplio/teams"
 	"popplio/types"
 	"popplio/validators"
 	"reflect"
@@ -14,7 +13,6 @@ import (
 	docs "github.com/infinitybotlist/eureka/doclib"
 	"github.com/infinitybotlist/eureka/dovewing"
 	"github.com/infinitybotlist/eureka/uapi"
-	kittycat "github.com/infinitybotlist/kittycat/go"
 	"go.uber.org/zap"
 
 	"github.com/bwmarrin/discordgo"
@@ -59,14 +57,7 @@ func Docs() *docs.Doc {
 		Description: "Updates a bots settings. You must have 'Edit Bot Settings' in the team if the bot is in a team. Returns 204 on success",
 		Params: []docs.Parameter{
 			{
-				Name:        "uid",
-				Description: "User ID",
-				Required:    true,
-				In:          "path",
-				Schema:      docs.IdSchema,
-			},
-			{
-				Name:        "bid",
+				Name:        "id",
 				Description: "Bot ID",
 				Required:    true,
 				In:          "path",
@@ -79,21 +70,7 @@ func Docs() *docs.Doc {
 }
 
 func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
-	id := chi.URLParam(r, "bid")
-
-	perms, err := teams.GetEntityPerms(d.Context, d.Auth.ID, "bot", id)
-
-	if err != nil {
-		state.Logger.Error("Failed to get entity perms: ", zap.Error(err), zap.String("userID", d.Auth.ID), zap.String("targetType", "bot"), zap.String("targetID", id))
-		return uapi.DefaultResponse(http.StatusInternalServerError)
-	}
-
-	if !kittycat.HasPerm(perms, kittycat.Permission{Namespace: "bot", Perm: teams.PermissionEdit}) {
-		return uapi.HttpResponse{
-			Status: http.StatusForbidden,
-			Json:   types.ApiError{Message: "You do not have permission to edit bot settings"},
-		}
-	}
+	id := chi.URLParam(r, "id")
 
 	// Read payload from body
 	var payload types.BotSettingsUpdate
@@ -105,7 +82,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	}
 
 	// Validate the payload
-	err = state.Validator.Struct(payload)
+	err := state.Validator.Struct(payload)
 
 	if err != nil {
 		errors := err.(validator.ValidationErrors)

@@ -60,6 +60,9 @@ func (b Router) Routes(r *chi.Mux) {
 				Type:   api.TargetTypeUser,
 			},
 		},
+		ExtData: map[string]any{
+			api.PERMISSION_CHECK_KEY: nil, // No authorization is needed for this endpoint beyond defaults
+		},
 	}.Route(r)
 
 	uapi.Route{
@@ -74,6 +77,9 @@ func (b Router) Routes(r *chi.Mux) {
 				Type:   api.TargetTypeUser,
 			},
 		},
+		ExtData: map[string]any{
+			api.PERMISSION_CHECK_KEY: nil, // No authorization is needed for this endpoint beyond defaults
+		},
 	}.Route(r)
 
 	uapi.Route{
@@ -87,6 +93,9 @@ func (b Router) Routes(r *chi.Mux) {
 				URLVar: "uid",
 				Type:   api.TargetTypeUser,
 			},
+		},
+		ExtData: map[string]any{
+			api.PERMISSION_CHECK_KEY: nil, // No authorization is needed for this endpoint beyond defaults
 		},
 	}.Route(r)
 }

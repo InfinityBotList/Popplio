@@ -8,7 +8,6 @@ import (
 	"popplio/routes/users/endpoints/get_user_perms"
 	"popplio/routes/users/endpoints/get_user_seo"
 	"popplio/routes/users/endpoints/patch_user_profile"
-	"popplio/routes/users/endpoints/reset_user_token"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/infinitybotlist/eureka/uapi"
@@ -42,6 +41,9 @@ func (b Router) Routes(r *chi.Mux) {
 				URLVar: "id",
 				Type:   api.TargetTypeUser,
 			},
+		},
+		ExtData: map[string]any{
+			api.PERMISSION_CHECK_KEY: nil, // No authorization is needed for this endpoint beyond defaults
 		},
 	}.Route(r)
 
@@ -81,19 +83,8 @@ func (b Router) Routes(r *chi.Mux) {
 				Type:   api.TargetTypeUser,
 			},
 		},
-	}.Route(r)
-
-	uapi.Route{
-		Pattern: "/users/{id}/token",
-		OpId:    "reset_user_token",
-		Method:  uapi.PATCH,
-		Docs:    reset_user_token.Docs,
-		Handler: reset_user_token.Route,
-		Auth: []uapi.AuthType{
-			{
-				URLVar: "id",
-				Type:   api.TargetTypeUser,
-			},
+		ExtData: map[string]any{
+			api.PERMISSION_CHECK_KEY: nil, // No authorization is needed for this endpoint beyond defaults
 		},
 	}.Route(r)
 }
