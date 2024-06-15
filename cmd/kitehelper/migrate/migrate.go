@@ -78,7 +78,7 @@ func Migrate(progname string, args []string) {
 		sandboxPoolWrapper.AllowCommit = false
 
 		if err := mig.HasMigrated(sandboxPoolWrapper); err != nil {
-			StatusGood("Already migrated, nothing to do here...")
+			StatusGood("Already migrated, nothing to do here: " + err.Error())
 			continue
 		}
 

@@ -15,6 +15,7 @@ import (
 	"popplio/types"
 	"popplio/validators"
 
+	"github.com/google/uuid"
 	"github.com/infinitybotlist/eureka/ratelimit"
 	"github.com/jackc/pgx/v5/pgtype"
 	"go.uber.org/zap"
@@ -114,7 +115,6 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	}
 
 	// Validate the payload
-
 	err = state.Validator.Struct(payload)
 
 	if err != nil {
@@ -197,10 +197,6 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 
 	id := internalData{}
 
-	if d.Auth.TargetType == api.TargetTypeTeam {
-		payload.TeamOwner = d.Auth.ID
-	}
-
 	id.Owner = d.Auth.ID
 	id.GuildCount = &metadata.GuildCount
 
@@ -237,6 +233,37 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	}
 
 	defer tx.Rollback(d.Context)
+
+	// Setup teams
+	if d.Auth.TargetType == api.TargetTypeTeam {
+		payload.TeamOwner = d.Auth.ID
+	}
+
+	if payload.TeamOwner == "" {
+		// Create new team
+		var teamId = uuid.New()
+
+		var vanityRef string
+		err = tx.QueryRow(d.Context, "INSERT INTO vanity (target_id, target_type, code) VALUES ($1, 'team', $2) RETURNING itag", teamId, metadata.Name+crypto.RandString(16)).Scan(&vanityRef)
+
+		if err != nil {
+			return uapi.HttpResponse{
+				Status: http.StatusBadRequest,
+				Json:   types.ApiError{Message: "Error while creating vanity: " + err.Error()},
+			}
+		}
+
+		_, err = tx.Exec(d.Context, "INSERT INTO teams (id, name, vanity_ref, service) VALUES ($1, $2, $3, 'api/add_bot')", teamId, metadata.Name, vanityRef)
+
+		if err != nil {
+			return uapi.HttpResponse{
+				Status: http.StatusBadRequest,
+				Json:   types.ApiError{Message: "Error while creating vanity: " + err.Error()},
+			}
+		}
+
+		payload.TeamOwner = teamId.String()
+	}
 
 	// Create vanity
 	var itag pgtype.UUID

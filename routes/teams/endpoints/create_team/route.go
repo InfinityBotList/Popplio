@@ -28,17 +28,9 @@ func Docs() *docs.Doc {
 	return &docs.Doc{
 		Summary:     "Create Team",
 		Description: "Creates a team. Returns a 201 with the team ID on success.",
-		Params: []docs.Parameter{
-			{
-				Name:        "id",
-				Description: "User ID",
-				Required:    true,
-				In:          "path",
-				Schema:      docs.IdSchema,
-			},
-		},
-		Req:  types.CreateEditTeam{},
-		Resp: types.CreateTeamResponse{},
+		Params:      []docs.Parameter{},
+		Req:         types.CreateEditTeam{},
+		Resp:        types.CreateTeamResponse{},
 	}
 }
 

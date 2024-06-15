@@ -14,7 +14,6 @@ import (
 	"popplio/routes/bots/endpoints/patch_bot_settings"
 	"popplio/routes/bots/endpoints/patch_bot_team"
 	"popplio/routes/bots/endpoints/post_bot_stats"
-	"popplio/routes/bots/endpoints/transfer_bot_to_team"
 	"popplio/teams"
 
 	"github.com/go-chi/chi/v5"
@@ -197,23 +196,6 @@ func (b Router) Routes(r *chi.Mux) {
 					return api.TargetTypeBot, chi.URLParam(r, "id")
 				},
 			},
-		},
-	}.Route(r)
-
-	uapi.Route{
-		Pattern: "/users/{uid}/bots/{bid}/teams",
-		OpId:    "transfer_bot_to_team",
-		Method:  uapi.PUT,
-		Docs:    transfer_bot_to_team.Docs,
-		Handler: transfer_bot_to_team.Route,
-		Auth: []uapi.AuthType{
-			{
-				Type:   api.TargetTypeUser,
-				URLVar: "uid",
-			},
-		},
-		ExtData: map[string]any{
-			api.PERMISSION_CHECK_KEY: nil, // No authorization is needed for this endpoint beyond defaults
 		},
 	}.Route(r)
 

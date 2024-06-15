@@ -14,6 +14,8 @@ import (
 	"kitehelper/downloader"
 	"kitehelper/migrate"
 
+	"github.com/bwmarrin/discordgo"
+	"github.com/google/uuid"
 	"github.com/infinitybotlist/eureka/crypto"
 	"github.com/jackc/pgx/v5/pgtype"
 )
@@ -799,7 +801,7 @@ var migs = []migrate.Migration{
 				return nil
 			}
 
-			return nil
+			return errors.New("avatars do not need migration")
 		},
 		Function: func(pool *common.SandboxPool) {
 			// Create bots directory
@@ -932,6 +934,128 @@ var migs = []migrate.Migration{
 
 			if len(failedIds) > 0 {
 				fmt.Println("Failed to migrate bot avatars with ids", strings.Join(failedIds, ","))
+			}
+		},
+	},
+	{
+		ID:   "migrate_bots_to_teams",
+		Name: "Migrate bot to teams",
+		HasMigrated: func(pool *common.SandboxPool) error {
+			if os.Getenv("MIGRATE_BOTS_TO_TEAMS_TOKEN") != "" {
+				return nil
+			}
+
+			return errors.New("this can only be run with MIGRATE_BOTS_TO_TEAMS_TOKEN set to a valid token")
+		},
+		Function: func(pool *common.SandboxPool) {
+			discordSess, err := common.NewDiscordSession(os.Getenv("MIGRATE_BOTS_TO_TEAMS_TOKEN"))
+
+			if err != nil {
+				panic(err)
+			}
+
+			tx, err := pool.Begin(ctx)
+
+			if err != nil {
+				panic(err)
+			}
+
+			defer tx.Rollback(ctx)
+
+			rows, err := pool.Query(context.Background(), "SELECT bot_id, owner FROM bots WHERE owner IS NOT NULL")
+
+			if err != nil {
+				panic(err)
+			}
+
+			defer rows.Close()
+
+			var botOwnerMap = map[string]string{}
+			for rows.Next() {
+				var botId string
+				var owner string
+
+				err = rows.Scan(&botId, &owner)
+
+				if err != nil {
+					panic(err)
+				}
+
+				botOwnerMap[botId] = owner
+			}
+
+			rows.Close()
+
+			for botId, ownerId := range botOwnerMap {
+				// Create new team with bots name and add the bot to it
+				var botObj *discordgo.User
+
+				if len(discordSess.State.Guilds) == 0 {
+					panic("No guilds found")
+				}
+
+				for _, g := range discordSess.State.Guilds {
+					member, err := discordSess.State.Member(g.ID, botId)
+
+					if errors.Is(err, discordgo.ErrStateNotFound) {
+						continue
+					}
+
+					if err != nil {
+						panic(err)
+					}
+
+					botObj = member.User
+					break
+				}
+
+				if botObj == nil {
+					fmt.Println("Bot ", botId, "not found in any guilds")
+
+					botObj, err = discordSess.User(ownerId)
+
+					if err != nil {
+						panic(err)
+					}
+				}
+
+				teamName := botObj.Username
+				teamId := uuid.New()
+
+				// Create vanity
+				var vanityItag string
+				err = tx.QueryRow(context.Background(), "INSERT INTO vanity (target_id, target_type, code) VALUES ($1, $2, $3) RETURNING itag", teamId, "team", teamName+crypto.RandString(8)).Scan(&vanityItag)
+
+				if err != nil {
+					panic(err)
+				}
+
+				// Create team
+				err = tx.Exec(context.Background(), "INSERT INTO teams (id, name, vanity_ref, service) VALUES ($1, $2, $3, 'automigrate')", teamId, teamName, vanityItag)
+
+				if err != nil {
+					panic(err)
+				}
+
+				// Add owner to team
+				err = tx.Exec(context.Background(), "INSERT INTO team_members (team_id, user_id, flags, service) VALUES ($1, $2, $3, 'automigrate')", teamId, ownerId, []string{"global.*"})
+
+				if err != nil {
+					panic(err)
+				}
+
+				// Update bot
+				err = tx.Exec(context.Background(), "UPDATE bots SET team_owner = $1, owner = NULL WHERE bot_id = $2", teamId, botId)
+
+				if err != nil {
+					panic(err)
+				}
+			}
+
+			err = tx.Commit(ctx)
+
+			if err != nil {
+				panic(err)
 			}
 		},
 	},

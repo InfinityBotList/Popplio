@@ -21,7 +21,7 @@ import (
 func Docs() *docs.Doc {
 	return &docs.Doc{
 		Summary: "Patch Bot Team",
-		Description: `Transfers a bot owned by a team to another team. 
+		Description: `Transfers a bot to another team. 
 
 Semantically equivalent to:
 - Remove bot in question from list

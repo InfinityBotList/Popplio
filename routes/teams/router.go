@@ -54,15 +54,14 @@ func (b Router) Routes(r *chi.Mux) {
 	}.Route(r)
 
 	uapi.Route{
-		Pattern: "/users/{id}/teams",
+		Pattern: "/teams",
 		OpId:    "create_team",
 		Method:  uapi.POST,
 		Docs:    create_team.Docs,
 		Handler: create_team.Route,
 		Auth: []uapi.AuthType{
 			{
-				Type:   api.TargetTypeUser,
-				URLVar: "id",
+				Type: api.TargetTypeUser,
 			},
 		},
 		ExtData: map[string]any{
