@@ -79,6 +79,9 @@ Officially recognized targets:
 			{
 				Name:        "team_includes",
 				Description: "If the bot is team-owned, what entities of the team to include",
+				Required:    false,
+				In:          "query",
+				Schema:      docs.IdSchema,
 			},
 		},
 		Resp: types.Bot{},
@@ -233,7 +236,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 				}
 			}
 
-			eto.Entities, err = resolvers.GetTeamEntities(d.Context, bot.TeamOwner.ID, includesSplit)
+			eto.Entities, err = resolvers.GetTeamEntities(d.Context, eto.ID, includesSplit)
 
 			if err != nil {
 				state.Logger.Error("Error while getting team entities", zap.Error(err), zap.String("id", id), zap.String("target", target), zap.String("teamOwner", validators.EncodeUUID(bot.TeamOwnerID.Bytes)))
@@ -244,10 +247,10 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 					},
 				}
 			}
-		}
-
-		eto.Entities = &types.TeamEntities{
-			Targets: []string{}, // We don't provide any entities right now, may change
+		} else {
+			eto.Entities = &types.TeamEntities{
+				Targets: []string{}, // We don't provide any entities right now, may change
+			}
 		}
 
 		eto.Banner = assetmanager.BannerInfo(assetmanager.AssetTargetTypeTeams, eto.ID)
