@@ -5,8 +5,10 @@ import (
 	"slices"
 
 	"popplio/types"
+	"popplio/validators"
 	"popplio/webhooks/core/events"
 
+	"github.com/go-chi/chi/v5"
 	docs "github.com/infinitybotlist/eureka/doclib"
 	"github.com/infinitybotlist/eureka/uapi"
 )
@@ -43,7 +45,7 @@ func Docs() *docs.Doc {
 }
 
 func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
-	targetType := r.URL.Query().Get("target_type")
+	targetType := validators.NormalizeTargetType(chi.URLParam(r, "target_type"))
 
 	var data = types.GetTestWebhookMeta{}
 

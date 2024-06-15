@@ -5,6 +5,7 @@ import (
 	"popplio/db"
 	"popplio/state"
 	"popplio/types"
+	"popplio/validators"
 	"strconv"
 	"strings"
 
@@ -56,7 +57,7 @@ func Docs() *docs.Doc {
 }
 
 func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
-	targetType := r.URL.Query().Get("target_type")
+	targetType := validators.NormalizeTargetType(chi.URLParam(r, "target_type"))
 	targetId := chi.URLParam(r, "target_id")
 
 	page := r.URL.Query().Get("page")

@@ -8,6 +8,7 @@ import (
 
 	"popplio/state"
 	"popplio/types"
+	"popplio/validators"
 	"popplio/webhooks/core/drivers"
 	"popplio/webhooks/core/events"
 
@@ -53,7 +54,7 @@ func Docs() *docs.Doc {
 }
 
 func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
-	targetType := r.URL.Query().Get("target_type")
+	targetType := validators.NormalizeTargetType(chi.URLParam(r, "target_type"))
 	targetId := chi.URLParam(r, "target_id")
 	eventType := r.URL.Query().Get("event")
 
