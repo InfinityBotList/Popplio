@@ -25,13 +25,12 @@ type IndexBot struct {
 	ApproximateVotes int                     `db:"approximate_votes" json:"approximate_votes" description:"The bot's approximate vote count, used for home page listing etc."`
 	Shards           int                     `db:"shards" json:"shards" description:"The bot's shard count"`
 	Library          string                  `db:"library" json:"library" description:"The bot's library"`
-	InviteClick      int                     `db:"invite_clicks" json:"invite_clicks" description:"The bot's invite click count (via users inviting the bot from IBL)"`
-	Clicks           int                     `db:"clicks" json:"clicks" description:"The bot's view count"`
 	Servers          int                     `db:"servers" json:"servers" description:"The bot's server count"`
 	NSFW             bool                    `db:"nsfw" json:"nsfw" description:"Whether the bot is NSFW or not"`
 	Tags             []string                `db:"tags" json:"tags" description:"The bot's tags (e.g. music, moderation, etc.)"`
 	Premium          bool                    `db:"premium" json:"premium" description:"Whether the bot is a premium bot or not"`
 	Banner           *AssetMetadata          `db:"-" json:"banner" description:"Banner information/metadata" ci:"internal"` // Must be parsed internally
+	CreatedAt        pgtype.Timestamptz      `db:"created_at" json:"created_at" description:"The creation date of the cache server"`
 }
 
 type BotStats struct {

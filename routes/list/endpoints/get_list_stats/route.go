@@ -61,7 +61,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	}
 
 	var totalVotes int64
-	err = state.Pool.QueryRow(d.Context, "SELECT SUM(votes) FROM bots").Scan(&totalVotes)
+	err = state.Pool.QueryRow(d.Context, "SELECT SUM(approximate_votes) FROM bots").Scan(&totalVotes)
 
 	if err != nil {
 		state.Logger.Error("Failed to fetch total vote count", zap.Error(err))
