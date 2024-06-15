@@ -38,15 +38,7 @@ type Webhook struct {
 }
 
 // Represents the data to be sent to create a webhook
-type CreateWebhook struct {
-	Name           string   `json:"name" description:"The name of the webhook." validate:"required"`
-	Url            string   `json:"url" description:"The URL of the webhook." validate:"required"`
-	Secret         string   `json:"secret" description:"The secret of the webhook, only needed for custom (non-discord) webhooks"`
-	SimpleAuth     bool     `json:"simple_auth" description:"Whether the webhook should use simple auth (unencrypted, just authentication headers) or not."`
-	EventWhitelist []string `json:"event_whitelist" description:"The events that are whitelisted for this webhook. Note that if unset, all events are whitelisted."`
-}
-
-type PatchWebhook struct {
+type CreateEditWebhook struct {
 	Name           string   `json:"name" description:"The name of the webhook." validate:"required"`
 	Url            string   `json:"url" description:"The URL of the webhook." validate:"required"`
 	Secret         string   `json:"secret" description:"The secret of the webhook, only needed for custom (non-discord) webhooks"`

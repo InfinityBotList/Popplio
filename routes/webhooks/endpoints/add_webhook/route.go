@@ -20,13 +20,13 @@ import (
 
 const MaximumWebhookCount = 5
 
-var compiledMessages = uapi.CompileValidationErrors(types.CreateWebhook{})
+var compiledMessages = uapi.CompileValidationErrors(types.CreateEditWebhook{})
 
 func Docs() *docs.Doc {
 	return &docs.Doc{
 		Summary:     "Create Webhook",
 		Description: "Creates a new webhook for an entity. Returns 204 on success. **Requires Create Webhooks permission**",
-		Req:         types.CreateWebhook{},
+		Req:         types.CreateEditWebhook{},
 		Resp:        types.ApiError{},
 		Params: []docs.Parameter{
 			{
@@ -70,7 +70,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	}
 
 	// Read payload from body
-	var payload types.CreateWebhook
+	var payload types.CreateEditWebhook
 
 	hresp, ok := uapi.MarshalReq(r, &payload)
 
