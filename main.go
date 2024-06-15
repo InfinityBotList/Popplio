@@ -110,12 +110,12 @@ func main() {
 		URL:         state.Config.Sites.API.Parse(),
 		ErrorStruct: types.ApiError{},
 		Info: docs.Info{
-			Title:          "Infinity Bot List API",
+			Title:          "Infinity List API",
 			TermsOfService: "https://infinitybotlist.com/terms",
 			Version:        "7.0",
 			Description:    "",
 			Contact: docs.Contact{
-				Name:  "Infinity Bot List",
+				Name:  "Infinity List",
 				URL:   "https://infinitybotlist.com",
 				Email: "support@infinitybots.gg",
 			},

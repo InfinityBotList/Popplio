@@ -310,7 +310,7 @@ func reviewLogicStaff(d uapi.RouteData, resp types.AppResponse, reason string, a
 			Embeds: []*discordgo.MessageEmbed{
 				{
 					Title:       "Staff Application Denied",
-					Description: "Unfortunately, we have denied your staff application for Infinity Bot List. You may reapply later if you wish to",
+					Description: "Unfortunately, we have denied your staff application for Infinity List. You may reapply later if you wish to",
 					Color:       0x00ff00,
 					Fields: []*discordgo.MessageEmbedField{
 						{
