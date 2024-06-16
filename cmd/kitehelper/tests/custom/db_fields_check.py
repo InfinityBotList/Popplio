@@ -13,7 +13,6 @@ class Schema(pydantic.BaseModel):
     array: bool
     default_sql: str | None = None
     default_val: typing.Any | None = None
-    secret: bool
 
 class SchemaList(pydantic.BaseModel):
     schemas: list[Schema]
@@ -98,6 +97,9 @@ for struct_name, struct in structs.items():
 
     field_db_col_names = []
 
+    ignore_fields = struct.attrs.get("ignore_fields", "").split("+")
+    field_db_col_names.extend(ignore_fields) # Ensure we ignore these fields
+
     for field in struct.fields:
         if field.tags.get("skip"):
             field_db_col_names.append(field.tags.get("skip"))
@@ -121,10 +123,6 @@ for struct_name, struct in structs.items():
         
         found = ci_schema.column_name in field_db_col_names
 
-        if not ci_schema.secret and not found:
+        if not found:
             print(f"FATAL: {ci_schema.table_name}.{ci_schema.column_name} is missing from {struct_name}")
-            exit(1)
-        
-        if ci_schema.secret and found:
-            print(f"FATAL: {ci_schema.table_name}.{ci_schema.column_name} is marked as secret but is in {struct_name}")
             exit(1)

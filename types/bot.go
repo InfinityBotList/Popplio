@@ -42,7 +42,7 @@ type BotStats struct {
 	ShardList []uint64 `json:"shard_list" description:"The shard list"`
 }
 
-// @ci table=bots
+// @ci table=bots, ignore_fields=api_token+unique_clicks
 //
 // Bot represents a bot.
 type Bot struct {

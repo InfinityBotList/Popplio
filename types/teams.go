@@ -24,22 +24,23 @@ type PermissionData struct {
 //
 // Team represents a team on Infinity List.
 type Team struct {
-	ID         string         `db:"id" json:"id" description:"The ID of the team"`
-	Name       string         `db:"name" json:"name" description:"The name of the team"`
-	Avatar     *AssetMetadata `db:"-" json:"avatar" description:"The avatar of the team" ci:"internal"`      // This is an asset that must be validated/loaded from CDN
-	Banner     *AssetMetadata `db:"-" json:"banner" description:"Banner information/metadata" ci:"internal"` // This is an asset that must be validated/loaded from CDN
-	Short      pgtype.Text    `db:"short" json:"short" description:"The teams's short description if it has one, otherwise null"`
-	Tags       []string       `db:"tags" json:"tags" description:"The teams's tags if it has any, otherwise null"`
-	VoteBanned bool           `db:"vote_banned" json:"vote_banned" description:"Whether the team is banned from voting"`
-	Votes      int            `db:"-" json:"votes" description:"The team's vote count" ci:"internal"` // Votes are retrieved from entity_votes
-	ExtraLinks []Link         `db:"extra_links" json:"extra_links" description:"The teams's links that it wishes to advertise"`
-	Entities   *TeamEntities  `db:"-" json:"entities" description:"The entities of the team" ci:"internal"` // Must be handled internally
-	NSFW       bool           `db:"nsfw" json:"nsfw" description:"Whether the team is NSFW (primarily makes NSFW content)"`
-	VanityRef  pgtype.UUID    `db:"vanity_ref" json:"vanity_ref" description:"The corresponding vanities itag, this also works to ensure that all teams have an associated vanity"`
-	Vanity     string         `db:"-" json:"vanity" description:"The team's vanity URL" ci:"internal"` // Must be parsed internally
-	Service    string         `db:"service" json:"service" description:"The service which added the team (api/infernoplex) etc."`
-	CreatedAt  time.Time      `db:"created_at" json:"created_at" description:"The time the team was created"`
-	UpdatedAt  time.Time      `db:"updated_at" json:"updated_at" description:"The time the team was last updated"`
+	ID               string         `db:"id" json:"id" description:"The ID of the team"`
+	Name             string         `db:"name" json:"name" description:"The name of the team"`
+	Avatar           *AssetMetadata `db:"-" json:"avatar" description:"The avatar of the team" ci:"internal"`      // This is an asset that must be validated/loaded from CDN
+	Banner           *AssetMetadata `db:"-" json:"banner" description:"Banner information/metadata" ci:"internal"` // This is an asset that must be validated/loaded from CDN
+	Short            pgtype.Text    `db:"short" json:"short" description:"The teams's short description if it has one, otherwise null"`
+	Tags             []string       `db:"tags" json:"tags" description:"The teams's tags if it has any, otherwise null"`
+	VoteBanned       bool           `db:"vote_banned" json:"vote_banned" description:"Whether the team is banned from voting"`
+	ApproximateVotes int            `db:"approximate_votes" json:"approximate_votes" description:"The team's approximate vote count."`
+	Votes            int            `db:"-" json:"votes" description:"The team's vote count" ci:"internal"` // Votes are retrieved from entity_votes
+	ExtraLinks       []Link         `db:"extra_links" json:"extra_links" description:"The teams's links that it wishes to advertise"`
+	Entities         *TeamEntities  `db:"-" json:"entities" description:"The entities of the team" ci:"internal"` // Must be handled internally
+	NSFW             bool           `db:"nsfw" json:"nsfw" description:"Whether the team is NSFW (primarily makes NSFW content)"`
+	VanityRef        pgtype.UUID    `db:"vanity_ref" json:"vanity_ref" description:"The corresponding vanities itag, this also works to ensure that all teams have an associated vanity"`
+	Vanity           string         `db:"-" json:"vanity" description:"The team's vanity URL" ci:"internal"` // Must be parsed internally
+	Service          string         `db:"service" json:"service" description:"The service which added the team (api/infernoplex) etc."`
+	CreatedAt        time.Time      `db:"created_at" json:"created_at" description:"The time the team was created"`
+	UpdatedAt        time.Time      `db:"updated_at" json:"updated_at" description:"The time the team was last updated"`
 }
 
 type TeamBulkFetch struct {

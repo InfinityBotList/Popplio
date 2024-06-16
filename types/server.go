@@ -29,7 +29,7 @@ type IndexServer struct {
 	Banner           *AssetMetadata `db:"-" json:"banner" description:"Banner information/metadata" ci:"internal"` // Must be parsed internally
 }
 
-// @ci table=servers
+// @ci table=servers, ignore_fields=invite+blacklisted_users+api_token+unique_clicks
 //
 // Server represents a server.
 type Server struct {

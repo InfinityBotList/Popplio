@@ -30,7 +30,7 @@ type TestAuth struct {
 	Token    string `json:"token"`
 }
 
-// @ci table=web_api_tokens
+// @ci table=api_sessions ignore_fields=token
 //
 // Represents a 'web API token' (e.g. a session token) in the database.
 type Session struct {

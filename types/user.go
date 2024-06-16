@@ -13,7 +13,7 @@ const (
 	ServerListingUserExperiment UserExperiment = "SERVER_LISTING"
 )
 
-// @ci table=users
+// @ci table=users ignore_fields=api_token
 type User struct {
 	ITag                  pgtype.UUID             `db:"itag" json:"itag" description:"The user's internal ID. An artifact of database migrations."`
 	ID                    string                  `db:"user_id" json:"-"`

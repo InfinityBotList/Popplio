@@ -371,6 +371,8 @@ func EntityPostVote(ctx context.Context, c DbConn, targetType, targetId string) 
 		_, err = c.Exec(ctx, "UPDATE bots SET approximate_votes = $1 WHERE bot_id = $2", nvc, targetId)
 	case "server":
 		_, err = c.Exec(ctx, "UPDATE servers SET approximate_votes = $1 WHERE server_id = $2", nvc, targetId)
+	case "team":
+		_, err = c.Exec(ctx, "UPDATE teams SET approximate_votes = $1 WHERE id = $2", nvc, targetId)
 	}
 
 	if err != nil {
