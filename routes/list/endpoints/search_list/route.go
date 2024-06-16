@@ -22,8 +22,19 @@ import (
 )
 
 var (
-	indexBotColsArr = db.GetCols(types.IndexBot{})
-	indexBotCols    = strings.Join(indexBotColsArr, ",")
+	indexBotColsArr           = db.GetCols(types.IndexBot{})
+	indexBotColsWithPrefixArr = func() []string {
+		// Prefix all columns with bots.
+		var cols []string
+
+		for _, col := range indexBotColsArr {
+			cols = append(cols, "bots."+col)
+		}
+
+		return cols
+	}()
+
+	indexBotColsWithPrefix = strings.Join(indexBotColsWithPrefixArr, ",")
 
 	indexServerColsArr = db.GetCols(types.IndexServer{})
 	indexServerCols    = strings.Join(indexServerColsArr, ",")
@@ -122,7 +133,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 			err = botSqlTemplate.Execute(sqlString, searchSqlTemplateCtx{
 				Query:   payload.Query,
 				TagMode: payload.TagFilter.TagMode,
-				Cols:    indexBotCols,
+				Cols:    indexBotColsWithPrefix, // We need to prefix the columns with bots. to avoid ambiguity
 				PlatformTables: []string{
 					dovewing.TableName(state.DovewingPlatformDiscord),
 				},
