@@ -32,7 +32,7 @@ type TestAuth struct {
 
 // @ci table=api_sessions ignore_fields=token
 //
-// Represents a 'web API token' (e.g. a session token) in the database.
+// Represents a session that can be used to authorize/identify a user
 type Session struct {
 	ID         string      `db:"id" json:"id" description:"The ID of the session"`
 	Name       pgtype.Text `db:"name" json:"name,omitempty" description:"The name of the session. Login sessions do not have any names by default"`
