@@ -49,7 +49,7 @@ type ShopCoupon struct {
 	Code              string                  `db:"code" json:"code" description:"The code of the shop coupon"`
 	Public            bool                    `db:"public" json:"public" description:"Whether the coupon is publicly listable or not"`
 	MaxUses           *int                    `db:"max_uses" json:"max_uses" description:"The maximum number of times the coupon can be used. If null, the coupon can be used infinitely"`
-	Cents             float64                 `db:"cents" json:"cents" description:"The cost of the shop item in cents"`
+	Cents             *float64                `db:"cents" json:"cents" description:"The cost of the shop item in cents. If null, the coupon applies dynamically to cover the full cost of the item"`
 	Requirements      []string                `db:"requirements" json:"requirements" description:"The requirements that must be met to use the coupon"`
 	AllowedUsers      []string                `db:"allowed_users" json:"allowed_users" description:"The users that are allowed to use the coupon. If empty, all users can use the coupon"`
 	CreatedAt         time.Time               `db:"created_at" json:"created_at" description:"The time the shop coupon was created"`
