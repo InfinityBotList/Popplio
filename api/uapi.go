@@ -133,7 +133,7 @@ func Authorize(r uapi.Route, req *http.Request) (uapi.AuthData, uapi.HttpRespons
 	var targetType string
 	var permLimits []string
 
-	err = state.Pool.QueryRow(state.Context, "SELECT id, target_id, target_type, perm_limits FROM api_sessions WHERE token = $1", authHeader).Scan(&sessId, &targetId, &targetType, &permLimits)
+	err = state.Pool.QueryRow(state.Context, "SELECT id, target_id, target_type, perm_limits FROM api_sessions WHERE token = $1 AND expiry > NOW()", authHeader).Scan(&sessId, &targetId, &targetType, &permLimits)
 
 	if errors.Is(err, pgx.ErrNoRows) {
 		return uapi.AuthData{}, uapi.HttpResponse{
