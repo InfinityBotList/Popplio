@@ -165,14 +165,14 @@ Some points to note:
 				ID:          "why",
 				Question:    "Why do you want to partner with us?",
 				Paragraph:   "Why do you want to partner with us? Be specific",
-				Placeholder: "I want to partner with Infinity Bot List because...",
+				Placeholder: "I want to partner with Infinity List because...",
 				Short:       true,
 			},
 			{
 				ID:          "how",
 				Question:    "How will you promote us?",
-				Paragraph:   "How will you promote Infinity Bot List? This could be a partner command or a link on your website!",
-				Placeholder: "I will promote Infinity Bot List using...",
+				Paragraph:   "How will you promote Infinity List? This could be a partner command or a link on your website!",
+				Placeholder: "I will promote Infinity List using...",
 				Short:       true,
 			},
 			{
