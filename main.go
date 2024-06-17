@@ -12,6 +12,7 @@ import (
 
 	"popplio/api"
 	poplapps "popplio/apps"
+	"popplio/config"
 	"popplio/constants"
 	"popplio/notifications/votereminders"
 	"popplio/routes/alerts"
@@ -194,9 +195,19 @@ func main() {
 	})
 
 	r.Get("/docs/{srv}", func(w http.ResponseWriter, r *http.Request) {
-		var docMap = map[string]string{
-			"popplio": "/openapi",
-			"arcadia": "https://prod--panel-api.infinitybots.gg/openapi",
+		var docMap map[string]string
+		if config.CurrentEnv == "staging" {
+			docMap = map[string]string{
+				"popplio":     "/openapi",
+				"arcadia":     "https://staging--panel-api.infinitybots.gg/openapi",
+				"infernoplex": "https://infernoplex-staging.infinitybots.gg/openapi",
+			}
+		} else {
+			docMap = map[string]string{
+				"popplio":     "/openapi",
+				"arcadia":     "https://prod--panel-api.infinitybots.gg/openapi",
+				"infernoplex": "https://infernoplex.infinitybots.gg/openapi",
+			}
 		}
 
 		srv := chi.URLParam(r, "srv")
