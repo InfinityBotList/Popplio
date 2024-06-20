@@ -30,6 +30,9 @@ const (
 	// Ability to edit settings for the entity
 	PermissionEdit Permission = "edit"
 
+	// Ability to be invited to the entity
+	PermissionInvite Permission = "invite"
+
 	// Ability to resubmit the entity
 	PermissionResubmit Permission = "resubmit"
 
@@ -118,6 +121,15 @@ var PermDetails = []types.PermissionData{
 			"server",
 			"team",
 			"team_member",
+		},
+	},
+	{
+		ID:   PermissionInvite,
+		Name: "{entity} Invite Permission",
+		Desc: "Ability to be invited to the {entity}",
+		SupportedEntities: []string{
+			"global",
+			"server",
 		},
 	},
 	{
