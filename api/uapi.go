@@ -36,15 +36,20 @@ const (
 
 // Returns all possible auth types
 func GetAllAuthTypes() []uapi.AuthType {
-	if len(uapi.State.AuthTypeMap) == 0 {
-		panic("No auth types defined")
+	return []uapi.AuthType{
+		{
+			Type: TargetTypeUser,
+		},
+		{
+			Type: TargetTypeBot,
+		},
+		{
+			Type: TargetTypeServer,
+		},
+		{
+			Type: TargetTypeTeam,
+		},
 	}
-
-	var types []uapi.AuthType
-	for k := range uapi.State.AuthTypeMap {
-		return append(types, uapi.AuthType{Type: k})
-	}
-	return types
 }
 
 type DefaultResponder struct{}
@@ -162,6 +167,7 @@ func Authorize(r uapi.Route, req *http.Request) (uapi.AuthData, uapi.HttpRespons
 		}, false
 	}
 
+	state.Logger.Info("All auth types", zap.Any("auth", r.Auth))
 	for _, auth := range r.Auth {
 		// There are two cases, one with a URLVar (such as /bots/stats) and one without
 
@@ -170,6 +176,7 @@ func Authorize(r uapi.Route, req *http.Request) (uapi.AuthData, uapi.HttpRespons
 		}
 
 		if targetType != auth.Type {
+			state.Logger.Info("Ignoring auth type", zap.String("authType", auth.Type), zap.String("targetType", targetType))
 			continue
 		}
 
@@ -369,12 +376,13 @@ func Setup() {
 	uapi.SetupState(uapi.UAPIState{
 		Logger:    state.Logger,
 		Authorize: Authorize,
-		AuthTypeMap: map[string]string{
-			TargetTypeUser:   TargetTypeUser,
-			TargetTypeBot:    TargetTypeBot,
-			TargetTypeServer: TargetTypeServer,
-			TargetTypeTeam:   TargetTypeTeam,
-		},
+		AuthTypeMap: func() map[string]string {
+			var m = make(map[string]string)
+			for _, auth := range GetAllAuthTypes() {
+				m[auth.Type] = auth.Type
+			}
+			return m
+		}(),
 		Context: state.Context,
 		Constants: &uapi.UAPIConstants{
 			ResourceNotFound:    constants.ResourceNotFound,

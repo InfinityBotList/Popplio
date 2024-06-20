@@ -30,7 +30,7 @@ func ResolveIndexBot(ctx context.Context, bot *types.IndexBot) error {
 	}
 
 	bot.Vanity = code
-	bot.Banner = assetmanager.BannerInfo(assetmanager.AssetTargetTypeBots, bot.BotID)
+	bot.Banner = assetmanager.BannerInfo(assetmanager.AssetTargetTypeBot, bot.BotID)
 
 	bot.Votes, err = votes.EntityGetVoteCount(ctx, state.Pool, bot.BotID, "bot")
 

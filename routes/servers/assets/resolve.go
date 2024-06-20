@@ -19,8 +19,8 @@ func ResolveIndexServer(ctx context.Context, server *types.IndexServer) error {
 	}
 
 	server.Vanity = code
-	server.Avatar = assetmanager.AvatarInfo(assetmanager.AssetTargetTypeServers, server.ServerID)
-	server.Banner = assetmanager.BannerInfo(assetmanager.AssetTargetTypeServers, server.ServerID)
+	server.Avatar = assetmanager.AvatarInfo(assetmanager.AssetTargetTypeServer, server.ServerID)
+	server.Banner = assetmanager.BannerInfo(assetmanager.AssetTargetTypeServer, server.ServerID)
 
 	server.Votes, err = votes.EntityGetVoteCount(ctx, state.Pool, server.ServerID, "server")
 

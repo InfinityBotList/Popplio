@@ -68,7 +68,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 			return uapi.DefaultResponse(http.StatusInternalServerError)
 		}
 
-		partners[i].Avatar = assetmanager.AvatarInfo(assetmanager.AssetTargetTypePartners, partners[i].ID)
+		partners[i].Avatar = assetmanager.AvatarInfo(assetmanager.AssetTargetTypePartner, partners[i].ID)
 	}
 
 	rows, err = state.Pool.Query(d.Context, "SELECT "+partnerTypesCols+" FROM partner_types ORDER BY created_at DESC")

@@ -64,7 +64,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 
 	var rows pgx.Rows
 
-	rows, err = state.Pool.Query(d.Context, "SELECT "+indexServerCols+" FROM servers ORDER BY created_at DESC LIMIT $1 OFFSET $2", limit, offset)
+	rows, err = state.Pool.Query(d.Context, "SELECT "+indexServerCols+" FROM servers WHERE (type = 'approved' OR type = 'certified') AND state = 'public' ORDER BY created_at DESC LIMIT $1 OFFSET $2", limit, offset)
 
 	if err != nil {
 		state.Logger.Error("Failed to query servers [db query]", zap.Error(err), zap.Uint64("page", pageNum), zap.Int("limit", limit), zap.Uint64("offset", offset))

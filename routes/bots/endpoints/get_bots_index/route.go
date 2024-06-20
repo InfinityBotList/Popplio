@@ -2,6 +2,7 @@ package get_bots_index
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"strings"
 
@@ -137,6 +138,9 @@ func processRow(ctx context.Context, rows pgx.Rows) ([]types.IndexBot, error) {
 
 	// Set the user for each bot
 	for i := range bots {
+		if bots[i].Type != "approved" && bots[i].Type != "certified" {
+			return nil, fmt.Errorf("internal error: bot %s has invalid type %s", bots[i].BotID, bots[i].Type)
+		}
 		err := botAssets.ResolveIndexBot(ctx, &bots[i])
 
 		if err != nil {

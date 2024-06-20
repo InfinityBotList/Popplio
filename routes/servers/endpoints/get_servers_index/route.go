@@ -2,6 +2,7 @@ package get_servers_index
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"strings"
 
@@ -33,7 +34,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	listIndex := types.ListIndexServer{}
 
 	// Certified Servers
-	certRows, err := state.Pool.Query(d.Context, "SELECT "+indexServersCols+" FROM servers WHERE type = 'certified' ORDER BY approximate_votes DESC LIMIT 9")
+	certRows, err := state.Pool.Query(d.Context, "SELECT "+indexServersCols+" FROM servers WHERE state = 'public' AND type = 'certified' ORDER BY approximate_votes DESC LIMIT 9")
 	if err != nil {
 		state.Logger.Error("Error while getting certified servers", zap.Error(err))
 		return uapi.DefaultResponse(http.StatusInternalServerError)
@@ -45,7 +46,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	}
 
 	// Premium Servers
-	premRows, err := state.Pool.Query(d.Context, "SELECT "+indexServersCols+" FROM servers WHERE premium = true ORDER BY approximate_votes  DESC LIMIT 9")
+	premRows, err := state.Pool.Query(d.Context, "SELECT "+indexServersCols+" FROM servers WHERE state = 'public' AND premium = true ORDER BY approximate_votes  DESC LIMIT 9")
 	if err != nil {
 		state.Logger.Error("Error while getting premium servers", zap.Error(err))
 		return uapi.DefaultResponse(http.StatusInternalServerError)
@@ -57,7 +58,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	}
 
 	// Most Viewed Servers
-	mostViewedRows, err := state.Pool.Query(d.Context, "SELECT "+indexServersCols+" FROM servers WHERE type = 'approved' OR type = 'certified' ORDER BY clicks DESC LIMIT 9")
+	mostViewedRows, err := state.Pool.Query(d.Context, "SELECT "+indexServersCols+" FROM servers WHERE state = 'public' AND (type = 'approved' OR type = 'certified') ORDER BY clicks DESC LIMIT 9")
 	if err != nil {
 		state.Logger.Error("Error while getting most viewed servers", zap.Error(err))
 		return uapi.DefaultResponse(http.StatusInternalServerError)
@@ -69,7 +70,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	}
 
 	// Recently Added Servers
-	recentlyAddedRows, err := state.Pool.Query(d.Context, "SELECT "+indexServersCols+" FROM servers WHERE type = 'approved' ORDER BY created_at DESC LIMIT 9")
+	recentlyAddedRows, err := state.Pool.Query(d.Context, "SELECT "+indexServersCols+" FROM servers WHERE state = 'public' AND type = 'approved' ORDER BY created_at DESC LIMIT 9")
 	if err != nil {
 		state.Logger.Error("Error while getting recently added servers", zap.Error(err))
 		return uapi.DefaultResponse(http.StatusInternalServerError)
@@ -81,7 +82,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	}
 
 	// Top Voted Servers
-	topVotedRows, err := state.Pool.Query(d.Context, "SELECT "+indexServersCols+" FROM servers WHERE type = 'approved' OR type = 'certified' ORDER BY approximate_votes  DESC LIMIT 9")
+	topVotedRows, err := state.Pool.Query(d.Context, "SELECT "+indexServersCols+" FROM servers WHERE state = 'public' AND (type = 'approved' OR type = 'certified') ORDER BY approximate_votes  DESC LIMIT 9")
 	if err != nil {
 		state.Logger.Error("Error while getting top voted servers", zap.Error(err))
 		return uapi.DefaultResponse(http.StatusInternalServerError)
@@ -105,6 +106,10 @@ func processRow(ctx context.Context, rows pgx.Rows) ([]types.IndexServer, error)
 	}
 
 	for i := range servers {
+		if (servers[i].Type != "approved" && servers[i].Type != "certified") || servers[i].State != "public" {
+			return nil, fmt.Errorf("internal error: servers %s has invalid type %s or state %s", servers[i].ServerID, servers[i].Type, servers[i].State)
+		}
+
 		err := assets.ResolveIndexServer(ctx, &servers[i])
 
 		if err != nil {

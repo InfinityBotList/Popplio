@@ -26,14 +26,14 @@ func Docs() *docs.Doc {
 		Params: []docs.Parameter{
 			{
 				Name:        "target_type",
-				Description: "The target type of the tntity",
+				Description: "The target type of the entity",
 				Required:    true,
 				In:          "path",
 				Schema:      docs.IdSchema,
 			},
 			{
 				Name:        "target_id",
-				Description: "The bot ID",
+				Description: "The target ID of the entity",
 				Required:    true,
 				In:          "path",
 				Schema:      docs.IdSchema,
@@ -71,16 +71,15 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		}
 	}
 
-	uid := chi.URLParam(r, "uid")
 	targetId := chi.URLParam(r, "target_id")
 	targetType := validators.NormalizeTargetType(chi.URLParam(r, "target_type"))
 	assetType := r.URL.Query().Get("type")
 
-	if uid == "" || targetId == "" || targetType == "" || assetType == "" {
+	if targetId == "" || targetType == "" || assetType == "" {
 		return uapi.HttpResponse{
 			Status:  http.StatusBadRequest,
 			Headers: limit.Headers(),
-			Json:    types.ApiError{Message: "uid, target_id, target_type and type must be specified"},
+			Json:    types.ApiError{Message: "Both target_id, target_type and type must be specified"},
 		}
 	}
 
@@ -115,7 +114,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		}
 	}
 
-	tt, err := assetmanager.AssetTargetTypeFromString(targetType)
+	tt, err := assetmanager.AssetTargetTypeFromTargetType(targetType)
 
 	if err != nil {
 		return uapi.HttpResponse{

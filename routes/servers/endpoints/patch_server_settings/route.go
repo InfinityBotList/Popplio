@@ -129,7 +129,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	}
 
 	// Resolve the avatar
-	avatar := assetmanager.AvatarInfo(assetmanager.AssetTargetTypeServers, id)
+	avatar := assetmanager.AvatarInfo(assetmanager.AssetTargetTypeServer, id)
 
 	// Send a message to the bot logs channel
 	state.Discord.ChannelMessageSendComplex(state.Config.Channels.ModLogs, &discordgo.MessageSend{

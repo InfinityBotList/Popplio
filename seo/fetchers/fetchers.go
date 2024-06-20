@@ -31,7 +31,7 @@ func (t *TeamFetcher) Fetch(ctx context.Context, mg *seo.MapGenerator, id string
 		return nil, err
 	}
 
-	a := assetmanager.AvatarInfo(assetmanager.AssetTargetTypeTeams, id)
+	a := assetmanager.AvatarInfo(assetmanager.AssetTargetTypeTeam, id)
 
 	return &seo.Entity{
 		ID:        id,

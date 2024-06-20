@@ -30,7 +30,7 @@ func Docs() *docs.Doc {
 }
 
 func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
-	rows, err := state.Pool.Query(d.Context, "SELECT "+indexServerCols+" FROM servers WHERE (type = 'approved' OR type = 'certified') ORDER BY RANDOM() LIMIT 3")
+	rows, err := state.Pool.Query(d.Context, "SELECT "+indexServerCols+" FROM servers WHERE (type = 'approved' OR type = 'certified') AND state = 'public' ORDER BY RANDOM() LIMIT 3")
 
 	if err != nil {
 		state.Logger.Error("Failed to query servers [db query]", zap.Error(err))

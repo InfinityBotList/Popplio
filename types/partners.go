@@ -10,16 +10,16 @@ import (
 //
 // Partner represents a IBL partner.
 type Partner struct {
-	ID             string                  `db:"id" json:"id" description:"The partners ID" validate:"required"`
-	Name           string                  `db:"name" json:"name" description:"The partners name" validate:"required"`
-	Avatar         *AssetMetadata          `db:"-" json:"avatar" description:"The partners avatar" ci:"internal"` // Must be parsed internally
-	Short          string                  `db:"short" json:"short" description:"Short description of the partner" validate:"required"`
-	Links          []Link                  `db:"links" json:"links" description:"Links of the partners" validate:"required,min=1,max=2"`
-	Type           string                  `db:"type" json:"type" description:"Type of partner" validate:"required"`
-	CreatedAt      time.Time               `db:"created_at" json:"created_at" description:"When the partner was created on DB" validate:"required"`
-	UserID         string                  `db:"user_id" json:"-" description:"User ID of the partner. Is an internal field" validate:"required"`
-	User           *dovetypes.PlatformUser `db:"-" json:"user" description:"The partner's user information" ci:"internal"` // Must be parsed internally
-	AssociatedBots []string                `db:"associated_bots" json:"associated_bots" description:"The bots associated with the partner"`
+	ID        string                  `db:"id" json:"id" description:"The partners ID" validate:"required"`
+	Name      string                  `db:"name" json:"name" description:"The partners name" validate:"required"`
+	Avatar    *AssetMetadata          `db:"-" json:"avatar" description:"The partners avatar" ci:"internal"` // Must be parsed internally
+	Short     string                  `db:"short" json:"short" description:"Short description of the partner" validate:"required"`
+	Links     []Link                  `db:"links" json:"links" description:"Links of the partners" validate:"required,min=1,max=2"`
+	Type      string                  `db:"type" json:"type" description:"Type of partner" validate:"required"`
+	CreatedAt time.Time               `db:"created_at" json:"created_at" description:"When the partner was created on DB" validate:"required"`
+	UserID    string                  `db:"user_id" json:"-" description:"User ID of the partner. Is an internal field" validate:"required"`
+	User      *dovetypes.PlatformUser `db:"-" json:"user" description:"The partner's user information" ci:"internal"` // Must be parsed internally
+	BotID     *string                 `db:"-" json:"bot_id" description:"The bot ID that is associated with the partner"`
 }
 
 // @ci table=partner_types

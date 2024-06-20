@@ -48,7 +48,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
-	avatar := assetmanager.AvatarInfo(assetmanager.AssetTargetTypeServers, id)
+	avatar := assetmanager.AvatarInfo(assetmanager.AssetTargetTypeServer, id)
 
 	seoData := types.SEO{
 		ID:     id,

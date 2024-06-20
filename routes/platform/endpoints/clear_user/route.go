@@ -64,7 +64,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	}
 
 	if res.IsBot {
-		err = assetmanager.DeleteAvatar(assetmanager.AssetTargetTypeBots, id)
+		err = assetmanager.DeleteAvatar(assetmanager.AssetTargetTypeBot, id)
 
 		if err != nil {
 			state.Logger.Error("Error deleting bot avatar", zap.Error(err), zap.String("id", id))
@@ -76,7 +76,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 			}
 		}
 	} else {
-		err = assetmanager.DeleteAvatar(assetmanager.AssetTargetTypeUsers, id)
+		err = assetmanager.DeleteAvatar(assetmanager.AssetTargetTypeUser, id)
 
 		if err != nil {
 			state.Logger.Error("Error deleting user avatar", zap.Error(err), zap.String("id", id))

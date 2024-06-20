@@ -17,6 +17,7 @@ type IndexServer struct {
 	OnlineMembers    int            `db:"online_members" json:"online_members" description:"The server's online member count"`
 	Short            string         `db:"short" json:"short" description:"The server's short description"`
 	Type             string         `db:"type" json:"type" description:"The server's type (e.g. pending/approved/certified/denied etc.)"`
+	State            string         `db:"state" json:"state" description:"The server's state (public, private, unlisted, defunct)"`
 	VanityRef        pgtype.UUID    `db:"vanity_ref" json:"vanity_ref" description:"The corresponding vanities itag, this also works to ensure that all servers have an associated vanity"`
 	Vanity           string         `db:"-" json:"vanity" description:"The server's vanity URL" ci:"internal"` // Must be parsed internally
 	Votes            int            `db:"-" json:"votes" description:"The server's vote count" ci:"internal"`  // Votes are retrieved from entity_votes
@@ -43,7 +44,6 @@ type Server struct {
 	Type                   string             `db:"type" json:"type" description:"The server's type (e.g. pending/approved/certified/denied etc.)"`
 	State                  string             `db:"state" json:"state" description:"The server's state (public, private, unlisted, defunct)"`
 	Tags                   []string           `db:"tags" json:"tags" description:"The server's tags"`
-	Flags                  []string           `db:"flags" json:"flags" description:"The server's flags"`
 	VanityRef              pgtype.UUID        `db:"vanity_ref" json:"vanity_ref"`
 	Vanity                 string             `db:"-" json:"vanity" description:"The server's vanity URL" ci:"internal"` // Must be parsed internally
 	ExtraLinks             []Link             `db:"extra_links" json:"extra_links" description:"The server's links that it wishes to advertise"`

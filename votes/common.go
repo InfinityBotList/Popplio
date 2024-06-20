@@ -120,7 +120,7 @@ func GetEntityInfo(ctx context.Context, c DbConn, targetId, targetType string) (
 			return nil, errors.New("team is vote banned and cannot be voted for right now")
 		}
 
-		avatar := assetmanager.AvatarInfo(assetmanager.AssetTargetTypeTeams, targetId)
+		avatar := assetmanager.AvatarInfo(assetmanager.AssetTargetTypeTeam, targetId)
 
 		var avatarPath string
 
@@ -160,7 +160,7 @@ func GetEntityInfo(ctx context.Context, c DbConn, targetId, targetType string) (
 			URL:     state.Config.Sites.Frontend.Parse() + "/server/" + targetId,
 			VoteURL: state.Config.Sites.Frontend.Parse() + "/server/" + targetId + "/vote",
 			Name:    name,
-			Avatar:  assetmanager.ResolveAssetMetadataToUrl(assetmanager.AvatarInfo(assetmanager.AssetTargetTypeServers, targetId)),
+			Avatar:  assetmanager.ResolveAssetMetadataToUrl(assetmanager.AvatarInfo(assetmanager.AssetTargetTypeServer, targetId)),
 		}, nil
 	case "blog":
 		return &EntityInfo{

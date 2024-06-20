@@ -46,8 +46,8 @@ func (sd ServerDriver) Construct(userId, id string) (*events.Target, *sender.Web
 		return nil, nil, err
 	}
 
-	server.Banner = assetmanager.BannerInfo(assetmanager.AssetTargetTypeServers, server.ServerID)
-	server.Avatar = assetmanager.AvatarInfo(assetmanager.AssetTargetTypeServers, server.ServerID)
+	server.Banner = assetmanager.BannerInfo(assetmanager.AssetTargetTypeServer, server.ServerID)
+	server.Avatar = assetmanager.AvatarInfo(assetmanager.AssetTargetTypeServer, server.ServerID)
 
 	var code string
 

@@ -77,8 +77,8 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
-	team.Banner = assetmanager.BannerInfo(assetmanager.AssetTargetTypeTeams, id)
-	team.Avatar = assetmanager.AvatarInfo(assetmanager.AssetTargetTypeTeams, id)
+	team.Banner = assetmanager.BannerInfo(assetmanager.AssetTargetTypeTeam, id)
+	team.Avatar = assetmanager.AvatarInfo(assetmanager.AssetTargetTypeTeam, id)
 
 	team.Entities, err = resolvers.GetTeamEntities(d.Context, id, targets)
 

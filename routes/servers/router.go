@@ -92,7 +92,7 @@ func (b Router) Routes(r *chi.Mux) {
 					}, nil
 				},
 				GetTarget: func(d uapi.Route, r *http.Request, authData uapi.AuthData) (string, string) {
-					return api.TargetTypeServer, chi.URLParam(r, "sid")
+					return api.TargetTypeServer, chi.URLParam(r, "id")
 				},
 			},
 		},

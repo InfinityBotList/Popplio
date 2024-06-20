@@ -65,11 +65,10 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		}
 	}
 
-	uid := chi.URLParam(r, "uid")
 	targetId := chi.URLParam(r, "target_id")
 	targetType := validators.NormalizeTargetType(chi.URLParam(r, "target_type"))
 
-	if uid == "" || targetId == "" || targetType == "" {
+	if targetId == "" || targetType == "" {
 		return uapi.HttpResponse{
 			Status:  http.StatusBadRequest,
 			Headers: limit.Headers(),
@@ -133,6 +132,16 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		}
 	}
 
+	tt, err := assetmanager.AssetTargetTypeFromTargetType(targetType)
+
+	if err != nil {
+		return uapi.HttpResponse{
+			Status:  http.StatusBadRequest,
+			Headers: limit.Headers(),
+			Json:    types.ApiError{Message: err.Error()},
+		}
+	}
+
 	switch payload.Type {
 	case "banner":
 		if payload.ContentType == "" {
@@ -175,7 +184,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 
 				return "jpg"
 			}(),
-			state.Config.Meta.CDNPath+"/banners/"+targetType+"s/"+targetId+".webp",
+			state.Config.Meta.CDNPath+"/"+assetmanager.BannerPath(tt, targetId),
 		)
 
 		if err != nil {
@@ -238,7 +247,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 
 				return "jpg"
 			}(),
-			state.Config.Meta.CDNPath+"/avatars/"+targetType+"s/"+targetId+".webp",
+			state.Config.Meta.CDNPath+"/"+assetmanager.AvatarPath(tt, targetId),
 		)
 
 		if err != nil {

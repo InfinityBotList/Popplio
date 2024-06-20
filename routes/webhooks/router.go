@@ -97,7 +97,7 @@ func (b Router) Routes(r *chi.Mux) {
 	uapi.Route{
 		Pattern: "/{target_type}/{target_id}/webhooks/{webhook_id}",
 		OpId:    "delete_webhook",
-		Method:  uapi.POST,
+		Method:  uapi.DELETE,
 		Docs:    delete_webhook.Docs,
 		Handler: delete_webhook.Route,
 		Auth:    api.GetAllAuthTypes(),

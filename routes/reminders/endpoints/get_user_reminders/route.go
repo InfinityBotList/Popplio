@@ -90,7 +90,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		case "team":
 			var name string
 
-			avatar := assetmanager.AvatarInfo(assetmanager.AssetTargetTypeTeams, reminder.TargetID)
+			avatar := assetmanager.AvatarInfo(assetmanager.AssetTargetTypeTeam, reminder.TargetID)
 
 			var avatarPath string
 

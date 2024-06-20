@@ -3,6 +3,7 @@ package assetmanager
 import (
 	"errors"
 	"os"
+	"popplio/api"
 	"popplio/state"
 	"popplio/types"
 	"strconv"
@@ -12,42 +13,60 @@ import (
 type AssetTargetType int
 
 const (
-	AssetTargetTypeUsers    AssetTargetType = iota
-	AssetTargetTypeBots     AssetTargetType = iota
-	AssetTargetTypeServers  AssetTargetType = iota
-	AssetTargetTypeTeams    AssetTargetType = iota
-	AssetTargetTypePartners AssetTargetType = iota
+	AssetTargetTypeUser    AssetTargetType = iota
+	AssetTargetTypeBot     AssetTargetType = iota
+	AssetTargetTypeServer  AssetTargetType = iota
+	AssetTargetTypeTeam    AssetTargetType = iota
+	AssetTargetTypePartner AssetTargetType = iota
 )
 
 func (a AssetTargetType) String() string {
 	switch a {
-	case AssetTargetTypeUsers:
+	case AssetTargetTypeUser:
+		return "user"
+	case AssetTargetTypeBot:
+		return "bot"
+	case AssetTargetTypeServer:
+		return "server"
+	case AssetTargetTypeTeam:
+		return "team"
+	case AssetTargetTypePartner:
+		return "partner"
+	default:
+		panic("invalid asset target type")
+	}
+}
+
+// CdnString returns the folder name on the CDN
+func (a AssetTargetType) CdnString() string {
+	switch a {
+	case AssetTargetTypeUser:
 		return "users"
-	case AssetTargetTypeBots:
+	case AssetTargetTypeBot:
 		return "bots"
-	case AssetTargetTypeServers:
+	case AssetTargetTypeServer:
 		return "servers"
-	case AssetTargetTypeTeams:
+	case AssetTargetTypeTeam:
 		return "teams"
-	case AssetTargetTypePartners:
+	case AssetTargetTypePartner:
 		return "partners"
 	default:
 		panic("invalid asset target type")
 	}
 }
 
-func AssetTargetTypeFromString(s string) (AssetTargetType, error) {
+func AssetTargetTypeFromTargetType(s string) (AssetTargetType, error) {
 	switch s {
-	case "users":
-		return AssetTargetTypeUsers, nil
-	case "bots":
-		return AssetTargetTypeBots, nil
-	case "servers":
-		return AssetTargetTypeServers, nil
-	case "teams":
-		return AssetTargetTypeTeams, nil
-	case "partners":
-		return AssetTargetTypePartners, nil
+	case api.TargetTypeUser:
+		return AssetTargetTypeUser, nil
+	case api.TargetTypeBot:
+		return AssetTargetTypeBot, nil
+	case "server":
+		return AssetTargetTypeServer, nil
+	case "team":
+		return AssetTargetTypeTeam, nil
+	case "partner":
+		return AssetTargetTypePartner, nil
 	default:
 		return 0, errors.New("invalid asset target type")
 	}
@@ -61,6 +80,7 @@ func info(typ, path, defaultPath string) *types.AssetMetadata {
 
 	if err != nil {
 		return &types.AssetMetadata{
+			Path:        path,
 			DefaultPath: defaultPath,
 			Errors:      []string{"File does not exist"},
 			Type:        typ,
@@ -69,6 +89,7 @@ func info(typ, path, defaultPath string) *types.AssetMetadata {
 
 	if st.IsDir() {
 		return &types.AssetMetadata{
+			Path:        path,
 			DefaultPath: defaultPath,
 			Errors:      []string{"File is a directory"},
 			Type:        typ,
@@ -87,12 +108,21 @@ func info(typ, path, defaultPath string) *types.AssetMetadata {
 	}
 }
 
+func BannerPath(targetType AssetTargetType, targetId string) string {
+	return "banners/" + targetType.CdnString() + "/" + targetId + ".webp"
+}
+
 func BannerInfo(targetType AssetTargetType, targetId string) *types.AssetMetadata {
-	return info("banner", "banners/"+targetType.String()+"/"+targetId+".webp", "banners/default.webp")
+	return info("banner", BannerPath(targetType, targetId), "banners/default.webp")
+}
+
+// Returns the path to the avatar of the given target type and ID
+func AvatarPath(targetType AssetTargetType, targetId string) string {
+	return "avatars/" + targetType.CdnString() + "/" + targetId + ".webp"
 }
 
 func AvatarInfo(targetType AssetTargetType, targetId string) *types.AssetMetadata {
-	return info("avatar", "avatars/"+targetType.String()+"/"+targetId+".webp", "avatars/default.webp")
+	return info("avatar", AvatarPath(targetType, targetId), "avatars/default.webp")
 }
 
 func ResolveAssetMetadataToUrl(t *types.AssetMetadata) string {

@@ -16,7 +16,7 @@ import (
 	"go.uber.org/zap"
 )
 
-func updateAvatarCache(ctx context.Context, typ string, id string, avatarUrl string) error {
+func updateAvatarCache(ctx context.Context, typ assetmanager.AssetTargetType, id string, avatarUrl string) error {
 	// Download avatar from url
 	c := &http.Client{
 		Timeout: 10 * time.Second,
@@ -87,7 +87,7 @@ func updateAvatarCache(ctx context.Context, typ string, id string, avatarUrl str
 
 			return "jpg"
 		}(),
-		state.Config.Meta.CDNPath+"/avatars/"+typ+"/"+id+".webp",
+		state.Config.Meta.CDNPath+"/"+assetmanager.AvatarPath(typ, id),
 	)
 
 	if err != nil {
@@ -98,10 +98,10 @@ func updateAvatarCache(ctx context.Context, typ string, id string, avatarUrl str
 }
 
 func DovewingMiddleware(p dovewing.Platform, pu *dovetypes.PlatformUser) (*dovetypes.PlatformUser, error) {
-	var typ = assetmanager.AssetTargetTypeBots
+	var typ = assetmanager.AssetTargetTypeBot
 
 	if !pu.Bot {
-		typ = assetmanager.AssetTargetTypeUsers
+		typ = assetmanager.AssetTargetTypeUser
 	}
 
 	avatar := assetmanager.AvatarInfo(typ, pu.ID)
@@ -109,7 +109,7 @@ func DovewingMiddleware(p dovewing.Platform, pu *dovetypes.PlatformUser) (*dovet
 	if (!avatar.Exists || time.Since(*avatar.LastModified) > time.Hour*8) && !strings.HasPrefix(pu.Avatar, "https://cdn.discordapp.com/embed/avatars") && !strings.HasPrefix(pu.Avatar, state.Config.Sites.CDN) {
 		state.Logger.Info("Updating avatar cache", zap.String("id", pu.ID))
 
-		err := updateAvatarCache(state.Context, typ.String(), pu.ID, pu.Avatar)
+		err := updateAvatarCache(state.Context, typ, pu.ID, pu.Avatar)
 
 		if err != nil {
 			return pu, errors.New("error updating avatar cache: " + err.Error())
