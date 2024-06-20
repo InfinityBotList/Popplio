@@ -70,11 +70,6 @@ func (v WebhookNewVoteData) CreateHookParams(creator *dovetypes.PlatformUser, ta
 						Value:  targets.GetViewLink(),
 						Inline: true,
 					},
-					{
-						Name:   "Vote Page",
-						Value:  targets.GetTargetLink("Vote for", "/vote"),
-						Inline: true,
-					},
 				},
 			},
 		},

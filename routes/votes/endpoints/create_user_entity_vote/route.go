@@ -270,11 +270,6 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 							Value:  "[View " + entityInfo.Name + "](" + entityInfo.URL + ")",
 							Inline: true,
 						},
-						{
-							Name:   "Vote Page",
-							Value:  "[Vote for " + entityInfo.Name + "](" + entityInfo.VoteURL + ")",
-							Inline: true,
-						},
 					},
 				},
 			},

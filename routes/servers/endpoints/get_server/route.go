@@ -55,8 +55,7 @@ Officially recognized targets:
 
 - page -> server page view
 - settings -> server settings page view
-- invite -> server invite view
-- vote -> server vote page`,
+- invite -> server invite view`,
 				Required: false,
 				In:       "query",
 				Schema:   docs.IdSchema,

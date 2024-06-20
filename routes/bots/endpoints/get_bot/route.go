@@ -63,8 +63,7 @@ Officially recognized targets:
 - page -> bot page view
 - settings -> bot settings page view
 - stats -> bot stats page view
-- invite -> bot invite view
-- vote -> bot vote page`,
+- invite -> bot invite view`,
 				Required: false,
 				In:       "query",
 				Schema:   docs.IdSchema,

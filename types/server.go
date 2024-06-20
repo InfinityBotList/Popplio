@@ -78,6 +78,10 @@ type ServerSettingsUpdate struct {
 	LoginRequiredForInvite bool     `db:"login_required_for_invite" json:"login_required_for_invite" description:"Whether the server requires a login to be invited to it"`
 }
 
+type ServerInviteUpdate struct {
+	Invite string `db:"invite" json:"invite" validate:"required" msg:"Invite must be non-empty"`
+}
+
 // List Index
 type ListIndexServer struct {
 	Certified     []IndexServer `json:"certified" description:"The certified servers (if any)"`

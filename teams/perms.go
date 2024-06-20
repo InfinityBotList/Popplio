@@ -30,8 +30,11 @@ const (
 	// Ability to edit settings for the entity
 	PermissionEdit Permission = "edit"
 
-	// Ability to be invited to the entity
-	PermissionInvite Permission = "invite"
+	// Ability to get an invite to the entity
+	PermissionGetInvite Permission = "get_invite"
+
+	// Ability to set an invite for the entity
+	PermissionSetInvite Permission = "set_invite"
 
 	// Ability to resubmit the entity
 	PermissionResubmit Permission = "resubmit"
@@ -124,9 +127,18 @@ var PermDetails = []types.PermissionData{
 		},
 	},
 	{
-		ID:   PermissionInvite,
-		Name: "{entity} Invite Permission",
-		Desc: "Ability to be invited to the {entity}",
+		ID:   PermissionGetInvite,
+		Name: "Get {entity} Invite",
+		Desc: "Ability to get an invite to the {entity} (e.g. non-public {entity} etc.)",
+		SupportedEntities: []string{
+			"global",
+			"server",
+		},
+	},
+	{
+		ID:   PermissionSetInvite,
+		Name: "Set {entity} Invite",
+		Desc: "Ability to set the invite for an {entity} (e.g. non-public {entity} etc.)",
 		SupportedEntities: []string{
 			"global",
 			"server",
