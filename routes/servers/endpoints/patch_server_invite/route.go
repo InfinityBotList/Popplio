@@ -1,5 +1,6 @@
-/*package patch_server_invite
+package patch_server_invite
 
+/*
 import (
 	"net/http"
 	"popplio/state"
