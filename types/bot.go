@@ -124,10 +124,9 @@ type CreateBot struct {
 	Tags       []string `db:"tags" json:"tags" validate:"required,unique,min=1,max=5,dive,min=3,max=30,notblank,nonvulgar" msg:"There must be between 1 and 5 tags without duplicates" amsg:"Each tag must be between 3 and 30 characters and alphabetic"`
 	NSFW       bool     `db:"nsfw" json:"nsfw"`
 	StaffNote  *string  `db:"approval_note" json:"staff_note" validate:"omitempty,max=512" msg:"Staff note must be less than 512 characters if sent"` // impld
-	TeamOwner  string   `db:"-" json:"team_owner" ci:"internal"`                                                                                      // May or may not be present
+	TeamOwner  string   `db:"team_owner" json:"team_owner" ci:"internal"`                                                                             // May or may not be present
 
 	// Not needed to send, resolved in backend
-	Owner      string      `db:"owner" json:"-"`
 	GuildCount *int        `db:"servers" json:"-"`
 	VanityRef  pgtype.UUID `db:"vanity_ref" json:"-"`
 }

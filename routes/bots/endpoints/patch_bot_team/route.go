@@ -128,7 +128,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	state.Discord.ChannelMessageSendComplex(state.Config.Channels.ModLogs, &discordgo.MessageSend{
 		Embeds: []*discordgo.MessageEmbed{
 			{
-				URL:   state.Config.Sites.Frontend.Production() + "/bots/" + id,
+				URL:   state.Config.Sites.Frontend.Parse() + "/bots/" + id,
 				Title: "Bot Team Update!",
 				Fields: []*discordgo.MessageEmbedField{
 					{
@@ -143,11 +143,11 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 					},
 					{
 						Name:  "Old Team",
-						Value: fmt.Sprintf("[View Team](%s/team/%s)", state.Config.Sites.Frontend, validators.EncodeUUID(currentBotTeam.Bytes)),
+						Value: fmt.Sprintf("[View Team](%s/team/%s)", state.Config.Sites.Frontend.Parse(), validators.EncodeUUID(currentBotTeam.Bytes)),
 					},
 					{
 						Name:  "New Team",
-						Value: fmt.Sprintf("[View Team](%s/team/%s)", state.Config.Sites.Frontend, payload.TeamID),
+						Value: fmt.Sprintf("[View Team](%s/team/%s)", state.Config.Sites.Frontend.Parse(), payload.TeamID),
 					},
 				},
 			},

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/http"
 	"regexp"
+	"slices"
 	"strings"
 	"time"
 
@@ -30,13 +31,7 @@ import (
 	"github.com/go-playground/validator/v10"
 )
 
-type internalData struct {
-	Owner      string
-	GuildCount *int
-	VanityRef  pgtype.UUID
-}
-
-func createBotsArgs(bot types.CreateBot, id internalData) []any {
+func createBotsArgs(bot types.CreateBot) []any {
 	return []any{
 		bot.BotID,
 		bot.ClientID,
@@ -49,9 +44,9 @@ func createBotsArgs(bot types.CreateBot, id internalData) []any {
 		bot.Tags,
 		bot.NSFW,
 		bot.StaffNote,
-		id.Owner,
-		id.GuildCount,
-		id.VanityRef,
+		bot.TeamOwner,
+		bot.GuildCount,
+		bot.VanityRef,
 	}
 }
 
@@ -195,10 +190,8 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		}
 	}
 
-	id := internalData{}
-
-	id.Owner = d.Auth.ID
-	id.GuildCount = &metadata.GuildCount
+	// Set guild count from metadata
+	payload.GuildCount = &metadata.GuildCount
 
 	if payload.StaffNote == nil {
 		defNote := "No note!"
@@ -224,6 +217,23 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		vanity = vanity + "-" + crypto.RandString(8)
 	}
 
+	systems, err := validators.GetWordBlacklistSystems(d.Context, vanity)
+
+	if err != nil {
+		state.Logger.Error("Error while getting word blacklist systems", zap.Error(err), zap.String("userID", d.Auth.ID))
+		return uapi.HttpResponse{
+			Status: http.StatusBadRequest,
+			Json:   types.ApiError{Message: "Error while getting word blacklist systems: " + err.Error()},
+		}
+	}
+
+	if slices.Contains(systems, "vanity.code") {
+		return uapi.HttpResponse{
+			Status: http.StatusBadRequest,
+			Json:   types.ApiError{Message: "The chosen vanity is blacklisted"},
+		}
+	}
+
 	// Save the bot to the database
 	tx, err := state.Pool.Begin(d.Context)
 
@@ -239,7 +249,25 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		payload.TeamOwner = d.Auth.ID
 	}
 
-	if payload.TeamOwner == "" {
+	// Check team owner here, to avoid a race condition
+	if payload.TeamOwner != "" {
+		perms, err := teams.GetEntityPerms(d.Context, d.Auth.ID, "team", payload.TeamOwner)
+
+		if err != nil {
+			state.Logger.Error("Error while getting team perms", zap.Error(err), zap.String("userID", d.Auth.ID), zap.String("teamID", payload.TeamOwner), zap.String("botID", payload.BotID), zap.String("vanity", vanity))
+			return uapi.HttpResponse{
+				Status: http.StatusBadRequest,
+				Json:   types.ApiError{Message: "Error getting user perms: " + err.Error()},
+			}
+		}
+
+		if !kittycat.HasPerm(perms, kittycat.Permission{Namespace: "bot", Perm: teams.PermissionAdd}) {
+			return uapi.HttpResponse{
+				Status: http.StatusForbidden,
+				Json:   types.ApiError{Message: "You do not have permission to add new bots to this team"},
+			}
+		}
+	} else {
 		// Create new team
 		var teamId = uuid.New()
 
@@ -262,6 +290,16 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 			}
 		}
 
+		// Add the team member to the team as well
+		_, err = tx.Exec(d.Context, "INSERT INTO team_members (team_id, user_id, flags, service) VALUES ($1, $2, $3, 'api/add_bot')", teamId, d.Auth.ID, []string{"global.*"})
+
+		if err != nil {
+			return uapi.HttpResponse{
+				Status: http.StatusBadRequest,
+				Json:   types.ApiError{Message: "Error while adding team member: " + err.Error()},
+			}
+		}
+
 		payload.TeamOwner = teamId.String()
 	}
 
@@ -274,10 +312,11 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
-	id.VanityRef = itag
+	// Lastly, set the vanity ref correctly
+	payload.VanityRef = itag
 
 	// Get the arguments to pass when adding the bot
-	botArgs := createBotsArgs(payload, id)
+	botArgs := createBotsArgs(payload)
 
 	if len(createBotsColsArr) != len(botArgs) {
 		state.Logger.Error("createBotsColsArr and botArgs do not match in length", zap.Any("createBotsColsArr", createBotsColsArr), zap.Any("botArgs", botArgs))
@@ -292,33 +331,6 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	if err != nil {
 		state.Logger.Error("Error while inserting bot", zap.Error(err), zap.String("userID", d.Auth.ID), zap.String("botID", payload.BotID))
 		return uapi.DefaultResponse(http.StatusInternalServerError)
-	}
-
-	// Check team owner here, to avoid a race condition
-	if payload.TeamOwner != "" {
-		perms, err := teams.GetEntityPerms(d.Context, d.Auth.ID, "team", payload.TeamOwner)
-
-		if err != nil {
-			state.Logger.Error("Error while getting team perms", zap.Error(err), zap.String("userID", d.Auth.ID), zap.String("teamID", payload.TeamOwner), zap.String("botID", payload.BotID), zap.String("vanity", vanity))
-			return uapi.HttpResponse{
-				Status: http.StatusBadRequest,
-				Json:   types.ApiError{Message: "Error getting user perms: " + err.Error()},
-			}
-		}
-
-		if !kittycat.HasPerm(perms, kittycat.Permission{Namespace: "bot", Perm: teams.PermissionAdd}) {
-			return uapi.HttpResponse{
-				Status: http.StatusForbidden,
-				Json:   types.ApiError{Message: "You do not have permission to add new bots to this team"},
-			}
-		}
-
-		_, err = tx.Exec(d.Context, "UPDATE bots SET team_owner = $1, owner = NULL WHERE bot_id = $2", payload.TeamOwner, payload.BotID)
-
-		if err != nil {
-			state.Logger.Error("Error while updating bot team owner", zap.Error(err), zap.String("userID", d.Auth.ID), zap.String("teamID", payload.TeamOwner), zap.String("botID", payload.BotID), zap.String("vanity", vanity))
-			return uapi.DefaultResponse(http.StatusInternalServerError)
-		}
 	}
 
 	err = tx.Commit(d.Context)
