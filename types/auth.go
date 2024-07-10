@@ -14,11 +14,6 @@ type AuthorizeRequest struct {
 	Scope       string `json:"scope" validate:"required,oneof=normal ban_exempt external_auth"`
 }
 
-type UserLogin struct {
-	Token  string `json:"token" description:"The users token"`
-	UserID string `json:"user_id" description:"The users ID"`
-}
-
 type OauthMeta struct {
 	ClientID string `json:"client_id" description:"The client ID"`
 	URL      string `json:"url" description:"The URL to redirect the user to for discord oauth2"`
@@ -57,6 +52,7 @@ type CreateSession struct {
 }
 
 type CreateSessionResponse struct {
+	TargetID  string `json:"target_id" description:"The ID of the target"`
 	Token     string `json:"token" description:"The token of the session"`
 	SessionID string `json:"session_id" description:"The ID of the session"`
 }

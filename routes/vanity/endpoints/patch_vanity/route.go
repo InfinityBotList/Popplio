@@ -46,6 +46,8 @@ func Docs() *docs.Doc {
 }
 
 func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
+	state.Logger.Info("Patch Vanity", zap.String("userID", d.Auth.ID))
+
 	targetId := chi.URLParam(r, "target_id")
 	targetType := validators.NormalizeTargetType(chi.URLParam(r, "target_type"))
 
@@ -107,7 +109,6 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 			Status: http.StatusBadRequest,
 			Json:   types.ApiError{Message: "Error while getting word blacklist systems: " + err.Error()},
 		}
-
 	}
 
 	if slices.Contains(systems, "vanity.code") {

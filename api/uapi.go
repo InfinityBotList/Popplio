@@ -157,6 +157,10 @@ func Authorize(r uapi.Route, req *http.Request) (uapi.AuthData, uapi.HttpRespons
 		}, false
 	}
 
+	if len(permLimits) == 0 {
+		permLimits = []string{}
+	}
+
 	if authPrefix != "" && authPrefix != targetType {
 		return uapi.AuthData{}, uapi.HttpResponse{
 			Status: http.StatusUnauthorized,
@@ -320,6 +324,8 @@ func Authorize(r uapi.Route, req *http.Request) (uapi.AuthData, uapi.HttpRespons
 		}, false
 	}
 
+	state.Logger.Info("AuthData", zap.Any("authData", authData))
+
 	pc, ok := r.ExtData[PERMISSION_CHECK_KEY]
 
 	if !ok {
@@ -332,6 +338,13 @@ func Authorize(r uapi.Route, req *http.Request) (uapi.AuthData, uapi.HttpRespons
 	permCheck, ok := pc.(PermissionCheck)
 
 	if ok {
+		if permCheck.NeededPermission == nil {
+			return uapi.AuthData{}, uapi.HttpResponse{
+				Status: http.StatusInternalServerError,
+				Json:   types.ApiError{Message: "Internal error: NeededPermission function is nil"},
+			}, false
+		}
+
 		neededPerm, err := permCheck.NeededPermission(r, req, authData)
 
 		if err != nil {
@@ -342,6 +355,13 @@ func Authorize(r uapi.Route, req *http.Request) (uapi.AuthData, uapi.HttpRespons
 		}
 
 		if neededPerm != nil {
+			if permCheck.GetTarget == nil {
+				return uapi.AuthData{}, uapi.HttpResponse{
+					Status: http.StatusInternalServerError,
+					Json:   types.ApiError{Message: "Internal error: GetTarget function is nil"},
+				}, false
+			}
+
 			targetTypeOfEntity, targetIdOfEntity := permCheck.GetTarget(r, req, authData)
 
 			if targetTypeOfEntity == "" || targetIdOfEntity == "" {

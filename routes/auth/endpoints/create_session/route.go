@@ -188,6 +188,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	return uapi.HttpResponse{
 		Status: http.StatusCreated,
 		Json: types.CreateSessionResponse{
+			TargetID:  targetId,
 			Token:     sessionToken,
 			SessionID: sessionId,
 		},

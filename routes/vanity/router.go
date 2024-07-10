@@ -55,6 +55,9 @@ func (b Router) Routes(r *chi.Mux) {
 						Perm:      teams.PermissionSetVanity,
 					}, nil
 				},
+				GetTarget: func(d uapi.Route, r *http.Request, authData uapi.AuthData) (string, string) {
+					return validators.NormalizeTargetType(chi.URLParam(r, "target_type")), chi.URLParam(r, "target_id")
+				},
 			},
 		},
 	}.Route(r)

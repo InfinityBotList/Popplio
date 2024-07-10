@@ -1,6 +1,7 @@
 package get_apps_list
 
 import (
+	"errors"
 	"net/http"
 	"popplio/db"
 	"popplio/state"
@@ -45,6 +46,14 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	}
 
 	app, err := pgx.CollectRows(row, pgx.RowToStructByName[types.AppResponse])
+
+	if errors.Is(err, pgx.ErrNoRows) {
+		return uapi.HttpResponse{
+			Json: types.AppListResponse{
+				Apps: []types.AppResponse{},
+			},
+		}
+	}
 
 	if err != nil {
 		state.Logger.Error("Failed to fetch application list [collection]", zap.String("userId", d.Auth.ID), zap.Error(err))

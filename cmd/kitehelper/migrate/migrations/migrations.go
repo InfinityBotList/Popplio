@@ -945,7 +945,11 @@ var migs = []migrate.Migration{
 				return nil
 			}
 
-			return errors.New("this can only be run with MIGRATE_BOTS_TO_TEAMS_TOKEN set to a valid token")
+			if os.Getenv("SKIP_MIGRATE_BOTS_TO_TEAMS") == "true" {
+				return errors.New("env skip_migrate_bots_to_teams is set, continuing")
+			}
+
+			panic("this can only be run with MIGRATE_BOTS_TO_TEAMS_TOKEN set to a valid token")
 		},
 		Function: func(pool *common.SandboxPool) {
 			discordSess, err := common.NewDiscordSession(os.Getenv("MIGRATE_BOTS_TO_TEAMS_TOKEN"))
@@ -1046,6 +1050,72 @@ var migs = []migrate.Migration{
 
 				// Update bot
 				err = tx.Exec(context.Background(), "UPDATE bots SET team_owner = $1, owner = NULL WHERE bot_id = $2", teamId, botId)
+
+				if err != nil {
+					panic(err)
+				}
+			}
+
+			err = tx.Commit(ctx)
+
+			if err != nil {
+				panic(err)
+			}
+		},
+	},
+	{
+		ID:   "migrate_bots_to_sessions",
+		Name: "Migrate bot to sessions",
+		HasMigrated: func(pool *common.SandboxPool) error {
+			if os.Getenv("SKIP_MIGRATE_BOTS_TO_SESSIONS") == "true" {
+				return errors.New("env skip_migrate_bots_to_teams is set, continuing")
+			}
+
+			return nil
+		},
+		Function: func(pool *common.SandboxPool) {
+			tx, err := pool.Begin(ctx)
+
+			if err != nil {
+				panic(err)
+			}
+
+			defer tx.Rollback(ctx)
+
+			rows, err := pool.Query(context.Background(), "SELECT bot_id, api_token FROM bots")
+
+			if err != nil {
+				panic(err)
+			}
+
+			defer rows.Close()
+
+			var botTokenMap = map[string]string{}
+			for rows.Next() {
+				var botId string
+				var apiToken string
+
+				err = rows.Scan(&botId, &apiToken)
+
+				if err != nil {
+					panic(err)
+				}
+
+				botTokenMap[botId] = apiToken
+			}
+
+			rows.Close()
+
+			for botId, apiToken := range botTokenMap {
+				// Delete all sessions existing for this bot currently
+				err = tx.Exec(context.Background(), "DELETE FROM api_sessions WHERE target_id = $1 AND target_type = 'bot'", botId)
+
+				if err != nil {
+					panic(err)
+				}
+
+				// Create new session with expiry set to 100 years from now and type being `api/automigrated`
+				err = tx.Exec(context.Background(), "INSERT INTO api_sessions (target_id, target_type, token, expiry, type) VALUES ($1, 'bot', $2, $3, 'api/automigrated')", botId, apiToken, time.Now().AddDate(100, 0, 0))
 
 				if err != nil {
 					panic(err)

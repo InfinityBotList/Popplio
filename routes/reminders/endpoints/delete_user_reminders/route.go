@@ -53,38 +53,33 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		return uapi.DefaultResponse(http.StatusBadRequest)
 	}
 
-	tx, err := state.Pool.Begin(d.Context)
-
-	if err != nil {
-		state.Logger.Error("Error beginning transaction", zap.Error(err), zap.String("target_id", targetId), zap.String("target_type", targetType))
-		return uapi.DefaultResponse(http.StatusInternalServerError)
-	}
-
-	var count int
-
-	err = tx.QueryRow(d.Context, "SELECT COUNT(*) FROM user_reminders WHERE user_id = $1 AND target_id = $2 AND target_type = $3", d.Auth.ID, targetId, targetType).Scan(&count)
+	// Check count of deleted rows
+	var count int64
+	err := state.Pool.QueryRow(d.Context, "SELECT COUNT(*) FROM user_reminders WHERE user_id = $1 AND target_id = $2 AND target_type = $3", d.Auth.ID, targetId, targetType).Scan(&count)
 
 	if err != nil {
 		state.Logger.Error("Error querying reminders [db count]", zap.Error(err), zap.String("target_id", targetId), zap.String("target_type", targetType))
-		return uapi.DefaultResponse(http.StatusInternalServerError)
+		return uapi.HttpResponse{
+			Status: http.StatusInternalServerError,
+			Json:   types.ApiError{Message: "Error while checking user reminder count: " + err.Error()},
+		}
 	}
 
 	if count == 0 {
-		return uapi.DefaultResponse(http.StatusNotFound)
+		return uapi.HttpResponse{
+			Status: http.StatusNotFound,
+			Json:   types.ApiError{Message: "Reminder not found"},
+		}
 	}
 
-	_, err = tx.Exec(d.Context, "DELETE FROM user_reminders WHERE user_id = $1 AND target_id = $2 AND target_type = $3", d.Auth.ID, targetId, targetType)
+	_, err = state.Pool.Exec(d.Context, "DELETE FROM user_reminders WHERE user_id = $1 AND target_id = $2 AND target_type = $3", d.Auth.ID, targetId, targetType)
 
 	if err != nil {
 		state.Logger.Error("Error deleting reminders", zap.Error(err), zap.String("target_id", targetId), zap.String("target_type", targetType))
-		return uapi.DefaultResponse(http.StatusInternalServerError)
-	}
-
-	err = tx.Commit(d.Context)
-
-	if err != nil {
-		state.Logger.Error("Error committing transaction", zap.Error(err), zap.String("target_id", targetId), zap.String("target_type", targetType))
-		return uapi.DefaultResponse(http.StatusInternalServerError)
+		return uapi.HttpResponse{
+			Status: http.StatusInternalServerError,
+			Json:   types.ApiError{Message: "Error while deleting user reminder: " + err.Error()},
+		}
 	}
 
 	return uapi.DefaultResponse(http.StatusNoContent)
