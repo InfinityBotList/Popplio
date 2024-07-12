@@ -1,6 +1,7 @@
 package create_oauth2_login
 
 import (
+	"fmt"
 	"io"
 	"net/http"
 	"net/url"
@@ -18,6 +19,7 @@ import (
 	"github.com/bwmarrin/discordgo"
 	"github.com/go-playground/validator/v10"
 	"github.com/infinitybotlist/eureka/crypto"
+	ua "github.com/mileusna/useragent"
 	"go.uber.org/zap"
 	"golang.org/x/exp/slices"
 )
@@ -433,9 +435,19 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		}
 	}
 
+	uaStr := r.UserAgent()
+
+	if uaStr == "" {
+		uaStr = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/80.0.3987.149 Safari/537.36"
+	}
+
+	uaD := ua.Parse(uaStr)
+
+	sessionName := fmt.Sprintf("%s (on %s %s) [mobile: %t]", uaD.Name, uaD.OS, uaD.Version, uaD.Mobile)
+
 	var sessionToken = crypto.RandString(128)
 	var sessionId string
-	err = state.Pool.QueryRow(d.Context, "INSERT INTO api_sessions (target_type, target_id, type, token, expiry) VALUES ('user', $1, 'login', $2, NOW() + INTERVAL '1 hour') RETURNING id", user.ID, sessionToken).Scan(&sessionId)
+	err = state.Pool.QueryRow(d.Context, "INSERT INTO api_sessions (target_type, target_id, type, token, expiry, name) VALUES ('user', $1, 'login', $2, NOW() + INTERVAL '1 hour', $3) RETURNING id", user.ID, sessionToken, sessionName).Scan(&sessionId)
 
 	if err != nil {
 		state.Logger.Error("Failed to create session token", zap.Error(err), zap.String("userID", user.ID))
