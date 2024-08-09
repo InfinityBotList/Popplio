@@ -18,8 +18,8 @@ import (
 
 func Docs() *docs.Doc {
 	return &docs.Doc{
-		Summary:     "Revoke User Session",
-		Description: "Revokes a session of a user based on session ID",
+		Summary:     "Revoke Session",
+		Description: "Revokes a session of an entity based on session ID",
 		Resp:        types.ApiError{},
 		Params: []docs.Parameter{
 			{
@@ -61,7 +61,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 
 	var count int64
 
-	err := state.Pool.QueryRow(d.Context, "SELECT COUNT(*) FROM api_sessions WHERE user_id = $1 AND id = $2", d.Auth.ID, sessionId).Scan(&count)
+	err := state.Pool.QueryRow(d.Context, "SELECT COUNT(*) FROM api_sessions WHERE target_type = $1 AND target_id = $2 AND id = $3", d.Auth.TargetType, d.Auth.ID, sessionId).Scan(&count)
 
 	if errors.Is(err, pgx.ErrNoRows) {
 		return uapi.HttpResponse{
