@@ -298,9 +298,7 @@ var PermDetails = []types.PermissionData{
 		Desc: "Delete a {entity} from the team. This is a very dangerous permission and should usually never be given to anyone.",
 		SupportedEntities: []string{
 			"bot",
-			"bot_session",
 			"server",
-			"server_session",
 			"team_member",
 			"global",
 		},
@@ -317,9 +315,7 @@ var PermDetails = []types.PermissionData{
 		Desc: "Has full control on {entity}'s.",
 		SupportedEntities: []string{
 			"bot",
-			"bot_session",
 			"server",
-			"server_session",
 			"team_member",
 			"team",
 			"global",
@@ -383,6 +379,18 @@ func GetEntityPerms(ctx context.Context, userId, targetType, targetId string) ([
 	var teamId string
 
 	switch targetType {
+	case "user":
+		// Special case
+		if targetId != userId {
+			return nil, fmt.Errorf("users do not have permissions on other users")
+		}
+
+		return []perms.Permission{
+			{
+				Namespace: "global",
+				Perm:      PermissionOwner,
+			},
+		}, nil
 	case "bot":
 		var teamOwner pgtype.Text
 		var owner pgtype.Text

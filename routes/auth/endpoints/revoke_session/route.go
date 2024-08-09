@@ -61,7 +61,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 
 	var count int64
 
-	err := state.Pool.QueryRow(d.Context, "SELECT COUNT(*) FROM api_sessions WHERE target_type = $1 AND target_id = $2 AND id = $3", d.Auth.TargetType, d.Auth.ID, sessionId).Scan(&count)
+	err := state.Pool.QueryRow(d.Context, "SELECT COUNT(*) FROM api_sessions WHERE target_type = $1 AND target_id = $2 AND id = $3", targetType, targetId, sessionId).Scan(&count)
 
 	if errors.Is(err, pgx.ErrNoRows) {
 		return uapi.HttpResponse{

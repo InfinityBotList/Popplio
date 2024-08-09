@@ -103,16 +103,16 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	}
 
 	// The outer perm limit stores what permissions the session is limited to in creation
+	//
+	// SAFETY: A 'user' has to initially start the process of creating a session
+	//
+	// This means that we only need to check entity perms for users, then the checks occur based on
+	// the outer perm limits
 	var outerPermLimit []perms.Permission
-
 	switch d.Auth.TargetType {
 	case api.TargetTypeUser:
-		userPerms, err := teams.GetEntityPerms(
-			d.Context,
-			d.Auth.ID,
-			targetType,
-			targetId,
-		)
+		// Get user entity perms
+		managerPerms, err := teams.GetEntityPerms(d.Context, d.Auth.ID, targetType, targetId)
 
 		if err != nil {
 			state.Logger.Error("Error while getting entity perms", zap.Error(err))
@@ -122,18 +122,31 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 			}
 		}
 
-		// Strip out all permissions not in permission limits
-		currentSessionPermLimits := perms.PFSS(api.PermLimits(d.Auth))
-
-		if len(currentSessionPermLimits) > 0 {
-			for _, perm := range userPerms {
-				if perms.HasPerm(currentSessionPermLimits, perm) {
-					outerPermLimit = append(outerPermLimit, perm)
-				}
+		if len(managerPerms) == 0 {
+			return uapi.HttpResponse{
+				Status: http.StatusForbidden,
+				Json:   types.ApiError{Message: "User does not have any permissions on this eneity whatsoever!"},
 			}
 		}
+
+		// Set outer perm limit to the manager perms, see safety note above
+		outerPermLimit = managerPerms
 	default:
-		outerPermLimit = perms.PFSS(api.PermLimits(d.Auth))
+		pl := api.PermLimits(d.Auth)
+
+		if len(pl) > 0 {
+			outerPermLimit = perms.PFSS(pl)
+		}
+	}
+
+	if len(outerPermLimit) == 0 {
+		// Assume no permission limits if no outer perm limits are set
+		outerPermLimit = []perms.Permission{
+			{
+				Namespace: "global",
+				Perm:      teams.PermissionOwner,
+			},
+		}
 	}
 
 	// All permission limits must be resolved before being added to db
@@ -141,7 +154,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		PermOverrides: perms.PFSS(createData.PermLimits),
 	}.Resolve()
 
-	if !perms.HasPerm(outerPermLimit, perms.Permission{Namespace: "global", Perm: "*"}) {
+	if !perms.HasPerm(outerPermLimit, perms.Permission{Namespace: "global", Perm: teams.PermissionOwner}) {
 		if len(createData.PermLimits) == 0 {
 			return uapi.HttpResponse{
 				Status: http.StatusForbidden,
