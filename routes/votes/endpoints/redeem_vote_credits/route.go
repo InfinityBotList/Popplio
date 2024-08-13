@@ -57,7 +57,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		}
 	}
 
-	votesParam := chi.URLParam(r, "votes")
+	votesParam := r.URL.Query().Get("votes")
 
 	votesInt, err := strconv.Atoi(votesParam)
 

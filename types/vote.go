@@ -26,12 +26,13 @@ type EntityVote struct {
 
 // Vote Info
 type VoteInfo struct {
-	PerUser           int    `json:"per_user" description:"The amount of votes a single vote creates on this entity"`
-	VoteTime          uint16 `json:"vote_time" description:"The amount of time in hours until a user can vote again"`
-	VoteCredits       bool   `json:"vote_credits" description:"Whether or not the entity supports vote credits"`
-	MultipleVotes     bool   `json:"multiple_votes" description:"Whether or not the entity supports multiple votes per time interval"`
-	SupportsUpvotes   bool   `json:"supports_upvotes" description:"Whether or not the entity supports upvotes"`
-	SupportsDownvotes bool   `json:"supports_downvotes" description:"Whether or not the entity supports downvotes"`
+	PerUser                          int    `json:"per_user" description:"The amount of votes a single vote creates on this entity"`
+	VoteTime                         uint16 `json:"vote_time" description:"The amount of time in hours until a user can vote again"`
+	VoteCredits                      bool   `json:"vote_credits" description:"Whether or not the entity supports vote credits"`
+	MultipleVotes                    bool   `json:"multiple_votes" description:"Whether or not the entity supports multiple votes per time interval"`
+	SupportsUpvotes                  bool   `json:"supports_upvotes" description:"Whether or not the entity supports upvotes"`
+	SupportsDownvotes                bool   `json:"supports_downvotes" description:"Whether or not the entity supports downvotes"`
+	SupportsPartialVoteCreditsRedeem bool   `json:"supports_partial_vote_credits_redeem" description:"Whether or not the entity supports partial vote credit redemption"`
 }
 
 // Stores the hours, minutes and seconds until the user can vote again
@@ -71,6 +72,7 @@ type VoteCreditTierRedeemSummary struct {
 	Votes        int               `json:"votes" description:"The amount of votes the entity has"`
 	SlabOverview []int             `json:"slab_overview" description:"Slab-based overview with each index, i, representing the amount of votes in Tiers[i]"`
 	TotalCredits int               `json:"total_credits" description:"The total amount of credits the user would get, in cents"`
+	VoteInfo     *VoteInfo         `json:"vote_info" description:"Some information about the vote"`
 }
 
 // Represents a vote credit redeem log

@@ -45,6 +45,12 @@ func EntityGetVoteCreditsSummary(
 		return nil, fmt.Errorf("could not fetch vote count: %w", err)
 	}
 
+	voteInfo, err := EntityVoteInfo(ctx, c, targetId, targetType)
+
+	if err != nil {
+		return nil, fmt.Errorf("could not fetch vote info: %w", err)
+	}
+
 	slabOverview := SlabSplitVotes(voteCount, vcts)
 	totalCredits := SlabCalculateCredits(vcts, slabOverview)
 
@@ -53,6 +59,7 @@ func EntityGetVoteCreditsSummary(
 		Votes:        voteCount,
 		SlabOverview: slabOverview,
 		TotalCredits: totalCredits,
+		VoteInfo:     voteInfo,
 	}, nil
 }
 
@@ -92,6 +99,10 @@ func EntityRedeemVoteCredits(
 		return fmt.Errorf("could not fetch vote count: %w", err)
 	}
 
+	if !vi.SupportsPartialVoteCreditsRedeem {
+		votesToRedeem = voteCount // If the entity does not support partial vote credit redemption, then redeem all votes
+	}
+
 	// Check if the votes to redeem exceeds the total votes to protect against malicious input for votes to redeem
 	if votesToRedeem > voteCount {
 		return errors.New("votes to redeem exceeds total votes")
@@ -105,16 +116,31 @@ func EntityRedeemVoteCredits(
 	}
 
 	var id pgtype.UUID
-	err = c.QueryRow(ctx, "INSERT INTO entity_vote_redeem_logs (target_id, target_id, credits) VALUES ($1, $2, $3) RETURNING id", targetId, targetType, totalCredits).Scan(&id)
+	err = c.QueryRow(ctx, "INSERT INTO entity_vote_redeem_logs (target_id, target_type, credits) VALUES ($1, $2, $3) RETURNING id", targetId, targetType, totalCredits).Scan(&id)
 
 	if err != nil {
 		return fmt.Errorf("could not log vote credit redemption: %w", err)
 	}
 
-	_, err = c.Exec(ctx, "UPDATE entity_votes SET credit_redeem = $1, void = true, void_reason = 'Vote credits redeemed' WHERE target_id = $2 AND target_type = $3 AND void = false LIMIT $4", id, targetId, targetType, votesToRedeem)
+	if vi.SupportsPartialVoteCreditsRedeem {
+		var ids []pgtype.UUID
+		err = c.QueryRow(ctx, "SELECT array(SELECT itag FROM entity_votes WHERE target_id = $1 AND target_type = $2 AND void = false ORDER BY created_at ASC LIMIT $3)", targetId, targetType, votesToRedeem).Scan(&ids)
 
-	if err != nil {
-		return fmt.Errorf("could not redeem vote credits: %w", err)
+		if err != nil {
+			return fmt.Errorf("could not fetch vote ids: %w", err)
+		}
+
+		_, err = c.Exec(ctx, "UPDATE entity_votes SET credit_redeem = $1, void = true, void_reason = 'Vote credits redeemed' WHERE itag = ANY($2)", id, ids)
+
+		if err != nil {
+			return fmt.Errorf("could not redeem vote credits: %w", err)
+		}
+	} else {
+		_, err = c.Exec(ctx, "UPDATE entity_votes SET credit_redeem = $1, void = true, void_reason = 'Vote credits redeemed' WHERE target_id = $2 AND target_type = $3 AND void = false", id, targetId, targetType)
+
+		if err != nil {
+			return fmt.Errorf("could not redeem vote credits: %w", err)
+		}
 	}
 
 	return nil
