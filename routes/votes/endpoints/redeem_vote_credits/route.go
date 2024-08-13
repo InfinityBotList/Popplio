@@ -2,6 +2,7 @@ package redeem_vote_credits
 
 import (
 	"net/http"
+	"strconv"
 
 	"popplio/state"
 	"popplio/types"
@@ -17,7 +18,7 @@ import (
 func Docs() *docs.Doc {
 	return &docs.Doc{
 		Summary:     "Redeem Vote Credits",
-		Description: "Redeems all votes into credits towards the shop based on the vote credit tiers",
+		Description: "Redeems votes into credits towards the shop based on the vote credit tiers",
 		Params: []docs.Parameter{
 			{
 				Name:        "target_type",
@@ -31,6 +32,13 @@ func Docs() *docs.Doc {
 				Description: "The target ID of the entity",
 				Required:    true,
 				In:          "path",
+				Schema:      docs.IdSchema,
+			},
+			{
+				Name:        "votes",
+				Description: "The number of votes to redeem",
+				Required:    true,
+				In:          "query",
 				Schema:      docs.IdSchema,
 			},
 		},
@@ -49,6 +57,17 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		}
 	}
 
+	votesParam := chi.URLParam(r, "votes")
+
+	votesInt, err := strconv.Atoi(votesParam)
+
+	if err != nil {
+		return uapi.HttpResponse{
+			Status: http.StatusBadRequest,
+			Json:   types.ApiError{Message: "votes must be an integer"},
+		}
+	}
+
 	tx, err := state.Pool.Begin(d.Context)
 
 	if err != nil {
@@ -61,7 +80,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 
 	defer tx.Rollback(d.Context)
 
-	err = votes.EntityRedeemVoteCredits(d.Context, tx, targetId, targetType)
+	err = votes.EntityRedeemVoteCredits(d.Context, tx, targetId, targetType, votesInt)
 
 	if err != nil {
 		return uapi.HttpResponse{

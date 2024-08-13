@@ -62,6 +62,7 @@ func EntityRedeemVoteCredits(
 	c DbConn,
 	targetId string,
 	targetType string,
+	votesToRedeem int,
 ) error {
 	vi, err := EntityVoteInfo(ctx, c, targetId, targetType)
 
@@ -73,24 +74,43 @@ func EntityRedeemVoteCredits(
 		return errors.New("vote credits are not supported for this entity")
 	}
 
-	summary, err := EntityGetVoteCreditsSummary(ctx, c, targetId, targetType)
+	rows, err := c.Query(ctx, "SELECT "+voteCreditTiersCols+" FROM vote_credit_tiers WHERE target_type = $1 ORDER BY position ASC", targetType)
 
 	if err != nil {
-		return fmt.Errorf("could not fetch vote credit tiers: %w", err)
+		return fmt.Errorf("could not fetch vote credit tiers [row]: %w", err)
 	}
 
-	if summary.TotalCredits == 0 {
+	vcts, err := pgx.CollectRows(rows, pgx.RowToAddrOfStructByName[types.VoteCreditTier])
+
+	if errors.Is(err, pgx.ErrNoRows) {
+		vcts = []*types.VoteCreditTier{}
+	}
+
+	voteCount, err := EntityGetVoteCount(ctx, c, targetId, targetType)
+
+	if err != nil {
+		return fmt.Errorf("could not fetch vote count: %w", err)
+	}
+
+	if votesToRedeem > voteCount {
+		return errors.New("votes to redeem exceeds total votes")
+	}
+
+	slabOverview := SlabSplitVotes(votesToRedeem, vcts)
+	totalCredits := SlabCalculateCredits(vcts, slabOverview)
+
+	if totalCredits == 0 {
 		return errors.New("no vote credits to redeem")
 	}
 
 	var id pgtype.UUID
-	err = c.QueryRow(ctx, "INSERT INTO entity_vote_redeem_logs (target_id, target_id, credits) VALUES ($1, $2, $3) RETURNING id", targetId, targetType, summary.TotalCredits).Scan(&id)
+	err = c.QueryRow(ctx, "INSERT INTO entity_vote_redeem_logs (target_id, target_id, credits) VALUES ($1, $2, $3) RETURNING id", targetId, targetType, totalCredits).Scan(&id)
 
 	if err != nil {
 		return fmt.Errorf("could not log vote credit redemption: %w", err)
 	}
 
-	_, err = c.Exec(ctx, "UPDATE entity_votes SET credit_redeem = $1, void = true, void_reason = 'Vote credits redeemed' WHERE target_id = $2 AND target_type = $3 AND void = false", id, targetId, targetType)
+	_, err = c.Exec(ctx, "UPDATE entity_votes SET credit_redeem = $1, void = true, void_reason = 'Vote credits redeemed' WHERE target_id = $2 AND target_type = $3 AND void = false LIMIT $4", id, targetId, targetType, votesToRedeem)
 
 	if err != nil {
 		return fmt.Errorf("could not redeem vote credits: %w", err)
