@@ -92,6 +92,7 @@ func EntityRedeemVoteCredits(
 		return fmt.Errorf("could not fetch vote count: %w", err)
 	}
 
+	// Check if the votes to redeem exceeds the total votes to protect against malicious input for votes to redeem
 	if votesToRedeem > voteCount {
 		return errors.New("votes to redeem exceeds total votes")
 	}
