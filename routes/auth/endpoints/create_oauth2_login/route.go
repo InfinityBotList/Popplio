@@ -131,7 +131,7 @@ func sendAuthLog(user oauthUser, req types.AuthorizeRequest, new bool) {
 					},
 				},
 				Footer: &discordgo.MessageEmbedFooter{
-					Text: "© Copyright 2023 - Infinity Bot List",
+					Text: "© Copyright 2023 - Infinity List",
 				},
 				Timestamp: time.Now().Format(time.RFC3339),
 			},

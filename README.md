@@ -1,6 +1,6 @@
 # Popplio
 
-Popplio is the new rewrite of the Infinity Bot List API in golang...
+Popplio is the new rewrite of the Infinity List API in golang...
 
 **Open source under the AGPL3. We reserve all rights to the code**
 

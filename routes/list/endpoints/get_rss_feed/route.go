@@ -58,7 +58,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	rssFeed.NS = "http://www.w3.org/2005/Atom"
 	rssFeed.Version = "2.0"
 	rssFeed.Channel = &seo.RssChannel{
-		Title:         "Infinity Bot List",
+		Title:         "Infinity List",
 		Link:          state.Config.Sites.Frontend.Parse(),
 		Description:   "Search our vast list of bots for an exciting start to your server.",
 		Language:      "en-us",
@@ -105,7 +105,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		Generator: "Popplio RSS Generator",
 		Image: &seo.RssImage{
 			URL:   state.Config.Sites.CDN + "/core/full_logo.webp",
-			Title: "Infinity Bot List Logo",
+			Title: "Infinity List Logo",
 			Link:  state.Config.Sites.Frontend.Parse(),
 		},
 	}
