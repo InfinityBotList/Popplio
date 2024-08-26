@@ -81,7 +81,12 @@ func corsMiddleware(next http.Handler) http.Handler {
 			r.Header.Set("Authorization", "Bot "+r.Header.Get("Bot-Auth"))
 		}
 
-		w.Header().Set("Access-Control-Allow-Origin", r.Header.Get("Origin"))
+		origin := r.Header.Get("Origin")
+
+		if origin == "" {
+			origin = state.Config.Sites.Frontend.Parse()
+		}
+		w.Header().Set("Access-Control-Allow-Origin", origin)
 		w.Header().Set("Access-Control-Allow-Credentials", "true")
 		w.Header().Set("Access-Control-Allow-Headers", "X-Client, Content-Type, Authorization")
 		w.Header().Set("Access-Control-Expose-Headers", "X-Session-Invalid, Retry-After")
