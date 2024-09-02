@@ -1,15 +1,15 @@
 module popplio
 
-go 1.21.5
+go 1.23
 
-toolchain go1.22.1
+toolchain go1.23.0
 
 require (
 	github.com/bwmarrin/discordgo v0.28.1
 	github.com/getkin/kin-openapi v0.127.0 // indirect
 	github.com/go-chi/chi/v5 v5.1.0
 	github.com/google/uuid v1.6.0
-	github.com/infinitybotlist/eureka v1.8.0
+	github.com/infinitybotlist/eureka v1.9.0
 	github.com/mileusna/useragent v1.3.4
 	github.com/wk8/go-ordered-map/v2 v2.1.8
 	gopkg.in/yaml.v3 v3.0.1
@@ -26,7 +26,7 @@ require (
 require github.com/infinitybotlist/kittycat/go v0.0.0-20240526051606-6574fb343539
 
 require (
-	github.com/bytedance/sonic v1.12.1 // indirect
+	github.com/bytedance/sonic v1.12.2 // indirect
 	github.com/bytedance/sonic/loader v0.2.0 // indirect
 	github.com/cloudwego/base64x v0.1.4 // indirect
 	github.com/cloudwego/iasm v0.2.0 // indirect
@@ -74,7 +74,7 @@ require (
 	github.com/go-playground/validator/v10 v10.22.0
 	github.com/jackc/pgx/v5 v5.6.0
 	github.com/json-iterator/go v1.1.12
-	github.com/plutov/paypal/v4 v4.10.1
+	github.com/plutov/paypal/v4 v4.11.0
 	github.com/redis/go-redis/v9 v9.6.1
 	go.uber.org/zap v1.27.0
 	golang.org/x/exp v0.0.0-20240823005443-9b4947da3948

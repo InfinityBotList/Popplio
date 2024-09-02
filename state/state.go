@@ -11,6 +11,7 @@ import (
 
 	"popplio/config"
 	"popplio/seo"
+	"popplio/state/discord_dovewing"
 
 	"github.com/infinitybotlist/eureka/dovewing/dovetypes"
 	hredis "github.com/infinitybotlist/eureka/hotcache/redis"
@@ -144,7 +145,7 @@ func Setup() {
 		UserExpiryTime: 8 * time.Hour,
 	}
 
-	DovewingPlatformDiscord, err = dovewing.DiscordStateConfig{
+	DovewingPlatformDiscord, err = discord_dovewing.DiscordStateConfig{
 		Session:        Discord,
 		PreferredGuild: Config.Servers.Main,
 		BaseState:      &BaseDovewingState,

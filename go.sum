@@ -19,6 +19,8 @@ github.com/bytedance/sonic v1.11.8 h1:Zw/j1KfiS+OYTi9lyB3bb0CFxPJVkM17k1wyDG32LR
 github.com/bytedance/sonic v1.11.8/go.mod h1:LysEHSvpvDySVdC2f87zGWf6CIKJcAvqab1ZaiQtds4=
 github.com/bytedance/sonic v1.12.1 h1:jWl5Qz1fy7X1ioY74WqO0KjAMtAGQs4sYnjiEBiyX24=
 github.com/bytedance/sonic v1.12.1/go.mod h1:B8Gt/XvtZ3Fqj+iSKMypzymZxw/FVwgIGKzMzT9r/rk=
+github.com/bytedance/sonic v1.12.2 h1:oaMFuRTpMHYLpCntGca65YWt5ny+wAceDERTkT2L9lg=
+github.com/bytedance/sonic v1.12.2/go.mod h1:B8Gt/XvtZ3Fqj+iSKMypzymZxw/FVwgIGKzMzT9r/rk=
 github.com/bytedance/sonic/loader v0.1.1 h1:c+e5Pt1k/cy5wMveRDyk2X4B9hF4g7an8N3zCYjJFNM=
 github.com/bytedance/sonic/loader v0.1.1/go.mod h1:ncP89zfokxS5LZrJxl5z0UJcsk4M4yY2JpfqGeCtNLU=
 github.com/bytedance/sonic/loader v0.2.0 h1:zNprn+lsIP06C/IqCHs3gPQIvnvpKbbxyXQP1iU4kWM=
@@ -138,6 +140,8 @@ github.com/infinitybotlist/eureka v1.2.0 h1:ti6hM6Y9zUYHpUQr8mHTfRTAbhQsNTwB0X+i
 github.com/infinitybotlist/eureka v1.2.0/go.mod h1:+XpKNt78xfvzOLdakj1CLt4Fn6wIaQ6L3Cq0X2luIPY=
 github.com/infinitybotlist/eureka v1.8.0 h1:gQyQVaoiFnzPyxzfdwUupaHe3tKlSU5MoS+or+G1NH0=
 github.com/infinitybotlist/eureka v1.8.0/go.mod h1:4zMcOZnaS/h/Gh4h7r59q+uB6WWdJMZUUOqFm9fKdIA=
+github.com/infinitybotlist/eureka v1.9.0 h1:LZ50/Tegmw7eO3rM49kcBrBF4oRalANWDNDmU2mKfI8=
+github.com/infinitybotlist/eureka v1.9.0/go.mod h1:v8Yt2BsjeGPLxHsnRkaKyiP52EIWR0VR7x5K4GrhJ/A=
 github.com/infinitybotlist/kittycat/go v0.0.0-20240229082615-47e9bf994f59 h1:3iRAn5faOAqvfrnXL6ClwpRruByeZl2iO5BOnwoZn+A=
 github.com/infinitybotlist/kittycat/go v0.0.0-20240229082615-47e9bf994f59/go.mod h1:AYyGvOSsNrb8mBFQnWi8D+Z84PClkglpK+DqzC1NRB8=
 github.com/infinitybotlist/kittycat/go v0.0.0-20240512051926-9ebbcd51308c h1:dEwZInAeeK/5/R0D1AXyxg1cgF2UWgoozJqnov14ZcQ=
@@ -209,6 +213,8 @@ github.com/plutov/paypal/v4 v4.10.0 h1:ZC2Zz3EnvI34dpn1USr5c5EuFlpos7Wv4axdLmGee
 github.com/plutov/paypal/v4 v4.10.0/go.mod h1:uvznSL1/ZG53kMklaW/sc/X0UjAJ3e1tw9ExvLi6kiI=
 github.com/plutov/paypal/v4 v4.10.1 h1:2eyhpnvRIXWDwiglfajk5TpFFYyF5tKEc3lCXgkcwHg=
 github.com/plutov/paypal/v4 v4.10.1/go.mod h1:uvznSL1/ZG53kMklaW/sc/X0UjAJ3e1tw9ExvLi6kiI=
+github.com/plutov/paypal/v4 v4.11.0 h1:G69UVX01UjndKopPcrDgGui2BD9P5Km66nBGZEPRWUA=
+github.com/plutov/paypal/v4 v4.11.0/go.mod h1:9K/agLFwXpz5Tpuc3aNxPvzIdUo6BPL7pf5+x4ITOug=
 github.com/pmezard/go-difflib v1.0.0 h1:4DBwDE0NGyQoBHbLQYPwSUPoCMWR5BEzIk/f1lZbAQM=
 github.com/pmezard/go-difflib v1.0.0/go.mod h1:iKH77koFhYxTK1pcRnkKkqfTogsbg7gZNVY4sRDYZ/4=
 github.com/redis/go-redis/v9 v9.3.0 h1:RiVDjmig62jIWp7Kk4XVLs0hzV6pI3PyTnnL0cnn0u0=
