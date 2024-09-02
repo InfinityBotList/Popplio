@@ -6,15 +6,16 @@ import (
 	"popplio/apps"
 	"popplio/state"
 	"popplio/types"
+	"popplio/validators"
 	"strconv"
 	"time"
 
+	"github.com/disgoorg/disgo/discord"
 	docs "github.com/infinitybotlist/eureka/doclib"
 	"github.com/infinitybotlist/eureka/uapi"
 	"github.com/jackc/pgx/v5"
 	"go.uber.org/zap"
 
-	"github.com/bwmarrin/discordgo"
 	"github.com/go-playground/validator/v10"
 	"github.com/infinitybotlist/eureka/crypto"
 )
@@ -101,14 +102,14 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	}
 
 	var appBanned bool
-        err = state.Pool.QueryRow(d.Context, "SELECT app_banned FROM users WHERE user_id = $1", d.Auth.ID).Scan(&appBanned)
+	err = state.Pool.QueryRow(d.Context, "SELECT app_banned FROM users WHERE user_id = $1", d.Auth.ID).Scan(&appBanned)
 
 	if err != nil {
-	        state.Logger.Error("Error gettingstate.Pop banned state", zap.Error(err), zap.String("user_id", d.Auth.ID))
+		state.Logger.Error("Error gettingstate.Pop banned state", zap.Error(err), zap.String("user_id", d.Auth.ID))
 		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
-        if appBanned {
+	if appBanned {
 		return uapi.HttpResponse{
 			Json: types.ApiError{
 				Message: "You are currently banned from making applications on the site",
@@ -277,29 +278,29 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		channel = position.Channel()
 	}
 
-	_, err = state.Discord.ChannelMessageSendComplex(channel, &discordgo.MessageSend{
-		Content: "<@&" + state.Config.Roles.Apps + ">",
-		Embeds: []*discordgo.MessageEmbed{
+	_, err = state.Discord.Rest().CreateMessage(channel, discord.MessageCreate{
+		Content: "<@&" + state.Config.Roles.Apps.String() + ">",
+		Embeds: []discord.Embed{
 			{
 				Title:       "New " + position.Name + " Application!",
 				URL:         state.Config.Sites.Panel.Production() + "/panel/apps",
 				Description: desc,
 				Color:       0x00ff00,
-				Fields: []*discordgo.MessageEmbedField{
+				Fields: []discord.EmbedField{
 					{
 						Name:   "App ID",
 						Value:  appId,
-						Inline: true,
+						Inline: validators.Pointer(true),
 					},
 					{
 						Name:   "User ID",
 						Value:  d.Auth.ID,
-						Inline: true,
+						Inline: validators.Pointer(true),
 					},
 					{
 						Name:   "Position",
 						Value:  payload.Position,
-						Inline: true,
+						Inline: validators.Pointer(true),
 					},
 				},
 			},

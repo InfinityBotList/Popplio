@@ -4,23 +4,24 @@ import (
 	"popplio/state"
 	"popplio/types"
 
+	"github.com/disgoorg/snowflake/v2"
 	"golang.org/x/exp/slices"
 )
 
-func CheckUserBoosterStatus(id string) types.BoosterStatus {
+func CheckUserBoosterStatus(id snowflake.ID) types.BoosterStatus {
 	// Check member is a booster
-	m, err := state.Discord.State.Member(state.Config.Servers.Main, id)
+	m, ok := state.Discord.Caches().Member(state.Config.Servers.Main, id)
 
-	if err != nil {
+	if !ok {
 		return types.BoosterStatus{
-			Remark:    "Member not found on server:" + err.Error(),
+			Remark:    "Member not found on server",
 			IsBooster: false,
 		}
 	}
 
 	// Check if member has booster role
 	roles := state.Config.Roles.PremiumRoles.Parse()
-	for _, role := range m.Roles {
+	for _, role := range m.RoleIDs {
 		if slices.Contains(roles, role) {
 			// Member has booster role
 			return types.BoosterStatus{

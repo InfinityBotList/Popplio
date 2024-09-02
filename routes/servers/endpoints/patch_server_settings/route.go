@@ -11,11 +11,11 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/disgoorg/disgo/discord"
 	docs "github.com/infinitybotlist/eureka/doclib"
 	"github.com/infinitybotlist/eureka/uapi"
 	"go.uber.org/zap"
 
-	"github.com/bwmarrin/discordgo"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-playground/validator/v10"
 )
@@ -132,34 +132,43 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	avatar := assetmanager.AvatarInfo(assetmanager.AssetTargetTypeServer, id)
 
 	// Send a message to the bot logs channel
-	state.Discord.ChannelMessageSendComplex(state.Config.Channels.ModLogs, &discordgo.MessageSend{
+	_, err = state.Discord.Rest().CreateMessage(state.Config.Channels.ModLogs, discord.MessageCreate{
 		Content: "",
-		Embeds: []*discordgo.MessageEmbed{
+		Embeds: []discord.Embed{
 			{
 				URL:   state.Config.Sites.Frontend.Production() + "/servers/" + id,
 				Title: "Server Updated",
-				Thumbnail: &discordgo.MessageEmbedThumbnail{
+				Thumbnail: &discord.EmbedResource{
 					URL: assetmanager.ResolveAssetMetadataToUrl(avatar),
 				},
-				Fields: []*discordgo.MessageEmbedField{
+				Fields: []discord.EmbedField{
 					{
 						Name:   "Name",
 						Value:  name,
-						Inline: true,
+						Inline: validators.Pointer(true),
 					},
 					{
 						Name:   "Server ID",
 						Value:  id,
-						Inline: true,
+						Inline: validators.Pointer(true),
 					},
 					{
 						Name:   "User",
 						Value:  fmt.Sprintf("<@%s>", d.Auth.ID),
-						Inline: true,
+						Inline: validators.Pointer(true),
 					},
 				},
 			},
 		},
 	})
+
+	if err != nil {
+		state.Logger.Error("Error while sending embed to mod logs channel", zap.Error(err), zap.String("serverID", id))
+		return uapi.HttpResponse{
+			Status: http.StatusInternalServerError,
+			Json:   types.ApiError{Message: "Internal Error: While server update was successful, an error occurred while sending the update embed to the mod logs channel"},
+		}
+	}
+
 	return uapi.DefaultResponse(http.StatusNoContent)
 }

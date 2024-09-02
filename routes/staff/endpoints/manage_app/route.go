@@ -12,6 +12,7 @@ import (
 	"popplio/validators"
 	"strings"
 
+	"github.com/disgoorg/disgo/discord"
 	kittycat "github.com/infinitybotlist/kittycat/go"
 
 	docs "github.com/infinitybotlist/eureka/doclib"
@@ -19,7 +20,6 @@ import (
 	"github.com/jackc/pgx/v5"
 	"go.uber.org/zap"
 
-	"github.com/bwmarrin/discordgo"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-playground/validator/v10"
 )
@@ -150,7 +150,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		}
 	}
 
-	var embeds []*discordgo.MessageEmbed
+	var embeds []discord.Embed
 
 	if payload.Approved {
 		if position.ReviewLogic != nil {
@@ -174,37 +174,37 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 			return uapi.DefaultResponse(http.StatusInternalServerError)
 		}
 
-		embeds = []*discordgo.MessageEmbed{
+		embeds = []discord.Embed{
 			{
 				Title:       "Application Approved",
 				URL:         state.Config.Sites.Panel.Production() + "/panel/apps",
 				Description: fmt.Sprintf("<@%s> has approved an application by <@%s> for the position of %s", d.Auth.ID, app.UserID, app.Position),
 				Color:       0x00ff00,
-				Fields: []*discordgo.MessageEmbedField{
+				Fields: []discord.EmbedField{
 					{
 						Name:   "App ID",
 						Value:  appId,
-						Inline: true,
+						Inline: validators.Pointer(true),
 					},
 					{
 						Name:   "User ID",
 						Value:  app.UserID,
-						Inline: true,
+						Inline: validators.Pointer(true),
 					},
 					{
 						Name:   "Approved By",
 						Value:  fmt.Sprintf("<@%s>", d.Auth.ID),
-						Inline: true,
+						Inline: validators.Pointer(true),
 					},
 					{
 						Name:   "Position",
 						Value:  app.Position,
-						Inline: true,
+						Inline: validators.Pointer(true),
 					},
 					{
 						Name:   "Feedback",
 						Value:  payload.Reason,
-						Inline: false,
+						Inline: validators.Pointer(true),
 					},
 				},
 			},
@@ -231,37 +231,37 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 			return uapi.DefaultResponse(http.StatusInternalServerError)
 		}
 
-		embeds = []*discordgo.MessageEmbed{
+		embeds = []discord.Embed{
 			{
 				Title:       "Application Denied",
 				URL:         state.Config.Sites.Panel.Production() + "/panel/apps",
 				Description: fmt.Sprintf("<@%s> has denied an application by <@%s> for the position of %s", d.Auth.ID, app.UserID, app.Position),
 				Color:       0xff0000,
-				Fields: []*discordgo.MessageEmbedField{
+				Fields: []discord.EmbedField{
 					{
 						Name:   "App ID",
 						Value:  appId,
-						Inline: true,
+						Inline: validators.Pointer(true),
 					},
 					{
 						Name:   "User ID",
 						Value:  app.UserID,
-						Inline: true,
+						Inline: validators.Pointer(true),
 					},
 					{
 						Name:   "Denied By",
 						Value:  fmt.Sprintf("<@%s>", d.Auth.ID),
-						Inline: true,
+						Inline: validators.Pointer(true),
 					},
 					{
 						Name:   "Position",
 						Value:  app.Position,
-						Inline: true,
+						Inline: validators.Pointer(true),
 					},
 					{
 						Name:   "Reason",
 						Value:  payload.Reason,
-						Inline: false,
+						Inline: validators.Pointer(true),
 					},
 				},
 			},
@@ -269,40 +269,14 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	}
 
 	// Send message to apps channel
-	_, err = state.Discord.ChannelMessageSendEmbeds(state.Config.Channels.Apps, embeds)
+	_, err = state.Discord.Rest().CreateMessage(state.Config.Channels.Apps, discord.MessageCreate{
+		Embeds: embeds,
+	})
 
 	if err != nil {
 		state.Logger.Error("Failed to send message to apps channel", zap.Error(err), zap.String("appId", appId))
 		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
-	// Send message to user if in main server
-	_, err = state.Discord.State.Member(state.Config.Servers.Main, app.UserID)
-
-	if err == nil {
-		dm, err := state.Discord.UserChannelCreate(app.UserID)
-
-		if err != nil {
-			state.Logger.Error("Failed to create DM channel", zap.Error(err), zap.String("appId", appId))
-			return uapi.HttpResponse{
-				Status: http.StatusInternalServerError,
-				Json: types.ApiError{
-					Message: "Could not send DM, but app was updated successfully",
-				},
-			}
-		}
-
-		_, err = state.Discord.ChannelMessageSendEmbeds(dm.ID, embeds)
-
-		if err != nil {
-			state.Logger.Error("Failed to send message to user", zap.Error(err), zap.String("appId", appId))
-			return uapi.HttpResponse{
-				Status: http.StatusInternalServerError,
-				Json: types.ApiError{
-					Message: "Could not send DM, but app was updated successfully",
-				},
-			}
-		}
-	}
 	return uapi.DefaultResponse(http.StatusNoContent)
 }

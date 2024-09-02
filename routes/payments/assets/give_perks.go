@@ -8,7 +8,7 @@ import (
 	"popplio/validators"
 	"strconv"
 
-	"github.com/bwmarrin/discordgo"
+	"github.com/disgoorg/disgo/discord"
 	"go.uber.org/zap"
 )
 
@@ -132,7 +132,7 @@ func GivePerks(ctx context.Context, perkData PerkData) error {
 			return errors.New("our database broke, please try again later")
 		}
 
-		_, err = state.Discord.ChannelMessageSendComplex(state.Config.Channels.ModLogs, &discordgo.MessageSend{
+		_, err = state.Discord.Rest().CreateMessage(state.Config.Channels.ModLogs, discord.MessageCreate{
 			Content: "<@" + perkData.UserID + "> has bought <@" + botID + "> premium for " + strconv.Itoa(perk.TimePeriod) + " hours.",
 		})
 

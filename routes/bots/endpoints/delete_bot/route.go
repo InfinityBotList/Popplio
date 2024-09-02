@@ -6,7 +6,7 @@ import (
 	"popplio/state"
 	"popplio/types"
 
-	"github.com/bwmarrin/discordgo"
+	"github.com/disgoorg/disgo/discord"
 	"github.com/go-chi/chi/v5"
 	docs "github.com/infinitybotlist/eureka/doclib"
 	"github.com/infinitybotlist/eureka/uapi"
@@ -58,14 +58,14 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	}
 
 	// Send embed to bot log channel
-	_, err = state.Discord.ChannelMessageSendComplex(state.Config.Channels.ModLogs, &discordgo.MessageSend{
+	_, err = state.Discord.Rest().CreateMessage(state.Config.Channels.ModLogs, discord.MessageCreate{
 		Content: "",
-		Embeds: []*discordgo.MessageEmbed{
+		Embeds: []discord.Embed{
 			{
 				URL:   state.Config.Sites.Frontend.Production() + "/bots/" + id,
 				Title: "Bot Deleted",
 				Color: 0xff0000,
-				Fields: []*discordgo.MessageEmbedField{
+				Fields: []discord.EmbedField{
 					{
 						Name:  "Bot ID",
 						Value: id,

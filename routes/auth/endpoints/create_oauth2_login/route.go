@@ -9,14 +9,15 @@ import (
 
 	"popplio/state"
 	"popplio/types"
+	"popplio/validators"
 
+	"github.com/disgoorg/disgo/discord"
 	"github.com/infinitybotlist/eureka/jsonimpl"
 	"github.com/infinitybotlist/eureka/ratelimit"
 
 	docs "github.com/infinitybotlist/eureka/doclib"
 	"github.com/infinitybotlist/eureka/uapi"
 
-	"github.com/bwmarrin/discordgo"
 	"github.com/go-playground/validator/v10"
 	"github.com/infinitybotlist/eureka/crypto"
 	ua "github.com/mileusna/useragent"
@@ -60,30 +61,29 @@ func sendAuthLog(user oauthUser, req types.AuthorizeRequest, new bool) {
 
 	state.Logger.With(
 		zap.String("user_id", user.ID),
-		zap.String("channel_id", state.Config.Channels.AuthLogs),
-		zap.String("bot_info", state.Discord.State.User.String()),
+		zap.String("channel_id", state.Config.Channels.AuthLogs.String()),
 	).Debug("sendAuthLog: Channel Info")
 
-	_, err := state.Discord.ChannelMessageSendComplex(state.Config.Channels.AuthLogs, &discordgo.MessageSend{
-		Embeds: []*discordgo.MessageEmbed{
+	_, err := state.Discord.Rest().CreateMessage(state.Config.Channels.AuthLogs, discord.MessageCreate{
+		Embeds: []discord.Embed{
 			{
 				Title: "User Login Attempt",
 				Color: 0xff0000,
-				Fields: []*discordgo.MessageEmbedField{
+				Fields: []discord.EmbedField{
 					{
 						Name:   "User ID",
 						Value:  user.ID,
-						Inline: true,
+						Inline: validators.Pointer(true),
 					},
 					{
 						Name:   "Username",
 						Value:  user.Username + "#" + user.Disc,
-						Inline: true,
+						Inline: validators.Pointer(true),
 					},
 					{
 						Name:   "Scope",
 						Value:  req.Scope,
-						Inline: true,
+						Inline: validators.Pointer(true),
 					},
 					{
 						Name: "Banned",
@@ -94,7 +94,7 @@ func sendAuthLog(user oauthUser, req types.AuthorizeRequest, new bool) {
 
 							return "No"
 						}(),
-						Inline: true,
+						Inline: validators.Pointer(true),
 					},
 					{
 						Name: "Vote Banned",
@@ -105,7 +105,7 @@ func sendAuthLog(user oauthUser, req types.AuthorizeRequest, new bool) {
 
 							return "No"
 						}(),
-						Inline: true,
+						Inline: validators.Pointer(true),
 					},
 					{
 						Name: "App Banned",
@@ -116,7 +116,7 @@ func sendAuthLog(user oauthUser, req types.AuthorizeRequest, new bool) {
 
 							return "No"
 						}(),
-						Inline: true,
+						Inline: validators.Pointer(true),
 					},
 					{
 						Name: "New User",
@@ -127,13 +127,13 @@ func sendAuthLog(user oauthUser, req types.AuthorizeRequest, new bool) {
 
 							return "No"
 						}(),
-						Inline: true,
+						Inline: validators.Pointer(true),
 					},
 				},
-				Footer: &discordgo.MessageEmbedFooter{
+				Footer: &discord.EmbedFooter{
 					Text: "© Copyright 2023 - Infinity Bot List",
 				},
-				Timestamp: time.Now().Format(time.RFC3339),
+				Timestamp: validators.Pointer(time.Now()),
 			},
 		},
 	})

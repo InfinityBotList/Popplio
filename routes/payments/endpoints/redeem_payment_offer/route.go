@@ -7,6 +7,7 @@ import (
 	"popplio/types"
 	"time"
 
+	"github.com/disgoorg/snowflake/v2"
 	"github.com/infinitybotlist/eureka/ratelimit"
 	"go.uber.org/zap"
 
@@ -119,7 +120,19 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		}
 
 		// Check that the user is in fact a booster
-		bs := assets.CheckUserBoosterStatus(d.Auth.ID)
+		userId, err := snowflake.Parse(d.Auth.ID)
+
+		if err != nil {
+			state.Logger.Error("Error while parsing snowflake", zap.Error(err), zap.String("userID", d.Auth.ID))
+			return uapi.HttpResponse{
+				Status: http.StatusBadRequest,
+				Json: types.ApiError{
+					Message: "Error: " + err.Error(),
+				},
+			}
+		}
+
+		bs := assets.CheckUserBoosterStatus(userId)
 
 		if !bs.IsBooster {
 			return uapi.HttpResponse{

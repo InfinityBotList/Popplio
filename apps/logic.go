@@ -6,9 +6,12 @@ import (
 	"popplio/state"
 	"popplio/teams"
 	"popplio/types"
+	"popplio/validators"
 	"strings"
 
-	"github.com/bwmarrin/discordgo"
+	"github.com/disgoorg/disgo/discord"
+	"github.com/disgoorg/disgo/rest"
+	"github.com/disgoorg/snowflake/v2"
 	"github.com/infinitybotlist/eureka/dovewing"
 	"github.com/infinitybotlist/eureka/uapi"
 	kittycat "github.com/infinitybotlist/kittycat/go"
@@ -65,15 +68,15 @@ func extraLogicResubmit(d uapi.RouteData, p types.Position, answers map[string]s
 	}
 
 	// Send an embed to the bot logs channel
-	_, err = state.Discord.ChannelMessageSendComplex(state.Config.Channels.BotLogs, &discordgo.MessageSend{
+	_, err = state.Discord.Rest().CreateMessage(state.Config.Channels.BotLogs, discord.MessageCreate{
 		Content: state.Config.Meta.UrgentMentions,
-		Embeds: []*discordgo.MessageEmbed{
+		Embeds: []discord.Embed{
 			{
 				Title:       "Bot Resubmitted!",
 				URL:         state.Config.Sites.Frontend.Parse() + "/bots/" + botID,
 				Description: "User <@" + d.Auth.ID + "> has resubmitted their bot",
 				Color:       0x00ff00,
-				Fields: []*discordgo.MessageEmbedField{
+				Fields: []discord.EmbedField{
 					{
 						Name:  "Bot ID",
 						Value: botID,
@@ -85,7 +88,7 @@ func extraLogicResubmit(d uapi.RouteData, p types.Position, answers map[string]s
 					{
 						Name:   "Reason",
 						Value:  answers["reason"],
-						Inline: true,
+						Inline: validators.Pointer(true),
 					},
 				},
 			},
@@ -158,10 +161,16 @@ func reviewLogicBanAppeal(d uapi.RouteData, resp types.AppResponse, reason strin
 			return errors.New("reason must be less than 384 characters")
 		}
 
-		err := state.Discord.GuildBanDelete(
+		userId, err := snowflake.Parse(resp.UserID)
+
+		if err != nil {
+			return fmt.Errorf("error parsing user ID: %w", err)
+		}
+
+		err = state.Discord.Rest().DeleteBan(
 			state.Config.Servers.Main,
-			resp.UserID,
-			discordgo.WithAuditLogReason("Ban appeal accepted by "+d.Auth.ID+" | "+reason),
+			userId,
+			rest.WithReason("Ban appeal accepted by "+d.Auth.ID+" | "+reason),
 		)
 
 		if err != nil {
@@ -184,9 +193,15 @@ func reviewLogicCert(d uapi.RouteData, resp types.AppResponse, reason string, ap
 			return errors.New("bot ID not found")
 		}
 
+		botIdSnow, err := snowflake.Parse(botID)
+
+		if err != nil {
+			return fmt.Errorf("error parsing bot ID: %w", err)
+		}
+
 		// Get the bot
 		var botType string
-		err := state.Pool.QueryRow(d.Context, "SELECT type FROM bots WHERE bot_id = $1", botID).Scan(&botType)
+		err = state.Pool.QueryRow(d.Context, "SELECT type FROM bots WHERE bot_id = $1", botID).Scan(&botType)
 
 		if err != nil {
 			return fmt.Errorf("error getting bot type, does the bot exist?: %w", err)
@@ -208,21 +223,21 @@ func reviewLogicCert(d uapi.RouteData, resp types.AppResponse, reason string, ap
 		}
 
 		// Give roles
-		err = state.Discord.GuildMemberRoleAdd(state.Config.Servers.Main, botID, state.Config.Roles.CertBot)
+		err = state.Discord.Rest().AddMemberRole(state.Config.Servers.Main, botIdSnow, state.Config.Roles.CertBot)
 
 		if err != nil {
 			return fmt.Errorf("error giving certified bot role to bot, but successfully certified bot: %v", err)
 		}
 
 		// Send an embed to the bot logs channel
-		_, err = state.Discord.ChannelMessageSendComplex(state.Config.Channels.BotLogs, &discordgo.MessageSend{
-			Embeds: []*discordgo.MessageEmbed{
+		_, err = state.Discord.Rest().CreateMessage(state.Config.Channels.BotLogs, discord.MessageCreate{
+			Embeds: []discord.Embed{
 				{
 					Title:       "Bot Certified!",
 					URL:         state.Config.Sites.Frontend.Parse() + "/bots/" + botID,
 					Description: "<@" + d.Auth.ID + "> has certified bot <@" + botID + ">",
 					Color:       0x00ff00,
-					Fields: []*discordgo.MessageEmbedField{
+					Fields: []discord.EmbedField{
 						{
 							Name:  "Bot ID",
 							Value: botID,
@@ -232,7 +247,7 @@ func reviewLogicCert(d uapi.RouteData, resp types.AppResponse, reason string, ap
 							Value: reason,
 						},
 					},
-					Footer: &discordgo.MessageEmbedFooter{
+					Footer: &discord.EmbedFooter{
 						Text: "If you are the owner of this bot, use ibb!getbotroles to get your dev roles",
 					},
 				},
@@ -251,15 +266,21 @@ func reviewLogicCert(d uapi.RouteData, resp types.AppResponse, reason string, ap
 }
 
 func reviewLogicStaff(d uapi.RouteData, resp types.AppResponse, reason string, approve bool) error {
+	userId, err := snowflake.Parse(resp.UserID)
+
+	if err != nil {
+		return fmt.Errorf("error parsing user ID: %w", err)
+	}
+
 	if approve {
-		err := state.Discord.GuildMemberRoleAdd(state.Config.Servers.Main, resp.UserID, state.Config.Roles.AwaitingStaff)
+		err := state.Discord.Rest().AddMemberRole(state.Config.Servers.Main, userId, state.Config.Roles.AwaitingStaff)
 
 		if err != nil {
 			return err
 		}
 
 		// DM the user
-		dmchan, err := state.Discord.UserChannelCreate(resp.UserID)
+		dmchan, err := state.Discord.Rest().CreateDMChannel(userId)
 
 		if err != nil {
 			return errors.New("could not send DM, please ask the user to accept DMs from server members")
@@ -269,19 +290,19 @@ func reviewLogicStaff(d uapi.RouteData, resp types.AppResponse, reason string, a
 			return errors.New("reason must be 1024 characters or less")
 		}
 
-		_, err = state.Discord.ChannelMessageSendComplex(dmchan.ID, &discordgo.MessageSend{
-			Embeds: []*discordgo.MessageEmbed{
+		_, err = state.Discord.Rest().CreateMessage(dmchan.ID(), discord.MessageCreate{
+			Embeds: []discord.Embed{
 				{
 					Title:       "Staff Application Whitelisted",
 					Description: "Your staff application has been whitelisted for onboarding! Please ping any manager at #staff-only in our discord server to get started.",
 					Color:       0x00ff00,
-					Fields: []*discordgo.MessageEmbedField{
+					Fields: []discord.EmbedField{
 						{
 							Name:  "Feedback",
 							Value: reason,
 						},
 					},
-					Footer: &discordgo.MessageEmbedFooter{
+					Footer: &discord.EmbedFooter{
 						Text: "Congratulations!",
 					},
 				},
@@ -300,25 +321,25 @@ func reviewLogicStaff(d uapi.RouteData, resp types.AppResponse, reason string, a
 		}
 
 		// Attempt to DM the user on denial
-		dmchan, err := state.Discord.UserChannelCreate(resp.UserID)
+		dmchan, err := state.Discord.Rest().CreateDMChannel(userId)
 
 		if err != nil {
 			return fmt.Errorf("could not create DM channel with user, please inform them manually, then deny with reason of 'MANUALLYNOTIFIED <your reason here>': %w", err)
 		}
 
-		_, err = state.Discord.ChannelMessageSendComplex(dmchan.ID, &discordgo.MessageSend{
-			Embeds: []*discordgo.MessageEmbed{
+		_, err = state.Discord.Rest().CreateMessage(dmchan.ID(), discord.MessageCreate{
+			Embeds: []discord.Embed{
 				{
 					Title:       "Staff Application Denied",
 					Description: "Unfortunately, we have denied your staff application for Infinity Bot List. You may reapply later if you wish to",
 					Color:       0x00ff00,
-					Fields: []*discordgo.MessageEmbedField{
+					Fields: []discord.EmbedField{
 						{
 							Name:  "Reason",
 							Value: reason,
 						},
 					},
-					Footer: &discordgo.MessageEmbedFooter{
+					Footer: &discord.EmbedFooter{
 						Text: "Better luck next time?",
 					},
 				},

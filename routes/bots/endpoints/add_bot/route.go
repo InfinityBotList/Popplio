@@ -16,6 +16,7 @@ import (
 	"popplio/types"
 	"popplio/validators"
 
+	"github.com/disgoorg/disgo/discord"
 	"github.com/google/uuid"
 	"github.com/infinitybotlist/eureka/ratelimit"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -27,7 +28,6 @@ import (
 	"github.com/infinitybotlist/eureka/uapi"
 	kittycat "github.com/infinitybotlist/kittycat/go"
 
-	"github.com/bwmarrin/discordgo"
 	"github.com/go-playground/validator/v10"
 )
 
@@ -340,25 +340,25 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
-	_, err = state.Discord.ChannelMessageSendComplex(state.Config.Channels.BotLogs, &discordgo.MessageSend{
+	_, err = state.Discord.Rest().CreateMessage(state.Config.Channels.BotLogs, discord.MessageCreate{
 		Content: state.Config.Meta.UrgentMentions,
-		Embeds: []*discordgo.MessageEmbed{
+		Embeds: []discord.Embed{
 			{
 				URL:   state.Config.Sites.Frontend.Production() + "/bots/" + payload.BotID,
 				Title: "New Bot Added",
-				Thumbnail: &discordgo.MessageEmbedThumbnail{
+				Thumbnail: &discord.EmbedResource{
 					URL: metadata.Avatar,
 				},
-				Fields: []*discordgo.MessageEmbedField{
+				Fields: []discord.EmbedField{
 					{
 						Name:   "Name",
 						Value:  metadata.Name,
-						Inline: true,
+						Inline: validators.Pointer(true),
 					},
 					{
 						Name:   "Bot ID",
 						Value:  payload.BotID,
-						Inline: true,
+						Inline: validators.Pointer(true),
 					},
 					{
 						Name: "Owner",
@@ -368,7 +368,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 							}
 							return fmt.Sprintf("<@%s>", d.Auth.ID)
 						}(),
-						Inline: true,
+						Inline: validators.Pointer(true),
 					},
 				},
 			},

@@ -3,6 +3,7 @@ package state
 import (
 	"context"
 	"io"
+	"log/slog"
 	"net/http"
 	"os"
 	"reflect"
@@ -13,11 +14,15 @@ import (
 	"popplio/seo"
 	"popplio/state/discord_dovewing"
 
+	"github.com/disgoorg/disgo"
+	"github.com/disgoorg/disgo/bot"
+	"github.com/disgoorg/disgo/events"
+	"github.com/disgoorg/disgo/gateway"
+	"github.com/disgoorg/disgo/sharding"
 	"github.com/infinitybotlist/eureka/dovewing/dovetypes"
 	hredis "github.com/infinitybotlist/eureka/hotcache/redis"
 	"github.com/infinitybotlist/eureka/ratelimit"
 
-	"github.com/bwmarrin/discordgo"
 	"github.com/go-playground/validator/v10"
 	"github.com/go-playground/validator/v10/non-standard/validators"
 	"github.com/infinitybotlist/eureka/dovewing"
@@ -36,7 +41,7 @@ var (
 	Pool      *pgxpool.Pool
 	Paypal    *paypal.Client
 	Redis     *redis.Client
-	Discord   *discordgo.Session
+	Discord   bot.Client
 	Logger    *zap.Logger
 	Context   = context.Background()
 	Validator = validator.New()
@@ -108,22 +113,35 @@ func Setup() {
 
 	Redis = redis.NewClient(rOptions)
 
-	Discord, err = discordgo.New("Bot " + Config.DiscordAuth.Token)
+	Discord, err = disgo.New(Config.DiscordAuth.Token, bot.WithShardManagerConfigOpts(
+		sharding.WithAutoScaling(true),
+		sharding.WithGatewayConfigOpts(
+			gateway.WithIntents(gateway.IntentGuilds, gateway.IntentGuildPresences, gateway.IntentGuildMembers),
+			gateway.WithCompress(true),
+		),
+	),
+		bot.WithEventListeners(&events.ListenerAdapter{
+			OnGuildReady: func(event *events.GuildReady) {
+				slog.Info("guild %s ready", event.GuildID)
+			},
+			OnGuildsReady: func(event *events.GuildsReady) {
+				slog.Info("guilds on shard %d ready", event.ShardID)
+			},
+		}),
+	)
 
 	if err != nil {
 		panic(err)
 	}
 
-	Discord.Identify.Intents = discordgo.IntentsGuilds | discordgo.IntentGuildPresences | discordgo.IntentsGuildMembers
-
 	go func() {
-		err = Discord.Open()
-		if err != nil {
-			panic(err)
+		if err = Discord.OpenShardManager(Context); err != nil {
+			slog.Error("error while connecting to gateway", slog.Any("err", err))
+			return
 		}
 
 		if config.CurrentEnv == config.CurrentEnvProd {
-			err = Discord.UpdateWatchStatus(0, Config.Sites.Frontend.Parse())
+			Discord.SetPresence(Context, gateway.WithWatchingActivity(Config.Sites.Frontend.Parse()))
 
 			if err != nil {
 				panic(err)
@@ -145,9 +163,9 @@ func Setup() {
 		UserExpiryTime: 8 * time.Hour,
 	}
 
-	DovewingPlatformDiscord, err = discord_dovewing.DiscordStateConfig{
-		Session:        Discord,
-		PreferredGuild: Config.Servers.Main,
+	DovewingPlatformDiscord, err = discord_dovewing.DisgoStateConfig{
+		Client:         Discord,
+		PreferredGuild: &Config.Servers.Main,
 		BaseState:      &BaseDovewingState,
 	}.New()
 

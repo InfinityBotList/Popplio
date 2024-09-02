@@ -6,6 +6,7 @@ import (
 	"popplio/routes/payments/assets"
 	"popplio/types"
 
+	"github.com/disgoorg/snowflake/v2"
 	docs "github.com/infinitybotlist/eureka/doclib"
 	"github.com/infinitybotlist/eureka/uapi"
 
@@ -32,7 +33,18 @@ func Docs() *docs.Doc {
 func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	id := chi.URLParam(r, "id")
 
+	idSnow, err := snowflake.Parse(id)
+
+	if err != nil {
+		return uapi.HttpResponse{
+			Json: types.ApiError{
+				Message: "Invalid ID",
+			},
+			Status: http.StatusBadRequest,
+		}
+	}
+
 	return uapi.HttpResponse{
-		Json: assets.CheckUserBoosterStatus(id),
+		Json: assets.CheckUserBoosterStatus(idSnow),
 	}
 }

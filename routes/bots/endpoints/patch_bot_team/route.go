@@ -9,13 +9,13 @@ import (
 	"popplio/types"
 	"popplio/validators"
 
+	"github.com/disgoorg/disgo/discord"
 	docs "github.com/infinitybotlist/eureka/doclib"
 	"github.com/infinitybotlist/eureka/uapi"
 	kittycat "github.com/infinitybotlist/kittycat/go"
 	"github.com/jackc/pgx/v5/pgtype"
 	"go.uber.org/zap"
 
-	"github.com/bwmarrin/discordgo"
 	"github.com/go-chi/chi/v5"
 )
 
@@ -125,21 +125,21 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	}
 
 	// Send message to mod logs
-	state.Discord.ChannelMessageSendComplex(state.Config.Channels.ModLogs, &discordgo.MessageSend{
-		Embeds: []*discordgo.MessageEmbed{
+	state.Discord.Rest().CreateMessage(state.Config.Channels.ModLogs, discord.MessageCreate{
+		Embeds: []discord.Embed{
 			{
 				URL:   state.Config.Sites.Frontend.Parse() + "/bots/" + id,
 				Title: "Bot Team Update!",
-				Fields: []*discordgo.MessageEmbedField{
+				Fields: []discord.EmbedField{
 					{
 						Name:   "Bot ID",
 						Value:  id,
-						Inline: true,
+						Inline: validators.Pointer(true),
 					},
 					{
 						Name:   "Performed By",
 						Value:  fmt.Sprintf("<@%s>", d.Auth.ID),
-						Inline: true,
+						Inline: validators.Pointer(true),
 					},
 					{
 						Name:  "Old Team",

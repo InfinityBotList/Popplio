@@ -12,7 +12,7 @@ import (
 	"popplio/webhooks/core/drivers"
 	"popplio/webhooks/events"
 
-	"github.com/bwmarrin/discordgo"
+	"github.com/disgoorg/disgo/discord"
 	docs "github.com/infinitybotlist/eureka/doclib"
 	"github.com/infinitybotlist/eureka/dovewing"
 	"github.com/infinitybotlist/eureka/uapi"
@@ -239,36 +239,36 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 			return
 		}
 
-		_, err = state.Discord.ChannelMessageSendComplex(state.Config.Channels.VoteLogs, &discordgo.MessageSend{
-			Embeds: []*discordgo.MessageEmbed{
+		_, err = state.Discord.Rest().CreateMessage(state.Config.Channels.VoteLogs, discord.MessageCreate{
+			Embeds: []discord.Embed{
 				{
 					URL: entityInfo.URL,
-					Thumbnail: &discordgo.MessageEmbedThumbnail{
+					Thumbnail: &discord.EmbedResource{
 						URL: entityInfo.Avatar,
 					},
 					Title:       "🎉 Vote Count Updated!",
 					Description: ":heart:" + userObj.DisplayName + " has voted for " + targetType + ": " + entityInfo.Name,
 					Color:       0x8A6BFD,
-					Fields: []*discordgo.MessageEmbedField{
+					Fields: []discord.EmbedField{
 						{
 							Name:   "Vote Count:",
 							Value:  strconv.Itoa(nvc),
-							Inline: true,
+							Inline: validators.Pointer(true),
 						},
 						{
 							Name:   "Votes Added:",
 							Value:  strconv.Itoa(vi.VoteInfo.PerUser),
-							Inline: true,
+							Inline: validators.Pointer(true),
 						},
 						{
 							Name:   "User ID:",
 							Value:  userObj.ID,
-							Inline: true,
+							Inline: validators.Pointer(true),
 						},
 						{
 							Name:   "View " + targetType + "'s page",
 							Value:  "[View " + entityInfo.Name + "](" + entityInfo.URL + ")",
-							Inline: true,
+							Inline: validators.Pointer(true),
 						},
 					},
 				},

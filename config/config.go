@@ -3,6 +3,8 @@ package config
 import (
 	_ "embed"
 	"strings"
+
+	"github.com/disgoorg/snowflake/v2"
 )
 
 const (
@@ -69,19 +71,19 @@ type Sites struct {
 }
 
 type Roles struct {
-	AwaitingStaff string            `yaml:"awaiting_staff" default:"1029058929361174678" comment:"Awaiting Staff Role" validate:"required"`
-	Apps          string            `yaml:"apps" default:"907729844605968454" comment:"Apps Role" validate:"required"`
-	CertBot       string            `yaml:"cert_bot" default:"759468236999491594" comment:"Certified Bot Role" validate:"required"`
-	PremiumRoles  Differs[[]string] `yaml:"premium_roles" default:"759468236999491594" comment:"Premium Roles" validate:"required"`
+	AwaitingStaff snowflake.ID            `yaml:"awaiting_staff" default:"1029058929361174678" comment:"Awaiting Staff Role" validate:"required"`
+	Apps          snowflake.ID            `yaml:"apps" default:"907729844605968454" comment:"Apps Role" validate:"required"`
+	CertBot       snowflake.ID            `yaml:"cert_bot" default:"759468236999491594" comment:"Certified Bot Role" validate:"required"`
+	PremiumRoles  Differs[[]snowflake.ID] `yaml:"premium_roles" default:"759468236999491594" comment:"Premium Roles" validate:"required"`
 }
 
 type Channels struct {
-	BotLogs    string `yaml:"bot_logs" default:"762077915499593738" comment:"Bot Logs Channel" validate:"required"`
-	ModLogs    string `yaml:"mod_logs" default:"911907978926493716" comment:"Mod Logs Channel" validate:"required"`
-	Apps       string `yaml:"apps" default:"1034075132030894100" comment:"Apps Channel, should be a staff only channel" validate:"required"`
-	VoteLogs   string `yaml:"vote_logs" default:"762077981811146752" comment:"Vote Logs Channel" validate:"required"`
-	BanAppeals string `yaml:"ban_appeals" default:"870950610692878337" comment:"Ban Appeals Channel" validate:"required"`
-	AuthLogs   string `yaml:"auth_logs" default:"1075091440117498007" comment:"Auth Logs Channel" validate:"required"`
+	BotLogs    snowflake.ID `yaml:"bot_logs" default:"762077915499593738" comment:"Bot Logs Channel" validate:"required"`
+	ModLogs    snowflake.ID `yaml:"mod_logs" default:"911907978926493716" comment:"Mod Logs Channel" validate:"required"`
+	Apps       snowflake.ID `yaml:"apps" default:"1034075132030894100" comment:"Apps Channel, should be a staff only channel" validate:"required"`
+	VoteLogs   snowflake.ID `yaml:"vote_logs" default:"762077981811146752" comment:"Vote Logs Channel" validate:"required"`
+	BanAppeals snowflake.ID `yaml:"ban_appeals" default:"870950610692878337" comment:"Ban Appeals Channel" validate:"required"`
+	AuthLogs   snowflake.ID `yaml:"auth_logs" default:"1075091440117498007" comment:"Auth Logs Channel" validate:"required"`
 }
 
 type JAPI struct {
@@ -94,7 +96,7 @@ type Notifications struct {
 }
 
 type Servers struct {
-	Main string `yaml:"main" default:"758641373074423808" comment:"Main Server ID" validate:"required"`
+	Main snowflake.ID `yaml:"main" default:"758641373074423808" comment:"Main Server ID" validate:"required"`
 }
 
 type Meta struct {

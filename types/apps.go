@@ -4,6 +4,7 @@ import (
 	"popplio/validators/timex"
 	"time"
 
+	"github.com/disgoorg/snowflake/v2"
 	"github.com/infinitybotlist/eureka/dovewing/dovetypes"
 	"github.com/infinitybotlist/eureka/uapi"
 )
@@ -27,7 +28,7 @@ type Position struct {
 	Cooldown  timex.Duration `json:"cooldown"`
 
 	// Internal fields
-	Channel             func() string                                                                `json:"-"`
+	Channel             func() snowflake.ID                                                          `json:"-"`
 	ExtraLogic          func(d uapi.RouteData, p Position, answers map[string]string) error          `json:"-"`
 	PositionDescription func(d uapi.RouteData, p Position) string                                    `json:"-"` // Used for custom position descriptions
 	AllowedForBanned    bool                                                                         `json:"-"` // If true, banned users can apply for this position
