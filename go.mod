@@ -9,7 +9,7 @@ require (
 	github.com/getkin/kin-openapi v0.127.0 // indirect
 	github.com/go-chi/chi/v5 v5.1.0
 	github.com/google/uuid v1.6.0
-	github.com/infinitybotlist/eureka v1.9.0
+	github.com/infinitybotlist/eureka v1.10.0
 	github.com/mileusna/useragent v1.3.4
 	github.com/wk8/go-ordered-map/v2 v2.1.8
 	gopkg.in/yaml.v3 v3.0.1
@@ -23,16 +23,18 @@ require (
 	golang.org/x/image v0.19.0
 )
 
-require github.com/infinitybotlist/kittycat/go v0.0.0-20240526051606-6574fb343539
+require (
+	github.com/disgoorg/disgo v0.18.11
+	github.com/disgoorg/snowflake/v2 v2.0.3
+	github.com/infinitybotlist/kittycat/go v0.0.0-20240526051606-6574fb343539
+)
 
 require (
 	github.com/bytedance/sonic v1.12.2 // indirect
 	github.com/bytedance/sonic/loader v0.2.0 // indirect
 	github.com/cloudwego/base64x v0.1.4 // indirect
 	github.com/cloudwego/iasm v0.2.0 // indirect
-	github.com/disgoorg/disgo v0.18.11 // indirect
 	github.com/disgoorg/json v1.2.0 // indirect
-	github.com/disgoorg/snowflake/v2 v2.0.3 // indirect
 	github.com/klauspost/cpuid/v2 v2.2.8 // indirect
 	github.com/sasha-s/go-csync v0.0.0-20240107134140-fcbab37b09ad // indirect
 	github.com/twitchyliquid64/golang-asm v0.15.1 // indirect

@@ -16,6 +16,7 @@ import (
 
 	"github.com/disgoorg/disgo"
 	"github.com/disgoorg/disgo/bot"
+	"github.com/disgoorg/disgo/cache"
 	"github.com/disgoorg/disgo/events"
 	"github.com/disgoorg/disgo/gateway"
 	"github.com/disgoorg/disgo/sharding"
@@ -114,18 +115,23 @@ func Setup() {
 	Redis = redis.NewClient(rOptions)
 
 	Discord, err = disgo.New(Config.DiscordAuth.Token, bot.WithShardManagerConfigOpts(
+		sharding.WithShardIDs(0, 1),
+		sharding.WithShardCount(2),
 		sharding.WithAutoScaling(true),
 		sharding.WithGatewayConfigOpts(
 			gateway.WithIntents(gateway.IntentGuilds, gateway.IntentGuildPresences, gateway.IntentGuildMembers),
 			gateway.WithCompress(true),
 		),
 	),
+		bot.WithCacheConfigOpts(
+			cache.WithCaches(cache.FlagGuilds|cache.FlagMembers|cache.FlagPresences),
+		),
 		bot.WithEventListeners(&events.ListenerAdapter{
 			OnGuildReady: func(event *events.GuildReady) {
-				slog.Info("guild %s ready", event.GuildID)
+				Logger.Info("Guild ready", zap.String("guildID", event.Guild.ID.String()))
 			},
 			OnGuildsReady: func(event *events.GuildsReady) {
-				slog.Info("guilds on shard %d ready", event.ShardID)
+				Logger.Info("All guilds ready")
 			},
 		}),
 	)

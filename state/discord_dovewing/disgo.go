@@ -6,7 +6,6 @@ import (
 	"strconv"
 
 	"github.com/disgoorg/disgo/bot"
-	"github.com/disgoorg/disgo/cache"
 	"github.com/disgoorg/disgo/discord"
 	"github.com/disgoorg/snowflake/v2"
 	"github.com/infinitybotlist/eureka/dovewing"
@@ -43,11 +42,8 @@ func disgoPlatformStatus(status discord.OnlineStatus) dovetypes.PlatformStatus {
 }
 
 type DisgoState struct {
-	config        *DisgoStateConfig                    // Config for the discord state
-	memberCache   cache.GroupedCache[discord.Member]   // Member cache
-	guildsCache   cache.Cache[discord.Guild]           // Guild cache
-	presenceCache cache.GroupedCache[discord.Presence] // Presence cache
-	initialized   bool                                 // Whether the platform has been initted or not
+	config      *DisgoStateConfig // Config for the discord state
+	initialized bool              // Whether the platform has been initted or not
 }
 
 type DisgoStateConfig struct {
@@ -75,36 +71,6 @@ func (d *DisgoState) PlatformName() string {
 }
 
 func (d *DisgoState) Init() error {
-	caches := d.config.Client.Caches()
-
-	if caches == nil {
-		return errors.New("cache not enabled")
-	}
-
-	memberCache := caches.MemberCache()
-
-	if memberCache == nil {
-		return errors.New("member cache not enabled")
-	}
-
-	d.memberCache = memberCache
-
-	presenceCache := caches.PresenceCache()
-
-	if presenceCache == nil {
-		return errors.New("presence cache not enabled")
-	}
-
-	d.presenceCache = presenceCache
-
-	guildsCache := caches.GuildCache()
-
-	if guildsCache == nil {
-		return errors.New("guild cache not enabled")
-	}
-
-	d.guildsCache = guildsCache
-
 	d.initialized = true
 	return nil
 }
@@ -140,10 +106,10 @@ func (d *DisgoState) PlatformSpecificCache(ctx context.Context, idStr string) (*
 
 	// First try for main server
 	if d.config.PreferredGuild != nil {
-		member, ok := d.memberCache.Get(*d.config.PreferredGuild, id)
+		member, ok := d.config.Client.Caches().Member(*d.config.PreferredGuild, id)
 
 		if ok {
-			p, pOk := d.presenceCache.Get(*d.config.PreferredGuild, id)
+			p, pOk := d.config.Client.Caches().Presence(*d.config.PreferredGuild, id)
 
 			var status = discord.OnlineStatusOffline
 			if pOk {
@@ -158,6 +124,7 @@ func (d *DisgoState) PlatformSpecificCache(ctx context.Context, idStr string) (*
 				Bot:         member.User.Bot,
 				Flags:       disgoFlagsToArray(&member.User),
 				ExtraData: map[string]any{
+					"cache":           "platform",
 					"nickname":        member.Nick,
 					"mutual_guild":    d.config.PreferredGuild,
 					"preferred_guild": true,
@@ -174,10 +141,10 @@ func (d *DisgoState) PlatformSpecificCache(ctx context.Context, idStr string) (*
 			return
 		}
 
-		member, ok := d.memberCache.Get(guild.ID, id)
+		member, ok := d.config.Client.Caches().Member(guild.ID, id)
 
 		if ok {
-			p, pOk := d.presenceCache.Get(guild.ID, id)
+			p, pOk := d.config.Client.Caches().Presence(guild.ID, id)
 
 			var status = discord.OnlineStatusOffline
 			if pOk {
@@ -192,6 +159,7 @@ func (d *DisgoState) PlatformSpecificCache(ctx context.Context, idStr string) (*
 				Bot:         member.User.Bot,
 				Flags:       disgoFlagsToArray(&member.User),
 				ExtraData: map[string]any{
+					"cache":           "platform",
 					"nickname":        member.Nick,
 					"mutual_guild":    guild.ID.String(),
 					"preferred_guild": false,
