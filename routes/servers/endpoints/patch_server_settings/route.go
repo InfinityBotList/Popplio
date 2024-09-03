@@ -145,17 +145,17 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 					{
 						Name:   "Name",
 						Value:  name,
-						Inline: validators.Pointer(true),
+						Inline: validators.TruePtr,
 					},
 					{
 						Name:   "Server ID",
 						Value:  id,
-						Inline: validators.Pointer(true),
+						Inline: validators.TruePtr,
 					},
 					{
 						Name:   "User",
 						Value:  fmt.Sprintf("<@%s>", d.Auth.ID),
-						Inline: validators.Pointer(true),
+						Inline: validators.TruePtr,
 					},
 				},
 			},

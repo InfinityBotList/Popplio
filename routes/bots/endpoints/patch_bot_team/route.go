@@ -134,12 +134,12 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 					{
 						Name:   "Bot ID",
 						Value:  id,
-						Inline: validators.Pointer(true),
+						Inline: validators.TruePtr,
 					},
 					{
 						Name:   "Performed By",
 						Value:  fmt.Sprintf("<@%s>", d.Auth.ID),
-						Inline: validators.Pointer(true),
+						Inline: validators.TruePtr,
 					},
 					{
 						Name:  "Old Team",

@@ -5,19 +5,17 @@ go 1.23
 toolchain go1.23.0
 
 require (
-	github.com/bwmarrin/discordgo v0.28.1
 	github.com/getkin/kin-openapi v0.127.0 // indirect
 	github.com/go-chi/chi/v5 v5.1.0
 	github.com/google/uuid v1.6.0
 	github.com/infinitybotlist/eureka v1.10.0
 	github.com/mileusna/useragent v1.3.4
-	github.com/wk8/go-ordered-map/v2 v2.1.8
+	github.com/wk8/go-ordered-map/v2 v2.1.8 // indirect
 	gopkg.in/yaml.v3 v3.0.1
 )
 
 require (
 	github.com/cloudflare/tableflip v1.2.3
-	github.com/getsentry/sentry-go v0.28.1
 	github.com/mitchellh/mapstructure v1.5.0
 	github.com/stripe/stripe-go/v75 v75.11.0
 	golang.org/x/image v0.19.0
@@ -43,13 +41,11 @@ require (
 
 require (
 	github.com/buger/jsonparser v1.1.1 // indirect
-	github.com/deckarep/golang-set/v2 v2.6.0
+	github.com/deckarep/golang-set/v2 v2.6.0 // indirect
 	github.com/gabriel-vasile/mimetype v1.4.5 // indirect
 	github.com/go-playground/locales v0.14.1 // indirect
 	github.com/go-playground/universal-translator v0.18.1 // indirect
 	github.com/leodido/go-urn v1.4.0 // indirect
-	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
-	github.com/modern-go/reflect2 v1.0.2 // indirect
 	github.com/mohae/deepcopy v0.0.0-20170929034955-c48cc78d4826 // indirect
 	github.com/perimeterx/marshmallow v1.1.5 // indirect
 	golang.org/x/net v0.28.0 // indirect
@@ -79,7 +75,6 @@ require (
 	github.com/SherClockHolmes/webpush-go v1.3.0
 	github.com/go-playground/validator/v10 v10.22.0
 	github.com/jackc/pgx/v5 v5.6.0
-	github.com/json-iterator/go v1.1.12
 	github.com/plutov/paypal/v4 v4.11.0
 	github.com/redis/go-redis/v9 v9.6.1
 	go.uber.org/zap v1.27.0

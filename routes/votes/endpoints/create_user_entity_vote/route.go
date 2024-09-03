@@ -253,22 +253,22 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 						{
 							Name:   "Vote Count:",
 							Value:  strconv.Itoa(nvc),
-							Inline: validators.Pointer(true),
+							Inline: validators.TruePtr,
 						},
 						{
 							Name:   "Votes Added:",
 							Value:  strconv.Itoa(vi.VoteInfo.PerUser),
-							Inline: validators.Pointer(true),
+							Inline: validators.TruePtr,
 						},
 						{
 							Name:   "User ID:",
 							Value:  userObj.ID,
-							Inline: validators.Pointer(true),
+							Inline: validators.TruePtr,
 						},
 						{
 							Name:   "View " + targetType + "'s page",
 							Value:  "[View " + entityInfo.Name + "](" + entityInfo.URL + ")",
-							Inline: validators.Pointer(true),
+							Inline: validators.TruePtr,
 						},
 					},
 				},

@@ -353,12 +353,12 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 					{
 						Name:   "Name",
 						Value:  metadata.Name,
-						Inline: validators.Pointer(true),
+						Inline: validators.TruePtr,
 					},
 					{
 						Name:   "Bot ID",
 						Value:  payload.BotID,
-						Inline: validators.Pointer(true),
+						Inline: validators.TruePtr,
 					},
 					{
 						Name: "Owner",
@@ -368,7 +368,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 							}
 							return fmt.Sprintf("<@%s>", d.Auth.ID)
 						}(),
-						Inline: validators.Pointer(true),
+						Inline: validators.TruePtr,
 					},
 				},
 			},

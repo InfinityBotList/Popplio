@@ -2,9 +2,10 @@ package events
 
 import (
 	"fmt"
+	"popplio/validators"
 	"popplio/webhooks/core/events"
 
-	"github.com/bwmarrin/discordgo"
+	"github.com/disgoorg/disgo/discord"
 	"github.com/infinitybotlist/eureka/dovewing/dovetypes"
 )
 
@@ -34,55 +35,51 @@ func (n WebhookDeleteReviewData) Description() string {
 	return "This webhook is sent when a user delete their review on an entity."
 }
 
-func (n WebhookDeleteReviewData) CreateHookParams(creator *dovetypes.PlatformUser, targets events.Target) *discordgo.WebhookParams {
-	return &discordgo.WebhookParams{
-		Embeds: []*discordgo.MessageEmbed{
+func (n WebhookDeleteReviewData) CreateDiscordEmbed(creator *dovetypes.PlatformUser, targets events.Target) *discord.Embed {
+	return &discord.Embed{
+		URL: "https://botlist.site/" + targets.GetID(),
+		Thumbnail: &discord.EmbedResource{
+			URL: targets.GetAvatarURL(),
+		},
+		Title:       ":x: Bot Review Deleted!",
+		Description: creator.DisplayName + " has deleted his review for " + targets.GetTargetName(),
+		Color:       0x8A6BFD,
+		Fields: []discord.EmbedField{
 			{
-				URL: "https://botlist.site/" + targets.GetID(),
-				Thumbnail: &discordgo.MessageEmbedThumbnail{
-					URL: targets.GetAvatarURL(),
-				},
-				Title:       ":x: Bot Review Deleted!",
-				Description: creator.DisplayName + " has deleted his review for " + targets.GetTargetName(),
-				Color:       0x8A6BFD,
-				Fields: []*discordgo.MessageEmbedField{
-					{
-						Name:   "Review ID",
-						Value:  n.ReviewID,
-						Inline: true,
-					},
-					{
-						Name:   "User ID",
-						Value:  creator.ID,
-						Inline: true,
-					},
-					{
-						Name:   "Stars",
-						Value:  fmt.Sprintf("%d/5", n.Stars),
-						Inline: true,
-					},
-					{
-						Name: "Content",
-						Value: func() string {
-							if len(n.Content) > 1000 {
-								return n.Content[:1000] + "..."
-							}
+				Name:   "Review ID",
+				Value:  n.ReviewID,
+				Inline: validators.TruePtr,
+			},
+			{
+				Name:   "User ID",
+				Value:  creator.ID,
+				Inline: validators.TruePtr,
+			},
+			{
+				Name:   "Stars",
+				Value:  fmt.Sprintf("%d/5", n.Stars),
+				Inline: validators.TruePtr,
+			},
+			{
+				Name: "Content",
+				Value: func() string {
+					if len(n.Content) > 1000 {
+						return n.Content[:1000] + "..."
+					}
 
-							return n.Content
-						}(),
-						Inline: true,
-					},
-					{
-						Name:   "Review Page",
-						Value:  targets.GetViewLink(),
-						Inline: true,
-					},
-					{
-						Name:   "Owner Review",
-						Value:  fmt.Sprintf("%t", n.OwnerReview),
-						Inline: true,
-					},
-				},
+					return n.Content
+				}(),
+				Inline: validators.TruePtr,
+			},
+			{
+				Name:   "Review Page",
+				Value:  targets.GetViewLink(),
+				Inline: validators.TruePtr,
+			},
+			{
+				Name:   "Owner Review",
+				Value:  fmt.Sprintf("%t", n.OwnerReview),
+				Inline: validators.TruePtr,
 			},
 		},
 	}

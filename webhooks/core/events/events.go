@@ -5,7 +5,7 @@ import (
 	"popplio/types"
 	"reflect"
 
-	"github.com/bwmarrin/discordgo"
+	"github.com/disgoorg/disgo/discord"
 	docs "github.com/infinitybotlist/eureka/doclib"
 	"github.com/infinitybotlist/eureka/dovewing/dovetypes"
 	"go.uber.org/zap"
@@ -25,7 +25,7 @@ var Registry = []EventRegistry{}
 type WebhookEvent interface {
 	TargetTypes() []string
 	Event() string
-	CreateHookParams(creator *dovetypes.PlatformUser, targets Target) *discordgo.WebhookParams
+	CreateDiscordEmbed(creator *dovetypes.PlatformUser, targets Target) *discord.Embed
 	Summary() string
 	Description() string
 }

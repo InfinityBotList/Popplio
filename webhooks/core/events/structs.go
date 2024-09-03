@@ -3,9 +3,10 @@ package events
 import (
 	"fmt"
 	"popplio/types"
+	"popplio/validators"
 	"time"
 
-	"github.com/bwmarrin/discordgo"
+	"github.com/disgoorg/disgo/discord"
 	"github.com/infinitybotlist/eureka/dovewing/dovetypes"
 	"github.com/infinitybotlist/eureka/jsonimpl"
 	"github.com/mitchellh/mapstructure"
@@ -116,8 +117,8 @@ func ParseWebhookMetadata(w *WebhookMetadata) WebhookMetadata {
 
 // Helper method to convert a Changeset to a set of embed fields
 // for use in a discord webhook
-func ConvertChangesetToEmbedFields[T any](name string, c Changeset[T]) []*discordgo.MessageEmbedField {
-	return []*discordgo.MessageEmbedField{
+func ConvertChangesetToEmbedFields[T any](name string, c Changeset[T]) []discord.EmbedField {
+	return []discord.EmbedField{
 		{
 			Name: "Old " + name,
 			Value: func() string {
@@ -127,7 +128,7 @@ func ConvertChangesetToEmbedFields[T any](name string, c Changeset[T]) []*discor
 
 				return fmt.Sprint(c.Old)
 			}(),
-			Inline: true,
+			Inline: validators.TruePtr,
 		},
 		{
 			Name: "New " + name,
@@ -138,7 +139,7 @@ func ConvertChangesetToEmbedFields[T any](name string, c Changeset[T]) []*discor
 
 				return fmt.Sprint(c.New)
 			}(),
-			Inline: true,
+			Inline: validators.TruePtr,
 		},
 	}
 }

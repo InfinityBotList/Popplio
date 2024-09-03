@@ -290,17 +290,17 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 					{
 						Name:   "App ID",
 						Value:  appId,
-						Inline: validators.Pointer(true),
+						Inline: validators.TruePtr,
 					},
 					{
 						Name:   "User ID",
 						Value:  d.Auth.ID,
-						Inline: validators.Pointer(true),
+						Inline: validators.TruePtr,
 					},
 					{
 						Name:   "Position",
 						Value:  payload.Position,
-						Inline: validators.Pointer(true),
+						Inline: validators.TruePtr,
 					},
 				},
 			},

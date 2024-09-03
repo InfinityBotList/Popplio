@@ -3,7 +3,7 @@ package types
 import (
 	"time"
 
-	"github.com/bwmarrin/discordgo"
+	"github.com/disgoorg/disgo/discord"
 	"github.com/infinitybotlist/eureka/dovewing/dovetypes"
 	"github.com/jackc/pgx/v5/pgtype"
 )
@@ -25,13 +25,13 @@ type Ticket struct {
 }
 
 type Message struct {
-	ID          string                    `json:"id"`
-	Timestamp   time.Time                 `json:"timestamp"` // Not in DB, but generated from snowflake ID
-	Content     string                    `json:"content"`
-	Embeds      []*discordgo.MessageEmbed `json:"embeds"`
-	AuthorID    string                    `json:"author_id"`
-	Author      *dovetypes.PlatformUser   `json:"author"`
-	Attachments []Attachment              `json:"attachments"`
+	ID          string                  `json:"id"`
+	Timestamp   time.Time               `json:"timestamp"` // Not in DB, but generated from snowflake ID
+	Content     string                  `json:"content"`
+	Embeds      []discord.Embed         `json:"embeds"`
+	AuthorID    string                  `json:"author_id"`
+	Author      *dovetypes.PlatformUser `json:"author"`
+	Attachments []Attachment            `json:"attachments"`
 }
 
 type Attachment struct {

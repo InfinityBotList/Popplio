@@ -14,7 +14,8 @@ import (
 	"kitehelper/downloader"
 	"kitehelper/migrate"
 
-	"github.com/bwmarrin/discordgo"
+	"github.com/disgoorg/disgo/discord"
+	"github.com/disgoorg/snowflake/v2"
 	"github.com/google/uuid"
 	"github.com/infinitybotlist/eureka/crypto"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -992,31 +993,34 @@ var migs = []migrate.Migration{
 
 			for botId, ownerId := range botOwnerMap {
 				// Create new team with bots name and add the bot to it
-				var botObj *discordgo.User
+				var botObj *discord.User
 
-				if len(discordSess.State.Guilds) == 0 {
+				if discordSess.Caches().GuildCache().Len() == 0 {
 					panic("No guilds found")
 				}
 
-				for _, g := range discordSess.State.Guilds {
-					member, err := discordSess.State.Member(g.ID, botId)
+				discordSess.Caches().GuildCache().ForEach(func(g discord.Guild) {
+					if botObj != nil {
+						return
+					}
 
-					if errors.Is(err, discordgo.ErrStateNotFound) {
-						continue
+					member, ok := discordSess.Caches().Member(g.ID, snowflake.MustParse(botId))
+
+					if !ok {
+						return
 					}
 
 					if err != nil {
 						panic(err)
 					}
 
-					botObj = member.User
-					break
-				}
+					botObj = &member.User
+				})
 
 				if botObj == nil {
 					fmt.Println("Bot ", botId, "not found in any guilds")
 
-					botObj, err = discordSess.User(ownerId)
+					botObj, err = discordSess.Rest().GetUser(snowflake.MustParse(ownerId))
 
 					if err != nil {
 						panic(err)

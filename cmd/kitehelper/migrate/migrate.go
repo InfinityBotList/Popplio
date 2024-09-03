@@ -13,7 +13,6 @@ var (
 	_pool         *pgxpool.Pool
 	Ctx           = context.Background()
 	migrationList []Migration
-	//discordSess *discordgo.Session
 
 	StatusBoldBlue   = color.New(color.Bold, color.FgBlue).PrintlnFunc()
 	StatusGood       = color.New(color.Bold, color.FgCyan).PrintlnFunc()
@@ -39,16 +38,6 @@ func Migrate(progname string, args []string) {
 	if err != nil {
 		panic(err)
 	}
-
-	/*if os.Getenv("DISCORD_TOKEN") == "" {
-		panic("DISCORD_TOKEN not set. Please set it to a discord token to allow some migration steps to run.")
-	}
-
-	discordSess, err = discordgo.New("Bot " + os.Getenv("DISCORD_TOKEN"))
-
-	if err != nil {
-		panic(err)
-	}*/
 
 	sandboxPoolWrapper := common.NewSandboxPool(_pool) // Used to prevent migrations from being able to commit whatever they want
 

@@ -10,6 +10,7 @@ import (
 	"popplio/types"
 	"popplio/validators"
 
+	"github.com/disgoorg/snowflake/v2"
 	perms "github.com/infinitybotlist/kittycat/go"
 
 	docs "github.com/infinitybotlist/eureka/doclib"
@@ -18,7 +19,6 @@ import (
 	"github.com/jackc/pgx/v5"
 	"go.uber.org/zap"
 
-	"github.com/bwmarrin/discordgo"
 	"github.com/go-chi/chi/v5"
 )
 
@@ -125,12 +125,14 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		}
 
 		// Convert snowflake ID to timestamp
-		ticket.Messages[i].Timestamp, err = discordgo.SnowflakeTimestamp(ticket.Messages[i].ID)
+		id, err := snowflake.Parse(ticket.Messages[i].ID)
 
 		if err != nil {
-			state.Logger.Error("Error converting snowflake to timestamp", zap.Error(err), zap.String("ticket_id", ticketId))
+			state.Logger.Error("Error parsing snowflake", zap.Error(err), zap.String("ticket_id", ticketId))
 			return uapi.DefaultResponse(http.StatusInternalServerError)
 		}
+
+		ticket.Messages[i].Timestamp = id.Time()
 	}
 
 	return uapi.HttpResponse{

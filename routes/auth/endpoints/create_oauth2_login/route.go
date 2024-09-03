@@ -73,17 +73,17 @@ func sendAuthLog(user oauthUser, req types.AuthorizeRequest, new bool) {
 					{
 						Name:   "User ID",
 						Value:  user.ID,
-						Inline: validators.Pointer(true),
+						Inline: validators.TruePtr,
 					},
 					{
 						Name:   "Username",
 						Value:  user.Username + "#" + user.Disc,
-						Inline: validators.Pointer(true),
+						Inline: validators.TruePtr,
 					},
 					{
 						Name:   "Scope",
 						Value:  req.Scope,
-						Inline: validators.Pointer(true),
+						Inline: validators.TruePtr,
 					},
 					{
 						Name: "Banned",
@@ -94,7 +94,7 @@ func sendAuthLog(user oauthUser, req types.AuthorizeRequest, new bool) {
 
 							return "No"
 						}(),
-						Inline: validators.Pointer(true),
+						Inline: validators.TruePtr,
 					},
 					{
 						Name: "Vote Banned",
@@ -105,7 +105,7 @@ func sendAuthLog(user oauthUser, req types.AuthorizeRequest, new bool) {
 
 							return "No"
 						}(),
-						Inline: validators.Pointer(true),
+						Inline: validators.TruePtr,
 					},
 					{
 						Name: "App Banned",
@@ -116,7 +116,7 @@ func sendAuthLog(user oauthUser, req types.AuthorizeRequest, new bool) {
 
 							return "No"
 						}(),
-						Inline: validators.Pointer(true),
+						Inline: validators.TruePtr,
 					},
 					{
 						Name: "New User",
@@ -127,7 +127,7 @@ func sendAuthLog(user oauthUser, req types.AuthorizeRequest, new bool) {
 
 							return "No"
 						}(),
-						Inline: validators.Pointer(true),
+						Inline: validators.TruePtr,
 					},
 				},
 				Footer: &discord.EmbedFooter{

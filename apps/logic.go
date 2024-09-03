@@ -88,7 +88,7 @@ func extraLogicResubmit(d uapi.RouteData, p types.Position, answers map[string]s
 					{
 						Name:   "Reason",
 						Value:  answers["reason"],
-						Inline: validators.Pointer(true),
+						Inline: validators.TruePtr,
 					},
 				},
 			},

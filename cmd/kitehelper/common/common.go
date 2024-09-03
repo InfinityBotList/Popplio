@@ -2,14 +2,21 @@ package common
 
 import (
 	"bufio"
+	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"os"
 	"os/exec"
 	"strings"
 	"time"
 
-	"github.com/bwmarrin/discordgo"
+	"github.com/disgoorg/disgo"
+	"github.com/disgoorg/disgo/bot"
+	"github.com/disgoorg/disgo/cache"
+	"github.com/disgoorg/disgo/events"
+	"github.com/disgoorg/disgo/gateway"
+	"github.com/disgoorg/disgo/sharding"
 	"github.com/fatih/color"
 )
 
@@ -61,26 +68,40 @@ func PageOutput(text string) {
 }
 
 // Creates a new discord token, returning the session once it has recieved READY event
-func NewDiscordSession(token string) (*discordgo.Session, error) {
+func NewDiscordSession(token string) (bot.Client, error) {
 	fmt.Println("[NewDiscordSession] Creating new discord session and waiting for READY event...")
-	sess, err := discordgo.New("Bot " + token)
+
+	var readyChan = make(chan struct{})
+	sess, err := disgo.New(token, bot.WithShardManagerConfigOpts(
+		sharding.WithShardIDs(0, 1),
+		sharding.WithShardCount(2),
+		sharding.WithAutoScaling(true),
+		sharding.WithGatewayConfigOpts(
+			gateway.WithIntents(gateway.IntentGuilds, gateway.IntentGuildPresences, gateway.IntentGuildMembers),
+			gateway.WithCompress(true),
+		),
+	),
+		bot.WithCacheConfigOpts(
+			cache.WithCaches(cache.FlagGuilds|cache.FlagMembers|cache.FlagPresences),
+		),
+		bot.WithEventListeners(&events.ListenerAdapter{
+			OnGuildReady: func(event *events.GuildReady) {
+				fmt.Println("[NewDiscordSession] Guild ready:", event.Guild.ID.String())
+			},
+			OnGuildsReady: func(event *events.GuildsReady) {
+				fmt.Println("[NewDiscordSession] Discord Session ready")
+				close(readyChan)
+			},
+		}),
+	)
 
 	if err != nil {
 		return nil, err
 	}
 
-	var readyChan = make(chan struct{})
-	sess.AddHandler(func(s *discordgo.Session, r *discordgo.Ready) {
-		fmt.Println("[NewDiscordSession] Discord session ready")
-		close(readyChan)
-	})
-
-	sess.Identify.Intents = discordgo.IntentsAll
-
-	err = sess.Open()
-
-	if err != nil {
-		return nil, err
+	if err = sess.OpenShardManager(context.Background()); err != nil {
+		slog.Error("error while connecting to gateway", slog.Any("err", err))
+		return sess, err
 	}
 
 	for {

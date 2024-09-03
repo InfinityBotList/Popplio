@@ -28,7 +28,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/bwmarrin/discordgo"
+	"github.com/disgoorg/disgo/discord"
 	"github.com/infinitybotlist/eureka/crypto"
 	"github.com/infinitybotlist/eureka/jsonimpl"
 	"github.com/jackc/pgx/v5"
@@ -286,7 +286,7 @@ func send(d *webhookSendState, webhook *webhookData, pBytes *[]byte) error {
 		}
 
 		if prefix != "" && !errors.Is(err, utils.ErrNotActuallyWebhook) {
-			params := d.Event.Data.CreateHookParams(d.Event.Creator, d.Event.Targets)
+			params := d.Event.Data.CreateDiscordEmbed(d.Event.Creator, d.Event.Targets)
 
 			err = SendDiscord(
 				webhook.Url,
@@ -581,7 +581,7 @@ func send(d *webhookSendState, webhook *webhookData, pBytes *[]byte) error {
 }
 
 // Sends a webhook via discord
-func SendDiscord(url, prefix string, entity WebhookEntity, params *discordgo.WebhookParams) error {
+func SendDiscord(url, prefix string, entity WebhookEntity, params *discord.Embed) error {
 	// Remove out prefix
 	url = state.Config.Meta.PopplioProxy + "/" + strings.TrimPrefix(url, prefix)
 
