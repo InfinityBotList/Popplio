@@ -585,7 +585,9 @@ func SendDiscord(url, prefix string, entity WebhookEntity, params *discord.Embed
 	// Remove out prefix
 	url = state.Config.Meta.PopplioProxy + "/" + strings.TrimPrefix(url, prefix)
 
-	payload, err := jsonimpl.Marshal(params)
+	payload, err := jsonimpl.Marshal(discord.WebhookMessageCreate{
+		Embeds: []discord.Embed{*params},
+	})
 
 	if err != nil {
 		return err
