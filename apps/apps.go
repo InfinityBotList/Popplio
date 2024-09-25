@@ -73,6 +73,65 @@ We are a welcoming and laid back team who is always willing to give new people a
 		},
 	},
 	{
+		ID: "qaqc",
+		Info: `Join the Infinity Development's QAQC (Quality Assurance and Quality Control) Team! As being part of the QAQC team, you will help ensure that our services will always stay top-notch making everyone's experience with our services much better. We are a welcoming and laid back team who is always willing to give new people an opportunity!`,
+		Name:        "QAQC Team",
+		Tags:        []string{"Staff", "QAQC"},
+		ReviewLogic: reviewLogicStaff,
+		Cooldown:    120 * timex.Hour,
+		Questions: []types.Question{
+			{
+				ID:          "experience",
+				Question:    "Past server experience",
+				Paragraph:   "Tell us any experience you have working for other servers or bot lists.",
+				Placeholder: "I have worked at...",
+				Short:       false,
+			},
+			{
+				ID:          "strengths",
+				Question:    "List some of your strengths",
+				Paragraph:   "What are your strengths/abilities. How long can you be active?",
+				Placeholder: "I am always online and active...",
+				Short:       false,
+			},
+			{
+				ID:          "situations",
+				Question:    "Situation Examples",
+				Paragraph:   "How would you handle: Mass Pings, Nukes and Raids etc.",
+				Placeholder: "I would handle it by...",
+				Short:       false,
+			},
+			{
+				ID:          "reason",
+				Question:    "Why do you want to join the staff team?",
+				Paragraph:   "Why do you want to join the staff team? Be specific",
+				Placeholder: "I want to join the staff team because...",
+				Short:       false,
+			},
+			{
+				ID:          "team-player",
+				Question:    "What is a scenario in which you had to be a team player?",
+				Paragraph:   "What is a scenario in which you had to be a team player? We want to know that you can collaborate effectively with us.",
+				Placeholder: "I had to...",
+				Short:       false,
+			},
+			{
+				ID:          "about-you",
+				Question:    "Tell us a little about yourself",
+				Paragraph:   "Tell us a little about yourself. Its that simple!",
+				Placeholder: "I am...",
+				Short:       false,
+			},
+			{
+				ID:          "other",
+				Question:    "Anything else you want to add?",
+				Paragraph:   "Anything else you want to add?",
+				Placeholder: "Just state anything that doesn't hit anywhere else",
+				Short:       true,
+			},
+		},
+	},
+	{
 		ID: "dev",
 		Info: `Join our Dev Team and help us update, manage and maintain all of the Infinity Services!.
 
