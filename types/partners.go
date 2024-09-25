@@ -19,7 +19,7 @@ type Partner struct {
 	CreatedAt time.Time               `db:"created_at" json:"created_at" description:"When the partner was created on DB" validate:"required"`
 	UserID    string                  `db:"user_id" json:"-" description:"User ID of the partner. Is an internal field" validate:"required"`
 	User      *dovetypes.PlatformUser `db:"-" json:"user" description:"The partner's user information" ci:"internal"` // Must be parsed internally
-	BotID     *string                 `db:"-" json:"bot_id" description:"The bot ID that is associated with the partner"`
+	BotID     *string                 `db:"bot_id" json:"bot_id" description:"The bot ID that is associated with the partner"`
 }
 
 // @ci table=partner_types
