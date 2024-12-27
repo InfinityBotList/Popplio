@@ -57,6 +57,7 @@ type Bot struct {
 	NSFW                   bool                    `db:"nsfw" json:"nsfw" description:"Whether the bot is NSFW or not"`
 	Premium                bool                    `db:"premium" json:"premium" description:"Whether the bot is a premium bot or not"`
 	LastStatsPost          pgtype.Timestamptz      `db:"last_stats_post" json:"last_stats_post" description:"The list time the bot posted stats to the list. Null if never posted"`
+	LastJapiUpdate         pgtype.Timestamptz      `db:"last_japi_update" json:"last_japi_update" description:"The last time the bot was updated via JAPI"`
 	Servers                int                     `db:"servers" json:"servers" description:"The bot's server count"`
 	Shards                 int                     `db:"shards" json:"shards" description:"The bot's shard count"`
 	ShardList              []int                   `db:"shard_list" json:"shard_list" description:"The number of servers per shard"`
