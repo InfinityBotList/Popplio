@@ -4,11 +4,12 @@ import (
 	"net/http"
 	"popplio/api"
 	"popplio/routes/votes/endpoints/create_user_entity_vote"
-	"popplio/routes/votes/endpoints/get_all_votes"
+	"popplio/routes/votes/endpoints/get_all_user_votes"
 	"popplio/routes/votes/endpoints/get_general_vote_credit_tiers"
 	"popplio/routes/votes/endpoints/get_user_entity_votes"
 	"popplio/routes/votes/endpoints/get_vote_credit_tiers"
 	"popplio/routes/votes/endpoints/get_vote_redeem_logs"
+	"popplio/routes/votes/endpoints/get_votes_user_list"
 	"popplio/routes/votes/endpoints/redeem_vote_credits"
 	"popplio/teams"
 	"popplio/validators"
@@ -75,10 +76,18 @@ func (b Router) Routes(r *chi.Mux) {
 
 	uapi.Route{
 		Pattern: "/users/{uid}/{target_type}/{target_id}/votes/@all",
-		OpId:    "get_all_votes",
+		OpId:    "get_all_user_votes",
 		Method:  uapi.GET,
-		Docs:    get_all_votes.Docs,
-		Handler: get_all_votes.Route,
+		Docs:    get_all_user_votes.Docs,
+		Handler: get_all_user_votes.Route,
+	}.Route(r)
+
+	uapi.Route{
+		Pattern: "/{target_type}/{target_id}/votes/user-list",
+		OpId:    "get_votes_user_list",
+		Method:  uapi.GET,
+		Docs:    get_votes_user_list.Docs,
+		Handler: get_votes_user_list.Route,
 	}.Route(r)
 
 	uapi.Route{

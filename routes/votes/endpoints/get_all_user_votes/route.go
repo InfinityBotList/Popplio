@@ -1,4 +1,4 @@
-package get_all_votes
+package get_all_user_votes
 
 import (
 	"net/http"
@@ -26,7 +26,7 @@ var (
 
 func Docs() *docs.Doc {
 	return &docs.Doc{
-		Summary:     "Get All Votes",
+		Summary:     "Get All User Votes",
 		Description: "Gets all votes (paginated by 10) of a user on an entity. This endpoint is currently public as the same data can be found through #vote-logs in discord. Note that for compatibility, a trailing 's' is removed",
 		Resp:        types.PagedResult[[]types.EntityVote]{},
 		RespName:    "PagedResultUserVote",

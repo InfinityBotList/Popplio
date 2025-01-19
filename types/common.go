@@ -26,3 +26,8 @@ type PagedResult[T any] struct {
 	PerPage uint64 `json:"per_page"`
 	Results T      `json:"results"`
 }
+
+// List of items
+type ItemList[T any] struct {
+	Items []T `json:"items"`
+}

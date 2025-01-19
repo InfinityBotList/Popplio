@@ -30,6 +30,7 @@ import (
 	"popplio/routes/reminders"
 	"popplio/routes/reviews"
 	"popplio/routes/servers"
+	"popplio/routes/shop"
 	"popplio/routes/staff"
 	"popplio/routes/tasks"
 	"popplio/routes/teams"
@@ -167,6 +168,7 @@ func main() {
 		reminders.Router{},
 		reviews.Router{},
 		servers.Router{},
+		shop.Router{},
 		staff.Router{},
 		tasks.Router{},
 		teams.Router{},
