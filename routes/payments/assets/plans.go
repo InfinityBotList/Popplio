@@ -1,6 +1,9 @@
 package assets
 
-import "popplio/types"
+import (
+	"popplio/types"
+	"time"
+)
 
 var Plans = []types.PaymentPlan{
 	{
@@ -18,10 +21,17 @@ var Plans = []types.PaymentPlan{
 		Price:      4.99,
 	},
 	{
-		ID:         "gold",
-		Name:       "Gold Plan",
-		Benefit:    "1 year of premium",
-		TimePeriod: 24 * 30 * 12,
-		Price:      7.99,
+		ID:      "gold",
+		Name:    "Gold Plan",
+		Benefit: "1 year of premium",
+		TimePeriod: func() int {
+			currentYear := time.Now().Year()
+			if currentYear%4 == 0 && (currentYear%100 != 0 || currentYear%400 != 0) {
+				return 366
+			}
+
+			return 365
+		}(),
+		Price: 7.99,
 	},
 }
