@@ -59,7 +59,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 			return uapi.HttpResponse{
 				Status: http.StatusInternalServerError,
 				Json: types.ApiError{
-					Message: "Instatus returned an error: " + err.Error(),
+					Message: "Instatus returned an error.",
 				},
 			}
 		}

@@ -171,7 +171,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 				state.Logger.Error("Failed to query", zap.Error(err), zap.String("targetType", "bot"))
 				return uapi.HttpResponse{
 					Status: http.StatusInternalServerError,
-					Json:   types.ApiError{Message: "Error querying: " + err.Error()},
+					Json:   types.ApiError{Message: "Error querying."},
 				}
 			}
 
@@ -181,7 +181,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 				state.Logger.Error("Failed to collect rows [bots]", zap.Error(err), zap.String("sql", sqlString.String()))
 				return uapi.HttpResponse{
 					Status: http.StatusInternalServerError,
-					Json:   types.ApiError{Message: "Error collecting rows: " + err.Error()},
+					Json:   types.ApiError{Message: "Error collecting rows."},
 				}
 			}
 
@@ -191,7 +191,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 				if err != nil {
 					return uapi.HttpResponse{
 						Status: http.StatusInternalServerError,
-						Json:   types.ApiError{Message: "Error resolving bot: " + err.Error()},
+						Json:   types.ApiError{Message: "Error resolving bot."},
 					}
 				}
 			}
@@ -253,7 +253,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 					state.Logger.Error("Failed to resolve server", zap.Error(err), zap.String("serverId", servers[i].ServerID))
 					return uapi.HttpResponse{
 						Status: http.StatusInternalServerError,
-						Json:   types.ApiError{Message: "Error resolving server: " + err.Error()},
+						Json:   types.ApiError{Message: "Error resolving server."},
 					}
 				}
 			}

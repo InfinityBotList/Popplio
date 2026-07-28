@@ -61,7 +61,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		state.Logger.Error("Error querying reminders [db count]", zap.Error(err), zap.String("target_id", targetId), zap.String("target_type", targetType))
 		return uapi.HttpResponse{
 			Status: http.StatusInternalServerError,
-			Json:   types.ApiError{Message: "Error while checking user reminder count: " + err.Error()},
+			Json:   types.ApiError{Message: "Error while checking user reminder count."},
 		}
 	}
 
@@ -78,7 +78,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		state.Logger.Error("Error deleting reminders", zap.Error(err), zap.String("target_id", targetId), zap.String("target_type", targetType))
 		return uapi.HttpResponse{
 			Status: http.StatusInternalServerError,
-			Json:   types.ApiError{Message: "Error while deleting user reminder: " + err.Error()},
+			Json:   types.ApiError{Message: "Error while deleting user reminder."},
 		}
 	}
 

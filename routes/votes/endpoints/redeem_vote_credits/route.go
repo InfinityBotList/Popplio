@@ -74,7 +74,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		state.Logger.Error("Error starting transaction", zap.Error(err))
 		return uapi.HttpResponse{
 			Status: http.StatusInternalServerError,
-			Json:   types.ApiError{Message: "An error occurred while starting transaction: " + err.Error()},
+			Json:   types.ApiError{Message: "An error occurred while starting transaction."},
 		}
 	}
 
@@ -85,7 +85,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	if err != nil {
 		return uapi.HttpResponse{
 			Status: http.StatusInternalServerError,
-			Json:   types.ApiError{Message: "An error occurred while redeeming vote credit tiers: " + err.Error()},
+			Json:   types.ApiError{Message: "An error occurred while redeeming vote credit tiers."},
 		}
 	}
 
@@ -95,7 +95,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		state.Logger.Error("Error committing transaction", zap.Error(err))
 		return uapi.HttpResponse{
 			Status: http.StatusInternalServerError,
-			Json:   types.ApiError{Message: "An error occurred while committing transaction: " + err.Error()},
+			Json:   types.ApiError{Message: "An error occurred while committing transaction."},
 		}
 	}
 

@@ -91,7 +91,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		state.Logger.Error("Failed to check if user is vote banned", zap.Error(err), zap.String("userId", d.Auth.ID))
 		return uapi.HttpResponse{
 			Status: http.StatusBadRequest,
-			Json:   types.ApiError{Message: "Error checking if user is vote banned: " + err.Error()},
+			Json:   types.ApiError{Message: "Error checking if user is vote banned."},
 		}
 	}
 
@@ -109,7 +109,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		state.Logger.Error("Failed to create transaction [put_user_entity_votes]", zap.Error(err))
 		return uapi.HttpResponse{
 			Status: http.StatusInternalServerError,
-			Json:   types.ApiError{Message: "Failed to create transaction: " + err.Error()},
+			Json:   types.ApiError{Message: "Failed to create transaction."},
 		}
 	}
 
@@ -121,7 +121,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		state.Logger.Error("Failed to fetch entity info", zap.Error(err), zap.String("userId", d.Auth.ID), zap.String("targetId", targetId), zap.String("targetType", targetType))
 		return uapi.HttpResponse{
 			Status: http.StatusBadRequest,
-			Json:   types.ApiError{Message: "Error: " + err.Error()},
+			Json:   types.ApiError{Message: "Failed to fetch entity info."},
 		}
 	}
 
@@ -163,7 +163,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 					state.Logger.Error("Failed to delete old vote", zap.Error(err), zap.String("userId", d.Auth.ID), zap.String("targetId", targetId), zap.String("targetType", targetType))
 					return uapi.HttpResponse{
 						Status: http.StatusInternalServerError,
-						Json:   types.ApiError{Message: "Failed to delete old vote: " + err.Error()},
+						Json:   types.ApiError{Message: "Failed to delete old vote."},
 					}
 				}
 			}
@@ -196,7 +196,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		state.Logger.Error("Failed to give votes", zap.Error(err), zap.String("userId", d.Auth.ID), zap.String("targetId", targetId), zap.String("targetType", targetType))
 		return uapi.HttpResponse{
 			Status: http.StatusInternalServerError,
-			Json:   types.ApiError{Message: "Failed to give votes: " + err.Error()},
+			Json:   types.ApiError{Message: "Failed to give votes."},
 		}
 	}
 
@@ -207,7 +207,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		state.Logger.Error("Failed to perform post-vote tasks", zap.Error(err), zap.String("userId", d.Auth.ID), zap.String("targetId", targetId), zap.String("targetType", targetType))
 		return uapi.HttpResponse{
 			Status: http.StatusInternalServerError,
-			Json:   types.ApiError{Message: "Failed to perform post-vote tasks: " + err.Error()},
+			Json:   types.ApiError{Message: "Failed to perform post-vote tasks."},
 		}
 	}
 
@@ -218,7 +218,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		state.Logger.Error("Failed to fetch new vote count", zap.Error(err), zap.String("userId", d.Auth.ID), zap.String("targetId", targetId), zap.String("targetType", targetType))
 		return uapi.HttpResponse{
 			Status: http.StatusInternalServerError,
-			Json:   types.ApiError{Message: "Failed to fetch new vote count: " + err.Error()},
+			Json:   types.ApiError{Message: "Failed to fetch new vote count."},
 		}
 	}
 

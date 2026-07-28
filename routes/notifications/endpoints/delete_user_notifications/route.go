@@ -57,7 +57,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		state.Logger.Error("Error while checking user notification count", zap.Error(err), zap.String("userID", id), zap.String("notifID", r.URL.Query().Get("notif_id")))
 		return uapi.HttpResponse{
 			Status: http.StatusInternalServerError,
-			Json:   types.ApiError{Message: "Error while checking user notification count: " + err.Error()},
+			Json:   types.ApiError{Message: "Error while checking user notification count."},
 		}
 	}
 
@@ -74,7 +74,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		state.Logger.Error("Error while deleting user notification", zap.Error(err), zap.String("userID", id), zap.String("notifID", r.URL.Query().Get("notif_id")))
 		return uapi.HttpResponse{
 			Status: http.StatusInternalServerError,
-			Json:   types.ApiError{Message: "Error while deleting user notification: " + err.Error()},
+			Json:   types.ApiError{Message: "Error while deleting user notification."},
 		}
 	}
 

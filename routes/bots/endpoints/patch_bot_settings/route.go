@@ -105,7 +105,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		state.Logger.Error("Failed to get bot user: ", zap.Error(err), zap.String("userID", d.Auth.ID), zap.String("botID", id))
 		return uapi.HttpResponse{
 			Status: http.StatusInternalServerError,
-			Json:   types.ApiError{Message: "Failed to get bot user:" + err.Error()},
+			Json:   types.ApiError{Message: "Failed to get bot user."},
 		}
 	}
 

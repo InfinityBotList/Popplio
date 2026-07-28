@@ -52,7 +52,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 			state.Logger.Error("Error resolving indexbot", zap.Error(err), zap.String("botID", bots[i].BotID))
 			return uapi.HttpResponse{
 				Status: http.StatusInternalServerError,
-				Json:   types.ApiError{Message: "An error occurred while resolving index bot: " + err.Error() + " botID: " + bots[i].BotID},
+				Json:   types.ApiError{Message: "An error occurred while resolving index bot." + " botID: " + bots[i].BotID},
 			}
 		}
 	}

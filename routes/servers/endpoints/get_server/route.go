@@ -193,7 +193,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 			return uapi.HttpResponse{
 				Status: http.StatusInternalServerError,
 				Json: types.ApiError{
-					Message: "Error while getting team entities: " + err.Error(),
+					Message: "Error while getting team entities.",
 				},
 			}
 		}
@@ -237,7 +237,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		return uapi.HttpResponse{
 			Status: http.StatusInternalServerError,
 			Json: types.ApiError{
-				Message: "Error while getting server vote count [db fetch]: " + err.Error(),
+				Message: "Error while getting server vote count [db fetch].",
 			},
 		}
 	}

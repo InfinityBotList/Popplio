@@ -68,7 +68,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		if err != nil {
 			return uapi.HttpResponse{
 				Status: http.StatusInternalServerError,
-				Json:   types.ApiError{Message: "Failed to get user staff perms: " + err.Error()},
+				Json:   types.ApiError{Message: "Failed to get user staff perms."},
 			}
 		}
 

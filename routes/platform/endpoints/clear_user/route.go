@@ -71,7 +71,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 			return uapi.HttpResponse{
 				Status: http.StatusInternalServerError,
 				Json: types.ApiError{
-					Message: "Error deleting bot avatar: " + err.Error(),
+					Message: "Error deleting bot avatar.",
 				},
 			}
 		}
@@ -83,7 +83,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 			return uapi.HttpResponse{
 				Status: http.StatusInternalServerError,
 				Json: types.ApiError{
-					Message: "Error deleting user avatar: " + err.Error(),
+					Message: "Error deleting user avatar.",
 				},
 			}
 		}

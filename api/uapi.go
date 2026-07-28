@@ -115,10 +115,7 @@ func Authorize(r uapi.Route, req *http.Request) (uapi.AuthData, uapi.HttpRespons
 
 	if err != nil {
 		state.Logger.Error("Failed to delete expired web API tokens [db delete]", zap.Error(err))
-		return uapi.AuthData{}, uapi.HttpResponse{
-			Status: http.StatusInternalServerError,
-			Json:   types.ApiError{Message: "Failed to delete expired web API tokens: " + err.Error()},
-		}, false
+		return uapi.AuthData{}, uapi.DefaultResponse(http.StatusInternalServerError), false
 	}
 
 	// Get the prefix from the auth header, if any, by splitNing it into 2 parts
@@ -151,10 +148,8 @@ func Authorize(r uapi.Route, req *http.Request) (uapi.AuthData, uapi.HttpRespons
 	}
 
 	if err != nil {
-		return uapi.AuthData{}, uapi.HttpResponse{
-			Status: http.StatusInternalServerError,
-			Json:   types.ApiError{Message: "Could not fetch any sessions: " + err.Error()},
-		}, false
+		state.Logger.Error("Failed to fetch session [db fetch]", zap.Error(err))
+		return uapi.AuthData{}, uapi.DefaultResponse(http.StatusInternalServerError), false
 	}
 
 	if len(permLimits) == 0 {
@@ -191,10 +186,8 @@ func Authorize(r uapi.Route, req *http.Request) (uapi.AuthData, uapi.HttpRespons
 			err := state.Pool.QueryRow(state.Context, "SELECT banned FROM users WHERE user_id = $1", targetId).Scan(&banned)
 
 			if err != nil {
-				return uapi.AuthData{}, uapi.HttpResponse{
-					Status: http.StatusInternalServerError,
-					Json:   types.ApiError{Message: "Could not fetch user associated with this session: " + err.Error()},
-				}, false
+				state.Logger.Error("Failed to fetch user associated with session [db fetch]", zap.Error(err), zap.String("userID", targetId))
+				return uapi.AuthData{}, uapi.DefaultResponse(http.StatusInternalServerError), false
 			}
 
 			authData = uapi.AuthData{
@@ -208,10 +201,8 @@ func Authorize(r uapi.Route, req *http.Request) (uapi.AuthData, uapi.HttpRespons
 			err := state.Pool.QueryRow(state.Context, "SELECT COUNT(*) FROM bots WHERE bot_id = $1", targetId).Scan(&count)
 
 			if err != nil {
-				return uapi.AuthData{}, uapi.HttpResponse{
-					Status: http.StatusInternalServerError,
-					Json:   types.ApiError{Message: "Could not fetch count of bots associated with this session: " + err.Error()},
-				}, false
+				state.Logger.Error("Failed to fetch bot count associated with session [db fetch]", zap.Error(err), zap.String("botID", targetId))
+				return uapi.AuthData{}, uapi.DefaultResponse(http.StatusInternalServerError), false
 			}
 
 			if count == 0 {
@@ -234,10 +225,8 @@ func Authorize(r uapi.Route, req *http.Request) (uapi.AuthData, uapi.HttpRespons
 			err := state.Pool.QueryRow(state.Context, "SELECT COUNT(*) FROM servers WHERE server_id = $1", targetId).Scan(&count)
 
 			if err != nil {
-				return uapi.AuthData{}, uapi.HttpResponse{
-					Status: http.StatusInternalServerError,
-					Json:   types.ApiError{Message: "Could not fetch count of servers associated with this session: " + err.Error()},
-				}, false
+				state.Logger.Error("Failed to fetch server count associated with session [db fetch]", zap.Error(err), zap.String("serverID", targetId))
+				return uapi.AuthData{}, uapi.DefaultResponse(http.StatusInternalServerError), false
 			}
 
 			if count == 0 {
@@ -260,10 +249,8 @@ func Authorize(r uapi.Route, req *http.Request) (uapi.AuthData, uapi.HttpRespons
 			err := state.Pool.QueryRow(state.Context, "SELECT COUNT(*) FROM teams WHERE id = $1", targetId).Scan(&count)
 
 			if err != nil {
-				return uapi.AuthData{}, uapi.HttpResponse{
-					Status: http.StatusInternalServerError,
-					Json:   types.ApiError{Message: "Could not fetch count of teams associated with this session: " + err.Error()},
-				}, false
+				state.Logger.Error("Failed to fetch team count associated with session [db fetch]", zap.Error(err), zap.String("teamID", targetId))
+				return uapi.AuthData{}, uapi.DefaultResponse(http.StatusInternalServerError), false
 			}
 
 			if count == 0 {
@@ -348,10 +335,8 @@ func Authorize(r uapi.Route, req *http.Request) (uapi.AuthData, uapi.HttpRespons
 		neededPerm, err := permCheck.NeededPermission(r, req, authData)
 
 		if err != nil {
-			return uapi.AuthData{}, uapi.HttpResponse{
-				Status: http.StatusInternalServerError,
-				Json:   types.ApiError{Message: "Could not get needed permission for authorization: " + err.Error()},
-			}, false
+			state.Logger.Error("Failed to resolve needed permission for authorization", zap.Error(err), zap.String("opId", r.OpId))
+			return uapi.AuthData{}, uapi.DefaultResponse(http.StatusInternalServerError), false
 		}
 
 		if neededPerm != nil {

@@ -157,7 +157,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		return uapi.HttpResponse{
 			Status: http.StatusInternalServerError,
 			Json: types.ApiError{
-				Message: "Error while getting bot [db fetch]: " + err.Error(),
+				Message: "Error while getting bot [db fetch].",
 			},
 		}
 	}
@@ -179,7 +179,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		return uapi.HttpResponse{
 			Status: http.StatusInternalServerError,
 			Json: types.ApiError{
-				Message: "Error while getting bot [db collect]: " + err.Error(),
+				Message: "Error while getting bot [db collect].",
 			},
 		}
 	}
@@ -192,7 +192,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 			return uapi.HttpResponse{
 				Status: http.StatusInternalServerError,
 				Json: types.ApiError{
-					Message: "Error while getting bot [dovewing fetch]: " + err.Error(),
+					Message: "Error while getting bot [dovewing fetch].",
 				},
 			}
 		}
@@ -206,7 +206,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 			return uapi.HttpResponse{
 				Status: http.StatusInternalServerError,
 				Json: types.ApiError{
-					Message: "Error while getting bot team owner [db fetch]: " + err.Error(),
+					Message: "Error while getting bot team owner [db fetch].",
 				},
 			}
 		}
@@ -218,7 +218,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 			return uapi.HttpResponse{
 				Status: http.StatusInternalServerError,
 				Json: types.ApiError{
-					Message: "Error while getting bot team owner [db collect]: " + err.Error(),
+					Message: "Error while getting bot team owner [db collect].",
 				},
 			}
 		}
@@ -242,7 +242,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 				return uapi.HttpResponse{
 					Status: http.StatusInternalServerError,
 					Json: types.ApiError{
-						Message: "Error while getting team entities: " + err.Error(),
+						Message: "Error while getting team entities.",
 					},
 				}
 			}
@@ -265,7 +265,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		return uapi.HttpResponse{
 			Status: http.StatusInternalServerError,
 			Json: types.ApiError{
-				Message: "Error while getting bot user [dovewing fetch]: " + err.Error(),
+				Message: "Error while getting bot user [dovewing fetch].",
 			},
 		}
 	}
@@ -280,7 +280,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		return uapi.HttpResponse{
 			Status: http.StatusInternalServerError,
 			Json: types.ApiError{
-				Message: "Error while getting bot unique clicks [db fetch]: " + err.Error(),
+				Message: "Error while getting bot unique clicks [db fetch].",
 			},
 		}
 	}
@@ -296,7 +296,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		return uapi.HttpResponse{
 			Status: http.StatusInternalServerError,
 			Json: types.ApiError{
-				Message: "Error while getting bot vanity code [db fetch]: " + err.Error(),
+				Message: "Error while getting bot vanity code [db fetch].",
 			},
 		}
 	}
@@ -310,7 +310,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		return uapi.HttpResponse{
 			Status: http.StatusInternalServerError,
 			Json: types.ApiError{
-				Message: "Error while getting bot vote count [db fetch]: " + err.Error(),
+				Message: "Error while getting bot vote count [db fetch].",
 			},
 		}
 	}
@@ -339,7 +339,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 					return uapi.HttpResponse{
 						Status: http.StatusInternalServerError,
 						Json: types.ApiError{
-							Message: "Error while getting bot long description [db fetch]: " + err.Error(),
+							Message: "Error while getting bot long description [db fetch].",
 						},
 					}
 				}
@@ -362,7 +362,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 					return uapi.HttpResponse{
 						Status: http.StatusInternalServerError,
 						Json: types.ApiError{
-							Message: "Error while getting bot cache server guild id info [db fetch]: " + err.Error(),
+							Message: "Error while getting bot cache server guild id info [db fetch].",
 						},
 					}
 				}
@@ -374,7 +374,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 					return uapi.HttpResponse{
 						Status: http.StatusInternalServerError,
 						Json: types.ApiError{
-							Message: "Error while getting bot cache server base info [db fetch]: " + err.Error(),
+							Message: "Error while getting bot cache server base info [db fetch].",
 						},
 					}
 				}
@@ -386,7 +386,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 					return uapi.HttpResponse{
 						Status: http.StatusInternalServerError,
 						Json: types.ApiError{
-							Message: "Error while getting bot cache server base info [db collect]: " + err.Error(),
+							Message: "Error while getting bot cache server base info [db collect].",
 						},
 					}
 				}
@@ -404,7 +404,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 					return uapi.HttpResponse{
 						Status: http.StatusInternalServerError,
 						Json: types.ApiError{
-							Message: "Error while getting bot cache server bot info [db fetch]: " + err.Error(),
+							Message: "Error while getting bot cache server bot info [db fetch].",
 						},
 					}
 				}
@@ -416,7 +416,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 					return uapi.HttpResponse{
 						Status: http.StatusInternalServerError,
 						Json: types.ApiError{
-							Message: "Error while getting bot cache server bot info [db collect]: " + err.Error(),
+							Message: "Error while getting bot cache server bot info [db collect].",
 						},
 					}
 				}

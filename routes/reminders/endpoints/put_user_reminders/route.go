@@ -61,7 +61,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		state.Logger.Error("Error getting entity info", zap.Error(err), zap.String("target_id", targetId), zap.String("target_type", targetType))
 		return uapi.HttpResponse{
 			Status: http.StatusInternalServerError,
-			Json:   types.ApiError{Message: "Error: " + err.Error()},
+			Json:   types.ApiError{Message: "Error."},
 		}
 	}
 
@@ -73,7 +73,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		state.Logger.Error("Error selecting count of user_reminders", zap.Error(err), zap.String("target_id", targetId), zap.String("target_type", targetType))
 		return uapi.HttpResponse{
 			Status: http.StatusInternalServerError,
-			Json:   types.ApiError{Message: "Error getting current user reminder count: " + err.Error()},
+			Json:   types.ApiError{Message: "Error getting current user reminder count."},
 		}
 	}
 
@@ -88,7 +88,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		state.Logger.Error("Error inserting new reminder", zap.Error(err), zap.String("target_id", targetId), zap.String("target_type", targetType))
 		return uapi.HttpResponse{
 			Status: http.StatusInternalServerError,
-			Json:   types.ApiError{Message: "Error adding new reminder: " + err.Error()},
+			Json:   types.ApiError{Message: "Error adding new reminder."},
 		}
 	}
 

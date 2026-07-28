@@ -73,7 +73,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		return uapi.HttpResponse{
 			Status: http.StatusInternalServerError,
 			Json: types.ApiError{
-				Message: "Failed to capture paypal order: " + err.Error(),
+				Message: "Failed to capture paypal order.",
 			},
 		}
 	}
@@ -175,7 +175,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		return uapi.HttpResponse{
 			Status: http.StatusBadRequest,
 			Json: types.ApiError{
-				Message: "Failed to give perks: " + err.Error(),
+				Message: "Failed to give perks.",
 			},
 		}
 	}

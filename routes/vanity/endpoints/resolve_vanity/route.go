@@ -4,11 +4,13 @@ import (
 	"net/http"
 
 	"popplio/routes/vanity/assets"
+	"popplio/state"
 	"popplio/types"
 
 	"github.com/go-chi/chi/v5"
 	docs "github.com/infinitybotlist/eureka/doclib"
 	"github.com/infinitybotlist/eureka/uapi"
+	"go.uber.org/zap"
 )
 
 func Docs() *docs.Doc {
@@ -50,9 +52,10 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	}
 
 	if err != nil {
+		state.Logger.Error("Failed to resolve vanity", zap.Error(err), zap.String("code", code))
 		return uapi.HttpResponse{
 			Status: http.StatusInternalServerError,
-			Json:   types.ApiError{Message: err.Error()},
+			Json:   types.ApiError{Message: "An internal error occurred"},
 		}
 	}
 

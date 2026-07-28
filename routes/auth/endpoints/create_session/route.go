@@ -118,7 +118,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 			state.Logger.Error("Error while getting entity perms", zap.Error(err))
 			return uapi.HttpResponse{
 				Status: http.StatusInternalServerError,
-				Json:   types.ApiError{Message: "Error while getting entity perms: " + err.Error()},
+				Json:   types.ApiError{Message: "Error while getting entity perms."},
 			}
 		}
 
@@ -194,7 +194,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		state.Logger.Error("Error while creating user session", zap.Error(err))
 		return uapi.HttpResponse{
 			Status: http.StatusInternalServerError,
-			Json:   types.ApiError{Message: "Error while creating user session: " + err.Error()},
+			Json:   types.ApiError{Message: "Error while creating user session."},
 		}
 	}
 

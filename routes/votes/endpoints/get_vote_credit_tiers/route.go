@@ -53,7 +53,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	if err != nil {
 		return uapi.HttpResponse{
 			Status: http.StatusInternalServerError,
-			Json:   types.ApiError{Message: "An error occurred while summarizing vote credit tiers: " + err.Error()},
+			Json:   types.ApiError{Message: "An error occurred while summarizing vote credit tiers."},
 		}
 	}
 

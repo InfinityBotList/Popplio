@@ -30,6 +30,11 @@ func ResolveBotPack(ctx context.Context, pack *types.BotPack) error {
 
 	pack.ResolvedOwner = ownerUser
 
+	// Ensure this always marshals as `[]` rather than `null` when the pack
+	// has no bots — a nil Go slice serializes to JSON null, which crashes
+	// frontend consumers that call .length/.map on it without a null check.
+	pack.ResolvedBots = []types.IndexBot{}
+
 	for _, botId := range pack.Bots {
 		row, err := state.Pool.Query(ctx, "SELECT "+indexBotCols+" FROM bots WHERE bot_id = $1", botId)
 

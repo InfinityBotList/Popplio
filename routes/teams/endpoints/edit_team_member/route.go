@@ -54,7 +54,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		state.Logger.Error("Error checking if user is on team", zap.Error(err), zap.String("uid", d.Auth.ID), zap.String("tid", teamId), zap.String("mid", userId))
 		return uapi.HttpResponse{
 			Status: http.StatusInternalServerError,
-			Json:   types.ApiError{Message: "Error checking if user is on team: " + err.Error()},
+			Json:   types.ApiError{Message: "Error checking if user is on team."},
 		}
 	}
 
@@ -88,7 +88,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		state.Logger.Error("Error getting user perms", zap.Error(err), zap.String("uid", d.Auth.ID), zap.String("tid", teamId), zap.String("mid", userId))
 		return uapi.HttpResponse{
 			Status: http.StatusBadRequest,
-			Json:   types.ApiError{Message: "Error getting user perms: " + err.Error()},
+			Json:   types.ApiError{Message: "Error getting user perms."},
 		}
 	}
 
@@ -109,7 +109,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 			state.Logger.Error("Error getting old perms", zap.Error(err), zap.String("uid", d.Auth.ID), zap.String("tid", teamId), zap.String("mid", userId))
 			return uapi.HttpResponse{
 				Status: http.StatusInternalServerError,
-				Json:   types.ApiError{Message: "Error getting old perms: " + err.Error()},
+				Json:   types.ApiError{Message: "Error getting old perms."},
 			}
 		}
 
@@ -135,7 +135,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		if err = kittycat.CheckPatchChanges(managerPerms, currentUserPerms, newPermsResolved); err != nil {
 			return uapi.HttpResponse{
 				Status: http.StatusForbidden,
-				Json:   types.ApiError{Message: "You do not have permission to set these permissions: " + err.Error()},
+				Json:   types.ApiError{Message: "You do not have permission to set these permissions."},
 			}
 		}
 

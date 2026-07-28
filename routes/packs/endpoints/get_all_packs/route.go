@@ -82,7 +82,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 			state.Logger.Error("Error resolving bot pack", zap.Error(err), zap.String("url", packs[i].URL))
 			return uapi.HttpResponse{
 				Status: http.StatusInternalServerError,
-				Json:   types.ApiError{Message: "Error resolving bot pack: " + err.Error()},
+				Json:   types.ApiError{Message: "Error resolving bot pack."},
 			}
 		}
 	}

@@ -57,7 +57,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 			state.Logger.Error("Failed to validate partner", zap.Error(err), zap.String("partner_id", partners[i].ID))
 			return uapi.HttpResponse{
 				Status: http.StatusInternalServerError,
-				Json:   types.ApiError{Message: "Could not validate " + partners[i].ID + " with error:" + err.Error()},
+				Json:   types.ApiError{Message: "Could not validate partner " + partners[i].ID + "."},
 			}
 		}
 

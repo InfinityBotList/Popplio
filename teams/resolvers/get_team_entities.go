@@ -26,7 +26,10 @@ var (
 )
 
 func GetTeamEntities(ctx context.Context, teamId string, targets []string) (*types.TeamEntities, error) {
-	eto := &types.TeamEntities{}
+	// Ensure this always marshals as `[]` rather than `null` — a nil Go slice
+	// serializes to JSON null, which crashes frontend consumers that call
+	// .length/.map on it without a null check.
+	eto := &types.TeamEntities{Targets: []string{}}
 
 	for _, st := range targets {
 		var isInvalid bool

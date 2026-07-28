@@ -447,7 +447,10 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 
 	var sessionToken = crypto.RandString(128)
 	var sessionId string
-	err = state.Pool.QueryRow(d.Context, "INSERT INTO api_sessions (target_type, target_id, type, token, expiry, name) VALUES ('user', $1, 'login', $2, NOW() + INTERVAL '1 hour', $3) RETURNING id", user.ID, sessionToken, sessionName).Scan(&sessionId)
+	// Session lifetime here must stay in sync with the frontend's client-side
+	// expires_at estimate (see auth.ts's callback()) since this endpoint does
+	// not return an expiry timestamp for the frontend to read.
+	err = state.Pool.QueryRow(d.Context, "INSERT INTO api_sessions (target_type, target_id, type, token, expiry, name) VALUES ('user', $1, 'login', $2, NOW() + INTERVAL '30 days', $3) RETURNING id", user.ID, sessionToken, sessionName).Scan(&sessionId)
 
 	if err != nil {
 		state.Logger.Error("Failed to create session token", zap.Error(err), zap.String("userID", user.ID))

@@ -104,7 +104,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		return uapi.HttpResponse{
 			Status: http.StatusInternalServerError,
 			Json: types.ApiError{
-				Message: "Error creating task:" + err.Error(),
+				Message: "Error creating task.",
 			},
 		}
 	}

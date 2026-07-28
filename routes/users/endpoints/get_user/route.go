@@ -109,7 +109,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 			state.Logger.Error("Error resolving indexbot", zap.Error(err), zap.String("botID", user.UserBots[i].BotID))
 			return uapi.HttpResponse{
 				Status: http.StatusInternalServerError,
-				Json:   types.ApiError{Message: "An error occurred while resolving index bot: " + err.Error() + " botID: " + user.UserBots[i].BotID},
+				Json:   types.ApiError{Message: "An error occurred while resolving index bot." + " botID: " + user.UserBots[i].BotID},
 			}
 		}
 	}
@@ -133,6 +133,12 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		state.Logger.Error("Error while getting user teams [collect]", zap.Error(err), zap.String("userID", user.ID))
 		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
+
+	// Ensure this always marshals as `[]` rather than `null` when the user
+	// isn't on any teams — a nil Go slice serializes to JSON null, which
+	// crashes frontend consumers that call .length/.map on it without a
+	// null check.
+	user.UserTeams = []types.Team{}
 
 	for _, tid := range tids {
 		row, err := state.Pool.Query(d.Context, "SELECT "+teamCols+" FROM teams WHERE id = $1", tid)
@@ -187,7 +193,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 			state.Logger.Error("Error while resolving user pack", zap.Error(err), zap.String("userID", user.ID), zap.String("url", user.UserPacks[i].URL))
 			return uapi.HttpResponse{
 				Status: http.StatusInternalServerError,
-				Json:   types.ApiError{Message: "Error resolving user pack: " + err.Error()},
+				Json:   types.ApiError{Message: "Error resolving user pack."},
 			}
 		}
 	}
@@ -201,7 +207,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		state.Logger.Error("Error while getting staff status", zap.Error(err), zap.String("userID", user.ID))
 		return uapi.HttpResponse{
 			Status: http.StatusInternalServerError,
-			Json:   types.ApiError{Message: "Error getting staff status: " + err.Error()},
+			Json:   types.ApiError{Message: "Error getting staff status."},
 		}
 	}
 

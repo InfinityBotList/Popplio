@@ -119,7 +119,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 			state.Logger.Error("Error while resolving user pack", zap.Error(err), zap.String("url", listIndex.Packs[i].URL))
 			return uapi.HttpResponse{
 				Status: http.StatusInternalServerError,
-				Json:   types.ApiError{Message: "Error resolving user pack: " + err.Error()},
+				Json:   types.ApiError{Message: "Error resolving user pack."},
 			}
 		}
 	}
