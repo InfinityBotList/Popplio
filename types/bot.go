@@ -29,6 +29,7 @@ type IndexBot struct {
 	Premium          bool                    `db:"premium" json:"premium" description:"Whether the bot is a premium bot or not"`
 	Banner           *AssetMetadata          `db:"-" json:"banner" description:"Banner information/metadata" ci:"internal"` // Must be parsed internally
 	CreatedAt        pgtype.Timestamptz      `db:"created_at" json:"created_at" description:"The creation date of the bot"`
+	SelfStatus       pgtype.Text             `db:"self_status" json:"-" description:"Presence self-reported by the bot via Post Bot Stats. Folded into user.status when present, not exposed directly."`
 }
 
 type BotStats struct {
@@ -36,6 +37,10 @@ type BotStats struct {
 	Shards    uint64   `json:"shards" description:"The shard count"`
 	Users     uint64   `json:"users" description:"The user count (not used in webpage)"`
 	ShardList []uint64 `json:"shard_list" description:"The shard list"`
+	// Self-reported presence, since most bots don't share a guild with our
+	// own Discord client for us to read a real gateway presence from. Supplements
+	// (does not replace) the existing JAPI-based metadata refresh.
+	Status string `json:"status" validate:"omitempty,oneof=online idle dnd offline" msg:"Status must be one of online, idle, dnd or offline"`
 }
 
 // @ci table=bots, ignore_fields=api_token+unique_clicks
@@ -89,6 +94,7 @@ type Bot struct {
 	CaptchaOptOut          bool                    `db:"captcha_opt_out" json:"captcha_opt_out" description:"Whether the bot should have captchas shown if the user has captcha_sponsor_enabled"`
 	CacheServerUninvitable pgtype.Text             `db:"cache_server_uninvitable" json:"cache_server_uninvitable" description:"Whether the bot could be invited to a cache server or not for presences and 'Try It Out' (WIP)"`
 	CacheServer            *CacheServer            `db:"-" json:"cache_server,omitempty" description:"The cache server the bot is in. May not always be present" ci:"internal"` // Must be parsed internally
+	SelfStatus             pgtype.Text             `db:"self_status" json:"-" description:"Presence self-reported by the bot via Post Bot Stats. Folded into user.status when present, not exposed directly."`
 }
 
 type CacheServer struct {
@@ -125,7 +131,7 @@ type CreateBot struct {
 	Tags       []string `db:"tags" json:"tags" validate:"required,unique,min=1,max=5,dive,min=3,max=30,notblank,nonvulgar" msg:"There must be between 1 and 5 tags without duplicates" amsg:"Each tag must be between 3 and 30 characters and alphabetic"`
 	NSFW       bool     `db:"nsfw" json:"nsfw"`
 	StaffNote  *string  `db:"approval_note" json:"staff_note" validate:"omitempty,max=512" msg:"Staff note must be less than 512 characters if sent"` // impld
-	TeamOwner  string   `db:"team_owner" json:"team_owner"`                                                                             // May or may not be present
+	TeamOwner  string   `db:"team_owner" json:"team_owner"`                                                                                           // May or may not be present
 
 	// Not needed to send, resolved in backend
 	GuildCount *int        `db:"servers" json:"-"`

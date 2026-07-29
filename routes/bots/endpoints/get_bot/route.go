@@ -9,6 +9,7 @@ import (
 
 	"popplio/assetmanager"
 	"popplio/db"
+	botassets "popplio/routes/bots/assets"
 	"popplio/state"
 	"popplio/teams/resolvers"
 	"popplio/types"
@@ -271,6 +272,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	}
 
 	bot.User = botUser
+	botassets.ApplySelfStatus(bot.User, bot.SelfStatus.String)
 
 	var uniqueClicks int64
 	err = state.Pool.QueryRow(d.Context, "SELECT cardinality(unique_clicks) AS unique_clicks FROM bots WHERE bot_id = $1", bot.BotID).Scan(&uniqueClicks)

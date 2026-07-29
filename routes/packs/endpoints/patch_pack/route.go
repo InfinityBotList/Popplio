@@ -16,10 +16,11 @@ import (
 var compiledMessages = uapi.CompileValidationErrors(PatchPack{})
 
 type PatchPack struct {
-	Name  string   `json:"name" validate:"required,min=3,max=20" msg:"Name must be between 3 and 20 characters"`
-	Short string   `json:"short" validate:"required,min=10,max=100" msg:"Description must be between 10 and 100 characters"`
-	Tags  []string `json:"tags" validate:"required,unique,min=1,max=5,dive,min=3,max=30,notblank,nonvulgar" msg:"There must be between 1 and 5 tags without duplicates" amsg:"Each tag must be between 3 and 30 characters and alphabetic"`
-	Bots  []string `json:"bots" validate:"required,unique,min=1,max=10,dive,numeric" msg:"There must be between 1 and 10 bots without duplicates"`
+	Name    string   `json:"name" validate:"required,min=3,max=20" msg:"Name must be between 3 and 20 characters"`
+	Short   string   `json:"short" validate:"required,min=10,max=100" msg:"Description must be between 10 and 100 characters"`
+	Tags    []string `json:"tags" validate:"required,unique,min=1,max=5,dive,min=3,max=30,notblank,nonvulgar" msg:"There must be between 1 and 5 tags without duplicates" amsg:"Each tag must be between 3 and 30 characters and alphabetic"`
+	Bots    []string `json:"bots" validate:"omitempty,unique,max=10,dive,numeric" msg:"There can be at most 10 bots without duplicates"`
+	Servers []string `json:"servers" validate:"omitempty,unique,max=10,dive,numeric" msg:"There can be at most 10 servers without duplicates"`
 }
 
 func Docs() *docs.Doc {
@@ -95,7 +96,16 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		}
 	}
 
-	// Check that all bots exist
+	if len(payload.Bots)+len(payload.Servers) == 0 {
+		return uapi.HttpResponse{
+			Status: http.StatusBadRequest,
+			Json:   types.ApiError{Message: "A pack must contain at least one bot or server"},
+		}
+	}
+
+	// Check that all bots exist. Anyone may add any existing bot/server to a
+	// pack — packs are curated lists, not something scoped to what the
+	// author owns.
 	for _, bot := range payload.Bots {
 		botUser, err := dovewing.GetUser(d.Context, bot, state.DovewingPlatformDiscord)
 
@@ -114,8 +124,38 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		}
 	}
 
+	// Check that all servers exist
+	for _, server := range payload.Servers {
+		var serverCount int64
+
+		err = state.Pool.QueryRow(d.Context, "SELECT COUNT(*) FROM servers WHERE server_id = $1", server).Scan(&serverCount)
+
+		if err != nil {
+			return uapi.HttpResponse{
+				Status: http.StatusInternalServerError,
+				Json:   types.ApiError{Message: "Error checking if server exists: " + err.Error()},
+			}
+		}
+
+		if serverCount == 0 {
+			return uapi.HttpResponse{
+				Status: http.StatusBadRequest,
+				Json:   types.ApiError{Message: "One of the servers you wish to add does not exist [" + server + "]"},
+			}
+		}
+	}
+
+	// Both columns are NOT NULL — a nil Go slice encodes as SQL NULL, so
+	// normalize an omitted field to an empty slice before it ever reaches a query.
+	if payload.Bots == nil {
+		payload.Bots = []string{}
+	}
+	if payload.Servers == nil {
+		payload.Servers = []string{}
+	}
+
 	// Update the pack
-	_, err = state.Pool.Exec(d.Context, "UPDATE packs SET name = $1, short = $2, tags = $3, bots = $4 WHERE url = $5", payload.Name, payload.Short, payload.Tags, payload.Bots, id)
+	_, err = state.Pool.Exec(d.Context, "UPDATE packs SET name = $1, short = $2, tags = $3, bots = $4, servers = $5 WHERE url = $6", payload.Name, payload.Short, payload.Tags, payload.Bots, payload.Servers, id)
 
 	if err != nil {
 		return uapi.DefaultResponse(http.StatusInternalServerError)
