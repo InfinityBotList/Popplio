@@ -6,9 +6,6 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-// @ci table=changelogs
-//
-// Changelogs for the list
 type ChangelogEntry struct {
 	Version          string      `db:"version" json:"version" validate:"required" description:"The version for the changelog entry. (4.3.0 etc.)"`
 	ExtraDescription string      `db:"extra_description" json:"extra_description" description:"The extra description for the version, if applicable"`

@@ -115,18 +115,18 @@ func main() {
 		URL:         state.Config.Sites.API.Parse(),
 		ErrorStruct: types.ApiError{},
 		Info: docs.Info{
-			Title:          "Infinity Bot List API",
-			TermsOfService: "https://infinitybotlist.com/terms",
-			Version:        "7.0",
+			Title:          "Omniplex API",
+			TermsOfService: "https://nodebyte.co.uk/legal/terms",
+			Version:        "1.0.0",
 			Description:    "",
 			Contact: docs.Contact{
-				Name:  "Infinity Bot List",
-				URL:   "https://infinitybotlist.com",
-				Email: "support@infinitybots.gg",
+				Name:  "NodeByte LTD",
+				URL:   "https://nodebyte.co.uk",
+				Email: "support@nodebyte.co.uk",
 			},
 			License: docs.License{
-				Name: "MIT",
-				URL:  "https://opensource.org/licenses/MIT",
+				Name: "AGPL-3.0",
+				URL:  "https://opensource.org/licenses/AGPL-3.0",
 			},
 		},
 	}
@@ -206,14 +206,14 @@ func main() {
 		if config.CurrentEnv == "staging" {
 			docMap = map[string]string{
 				"popplio":     "/openapi",
-				"arcadia":     "https://staging--panel-api.infinitybots.gg/openapi",
-				"infernoplex": "https://infernoplex-staging.infinitybots.gg/openapi",
+				"arcadia":     "https://staging--panel-api.omniplex.gg/openapi",
+				"infernoplex": "https://infernoplex-staging.omniplex.gg/openapi",
 			}
 		} else {
 			docMap = map[string]string{
 				"popplio":     "/openapi",
-				"arcadia":     "https://prod--panel-api.infinitybots.gg/openapi",
-				"infernoplex": "https://infernoplex.infinitybots.gg/openapi",
+				"arcadia":     "https://prod--panel-api.omniplex.gg/openapi",
+				"infernoplex": "https://infernoplex.omniplex.gg/openapi",
 			}
 		}
 
