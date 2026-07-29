@@ -157,6 +157,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		}
 
 		eto.Entities, err = resolvers.GetTeamEntities(d.Context, tid, []string{
+			"team_member",
 			"bot",
 			"server",
 		})
