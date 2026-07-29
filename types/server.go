@@ -67,6 +67,21 @@ type Server struct {
 	LoginRequiredForInvite bool               `db:"login_required_for_invite" json:"login_required_for_invite" description:"Whether the server requires a login to be invited to it"`
 }
 
+type CreateServer struct {
+	Invite        string      `db:"invite" json:"invite" validate:"required,https" msg:"Invite is required and must be a valid HTTPS Discord invite URL"`
+	Short         string      `db:"short" json:"short" validate:"required,min=30,max=150" msg:"Short description must be between 30 and 150 characters"`
+	Long          string      `db:"long" json:"long" validate:"required,min=500" msg:"Long description must be at least 500 characters"`
+	ExtraLinks    []Link      `db:"extra_links" json:"extra_links" validate:"required" msg:"Extra links must be sent"`
+	Tags          []string    `db:"tags" json:"tags" validate:"required,unique,min=1,max=5,dive,min=3,max=30,notblank,nonvulgar" msg:"There must be between 1 and 5 tags without duplicates" amsg:"Each tag must be between 3 and 30 characters and alphabetic"`
+	NSFW          bool        `db:"nsfw" json:"nsfw"`
+	TeamOwner     string      `db:"team_owner" json:"team_owner"`
+	ServerID      string      `db:"server_id" json:"-"`
+	Name          string      `db:"name" json:"-"`
+	TotalMembers  int         `db:"total_members" json:"-"`
+	OnlineMembers int         `db:"online_members" json:"-"`
+	VanityRef     pgtype.UUID `db:"vanity_ref" json:"-"`
+}
+
 type ServerSettingsUpdate struct {
 	Short                  string   `db:"short" json:"short" validate:"required,min=30,max=150" msg:"Short description must be between 30 and 150 characters"` // impld
 	Long                   string   `db:"long" json:"long" validate:"required,min=500" msg:"Long description must be at least 500 characters"`                 // impld

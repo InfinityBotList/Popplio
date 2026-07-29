@@ -24,7 +24,7 @@ func Setup() {
 
 	// This is done here to avoid constant remarshalling
 	helloWorldB = Hello{
-		Message:     "Hello world from IBL API v6!",
+		Message:     "Hello world from the Omniplex API!",
 		Docs:        docsSite,
 		FrontendURL: state.Config.Sites.Frontend.Parse(),
 	}

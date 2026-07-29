@@ -3,6 +3,7 @@ package servers
 import (
 	"net/http"
 	"popplio/api"
+	"popplio/routes/servers/endpoints/add_server"
 	"popplio/routes/servers/endpoints/get_all_servers"
 	"popplio/routes/servers/endpoints/get_random_servers"
 	"popplio/routes/servers/endpoints/get_server"
@@ -47,6 +48,26 @@ func (b Router) Routes(r *chi.Mux) {
 		Method:  uapi.GET,
 		Docs:    get_servers_index.Docs,
 		Handler: get_servers_index.Route,
+	}.Route(r)
+
+	uapi.Route{
+		Pattern: "/servers",
+		OpId:    "add_server",
+		Method:  uapi.PUT,
+		Docs:    add_server.Docs,
+		Handler: add_server.Route,
+		Auth: []uapi.AuthType{
+			{
+				Type: api.TargetTypeUser,
+			},
+			{
+				Type: api.TargetTypeTeam,
+			},
+		},
+		Setup: add_server.Setup,
+		ExtData: map[string]any{
+			api.PERMISSION_CHECK_KEY: nil, // The endpoint itself handles authorization
+		},
 	}.Route(r)
 
 	uapi.Route{
