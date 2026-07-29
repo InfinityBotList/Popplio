@@ -80,6 +80,16 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	team.Banner = assetmanager.BannerInfo(assetmanager.AssetTargetTypeTeam, id)
 	team.Avatar = assetmanager.AvatarInfo(assetmanager.AssetTargetTypeTeam, id)
 
+	// Ensure these always marshal as `[]` rather than `null` — a nil Go
+	// slice serializes to JSON null, which crashes frontend consumers that
+	// call .length/.map on it without a null check.
+	if team.Tags == nil {
+		team.Tags = []string{}
+	}
+	if team.ExtraLinks == nil {
+		team.ExtraLinks = []types.Link{}
+	}
+
 	team.Entities, err = resolvers.GetTeamEntities(d.Context, id, targets)
 
 	if err != nil {
