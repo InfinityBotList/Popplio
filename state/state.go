@@ -146,12 +146,12 @@ func Setup() {
 			return
 		}
 
-		if config.CurrentEnv == config.CurrentEnvProd {
-			Discord.SetPresence(Context, gateway.WithWatchingActivity(Config.Sites.Frontend.Parse()))
-
-			if err != nil {
-				panic(err)
-			}
+		// Previously gated to prod only, and the SetPresence error was never
+		// actually captured — the check below was reading the stale
+		// OpenShardManager `err`, which is guaranteed nil here, so a failed
+		// presence update was silently swallowed instead of logged.
+		if presenceErr := Discord.SetPresence(Context, gateway.WithWatchingActivity(Config.Sites.Frontend.Parse())); presenceErr != nil {
+			slog.Error("error while setting presence", slog.Any("err", presenceErr))
 		}
 	}()
 
