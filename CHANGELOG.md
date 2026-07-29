@@ -47,6 +47,10 @@ initial `1.0.0` version.
   consistently marshal as `[]` instead of `null` across list/user/team
   endpoints, preventing frontend crashes on `.length`/`.map` against a
   response that has no data yet.
+- `GET /teams/{id}` had the same nil-slice gap on `tags`/`extra_links`
+  directly (as opposed to the application-resolved slices above, which were
+  already covered) — a team with no tags or links set crashed the frontend
+  team page outright rather than just rendering emptily.
 
 ### Security
 
