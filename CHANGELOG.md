@@ -27,6 +27,10 @@ initial `1.0.0` version.
   reported value is folded into the resolved `user.status` returned
   everywhere a bot's info appears, since most bots don't share a guild with
   the tracking bot for a real gateway presence to be read from.
+- Bots with no explicit self-reported status but a real track record of
+  posting stats (a nonzero server count from a stats post within the last
+  24 hours) are now shown as `online` rather than falling back to
+  dovewing's almost-always-offline gateway-derived status.
 
 ### Fixed
 
