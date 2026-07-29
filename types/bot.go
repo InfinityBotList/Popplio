@@ -30,6 +30,7 @@ type IndexBot struct {
 	Banner           *AssetMetadata          `db:"-" json:"banner" description:"Banner information/metadata" ci:"internal"` // Must be parsed internally
 	CreatedAt        pgtype.Timestamptz      `db:"created_at" json:"created_at" description:"The creation date of the bot"`
 	SelfStatus       pgtype.Text             `db:"self_status" json:"-" description:"Presence self-reported by the bot via Post Bot Stats. Folded into user.status when present, not exposed directly."`
+	LastStatsPost    pgtype.Timestamptz      `db:"last_stats_post" json:"-" description:"The last time the bot posted stats to the list. Used to infer presence for bots with a real stats track record but no explicit self_status, not exposed directly."`
 }
 
 type BotStats struct {
