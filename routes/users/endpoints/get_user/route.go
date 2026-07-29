@@ -12,6 +12,7 @@ import (
 	"popplio/state"
 	"popplio/teams/resolvers"
 	"popplio/types"
+	"popplio/votes"
 
 	docs "github.com/infinitybotlist/eureka/doclib"
 	"github.com/infinitybotlist/eureka/dovewing"
@@ -167,6 +168,16 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 
 		eto.Banner = assetmanager.BannerInfo(assetmanager.AssetTargetTypeTeam, eto.ID)
 		eto.Avatar = assetmanager.AvatarInfo(assetmanager.AssetTargetTypeTeam, eto.ID)
+
+		// Votes is db:"-" (resolved in application code, not scanned from the
+		// row above) — without this, every team embedded here would silently
+		// report 0 votes instead of the real count that GET /teams/{id} shows.
+		eto.Votes, err = votes.EntityGetVoteCount(d.Context, state.Pool, tid, "team")
+
+		if err != nil {
+			state.Logger.Error("Error while getting team vote count", zap.Error(err), zap.String("teamID", tid), zap.String("userID", user.ID))
+			return uapi.DefaultResponse(http.StatusInternalServerError)
+		}
 
 		user.UserTeams = append(user.UserTeams, eto)
 	}

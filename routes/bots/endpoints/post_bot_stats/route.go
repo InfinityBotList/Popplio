@@ -9,12 +9,16 @@ import (
 	docs "github.com/infinitybotlist/eureka/doclib"
 	"github.com/infinitybotlist/eureka/uapi"
 	"go.uber.org/zap"
+
+	"github.com/go-playground/validator/v10"
 )
+
+var compiledMessages = uapi.CompileValidationErrors(types.BotStats{})
 
 func Docs() *docs.Doc {
 	return &docs.Doc{
 		Summary:     "Post Bot Stats",
-		Description: "This endpoint posts the stats of a bot.",
+		Description: "This endpoint posts the stats of a bot. `status` is optional and self-reports the bot's presence (online/idle/dnd/offline) — post it periodically to keep it fresh, it will otherwise keep showing the last value posted.",
 		Req:         types.BotStats{},
 		Resp:        types.ApiError{},
 	}
@@ -27,6 +31,13 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 
 	if !ok {
 		return resp
+	}
+
+	err := state.Validator.Struct(payload)
+
+	if err != nil {
+		errors := err.(validator.ValidationErrors)
+		return uapi.ValidatorErrorResponse(compiledMessages, errors)
 	}
 
 	tx, err := state.Pool.Begin(d.Context)
@@ -77,6 +88,19 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 
 		if err != nil {
 			state.Logger.Error("Error while updating shard_list", zap.Error(err), zap.String("botID", d.Auth.ID))
+			return uapi.DefaultResponse(http.StatusInternalServerError)
+		}
+	}
+
+	if payload.Status != "" {
+		// Self-reported presence. Supplements the JAPI-based metadata refresh,
+		// which doesn't cover presence, and the gateway-cache-derived status
+		// dovewing normally returns (only populated when the bot shares a
+		// guild with our own Discord client, which most listed bots don't).
+		_, err := tx.Exec(d.Context, "UPDATE bots SET self_status = $1 WHERE bot_id = $2", payload.Status, d.Auth.ID)
+
+		if err != nil {
+			state.Logger.Error("Error while updating self_status", zap.Error(err), zap.String("botID", d.Auth.ID))
 			return uapi.DefaultResponse(http.StatusInternalServerError)
 		}
 	}
