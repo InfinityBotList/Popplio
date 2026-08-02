@@ -1,0 +1,150 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Arcadia Panel API",
+    "description": "The Infinity List staff panel API. A single POST / endpoint dispatches a tagged-union request over ~25 operations.\n\nEvery request and response is serde's DEFAULT enum representation: a struct variant is a single-key object keyed by the variant name, a unit variant is a bare JSON string, and a newtype variant is a single-key object wrapping the inner value.\n\nResponses are not uniform. Depending on the operation the body is a JSON value, a bare text string, an empty 204, a plain-text error, or an octet-stream.",
+    "version": "1.0.0",
+    "license": {
+      "name": "AGPL-3.0",
+      "url": "https://opensource.org/licenses/AGPL-3.0"
+    }
+  },
+  "paths": {
+    "/": {
+      "post": {
+        "summary": "Make Panel Query",
+        "description": "Dispatches a PanelQuery. Almost every variant begins by validating login_token.",
+        "operationId": "query",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/PanelQuery" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Content. Either a JSON value or a bare text string depending on the operation.",
+            "content": {
+              "application/json": { "schema": {} },
+              "text/plain": { "schema": { "type": "string" } },
+              "application/octet-stream": { "schema": { "type": "string", "format": "binary" } }
+            }
+          },
+          "204": { "description": "No content" },
+          "400": {
+            "description": "An error occured",
+            "content": { "text/plain": { "schema": { "type": "string" } } }
+          },
+          "403": {
+            "description": "Missing permission. The message ends with the permission name.",
+            "content": { "text/plain": { "schema": { "type": "string" } } }
+          },
+          "500": {
+            "description": "Internal error. Auth failures surface here with the bare strings identityExpired or sessionNotActive.",
+            "content": { "text/plain": { "schema": { "type": "string" } } }
+          },
+          "501": {
+            "description": "Not implemented",
+            "content": { "text/plain": { "schema": { "type": "string" } } }
+          }
+        }
+      }
+    },
+    "/openapi": {
+      "get": {
+        "summary": "OpenAPI document",
+        "operationId": "docs",
+        "responses": {
+          "200": {
+            "description": "This document",
+            "content": { "application/json": { "schema": {} } }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "PanelQuery": {
+        "description": "Externally tagged union. Exactly one key, named for the operation.",
+        "oneOf": [
+          { "type": "object", "required": ["Authorize"], "properties": { "Authorize": { "type": "object", "required": ["version", "action"], "properties": { "version": { "type": "integer" }, "action": { "$ref": "#/components/schemas/AuthorizeAction" } } } } },
+          { "type": "object", "required": ["Hello"], "properties": { "Hello": { "type": "object", "required": ["login_token", "version"], "properties": { "login_token": { "type": "string" }, "version": { "type": "integer" } } } } },
+          { "type": "object", "required": ["BaseAnalytics"], "properties": { "BaseAnalytics": { "$ref": "#/components/schemas/LoginTokenOnly" } } },
+          { "type": "object", "required": ["GetUser"], "properties": { "GetUser": { "type": "object", "required": ["login_token", "user_id"], "properties": { "login_token": { "type": "string" }, "user_id": { "type": "string" } } } } },
+          { "type": "object", "required": ["BotQueue"], "properties": { "BotQueue": { "$ref": "#/components/schemas/LoginTokenOnly" } } },
+          { "type": "object", "required": ["ExecuteRpc"], "properties": { "ExecuteRpc": { "type": "object", "required": ["login_token", "target_type", "method"], "properties": { "login_token": { "type": "string" }, "target_type": { "$ref": "#/components/schemas/TargetType" }, "method": { "$ref": "#/components/schemas/RPCMethod" } } } } },
+          { "type": "object", "required": ["GetRpcMethods"], "properties": { "GetRpcMethods": { "type": "object", "required": ["login_token", "filtered"], "properties": { "login_token": { "type": "string" }, "filtered": { "type": "boolean" } } } } },
+          { "type": "object", "required": ["GetRpcLogEntries"], "properties": { "GetRpcLogEntries": { "$ref": "#/components/schemas/LoginTokenOnly" } } },
+          { "type": "object", "required": ["SearchEntitys"], "properties": { "SearchEntitys": { "type": "object", "required": ["login_token", "target_type", "query"], "properties": { "login_token": { "type": "string" }, "target_type": { "$ref": "#/components/schemas/TargetType" }, "query": { "type": "string" } } } } },
+          { "type": "object", "required": ["UploadCdnFileChunk"], "properties": { "UploadCdnFileChunk": { "type": "object", "required": ["login_token", "chunk"], "properties": { "login_token": { "type": "string" }, "chunk": { "description": "Vec<u8> as an ARRAY OF NUMBERS, not base64.", "type": "array", "items": { "type": "integer", "minimum": 0, "maximum": 255 } } } } } },
+          { "type": "object", "required": ["ListCdnScopes"], "properties": { "ListCdnScopes": { "$ref": "#/components/schemas/LoginTokenOnly" } } },
+          { "type": "object", "required": ["GetMainCdnScope"], "properties": { "GetMainCdnScope": { "$ref": "#/components/schemas/LoginTokenOnly" } } },
+          { "type": "object", "required": ["UpdateCdnAsset"], "properties": { "UpdateCdnAsset": { "type": "object", "required": ["login_token", "cdn_scope", "name", "path", "action"], "properties": { "login_token": { "type": "string" }, "cdn_scope": { "type": "string" }, "name": { "type": "string" }, "path": { "type": "string" }, "action": { "$ref": "#/components/schemas/CdnAssetAction" } } } } },
+          { "type": "object", "required": ["UpdatePartners"], "properties": { "UpdatePartners": { "$ref": "#/components/schemas/ActionEnvelope" } } },
+          { "type": "object", "required": ["UpdateChangelog"], "properties": { "UpdateChangelog": { "$ref": "#/components/schemas/ActionEnvelope" } } },
+          { "type": "object", "required": ["UpdateBlog"], "properties": { "UpdateBlog": { "$ref": "#/components/schemas/ActionEnvelope" } } },
+          { "type": "object", "required": ["UpdateStaffPositions"], "properties": { "UpdateStaffPositions": { "$ref": "#/components/schemas/ActionEnvelope" } } },
+          { "type": "object", "required": ["UpdateStaffMembers"], "properties": { "UpdateStaffMembers": { "$ref": "#/components/schemas/ActionEnvelope" } } },
+          { "type": "object", "required": ["UpdateStaffDisciplinaryType"], "properties": { "UpdateStaffDisciplinaryType": { "$ref": "#/components/schemas/ActionEnvelope" } } },
+          { "type": "object", "required": ["UpdateVoteCreditTiers"], "properties": { "UpdateVoteCreditTiers": { "$ref": "#/components/schemas/ActionEnvelope" } } },
+          { "type": "object", "required": ["UpdateShopItems"], "properties": { "UpdateShopItems": { "$ref": "#/components/schemas/ActionEnvelope" } } },
+          { "type": "object", "required": ["UpdateShopItemBenefits"], "properties": { "UpdateShopItemBenefits": { "$ref": "#/components/schemas/ActionEnvelope" } } },
+          { "type": "object", "required": ["UpdateShopCoupons"], "properties": { "UpdateShopCoupons": { "$ref": "#/components/schemas/ActionEnvelope" } } },
+          { "type": "object", "required": ["UpdateBotWhitelist"], "properties": { "UpdateBotWhitelist": { "$ref": "#/components/schemas/ActionEnvelope" } } },
+          { "type": "object", "required": ["PopplioStaff"], "properties": { "PopplioStaff": { "type": "object", "required": ["login_token", "path", "method", "body"], "properties": { "login_token": { "type": "string" }, "path": { "type": "string" }, "method": { "type": "string" }, "body": { "type": "string" } } } } }
+        ]
+      },
+      "LoginTokenOnly": {
+        "type": "object",
+        "required": ["login_token"],
+        "properties": { "login_token": { "type": "string" } }
+      },
+      "ActionEnvelope": {
+        "type": "object",
+        "required": ["login_token", "action"],
+        "properties": {
+          "login_token": { "type": "string" },
+          "action": {
+            "description": "An externally tagged action union. Unit variants are bare strings (e.g. \"List\", \"ListPositions\"); struct variants are single-key objects.",
+            "oneOf": [{ "type": "string" }, { "type": "object" }]
+          }
+        }
+      },
+      "TargetType": {
+        "type": "string",
+        "description": "JSON form uses variant names. The Display form used in SQL and Discord embeds is the lowercase equivalent.",
+        "enum": ["Bot", "Server", "Team", "Pack", "User"]
+      },
+      "CdnAssetAction": {
+        "description": "ListPath, ReadFile, CreateFolder and Delete are unit variants and arrive as bare strings.",
+        "oneOf": [
+          { "type": "string", "enum": ["ListPath", "ReadFile", "CreateFolder", "Delete"] },
+          { "type": "object", "required": ["AddFile"], "properties": { "AddFile": { "type": "object", "required": ["overwrite", "chunks", "sha512"], "properties": { "overwrite": { "type": "boolean" }, "chunks": { "type": "array", "items": { "type": "string" } }, "sha512": { "type": "string" } } } } },
+          { "type": "object", "required": ["CopyFile"], "properties": { "CopyFile": { "type": "object", "required": ["overwrite", "delete_original", "copy_to"], "properties": { "overwrite": { "type": "boolean" }, "delete_original": { "type": "boolean" }, "copy_to": { "type": "string" } } } } },
+          { "type": "object", "required": ["PersistGit"], "properties": { "PersistGit": { "type": "object", "required": ["message", "current_dir"], "properties": { "message": { "type": "string" }, "current_dir": { "type": "boolean" } } } } }
+        ]
+      },
+      "AuthorizeAction": {
+        "description": "Every variant is a struct variant; none accept the bare-string form.",
+        "oneOf": [
+          { "type": "object", "required": ["Begin"], "properties": { "Begin": { "type": "object", "required": ["scope", "redirect_url"], "properties": { "scope": { "type": "string" }, "redirect_url": { "type": "string" } } } } },
+          { "type": "object", "required": ["CreateSession"], "properties": { "CreateSession": { "type": "object", "required": ["code", "redirect_url"], "properties": { "code": { "type": "string" }, "redirect_url": { "type": "string" } } } } },
+          { "type": "object", "required": ["CheckMfaState"], "properties": { "CheckMfaState": { "$ref": "#/components/schemas/LoginTokenOnly" } } },
+          { "type": "object", "required": ["ResetMfaTotp"], "properties": { "ResetMfaTotp": { "type": "object", "required": ["login_token", "otp"], "properties": { "login_token": { "type": "string" }, "otp": { "type": "string" } } } } },
+          { "type": "object", "required": ["ActivateSession"], "properties": { "ActivateSession": { "type": "object", "required": ["login_token", "otp"], "properties": { "login_token": { "type": "string" }, "otp": { "type": "string" } } } } },
+          { "type": "object", "required": ["Logout"], "properties": { "Logout": { "$ref": "#/components/schemas/LoginTokenOnly" } } }
+        ]
+      },
+      "RPCMethod": {
+        "description": "Externally tagged union of the 18 staff actions. The variant name is also the permission suffix (rpc.<name>) and the rpc_logs.method value.",
+        "type": "object",
+        "minProperties": 1,
+        "maxProperties": 1,
+        "additionalProperties": { "type": "object" }
+      }
+    }
+  }
+}
