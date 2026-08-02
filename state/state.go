@@ -119,22 +119,12 @@ func Setup() {
 		sharding.WithShardCount(2),
 		sharding.WithAutoScaling(true),
 		sharding.WithGatewayConfigOpts(
-			// IntentGuildMessages + IntentMessageContent are needed by the staff
-			// bot's prefix commands; IntentMessageContent is privileged and must be
-			// enabled on the application. Roles are cached because the staff panel
-			// validates position role ids against the cache.
-			gateway.WithIntents(
-				gateway.IntentGuilds,
-				gateway.IntentGuildPresences,
-				gateway.IntentGuildMembers,
-				gateway.IntentGuildMessages,
-				gateway.IntentMessageContent,
-			),
+			gateway.WithIntents(gateway.IntentGuilds, gateway.IntentGuildPresences, gateway.IntentGuildMembers),
 			gateway.WithCompress(true),
 		),
 	),
 		bot.WithCacheConfigOpts(
-			cache.WithCaches(cache.FlagGuilds|cache.FlagMembers|cache.FlagPresences|cache.FlagRoles),
+			cache.WithCaches(cache.FlagGuilds|cache.FlagMembers|cache.FlagPresences),
 		),
 		bot.WithEventListeners(&events.ListenerAdapter{
 			OnGuildReady: func(event *events.GuildReady) {

@@ -3,7 +3,6 @@ package get_team
 import (
 	"errors"
 	"net/http"
-	"popplio/assetmanager"
 	"popplio/db"
 	"popplio/state"
 	"popplio/teams/resolvers"
@@ -76,9 +75,6 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		state.Logger.Error("Error querying team [db collect]", zap.Error(err), zap.String("id", id))
 		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
-
-	team.Banner = assetmanager.BannerInfo(assetmanager.AssetTargetTypeTeam, id)
-	team.Avatar = assetmanager.AvatarInfo(assetmanager.AssetTargetTypeTeam, id)
 
 	// Ensure these always marshal as `[]` rather than `null` — a nil Go
 	// slice serializes to JSON null, which crashes frontend consumers that

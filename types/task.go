@@ -6,7 +6,7 @@ import (
 
 type TaskCreateResponse struct {
 	TaskID               string          `json:"task_id" description:"The ID of the newly created task"`
-	TaskKey              pgtype.Text         `json:"task_key" description:"The key of the newly created task"`
+	TaskKey              pgtype.Text     `json:"task_key" description:"The key of the newly created task"`
 	AllowUnauthenticated bool            `json:"allow_unauthenticated" description:"Whether the task can be accessed without authentication"`
 	TaskName             string          `db:"task_name" json:"task_name" validate:"required" description:"The task name."`
 	Expiry               pgtype.Interval `db:"expiry" json:"expiry" validate:"required" description:"The task expiry."`

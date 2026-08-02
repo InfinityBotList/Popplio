@@ -4,10 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"io/fs"
-	"os"
-	"path/filepath"
-	"strings"
 
 	"github.com/google/uuid"
 	"popplio/state"
@@ -15,117 +11,6 @@ import (
 	"github.com/jackc/pgx/v5"
 	"go.uber.org/zap"
 )
-
-// entityTable pairs an entity's table with its id column.
-type entityTable struct {
-	Table    string
-	IDColumn string
-}
-
-// assetEntities is an ORDERED list: the upstream uses an IndexMap, and the
-// traversal order determines the order deletions are logged in.
-var assetEntities = []entityTable{
-	{"bots", "bot_id"},
-	{"users", "user_id"},
-	{"servers", "server_id"},
-	{"teams", "id"},
-	{"partners", "id"},
-	{"tickets", "id"},
-}
-
-var assetKinds = []string{"avatars", "banners", "blobs"}
-
-// AssetCleaner deletes CDN files whose basename-before-the-first-dot has no
-// matching row in the corresponding table.
-//
-// DESTRUCTIVE. Every deletion is logged, and arcadia.asset_cleaner_dry_run makes
-// the task report what it would delete without deleting anything.
-func AssetCleaner(ctx context.Context) error {
-	scopes := state.Config.Arcadia.Panel.CdnScopes.Parse()
-
-	scope, ok := scopes[state.Config.Arcadia.Panel.MainScope]
-
-	if !ok {
-		return errors.New("No CDN scope for main scope")
-	}
-
-	dryRun := state.Config.Arcadia.AssetCleanerDry
-
-	for _, asset := range assetKinds {
-		for _, entity := range assetEntities {
-			dir := fmt.Sprintf("%s/%s/%s", scope.Path, asset, entity.Table)
-
-			if _, err := os.Stat(dir); err != nil {
-				if !errors.Is(err, fs.ErrNotExist) {
-					state.Logger.Error("Could not validate directory", zap.String("dir", dir), zap.Error(err))
-				}
-
-				continue
-			}
-
-			state.Logger.Info("Validating assets", zap.String("asset", asset), zap.String("entityType", entity.Table))
-
-			entries, err := os.ReadDir(dir)
-
-			if err != nil {
-				return err
-			}
-
-			for _, entry := range entries {
-				path := filepath.Join(dir, entry.Name())
-
-				id, _, found := strings.Cut(entry.Name(), ".")
-
-				if !found && id == "" {
-					state.Logger.Warn("Invalid file name", zap.String("fileName", entry.Name()))
-
-					if err := removeAsset(path, entry.IsDir(), dryRun); err != nil {
-						return err
-					}
-
-					continue
-				}
-
-				// The table and column come from the fixed allow-list above, never
-				// from user input, so the identifiers cannot be injected.
-				query := fmt.Sprintf("SELECT %s::text FROM %s WHERE %s::text = $1::text", entity.IDColumn, entity.Table, entity.IDColumn)
-
-				var matched string
-
-				err := state.Pool.QueryRow(ctx, query, id).Scan(&matched)
-
-				if err != nil {
-					if !errors.Is(err, pgx.ErrNoRows) {
-						return err
-					}
-
-					state.Logger.Warn("Found orphaned file", zap.String("path", path), zap.Bool("dryRun", dryRun))
-
-					if err := removeAsset(path, entry.IsDir(), dryRun); err != nil {
-						return err
-					}
-				}
-			}
-		}
-	}
-
-	return nil
-}
-
-func removeAsset(path string, isDir, dryRun bool) error {
-	if dryRun {
-		state.Logger.Info("Dry run: would delete asset", zap.String("path", path), zap.Bool("isDir", isDir))
-		return nil
-	}
-
-	state.Logger.Info("Deleting asset", zap.String("path", path), zap.Bool("isDir", isDir))
-
-	if isDir {
-		return os.RemoveAll(path)
-	}
-
-	return os.Remove(path)
-}
 
 // genericEntities maps each entity kind onto its table, id column and the
 // target_type value that references it.

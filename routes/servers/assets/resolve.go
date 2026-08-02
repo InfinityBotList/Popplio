@@ -3,7 +3,6 @@ package assets
 import (
 	"context"
 	"fmt"
-	"popplio/assetmanager"
 	"popplio/state"
 	"popplio/types"
 	"popplio/votes"
@@ -19,8 +18,6 @@ func ResolveIndexServer(ctx context.Context, server *types.IndexServer) error {
 	}
 
 	server.Vanity = code
-	server.Avatar = assetmanager.AvatarInfo(assetmanager.AssetTargetTypeServer, server.ServerID)
-	server.Banner = assetmanager.BannerInfo(assetmanager.AssetTargetTypeServer, server.ServerID)
 
 	server.Votes, err = votes.EntityGetVoteCount(ctx, state.Pool, server.ServerID, "server")
 

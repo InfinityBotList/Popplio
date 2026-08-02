@@ -3,7 +3,6 @@ package hooks
 import (
 	"errors"
 	"fmt"
-	"popplio/assetmanager"
 	"popplio/db"
 	"popplio/state"
 	"popplio/types"
@@ -45,9 +44,6 @@ func (sd ServerDriver) Construct(userId, id string) (*events.Target, *sender.Web
 		state.Logger.Error("Failed to fetch server data for this hook", zap.Error(err), zap.String("serverID", id), zap.String("userID", userId))
 		return nil, nil, err
 	}
-
-	server.Banner = assetmanager.BannerInfo(assetmanager.AssetTargetTypeServer, server.ServerID)
-	server.Avatar = assetmanager.AvatarInfo(assetmanager.AssetTargetTypeServer, server.ServerID)
 
 	var code string
 

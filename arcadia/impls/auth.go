@@ -101,6 +101,9 @@ func CheckAuth(ctx context.Context, token string) (types.AuthData, error) {
 	return data, nil
 }
 
+// disciplinaryRow is a disciplinary joined to its type. The type columns are
+// nullable only because the join is a LEFT JOIN; a missing type is an error, as
+// it is upstream.
 type disciplinaryRow struct {
 	ID          pgtype.UUID `db:"id"`
 	CreatedAt   time.Time   `db:"created_at"`
@@ -108,15 +111,30 @@ type disciplinaryRow struct {
 	Title       string      `db:"title"`
 	Description string      `db:"description"`
 	Type        string      `db:"type"`
+
+	TypeName           *string  `db:"type_name"`
+	TypeDescription    *string  `db:"type_description"`
+	TypeSelfAssignable *bool    `db:"self_assignable"`
+	TypePermLimits     []string `db:"perm_limits"`
+	TypeAdditory       *bool    `db:"additory"`
+	TypeNeedsApproval  *bool    `db:"needs_approval"`
+	TypeMaxExpiry      *float64 `db:"max_expiry"`
 }
 
-// GetStaffDisciplinaries loads a member's disciplinary actions, resolving each
-// one's type (memoized per call, as upstream does).
+// disciplinaryQuery joins each disciplinary to its type in one round trip.
+// Upstream issued a separate query per distinct type, memoized per call.
+const disciplinaryQuery = `SELECT d.id, d.created_at, EXTRACT(epoch FROM d.expiry) AS expiry, d.title, d.description, d.type,
+        t.name AS type_name, t.description AS type_description, t.self_assignable, t.perm_limits, t.additory, t.needs_approval,
+        EXTRACT(epoch FROM t.max_expiry) AS max_expiry
+        FROM staff_disciplinary d LEFT JOIN staff_disciplinary_types t ON t.id = d.type
+        WHERE d.user_id = $1`
+
+// GetStaffDisciplinaries loads a member's disciplinary actions with their types.
 func GetStaffDisciplinaries(ctx context.Context, userID string, active bool) ([]types.StaffDisciplinary, error) {
-	query := "SELECT id, created_at, EXTRACT(epoch FROM expiry) as expiry, title, description, type FROM staff_disciplinary WHERE user_id = $1"
+	query := disciplinaryQuery
 
 	if active {
-		query += " AND NOW() - created_at < expiry"
+		query += " AND NOW() - d.created_at < d.expiry"
 	}
 
 	rows, err := state.Pool.Query(ctx, query, userID)
@@ -131,47 +149,12 @@ func GetStaffDisciplinaries(ctx context.Context, userID string, active bool) ([]
 		return nil, err
 	}
 
-	typeCache := make(map[string]types.StaffDisciplinaryType)
 	disciplinaries := make([]types.StaffDisciplinary, 0, len(records))
 
 	for _, rec := range records {
-		discType, ok := typeCache[rec.Type]
-
-		if !ok {
-			var (
-				name           string
-				description    string
-				selfAssignable bool
-				permLimits     []string
-				additory       bool
-				needsApproval  bool
-				maxExpiry      *float64
-			)
-
-			err := state.Pool.QueryRow(ctx,
-				"SELECT name, description, self_assignable, perm_limits, additory, needs_approval,  EXTRACT(epoch FROM max_expiry) AS max_expiry FROM staff_disciplinary_types WHERE id = $1",
-				rec.Type,
-			).Scan(&name, &description, &selfAssignable, &permLimits, &additory, &needsApproval, &maxExpiry)
-
-			if err != nil {
-				return nil, err
-			}
-
-			discType = types.StaffDisciplinaryType{
-				ID:             rec.Type,
-				Name:           name,
-				Description:    description,
-				SelfAssignable: selfAssignable,
-				PermLimits:     nonNil(permLimits),
-				Additory:       additory,
-				NeedsApproval:  needsApproval,
-				MaxExpiry:      maxExpiry,
-				// QUIRK (reproduced): created_at is taken from the DISCIPLINARY, not
-				// from the type row. See CONFORMANCE.md.
-				CreatedAt: types.NewTimestamp(rec.CreatedAt),
-			}
-
-			typeCache[rec.Type] = discType
+		if rec.TypeName == nil {
+			// Upstream fetch_one's the type and propagates RowNotFound.
+			return nil, pgx.ErrNoRows
 		}
 
 		var expiresAt *int64
@@ -188,11 +171,32 @@ func GetStaffDisciplinaries(ctx context.Context, userID string, active bool) ([]
 			ExpiresAt:   expiresAt,
 			Title:       rec.Title,
 			Description: rec.Description,
-			Type:        discType,
+			Type: types.StaffDisciplinaryType{
+				ID:             rec.Type,
+				Name:           *rec.TypeName,
+				Description:    derefOr(rec.TypeDescription, ""),
+				SelfAssignable: derefOr(rec.TypeSelfAssignable, false),
+				PermLimits:     types.NonNilStrings(rec.TypePermLimits),
+				Additory:       derefOr(rec.TypeAdditory, false),
+				NeedsApproval:  derefOr(rec.TypeNeedsApproval, false),
+				MaxExpiry:      rec.TypeMaxExpiry,
+				// QUIRK (reproduced): created_at is taken from the DISCIPLINARY, not
+				// from the type row. See CONFORMANCE.md.
+				CreatedAt: types.NewTimestamp(rec.CreatedAt),
+			},
 		})
 	}
 
 	return disciplinaries, nil
+}
+
+// derefOr reads through a nullable column, falling back when it is NULL.
+func derefOr[T any](v *T, fallback T) T {
+	if v == nil {
+		return fallback
+	}
+
+	return *v
 }
 
 type staffPositionRow struct {
@@ -262,8 +266,8 @@ func GetStaffMember(ctx context.Context, userID string) (types.StaffMember, erro
 			ID:                 id,
 			Name:               p.Name,
 			RoleID:             p.RoleID,
-			Perms:              nonNil(p.Perms),
-			CorrespondingRoles: nonNilLinks(p.CorrespondingRoles),
+			Perms:              types.NonNilStrings(p.Perms),
+			CorrespondingRoles: types.NonNilLinks(p.CorrespondingRoles),
 			Icon:               p.Icon,
 			Index:              p.Index,
 			CreatedAt:          types.NewTimestamp(p.CreatedAt),
@@ -289,7 +293,7 @@ func GetStaffMember(ctx context.Context, userID string) (types.StaffMember, erro
 		User:            user,
 		Positions:       positions,
 		Disciplinaries:  disciplinaries,
-		PermOverrides:   nonNil(permOverrides),
+		PermOverrides:   types.NonNilStrings(permOverrides),
 		ResolvedPerms:   PermStrings(resolved),
 		NoAutosync:      noAutosync,
 		Unaccounted:     unaccounted,
@@ -351,22 +355,4 @@ func slicesContains(haystack []string, needle string) bool {
 	}
 
 	return false
-}
-
-// nonNil keeps empty arrays encoding as [] rather than null, which is what serde
-// does for an empty Vec.
-func nonNil(in []string) []string {
-	if in == nil {
-		return []string{}
-	}
-
-	return in
-}
-
-func nonNilLinks(in []types.Link) []types.Link {
-	if in == nil {
-		return []types.Link{}
-	}
-
-	return in
 }

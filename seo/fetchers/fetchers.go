@@ -3,7 +3,6 @@ package fetchers
 import (
 	"context"
 	"fmt"
-	"popplio/assetmanager"
 	"popplio/seo"
 	"popplio/state"
 	"time"
@@ -31,13 +30,10 @@ func (t *TeamFetcher) Fetch(ctx context.Context, mg *seo.MapGenerator, id string
 		return nil, err
 	}
 
-	a := assetmanager.AvatarInfo(assetmanager.AssetTargetTypeTeam, id)
-
 	return &seo.Entity{
-		ID:        id,
-		Type:      t.Type(),
-		Name:      name,
-		AvatarURL: assetmanager.ResolveAssetMetadataToUrl(a),
+		ID:   id,
+		Type: t.Type(),
+		Name: name,
 		Description: func() string {
 			if short.Valid {
 				return short.String

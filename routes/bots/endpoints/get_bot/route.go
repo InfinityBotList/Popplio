@@ -7,7 +7,6 @@ import (
 	"net/http"
 	"strings"
 
-	"popplio/assetmanager"
 	"popplio/db"
 	botassets "popplio/routes/bots/assets"
 	"popplio/state"
@@ -31,12 +30,6 @@ var (
 
 	teamColsArr = db.GetCols(types.Team{})
 	teamCols    = strings.Join(teamColsArr, ",")
-
-	cacheServerColsArr = db.GetCols(types.CacheServer{})
-	cacheServerCols    = strings.Join(cacheServerColsArr, ",")
-
-	cacheServerBotColsArr = db.GetCols(types.CacheServerBot{})
-	cacheServerBotCols    = strings.Join(cacheServerBotColsArr, ",")
 )
 
 func Docs() *docs.Doc {
@@ -71,7 +64,7 @@ Officially recognized targets:
 			},
 			{
 				Name:        "include",
-				Description: "What extra fields to include, comma-seperated.`long` => bot long description\n`cache_servers` => base cache server info\n`cache_servers.bots` => cache server bot information, requires `cache_servers` to be included",
+				Description: "What extra fields to include, comma-seperated.`long` => bot long description",
 				Required:    false,
 				In:          "query",
 				Schema:      docs.IdSchema,
@@ -253,9 +246,6 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 			}
 		}
 
-		eto.Banner = assetmanager.BannerInfo(assetmanager.AssetTargetTypeTeam, eto.ID)
-		eto.Avatar = assetmanager.AvatarInfo(assetmanager.AssetTargetTypeTeam, eto.ID)
-
 		bot.TeamOwner = &eto
 	}
 
@@ -304,7 +294,6 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	}
 
 	bot.Vanity = code
-	bot.Banner = assetmanager.BannerInfo(assetmanager.AssetTargetTypeBot, bot.BotID)
 
 	bot.Votes, err = votes.EntityGetVoteCount(d.Context, state.Pool, bot.BotID, "bot")
 
@@ -347,83 +336,6 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 				}
 
 				bot.Long = long
-			case "cache_servers":
-				if bot.Type != "approved" && bot.Type != "certified" {
-					continue // Only approved/certified bots have cache servers
-				}
-
-				var guildId string
-				err := state.Pool.QueryRow(d.Context, "SELECT guild_id FROM cache_server_bots WHERE bot_id = $1", bot.BotID).Scan(&guildId)
-
-				if errors.Is(err, pgx.ErrNoRows) {
-					continue // This bot doesn't have a cache server
-				}
-
-				if err != nil {
-					state.Logger.Error("Error while getting bot cache server guild id info [db fetch]", zap.Error(err), zap.String("id", id), zap.String("target", target), zap.String("botID", bot.BotID))
-					return uapi.HttpResponse{
-						Status: http.StatusInternalServerError,
-						Json: types.ApiError{
-							Message: "Error while getting bot cache server guild id info [db fetch].",
-						},
-					}
-				}
-
-				row, err := state.Pool.Query(d.Context, "SELECT "+cacheServerCols+" FROM cache_servers WHERE guild_id = $1", guildId)
-
-				if err != nil {
-					state.Logger.Error("Error while getting bot cache server base info [db fetch]", zap.Error(err), zap.String("id", id), zap.String("target", target), zap.String("botID", bot.BotID))
-					return uapi.HttpResponse{
-						Status: http.StatusInternalServerError,
-						Json: types.ApiError{
-							Message: "Error while getting bot cache server base info [db fetch].",
-						},
-					}
-				}
-
-				cacheServer, err := pgx.CollectOneRow(row, pgx.RowToStructByName[types.CacheServer])
-
-				if err != nil {
-					state.Logger.Error("Error while getting bot cache server base info [db collect]", zap.Error(err), zap.String("id", id), zap.String("target", target), zap.String("botID", bot.BotID))
-					return uapi.HttpResponse{
-						Status: http.StatusInternalServerError,
-						Json: types.ApiError{
-							Message: "Error while getting bot cache server base info [db collect].",
-						},
-					}
-				}
-
-				bot.CacheServer = &cacheServer
-			case "cache_servers.bots":
-				if bot.CacheServer == nil {
-					continue // This requires the base cache server info
-				}
-
-				row, err := state.Pool.Query(d.Context, "SELECT "+cacheServerBotCols+" FROM cache_server_bots WHERE guild_id = $1", bot.CacheServer.GuildID)
-
-				if err != nil {
-					state.Logger.Error("Error while getting bot cache server bot info [db fetch]", zap.Error(err), zap.String("id", id), zap.String("target", target), zap.String("botID", bot.BotID))
-					return uapi.HttpResponse{
-						Status: http.StatusInternalServerError,
-						Json: types.ApiError{
-							Message: "Error while getting bot cache server bot info [db fetch].",
-						},
-					}
-				}
-
-				cacheServerBots, err := pgx.CollectRows(row, pgx.RowToStructByName[types.CacheServerBot])
-
-				if err != nil {
-					state.Logger.Error("Error while getting bot cache server bot info [db collect]", zap.Error(err), zap.String("id", id), zap.String("target", target), zap.String("botID", bot.BotID))
-					return uapi.HttpResponse{
-						Status: http.StatusInternalServerError,
-						Json: types.ApiError{
-							Message: "Error while getting bot cache server bot info [db collect].",
-						},
-					}
-				}
-
-				bot.CacheServer.Bots = cacheServerBots
 			}
 		}
 	}

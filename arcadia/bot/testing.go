@@ -98,14 +98,14 @@ func cmdQueue() *Command {
 				return err
 			}
 
-			sent, err := state.Discord.Rest().CreateMessage(c.ChannelID, msg)
+			messageID, err := c.SendTracked(msg)
 
 			if err != nil {
 				return err
 			}
 
 			sessionsMu.Lock()
-			queueSessions[sent.ID.String()] = session
+			queueSessions[messageID.String()] = session
 			sessionsMu.Unlock()
 
 			return nil
@@ -189,7 +189,7 @@ func cmdClaim() *Command {
 		Description: "Claims a bot",
 		Checks:      []Check{isStaff, testingServer},
 		Options: []discord.ApplicationCommandOption{
-			discord.ApplicationCommandOptionString{Name: "bot", Description: "The bot you wish to claim", Required: true},
+			discord.ApplicationCommandOptionUser{Name: "bot", Description: "The bot you wish to claim", Required: true},
 		},
 		Run: func(c *Ctx) error {
 			botID := strings.Trim(c.Option("bot", 0), "<@!>")
@@ -211,7 +211,7 @@ func cmdClaim() *Command {
 
 			if claimedBy != nil {
 				// Offer force-claim or a reminder rather than claiming outright.
-				sent, err := state.Discord.Rest().CreateMessage(c.ChannelID, discord.MessageCreate{
+				messageID, err := c.SendTracked(discord.MessageCreate{
 					Embeds: []discord.Embed{{
 						Title:       "Bot Already Claimed",
 						Description: fmt.Sprintf("This bot is already claimed by <@%s>", *claimedBy),
@@ -230,7 +230,7 @@ func cmdClaim() *Command {
 				}
 
 				sessionsMu.Lock()
-				claimSessions[sent.ID.String()] = &claimSession{
+				claimSessions[messageID.String()] = &claimSession{
 					AuthorID:  c.Author.ID.String(),
 					BotID:     botID,
 					ClaimedBy: *claimedBy,
@@ -258,7 +258,7 @@ func cmdUnclaim() *Command {
 		Description: "Unclaims a bot",
 		Checks:      []Check{isStaff, testingServer},
 		Options: []discord.ApplicationCommandOption{
-			discord.ApplicationCommandOptionString{Name: "bot", Description: "The bot you wish to unclaim", Required: true},
+			discord.ApplicationCommandOptionUser{Name: "bot", Description: "The bot you wish to unclaim", Required: true},
 			discord.ApplicationCommandOptionString{Name: "reason", Description: "Reason for unclaiming", Required: true},
 		},
 		Run: func(c *Ctx) error {
@@ -287,7 +287,7 @@ func cmdApprove() *Command {
 		Description: "Approves a bot",
 		Checks:      []Check{isStaff, testingServer},
 		Options: []discord.ApplicationCommandOption{
-			discord.ApplicationCommandOptionString{Name: "bot", Description: "The bot you wish to approve", Required: true},
+			discord.ApplicationCommandOptionUser{Name: "bot", Description: "The bot you wish to approve", Required: true},
 			discord.ApplicationCommandOptionString{Name: "reason", Description: "The reason for approval", Required: true},
 		},
 		Run: func(c *Ctx) error {
@@ -310,8 +310,7 @@ func cmdApprove() *Command {
 				return fmt.Errorf("RPC did not return as expected???")
 			}
 
-			return c.Say(fmt.Sprintf(
-				"Approved bot!\nPlease invite the bot to the caching server provided down below!\n%s", content))
+			return c.Say(fmt.Sprintf("Approved bot!\n%s", content))
 		},
 	}
 }
@@ -323,7 +322,7 @@ func cmdDeny() *Command {
 		Description: "Denies a bot",
 		Checks:      []Check{isStaff, testingServer},
 		Options: []discord.ApplicationCommandOption{
-			discord.ApplicationCommandOptionString{Name: "bot", Description: "The bot you wish to deny", Required: true},
+			discord.ApplicationCommandOptionUser{Name: "bot", Description: "The bot you wish to deny", Required: true},
 			discord.ApplicationCommandOptionString{Name: "reason", Description: "The reason for denial", Required: true},
 		},
 		Run: func(c *Ctx) error {

@@ -21,24 +21,29 @@ type PartnerDelete struct {
 func (a *PartnerAction) UnmarshalJSON(data []byte) error {
 	*a = PartnerAction{}
 
-	return unmarshalUnion("PartnerAction", data, map[string]func() any{
-		"List": func() any {
-			a.List = unitSet()
-			return nil
-		},
-		"Create": func() any {
-			a.Create = &PartnerCreate{}
-			return a.Create
-		},
-		"Update": func() any {
-			a.Update = &PartnerCreate{}
-			return a.Update
-		},
-		"Delete": func() any {
-			a.Delete = &PartnerDelete{}
-			return a.Delete
-		},
-	})
+	name, payload, err := decodeUnion(data)
+
+	if err != nil {
+		return fmt.Errorf("PartnerAction: %w", err)
+	}
+
+	switch name {
+	case "List":
+		a.List = unitSet()
+	case "Create":
+		a.Create = &PartnerCreate{}
+		return decodeVariant("PartnerAction", name, payload, a.Create)
+	case "Update":
+		a.Update = &PartnerCreate{}
+		return decodeVariant("PartnerAction", name, payload, a.Update)
+	case "Delete":
+		a.Delete = &PartnerDelete{}
+		return decodeVariant("PartnerAction", name, payload, a.Delete)
+	default:
+		return errUnknownVariant("PartnerAction", name)
+	}
+
+	return expectUnit("PartnerAction", name, payload)
 }
 
 func (a PartnerAction) MarshalJSON() ([]byte, error) {
@@ -128,24 +133,29 @@ type ChangelogDeleteEntry struct {
 func (a *ChangelogAction) UnmarshalJSON(data []byte) error {
 	*a = ChangelogAction{}
 
-	return unmarshalUnion("ChangelogAction", data, map[string]func() any{
-		"ListEntries": func() any {
-			a.ListEntries = unitSet()
-			return nil
-		},
-		"CreateEntry": func() any {
-			a.CreateEntry = &ChangelogCreateEntry{}
-			return a.CreateEntry
-		},
-		"UpdateEntry": func() any {
-			a.UpdateEntry = &ChangelogUpdateEntry{}
-			return a.UpdateEntry
-		},
-		"DeleteEntry": func() any {
-			a.DeleteEntry = &ChangelogDeleteEntry{}
-			return a.DeleteEntry
-		},
-	})
+	name, payload, err := decodeUnion(data)
+
+	if err != nil {
+		return fmt.Errorf("ChangelogAction: %w", err)
+	}
+
+	switch name {
+	case "ListEntries":
+		a.ListEntries = unitSet()
+	case "CreateEntry":
+		a.CreateEntry = &ChangelogCreateEntry{}
+		return decodeVariant("ChangelogAction", name, payload, a.CreateEntry)
+	case "UpdateEntry":
+		a.UpdateEntry = &ChangelogUpdateEntry{}
+		return decodeVariant("ChangelogAction", name, payload, a.UpdateEntry)
+	case "DeleteEntry":
+		a.DeleteEntry = &ChangelogDeleteEntry{}
+		return decodeVariant("ChangelogAction", name, payload, a.DeleteEntry)
+	default:
+		return errUnknownVariant("ChangelogAction", name)
+	}
+
+	return expectUnit("ChangelogAction", name, payload)
 }
 
 func (a ChangelogAction) MarshalJSON() ([]byte, error) {
@@ -208,24 +218,29 @@ type BlogDeleteEntry struct {
 func (a *BlogAction) UnmarshalJSON(data []byte) error {
 	*a = BlogAction{}
 
-	return unmarshalUnion("BlogAction", data, map[string]func() any{
-		"ListEntries": func() any {
-			a.ListEntries = unitSet()
-			return nil
-		},
-		"CreateEntry": func() any {
-			a.CreateEntry = &BlogCreateEntry{}
-			return a.CreateEntry
-		},
-		"UpdateEntry": func() any {
-			a.UpdateEntry = &BlogUpdateEntry{}
-			return a.UpdateEntry
-		},
-		"DeleteEntry": func() any {
-			a.DeleteEntry = &BlogDeleteEntry{}
-			return a.DeleteEntry
-		},
-	})
+	name, payload, err := decodeUnion(data)
+
+	if err != nil {
+		return fmt.Errorf("BlogAction: %w", err)
+	}
+
+	switch name {
+	case "ListEntries":
+		a.ListEntries = unitSet()
+	case "CreateEntry":
+		a.CreateEntry = &BlogCreateEntry{}
+		return decodeVariant("BlogAction", name, payload, a.CreateEntry)
+	case "UpdateEntry":
+		a.UpdateEntry = &BlogUpdateEntry{}
+		return decodeVariant("BlogAction", name, payload, a.UpdateEntry)
+	case "DeleteEntry":
+		a.DeleteEntry = &BlogDeleteEntry{}
+		return decodeVariant("BlogAction", name, payload, a.DeleteEntry)
+	default:
+		return errUnknownVariant("BlogAction", name)
+	}
+
+	return expectUnit("BlogAction", name, payload)
 }
 
 func (a BlogAction) MarshalJSON() ([]byte, error) {

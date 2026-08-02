@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"time"
 
+	"popplio/arcadia/dclient"
 	"popplio/arcadia/impls"
 	"popplio/arcadia/types"
 	"popplio/state"
@@ -62,7 +63,7 @@ func correspondingGuild(server types.CorrespondingServer) snowflake.ID {
 // roleExists checks the Discord cache. An uncached guild reads as "role does not
 // exist", as upstream does.
 func roleExists(guildID, roleID snowflake.ID) bool {
-	_, ok := state.Discord.Caches().Role(guildID, roleID)
+	_, ok := dclient.Get().Caches().Role(guildID, roleID)
 	return ok
 }
 
@@ -148,8 +149,8 @@ func (s *Server) updateStaffPositions(ctx context.Context, q *types.QUpdateStaff
 				ID:                 impls.UUIDString(p.ID),
 				Name:               p.Name,
 				RoleID:             p.RoleID,
-				Perms:              nonNil(p.Perms),
-				CorrespondingRoles: nonNilLinks(links),
+				Perms:              types.NonNilStrings(p.Perms),
+				CorrespondingRoles: types.NonNilLinks(links),
 				Icon:               p.Icon,
 				Index:              p.Index,
 				CreatedAt:          types.NewTimestamp(p.CreatedAt),
@@ -636,7 +637,7 @@ func (s *Server) updateStaffDisciplinaryType(ctx context.Context, q *types.QUpda
 				Name:           t.Name,
 				Description:    t.Description,
 				SelfAssignable: t.SelfAssignable,
-				PermLimits:     nonNil(t.PermLimits),
+				PermLimits:     types.NonNilStrings(t.PermLimits),
 				Additory:       t.Additory,
 				NeedsApproval:  t.NeedsApproval,
 				MaxExpiry:      t.MaxExpiry,
@@ -676,14 +677,10 @@ func (s *Server) updateStaffDisciplinaryType(ctx context.Context, q *types.QUpda
 			return writeText(http.StatusForbidden, fmt.Sprintf("You do not have permission to edit the following perms: %s", err)), nil
 		}
 
-		exists, err := countExists(ctx, "SELECT COUNT(*) FROM staff_disciplinary_types WHERE id = $1", action.ID)
-
-		if err != nil {
-			return response{}, newError(err)
-		}
-
-		if !exists {
-			return writeText(http.StatusBadRequest, "Entry with same id does not already exist"), nil
+		if resp, err := requireRow(ctx, "SELECT COUNT(*) FROM staff_disciplinary_types WHERE id = $1", action.ID); err != nil {
+			return response{}, err
+		} else if resp != nil {
+			return *resp, nil
 		}
 
 		_, err = state.Pool.Exec(ctx,
@@ -702,14 +699,10 @@ func (s *Server) updateStaffDisciplinaryType(ctx context.Context, q *types.QUpda
 
 		id := q.Action.DeleteDisciplinaryType.ID
 
-		exists, err := countExists(ctx, "SELECT COUNT(*) FROM staff_disciplinary_types WHERE id = $1", id)
-
-		if err != nil {
-			return response{}, newError(err)
-		}
-
-		if !exists {
-			return writeText(http.StatusBadRequest, "Entry with same id does not already exist"), nil
+		if resp, err := requireRow(ctx, "SELECT COUNT(*) FROM staff_disciplinary_types WHERE id = $1", id); err != nil {
+			return response{}, err
+		} else if resp != nil {
+			return *resp, nil
 		}
 
 		if _, err := state.Pool.Exec(ctx, "DELETE FROM staff_disciplinary_types WHERE id = $1", id); err != nil {
@@ -730,4 +723,24 @@ func countExists(ctx context.Context, query string, args ...any) (bool, error) {
 	}
 
 	return count > 0, nil
+}
+
+// requireRow is the "does this id exist" guard the shop, tier, disciplinary-type
+// and whitelist mutations all run before updating or deleting. Every one of them
+// reports the same frozen message, so the check lives in one place.
+//
+// It returns a response to send when the row is absent, nil when it is present.
+func requireRow(ctx context.Context, query, id string) (*response, error) {
+	exists, err := countExists(ctx, query, id)
+
+	if err != nil {
+		return nil, newError(err)
+	}
+
+	if !exists {
+		resp := writeText(http.StatusBadRequest, "Entry with same id does not already exist")
+		return &resp, nil
+	}
+
+	return nil, nil
 }

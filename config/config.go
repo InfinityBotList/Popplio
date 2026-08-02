@@ -67,7 +67,6 @@ type Sites struct {
 	API         Differs[string] `yaml:"api" default:"https://spider.infinitybots.gg" comment:"API URL" validate:"required"`
 	Panel       Differs[string] `yaml:"panel" default:"https://panel.infinitybots.gg" comment:"Panel URL" validate:"required"`
 	Infernoplex Differs[string] `yaml:"infernoplex" default:"https://infernoplex.infinitybots.gg" comment:"Infernoplex URL" validate:"required"`
-	CDN         string          `yaml:"cdn" default:"https://cdn.infinitybots.gg" comment:"CDN URL" validate:"required"`
 	Instatus    string          `yaml:"instatus" default:"https://infinity-bots.instatus.com" comment:"Instatus Status Page URL" validate:"required"`
 }
 
@@ -121,7 +120,6 @@ type Meta struct {
 	PostgresURL         string          `yaml:"postgres_url" default:"postgresql:///infinity" comment:"Postgres URL" validate:"required"`
 	RedisURL            Differs[string] `yaml:"redis_url" default:"redis://localhost:6379" comment:"Redis URL" validate:"required"`
 	Port                Differs[string] `yaml:"port" default:":8081" comment:"Port to run the server on" validate:"required"`
-	CDNPath             string          `yaml:"cdn_path" default:"/silverpelt/cdn/ibl" comment:"CDN Path" validate:"required"`
 	VulgarList          []string        `yaml:"vulgar_list" default:"fuck,suck,shit,kill" validate:"required"`
 	UrgentMentions      string          `yaml:"urgent_mentions" default:"<@&1061643797315993701>" comment:"Urgent mentions" validate:"required"`
 	PaypalClientID      Differs[string] `yaml:"paypal_client_id" default:"" comment:"Paypal Client ID" validate:"required"`
@@ -139,7 +137,6 @@ type Meta struct {
 // are read from the existing Popplio config instead:
 //
 //	arcadia database_url    -> meta.postgres_url
-//	arcadia token           -> discord_auth.token
 //	arcadia frontend_url    -> sites.frontend
 //	arcadia infernoplex_url -> sites.infernoplex
 //	arcadia popplio_url     -> sites.api
@@ -150,27 +147,25 @@ type Meta struct {
 //	arcadia roles.*         -> roles.*
 //	arcadia channels.*      -> channels.*
 type Arcadia struct {
-	ServerPort      Differs[int]    `yaml:"server_port" default:"3010" comment:"Port the staff panel API listens on (staging 3011 / prod 3010)" validate:"required"`
-	Prefix          Differs[string] `yaml:"prefix" default:"ibs!" comment:"Staff bot prefix (staging ibb! / prod ibs!)" validate:"required"`
-	HTMLSanitizeURL string          `yaml:"htmlsanitize_url" default:"https://hs.infinitybots.gg/" comment:"HTML Sanitizer URL" validate:"required"`
-	BorealisURL     string          `yaml:"borealis_url" default:"http://localhost:2837" comment:"Borealis URL, used to add approved bots to a cache server" validate:"required"`
-	Owners          []snowflake.ID  `yaml:"owners" default:"510065483693817867" comment:"Bot owners, these users always hold the 'owner' staff position" validate:"required"`
-	ProtectedBots   []snowflake.ID  `yaml:"protected_bots" default:"1019662370278228028" comment:"Bots that cannot be force-removed with kick enabled" validate:"required"`
-	AssetCleanerDry bool            `yaml:"asset_cleaner_dry_run" default:"false" comment:"Log what the asset_cleaner task would delete without deleting it"`
-	Panel           Panel           `yaml:"panel" validate:"required"`
+	// Token is the staff bot's own Discord token. Arcadia runs its own gateway
+	// connection under its own bot identity, separate from Popplio's.
+	Token      Differs[string] `yaml:"token" comment:"Staff bot Discord token. This is a SEPARATE Discord application from Popplio's" validate:"required"`
+	ServerPort Differs[int]    `yaml:"server_port" default:"3010" comment:"Port the staff panel API listens on (staging 3011 / prod 3010)" validate:"required"`
+
+	// PrefixCommands enables the legacy message commands. Slash commands are the
+	// primary interface; leaving this off means the staff bot does not need the
+	// privileged Message Content intent.
+	PrefixCommands bool            `yaml:"prefix_commands" default:"false" comment:"Enable legacy prefix commands. Requires the privileged Message Content intent to be granted"`
+	Prefix         Differs[string] `yaml:"prefix" default:"ibs!" comment:"Staff bot prefix, only used when prefix_commands is on (staging ibb! / prod ibs!)" validate:"required"`
+	Owners         []snowflake.ID  `yaml:"owners" default:"510065483693817867" comment:"Bot owners, these users always hold the 'owner' staff position" validate:"required"`
+	ProtectedBots  []snowflake.ID  `yaml:"protected_bots" default:"1019662370278228028" comment:"Bots that cannot be force-removed with kick enabled" validate:"required"`
+	Panel          Panel           `yaml:"panel" validate:"required"`
 }
 
 type Panel struct {
-	ClientID           string                           `yaml:"client_id" comment:"Discord client ID of the panel login app" validate:"required"`
-	ClientSecret       string                           `yaml:"client_secret" comment:"Discord client secret of the panel login app" validate:"required"`
-	RedirectURL        []string                         `yaml:"redirect_url" comment:"Allow-list of panel login redirect URLs" validate:"required"`
-	CdnScopes          Differs[map[string]CdnScopeData] `yaml:"cdn_scopes" comment:"CDN scopes, keyed by scope name" validate:"required"`
-	MainScope          string                           `yaml:"main_scope" default:"ibl@main" comment:"The main CDN scope" validate:"required"`
-	PanelScope         string                           `yaml:"panel_scope" comment:"Static handshake value the frontend sends" validate:"required"`
-	PanelResponseScope string                           `yaml:"panel_response_scope" comment:"Static handshake value the frontend expects back" validate:"required"`
-}
-
-type CdnScopeData struct {
-	Path       string `yaml:"path" json:"path" comment:"Path on local disk"`
-	ExposedURL string `yaml:"exposed_url" json:"exposed_url" comment:"Publicly exposed URL for this scope"`
+	ClientID           string   `yaml:"client_id" comment:"Discord client ID of the panel login app" validate:"required"`
+	ClientSecret       string   `yaml:"client_secret" comment:"Discord client secret of the panel login app" validate:"required"`
+	RedirectURL        []string `yaml:"redirect_url" comment:"Allow-list of panel login redirect URLs" validate:"required"`
+	PanelScope         string   `yaml:"panel_scope" comment:"Static handshake value the frontend sends" validate:"required"`
+	PanelResponseScope string   `yaml:"panel_response_scope" comment:"Static handshake value the frontend expects back" validate:"required"`
 }

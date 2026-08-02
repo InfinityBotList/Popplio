@@ -4,11 +4,9 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"popplio/assetmanager"
 	"popplio/db"
 	"popplio/state"
 	"popplio/types"
-	"strconv"
 	"strings"
 	"time"
 
@@ -100,7 +98,6 @@ func GetEntityInfo(ctx context.Context, c DbConn, targetId, targetType string) (
 			URL:     state.Config.Sites.Frontend.Parse() + "/pack/" + targetId,
 			VoteURL: state.Config.Sites.Frontend.Parse() + "/pack/" + targetId,
 			Name:    targetId,
-			Avatar:  state.Config.Sites.CDN + "/avatars/default.webp",
 		}, nil
 	case "team":
 		var name string
@@ -120,22 +117,11 @@ func GetEntityInfo(ctx context.Context, c DbConn, targetId, targetType string) (
 			return nil, errors.New("team is vote banned and cannot be voted for right now")
 		}
 
-		avatar := assetmanager.AvatarInfo(assetmanager.AssetTargetTypeTeam, targetId)
-
-		var avatarPath string
-
-		if avatar.Exists {
-			avatarPath = state.Config.Sites.CDN + "/" + avatar.Path + "?ts=" + strconv.FormatInt(avatar.LastModified.Unix(), 10)
-		} else {
-			avatarPath = state.Config.Sites.CDN + "/" + avatar.DefaultPath
-		}
-
 		// Set entityInfo for log
 		return &EntityInfo{
 			URL:     state.Config.Sites.Frontend.Parse() + "/team/" + targetId,
 			VoteURL: state.Config.Sites.Frontend.Parse() + "/team/" + targetId + "/vote",
 			Name:    name,
-			Avatar:  avatarPath,
 		}, nil
 	case "server":
 		var name string
@@ -160,14 +146,12 @@ func GetEntityInfo(ctx context.Context, c DbConn, targetId, targetType string) (
 			URL:     state.Config.Sites.Frontend.Parse() + "/server/" + targetId,
 			VoteURL: state.Config.Sites.Frontend.Parse() + "/server/" + targetId + "/vote",
 			Name:    name,
-			Avatar:  assetmanager.ResolveAssetMetadataToUrl(assetmanager.AvatarInfo(assetmanager.AssetTargetTypeServer, targetId)),
 		}, nil
 	case "blog":
 		return &EntityInfo{
 			URL:     state.Config.Sites.Frontend.Parse() + "/blog/" + targetId,
 			VoteURL: state.Config.Sites.Frontend.Parse() + "/blog/" + targetId,
 			Name:    targetId,
-			Avatar:  state.Config.Sites.CDN + "/avatars/default.webp",
 		}, nil
 	default:
 		return nil, errors.New("unimplemented target type:" + targetType)

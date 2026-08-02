@@ -103,11 +103,6 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 			},
 		},
 		Generator: "Popplio RSS Generator",
-		Image: &seo.RssImage{
-			URL:   state.Config.Sites.CDN + "/core/full_logo.webp",
-			Title: "Infinity Bot List Logo",
-			Link:  state.Config.Sites.Frontend.Parse(),
-		},
 	}
 
 	if pageNum > 1 {

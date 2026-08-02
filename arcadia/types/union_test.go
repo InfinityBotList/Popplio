@@ -53,11 +53,6 @@ func TestUnionEncoding(t *testing.T) {
 			json: `{"Authorize":{"version":5,"action":{"Begin":{"scope":"s","redirect_url":"r"}}}}`,
 		},
 		{
-			name:  "cdn unit variant",
-			value: CdnAssetAction{ListPath: unitSet()},
-			json:  `"ListPath"`,
-		},
-		{
 			name:  "partner unit variant",
 			value: PartnerAction{List: unitSet()},
 			json:  `"List"`,
@@ -75,34 +70,6 @@ func TestUnionEncoding(t *testing.T) {
 				t.Errorf("encode mismatch\n got: %s\nwant: %s", got, tt.json)
 			}
 		})
-	}
-}
-
-// Vec<u8> is a JSON array of numbers, not base64. This is the most common
-// porting bug in the whole protocol.
-func TestChunkIsNumberArray(t *testing.T) {
-	const wire = `{"UploadCdnFileChunk":{"login_token":"t","chunk":[104,105]}}`
-
-	var q PanelQuery
-	if err := json.Unmarshal([]byte(wire), &q); err != nil {
-		t.Fatalf("unmarshal: %v", err)
-	}
-
-	if q.UploadCdnFileChunk == nil {
-		t.Fatal("variant not selected")
-	}
-
-	if string(q.UploadCdnFileChunk.Chunk) != "hi" {
-		t.Errorf("chunk = %q, want %q", q.UploadCdnFileChunk.Chunk, "hi")
-	}
-
-	out, err := json.Marshal(q)
-	if err != nil {
-		t.Fatalf("marshal: %v", err)
-	}
-
-	if string(out) != wire {
-		t.Errorf("round-trip mismatch\n got: %s\nwant: %s", out, wire)
 	}
 }
 

@@ -3,7 +3,6 @@ package get_team_seo
 import (
 	"net/http"
 
-	"popplio/assetmanager"
 	"popplio/state"
 	"popplio/types"
 
@@ -51,12 +50,9 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
-	avatar := assetmanager.AvatarInfo(assetmanager.AssetTargetTypeTeam, id)
-
 	seoData := types.SEO{
-		ID:     id,
-		Name:   name,
-		Avatar: assetmanager.ResolveAssetMetadataToUrl(avatar),
+		ID:   id,
+		Name: name,
 		Short: func() string {
 			if !short.Valid || short.String == "" {
 				return "View the team " + name + " on Infinity List"

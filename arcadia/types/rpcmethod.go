@@ -1,7 +1,6 @@
 package types
 
 import (
-	"encoding/json"
 	"fmt"
 )
 
@@ -101,48 +100,56 @@ var RPCMethodVariants = []string{
 	"AppUnbanUser",
 }
 
-// Name is the Display impl: the variant name.
-func (m RPCMethod) Name() string {
+// variant returns the set variant's name and payload, or ("", nil) if none is
+// set. Name, MarshalJSON and UnmarshalJSON all route through it so there is a
+// single place listing the 18 variants.
+func (m RPCMethod) variant() (string, any) {
 	switch {
 	case m.Claim != nil:
-		return "Claim"
+		return "Claim", m.Claim
 	case m.Unclaim != nil:
-		return "Unclaim"
+		return "Unclaim", m.Unclaim
 	case m.Approve != nil:
-		return "Approve"
+		return "Approve", m.Approve
 	case m.Deny != nil:
-		return "Deny"
+		return "Deny", m.Deny
 	case m.Unverify != nil:
-		return "Unverify"
+		return "Unverify", m.Unverify
 	case m.PremiumAdd != nil:
-		return "PremiumAdd"
+		return "PremiumAdd", m.PremiumAdd
 	case m.PremiumRemove != nil:
-		return "PremiumRemove"
+		return "PremiumRemove", m.PremiumRemove
 	case m.VoteBanAdd != nil:
-		return "VoteBanAdd"
+		return "VoteBanAdd", m.VoteBanAdd
 	case m.VoteBanRemove != nil:
-		return "VoteBanRemove"
+		return "VoteBanRemove", m.VoteBanRemove
 	case m.VoteReset != nil:
-		return "VoteReset"
+		return "VoteReset", m.VoteReset
 	case m.VoteResetAll != nil:
-		return "VoteResetAll"
+		return "VoteResetAll", m.VoteResetAll
 	case m.ForceRemove != nil:
-		return "ForceRemove"
+		return "ForceRemove", m.ForceRemove
 	case m.CertifyAdd != nil:
-		return "CertifyAdd"
+		return "CertifyAdd", m.CertifyAdd
 	case m.CertifyRemove != nil:
-		return "CertifyRemove"
+		return "CertifyRemove", m.CertifyRemove
 	case m.BotTransferOwnershipUser != nil:
-		return "BotTransferOwnershipUser"
+		return "BotTransferOwnershipUser", m.BotTransferOwnershipUser
 	case m.BotTransferOwnershipTeam != nil:
-		return "BotTransferOwnershipTeam"
+		return "BotTransferOwnershipTeam", m.BotTransferOwnershipTeam
 	case m.AppBanUser != nil:
-		return "AppBanUser"
+		return "AppBanUser", m.AppBanUser
 	case m.AppUnbanUser != nil:
-		return "AppUnbanUser"
+		return "AppUnbanUser", m.AppUnbanUser
 	default:
-		return ""
+		return "", nil
 	}
+}
+
+// Name is the Display impl: the variant name.
+func (m RPCMethod) Name() string {
+	name, _ := m.variant()
+	return name
 }
 
 func (m RPCMethod) String() string {
@@ -200,116 +207,35 @@ func EmptyRPCMethod(name string) (RPCMethod, error) {
 }
 
 func (m *RPCMethod) UnmarshalJSON(data []byte) error {
-	variant, payload, err := decodeUnion(data)
+	name, payload, err := decodeUnion(data)
+
 	if err != nil {
 		return fmt.Errorf("RPCMethod: %w", err)
 	}
 
-	if payload == nil {
-		// Every RPCMethod variant is a struct variant, so a bare string is never
-		// valid here.
-		return errVariantNeedsPayload("RPCMethod", variant)
-	}
+	// Every RPCMethod variant is a struct variant, so a bare string is never
+	// valid here.
+	built, err := EmptyRPCMethod(name)
 
-	built, err := EmptyRPCMethod(variant)
 	if err != nil {
 		return err
 	}
 
 	*m = built
 
-	switch variant {
-	case "Claim":
-		return json.Unmarshal(payload, m.Claim)
-	case "Unclaim":
-		return json.Unmarshal(payload, m.Unclaim)
-	case "Approve":
-		return json.Unmarshal(payload, m.Approve)
-	case "Deny":
-		return json.Unmarshal(payload, m.Deny)
-	case "Unverify":
-		return json.Unmarshal(payload, m.Unverify)
-	case "PremiumAdd":
-		return json.Unmarshal(payload, m.PremiumAdd)
-	case "PremiumRemove":
-		return json.Unmarshal(payload, m.PremiumRemove)
-	case "VoteBanAdd":
-		return json.Unmarshal(payload, m.VoteBanAdd)
-	case "VoteBanRemove":
-		return json.Unmarshal(payload, m.VoteBanRemove)
-	case "VoteReset":
-		return json.Unmarshal(payload, m.VoteReset)
-	case "VoteResetAll":
-		return json.Unmarshal(payload, m.VoteResetAll)
-	case "ForceRemove":
-		return json.Unmarshal(payload, m.ForceRemove)
-	case "CertifyAdd":
-		return json.Unmarshal(payload, m.CertifyAdd)
-	case "CertifyRemove":
-		return json.Unmarshal(payload, m.CertifyRemove)
-	case "BotTransferOwnershipUser":
-		return json.Unmarshal(payload, m.BotTransferOwnershipUser)
-	case "BotTransferOwnershipTeam":
-		return json.Unmarshal(payload, m.BotTransferOwnershipTeam)
-	case "AppBanUser":
-		return json.Unmarshal(payload, m.AppBanUser)
-	case "AppUnbanUser":
-		return json.Unmarshal(payload, m.AppUnbanUser)
-	}
+	_, into := m.variant()
 
-	return errUnknownVariant("RPCMethod", variant)
+	return decodeVariant("RPCMethod", name, payload, into)
 }
 
 func (m RPCMethod) MarshalJSON() ([]byte, error) {
-	name := m.Name()
+	name, inner := m.variant()
+
 	if name == "" {
 		return nil, fmt.Errorf("RPCMethod: no variant set")
 	}
 
-	return encodeVariant(name, m.inner())
-}
-
-func (m RPCMethod) inner() any {
-	switch {
-	case m.Claim != nil:
-		return m.Claim
-	case m.Unclaim != nil:
-		return m.Unclaim
-	case m.Approve != nil:
-		return m.Approve
-	case m.Deny != nil:
-		return m.Deny
-	case m.Unverify != nil:
-		return m.Unverify
-	case m.PremiumAdd != nil:
-		return m.PremiumAdd
-	case m.PremiumRemove != nil:
-		return m.PremiumRemove
-	case m.VoteBanAdd != nil:
-		return m.VoteBanAdd
-	case m.VoteBanRemove != nil:
-		return m.VoteBanRemove
-	case m.VoteReset != nil:
-		return m.VoteReset
-	case m.VoteResetAll != nil:
-		return m.VoteResetAll
-	case m.ForceRemove != nil:
-		return m.ForceRemove
-	case m.CertifyAdd != nil:
-		return m.CertifyAdd
-	case m.CertifyRemove != nil:
-		return m.CertifyRemove
-	case m.BotTransferOwnershipUser != nil:
-		return m.BotTransferOwnershipUser
-	case m.BotTransferOwnershipTeam != nil:
-		return m.BotTransferOwnershipTeam
-	case m.AppBanUser != nil:
-		return m.AppBanUser
-	case m.AppUnbanUser != nil:
-		return m.AppUnbanUser
-	default:
-		return nil
-	}
+	return encodeVariant(name, inner)
 }
 
 // SupportedTargetTypes lists the target types the method accepts.

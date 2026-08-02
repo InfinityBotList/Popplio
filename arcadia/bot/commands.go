@@ -7,6 +7,7 @@ import (
 	"strconv"
 	"strings"
 
+	"popplio/arcadia/dclient"
 	"popplio/arcadia/impls"
 	"popplio/arcadia/rpc"
 	"popplio/arcadia/tasks"
@@ -219,7 +220,7 @@ func cmdStaff() *Command {
 				Run: func(c *Ctx) error {
 					var sb strings.Builder
 
-					state.Discord.Caches().GuildsForEach(func(guild discord.Guild) {
+					dclient.Get().Caches().GuildsForEach(func(guild discord.Guild) {
 						fmt.Fprintf(&sb, "%s (%s)\n", guild.Name, guild.ID)
 					})
 
@@ -249,7 +250,7 @@ func cmdStaff() *Command {
 						return err
 					}
 
-					if err := state.Discord.Rest().LeaveGuild(guildID); err != nil {
+					if err := dclient.Get().Rest().LeaveGuild(guildID); err != nil {
 						return err
 					}
 
@@ -262,7 +263,7 @@ func cmdStaff() *Command {
 				Description: "Get the stats of a staff member",
 				Checks:      []Check{staffServer},
 				Options: []discord.ApplicationCommandOption{
-					discord.ApplicationCommandOptionString{Name: "user", Description: "The staff member you are looking for?"},
+					discord.ApplicationCommandOptionUser{Name: "user", Description: "The staff member you are looking for?"},
 				},
 				Run: func(c *Ctx) error {
 					userID := c.Option("user", 0)
@@ -543,7 +544,7 @@ func cmdRefresh() *Command {
 				return err
 			}
 
-			if _, ok := state.Discord.Caches().Guild(state.Config.Servers.Main); !ok {
+			if _, ok := dclient.Get().Caches().Guild(state.Config.Servers.Main); !ok {
 				return fmt.Errorf("Failed to get guild")
 			}
 
@@ -663,6 +664,15 @@ func cmdRPCList() *Command {
 	}
 }
 
+// runRPCWithTarget executes an RPC against an explicit target type. The modal
+// driver is the only caller that needs a target type other than Bot.
+func runRPCWithTarget(c *Ctx, method types.RPCMethod, targetType types.TargetType) (rpc.Success, error) {
+	return rpc.Execute(c.Context, method, rpc.Handle{
+		UserID:     c.Author.ID.String(),
+		TargetType: targetType,
+	})
+}
+
 // requirePerm resolves the caller's permissions and checks one of them.
 func requirePerm(c *Ctx, perm string) error {
 	sp, err := impls.GetUserPerms(c.Context, c.Author.ID.String())
@@ -678,19 +688,8 @@ func requirePerm(c *Ctx, perm string) error {
 	return nil
 }
 
-// runRPC is the shared path from a Discord command into the RPC layer.
+// runRPC is the shared path from a Discord command into the RPC layer. Every
+// command except the modal driver targets a bot.
 func runRPC(c *Ctx, method types.RPCMethod) (rpc.Success, error) {
-	return rpc.Execute(c.Context, method, rpc.Handle{
-		UserID:     c.Author.ID.String(),
-		TargetType: types.TargetTypeBot,
-	})
-}
-
-// runRPCWithTarget executes an RPC against an explicit target type. The modal
-// driver is the only caller that needs a target type other than Bot.
-func runRPCWithTarget(c *Ctx, method types.RPCMethod, targetType types.TargetType) (rpc.Success, error) {
-	return rpc.Execute(c.Context, method, rpc.Handle{
-		UserID:     c.Author.ID.String(),
-		TargetType: targetType,
-	})
+	return runRPCWithTarget(c, method, types.TargetTypeBot)
 }

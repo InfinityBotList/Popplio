@@ -66,16 +66,26 @@ type PartialEntity struct {
 func (e *PartialEntity) UnmarshalJSON(data []byte) error {
 	*e = PartialEntity{}
 
-	return unmarshalUnion("PartialEntity", data, map[string]func() any{
-		"Bot": func() any {
-			e.Bot = &PartialBot{}
-			return e.Bot
-		},
-		"Server": func() any {
-			e.Server = &PartialServer{}
-			return e.Server
-		},
-	})
+	name, payload, err := decodeUnion(data)
+
+	if err != nil {
+		return fmt.Errorf("PartialEntity: %w", err)
+	}
+
+	var into any
+
+	switch name {
+	case "Bot":
+		e.Bot = &PartialBot{}
+		into = e.Bot
+	case "Server":
+		e.Server = &PartialServer{}
+		into = e.Server
+	default:
+		return errUnknownVariant("PartialEntity", name)
+	}
+
+	return decodeVariant("PartialEntity", name, payload, into)
 }
 
 func (e PartialEntity) MarshalJSON() ([]byte, error) {

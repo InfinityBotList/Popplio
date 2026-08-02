@@ -233,29 +233,16 @@ func (t Target) GetDisplayName() string {
 	return "<unknown>"
 }
 
-// Get the avatar URL of a target
+// GetAvatarURL returns the avatar URL of a target.
+//
+// Only bots still have one: it comes from dovewing, which returns Discord's own
+// URL. Servers and teams had self-hosted avatars and no longer carry any.
 func (t Target) GetAvatarURL() string {
 	if t.Bot != nil {
 		return t.Bot.Avatar
 	}
 
-	if t.Server != nil {
-		if t.Server.Avatar.Path != "" {
-			return t.Server.Avatar.Path
-		}
-
-		return t.Server.Avatar.DefaultPath
-	}
-
-	if t.Team != nil {
-		if t.Team.Avatar.Path != "" {
-			return t.Team.Avatar.Path
-		}
-
-		return t.Team.Avatar.DefaultPath
-	}
-
-	return "https://cdn.infinitybots.gg/avatars/default.webp"
+	return ""
 }
 
 // Returns the target name'. Currently <target type> <username>

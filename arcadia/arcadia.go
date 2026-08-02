@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"popplio/arcadia/bot"
+	"popplio/arcadia/dclient"
 	"popplio/arcadia/panel"
 	"popplio/arcadia/tasks"
 	"popplio/config"
@@ -27,8 +28,14 @@ type Arcadia struct {
 	tasks  *sync.WaitGroup
 }
 
-// Start brings up the panel API, registers the Discord bot's listeners and, on
-// production only, starts the background tasks.
+// Start brings up the staff bot's Discord connection, the panel API and, on
+// production only, the background tasks.
+//
+// The Discord connection comes first: the panel validates staff position role
+// ids against the gateway cache, and the tasks read guild members, so both want
+// a connected client. Neither hard-fails without one - an uncached guild reads
+// as "not found" - so a Discord failure degrades rather than taking the panel
+// down with it.
 //
 // Background tasks are gated to non-staging environments exactly as upstream
 // gates them.
@@ -40,7 +47,9 @@ func Start(parent context.Context) *Arcadia {
 		cancel: cancel,
 	}
 
-	bot.Setup(ctx)
+	if err := dclient.Setup(ctx, bot.Listener(ctx)); err != nil {
+		state.Logger.Error("Staff bot failed to start; the panel will run without Discord", zap.Error(err))
+	}
 
 	go func() {
 		if err := a.panel.Start(ctx); err != nil {
@@ -57,7 +66,8 @@ func Start(parent context.Context) *Arcadia {
 	return a
 }
 
-// Stop drains the panel server and stops the task tickers.
+// Stop drains the panel server, stops the task tickers and closes the staff
+// bot's gateway connection.
 //
 // IMPROVEMENT (§14c): the Rust version had no graceful shutdown at all.
 func (a *Arcadia) Stop(timeout time.Duration) {
@@ -69,6 +79,8 @@ func (a *Arcadia) Stop(timeout time.Duration) {
 	}
 
 	a.cancel()
+
+	defer dclient.Close(ctx)
 
 	if a.tasks != nil {
 		done := make(chan struct{})

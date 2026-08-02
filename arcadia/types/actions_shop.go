@@ -25,24 +25,29 @@ type VoteCreditTierDelete struct {
 func (a *VoteCreditTierAction) UnmarshalJSON(data []byte) error {
 	*a = VoteCreditTierAction{}
 
-	return unmarshalUnion("VoteCreditTierAction", data, map[string]func() any{
-		"ListTiers": func() any {
-			a.ListTiers = unitSet()
-			return nil
-		},
-		"CreateTier": func() any {
-			a.CreateTier = &VoteCreditTierUpsert{}
-			return a.CreateTier
-		},
-		"EditTier": func() any {
-			a.EditTier = &VoteCreditTierUpsert{}
-			return a.EditTier
-		},
-		"DeleteTier": func() any {
-			a.DeleteTier = &VoteCreditTierDelete{}
-			return a.DeleteTier
-		},
-	})
+	name, payload, err := decodeUnion(data)
+
+	if err != nil {
+		return fmt.Errorf("VoteCreditTierAction: %w", err)
+	}
+
+	switch name {
+	case "ListTiers":
+		a.ListTiers = unitSet()
+	case "CreateTier":
+		a.CreateTier = &VoteCreditTierUpsert{}
+		return decodeVariant("VoteCreditTierAction", name, payload, a.CreateTier)
+	case "EditTier":
+		a.EditTier = &VoteCreditTierUpsert{}
+		return decodeVariant("VoteCreditTierAction", name, payload, a.EditTier)
+	case "DeleteTier":
+		a.DeleteTier = &VoteCreditTierDelete{}
+		return decodeVariant("VoteCreditTierAction", name, payload, a.DeleteTier)
+	default:
+		return errUnknownVariant("VoteCreditTierAction", name)
+	}
+
+	return expectUnit("VoteCreditTierAction", name, payload)
 }
 
 func (a VoteCreditTierAction) MarshalJSON() ([]byte, error) {
@@ -94,24 +99,29 @@ type ShopItemDelete struct {
 func (a *ShopItemAction) UnmarshalJSON(data []byte) error {
 	*a = ShopItemAction{}
 
-	return unmarshalUnion("ShopItemAction", data, map[string]func() any{
-		"List": func() any {
-			a.List = unitSet()
-			return nil
-		},
-		"Create": func() any {
-			a.Create = &ShopItemUpsert{}
-			return a.Create
-		},
-		"Edit": func() any {
-			a.Edit = &ShopItemUpsert{}
-			return a.Edit
-		},
-		"Delete": func() any {
-			a.Delete = &ShopItemDelete{}
-			return a.Delete
-		},
-	})
+	name, payload, err := decodeUnion(data)
+
+	if err != nil {
+		return fmt.Errorf("ShopItemAction: %w", err)
+	}
+
+	switch name {
+	case "List":
+		a.List = unitSet()
+	case "Create":
+		a.Create = &ShopItemUpsert{}
+		return decodeVariant("ShopItemAction", name, payload, a.Create)
+	case "Edit":
+		a.Edit = &ShopItemUpsert{}
+		return decodeVariant("ShopItemAction", name, payload, a.Edit)
+	case "Delete":
+		a.Delete = &ShopItemDelete{}
+		return decodeVariant("ShopItemAction", name, payload, a.Delete)
+	default:
+		return errUnknownVariant("ShopItemAction", name)
+	}
+
+	return expectUnit("ShopItemAction", name, payload)
 }
 
 func (a ShopItemAction) MarshalJSON() ([]byte, error) {
@@ -165,24 +175,29 @@ type ShopItemBenefitDelete struct {
 func (a *ShopItemBenefitAction) UnmarshalJSON(data []byte) error {
 	*a = ShopItemBenefitAction{}
 
-	return unmarshalUnion("ShopItemBenefitAction", data, map[string]func() any{
-		"List": func() any {
-			a.List = unitSet()
-			return nil
-		},
-		"Create": func() any {
-			a.Create = &ShopItemBenefitUpsert{}
-			return a.Create
-		},
-		"Edit": func() any {
-			a.Edit = &ShopItemBenefitUpsert{}
-			return a.Edit
-		},
-		"Delete": func() any {
-			a.Delete = &ShopItemBenefitDelete{}
-			return a.Delete
-		},
-	})
+	name, payload, err := decodeUnion(data)
+
+	if err != nil {
+		return fmt.Errorf("ShopItemBenefitAction: %w", err)
+	}
+
+	switch name {
+	case "List":
+		a.List = unitSet()
+	case "Create":
+		a.Create = &ShopItemBenefitUpsert{}
+		return decodeVariant("ShopItemBenefitAction", name, payload, a.Create)
+	case "Edit":
+		a.Edit = &ShopItemBenefitUpsert{}
+		return decodeVariant("ShopItemBenefitAction", name, payload, a.Edit)
+	case "Delete":
+		a.Delete = &ShopItemBenefitDelete{}
+		return decodeVariant("ShopItemBenefitAction", name, payload, a.Delete)
+	default:
+		return errUnknownVariant("ShopItemBenefitAction", name)
+	}
+
+	return expectUnit("ShopItemBenefitAction", name, payload)
 }
 
 func (a ShopItemBenefitAction) MarshalJSON() ([]byte, error) {
@@ -241,24 +256,29 @@ type ShopCouponDelete struct {
 func (a *ShopCouponAction) UnmarshalJSON(data []byte) error {
 	*a = ShopCouponAction{}
 
-	return unmarshalUnion("ShopCouponAction", data, map[string]func() any{
-		"List": func() any {
-			a.List = unitSet()
-			return nil
-		},
-		"Create": func() any {
-			a.Create = &ShopCouponUpsert{}
-			return a.Create
-		},
-		"Edit": func() any {
-			a.Edit = &ShopCouponUpsert{}
-			return a.Edit
-		},
-		"Delete": func() any {
-			a.Delete = &ShopCouponDelete{}
-			return a.Delete
-		},
-	})
+	name, payload, err := decodeUnion(data)
+
+	if err != nil {
+		return fmt.Errorf("ShopCouponAction: %w", err)
+	}
+
+	switch name {
+	case "List":
+		a.List = unitSet()
+	case "Create":
+		a.Create = &ShopCouponUpsert{}
+		return decodeVariant("ShopCouponAction", name, payload, a.Create)
+	case "Edit":
+		a.Edit = &ShopCouponUpsert{}
+		return decodeVariant("ShopCouponAction", name, payload, a.Edit)
+	case "Delete":
+		a.Delete = &ShopCouponDelete{}
+		return decodeVariant("ShopCouponAction", name, payload, a.Delete)
+	default:
+		return errUnknownVariant("ShopCouponAction", name)
+	}
+
+	return expectUnit("ShopCouponAction", name, payload)
 }
 
 func (a ShopCouponAction) MarshalJSON() ([]byte, error) {
@@ -315,24 +335,29 @@ type BotWhitelistDelete struct {
 func (a *BotWhitelistAction) UnmarshalJSON(data []byte) error {
 	*a = BotWhitelistAction{}
 
-	return unmarshalUnion("BotWhitelistAction", data, map[string]func() any{
-		"List": func() any {
-			a.List = unitSet()
-			return nil
-		},
-		"Add": func() any {
-			a.Add = &BotWhitelistUpsert{}
-			return a.Add
-		},
-		"Edit": func() any {
-			a.Edit = &BotWhitelistUpsert{}
-			return a.Edit
-		},
-		"Delete": func() any {
-			a.Delete = &BotWhitelistDelete{}
-			return a.Delete
-		},
-	})
+	name, payload, err := decodeUnion(data)
+
+	if err != nil {
+		return fmt.Errorf("BotWhitelistAction: %w", err)
+	}
+
+	switch name {
+	case "List":
+		a.List = unitSet()
+	case "Add":
+		a.Add = &BotWhitelistUpsert{}
+		return decodeVariant("BotWhitelistAction", name, payload, a.Add)
+	case "Edit":
+		a.Edit = &BotWhitelistUpsert{}
+		return decodeVariant("BotWhitelistAction", name, payload, a.Edit)
+	case "Delete":
+		a.Delete = &BotWhitelistDelete{}
+		return decodeVariant("BotWhitelistAction", name, payload, a.Delete)
+	default:
+		return errUnknownVariant("BotWhitelistAction", name)
+	}
+
+	return expectUnit("BotWhitelistAction", name, payload)
 }
 
 func (a BotWhitelistAction) MarshalJSON() ([]byte, error) {

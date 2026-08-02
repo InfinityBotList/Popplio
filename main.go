@@ -18,7 +18,6 @@ import (
 	"popplio/notifications/votereminders"
 	"popplio/routes/alerts"
 	"popplio/routes/apps"
-	"popplio/routes/assets"
 	"popplio/routes/auth"
 	"popplio/routes/blogs"
 	"popplio/routes/bots"
@@ -41,7 +40,6 @@ import (
 	"popplio/routes/votes"
 	"popplio/routes/webhooks"
 	"popplio/state"
-	"popplio/state/bp"
 	"popplio/types"
 	poplhooks "popplio/webhooks"
 
@@ -110,8 +108,6 @@ func main() {
 
 	var err error
 
-	state.BaseDovewingState.Middlewares = append(state.BaseDovewingState.Middlewares, bp.DovewingMiddleware)
-
 	docs.DocsSetupData = &docs.SetupData{
 		URL:         state.Config.Sites.API.Parse(),
 		ErrorStruct: types.ApiError{},
@@ -156,7 +152,6 @@ func main() {
 		// Use same order as routes folder
 		alerts.Router{},
 		apps.Router{},
-		assets.Router{},
 		auth.Router{},
 		blogs.Router{},
 		bots.Router{},

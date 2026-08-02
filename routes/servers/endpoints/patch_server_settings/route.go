@@ -3,7 +3,6 @@ package patch_server_settings
 import (
 	"fmt"
 	"net/http"
-	"popplio/assetmanager"
 	"popplio/state"
 	"popplio/types"
 	"popplio/validators"
@@ -129,18 +128,14 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	}
 
 	// Resolve the avatar
-	avatar := assetmanager.AvatarInfo(assetmanager.AssetTargetTypeServer, id)
-
 	// Send a message to the bot logs channel
 	_, err = state.Discord.Rest().CreateMessage(state.Config.Channels.ModLogs, discord.MessageCreate{
 		Content: "",
 		Embeds: []discord.Embed{
 			{
-				URL:   state.Config.Sites.Frontend.Production() + "/servers/" + id,
-				Title: "Server Updated",
-				Thumbnail: &discord.EmbedResource{
-					URL: assetmanager.ResolveAssetMetadataToUrl(avatar),
-				},
+				URL:       state.Config.Sites.Frontend.Production() + "/servers/" + id,
+				Title:     "Server Updated",
+				Thumbnail: &discord.EmbedResource{},
 				Fields: []discord.EmbedField{
 					{
 						Name:   "Name",

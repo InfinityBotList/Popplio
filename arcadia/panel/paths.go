@@ -6,7 +6,6 @@ import (
 	"path"
 	"strings"
 
-	"popplio/arcadia/cdnpath"
 	"popplio/state"
 )
 
@@ -56,10 +55,4 @@ func safeJoinPopplio(rawPath string) (string, error) {
 	}
 
 	return resolved.String(), nil
-}
-
-// containedInScope delegates to the leaf package so the check is unit tested
-// there.
-func containedInScope(root, target string) bool {
-	return cdnpath.ContainedInScope(root, target)
 }

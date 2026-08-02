@@ -5,7 +5,6 @@ import (
 	"net/http"
 	"strings"
 
-	"popplio/assetmanager"
 	"popplio/db"
 	botAssets "popplio/routes/bots/assets"
 	"popplio/routes/packs/assets"
@@ -166,9 +165,6 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 			state.Logger.Error("Error while getting team entities", zap.Error(err), zap.String("teamID", tid), zap.String("userID", user.ID))
 			return uapi.DefaultResponse(http.StatusInternalServerError)
 		}
-
-		eto.Banner = assetmanager.BannerInfo(assetmanager.AssetTargetTypeTeam, eto.ID)
-		eto.Avatar = assetmanager.AvatarInfo(assetmanager.AssetTargetTypeTeam, eto.ID)
 
 		// Votes is db:"-" (resolved in application code, not scanned from the
 		// row above) — without this, every team embedded here would silently

@@ -117,6 +117,38 @@ byte-for-byte; validating it here would be a cheap defence-in-depth improvement.
 **14. `UpdateChangelog` is a hard stub (§5.15)** — `arcadia/panel/ops_content.go`
 Always 403, regardless of input or authentication. The DTOs still parse.
 
+**16. Vote credit tier dedup loop is broken for two or more occupants** — `arcadia/panel/ops_shop.go`
+**Newly found by the integration tests.** `vote_credit_tiers.position` carries a
+`UNIQUE ... DEFERRABLE INITIALLY DEFERRED` constraint, which is what lets the loop
+insert onto an occupied position and tidy up before `COMMIT`. The loop shifts the
+rows found at `index_a` to `index_b`, then sets `index_a = index_b` — where
+`index_b` has already been incremented *past* the rows it just wrote. It
+therefore never re-checks the position it just moved a row into.
+
+With one existing occupant this is fine. With two, it collides:
+
+| step | table before | action | table after |
+|---|---|---|---|
+| create A @1 | `{}` | nothing to shift | `{A:1}` |
+| create B @1 | `{A:1}` | A→2, `index_a` jumps 1→3 | `{B:1, A:2}` |
+| create C @1 | `{B:1, A:2}` | B→2 (**collides with A**), `index_a` jumps 1→3 | `{C:1, B:2, A:2}` ✗ |
+
+The deferred constraint then fires at `COMMIT` and the panel receives a raw
+`ERROR: duplicate key value violates unique constraint "vote_credit_tiers_position_key" (SQLSTATE 23505)`
+as a 500 — which also leaks the constraint name to the client.
+
+This is live: production currently has three tiers at positions 1, 2 and 3, so
+creating a tier at position 1 today fails. `EditTier` carries an identical copy of
+the loop and the same defect.
+
+Reproduced (verified byte-for-byte against `src/panelapi/server.rs:2848-2880`) and
+pinned by `TestVoteCreditTierDedupLoop`.
+*Patch:* `index_a = index_a + 1` instead of `index_a = index_b`, so the loop
+re-examines the position it just wrote and cascades properly. Note the resulting
+order among equally-positioned rows is arbitrary; if a defined order is wanted,
+shifting everything `>= position` down by one before the insert is the cleaner
+rewrite.
+
 **15. `UpdateBlog` authenticated twice (§5.16)**
 Upstream calls `check_auth` twice with a TODO admitting it is wasteful. Done once
 here. No wire difference; the only effect is one fewer round trip and one fewer
@@ -222,13 +254,50 @@ inside Popplio rather than as a standalone service. Consequences:
   the normal auth path — but it is a round trip through the network stack to
   ourselves. If that becomes a problem the handler can be pointed at Popplio's
   chi router in-process.
-- **One Discord session.** The staff bot attaches listeners to Popplio's existing
-  disgo client rather than opening a second gateway connection. This required
-  adding `IntentGuildMessages`, `IntentMessageContent` (privileged — must be
-  enabled on the application) and the roles cache to Popplio's client. Upstream
-  used `GatewayIntents::all()`.
 - **Binary and service names** stay Popplio's (`popplio`, `popplio-staging`), not
   `bot` / `arcadia-<env>`.
+
+**D1a. The staff bot keeps its own Discord identity.** `arcadia/dclient` owns a
+second gateway connection built from `arcadia.token`, a separate Discord
+application from Popplio's. Popplio's session is untouched — its intents and
+caches are exactly what they were before the port.
+
+This preserves what upstream had: mod-log embeds, role changes and audit-log
+entries are attributed to the Arcadia bot, and either half can be restarted
+without dropping the other's gateway. The panel OAuth app
+(`arcadia.panel.client_id` / `client_secret`) was already separate from Popplio's
+`discord_auth.*` and remains so.
+
+The staff bot requests `Guilds`, `GuildMembers`, `GuildPresences` and
+`GuildModeration`, and caches guilds, members, presences and roles (the panel
+validates staff position role ids against the role cache). Upstream used
+`GatewayIntents::all()`; only what is actually read is requested here.
+
+A Discord failure at startup is logged and the panel still comes up — every
+cache read already treats an uncached guild as "not found".
+
+**D1b. Slash commands are the primary interface.**
+
+- Commands are published to the main, staff and testing guilds, not just the
+  staff guild. Registering per-guild rather than globally keeps staff tooling out
+  of other servers and takes effect immediately instead of Discord's ~1 hour
+  global propagation. The full set goes to all three; the per-command guards
+  already decide where each is usable.
+- Subcommands carry their options, so `/staff guildleave` and `/staff stats` are
+  usable from the slash UI rather than prefix-only.
+- `claim`, `unclaim`, `approve`, `deny` and `staff stats` take a **user picker**,
+  matching upstream's `User`/`Member` parameter types.
+- `/rpc` exposes all 18 methods as a **choice list**. Upstream autocompleted them;
+  the whole set fits inside Discord's 25-choice limit, so choices need no round
+  trip.
+- `queue` and `claim` answer through the interaction before posting their
+  component message. Posting via REST alone would have left the interaction
+  unacknowledged and shown the caller "the application did not respond".
+
+**Prefix commands are off by default**, behind `arcadia.prefix_commands`. They
+still work when enabled, but reading message content needs the privileged
+Message Content intent, and slash commands make it unnecessary. This is the one
+config key added that has no upstream counterpart.
 
 **D2. The panel is a second `http.Server`, not a chi route.** Popplio's global
 middleware pins `Content-Type: application/json`, caps bodies at 50 MB and applies
@@ -284,38 +353,164 @@ chrono emits `.500`.
 Popplio's existing `pgxpool`, which uses the pgx default (`max(4, numCPU)`) — a
 deliberate consequence of not standing up a second pool.
 
+**D11a. Borealis, cache servers and the HTML sanitizer are removed.** Requested
+explicitly; these are deliberate feature removals, not port fidelity issues.
+
+Gone: `arcadia.borealis_url`, `arcadia.htmlsanitize_url`, the
+`borealisCacheServer` type and the `addBotToCacheServer` client.
+
+Three things changed that a staff member or the panel can see:
+
+1. **`core_constants.htmlsanitize_url` no longer appears in the Hello response.**
+   This is a removal from a frozen wire contract — if any panel code reads it, it
+   now gets `undefined`. Worth grepping the SvelteKit panel before deploying.
+2. **`Approve` no longer calls Borealis** and its mod-log embed has lost the
+   "Cache Server" field. The `Feedback` and `Moderator` fields are unchanged.
+3. **`Approve`'s success payload changed.** It was:
+
+   ```
+   **Cache Server Invite:** https://discord.gg/<code>
+   **Invite URL:** https://discord.com/api/v10/oauth2/authorize?client_id=<id>&permissions=0&scope=bot%20applications.commands&guild_id=<cache guild>
+   ```
+
+   and is now just the invite URL, without the `guild_id` that pre-selected the
+   cache server:
+
+   ```
+   **Invite URL:** https://discord.com/api/v10/oauth2/authorize?client_id=<id>&permissions=0&scope=bot%20applications.commands
+   ```
+
+   The Discord `approve` reply drops "Please invite the bot to the caching server
+   provided down below!" accordingly.
+
+What did NOT change: the mod-log post still happens inside the transaction, so a
+failed post still rolls the approval back. Removing Borealis also removes the
+ordering hazard that note described — there is no longer an HTTP call held open
+across the transaction.
+
+**D11b. The CDN is gone entirely.** Requested explicitly, in two parts.
+
+*Arcadia's CDN tooling (~1,070 LOC):* `UploadCdnFileChunk`, `ListCdnScopes`,
+`GetMainCdnScope`, `UpdateCdnAsset` and its seven actions (ListPath, ReadFile,
+CreateFolder, AddFile, CopyFile, Delete, PersistGit), the chunk cache,
+`arcadia/cdnpath`, `types.Bytes` (the `Vec<u8>` number-array codec existed only
+for chunk uploads), the nine `cdn.*` permissions, `arcadia.panel.cdn_scopes` /
+`main_scope` / `asset_cleaner_dry_run`, and the `asset_cleaner` task. Partner
+create/update no longer requires the avatar to exist, and partner delete no
+longer removes an image.
+
+*Popplio's asset pipeline:* the `assetmanager` package, `types.Asset` and
+`types.AssetMetadata`, the `POST`/`DELETE /{target_type}/{target_id}/assets`
+endpoints and the whole Assets route group, `sites.cdn` and `meta.cdn_path`.
+
+Wire changes, all breaking for existing clients:
+
+| Response | Change |
+|---|---|
+| `Bot`, `IndexBot` | `banner` removed |
+| `Server`, `IndexServer` | `avatar`, `banner` removed |
+| `Team` | `avatar`, `banner` removed |
+| `Partner` | `avatar` removed |
+| `Hello.core_constants` | `cdn_url` removed (with `htmlsanitize_url`) |
+| `SearchEntitys` server results | `avatar` is now always `""`; upstream synthesised it from the CDN URL |
+| RSS feed | channel `<image>` removed (the logo was CDN-hosted) |
+| Webhook payloads | `GetAvatarURL` returns the bot's Discord avatar, or `""` for servers and teams |
+| Vote embeds | `EntityInfo.Avatar` is unset for packs, teams, servers and blogs |
+| SEO/OG | team and server OG images removed |
+| `POST`/`DELETE /{target_type}/{target_id}/assets` | gone; nothing can upload an image any more |
+
+Bot and user avatars still resolve: those come from dovewing, which returns
+Discord's own URL. The `bp.DovewingMiddleware` that mirrored them onto the CDN
+was removed, so `PlatformUser.Avatar` is now Discord's URL rather than a
+self-hosted copy.
+
+`cmd/kitehelper` still contains CDN paths in its historical migration code. That
+is a separate module of one-shot migrations that are not run at startup, so it
+was left alone.
+
+**Not done: the files themselves.** Nothing deletes anything under the old
+`cdn_path`, and no database column was touched. The images are still on disk and
+still referenced by nothing.
+
 **D12. `staff_resync` position ordering.** Position id sets are sorted before
 being written or logged, so SQL arrays and staff-log embeds are stable between
 runs. Rust's `HashSet` iteration order was arbitrary.
+
+**D13. Two N+1 query patterns are batched.** The wire format is unchanged and
+§5.5 explicitly permits internal batching.
+
+- `BotQueue` and `SearchEntitys` resolved each entity's managers with two queries
+  inside the loop — 2N round trips for an N-entity response. `impls.GetBotManagers`
+  and `impls.GetServerManagers` resolve the same data in three queries regardless
+  of N, reproducing the per-entity error messages exactly.
+- `GetStaffDisciplinaries` issued one query per distinct disciplinary type; it now
+  LEFT JOINs the type in the same query. A missing type still errors, as upstream's
+  `fetch_one` did.
+
+Dovewing lookups are deliberately left per-entity: they are fronted by Popplio's
+Redis hot cache, so batching them would trade a cache hit for a database round
+trip.
 
 ---
 
 ## Testing status
 
-| Suite | Status |
-|---|---|
-| `arcadia/types` — union round-trips, `Vec<u8>` as number array, chrono timestamps, null/empty encoding, `StaffMember` serialization, RPC metadata completeness | **passing** |
-| `arcadia/cdnpath` — name/path validators, scope containment, granular CDN permission | **passing** |
-| `arcadia/conformance` — frozen strings across panel, rpc, tasks and bot | **passing** |
-| Integration tests against a seeded Postgres | **not written** |
+| Suite | Covers | Status |
+|---|---|---|
+| `arcadia/types` | Union round-trips for all 14 unions and all 18 RPC methods, `Vec<u8>` as number array, chrono timestamps, null/empty encoding, `StaffMember` serialization, wrong-shape rejection, RPC metadata completeness | **passing** |
+| `arcadia/cdnpath` | Name/path validators, scope containment, granular CDN permission | **passing** |
+| `arcadia/conformance` | Frozen strings across panel, rpc, tasks and bot | **passing** |
+| `arcadia/panel` (unit) | Custom server: routing, CORS + preflight, response envelopes, panic recovery, body cap, listen address, chunk-cache atomicity | **passing** |
+| `arcadia/panel` (integration) | Auth validators and session GC, auth failure shape, permission gates allowed/denied, dedup loop, coupon validation, ListPositions, BaseAnalytics, changelog stub, chunk upload | **passing** |
+| `arcadia/dbconform` | **All 195 SQL statements PREPAREd against the real schema**, plus the runtime-composed ones | **passing** |
 
-**Known blocker:** test binaries for any package importing `popplio/state`
-(`panel`, `impls`, `rpc`, `tasks`, `bot`) currently fail to *link* with
+### Running them
+
+```sh
+# Unit + frozen-string suites
+go test -ldflags=-checklinkname=0 ./arcadia/...
+
+# Plus the database suites (point at a SCRATCH database - the fixtures write rows)
+createdb arcadia_test && pg_dump -s infinity | psql -q arcadia_test
+ARCADIA_TEST_DATABASE_URL=postgres://user:pass@127.0.0.1/arcadia_test \
+  go test -ldflags=-checklinkname=0 ./arcadia/...
+```
+
+`-ldflags=-checklinkname=0` is required on Go 1.24+ and is **not** specific to
+this port: `bytedance/sonic v1.12.2` (pulled in through `eureka/jsonimpl`) uses
+`//go:linkname` against `encoding/json` internals that no longer exist, so
+`go build ./...` fails for the `popplio` binary itself on a clean checkout with
 `link: github.com/bytedance/sonic/ast: invalid reference to encoding/json.unquoteBytes`.
-This is pre-existing and unrelated to the port — it reproduces on a clean
-checkout, and it also breaks `go build ./...` for the `popplio` binary itself on
-Go 1.26.5. The cause is `bytedance/sonic v1.12.2` (pulled in via
-`eureka/jsonimpl`) reaching into `encoding/json` internals that no longer exist.
-Fix is to upgrade `eureka`/`sonic`, or build with an older toolchain. All arcadia
-packages **compile** cleanly (`go build ./arcadia/...`) and `go vet` is clean.
+The flag disables the linkname check and both the binary and the tests build.
+The real fix is upgrading `eureka`/`sonic` or building on Go ≤1.23; sonic also
+prints `WARNING:(ast) sonic only supports go1.17~1.23` at startup.
 
-That blocker is also why the security-critical CDN validators were moved into the
-dependency-free `arcadia/cdnpath` package — so they are genuinely unit tested
-rather than untestable in practice.
+### `arcadia/dbconform` — the sqlx replacement
 
-**Still to do:** §14.3 asks for integration tests against a seeded Postgres for
-every SQL path, and per-operation allowed/denied permission tests. Neither is
-written. Given there is no migration set in this repo (the schema is published
-separately, per §13) these need a seeded database fixture first, and they are the
-single highest-value thing to add next — with no compile-time query verification
-to replace sqlx's, a typo'd column name will otherwise only surface in production.
+The single most valuable suite. sqlx verified every query against the schema at
+compile time; losing that was called out in §13 as the biggest regression of the
+port. Instead of a hand-maintained list that would drift, `dbconform` walks the
+arcadia sources with `go/ast`, extracts every SQL string literal, and `PREPARE`s
+each against Postgres — which parses and plans the statement, validating every
+table, column and function reference and inferring parameter types, without
+executing anything.
+
+All **195** extracted statements prepare cleanly against the production schema,
+plus the eight runtime-composed statements (the `asset_cleaner` per-entity
+queries and the `generic_cleaner` dynamic SQL) that are listed explicitly because
+the extractor cannot see them whole.
+
+### Still to do
+
+- **Dovewing-dependent operations are uncovered**: `Hello`, `GetUser`,
+  `BotQueue`, `SearchEntitys` and `UpdateStaffMembers` resolve a Discord user, so
+  they need Redis and a live Discord session. Their SQL is covered by
+  `dbconform`, but their response shapes are not exercised end to end.
+- **RPC handlers are uncovered end to end**: every one of the 18 posts a mod-log
+  embed, so they need a Discord session. The pipeline around them (target-type
+  check, permission check, audit row, rate limit) is testable with a mocked
+  Discord client and is the next thing worth adding.
+- **The 12 background tasks are uncovered.** `staff_resync` in particular is
+  769 lines of destructive logic and deserves a fixture-driven test.
+- **No test asserts the mod-log embeds**, which are frozen but only checked as
+  string literals by `arcadia/conformance`.

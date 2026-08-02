@@ -17,20 +17,20 @@ import (
 	"go.uber.org/zap"
 )
 
-// maxBodySize is 1000 MB. CDN chunk uploads ride through the single POST /
-// endpoint as JSON byte arrays, so this cannot be lowered without breaking
-// uploads.
+// maxBodySize is 1000 MB, the limit upstream set. It is far larger than any
+// remaining operation needs now that chunked CDN uploads are gone; see
+// CONFORMANCE.md before lowering it, since the panel may still post large
+// bodies.
 const maxBodySize = 1_048_576_000
 
 // Server is the panel API server.
 type Server struct {
-	http   *http.Server
-	chunks *chunkCache
+	http *http.Server
 }
 
 // New builds the panel server. It does not listen yet.
 func New() *Server {
-	s := &Server{chunks: newChunkCache()}
+	s := &Server{}
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("/openapi", s.handleOpenAPI)
@@ -48,9 +48,8 @@ func New() *Server {
 		Addr:    fmt.Sprintf("0.0.0.0:%d", state.Config.Arcadia.ServerPort.Parse()),
 		Handler: handler,
 
-		// TIMEOUTS (§14c): a 1 GB upload over a slow link must not be killed
-		// mid-flight, so ReadTimeout is deliberately long rather than the 30s
-		// Popplio uses. ReadHeaderTimeout stays short so a stalled client cannot
+		// TIMEOUTS (§14c): long read/write windows were sized for 1 GB chunked
+		// uploads. They are left as-is rather than retuned blindly. ReadHeaderTimeout stays short so a stalled client cannot
 		// hold a connection open without sending anything. The Rust version set no
 		// timeouts at all.
 		ReadHeaderTimeout: 30 * time.Second,
@@ -78,10 +77,8 @@ func (s *Server) Start(ctx context.Context) error {
 	return nil
 }
 
-// Shutdown drains the server and stops the chunk janitor.
+// Shutdown drains the server.
 func (s *Server) Shutdown(ctx context.Context) error {
-	s.chunks.Close()
-
 	return s.http.Shutdown(ctx)
 }
 

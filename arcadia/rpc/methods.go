@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"net/http"
 	"strconv"
 	"time"
 
@@ -190,14 +189,6 @@ func unclaim(ctx context.Context, m *types.RPCTargetReason, h Handle) (Success, 
 	return NoContent(), nil
 }
 
-// borealisCacheServer is the Borealis response shape.
-type borealisCacheServer struct {
-	GuildID    string `json:"guild_id"`
-	Name       string `json:"name"`
-	InviteCode string `json:"invite_code"`
-	Added      bool   `json:"added"`
-}
-
 func approve(ctx context.Context, m *types.RPCTargetReason, h Handle) (Success, error) {
 	if err := checkReason(m.Reason); err != nil {
 		return Success{}, err
@@ -241,14 +232,8 @@ func approve(ctx context.Context, m *types.RPCTargetReason, h Handle) (Success, 
 		return Success{}, err
 	}
 
-	// ORDERING HAZARD (reproduced): the Borealis call and the Discord message both
-	// happen INSIDE the transaction, before COMMIT. See CONFORMANCE.md.
-	csr, err := addBotToCacheServer(ctx, m.TargetID)
-
-	if err != nil {
-		return Success{}, err
-	}
-
+	// The mod-log post stays INSIDE the transaction, as upstream had it: a failed
+	// post still rolls the approval back.
 	err = impls.SendModLog(discord.MessageCreate{
 		Content: owners.MentionUsers(),
 		Embeds: []discord.Embed{{
@@ -256,7 +241,6 @@ func approve(ctx context.Context, m *types.RPCTargetReason, h Handle) (Success, 
 			URL:         fmt.Sprintf("%s/bots/%s", state.Config.Sites.Frontend.Parse(), m.TargetID),
 			Description: fmt.Sprintf("<@!%s> has approved <@!%s>", h.UserID, m.TargetID),
 			Fields: []discord.EmbedField{
-				{Name: "Cache Server", Value: fmt.Sprintf("[%s](https://discord.gg/%s)", csr.Name, csr.InviteCode), Inline: impls.InlineTrue()},
 				{Name: "Feedback", Value: m.Reason, Inline: impls.InlineTrue()},
 				{Name: "Moderator", Value: "<@!" + h.UserID + ">", Inline: impls.InlineTrue()},
 			},
@@ -312,37 +296,9 @@ func approve(ctx context.Context, m *types.RPCTargetReason, h Handle) (Success, 
 	}
 
 	return Content(fmt.Sprintf(
-		"**Cache Server Invite:** %s\n**Invite URL:** https://discord.com/api/v10/oauth2/authorize?client_id=%s&permissions=0&scope=bot%%20applications.commands&guild_id=%s",
-		"https://discord.gg/"+csr.InviteCode,
+		"**Invite URL:** https://discord.com/api/v10/oauth2/authorize?client_id=%s&permissions=0&scope=bot%%20applications.commands",
 		clientID,
-		csr.GuildID,
 	)), nil
-}
-
-func addBotToCacheServer(ctx context.Context, botID string) (borealisCacheServer, error) {
-	url := fmt.Sprintf("%s/addBotToCacheServer?bot_id=%s&ignore_bot_type=true", state.Config.Arcadia.BorealisURL, botID)
-
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, nil)
-
-	if err != nil {
-		return borealisCacheServer{}, err
-	}
-
-	resp, err := http.DefaultClient.Do(req)
-
-	if err != nil {
-		return borealisCacheServer{}, err
-	}
-
-	defer resp.Body.Close()
-
-	var csr borealisCacheServer
-
-	if err := json.NewDecoder(resp.Body).Decode(&csr); err != nil {
-		return borealisCacheServer{}, fmt.Errorf("Error decoding borealis response: %v", err)
-	}
-
-	return csr, nil
 }
 
 func deny(ctx context.Context, m *types.RPCTargetReason, h Handle) (Success, error) {

@@ -7,7 +7,6 @@ import (
 	"net/http"
 	"strings"
 
-	"popplio/assetmanager"
 	"popplio/db"
 	"popplio/state"
 	"popplio/teams/resolvers"
@@ -203,9 +202,6 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		}
 	}
 
-	eto.Banner = assetmanager.BannerInfo(assetmanager.AssetTargetTypeTeam, eto.ID)
-	eto.Avatar = assetmanager.AvatarInfo(assetmanager.AssetTargetTypeTeam, eto.ID)
-
 	server.TeamOwner = &eto
 
 	var uniqueClicks int64
@@ -228,8 +224,6 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	}
 
 	server.Vanity = code
-	server.Avatar = assetmanager.AvatarInfo(assetmanager.AssetTargetTypeServer, server.ServerID)
-	server.Banner = assetmanager.BannerInfo(assetmanager.AssetTargetTypeServer, server.ServerID)
 
 	server.Votes, err = votes.EntityGetVoteCount(d.Context, state.Pool, server.ServerID, "server")
 

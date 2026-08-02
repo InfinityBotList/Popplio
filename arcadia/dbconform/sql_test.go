@@ -116,7 +116,11 @@ func TestComposedStatements(t *testing.T) {
 			// impls.GetStaffDisciplinaries appends the interval predicate when
 			// active is true.
 			name: "active disciplinaries",
-			sql:  "SELECT id, created_at, EXTRACT(epoch FROM expiry) as expiry, title, description, type FROM staff_disciplinary WHERE user_id = $1 AND NOW() - created_at < expiry",
+			sql: `SELECT d.id, d.created_at, EXTRACT(epoch FROM d.expiry) AS expiry, d.title, d.description, d.type,
+        t.name AS type_name, t.description AS type_description, t.self_assignable, t.perm_limits, t.additory, t.needs_approval,
+        EXTRACT(epoch FROM t.max_expiry) AS max_expiry
+        FROM staff_disciplinary d LEFT JOIN staff_disciplinary_types t ON t.id = d.type
+        WHERE d.user_id = $1 AND NOW() - d.created_at < d.expiry`,
 		},
 		{
 			// tasks.AssetCleaner builds one of these per entity from a fixed

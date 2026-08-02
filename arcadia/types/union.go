@@ -79,37 +79,23 @@ type Unit struct{}
 // unitSet is shorthand for setting a unit variant.
 func unitSet() *Unit { return &Unit{} }
 
-// unmarshalUnion decodes an externally tagged enum against a table of variant
-// constructors. Each constructor assigns its variant on the destination and
-// returns the value to decode the payload into, or nil for a unit variant.
-func unmarshalUnion(union string, data []byte, variants map[string]func() any) error {
-	name, payload, err := decodeUnion(data)
-	if err != nil {
-		return fmt.Errorf("%s: %w", union, err)
+// expectUnit validates the payload of a unit variant. serde accepts both "Name"
+// and {"Name":null} and rejects anything else, so we do the same.
+func expectUnit(union, name string, payload json.RawMessage) error {
+	if payload == nil || string(payload) == "null" {
+		return nil
 	}
 
-	construct, ok := variants[name]
-	if !ok {
-		return errUnknownVariant(union, name)
-	}
+	return fmt.Errorf("invalid type: expected unit for variant `%s` of %s", name, union)
+}
 
-	target := construct()
-
-	if target == nil {
-		// Unit variant. serde accepts both "Name" and {"Name":null} and rejects
-		// anything else, so we do the same.
-		if payload == nil || string(payload) == "null" {
-			return nil
-		}
-
-		return fmt.Errorf("invalid type: expected unit for variant `%s` of %s", name, union)
-	}
-
+// decodeVariant decodes a struct variant's payload into the variant value.
+func decodeVariant(union, name string, payload json.RawMessage, into any) error {
 	if payload == nil {
 		return errVariantNeedsPayload(union, name)
 	}
 
-	return json.Unmarshal(payload, target)
+	return json.Unmarshal(payload, into)
 }
 
 // errUnknownVariant is the shape of the error serde produces for an unmatched
@@ -123,4 +109,23 @@ func errUnknownVariant(union, variant string) error {
 // string (i.e. was treated as a unit variant by the caller).
 func errVariantNeedsPayload(union, variant string) error {
 	return fmt.Errorf("variant `%s` of %s requires an object payload", variant, union)
+}
+
+// NonNilStrings keeps an empty array encoding as [] rather than null, which is
+// what serde does for an empty Vec.
+func NonNilStrings(in []string) []string {
+	if in == nil {
+		return []string{}
+	}
+
+	return in
+}
+
+// NonNilLinks is NonNilStrings for link arrays.
+func NonNilLinks(in []Link) []Link {
+	if in == nil {
+		return []Link{}
+	}
+
+	return in
 }

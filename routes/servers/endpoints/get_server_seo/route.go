@@ -4,7 +4,6 @@ import (
 	"errors"
 	"net/http"
 
-	"popplio/assetmanager"
 	"popplio/state"
 	"popplio/types"
 
@@ -48,13 +47,10 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		return uapi.DefaultResponse(http.StatusInternalServerError)
 	}
 
-	avatar := assetmanager.AvatarInfo(assetmanager.AssetTargetTypeServer, id)
-
 	seoData := types.SEO{
-		ID:     id,
-		Name:   name,
-		Avatar: assetmanager.ResolveAssetMetadataToUrl(avatar),
-		Short:  short,
+		ID:    id,
+		Name:  name,
+		Short: short,
 	}
 
 	return uapi.HttpResponse{

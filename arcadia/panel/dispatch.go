@@ -33,14 +33,6 @@ func (s *Server) dispatch(ctx context.Context, req *types.PanelQuery) (response,
 		return s.getRpcLogEntries(ctx, req.GetRpcLogEntries)
 	case req.SearchEntitys != nil:
 		return s.searchEntitys(ctx, req.SearchEntitys)
-	case req.UploadCdnFileChunk != nil:
-		return s.uploadCdnFileChunk(ctx, req.UploadCdnFileChunk)
-	case req.ListCdnScopes != nil:
-		return s.listCdnScopes(ctx, req.ListCdnScopes)
-	case req.GetMainCdnScope != nil:
-		return s.getMainCdnScope(ctx, req.GetMainCdnScope)
-	case req.UpdateCdnAsset != nil:
-		return s.updateCdnAsset(ctx, req.UpdateCdnAsset)
 	case req.UpdatePartners != nil:
 		return s.updatePartners(ctx, req.UpdatePartners)
 	case req.UpdateChangelog != nil:

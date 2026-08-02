@@ -2,10 +2,8 @@ package get_user_reminders
 
 import (
 	"net/http"
-	"strconv"
 	"strings"
 
-	"popplio/assetmanager"
 	"popplio/db"
 	"popplio/state"
 	"popplio/types"
@@ -90,22 +88,11 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		case "team":
 			var name string
 
-			avatar := assetmanager.AvatarInfo(assetmanager.AssetTargetTypeTeam, reminder.TargetID)
-
-			var avatarPath string
-
-			if avatar.Exists {
-				avatarPath = state.Config.Sites.CDN + "/" + avatar.Path + "?ts=" + strconv.FormatInt(avatar.LastModified.Unix(), 10)
-			} else {
-				avatarPath = state.Config.Sites.CDN + "/" + avatar.DefaultPath
-			}
-
 			err := state.Pool.QueryRow(d.Context, "SELECT name FROM teams WHERE id = $1", reminder.TargetID).Scan(&name)
 
 			if err == nil {
 				reminders[i].Resolved = &types.ResolvedReminder{
-					Name:   name,
-					Avatar: avatarPath,
+					Name: name,
 				}
 			}
 		}

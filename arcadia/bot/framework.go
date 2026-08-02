@@ -12,8 +12,10 @@ import (
 	"sort"
 	"strings"
 
+	"popplio/arcadia/dclient"
 	"popplio/state"
 
+	"github.com/disgoorg/disgo/bot"
 	"github.com/disgoorg/disgo/discord"
 	"github.com/disgoorg/disgo/events"
 	"github.com/disgoorg/snowflake/v2"
@@ -85,7 +87,7 @@ func (c *Ctx) Send(msg discord.MessageCreate) error {
 	if c.slash != nil {
 		if c.replied {
 			_, err := c.slash.Client().Rest().CreateFollowupMessage(
-				c.slash.ApplicationID(), c.slash.Token(), messageCreateToFollowup(msg))
+				c.slash.ApplicationID(), c.slash.Token(), msg)
 			return err
 		}
 
@@ -93,8 +95,38 @@ func (c *Ctx) Send(msg discord.MessageCreate) error {
 		return c.slash.CreateMessage(msg)
 	}
 
-	_, err := state.Discord.Rest().CreateMessage(c.ChannelID, msg)
+	_, err := dclient.Get().Rest().CreateMessage(c.ChannelID, msg)
 	return err
+}
+
+// SendTracked sends a reply and returns the id of the resulting message.
+//
+// The component-driven commands (queue, claim) key their session on that id. A
+// slash invocation must be answered through the interaction or Discord shows the
+// caller "the application did not respond", so this replies the right way for
+// the invocation and then resolves the message id either way.
+func (c *Ctx) SendTracked(msg discord.MessageCreate) (snowflake.ID, error) {
+	if c.slash == nil {
+		sent, err := dclient.Get().Rest().CreateMessage(c.ChannelID, msg)
+
+		if err != nil {
+			return 0, err
+		}
+
+		return sent.ID, nil
+	}
+
+	if err := c.Send(msg); err != nil {
+		return 0, err
+	}
+
+	sent, err := dclient.Get().Rest().GetInteractionResponse(c.slash.ApplicationID(), c.slash.Token())
+
+	if err != nil {
+		return 0, err
+	}
+
+	return sent.ID, nil
 }
 
 // Defer acknowledges a slash command that will take a while. It is a no-op for
@@ -106,10 +138,6 @@ func (c *Ctx) Defer() error {
 
 	c.replied = true
 	return c.slash.DeferCreateMessage(false)
-}
-
-func messageCreateToFollowup(msg discord.MessageCreate) discord.MessageCreate {
-	return msg
 }
 
 // Check is a command guard. Returning an error surfaces its text to the user,
@@ -144,19 +172,30 @@ func register(cmds ...*Command) {
 	}
 }
 
-// Setup registers the commands and attaches the event listeners to Popplio's
-// existing Discord client. It does not open a second gateway connection.
-func Setup(ctx context.Context) {
+// Listener registers the commands and returns the staff bot's event listener.
+//
+// It is built before the gateway connects so no early event is missed; the
+// caller hands it to dclient.Setup.
+func Listener(ctx context.Context) bot.EventListener {
 	registerCommands()
+	indexCategories()
 
-	state.Discord.AddEventListeners(&events.ListenerAdapter{
+	adapter := &events.ListenerAdapter{
 		OnGuildsReady:                   func(e *events.GuildsReady) { onGuildsReady(ctx, e) },
 		OnGuildMemberJoin:               onGuildMemberJoin,
-		OnMessageCreate:                 func(e *events.MessageCreate) { onMessageCreate(ctx, e) },
 		OnApplicationCommandInteraction: func(e *events.ApplicationCommandInteractionCreate) { onSlashCommand(ctx, e) },
 		OnComponentInteraction:          func(e *events.ComponentInteractionCreate) { onComponent(ctx, e) },
 		OnModalSubmit:                   func(e *events.ModalSubmitInteractionCreate) { onModalSubmit(ctx, e) },
-	})
+	}
+
+	// Slash commands are the primary interface. The legacy prefix listener is
+	// only attached when explicitly enabled, because reading message content
+	// needs the privileged Message Content intent.
+	if state.Config.Arcadia.PrefixCommands {
+		adapter.OnMessageCreate = func(e *events.MessageCreate) { onMessageCreate(ctx, e) }
+	}
+
+	return adapter
 }
 
 // prefix is the configured command prefix for the current environment.
@@ -305,8 +344,24 @@ func isOwner(userID snowflake.ID) bool {
 	return false
 }
 
-// SyncCommands registers the slash commands with Discord for the staff guild.
-func SyncCommands() error {
+// commandGuilds are the guilds the slash commands are published to.
+//
+// Registration is per-guild rather than global because the commands are staff
+// tooling that no other server should see, and because guild commands take
+// effect immediately instead of Discord's ~1 hour global propagation. The full
+// set goes to all three: the per-command guards already decide where each one is
+// actually usable, so a command registered in the wrong guild is rejected with
+// its normal message rather than silently missing.
+func commandGuilds() []snowflake.ID {
+	return []snowflake.ID{
+		state.Config.Servers.Main,
+		state.Config.Servers.Staff,
+		state.Config.Servers.Testing,
+	}
+}
+
+// buildCommands renders the registry into Discord's application command shape.
+func buildCommands() []discord.ApplicationCommandCreate {
 	cmds := make([]discord.ApplicationCommandCreate, 0, len(ordered))
 
 	for _, cmd := range ordered {
@@ -320,15 +375,35 @@ func SyncCommands() error {
 			create.Options = append(create.Options, discord.ApplicationCommandOptionSubCommand{
 				Name:        sub.Name,
 				Description: truncate(sub.Description, 100),
+				Options:     sub.Options,
 			})
 		}
 
 		cmds = append(cmds, create)
 	}
 
-	_, err := state.Discord.Rest().SetGuildCommands(state.Discord.ApplicationID(), state.Config.Servers.Staff, cmds)
+	return cmds
+}
 
-	return err
+// SyncCommands publishes the slash commands to every staff guild.
+func SyncCommands() error {
+	cmds := buildCommands()
+
+	for _, guildID := range commandGuilds() {
+		if guildID == 0 {
+			continue
+		}
+
+		_, err := dclient.Get().Rest().SetGuildCommands(dclient.Get().ApplicationID(), guildID, cmds)
+
+		if err != nil {
+			return fmt.Errorf("failed to register commands in guild %s: %w", guildID, err)
+		}
+
+		state.Logger.Info("Registered slash commands", zap.String("guildID", guildID.String()), zap.Int("count", len(cmds)))
+	}
+
+	return nil
 }
 
 func truncate(s string, max int) string {
@@ -343,11 +418,19 @@ func truncate(s string, max int) string {
 	return s[:max]
 }
 
+// categories is the sorted set of command categories, computed once at
+// registration rather than on every help invocation.
+var categories []string
+
 // helpCategories groups the registered commands for the help renderer.
 func helpCategories() []string {
-	seen := map[string]struct{}{}
+	return categories
+}
 
-	var out []string
+// indexCategories fills categories from the registered commands.
+func indexCategories() {
+	seen := make(map[string]struct{}, len(ordered))
+	categories = categories[:0]
 
 	for _, cmd := range ordered {
 		if _, ok := seen[cmd.Category]; ok {
@@ -355,10 +438,8 @@ func helpCategories() []string {
 		}
 
 		seen[cmd.Category] = struct{}{}
-		out = append(out, cmd.Category)
+		categories = append(categories, cmd.Category)
 	}
 
-	sort.Strings(out)
-
-	return out
+	sort.Strings(categories)
 }

@@ -8,6 +8,7 @@ import (
 	"sort"
 	"strings"
 
+	"popplio/arcadia/dclient"
 	"popplio/arcadia/impls"
 	"popplio/arcadia/types"
 	"popplio/state"
@@ -43,7 +44,7 @@ func (c cachedPosition) String() string {
 func StaffResync(ctx context.Context) error {
 	// Step 1: snapshot the staff guild. If it is not cached we abort the whole
 	// task rather than acting on partial data.
-	if _, ok := state.Discord.Caches().Guild(state.Config.Servers.Staff); !ok {
+	if _, ok := dclient.Get().Caches().Guild(state.Config.Servers.Staff); !ok {
 		return fmt.Errorf("Failed to get staff guild for staff perms resync")
 	}
 
@@ -54,7 +55,7 @@ func StaffResync(ctx context.Context) error {
 
 	var staffResync []guildMember
 
-	state.Discord.Caches().MembersForEach(state.Config.Servers.Staff, func(member discord.Member) {
+	dclient.Get().Caches().MembersForEach(state.Config.Servers.Staff, func(member discord.Member) {
 		roles := make([]string, 0, len(member.RoleIDs))
 
 		for _, roleID := range member.RoleIDs {
@@ -221,6 +222,7 @@ func StaffResync(ctx context.Context) error {
 		}
 
 		newPositionIDs := sortedKeys(rolePositions)
+		oldPositionIDs := sortedKeys(currentPositions)
 
 		if isOnDB {
 			_, err = tx.Exec(ctx,
@@ -240,7 +242,7 @@ func StaffResync(ctx context.Context) error {
 			}
 		}
 
-		oldSP := buildPermissions(posByID, sortedKeys(currentPositions), overridePerms[userID])
+		oldSP := buildPermissions(posByID, oldPositionIDs, overridePerms[userID])
 		newSP := buildPermissions(posByID, newPositionIDs, overridePerms[userID])
 
 		var exists bool
@@ -264,7 +266,7 @@ func StaffResync(ctx context.Context) error {
 				Title:       "Staff Permissions Resync",
 				Description: fmt.Sprintf("Updated staff permissions for <@%s>", userID),
 				Fields: []discord.EmbedField{
-					{Name: "Old Positions", Value: renderPositions(posByID, sortedKeys(currentPositions)), Inline: impls.InlineFalse()},
+					{Name: "Old Positions", Value: renderPositions(posByID, oldPositionIDs), Inline: impls.InlineFalse()},
 					{Name: "New Positions", Value: renderPositions(posByID, newPositionIDs), Inline: impls.InlineFalse()},
 					{Name: "Old Permissions", Value: renderPerms(oldSP.Resolve()), Inline: impls.InlineFalse()},
 					{Name: "New Permissions", Value: renderPerms(newSP.Resolve()), Inline: impls.InlineFalse()},
@@ -276,7 +278,7 @@ func StaffResync(ctx context.Context) error {
 			return fmt.Errorf("Error while sending staff logs message: %v", err)
 		}
 
-		if err := modifyCorrespondingRoles(posByID, user.UserID, sortedKeys(currentPositions), newPositionIDs); err != nil {
+		if err := modifyCorrespondingRoles(posByID, user.UserID, oldPositionIDs, newPositionIDs); err != nil {
 			return err
 		}
 
@@ -534,7 +536,7 @@ func collectCorrespondingRoles(posByID map[string]cachedPosition, positionIDs []
 }
 
 func guildMemberPresent(guildID, user snowflake.ID) bool {
-	if _, ok := state.Discord.Caches().Guild(guildID); !ok {
+	if _, ok := dclient.Get().Caches().Guild(guildID); !ok {
 		state.Logger.Warn("Failed to get guild", zap.String("guildID", guildID.String()))
 		return false
 	}

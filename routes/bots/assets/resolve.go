@@ -3,7 +3,6 @@ package assets
 import (
 	"context"
 	"fmt"
-	"popplio/assetmanager"
 	"popplio/state"
 	"popplio/types"
 	"popplio/votes"
@@ -50,7 +49,6 @@ func ResolveIndexBot(ctx context.Context, bot *types.IndexBot) error {
 	}
 
 	bot.Vanity = code
-	bot.Banner = assetmanager.BannerInfo(assetmanager.AssetTargetTypeBot, bot.BotID)
 
 	bot.Votes, err = votes.EntityGetVoteCount(ctx, state.Pool, bot.BotID, "bot")
 

@@ -12,7 +12,6 @@ import (
 type Partner struct {
 	ID        string                  `db:"id" json:"id" description:"The partners ID" validate:"required"`
 	Name      string                  `db:"name" json:"name" description:"The partners name" validate:"required"`
-	Avatar    *AssetMetadata          `db:"-" json:"avatar" description:"The partners avatar" ci:"internal"` // Must be parsed internally
 	Short     string                  `db:"short" json:"short" description:"Short description of the partner" validate:"required"`
 	Links     []Link                  `db:"links" json:"links" description:"Links of the partners" validate:"required,min=1,max=2"`
 	Type      string                  `db:"type" json:"type" description:"Type of partner" validate:"required"`

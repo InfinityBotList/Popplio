@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"time"
 
+	"popplio/arcadia/dclient"
 	"popplio/arcadia/impls"
 	"popplio/config"
 	"popplio/state"
@@ -25,7 +26,7 @@ import (
 // uncached guild as "not found" and degrade rather than fail, and dovewing falls
 // through to Postgres. See CONFORMANCE.md.
 func onGuildsReady(ctx context.Context, _ *events.GuildsReady) {
-	self, ok := state.Discord.Caches().SelfUser()
+	self, ok := dclient.Get().Caches().SelfUser()
 
 	name := "arcadia"
 	if ok {
