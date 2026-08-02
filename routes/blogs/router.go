@@ -1,3 +1,6 @@
+// Package blogs mounts the "Blog" group of API routes.
+//
+// These API endpoints are related to blog posts on our list.
 package blogs
 
 import (

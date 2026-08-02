@@ -1,8 +1,12 @@
+// Package get_sitemap implements GET /list/sitemap.xml — "Get Sitemap".
+//
+// Gets the sitemap for the site, in XML format
 package get_sitemap
 
 import (
 	"encoding/xml"
 	"net/http"
+	"popplio/api/resp"
 	"popplio/seo"
 	"popplio/seo/fetchers"
 	"popplio/state"
@@ -91,8 +95,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	rows, err := state.Pool.Query(d.Context, "SELECT bot_id FROM bots WHERE (type = 'approved' OR type = 'certified') ORDER BY created_at DESC LIMIT $1 OFFSET $2", limit, offset)
 
 	if err != nil {
-		state.Logger.Error("Failed to get bots [row query] for generating sitemap", zap.Error(err))
-		return uapi.DefaultResponse(http.StatusInternalServerError)
+		return resp.Err("Failed to get bots [row query] for generating sitemap", err)
 	}
 
 	defer rows.Close()
@@ -100,16 +103,14 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	newBots, err := collector.Collect(rows)
 
 	if err != nil {
-		state.Logger.Error("Failed to collect bot IDs for generating sitemap", zap.Error(err))
-		return uapi.DefaultResponse(http.StatusInternalServerError)
+		return resp.Err("Failed to collect bot IDs for generating sitemap", err)
 	}
 
 	for _, id := range newBots {
 		err := state.SeoMapGenerator.AddToSitemap(d.Context, &fetchers.BotFetcher{}, &sitemap, "New Bots", id, 0.9)
 
 		if err != nil {
-			state.Logger.Error("Failed to add bot to sitemap", zap.Error(err), zap.String("botId", id))
-			return uapi.DefaultResponse(http.StatusInternalServerError)
+			return resp.Err("Failed to add bot to sitemap", err, zap.String("botId", id))
 		}
 	}
 
@@ -117,8 +118,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	rows, err = state.Pool.Query(d.Context, "SELECT bot_id FROM bots WHERE type = 'certified' ORDER BY created_at DESC LIMIT $1 OFFSET $2", limit, offset)
 
 	if err != nil {
-		state.Logger.Error("Failed to get bots [row query] for generating sitemap", zap.Error(err))
-		return uapi.DefaultResponse(http.StatusInternalServerError)
+		return resp.Err("Failed to get bots [row query] for generating sitemap", err)
 	}
 
 	defer rows.Close()
@@ -126,16 +126,14 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	certBots, err := collector.Collect(rows)
 
 	if err != nil {
-		state.Logger.Error("Failed to collect bot IDs for generating sitemap", zap.Error(err))
-		return uapi.DefaultResponse(http.StatusInternalServerError)
+		return resp.Err("Failed to collect bot IDs for generating sitemap", err)
 	}
 
 	for _, id := range certBots {
 		err := state.SeoMapGenerator.AddToSitemap(d.Context, &fetchers.BotFetcher{}, &sitemap, "Certified Bots", id, 0.8)
 
 		if err != nil {
-			state.Logger.Error("Failed to add bot to sitemap", zap.Error(err), zap.String("botId", id))
-			return uapi.DefaultResponse(http.StatusInternalServerError)
+			return resp.Err("Failed to add bot to sitemap", err, zap.String("botId", id))
 		}
 	}
 
@@ -143,8 +141,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	rows, err = state.Pool.Query(d.Context, "SELECT bot_id FROM bots WHERE premium = true AND (type = 'approved' OR type = 'certified') ORDER BY created_at DESC LIMIT $1 OFFSET $2", limit, offset)
 
 	if err != nil {
-		state.Logger.Error("Failed to get bots [row query] for generating sitemap", zap.Error(err))
-		return uapi.DefaultResponse(http.StatusInternalServerError)
+		return resp.Err("Failed to get bots [row query] for generating sitemap", err)
 	}
 
 	defer rows.Close()
@@ -152,16 +149,14 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	premiumBots, err := collector.Collect(rows)
 
 	if err != nil {
-		state.Logger.Error("Failed to collect bot IDs for generating sitemap", zap.Error(err))
-		return uapi.DefaultResponse(http.StatusInternalServerError)
+		return resp.Err("Failed to collect bot IDs for generating sitemap", err)
 	}
 
 	for _, id := range premiumBots {
 		err := state.SeoMapGenerator.AddToSitemap(d.Context, &fetchers.BotFetcher{}, &sitemap, "Premium Bots", id, 0.9)
 
 		if err != nil {
-			state.Logger.Error("Failed to add bot to sitemap", zap.Error(err), zap.String("botId", id))
-			return uapi.DefaultResponse(http.StatusInternalServerError)
+			return resp.Err("Failed to add bot to sitemap", err, zap.String("botId", id))
 		}
 	}
 
@@ -174,8 +169,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	body, err := xml.Marshal(sitemap)
 
 	if err != nil {
-		state.Logger.Error("Failed to marshal sitemap", zap.Error(err))
-		return uapi.DefaultResponse(http.StatusInternalServerError)
+		return resp.Err("Failed to marshal sitemap", err)
 	}
 
 	_, err = state.Redis.Set(d.Context, "sitemap-"+strconv.FormatUint(pageNum, 10), string(body), time.Minute*5).Result()

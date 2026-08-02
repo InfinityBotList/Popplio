@@ -1,3 +1,6 @@
+// Package tasks mounts the "Tasks" group of API routes.
+//
+// These API endpoints are related to tasks on IBL
 package tasks
 
 import (

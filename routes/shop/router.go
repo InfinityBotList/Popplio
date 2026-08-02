@@ -1,3 +1,6 @@
+// Package shop mounts the "Shop" group of API routes.
+//
+// These API endpoints are related to the IBL shop.
 package shop
 
 import (

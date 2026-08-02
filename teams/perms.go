@@ -1,3 +1,10 @@
+// Package teams implements team membership and the permissions attached to
+// it.
+//
+// Permissions are namespaced strings of the form entity.action (`bot.add`),
+// resolved through kittycat. Entity ownership in Popplio is either a single
+// user or a team, so most authorization decisions on bots, servers and packs
+// end up here.
 package teams
 
 import (

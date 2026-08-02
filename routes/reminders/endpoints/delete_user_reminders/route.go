@@ -1,7 +1,13 @@
+// Package delete_user_reminders implements DELETE
+// /users/{uid}/{target_type}/{target_id}/reminders — "Delete User
+// Reminders".
+//
+// Deletes a users reminders. Returns 204 on success
 package delete_user_reminders
 
 import (
 	"net/http"
+	"popplio/api/resp"
 
 	"popplio/state"
 	"popplio/types"
@@ -58,28 +64,17 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	err := state.Pool.QueryRow(d.Context, "SELECT COUNT(*) FROM user_reminders WHERE user_id = $1 AND target_id = $2 AND target_type = $3", d.Auth.ID, targetId, targetType).Scan(&count)
 
 	if err != nil {
-		state.Logger.Error("Error querying reminders [db count]", zap.Error(err), zap.String("target_id", targetId), zap.String("target_type", targetType))
-		return uapi.HttpResponse{
-			Status: http.StatusInternalServerError,
-			Json:   types.ApiError{Message: "Error while checking user reminder count."},
-		}
+		return resp.ErrBody("Error querying reminders [db count]", "Error while checking user reminder count.", err, zap.String("target_id", targetId), zap.String("target_type", targetType))
 	}
 
 	if count == 0 {
-		return uapi.HttpResponse{
-			Status: http.StatusNotFound,
-			Json:   types.ApiError{Message: "Reminder not found"},
-		}
+		return resp.NotFound("Reminder not found")
 	}
 
 	_, err = state.Pool.Exec(d.Context, "DELETE FROM user_reminders WHERE user_id = $1 AND target_id = $2 AND target_type = $3", d.Auth.ID, targetId, targetType)
 
 	if err != nil {
-		state.Logger.Error("Error deleting reminders", zap.Error(err), zap.String("target_id", targetId), zap.String("target_type", targetType))
-		return uapi.HttpResponse{
-			Status: http.StatusInternalServerError,
-			Json:   types.ApiError{Message: "Error while deleting user reminder."},
-		}
+		return resp.ErrBody("Error deleting reminders", "Error while deleting user reminder.", err, zap.String("target_id", targetId), zap.String("target_type", targetType))
 	}
 
 	return uapi.DefaultResponse(http.StatusNoContent)

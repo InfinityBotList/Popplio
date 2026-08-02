@@ -1,3 +1,8 @@
+// Package assets holds the bot logic shared between endpoints.
+//
+// It covers resolving a bot into its index representation and refreshing bot
+// metadata from Discord, both of which are needed by several endpoints and
+// by the team entity resolvers.
 package assets
 
 import (

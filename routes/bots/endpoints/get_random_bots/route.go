@@ -1,7 +1,11 @@
+// Package get_random_bots implements GET /bots/@random — "Get Random Bots".
+//
+// Returns a list of bots from the database in random order
 package get_random_bots
 
 import (
 	"net/http"
+	"popplio/api/resp"
 	"popplio/db"
 	"popplio/routes/bots/assets"
 	"popplio/state"
@@ -33,15 +37,13 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	rows, err := state.Pool.Query(d.Context, "SELECT "+indexBotCols+" FROM bots WHERE (type = 'approved' OR type = 'certified') ORDER BY RANDOM() LIMIT 6")
 
 	if err != nil {
-		state.Logger.Error("Error while getting random bots [db fetch]", zap.Error(err))
-		return uapi.DefaultResponse(http.StatusInternalServerError)
+		return resp.Err("Error while getting random bots [db fetch]", err)
 	}
 
 	bots, err := pgx.CollectRows(rows, pgx.RowToStructByName[types.IndexBot])
 
 	if err != nil {
-		state.Logger.Error("Error while getting random bots [collect]", zap.Error(err))
-		return uapi.DefaultResponse(http.StatusInternalServerError)
+		return resp.Err("Error while getting random bots [collect]", err)
 	}
 
 	// Set the user for each bot
@@ -49,11 +51,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		err := assets.ResolveIndexBot(d.Context, &bots[i])
 
 		if err != nil {
-			state.Logger.Error("Error resolving indexbot", zap.Error(err), zap.String("botID", bots[i].BotID))
-			return uapi.HttpResponse{
-				Status: http.StatusInternalServerError,
-				Json:   types.ApiError{Message: "An error occurred while resolving index bot." + " botID: " + bots[i].BotID},
-			}
+			return resp.ErrBody("Error resolving indexbot", "An error occurred while resolving index bot."+" botID: "+bots[i].BotID, err, zap.String("botID", bots[i].BotID))
 		}
 	}
 

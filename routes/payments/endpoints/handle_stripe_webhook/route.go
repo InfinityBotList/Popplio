@@ -1,8 +1,14 @@
+// Package handle_stripe_webhook implements POST /payments/stripe/webhook —
+// "Handle Stripe Webhook".
+//
+// Handles stripe payment webhooks. Not intended for public use and
+// firewalled to only stripe IPs.
 package handle_stripe_webhook
 
 import (
 	"io"
 	"net/http"
+	"popplio/api/resp"
 	"popplio/notifications"
 	"popplio/routes/payments/assets"
 	"popplio/state"
@@ -28,34 +34,19 @@ func Docs() *docs.Doc {
 
 func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	if state.StripeWebhSecret == "" {
-		return uapi.HttpResponse{
-			Status: http.StatusFailedDependency,
-			Json: types.ApiError{
-				Message: "Stripe webhooks are not configured yet! Please try again in a few moments?",
-			},
-		}
+		return resp.Status(http.StatusFailedDependency, "Stripe webhooks are not configured yet! Please try again in a few moments?")
 	}
 
 	// Get request IP
 	if !slices.Contains(state.StripeWebhIPList, r.RemoteAddr) {
 		state.Logger.Error("IP is not allowed to access this endpoint", zap.String("ip", r.RemoteAddr))
-		return uapi.HttpResponse{
-			Status: http.StatusForbidden,
-			Json: types.ApiError{
-				Message: "IP is not allowed to access this endpoint",
-			},
-		}
+		return resp.Forbidden("IP is not allowed to access this endpoint")
 	}
 
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
 		state.Logger.Error("Failed to read request body", zap.Error(err))
-		return uapi.HttpResponse{
-			Status: http.StatusBadRequest,
-			Json: types.ApiError{
-				Message: "Invalid request body",
-			},
-		}
+		return resp.BadRequest("Invalid request body")
 	}
 
 	// Pass the request body and Stripe-Signature header to ConstructEvent, along with the webhook signing key
@@ -64,12 +55,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 
 	if err != nil {
 		state.Logger.Error("Failed to construct event", zap.Error(err))
-		return uapi.HttpResponse{
-			Status: http.StatusBadRequest,
-			Json: types.ApiError{
-				Message: "Invalid request body",
-			},
-		}
+		return resp.BadRequest("Invalid request body")
 	}
 
 	var s stripe.CheckoutSession
@@ -79,8 +65,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	case "checkout.session.completed":
 		err := jsonimpl.Unmarshal(event.Data.Raw, &s)
 		if err != nil {
-			state.Logger.Error("Failed to unmarshal event data", zap.Error(err))
-			return uapi.DefaultResponse(http.StatusInternalServerError)
+			return resp.Err("Failed to unmarshal event data", err)
 		}
 
 		if s.PaymentStatus != stripe.CheckoutSessionPaymentStatusPaid {
@@ -94,16 +79,14 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	case "checkout.session.async_payment_succeeded":
 		err := jsonimpl.Unmarshal(event.Data.Raw, &s)
 		if err != nil {
-			state.Logger.Error("Failed to unmarshal event data", zap.Error(err))
-			return uapi.DefaultResponse(http.StatusInternalServerError)
+			return resp.Err("Failed to unmarshal event data", err)
 		}
 
 	case "checkout.session.async_payment_failed":
 		var s stripe.CheckoutSession
 		err := jsonimpl.Unmarshal(event.Data.Raw, &s)
 		if err != nil {
-			state.Logger.Error("Failed to unmarshal event data", zap.Error(err))
-			return uapi.DefaultResponse(http.StatusInternalServerError)
+			return resp.Err("Failed to unmarshal event data", err)
 		}
 
 		failed = true

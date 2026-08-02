@@ -1,3 +1,7 @@
+// Package get_apps_meta implements GET /apps/meta — "Get Apps Meta".
+//
+// Gets the current applications metadata. Returns a `AppMeta` object. See
+// schema for more info.
 package get_apps_meta
 
 import (

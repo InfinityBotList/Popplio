@@ -1,3 +1,8 @@
+// Package resolvers loads the entities that belong to a team.
+//
+// It is separate from popplio/teams because it depends on the bot and server
+// asset packages under routes/, and folding it in would make popplio/teams a
+// dependency of most of the route tree.
 package resolvers
 
 import (

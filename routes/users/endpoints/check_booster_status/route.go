@@ -1,7 +1,13 @@
+// Package check_booster_status implements GET /users/{id}/booster — "Check
+// Booster Status".
+//
+// Returns the booster status of a user. This can be used to check
+// eligibility to redeem booster perks.
 package check_booster_status
 
 import (
 	"net/http"
+	"popplio/api/resp"
 
 	"popplio/routes/payments/assets"
 	"popplio/types"
@@ -36,12 +42,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	idSnow, err := snowflake.Parse(id)
 
 	if err != nil {
-		return uapi.HttpResponse{
-			Json: types.ApiError{
-				Message: "Invalid ID",
-			},
-			Status: http.StatusBadRequest,
-		}
+		return resp.BadRequest("Invalid ID")
 	}
 
 	return uapi.HttpResponse{

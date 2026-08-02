@@ -1,3 +1,6 @@
+// Package auth mounts the "API Tokens" group of API routes.
+//
+// These API endpoints are related to API Tokens on IBL
 package auth
 
 import (

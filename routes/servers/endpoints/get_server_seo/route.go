@@ -1,8 +1,14 @@
+// Package get_server_seo implements GET /servers/{id}/seo — "Get Server SEO
+// Info".
+//
+// Gets the minimal SEO information about a server for embed/search purposes.
+// Used by v4 website for meta tags
 package get_server_seo
 
 import (
 	"errors"
 	"net/http"
+	"popplio/api/resp"
 
 	"popplio/state"
 	"popplio/types"
@@ -43,8 +49,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	}
 
 	if err != nil {
-		state.Logger.Error("Error while getting server [queryrow]", zap.Error(err), zap.String("serverID", id))
-		return uapi.DefaultResponse(http.StatusInternalServerError)
+		return resp.Err("Error while getting server [queryrow]", err, zap.String("serverID", id))
 	}
 
 	seoData := types.SEO{

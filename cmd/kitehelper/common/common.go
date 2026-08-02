@@ -1,3 +1,8 @@
+// Package common holds the database and console helpers shared by
+// kitehelper's subcommands.
+//
+// Because these commands change production schemas, the prompting helpers
+// here default to refusing rather than proceeding when input is unavailable.
 package common
 
 import (

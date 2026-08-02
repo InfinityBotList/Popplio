@@ -1,3 +1,8 @@
+// Package assets holds the payment logic shared between endpoints.
+//
+// It defines the purchasable plans, resolves a payment into the perks it
+// grants, and determines a user's server-booster status — all of which both
+// the Stripe and PayPal flows need.
 package assets
 
 import (

@@ -1,3 +1,4 @@
+// Package assets resolves a bot pack into the bots it contains.
 package assets
 
 import (

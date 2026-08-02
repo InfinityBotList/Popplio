@@ -1,7 +1,14 @@
+// Package get_all_user_votes implements GET
+// /users/{uid}/{target_type}/{target_id}/votes/@all — "Get All User Votes".
+//
+// Gets all votes (paginated by 10) of a user on an entity. This endpoint is
+// currently public as the same data can be found through #vote-logs in
+// discord. Note that for compatibility, a trailing 's' is removed
 package get_all_user_votes
 
 import (
 	"net/http"
+	"popplio/api/resp"
 	"strconv"
 	"strings"
 
@@ -75,10 +82,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	}
 
 	if uid == "" || targetId == "" || targetType == "" {
-		return uapi.HttpResponse{
-			Status: http.StatusBadRequest,
-			Json:   types.ApiError{Message: "Both target_id and target_type must be specified"},
-		}
+		return resp.BadRequest("Both target_id and target_type must be specified")
 	}
 
 	pageNum, err := strconv.ParseUint(page, 10, 32)
@@ -93,15 +97,13 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	rows, err := state.Pool.Query(d.Context, "SELECT "+entityVoteCols+" FROM entity_votes WHERE target_id = $1 AND target_type = $2 AND author = $3 LIMIT $4 OFFSET $5", targetId, targetType, uid, limit, offset)
 
 	if err != nil {
-		state.Logger.Error("Failed to get user entity votes", zap.Error(err), zap.String("userId", uid), zap.String("targetId", targetId), zap.String("targetType", targetType))
-		return uapi.DefaultResponse(http.StatusInternalServerError)
+		return resp.Err("Failed to get user entity votes", err, zap.String("userId", uid), zap.String("targetId", targetId), zap.String("targetType", targetType))
 	}
 
 	ev, err := pgx.CollectRows(rows, pgx.RowToStructByName[types.EntityVote])
 
 	if err != nil {
-		state.Logger.Error("Failed to get user entity votes", zap.Error(err), zap.String("userId", uid), zap.String("targetId", targetId), zap.String("targetType", targetType))
-		return uapi.DefaultResponse(http.StatusInternalServerError)
+		return resp.Err("Failed to get user entity votes", err, zap.String("userId", uid), zap.String("targetId", targetId), zap.String("targetType", targetType))
 	}
 
 	var count uint64
@@ -109,8 +111,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	err = state.Pool.QueryRow(d.Context, "SELECT COUNT(*) FROM entity_votes WHERE target_id = $1 AND target_type = $2 AND author = $3", targetId, targetType, uid).Scan(&count)
 
 	if err != nil {
-		state.Logger.Error("Failed to get user entity votes", zap.Error(err), zap.String("userId", uid), zap.String("targetId", targetId), zap.String("targetType", targetType))
-		return uapi.DefaultResponse(http.StatusInternalServerError)
+		return resp.Err("Failed to get user entity votes", err, zap.String("userId", uid), zap.String("targetId", targetId), zap.String("targetType", targetType))
 	}
 
 	data := types.PagedResult[[]types.EntityVote]{

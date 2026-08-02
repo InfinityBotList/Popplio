@@ -1,7 +1,13 @@
+// Package patch_pack implements PATCH /users/{uid}/packs/{id} — "Patch
+// Pack".
+//
+// Edits a pack you are owner of based on the URL only. Returns 204 on
+// success
 package patch_pack
 
 import (
 	"net/http"
+	"popplio/api/resp"
 	"popplio/state"
 	"popplio/types"
 
@@ -90,17 +96,11 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	}
 
 	if owner != d.Auth.ID {
-		return uapi.HttpResponse{
-			Status: http.StatusForbidden,
-			Json:   types.ApiError{Message: "You are not the owner of this pack"},
-		}
+		return resp.Forbidden("You are not the owner of this pack")
 	}
 
 	if len(payload.Bots)+len(payload.Servers) == 0 {
-		return uapi.HttpResponse{
-			Status: http.StatusBadRequest,
-			Json:   types.ApiError{Message: "A pack must contain at least one bot or server"},
-		}
+		return resp.BadRequest("A pack must contain at least one bot or server")
 	}
 
 	// Check that all bots exist. Anyone may add any existing bot/server to a
@@ -110,17 +110,11 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		botUser, err := dovewing.GetUser(d.Context, bot, state.DovewingPlatformDiscord)
 
 		if err != nil {
-			return uapi.HttpResponse{
-				Status: http.StatusBadRequest,
-				Json:   types.ApiError{Message: "One of the bot you wish to add does not exist [" + bot + "]: " + err.Error()},
-			}
+			return resp.BadRequest("One of the bot you wish to add does not exist [" + bot + "]: " + err.Error())
 		}
 
 		if !botUser.Bot {
-			return uapi.HttpResponse{
-				Status: http.StatusBadRequest,
-				Json:   types.ApiError{Message: "One of the bot you wish to add is not actually a bot [" + bot + "]"},
-			}
+			return resp.BadRequest("One of the bot you wish to add is not actually a bot [" + bot + "]")
 		}
 	}
 
@@ -131,17 +125,11 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		err = state.Pool.QueryRow(d.Context, "SELECT COUNT(*) FROM servers WHERE server_id = $1", server).Scan(&serverCount)
 
 		if err != nil {
-			return uapi.HttpResponse{
-				Status: http.StatusInternalServerError,
-				Json:   types.ApiError{Message: "Error checking if server exists: " + err.Error()},
-			}
+			return resp.ErrBody("Error checking if server exists:", "Error checking if server exists: "+err.Error(), err)
 		}
 
 		if serverCount == 0 {
-			return uapi.HttpResponse{
-				Status: http.StatusBadRequest,
-				Json:   types.ApiError{Message: "One of the servers you wish to add does not exist [" + server + "]"},
-			}
+			return resp.BadRequest("One of the servers you wish to add does not exist [" + server + "]")
 		}
 	}
 

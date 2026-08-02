@@ -1,9 +1,14 @@
+// Package get_bots_index implements GET /bots/@index — "Get Bots Index".
+//
+// Gets the index of the bot-side of the list. Returns a `ListIndexBot`
+// object
 package get_bots_index
 
 import (
 	"context"
 	"fmt"
 	"net/http"
+	"popplio/api/resp"
 	"strings"
 
 	"popplio/db"
@@ -40,87 +45,71 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	// Certified Bots
 	certRows, err := state.Pool.Query(d.Context, "SELECT "+indexBotCols+" FROM bots WHERE type = 'certified' ORDER BY approximate_votes DESC LIMIT 9")
 	if err != nil {
-		state.Logger.Error("Error while getting certified bots", zap.Error(err))
-		return uapi.DefaultResponse(http.StatusInternalServerError)
+		return resp.Err("Error while getting certified bots", err)
 	}
 	listIndex.Certified, err = processRow(d.Context, certRows)
 	if err != nil {
-		state.Logger.Error("Error while processing certified bots", zap.Error(err))
-		return uapi.DefaultResponse(http.StatusInternalServerError)
+		return resp.Err("Error while processing certified bots", err)
 	}
 
 	// Premium Bots
 	premRows, err := state.Pool.Query(d.Context, "SELECT "+indexBotCols+" FROM bots WHERE premium = true ORDER BY approximate_votes DESC LIMIT 9")
 	if err != nil {
-		state.Logger.Error("Error while getting premium bots", zap.Error(err))
-		return uapi.DefaultResponse(http.StatusInternalServerError)
+		return resp.Err("Error while getting premium bots", err)
 	}
 	listIndex.Premium, err = processRow(d.Context, premRows)
 	if err != nil {
-		state.Logger.Error("Error while processing premium bots", zap.Error(err))
-		return uapi.DefaultResponse(http.StatusInternalServerError)
+		return resp.Err("Error while processing premium bots", err)
 	}
 
 	// Most Viewed Bots
 	mostViewedRows, err := state.Pool.Query(d.Context, "SELECT "+indexBotCols+" FROM bots WHERE type = 'approved' OR type = 'certified' ORDER BY clicks DESC LIMIT 9")
 	if err != nil {
-		state.Logger.Error("Error while getting most viewed bots", zap.Error(err))
-		return uapi.DefaultResponse(http.StatusInternalServerError)
+		return resp.Err("Error while getting most viewed bots", err)
 	}
 	listIndex.MostViewed, err = processRow(d.Context, mostViewedRows)
 	if err != nil {
-		state.Logger.Error("Error while processing most viewed bots", zap.Error(err))
-		return uapi.DefaultResponse(http.StatusInternalServerError)
+		return resp.Err("Error while processing most viewed bots", err)
 	}
 
 	// Recently Added Bots
 	recentlyAddedRows, err := state.Pool.Query(d.Context, "SELECT "+indexBotCols+" FROM bots WHERE type = 'approved' ORDER BY created_at DESC LIMIT 9")
 	if err != nil {
-		state.Logger.Error("Error while getting recently added bots", zap.Error(err))
-		return uapi.DefaultResponse(http.StatusInternalServerError)
+		return resp.Err("Error while getting recently added bots", err)
 	}
 	listIndex.RecentlyAdded, err = processRow(d.Context, recentlyAddedRows)
 	if err != nil {
-		state.Logger.Error("Error while processing recently added bots", zap.Error(err))
-		return uapi.DefaultResponse(http.StatusInternalServerError)
+		return resp.Err("Error while processing recently added bots", err)
 	}
 
 	// Top Voted Bots
 	topVotedRows, err := state.Pool.Query(d.Context, "SELECT "+indexBotCols+" FROM bots WHERE type = 'approved' OR type = 'certified' ORDER BY approximate_votes DESC LIMIT 9")
 	if err != nil {
-		state.Logger.Error("Error while getting top voted bots", zap.Error(err))
-		return uapi.DefaultResponse(http.StatusInternalServerError)
+		return resp.Err("Error while getting top voted bots", err)
 	}
 	listIndex.TopVoted, err = processRow(d.Context, topVotedRows)
 	if err != nil {
-		state.Logger.Error("Error while processing top voted bots", zap.Error(err))
-		return uapi.DefaultResponse(http.StatusInternalServerError)
+		return resp.Err("Error while processing top voted bots", err)
 	}
 
 	// Packs
 	rows, err := state.Pool.Query(d.Context, "SELECT "+packCols+" FROM packs ORDER BY created_at DESC LIMIT 12")
 
 	if err != nil {
-		state.Logger.Error("Error while getting packs [db fetch]", zap.Error(err))
-		return uapi.DefaultResponse(http.StatusInternalServerError)
+		return resp.Err("Error while getting packs [db fetch]", err)
 	}
 
 	listIndex.Packs, err = pgx.CollectRows(rows, pgx.RowToStructByName[types.BotPack])
 
 	if err != nil {
-		state.Logger.Error("Error while getting packs [collect]", zap.Error(err))
-		return uapi.DefaultResponse(http.StatusInternalServerError)
+		return resp.Err("Error while getting packs [collect]", err)
 	}
 
 	for i := range listIndex.Packs {
 		err = assets.ResolveBotPack(d.Context, &listIndex.Packs[i])
 
 		if err != nil {
-			state.Logger.Error("Error while resolving user pack", zap.Error(err), zap.String("url", listIndex.Packs[i].URL))
-			return uapi.HttpResponse{
-				Status: http.StatusInternalServerError,
-				Json:   types.ApiError{Message: "Error resolving user pack."},
-			}
+			return resp.ErrBody("Error while resolving user pack", "Error resolving user pack.", err, zap.String("url", listIndex.Packs[i].URL))
 		}
 	}
 

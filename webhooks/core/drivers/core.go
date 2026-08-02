@@ -1,3 +1,9 @@
+// Package drivers dispatches a webhook event to the right target.
+//
+// A Driver knows how to resolve one target type (bot, server, team) to its
+// configured webhook and how to describe it in the payload. Splitting on
+// target type here is what keeps event definitions free of per-entity
+// special cases.
 package drivers
 
 import (

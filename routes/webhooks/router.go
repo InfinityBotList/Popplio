@@ -1,3 +1,6 @@
+// Package webhooks mounts the "Webhooks" group of API routes.
+//
+// These API endpoints are related to webhooks on IBL
 package webhooks
 
 import (

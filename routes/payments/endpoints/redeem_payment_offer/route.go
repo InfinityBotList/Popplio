@@ -1,10 +1,14 @@
+// Package redeem_payment_offer implements POST
+// /users/{id}/redeem-payment-offer — "Redeem Payment Offer".
+//
+// Redeems a payment offer for a user given a redeem code
 package redeem_payment_offer
 
 import (
 	"net/http"
+	"popplio/api/resp"
 	"popplio/routes/payments/assets"
 	"popplio/state"
-	"popplio/types"
 	"time"
 
 	"github.com/disgoorg/snowflake/v2"
@@ -48,12 +52,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	code := r.URL.Query().Get("code")
 
 	if code == "" {
-		return uapi.HttpResponse{
-			Json: types.ApiError{
-				Message: "Error: No code provided",
-			},
-			Status: http.StatusBadRequest,
-		}
+		return resp.BadRequest("Error: No code provided")
 	}
 
 	limit, err := ratelimit.Ratelimit{
@@ -63,18 +62,11 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	}.Limit(d.Context, r)
 
 	if err != nil {
-		state.Logger.Error("Error while ratelimiting", zap.Error(err), zap.String("bucket", "payments"))
-		return uapi.DefaultResponse(http.StatusInternalServerError)
+		return resp.Err("Error while ratelimiting", err, zap.String("bucket", "payments"))
 	}
 
 	if limit.Exceeded {
-		return uapi.HttpResponse{
-			Json: types.ApiError{
-				Message: "You are being ratelimited. Please try again in " + limit.TimeToReset.String(),
-			},
-			Headers: limit.Headers(),
-			Status:  http.StatusTooManyRequests,
-		}
+		return resp.RateLimited(limit)
 	}
 
 	var create assets.CreatePerkData
@@ -99,24 +91,14 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 
 	if err != nil {
 		state.Logger.Error("Error while finding perk", zap.Error(err), zap.String("userID", d.Auth.ID))
-		return uapi.HttpResponse{
-			Status: http.StatusBadRequest,
-			Json: types.ApiError{
-				Message: "Error: " + err.Error(),
-			},
-		}
+		return resp.BadRequest("Error: " + err.Error())
 	}
 
 	switch code {
 	case "BOOSTPREMIUM":
 		// Ensure bronze is the perk
 		if perk.ID != "bronze" {
-			return uapi.HttpResponse{
-				Status: http.StatusBadRequest,
-				Json: types.ApiError{
-					Message: "This offer code is only valid for the bronze plan",
-				},
-			}
+			return resp.BadRequest("This offer code is only valid for the bronze plan")
 		}
 
 		// Check that the user is in fact a booster
@@ -124,23 +106,13 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 
 		if err != nil {
 			state.Logger.Error("Error while parsing snowflake", zap.Error(err), zap.String("userID", d.Auth.ID))
-			return uapi.HttpResponse{
-				Status: http.StatusBadRequest,
-				Json: types.ApiError{
-					Message: "Error: " + err.Error(),
-				},
-			}
+			return resp.BadRequest("Error: " + err.Error())
 		}
 
 		bs := assets.CheckUserBoosterStatus(userId)
 
 		if !bs.IsBooster {
-			return uapi.HttpResponse{
-				Status: http.StatusBadRequest,
-				Json: types.ApiError{
-					Message: "This offer code is only valid for boosters",
-				},
-			}
+			return resp.BadRequest("This offer code is only valid for boosters")
 		}
 
 		var lastRedeemedBoosterOffer *time.Time
@@ -148,23 +120,13 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 
 		if err != nil {
 			state.Logger.Error("Error while checking last booster claim", zap.Error(err), zap.String("userID", d.Auth.ID))
-			return uapi.HttpResponse{
-				Status: http.StatusBadRequest,
-				Json: types.ApiError{
-					Message: "Error: " + err.Error(),
-				},
-			}
+			return resp.BadRequest("Error: " + err.Error())
 		}
 
 		// Check the last time the user redeemed a booster offer
 		if lastRedeemedBoosterOffer != nil {
 			if time.Since(*lastRedeemedBoosterOffer) < 30*24*time.Hour {
-				return uapi.HttpResponse{
-					Status: http.StatusBadRequest,
-					Json: types.ApiError{
-						Message: "You can only redeem a booster offer once every 30 days",
-					},
-				}
+				return resp.BadRequest("You can only redeem a booster offer once every 30 days")
 			}
 		}
 
@@ -172,19 +134,9 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 
 		if err != nil {
 			state.Logger.Error("Error while giving perks", zap.Error(err), zap.String("userID", d.Auth.ID))
-			return uapi.HttpResponse{
-				Status: http.StatusBadRequest,
-				Json: types.ApiError{
-					Message: "Error: " + err.Error(),
-				},
-			}
+			return resp.BadRequest("Error: " + err.Error())
 		}
 	}
 
-	return uapi.HttpResponse{
-		Status: http.StatusBadRequest,
-		Json: types.ApiError{
-			Message: "Invalid offer code",
-		},
-	}
+	return resp.BadRequest("Invalid offer code")
 }

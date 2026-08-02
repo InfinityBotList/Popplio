@@ -1,3 +1,9 @@
+// Command popplio serves the Infinity Bot List API.
+//
+// It mounts every router under routes/, starts the Arcadia staff panel and
+// the webhook and notification background loops, and serves them behind a
+// single chi mux. Startup uses tableflip so a redeploy can hand the
+// listening socket to the new process without dropping connections.
 package main
 
 import (

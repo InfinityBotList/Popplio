@@ -1,9 +1,14 @@
+// Package manage_app implements PATCH /staff/apps/{app_id} — "Staff: Manage
+// Application".
+//
+// Approves or denies an application. Returns a 204 on success.
 package manage_app
 
 import (
 	"errors"
 	"fmt"
 	"net/http"
+	"popplio/api/resp"
 	"popplio/apps"
 	"popplio/db"
 	"popplio/routes/staff/assets"
@@ -58,31 +63,20 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	d.Auth.ID, err = assets.EnsurePanelAuth(d.Context, r)
 
 	if err != nil {
-		return uapi.HttpResponse{
-			Status: http.StatusFailedDependency,
-			Json:   types.ApiError{Message: err.Error()},
-		}
+		return resp.Status(http.StatusFailedDependency, err.Error())
 	}
 
 	permList, err := validators.GetUserStaffPerms(d.Context, d.Auth.ID)
 
 	if err != nil {
-		return uapi.HttpResponse{
-			Status: http.StatusFailedDependency,
-			Json:   types.ApiError{Message: err.Error()},
-		}
+		return resp.Status(http.StatusFailedDependency, err.Error())
 	}
 
 	resolvedPerms := permList.Resolve()
 
 	// Check if the user has the permission to view apps
 	if !kittycat.HasPerm(resolvedPerms, kittycat.Permission{Namespace: "apps", Perm: "manage"}) {
-		return uapi.HttpResponse{
-			Status: http.StatusForbidden,
-			Json: types.ApiError{
-				Message: "You do not have permission to manage apps.",
-			},
-		}
+		return resp.Forbidden("You do not have permission to manage apps.")
 	}
 
 	var payload ManageApp
@@ -107,8 +101,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	row, err := state.Pool.Query(d.Context, "SELECT "+appCols+" FROM apps WHERE app_id = $1", appId)
 
 	if err != nil {
-		state.Logger.Error("Failed to fetch application info", zap.Error(err), zap.String("appId", appId))
-		return uapi.DefaultResponse(http.StatusInternalServerError)
+		return resp.Err("Failed to fetch application info", err, zap.String("appId", appId))
 	}
 
 	app, err := pgx.CollectOneRow(row, pgx.RowToStructByName[types.AppResponse])
@@ -118,17 +111,11 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	}
 
 	if err != nil {
-		state.Logger.Error("Failed to fetch application info", zap.Error(err), zap.String("appId", appId))
-		return uapi.DefaultResponse(http.StatusInternalServerError)
+		return resp.Err("Failed to fetch application info", err, zap.String("appId", appId))
 	}
 
 	if app.State != "pending" {
-		return uapi.HttpResponse{
-			Status: http.StatusBadRequest,
-			Json: types.ApiError{
-				Message: "This app is not pending approval",
-			},
-		}
+		return resp.BadRequest("This app is not pending approval")
 	}
 
 	position := apps.FindPosition(app.Position)
@@ -138,16 +125,10 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		_, err = state.Pool.Exec(d.Context, "DELETE FROM apps WHERE app_id = $1", appId)
 
 		if err != nil {
-			state.Logger.Error("Failed to delete app", zap.Error(err), zap.String("appId", appId))
-			return uapi.DefaultResponse(http.StatusInternalServerError)
+			return resp.Err("Failed to delete app", err, zap.String("appId", appId))
 		}
 
-		return uapi.HttpResponse{
-			Status: http.StatusBadRequest,
-			Json: types.ApiError{
-				Message: "This position doesn't exist and so the app has been deleted.",
-			},
-		}
+		return resp.BadRequest("This position doesn't exist and so the app has been deleted.")
 	}
 
 	var embeds []discord.Embed
@@ -158,20 +139,14 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 
 			if err != nil {
 				state.Logger.Error("Error running review logic", zap.Error(err), zap.String("appId", appId))
-				return uapi.HttpResponse{
-					Json: types.ApiError{
-						Message: "Error: " + err.Error(),
-					},
-					Status: http.StatusBadRequest,
-				}
+				return resp.BadRequest("Error: " + err.Error())
 			}
 		}
 
 		_, err = state.Pool.Exec(d.Context, "UPDATE apps SET state = 'approved', review_feedback = $2 WHERE app_id = $1", appId, payload.Reason)
 
 		if err != nil {
-			state.Logger.Error("Failed to update app", zap.Error(err), zap.String("appId", appId))
-			return uapi.DefaultResponse(http.StatusInternalServerError)
+			return resp.Err("Failed to update app", err, zap.String("appId", appId))
 		}
 
 		embeds = []discord.Embed{
@@ -215,20 +190,14 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 
 			if err != nil {
 				state.Logger.Error("Error running review logic", zap.Error(err), zap.String("appId", appId))
-				return uapi.HttpResponse{
-					Json: types.ApiError{
-						Message: "Error: " + err.Error(),
-					},
-					Status: http.StatusBadRequest,
-				}
+				return resp.BadRequest("Error: " + err.Error())
 			}
 		}
 
 		_, err = state.Pool.Exec(d.Context, "UPDATE apps SET state = 'denied', review_feedback = $2 WHERE app_id = $1", appId, payload.Reason)
 
 		if err != nil {
-			state.Logger.Error("Failed to update app", zap.Error(err), zap.String("appId", appId))
-			return uapi.DefaultResponse(http.StatusInternalServerError)
+			return resp.Err("Failed to update app", err, zap.String("appId", appId))
 		}
 
 		embeds = []discord.Embed{
@@ -274,8 +243,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	})
 
 	if err != nil {
-		state.Logger.Error("Failed to send message to apps channel", zap.Error(err), zap.String("appId", appId))
-		return uapi.DefaultResponse(http.StatusInternalServerError)
+		return resp.Err("Failed to send message to apps channel", err, zap.String("appId", appId))
 	}
 
 	return uapi.DefaultResponse(http.StatusNoContent)

@@ -1,8 +1,14 @@
+// Package patch_bot_settings implements PATCH /bots/{id}/settings — "Update
+// Bot Settings".
+//
+// Updates a bots settings. You must have 'Edit Bot Settings' in the team if
+// the bot is in a team. Returns 204 on success
 package patch_bot_settings
 
 import (
 	"fmt"
 	"net/http"
+	"popplio/api/resp"
 	"popplio/state"
 	"popplio/types"
 	"popplio/validators"
@@ -92,21 +98,14 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	err = validators.ValidateExtraLinks(payload.ExtraLinks)
 
 	if err != nil {
-		return uapi.HttpResponse{
-			Status: http.StatusBadRequest,
-			Json:   types.ApiError{Message: err.Error()},
-		}
+		return resp.BadRequest(err.Error())
 	}
 
 	// Get bot discord user
 	botUser, err := dovewing.GetUser(d.Context, id, state.DovewingPlatformDiscord)
 
 	if err != nil {
-		state.Logger.Error("Failed to get bot user: ", zap.Error(err), zap.String("userID", d.Auth.ID), zap.String("botID", id))
-		return uapi.HttpResponse{
-			Status: http.StatusInternalServerError,
-			Json:   types.ApiError{Message: "Failed to get bot user."},
-		}
+		return resp.ErrBody("Failed to get bot user: ", "Failed to get bot user.", err, zap.String("userID", d.Auth.ID), zap.String("botID", id))
 	}
 
 	// Update the bot
@@ -114,11 +113,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	botArgs := updateBotsArgs(payload)
 
 	if len(updateSql) != len(botArgs) {
-		state.Logger.Error("updateSql and botArgs do not match in length", zap.Any("updateSql", updateSql), zap.Any("botArgs", botArgs))
-		return uapi.HttpResponse{
-			Status: http.StatusInternalServerError,
-			Json:   types.ApiError{Message: "Internal Error: The number of columns and arguments do not match"},
-		}
+		return resp.ErrBody("updateSql and botArgs do not match in length", "Internal Error: The number of columns and arguments do not match", nil, zap.Any("updateSql", updateSql), zap.Any("botArgs", botArgs))
 	}
 
 	// Add the bot id to the end of the args
@@ -128,8 +123,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	_, err = state.Pool.Exec(d.Context, "UPDATE bots SET "+updateSqlStr+", updated_at = NOW() WHERE bot_id=$"+strconv.Itoa(len(botArgs)), botArgs...)
 
 	if err != nil {
-		state.Logger.Error("Failed to update bot: ", zap.Error(err), zap.String("userID", d.Auth.ID), zap.String("botID", id))
-		return uapi.DefaultResponse(http.StatusInternalServerError)
+		return resp.Err("Failed to update bot: ", err, zap.String("userID", d.Auth.ID), zap.String("botID", id))
 	}
 
 	// Send a message to the bot logs channel
@@ -164,11 +158,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	})
 
 	if err != nil {
-		state.Logger.Error("Error while sending embed to mod logs channel", zap.Error(err), zap.String("serverID", id))
-		return uapi.HttpResponse{
-			Status: http.StatusInternalServerError,
-			Json:   types.ApiError{Message: "Internal Error: While bot update was successful, an error occurred while sending the update embed to the mod logs channel"},
-		}
+		return resp.ErrBody("Error while sending embed to mod logs channel", "Internal Error: While bot update was successful, an error occurred while sending the update embed to the mod logs channel", err, zap.String("serverID", id))
 	}
 
 	return uapi.DefaultResponse(http.StatusNoContent)

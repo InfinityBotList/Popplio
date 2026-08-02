@@ -1,3 +1,4 @@
+// Package assets resolves vanity URLs to the entity they point at.
 package assets
 
 import (

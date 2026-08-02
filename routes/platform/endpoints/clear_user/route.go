@@ -1,10 +1,15 @@
+// Package clear_user implements DELETE /platform/user/{id} — "Clear Platform
+// User Cache".
+//
+// This endpoint will clear the cache for a user id on a given platform. This
+// is useful if the user's data has changes
 package clear_user
 
 import (
 	"net/http"
+	"popplio/api/resp"
 
 	"popplio/state"
-	"popplio/types"
 
 	"github.com/go-chi/chi/v5"
 	docs "github.com/infinitybotlist/eureka/doclib"
@@ -47,12 +52,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	case "discord":
 		dovewingPlatform = state.DovewingPlatformDiscord
 	default:
-		return uapi.HttpResponse{
-			Status: http.StatusUnsupportedMediaType,
-			Json: types.ApiError{
-				Message: "Unsupported platform. Only `discord` is supported at this time as a platform.",
-			},
-		}
+		return resp.Status(http.StatusUnsupportedMediaType, "Unsupported platform. Only `discord` is supported at this time as a platform.")
 	}
 
 	res, err := dovewing.ClearUser(d.Context, id, dovewingPlatform, dovewing.ClearUserReq{})

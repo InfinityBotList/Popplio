@@ -1,7 +1,12 @@
+// Package get_user_reminders implements GET /users/{id}/reminders — "Get
+// User Reminders".
+//
+// Gets a users reminders
 package get_user_reminders
 
 import (
 	"net/http"
+	"popplio/api/resp"
 	"strings"
 
 	"popplio/db"
@@ -46,15 +51,13 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	rows, err := state.Pool.Query(d.Context, "SELECT "+reminderCols+" FROM user_reminders WHERE user_id = $1", id)
 
 	if err != nil {
-		state.Logger.Error("Error querying reminders [db fetch]", zap.Error(err), zap.String("user_id", id))
-		return uapi.DefaultResponse(http.StatusInternalServerError)
+		return resp.Err("Error querying reminders [db fetch]", err, zap.String("user_id", id))
 	}
 
 	reminders, err := pgx.CollectRows(rows, pgx.RowToStructByName[types.Reminder])
 
 	if err != nil {
-		state.Logger.Error("Error querying reminders [collect]", zap.Error(err), zap.String("user_id", id))
-		return uapi.DefaultResponse(http.StatusInternalServerError)
+		return resp.Err("Error querying reminders [collect]", err, zap.String("user_id", id))
 	}
 
 	for i, reminder := range reminders {

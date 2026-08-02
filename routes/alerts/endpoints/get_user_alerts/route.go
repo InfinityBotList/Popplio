@@ -1,7 +1,12 @@
+// Package get_user_alerts implements GET /users/{id}/alerts — "Get User
+// Alerts".
+//
+// Gets a users alerts.
 package get_user_alerts
 
 import (
 	"net/http"
+	"popplio/api/resp"
 	"popplio/db"
 	"popplio/state"
 	"popplio/types"
@@ -56,12 +61,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	pageNum, err := strconv.ParseUint(page, 10, 32)
 
 	if err != nil {
-		return uapi.HttpResponse{
-			Status: http.StatusBadRequest,
-			Json: types.ApiError{
-				Message: "Page must be an integer",
-			},
-		}
+		return resp.BadRequest("Page must be an integer")
 	}
 
 	limit := perPage
@@ -70,15 +70,13 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	rows, err := state.Pool.Query(d.Context, "SELECT "+alertColsStr+" FROM alerts WHERE user_id = $1 ORDER BY created_at DESC, priority ASC LIMIT $2 OFFSET $3", d.Auth.ID, limit, offset)
 
 	if err != nil {
-		state.Logger.Error("Error getting alerts [db]", zap.Error(err), zap.String("userID", d.Auth.ID), zap.Int("limit", limit), zap.Uint64("offset", offset))
-		return uapi.DefaultResponse(http.StatusInternalServerError)
+		return resp.Err("Error getting alerts [db]", err, zap.String("userID", d.Auth.ID), zap.Int("limit", limit), zap.Uint64("offset", offset))
 	}
 
 	alerts, err := pgx.CollectRows(rows, pgx.RowToStructByName[types.Alert])
 
 	if err != nil {
-		state.Logger.Error("Error getting alerts [collect]", zap.Error(err), zap.String("userID", d.Auth.ID), zap.Int("limit", limit), zap.Uint64("offset", offset))
-		return uapi.DefaultResponse(http.StatusInternalServerError)
+		return resp.Err("Error getting alerts [collect]", err, zap.String("userID", d.Auth.ID), zap.Int("limit", limit), zap.Uint64("offset", offset))
 	}
 
 	var count uint64
@@ -86,8 +84,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	err = state.Pool.QueryRow(d.Context, "SELECT COUNT(*) FROM alerts WHERE user_id = $1", d.Auth.ID).Scan(&count)
 
 	if err != nil {
-		state.Logger.Error("Error getting total alert count", zap.Error(err), zap.String("userID", d.Auth.ID), zap.Int("limit", limit), zap.Uint64("offset", offset))
-		return uapi.DefaultResponse(http.StatusInternalServerError)
+		return resp.Err("Error getting total alert count", err, zap.String("userID", d.Auth.ID), zap.Int("limit", limit), zap.Uint64("offset", offset))
 	}
 
 	var unackedCount uint64
@@ -95,8 +92,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	err = state.Pool.QueryRow(d.Context, "SELECT COUNT(*) FROM alerts WHERE user_id = $1 AND acked = false", d.Auth.ID).Scan(&unackedCount)
 
 	if err != nil {
-		state.Logger.Error("Error getting total unacked alert count", zap.Error(err), zap.String("userID", d.Auth.ID), zap.Int("limit", limit), zap.Uint64("offset", offset))
-		return uapi.DefaultResponse(http.StatusInternalServerError)
+		return resp.Err("Error getting total unacked alert count", err, zap.String("userID", d.Auth.ID), zap.Int("limit", limit), zap.Uint64("offset", offset))
 	}
 
 	data := types.PagedResult[types.AlertList]{

@@ -1,7 +1,13 @@
+// Package create_session implements POST /{target_type}/{target_id}/sessions
+// — "Create Session".
+//
+// Creates a new session returning the session token. The session token
+// cannot be read after creation.
 package create_session
 
 import (
 	"net/http"
+	"popplio/api/resp"
 	"strings"
 	"time"
 
@@ -13,7 +19,6 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-playground/validator/v10"
-	"go.uber.org/zap"
 
 	"github.com/infinitybotlist/eureka/crypto"
 	docs "github.com/infinitybotlist/eureka/doclib"
@@ -55,10 +60,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	targetType := validators.NormalizeTargetType(chi.URLParam(r, "target_type"))
 
 	if targetId == "" || targetType == "" {
-		return uapi.HttpResponse{
-			Status: http.StatusBadRequest,
-			Json:   types.ApiError{Message: "Missing target_id or target_type"},
-		}
+		return resp.BadRequest("Missing target_id or target_type")
 	}
 
 	targetType = strings.TrimSuffix(targetType, "s")
@@ -78,24 +80,15 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	}
 
 	if createData.Name == "" {
-		return uapi.HttpResponse{
-			Status: http.StatusBadRequest,
-			Json:   types.ApiError{Message: "Name is required"},
-		}
+		return resp.BadRequest("Name is required")
 	}
 
 	if createData.Type == "" {
-		return uapi.HttpResponse{
-			Status: http.StatusBadRequest,
-			Json:   types.ApiError{Message: "Type is required"},
-		}
+		return resp.BadRequest("Type is required")
 	}
 
 	if createData.Expiry <= 0 {
-		return uapi.HttpResponse{
-			Status: http.StatusBadRequest,
-			Json:   types.ApiError{Message: "Expiry must be greater than or equal to zero"},
-		}
+		return resp.BadRequest("Expiry must be greater than or equal to zero")
 	}
 
 	if len(createData.PermLimits) == 0 {
@@ -115,18 +108,11 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		managerPerms, err := teams.GetEntityPerms(d.Context, d.Auth.ID, targetType, targetId)
 
 		if err != nil {
-			state.Logger.Error("Error while getting entity perms", zap.Error(err))
-			return uapi.HttpResponse{
-				Status: http.StatusInternalServerError,
-				Json:   types.ApiError{Message: "Error while getting entity perms."},
-			}
+			return resp.ErrDetail("Error while getting entity perms", err)
 		}
 
 		if len(managerPerms) == 0 {
-			return uapi.HttpResponse{
-				Status: http.StatusForbidden,
-				Json:   types.ApiError{Message: "User does not have any permissions on this eneity whatsoever!"},
-			}
+			return resp.Forbidden("User does not have any permissions on this eneity whatsoever!")
 		}
 
 		// Set outer perm limit to the manager perms, see safety note above
@@ -156,18 +142,12 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 
 	if !perms.HasPerm(outerPermLimit, perms.Permission{Namespace: "global", Perm: teams.PermissionOwner}) {
 		if len(createData.PermLimits) == 0 {
-			return uapi.HttpResponse{
-				Status: http.StatusForbidden,
-				Json:   types.ApiError{Message: "You must have Global Owner to create sessions without specifying a permission limit"},
-			}
+			return resp.Forbidden("You must have Global Owner to create sessions without specifying a permission limit")
 		}
 
 		for _, perm := range permLimits {
 			if !perms.HasPerm(outerPermLimit, perm) {
-				return uapi.HttpResponse{
-					Status: http.StatusForbidden,
-					Json:   types.ApiError{Message: "User does not have permission to create sessions with the permission limit: " + perm.String()},
-				}
+				return resp.Forbidden("User does not have permission to create sessions with the permission limit: " + perm.String())
 			}
 		}
 	}
@@ -191,11 +171,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	).Scan(&sessionId)
 
 	if err != nil {
-		state.Logger.Error("Error while creating user session", zap.Error(err))
-		return uapi.HttpResponse{
-			Status: http.StatusInternalServerError,
-			Json:   types.ApiError{Message: "Error while creating user session."},
-		}
+		return resp.ErrDetail("Error while creating user session", err)
 	}
 
 	return uapi.HttpResponse{

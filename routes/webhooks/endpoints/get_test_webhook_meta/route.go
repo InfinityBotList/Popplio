@@ -1,7 +1,13 @@
+// Package get_test_webhook_meta implements GET
+// /{target_type}/{target_id}/webhooks/test — "Get Test Webhook Metadata".
+//
+// Responds with the metadata of all webhooks that can currently be tested.
+// Note that this does not require any specific permission
 package get_test_webhook_meta
 
 import (
 	"net/http"
+	"popplio/api/resp"
 	"slices"
 
 	"popplio/types"
@@ -60,10 +66,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	}
 
 	if len(data.Types) == 0 {
-		return uapi.HttpResponse{
-			Status: http.StatusNotImplemented,
-			Json:   types.ApiError{Message: "There are no available events for this target type"},
-		}
+		return resp.Status(http.StatusNotImplemented, "There are no available events for this target type")
 	}
 
 	return uapi.HttpResponse{

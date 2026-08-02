@@ -1,8 +1,12 @@
+// Package get_team implements GET /teams/{id} — "Get Team".
+//
+// Gets a team by ID
 package get_team
 
 import (
 	"errors"
 	"net/http"
+	"popplio/api/resp"
 	"popplio/db"
 	"popplio/state"
 	"popplio/teams/resolvers"
@@ -65,15 +69,13 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	}
 
 	if err != nil {
-		state.Logger.Error("Error querying team [db query]", zap.Error(err), zap.String("id", id))
-		return uapi.DefaultResponse(http.StatusInternalServerError)
+		return resp.Err("Error querying team [db query]", err, zap.String("id", id))
 	}
 
 	team, err := pgx.CollectOneRow(rows, pgx.RowToStructByName[types.Team])
 
 	if err != nil {
-		state.Logger.Error("Error querying team [db collect]", zap.Error(err), zap.String("id", id))
-		return uapi.DefaultResponse(http.StatusInternalServerError)
+		return resp.Err("Error querying team [db collect]", err, zap.String("id", id))
 	}
 
 	// Ensure these always marshal as `[]` rather than `null` — a nil Go
@@ -89,8 +91,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	team.Entities, err = resolvers.GetTeamEntities(d.Context, id, targets)
 
 	if err != nil {
-		state.Logger.Error("Error resolving team entities", zap.Error(err), zap.String("id", id))
-		return uapi.DefaultResponse(http.StatusInternalServerError)
+		return resp.Err("Error resolving team entities", err, zap.String("id", id))
 	}
 
 	var code string
@@ -98,8 +99,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	err = state.Pool.QueryRow(d.Context, "SELECT code FROM vanity WHERE itag = $1", team.VanityRef).Scan(&code)
 
 	if err != nil {
-		state.Logger.Error("Error while getting bot vanity code [db fetch]", zap.Error(err), zap.String("id", id), zap.String("teamId", team.ID))
-		return uapi.DefaultResponse(http.StatusInternalServerError)
+		return resp.Err("Error while getting bot vanity code [db fetch]", err, zap.String("id", id), zap.String("teamId", team.ID))
 	}
 
 	team.Vanity = code
@@ -107,8 +107,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	team.Votes, err = votes.EntityGetVoteCount(d.Context, state.Pool, id, "team")
 
 	if err != nil {
-		state.Logger.Error("Error while getting team vote count", zap.Error(err), zap.String("id", id))
-		return uapi.DefaultResponse(http.StatusInternalServerError)
+		return resp.Err("Error while getting team vote count", err, zap.String("id", id))
 	}
 
 	return uapi.HttpResponse{

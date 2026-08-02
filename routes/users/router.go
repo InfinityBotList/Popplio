@@ -1,3 +1,6 @@
+// Package users mounts the "Users" group of API routes.
+//
+// These API endpoints are related to users on IBL
 package users
 
 import (

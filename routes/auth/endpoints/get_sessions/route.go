@@ -1,8 +1,13 @@
+// Package get_sessions implements GET /{target_type}/{target_id}/sessions —
+// "Get Sessions".
+//
+// Gets all session tokens of an entity
 package get_sessions
 
 import (
 	"errors"
 	"net/http"
+	"popplio/api/resp"
 	"popplio/db"
 	"popplio/validators"
 	"strings"
@@ -12,7 +17,6 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/jackc/pgx/v5"
-	"go.uber.org/zap"
 
 	docs "github.com/infinitybotlist/eureka/doclib"
 	"github.com/infinitybotlist/eureka/uapi"
@@ -51,10 +55,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	targetType := validators.NormalizeTargetType(chi.URLParam(r, "target_type"))
 
 	if targetId == "" || targetType == "" {
-		return uapi.HttpResponse{
-			Status: http.StatusBadRequest,
-			Json:   types.ApiError{Message: "Missing target_id or target_type"},
-		}
+		return resp.BadRequest("Missing target_id or target_type")
 	}
 
 	targetType = strings.TrimSuffix(targetType, "s")
@@ -62,8 +63,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	rows, err := state.Pool.Query(d.Context, "SELECT "+sessionCols+" FROM api_sessions WHERE target_id = $1 AND target_type = $2", targetId, targetType)
 
 	if err != nil {
-		state.Logger.Error("Error while getting user tokens", zap.Error(err))
-		return uapi.DefaultResponse(http.StatusInternalServerError)
+		return resp.Err("Error while getting user tokens", err)
 	}
 
 	defer rows.Close()
@@ -71,15 +71,11 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	tokens, err := pgx.CollectRows(rows, pgx.RowToAddrOfStructByName[types.Session])
 
 	if errors.Is(err, pgx.ErrNoRows) {
-		return uapi.HttpResponse{
-			Status: http.StatusNotFound,
-			Json:   types.ApiError{Message: "No sessions found"},
-		}
+		return resp.NotFound("No sessions found")
 	}
 
 	if err != nil {
-		state.Logger.Error("Error while getting user sessions", zap.Error(err))
-		return uapi.DefaultResponse(http.StatusInternalServerError)
+		return resp.Err("Error while getting user sessions", err)
 	}
 
 	return uapi.HttpResponse{

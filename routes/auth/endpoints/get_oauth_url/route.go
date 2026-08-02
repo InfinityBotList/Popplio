@@ -1,3 +1,8 @@
+// Package get_oauth_url implements GET /auth/login/discord-oauth2 — "Get
+// Oauth2 URL".
+//
+// Gets the oauth2 url to redirect to. Primarily for externally managed
+// clients (like iblcli)
 package get_oauth_url
 
 import (

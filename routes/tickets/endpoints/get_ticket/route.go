@@ -1,8 +1,13 @@
+// Package get_ticket implements GET /tickets/{id} — "Get Ticket".
+//
+// Gets a support ticket. Requires you to be the author of the ticket or have
+// the 'staff' permission
 package get_ticket
 
 import (
 	"errors"
 	"net/http"
+	"popplio/api/resp"
 	"strings"
 
 	"popplio/db"
@@ -57,8 +62,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	err := state.Pool.QueryRow(d.Context, "SELECT user_id FROM tickets WHERE id = $1", ticketId).Scan(&userId)
 
 	if err != nil {
-		state.Logger.Error("Error getting ticket", zap.Error(err), zap.String("ticket_id", ticketId))
-		return uapi.DefaultResponse(http.StatusInternalServerError)
+		return resp.Err("Error getting ticket", err, zap.String("ticket_id", ticketId))
 	}
 
 	if userId != d.Auth.ID {
@@ -66,17 +70,11 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		sp, err := validators.GetUserStaffPerms(d.Context, d.Auth.ID)
 
 		if err != nil {
-			return uapi.HttpResponse{
-				Status: http.StatusInternalServerError,
-				Json:   types.ApiError{Message: "Failed to get user staff perms."},
-			}
+			return resp.ErrBody("Failed to get user staff perms", "Failed to get user staff perms.", err)
 		}
 
 		if !perms.HasPerm(sp.Resolve(), perms.Permission{Namespace: "popplio", Perm: "tickets"}) {
-			return uapi.HttpResponse{
-				Status: http.StatusForbidden,
-				Json:   types.ApiError{Message: "You do not have permission to view this ticket [popplio.tickets is required]"},
-			}
+			return resp.Forbidden("You do not have permission to view this ticket [popplio.tickets is required]")
 		}
 	}
 
@@ -84,8 +82,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	row, err := state.Pool.Query(d.Context, "SELECT "+ticketCols+" FROM tickets WHERE id = $1", ticketId)
 
 	if err != nil {
-		state.Logger.Error("Error getting ticket [db fetch]", zap.Error(err), zap.String("ticket_id", ticketId))
-		return uapi.DefaultResponse(http.StatusInternalServerError)
+		return resp.Err("Error getting ticket [db fetch]", err, zap.String("ticket_id", ticketId))
 	}
 
 	ticket, err := pgx.CollectOneRow(row, pgx.RowToStructByName[types.Ticket])
@@ -95,24 +92,21 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	}
 
 	if err != nil {
-		state.Logger.Error("Error getting ticket [collect]", zap.Error(err), zap.String("ticket_id", ticketId))
-		return uapi.DefaultResponse(http.StatusInternalServerError)
+		return resp.Err("Error getting ticket [collect]", err, zap.String("ticket_id", ticketId))
 	}
 
 	// Parse the ticket
 	ticket.Author, err = dovewing.GetUser(d.Context, ticket.UserID, state.DovewingPlatformDiscord)
 
 	if err != nil {
-		state.Logger.Error("Error getting ticket author [dovewing]", zap.Error(err), zap.String("ticket_id", ticketId))
-		return uapi.DefaultResponse(http.StatusInternalServerError)
+		return resp.Err("Error getting ticket author [dovewing]", err, zap.String("ticket_id", ticketId))
 	}
 
 	if ticket.CloseUserID.Valid && ticket.CloseUserID.String != "" {
 		ticket.CloseUser, err = dovewing.GetUser(d.Context, ticket.CloseUserID.String, state.DovewingPlatformDiscord)
 
 		if err != nil {
-			state.Logger.Error("Error getting ticket closer [dovewing]", zap.Error(err), zap.String("ticket_id", ticketId))
-			return uapi.DefaultResponse(http.StatusInternalServerError)
+			return resp.Err("Error getting ticket closer [dovewing]", err, zap.String("ticket_id", ticketId))
 		}
 	}
 
@@ -120,16 +114,14 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		ticket.Messages[i].Author, err = dovewing.GetUser(d.Context, ticket.Messages[i].AuthorID, state.DovewingPlatformDiscord)
 
 		if err != nil {
-			state.Logger.Error("Error getting ticket message author [dovewing]", zap.Error(err), zap.String("ticket_id", ticketId))
-			return uapi.DefaultResponse(http.StatusInternalServerError)
+			return resp.Err("Error getting ticket message author [dovewing]", err, zap.String("ticket_id", ticketId))
 		}
 
 		// Convert snowflake ID to timestamp
 		id, err := snowflake.Parse(ticket.Messages[i].ID)
 
 		if err != nil {
-			state.Logger.Error("Error parsing snowflake", zap.Error(err), zap.String("ticket_id", ticketId))
-			return uapi.DefaultResponse(http.StatusInternalServerError)
+			return resp.Err("Error parsing snowflake", err, zap.String("ticket_id", ticketId))
 		}
 
 		ticket.Messages[i].Timestamp = id.Time()

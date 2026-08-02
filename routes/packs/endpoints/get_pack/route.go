@@ -1,7 +1,11 @@
+// Package get_pack implements GET /packs/{id} — "Get Pack".
+//
+// Gets a pack on the list based on the URL.
 package get_pack
 
 import (
 	"net/http"
+	"popplio/api/resp"
 	"strings"
 
 	"popplio/db"
@@ -52,8 +56,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	row, err := state.Pool.Query(d.Context, "SELECT "+packCols+" FROM packs WHERE url = $1", id)
 
 	if err != nil {
-		state.Logger.Error("Error querying packs table [db fetch]", zap.Error(err), zap.String("url", id))
-		return uapi.DefaultResponse(http.StatusInternalServerError)
+		return resp.Err("Error querying packs table [db fetch]", err, zap.String("url", id))
 	}
 
 	pack, err := pgx.CollectOneRow(row, pgx.RowToStructByName[types.BotPack])
@@ -63,18 +66,13 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	}
 
 	if err != nil {
-		state.Logger.Error("Error querying packs table [collect]", zap.Error(err), zap.String("url", id))
-		return uapi.DefaultResponse(http.StatusInternalServerError)
+		return resp.Err("Error querying packs table [collect]", err, zap.String("url", id))
 	}
 
 	err = assets.ResolveBotPack(d.Context, &pack)
 
 	if err != nil {
-		state.Logger.Error("Error resolving bot pack", zap.Error(err), zap.String("url", id))
-		return uapi.HttpResponse{
-			Status: http.StatusInternalServerError,
-			Json:   types.ApiError{Message: "Error resolving bot pack."},
-		}
+		return resp.ErrDetail("Error resolving bot pack", err, zap.String("url", id))
 	}
 
 	return uapi.HttpResponse{

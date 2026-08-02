@@ -1,7 +1,12 @@
+// Package get_entity_permissions implements GET
+// /users/{id}/{target_type}/{target_id}/perms — "Get Entity Permissions".
+//
+// Returns the resolved permissions a user has on an entity
 package get_entity_permissions
 
 import (
 	"net/http"
+	"popplio/api/resp"
 
 	"popplio/state"
 	"popplio/teams"
@@ -52,20 +57,14 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	targetId := chi.URLParam(r, "target_id")
 
 	if targetId == "" || targetType == "" {
-		return uapi.HttpResponse{
-			Status: http.StatusBadRequest,
-			Json:   types.ApiError{Message: "Both target_id and target_type must be specified"},
-		}
+		return resp.BadRequest("Both target_id and target_type must be specified")
 	}
 
 	perms, err := teams.GetEntityPerms(d.Context, uid, targetType, targetId)
 
 	if err != nil {
 		state.Logger.Error("Error getting entity perms", zap.Error(err), zap.String("uid", uid), zap.String("target_id", targetId), zap.String("target_type", targetType))
-		return uapi.HttpResponse{
-			Status: http.StatusBadRequest,
-			Json:   types.ApiError{Message: "Error getting user perms: " + err.Error()},
-		}
+		return resp.BadRequest("Error getting user perms: " + err.Error())
 	}
 
 	return uapi.HttpResponse{

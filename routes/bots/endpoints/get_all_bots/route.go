@@ -1,7 +1,11 @@
+// Package get_all_bots implements GET /bots/@all — "Get All Bots".
+//
+// Gets all bots on the list. Returns a set of paginated `IndexBot` objects
 package get_all_bots
 
 import (
 	"net/http"
+	"popplio/api/resp"
 	"strconv"
 	"strings"
 
@@ -62,15 +66,13 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	rows, err = state.Pool.Query(d.Context, "SELECT "+indexBotCols+" FROM bots WHERE (type = 'approved' OR type = 'certified') ORDER BY created_at DESC LIMIT $1 OFFSET $2", limit, offset)
 
 	if err != nil {
-		state.Logger.Error("Error while getting all bots [db fetch]", zap.Error(err))
-		return uapi.DefaultResponse(http.StatusInternalServerError)
+		return resp.Err("Error while getting all bots [db fetch]", err)
 	}
 
 	bots, err := pgx.CollectRows(rows, pgx.RowToStructByName[types.IndexBot])
 
 	if err != nil {
-		state.Logger.Error("Error while getting all bots [collect]", zap.Error(err))
-		return uapi.DefaultResponse(http.StatusInternalServerError)
+		return resp.Err("Error while getting all bots [collect]", err)
 	}
 
 	// Resolve all bots
@@ -78,11 +80,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		err := assets.ResolveIndexBot(d.Context, &bots[i])
 
 		if err != nil {
-			state.Logger.Error("Error resolving indexbot", zap.Error(err), zap.String("botID", bots[i].BotID))
-			return uapi.HttpResponse{
-				Status: http.StatusInternalServerError,
-				Json:   types.ApiError{Message: "An error occurred while resolving index bot." + " botID: " + bots[i].BotID},
-			}
+			return resp.ErrBody("Error resolving indexbot", "An error occurred while resolving index bot."+" botID: "+bots[i].BotID, err, zap.String("botID", bots[i].BotID))
 		}
 	}
 
@@ -91,8 +89,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	err = state.Pool.QueryRow(d.Context, "SELECT COUNT(*) FROM bots").Scan(&count)
 
 	if err != nil {
-		state.Logger.Error("Error while getting bot count", zap.Error(err))
-		return uapi.DefaultResponse(http.StatusInternalServerError)
+		return resp.Err("Error while getting bot count", err)
 	}
 
 	data := types.PagedResult[[]types.IndexBot]{

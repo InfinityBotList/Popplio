@@ -1,3 +1,11 @@
+// Package constants holds the canned JSON bodies returned for generic
+// failures.
+//
+// These are raw JSON strings rather than marshalled structs because uapi
+// writes them straight to the response body without going through a
+// marshaller. They are what a caller sees when a failure carries no specific
+// message of its own — see popplio/api/resp for the helpers that return
+// them.
 package constants
 
 const (

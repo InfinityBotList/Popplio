@@ -1,3 +1,7 @@
+// Package get_team_permissions implements GET /teams/meta/permissions — "Get
+// Team Permissions".
+//
+// Gets all permissions that a team can have
 package get_team_permissions
 
 import (

@@ -1,3 +1,4 @@
+// Package assets holds the server logic shared between endpoints.
 package assets
 
 import (

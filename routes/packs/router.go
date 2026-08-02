@@ -1,3 +1,6 @@
+// Package packs mounts the "Bot Packs" group of API routes.
+//
+// These API endpoints are related to IBL packs
 package packs
 
 import (

@@ -1,8 +1,13 @@
+// Package get_bot_seo implements GET /bots/{id}/seo — "Get Bot SEO Info".
+//
+// Gets the minimal SEO information about a bot for embed/search purposes.
+// Used by v4 website for meta tags
 package get_bot_seo
 
 import (
 	"errors"
 	"net/http"
+	"popplio/api/resp"
 
 	"popplio/state"
 	"popplio/types"
@@ -44,15 +49,13 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	}
 
 	if err != nil {
-		state.Logger.Error("Error while getting bot [queryrow]", zap.Error(err), zap.String("botID", id))
-		return uapi.DefaultResponse(http.StatusInternalServerError)
+		return resp.Err("Error while getting bot [queryrow]", err, zap.String("botID", id))
 	}
 
 	bot, err := dovewing.GetUser(d.Context, id, state.DovewingPlatformDiscord)
 
 	if err != nil {
-		state.Logger.Error("Error while getting bot user [dovewing]", zap.Error(err), zap.String("botID", id))
-		return uapi.DefaultResponse(http.StatusInternalServerError)
+		return resp.Err("Error while getting bot user [dovewing]", err, zap.String("botID", id))
 	}
 
 	seoData := types.SEO{

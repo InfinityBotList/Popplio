@@ -1,8 +1,12 @@
+// Package search_list implements POST /list/search — "Search List".
+//
+// Searches the list returning a list of bots/servers that match the query
 package search_list
 
 import (
 	_ "embed"
 	"net/http"
+	"popplio/api/resp"
 	"strings"
 	"text/template"
 
@@ -93,10 +97,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		// Return 206 because the user didn't specify a query or tags
 		//
 		// Clients can then use this to not show any bots
-		return uapi.HttpResponse{
-			Status: http.StatusPartialContent,
-			Json:   types.ApiError{Message: "No query or tags specified"},
-		}
+		return resp.Status(http.StatusPartialContent, "No query or tags specified")
 	}
 
 	// Default, if not specified
@@ -109,17 +110,11 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	}
 
 	if len(payload.TargetTypes) == 0 {
-		return uapi.HttpResponse{
-			Status: http.StatusBadRequest,
-			Json:   types.ApiError{Message: "No target types specified"},
-		}
+		return resp.BadRequest("No target types specified")
 	}
 
 	if payload.TagFilter.TagMode != types.TagModeAll && payload.TagFilter.TagMode != types.TagModeAny {
-		return uapi.HttpResponse{
-			Status: http.StatusBadRequest,
-			Json:   types.ApiError{Message: "Invalid tag mode"},
-		}
+		return resp.BadRequest("Invalid tag mode")
 	}
 
 	sr := types.SearchResponse{}
@@ -140,8 +135,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 			})
 
 			if err != nil {
-				state.Logger.Error("Failed to execute template", zap.Error(err), zap.String("sql", sqlString.String()))
-				return uapi.DefaultResponse(http.StatusInternalServerError)
+				return resp.Err("Failed to execute template", err, zap.String("sql", sqlString.String()))
 			}
 
 			args := []any{
@@ -168,31 +162,20 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 			)
 
 			if err != nil {
-				state.Logger.Error("Failed to query", zap.Error(err), zap.String("targetType", "bot"))
-				return uapi.HttpResponse{
-					Status: http.StatusInternalServerError,
-					Json:   types.ApiError{Message: "Error querying."},
-				}
+				return resp.ErrBody("Failed to query", "Error querying.", err, zap.String("targetType", "bot"))
 			}
 
 			bots, err := pgx.CollectRows(rows, pgx.RowToStructByName[types.IndexBot])
 
 			if err != nil {
-				state.Logger.Error("Failed to collect rows [bots]", zap.Error(err), zap.String("sql", sqlString.String()))
-				return uapi.HttpResponse{
-					Status: http.StatusInternalServerError,
-					Json:   types.ApiError{Message: "Error collecting rows."},
-				}
+				return resp.ErrBody("Failed to collect rows [bots]", "Error collecting rows.", err, zap.String("sql", sqlString.String()))
 			}
 
 			for i := range bots {
 				err := botAssets.ResolveIndexBot(d.Context, &bots[i])
 
 				if err != nil {
-					return uapi.HttpResponse{
-						Status: http.StatusInternalServerError,
-						Json:   types.ApiError{Message: "Error resolving bot."},
-					}
+					return resp.ErrBody("Error resolving bot", "Error resolving bot.", err)
 				}
 			}
 
@@ -209,8 +192,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 			})
 
 			if err != nil {
-				state.Logger.Error("Failed to execute template", zap.Error(err), zap.String("sql", sqlString.String()))
-				return uapi.DefaultResponse(http.StatusInternalServerError)
+				return resp.Err("Failed to execute template", err, zap.String("sql", sqlString.String()))
 			}
 
 			args := []any{
@@ -235,26 +217,20 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 			)
 
 			if err != nil {
-				state.Logger.Error("Failed to query", zap.Error(err), zap.String("targetType", "server"))
-				return uapi.DefaultResponse(http.StatusInternalServerError)
+				return resp.Err("Failed to query", err, zap.String("targetType", "server"))
 			}
 
 			servers, err := pgx.CollectRows(rows, pgx.RowToStructByName[types.IndexServer])
 
 			if err != nil {
-				state.Logger.Error("Failed to collect rows", zap.Error(err), zap.String("sql", sqlString.String()))
-				return uapi.DefaultResponse(http.StatusInternalServerError)
+				return resp.Err("Failed to collect rows", err, zap.String("sql", sqlString.String()))
 			}
 
 			for i := range servers {
 				err := serverAssets.ResolveIndexServer(d.Context, &servers[i])
 
 				if err != nil {
-					state.Logger.Error("Failed to resolve server", zap.Error(err), zap.String("serverId", servers[i].ServerID))
-					return uapi.HttpResponse{
-						Status: http.StatusInternalServerError,
-						Json:   types.ApiError{Message: "Error resolving server."},
-					}
+					return resp.ErrBody("Failed to resolve server", "Error resolving server.", err, zap.String("serverId", servers[i].ServerID))
 				}
 			}
 

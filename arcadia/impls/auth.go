@@ -1,3 +1,10 @@
+// Package impls provides Arcadia's concrete implementations of the
+// interfaces the panel depends on.
+//
+// Keeping authentication, permissions, entity lookup and cryptography behind
+// interfaces is what lets the panel be exercised in tests without a live
+// database or Discord connection; this package holds the production side of
+// those seams.
 package impls
 
 import (

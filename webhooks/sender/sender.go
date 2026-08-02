@@ -1,3 +1,9 @@
+// Package sender delivers webhook payloads to their destination.
+//
+// It handles what delivery involves beyond an HTTP POST: signing and
+// encrypting the payload for the endpoint's secret, retrying with backoff,
+// refusing to connect to private network addresses, and recording each
+// attempt so users can see why a webhook is failing.
 package sender
 
 import (

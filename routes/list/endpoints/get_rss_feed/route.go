@@ -1,7 +1,11 @@
+// Package get_rss_feed implements GET /list/rss.xml — "Get RSS Feed".
+//
+// Gets the RSS feed for the site, in XML format
 package get_rss_feed
 
 import (
 	"net/http"
+	"popplio/api/resp"
 	"popplio/seo"
 	"popplio/seo/fetchers"
 	"popplio/state"
@@ -124,8 +128,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	rows, err := state.Pool.Query(d.Context, "SELECT bot_id FROM bots WHERE (type = 'approved' OR type = 'certified') ORDER BY created_at DESC LIMIT $1 OFFSET $2", limit, offset)
 
 	if err != nil {
-		state.Logger.Error("Failed to get bots [row query] for generating RSS feed", zap.Error(err))
-		return uapi.DefaultResponse(http.StatusInternalServerError)
+		return resp.Err("Failed to get bots [row query] for generating RSS feed", err)
 	}
 
 	defer rows.Close()
@@ -133,16 +136,14 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	newBots, err := collector.Collect(rows)
 
 	if err != nil {
-		state.Logger.Error("Failed to collect bot IDs for generating RSS feed", zap.Error(err))
-		return uapi.DefaultResponse(http.StatusInternalServerError)
+		return resp.Err("Failed to collect bot IDs for generating RSS feed", err)
 	}
 
 	for _, id := range newBots {
 		err := state.SeoMapGenerator.AddToRss(d.Context, &fetchers.BotFetcher{}, &rssFeed, "New Bots", id)
 
 		if err != nil {
-			state.Logger.Error("Failed to add bot to RSS feed", zap.Error(err), zap.String("botId", id))
-			return uapi.DefaultResponse(http.StatusInternalServerError)
+			return resp.Err("Failed to add bot to RSS feed", err, zap.String("botId", id))
 		}
 	}
 
@@ -150,8 +151,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	rows, err = state.Pool.Query(d.Context, "SELECT bot_id FROM bots WHERE type = 'certified' ORDER BY created_at DESC LIMIT $1 OFFSET $2", limit, offset)
 
 	if err != nil {
-		state.Logger.Error("Failed to get bots [row query] for generating RSS feed", zap.Error(err))
-		return uapi.DefaultResponse(http.StatusInternalServerError)
+		return resp.Err("Failed to get bots [row query] for generating RSS feed", err)
 	}
 
 	defer rows.Close()
@@ -159,16 +159,14 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	certBots, err := collector.Collect(rows)
 
 	if err != nil {
-		state.Logger.Error("Failed to collect bot IDs for generating RSS feed", zap.Error(err))
-		return uapi.DefaultResponse(http.StatusInternalServerError)
+		return resp.Err("Failed to collect bot IDs for generating RSS feed", err)
 	}
 
 	for _, id := range certBots {
 		err := state.SeoMapGenerator.AddToRss(d.Context, &fetchers.BotFetcher{}, &rssFeed, "Certified Bots", id)
 
 		if err != nil {
-			state.Logger.Error("Failed to add bot to RSS feed", zap.Error(err), zap.String("botId", id))
-			return uapi.DefaultResponse(http.StatusInternalServerError)
+			return resp.Err("Failed to add bot to RSS feed", err, zap.String("botId", id))
 		}
 	}
 
@@ -176,8 +174,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	rows, err = state.Pool.Query(d.Context, "SELECT bot_id FROM bots WHERE premium = true AND (type = 'approved' OR type = 'certified') ORDER BY created_at DESC LIMIT $1 OFFSET $2", limit, offset)
 
 	if err != nil {
-		state.Logger.Error("Failed to get bots [row query] for generating RSS feed", zap.Error(err))
-		return uapi.DefaultResponse(http.StatusInternalServerError)
+		return resp.Err("Failed to get bots [row query] for generating RSS feed", err)
 	}
 
 	defer rows.Close()
@@ -185,24 +182,21 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	premiumBots, err := collector.Collect(rows)
 
 	if err != nil {
-		state.Logger.Error("Failed to collect bot IDs for generating RSS feed", zap.Error(err))
-		return uapi.DefaultResponse(http.StatusInternalServerError)
+		return resp.Err("Failed to collect bot IDs for generating RSS feed", err)
 	}
 
 	for _, id := range premiumBots {
 		err := state.SeoMapGenerator.AddToRss(d.Context, &fetchers.BotFetcher{}, &rssFeed, "Premium Bots", id)
 
 		if err != nil {
-			state.Logger.Error("Failed to add bot to RSS feed", zap.Error(err), zap.String("botId", id))
-			return uapi.DefaultResponse(http.StatusInternalServerError)
+			return resp.Err("Failed to add bot to RSS feed", err, zap.String("botId", id))
 		}
 	}
 
 	body, err := xml.Marshal(rssFeed)
 
 	if err != nil {
-		state.Logger.Error("Failed to marshal RSS feed", zap.Error(err))
-		return uapi.DefaultResponse(http.StatusInternalServerError)
+		return resp.Err("Failed to marshal RSS feed", err)
 	}
 
 	_, err = state.Redis.Set(d.Context, "rssfeed-"+strconv.FormatUint(pageNum, 10), string(body), time.Minute*5).Result()

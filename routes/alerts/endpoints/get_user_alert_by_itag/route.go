@@ -1,8 +1,14 @@
+// Package get_user_alert_by_itag implements GET /users/{id}/alerts/{itag} —
+// "Get User Alert By Itag".
+//
+// Gets a single user alert based on its `itag`. This returns an alertlist to
+// aid with consistency.
 package get_user_alert_by_itag
 
 import (
 	"errors"
 	"net/http"
+	"popplio/api/resp"
 	"popplio/db"
 	"popplio/state"
 	"popplio/types"
@@ -50,8 +56,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	rows, err := state.Pool.Query(d.Context, "SELECT "+alertColsStr+" FROM alerts WHERE user_id = $1 AND itag = $2", d.Auth.ID, itag)
 
 	if err != nil {
-		state.Logger.Error("Error querying for alert [collect]", zap.Error(err), zap.String("itag", itag), zap.String("userID", d.Auth.ID))
-		return uapi.DefaultResponse(http.StatusInternalServerError)
+		return resp.Err("Error querying for alert [collect]", err, zap.String("itag", itag), zap.String("userID", d.Auth.ID))
 	}
 
 	alert, err := pgx.CollectOneRow(rows, pgx.RowToStructByName[types.Alert])
@@ -61,8 +66,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	}
 
 	if err != nil {
-		state.Logger.Error("Error querying for alert [collect]", zap.Error(err), zap.String("itag", itag), zap.String("userID", d.Auth.ID))
-		return uapi.DefaultResponse(http.StatusInternalServerError)
+		return resp.Err("Error querying for alert [collect]", err, zap.String("itag", itag), zap.String("userID", d.Auth.ID))
 	}
 
 	var unackedCount uint64
@@ -70,8 +74,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	err = state.Pool.QueryRow(d.Context, "SELECT COUNT(*) FROM alerts WHERE user_id = $1 AND acked = false", d.Auth.ID).Scan(&unackedCount)
 
 	if err != nil {
-		state.Logger.Error("Error querying for unacked count", zap.Error(err), zap.String("itag", itag), zap.String("userID", d.Auth.ID))
-		return uapi.DefaultResponse(http.StatusInternalServerError)
+		return resp.Err("Error querying for unacked count", err, zap.String("itag", itag), zap.String("userID", d.Auth.ID))
 	}
 
 	return uapi.HttpResponse{

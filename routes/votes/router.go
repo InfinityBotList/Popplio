@@ -1,3 +1,6 @@
+// Package votes mounts the "Votes" group of API routes.
+//
+// These API endpoints are related to votes and voting on IBL
 package votes
 
 import (

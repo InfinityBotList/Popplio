@@ -1,3 +1,6 @@
+// Package vanity mounts the "Vanity" group of API routes.
+//
+// These API endpoints are related to vanity codes on IGL
 package vanity
 
 import (

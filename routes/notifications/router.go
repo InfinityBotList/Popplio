@@ -1,3 +1,6 @@
+// Package notifications mounts the "Notifications" group of API routes.
+//
+// These API endpoints are related to user notifications on IBL
 package notifications
 
 import (

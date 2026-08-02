@@ -1,8 +1,14 @@
+// Package create_user_entity_vote implements PUT
+// /users/{uid}/{target_type}/{target_id}/votes — "Create Entity Vote".
+//
+// Creates a vote for an entity. Returns 204 on success. Note that for
+// compatibility, a trailing 's' is removed
 package create_user_entity_vote
 
 import (
 	"fmt"
 	"net/http"
+	"popplio/api/resp"
 	"strconv"
 
 	"popplio/state"
@@ -64,20 +70,14 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	targetType := validators.NormalizeTargetType(chi.URLParam(r, "target_type"))
 
 	if targetId == "" || targetType == "" {
-		return uapi.HttpResponse{
-			Status: http.StatusBadRequest,
-			Json:   types.ApiError{Message: "Both target_id and target_type must be specified"},
-		}
+		return resp.BadRequest("Both target_id and target_type must be specified")
 	}
 
 	// Check if upvote query parameter is valid
 	upvoteStr := r.URL.Query().Get("upvote")
 
 	if upvoteStr != "true" && upvoteStr != "false" {
-		return uapi.HttpResponse{
-			Status: http.StatusBadRequest,
-			Json:   types.ApiError{Message: "upvote must be either `true` or `false`"},
-		}
+		return resp.BadRequest("upvote must be either `true` or `false`")
 	}
 
 	upvote := upvoteStr == "true"
@@ -89,28 +89,18 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 
 	if err != nil {
 		state.Logger.Error("Failed to check if user is vote banned", zap.Error(err), zap.String("userId", d.Auth.ID))
-		return uapi.HttpResponse{
-			Status: http.StatusBadRequest,
-			Json:   types.ApiError{Message: "Error checking if user is vote banned."},
-		}
+		return resp.BadRequest("Error checking if user is vote banned.")
 	}
 
 	if voteBanned {
-		return uapi.HttpResponse{
-			Status: http.StatusForbidden,
-			Json:   types.ApiError{Message: "You are banned from voting right now! Contact support if you think this is a mistake"},
-		}
+		return resp.Forbidden("You are banned from voting right now! Contact support if you think this is a mistake")
 	}
 
 	// Create a new entity vote
 	tx, err := state.Pool.Begin(d.Context)
 
 	if err != nil {
-		state.Logger.Error("Failed to create transaction [put_user_entity_votes]", zap.Error(err))
-		return uapi.HttpResponse{
-			Status: http.StatusInternalServerError,
-			Json:   types.ApiError{Message: "Failed to create transaction."},
-		}
+		return resp.ErrBody("Failed to create transaction [put_user_entity_votes]", "Failed to create transaction.", err)
 	}
 
 	defer tx.Rollback(d.Context)
@@ -119,52 +109,35 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 
 	if err != nil {
 		state.Logger.Error("Failed to fetch entity info", zap.Error(err), zap.String("userId", d.Auth.ID), zap.String("targetId", targetId), zap.String("targetType", targetType))
-		return uapi.HttpResponse{
-			Status: http.StatusBadRequest,
-			Json:   types.ApiError{Message: "Failed to fetch entity info."},
-		}
+		return resp.BadRequest("Failed to fetch entity info.")
 	}
 
 	// Now check the vote
 	vi, err := votes.EntityVoteCheck(d.Context, tx, d.Auth.ID, targetId, targetType)
 
 	if err != nil {
-		state.Logger.Error("Failed to check vote", zap.Error(err), zap.String("userId", d.Auth.ID), zap.String("targetId", targetId), zap.String("targetType", targetType))
-		return uapi.DefaultResponse(http.StatusInternalServerError)
+		return resp.Err("Failed to check vote", err, zap.String("userId", d.Auth.ID), zap.String("targetId", targetId), zap.String("targetType", targetType))
 	}
 
 	if !vi.VoteInfo.SupportsDownvotes && !upvote {
-		return uapi.HttpResponse{
-			Status: http.StatusBadRequest,
-			Json:   types.ApiError{Message: "This entity does not support downvotes"},
-		}
+		return resp.BadRequest("This entity does not support downvotes")
 	}
 
 	if !vi.VoteInfo.SupportsUpvotes && upvote {
-		return uapi.HttpResponse{
-			Status: http.StatusBadRequest,
-			Json:   types.ApiError{Message: "This entity does not support upvotes"},
-		}
+		return resp.BadRequest("This entity does not support upvotes")
 	}
 
 	if vi.HasVoted {
 		// lacking MultipleVotes means that there can only be one vote per user for the entity
 		if !vi.VoteInfo.MultipleVotes {
 			if vi.ValidVotes[0].Upvote == upvote {
-				return uapi.HttpResponse{
-					Status: http.StatusBadRequest,
-					Json:   types.ApiError{Message: "You have already voted for this entity before!"},
-				}
+				return resp.BadRequest("You have already voted for this entity before!")
 			} else {
 				// Remove all old votes by said user
 				_, err = tx.Exec(d.Context, "DELETE FROM entity_votes WHERE author = $1 AND target_id = $2 AND target_type = $3", d.Auth.ID, targetId, targetType)
 
 				if err != nil {
-					state.Logger.Error("Failed to delete old vote", zap.Error(err), zap.String("userId", d.Auth.ID), zap.String("targetId", targetId), zap.String("targetType", targetType))
-					return uapi.HttpResponse{
-						Status: http.StatusInternalServerError,
-						Json:   types.ApiError{Message: "Failed to delete old vote."},
-					}
+					return resp.ErrDetail("Failed to delete old vote", err, zap.String("userId", d.Auth.ID), zap.String("targetId", targetId), zap.String("targetType", targetType))
 				}
 			}
 		} else {
@@ -176,16 +149,10 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 			}
 
 			if len(vi.ValidVotes) > 1 {
-				return uapi.HttpResponse{
-					Status: http.StatusBadRequest,
-					Json:   types.ApiError{Message: "Please wait " + timeStr + " before voting again. Your last vote was also a double vote!"},
-				}
+				return resp.BadRequest("Please wait " + timeStr + " before voting again. Your last vote was also a double vote!")
 			}
 
-			return uapi.HttpResponse{
-				Status: http.StatusBadRequest,
-				Json:   types.ApiError{Message: "Please wait " + timeStr + " before voting again"},
-			}
+			return resp.BadRequest("Please wait " + timeStr + " before voting again")
 		}
 	}
 
@@ -193,41 +160,28 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	err = votes.EntityGiveVotes(d.Context, tx, upvote, d.Auth.ID, targetType, targetId, vi.VoteInfo)
 
 	if err != nil {
-		state.Logger.Error("Failed to give votes", zap.Error(err), zap.String("userId", d.Auth.ID), zap.String("targetId", targetId), zap.String("targetType", targetType))
-		return uapi.HttpResponse{
-			Status: http.StatusInternalServerError,
-			Json:   types.ApiError{Message: "Failed to give votes."},
-		}
+		return resp.ErrDetail("Failed to give votes", err, zap.String("userId", d.Auth.ID), zap.String("targetId", targetId), zap.String("targetType", targetType))
 	}
 
 	// Perform post-vote tasks
 	err = votes.EntityPostVote(d.Context, tx, targetType, targetId)
 
 	if err != nil {
-		state.Logger.Error("Failed to perform post-vote tasks", zap.Error(err), zap.String("userId", d.Auth.ID), zap.String("targetId", targetId), zap.String("targetType", targetType))
-		return uapi.HttpResponse{
-			Status: http.StatusInternalServerError,
-			Json:   types.ApiError{Message: "Failed to perform post-vote tasks."},
-		}
+		return resp.ErrDetail("Failed to perform post-vote tasks", err, zap.String("userId", d.Auth.ID), zap.String("targetId", targetId), zap.String("targetType", targetType))
 	}
 
 	// Fetch new vote count
 	nvc, err := votes.EntityGetVoteCount(d.Context, tx, targetId, targetType)
 
 	if err != nil {
-		state.Logger.Error("Failed to fetch new vote count", zap.Error(err), zap.String("userId", d.Auth.ID), zap.String("targetId", targetId), zap.String("targetType", targetType))
-		return uapi.HttpResponse{
-			Status: http.StatusInternalServerError,
-			Json:   types.ApiError{Message: "Failed to fetch new vote count."},
-		}
+		return resp.ErrDetail("Failed to fetch new vote count", err, zap.String("userId", d.Auth.ID), zap.String("targetId", targetId), zap.String("targetType", targetType))
 	}
 
 	// Commit transaction
 	err = tx.Commit(d.Context)
 
 	if err != nil {
-		state.Logger.Error("Failed to commit transaction", zap.Error(err), zap.String("userId", d.Auth.ID), zap.String("targetId", targetId), zap.String("targetType", targetType))
-		return uapi.DefaultResponse(http.StatusInternalServerError)
+		return resp.Err("Failed to commit transaction", err, zap.String("userId", d.Auth.ID), zap.String("targetId", targetId), zap.String("targetType", targetType))
 	}
 
 	// Fetch user info to log it to server

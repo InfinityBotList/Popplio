@@ -1,3 +1,6 @@
+// Package teams mounts the "Teams" group of API routes.
+//
+// These API endpoints are related to our teams system
 package teams
 
 import (

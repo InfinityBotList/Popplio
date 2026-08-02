@@ -1,3 +1,7 @@
+// Package staff mounts the "Staff" group of API routes.
+//
+// Staff-only IBL endpoints. Only usable from staff panel using panelapi
+// credentials
 package staff
 
 import (

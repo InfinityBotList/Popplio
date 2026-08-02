@@ -1,3 +1,9 @@
+// Package state holds the process-wide handles Popplio is built on.
+//
+// The Postgres pool, Redis client, Discord session, validator, logger and
+// parsed configuration are package-level globals initialised once by Setup
+// and read from everywhere thereafter. It is the base of the dependency
+// graph, so nothing here may import the packages that consume it.
 package state
 
 import (

@@ -1,3 +1,8 @@
+// Package assets implements the data request/deletion tasks run for a user.
+//
+// A task walks every table holding data about the user, following the
+// references between them, and either exports or deletes what it finds.
+// Progress is written to a task log the user can poll while it runs.
 package assets
 
 import (

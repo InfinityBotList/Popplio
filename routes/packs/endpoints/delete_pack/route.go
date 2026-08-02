@@ -1,7 +1,13 @@
+// Package delete_pack implements DELETE /users/{uid}/packs/{id} — "Delete
+// Pack".
+//
+// Deletes a pack by URL. You *must* be the owner of the pack to delete
+// packs. Returns 204 on success
 package delete_pack
 
 import (
 	"net/http"
+	"popplio/api/resp"
 	"popplio/state"
 	"popplio/types"
 
@@ -61,10 +67,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	}
 
 	if owner != d.Auth.ID {
-		return uapi.HttpResponse{
-			Status: http.StatusForbidden,
-			Json:   types.ApiError{Message: "You are not the owner of this pack"},
-		}
+		return resp.Forbidden("You are not the owner of this pack")
 	}
 
 	// Delete the pack

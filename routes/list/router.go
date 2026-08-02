@@ -1,3 +1,6 @@
+// Package list mounts the "List" group of API routes.
+//
+// These API endpoints are core endpoints of our list.
 package list
 
 import (

@@ -1,8 +1,16 @@
+// Package add_review implements POST /{target_type}/{target_id}/reviews —
+// "Create Review".
+//
+// Creates a new review for an entity. A user may have only one `root review`
+// per entity. Triggers a garbage collection step to remove any orphaned
+// reviews afterwards. Note that non-users can only create an 'owner review'.
+// Returns 204 on success
 package add_review
 
 import (
 	"net/http"
 	"popplio/api"
+	"popplio/api/resp"
 	"popplio/routes/reviews/assets"
 	"popplio/state"
 	"popplio/teams"
@@ -59,18 +67,11 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	}.Limit(d.Context, r)
 
 	if err != nil {
-		state.Logger.Error("Error while ratelimiting", zap.Error(err), zap.String("bucket", "review"))
-		return uapi.DefaultResponse(http.StatusInternalServerError)
+		return resp.Err("Error while ratelimiting", err, zap.String("bucket", "review"))
 	}
 
 	if limit.Exceeded {
-		return uapi.HttpResponse{
-			Json: types.ApiError{
-				Message: "You are being ratelimited. Please try again in " + limit.TimeToReset.String(),
-			},
-			Headers: limit.Headers(),
-			Status:  http.StatusTooManyRequests,
-		}
+		return resp.RateLimited(limit)
 	}
 
 	var payload types.CreateReview
@@ -100,15 +101,11 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		err = state.Pool.QueryRow(d.Context, "SELECT COUNT(*) FROM bots WHERE bot_id = $1", targetId).Scan(&count)
 
 		if err != nil {
-			state.Logger.Error("Failed to query bot count [db count]", zap.Error(err), zap.String("bot_id", targetId))
-			return uapi.DefaultResponse(http.StatusInternalServerError)
+			return resp.Err("Failed to query bot count [db count]", err, zap.String("bot_id", targetId))
 		}
 
 		if count == 0 {
-			return uapi.HttpResponse{
-				Status: http.StatusBadRequest,
-				Json:   types.ApiError{Message: "Bot not found"},
-			}
+			return resp.BadRequest("Bot not found")
 		}
 	case "server":
 		// Check if the server exists
@@ -117,15 +114,11 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		err = state.Pool.QueryRow(d.Context, "SELECT COUNT(*) FROM servers WHERE server_id = $1", targetId).Scan(&count)
 
 		if err != nil {
-			state.Logger.Error("Failed to query server count [db count]", zap.Error(err), zap.String("server_id", targetId))
-			return uapi.DefaultResponse(http.StatusInternalServerError)
+			return resp.Err("Failed to query server count [db count]", err, zap.String("server_id", targetId))
 		}
 
 		if count == 0 {
-			return uapi.HttpResponse{
-				Status: http.StatusBadRequest,
-				Json:   types.ApiError{Message: "Server not found"},
-			}
+			return resp.BadRequest("Server not found")
 		}
 	case "team":
 		// Check if the team exists
@@ -134,28 +127,18 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		err = state.Pool.QueryRow(d.Context, "SELECT COUNT(*) FROM teams WHERE id = $1", targetId).Scan(&count)
 
 		if err != nil {
-			state.Logger.Error("Failed to query team count [db count]", zap.Error(err), zap.String("team_id", targetId))
-			return uapi.DefaultResponse(http.StatusInternalServerError)
+			return resp.Err("Failed to query team count [db count]", err, zap.String("team_id", targetId))
 		}
 
 		if count == 0 {
-			return uapi.HttpResponse{
-				Status: http.StatusBadRequest,
-				Json:   types.ApiError{Message: "Team not found"},
-			}
+			return resp.BadRequest("Team not found")
 		}
 	default:
-		return uapi.HttpResponse{
-			Status: http.StatusNotImplemented,
-			Json:   types.ApiError{Message: "Support for this target type has not been implemented yet"},
-		}
+		return resp.Status(http.StatusNotImplemented, "Support for this target type has not been implemented yet")
 	}
 
 	if d.Auth.TargetType != api.TargetTypeUser && !payload.OwnerReview {
-		return uapi.HttpResponse{
-			Status: http.StatusForbidden,
-			Json:   types.ApiError{Message: "Only users may create non-owner reviews"},
-		}
+		return resp.Forbidden("Only users may create non-owner reviews")
 	}
 
 	if payload.OwnerReview {
@@ -169,10 +152,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		)
 
 		if err != nil {
-			return uapi.HttpResponse{
-				Status: http.StatusForbidden,
-				Json:   types.ApiError{Message: "Entity permission checks failed: " + err.Error()},
-			}
+			return resp.Forbidden("Entity permission checks failed: " + err.Error())
 		}
 	}
 
@@ -183,15 +163,11 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		err = state.Pool.QueryRow(d.Context, "SELECT COUNT(*) FROM reviews WHERE author = $1 AND target_id = $2 AND target_type = $3 AND parent_id IS NULL", d.Auth.ID, targetId, targetType).Scan(&count)
 
 		if err != nil {
-			state.Logger.Error("Failed to query root review count [db count]", zap.Error(err), zap.String("author", d.Auth.ID), zap.String("target_id", targetId), zap.String("target_type", targetType))
-			return uapi.DefaultResponse(http.StatusInternalServerError)
+			return resp.Err("Failed to query root review count [db count]", err, zap.String("author", d.Auth.ID), zap.String("target_id", targetId), zap.String("target_type", targetType))
 		}
 
 		if count > 0 {
-			return uapi.HttpResponse{
-				Status: http.StatusConflict,
-				Json:   types.ApiError{Message: "You have already made a root review for this " + targetType},
-			}
+			return resp.Conflict("You have already made a root review for this " + targetType)
 		}
 	}
 
@@ -202,29 +178,21 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		err = state.Pool.QueryRow(d.Context, "SELECT COUNT(*) FROM reviews WHERE id = $1", payload.ParentID).Scan(&count)
 
 		if err != nil {
-			state.Logger.Error("Failed to query parent review count [db count]", zap.Error(err), zap.String("parent_id", payload.ParentID))
-			return uapi.DefaultResponse(http.StatusInternalServerError)
+			return resp.Err("Failed to query parent review count [db count]", err, zap.String("parent_id", payload.ParentID))
 		}
 
 		if count == 0 {
-			return uapi.HttpResponse{
-				Status: http.StatusBadRequest,
-				Json:   types.ApiError{Message: "Parent review not found"},
-			}
+			return resp.BadRequest("Parent review not found")
 		}
 
 		nest, err := assets.Nest(d.Context, payload.ParentID)
 
 		if err != nil {
-			state.Logger.Error("Nesting engine failed unexpectedly", zap.Error(err), zap.String("parent_id", payload.ParentID))
-			return uapi.DefaultResponse(http.StatusInternalServerError)
+			return resp.Err("Nesting engine failed unexpectedly", err, zap.String("parent_id", payload.ParentID))
 		}
 
 		if nest > 2 {
-			return uapi.HttpResponse{
-				Status: http.StatusBadRequest,
-				Json:   types.ApiError{Message: "Maximum nesting for reviews reached"},
-			}
+			return resp.BadRequest("Maximum nesting for reviews reached")
 		}
 	}
 
@@ -238,8 +206,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	err = state.Pool.QueryRow(d.Context, "INSERT INTO reviews (author, target_id, target_type, content, stars, parent_id, owner_review) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id", d.Auth.ID, targetId, targetType, payload.Content, payload.Stars, parentId, payload.OwnerReview).Scan(&reviewId)
 
 	if err != nil {
-		state.Logger.Error("Failed to insert review", zap.Error(err), zap.String("author", d.Auth.ID), zap.String("target_id", targetId), zap.String("target_type", targetType))
-		return uapi.DefaultResponse(http.StatusInternalServerError)
+		return resp.Err("Failed to insert review", err, zap.String("author", d.Auth.ID), zap.String("target_id", targetId), zap.String("target_type", targetType))
 	}
 
 	err = drivers.Send(drivers.With{

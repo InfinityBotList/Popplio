@@ -1,8 +1,13 @@
+// Package revoke_session implements DELETE
+// /{target_type}/{target_id}/sessions/{session_id} — "Revoke Session".
+//
+// Revokes a session of an entity based on session ID
 package revoke_session
 
 import (
 	"errors"
 	"net/http"
+	"popplio/api/resp"
 
 	"popplio/state"
 	"popplio/types"
@@ -10,7 +15,6 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/jackc/pgx/v5"
-	"go.uber.org/zap"
 
 	docs "github.com/infinitybotlist/eureka/doclib"
 	"github.com/infinitybotlist/eureka/uapi"
@@ -53,10 +57,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	sessionId := chi.URLParam(r, "session_id")
 
 	if targetId == "" || targetType == "" || sessionId == "" {
-		return uapi.HttpResponse{
-			Status: http.StatusBadRequest,
-			Json:   types.ApiError{Message: "Missing target_id or target_type"},
-		}
+		return resp.BadRequest("Missing target_id or target_type")
 	}
 
 	var count int64
@@ -64,29 +65,21 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	err := state.Pool.QueryRow(d.Context, "SELECT COUNT(*) FROM api_sessions WHERE target_type = $1 AND target_id = $2 AND id = $3", targetType, targetId, sessionId).Scan(&count)
 
 	if errors.Is(err, pgx.ErrNoRows) {
-		return uapi.HttpResponse{
-			Status: http.StatusNotFound,
-			Json:   types.ApiError{Message: "No sessions found"},
-		}
+		return resp.NotFound("No sessions found")
 	}
 
 	if err != nil {
-		state.Logger.Error("Error while getting user session", zap.Error(err))
-		return uapi.DefaultResponse(http.StatusInternalServerError)
+		return resp.Err("Error while getting user session", err)
 	}
 
 	if count == 0 {
-		return uapi.HttpResponse{
-			Status: http.StatusNotFound,
-			Json:   types.ApiError{Message: "No sessions found"},
-		}
+		return resp.NotFound("No sessions found")
 	}
 
 	_, err = state.Pool.Exec(d.Context, "DELETE FROM api_sessions WHERE id = $1 AND target_id = $2 AND target_type = $3", sessionId, targetId, targetType)
 
 	if err != nil {
-		state.Logger.Error("Error while revoking user session", zap.Error(err))
-		return uapi.DefaultResponse(http.StatusInternalServerError)
+		return resp.Err("Error while revoking user session", err)
 	}
 
 	return uapi.DefaultResponse(http.StatusNoContent)

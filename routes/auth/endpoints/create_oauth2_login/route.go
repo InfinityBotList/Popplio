@@ -1,25 +1,24 @@
+// Package create_oauth2_login implements POST /auth/login/discord-oauth2 —
+// "Create OAuth2 Login".
+//
+// Takes in a `code` query parameter and returns a user `token`.
 package create_oauth2_login
 
 import (
 	"fmt"
-	"io"
 	"net/http"
-	"net/url"
 	"time"
 
+	"popplio/api/resp"
 	"popplio/state"
 	"popplio/types"
-	"popplio/validators"
 
-	"github.com/disgoorg/disgo/discord"
-	"github.com/infinitybotlist/eureka/jsonimpl"
 	"github.com/infinitybotlist/eureka/ratelimit"
 
 	docs "github.com/infinitybotlist/eureka/doclib"
 	"github.com/infinitybotlist/eureka/uapi"
 
 	"github.com/go-playground/validator/v10"
-	"github.com/infinitybotlist/eureka/crypto"
 	ua "github.com/mileusna/useragent"
 	"go.uber.org/zap"
 	"golang.org/x/exp/slices"
@@ -28,6 +27,18 @@ import (
 var (
 	compiledMessages = uapi.CompileValidationErrors(types.AuthorizeRequest{})
 )
+
+// supportedProtocol is the client protocol this endpoint speaks. Clients send
+// their protocol so an outdated one gets a clear message rather than a confusing
+// failure further down the exchange.
+const supportedProtocol = "persepolis-infernoplex"
+
+// codeReuseWindow is how long a used authorization code is remembered.
+//
+// Discord rejects a replayed code itself; remembering codes here means a replay
+// is refused before it costs a round trip, and closes the window in which two
+// concurrent requests could both exchange the same code.
+const codeReuseWindow = 5 * time.Minute
 
 func Docs() *docs.Doc {
 	return &docs.Doc{
@@ -38,109 +49,51 @@ func Docs() *docs.Doc {
 	}
 }
 
-// OauthInfo struct for oauth2 info
-type oauthUser struct {
-	ID       string `json:"id"`
-	Username string `json:"username"`
-	Disc     string `json:"discriminator"`
-}
-
-func sendAuthLog(user oauthUser, req types.AuthorizeRequest, new bool) {
-	var banned bool
-	var voteBanned bool
-	var appBanned bool
-
-	if !new {
-		err := state.Pool.QueryRow(state.Context, "SELECT banned, vote_banned, app_banned FROM users WHERE user_id = $1", user.ID).Scan(&banned, &voteBanned, &appBanned)
-
-		if err != nil {
-			state.Logger.Error("sendAuthLog: Failed to get user details from database", zap.Error(err), zap.String("user_id", user.ID))
-			return
+// validateRequest checks the parts of the request that can be rejected without
+// talking to Discord.
+//
+// These are all misconfigured- or outdated-client conditions rather than user
+// error, which is why each gets its own message. Failures are reported as
+// [oauthError] so the handler can route them through oauthFailure alongside
+// every other failure in the exchange.
+func validateRequest(req types.AuthorizeRequest) error {
+	switch {
+	case req.Protocol != supportedProtocol:
+		return &oauthError{
+			status:  http.StatusBadRequest,
+			message: "Your client is outdated and is not supported. Please contact the developers of this client.",
+			reason:  "Login attempt with unsupported client protocol",
+		}
+	case !slices.Contains(state.Config.DiscordAuth.AllowedRedirects, req.RedirectURI):
+		return &oauthError{
+			status:  http.StatusBadRequest,
+			message: "Malformed redirect_uri",
+			reason:  "Login attempt with disallowed redirect_uri",
+		}
+	case req.ClientID != state.Config.DiscordAuth.ClientID:
+		return &oauthError{
+			status:  http.StatusBadRequest,
+			message: "Misconfigured client! Client id is incorrect",
+			reason:  "Login attempt with incorrect client id",
 		}
 	}
 
-	state.Logger.With(
-		zap.String("user_id", user.ID),
-		zap.String("channel_id", state.Config.Channels.AuthLogs.String()),
-	).Debug("sendAuthLog: Channel Info")
+	return nil
+}
 
-	_, err := state.Discord.Rest().CreateMessage(state.Config.Channels.AuthLogs, discord.MessageCreate{
-		Embeds: []discord.Embed{
-			{
-				Title: "User Login Attempt",
-				Color: 0xff0000,
-				Fields: []discord.EmbedField{
-					{
-						Name:   "User ID",
-						Value:  user.ID,
-						Inline: validators.TruePtr,
-					},
-					{
-						Name:   "Username",
-						Value:  user.Username + "#" + user.Disc,
-						Inline: validators.TruePtr,
-					},
-					{
-						Name:   "Scope",
-						Value:  req.Scope,
-						Inline: validators.TruePtr,
-					},
-					{
-						Name: "Banned",
-						Value: func() string {
-							if banned {
-								return "Yes"
-							}
-
-							return "No"
-						}(),
-						Inline: validators.TruePtr,
-					},
-					{
-						Name: "Vote Banned",
-						Value: func() string {
-							if voteBanned {
-								return "Yes"
-							}
-
-							return "No"
-						}(),
-						Inline: validators.TruePtr,
-					},
-					{
-						Name: "App Banned",
-						Value: func() string {
-							if appBanned {
-								return "Yes"
-							}
-
-							return "No"
-						}(),
-						Inline: validators.TruePtr,
-					},
-					{
-						Name: "New User",
-						Value: func() string {
-							if new {
-								return "Yes"
-							}
-
-							return "No"
-						}(),
-						Inline: validators.TruePtr,
-					},
-				},
-				Footer: &discord.EmbedFooter{
-					Text: "© Copyright 2023 - Infinity Bot List",
-				},
-				Timestamp: validators.Pointer(time.Now()),
-			},
-		},
-	})
-
-	if err != nil {
-		state.Logger.Error("sendAuthLog: Failed to send message to Discord", zap.Error(err), zap.String("user_id", user.ID))
+// sessionName describes the client a session was created from, so users can
+// recognise their own devices in their session list.
+//
+// A missing User-Agent falls back to a generic desktop Chrome string rather than
+// an empty name, so the session list never shows a blank entry.
+func sessionName(userAgent string) string {
+	if userAgent == "" {
+		userAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/80.0.3987.149 Safari/537.36"
 	}
+
+	parsed := ua.Parse(userAgent)
+
+	return fmt.Sprintf("%s (on %s %s) [mobile: %t]", parsed.Name, parsed.OS, parsed.Version, parsed.Mobile)
 }
 
 func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
@@ -151,29 +104,25 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	}.Limit(d.Context, r)
 
 	if err != nil {
-		state.Logger.Error("Error while ratelimiting", zap.Error(err), zap.String("bucket", "login"))
-		return uapi.DefaultResponse(http.StatusInternalServerError)
+		return resp.Err("Error while ratelimiting", err, zap.String("bucket", "login"))
 	}
 
 	if limit.Exceeded {
-		return uapi.HttpResponse{
-			Json: types.ApiError{
-				Message: "You are being ratelimited. Please try again in " + limit.TimeToReset.String(),
-			},
-			Headers: limit.Headers(),
-			Status:  http.StatusTooManyRequests,
-		}
+		return resp.RateLimited(limit)
 	}
+
+	// Every response below carries the ratelimit headers, so clients can see
+	// their remaining budget on failures as well as successes.
+	headers := limit.Headers()
 
 	var req types.AuthorizeRequest
 
-	hresp, ok := uapi.MarshalReqWithHeaders(r, &req, limit.Headers())
+	hresp, ok := uapi.MarshalReqWithHeaders(r, &req, headers)
 
 	if !ok {
 		return hresp
 	}
 
-	// Validate the payload
 	err = state.Validator.Struct(req)
 
 	if err != nil {
@@ -181,299 +130,53 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		return uapi.ValidatorErrorResponse(compiledMessages, errors)
 	}
 
-	if req.Protocol != "persepolis-infernoplex" {
-		return uapi.HttpResponse{
-			Json: types.ApiError{
-				Message: "Your client is outdated and is not supported. Please contact the developers of this client.",
-			},
-			Status:  http.StatusBadRequest,
-			Headers: limit.Headers(),
-		}
-	}
-
-	if !slices.Contains(state.Config.DiscordAuth.AllowedRedirects, req.RedirectURI) {
-		return uapi.HttpResponse{
-			Json: types.ApiError{
-				Message: "Malformed redirect_uri",
-			},
-			Status:  http.StatusBadRequest,
-			Headers: limit.Headers(),
-		}
-	}
-
-	if req.ClientID != state.Config.DiscordAuth.ClientID {
-		return uapi.HttpResponse{
-			Json: types.ApiError{
-				Message: "Misconfigured client! Client id is incorrect",
-			},
-			Status:  http.StatusBadRequest,
-			Headers: limit.Headers(),
-		}
+	if err := validateRequest(req); err != nil {
+		return oauthFailure(err, headers)
 	}
 
 	if state.Redis.Exists(d.Context, "codecache:"+req.Code).Val() == 1 {
-		return uapi.HttpResponse{
-			Json: types.ApiError{
-				Message: "Code has been clearly used before and is as such invalid",
-			},
-			Status:  http.StatusBadRequest,
-			Headers: limit.Headers(),
-		}
+		return resp.WithHeaders(resp.BadRequest("Code has been clearly used before and is as such invalid"), headers)
 	}
 
-	state.Redis.Set(d.Context, "codecache:"+req.Code, "0", 5*time.Minute)
+	state.Redis.Set(d.Context, "codecache:"+req.Code, "0", codeReuseWindow)
 
-	httpResp, err := http.PostForm("https://discord.com/api/v10/oauth2/token", url.Values{
-		"client_id":     {state.Config.DiscordAuth.ClientID},
-		"client_secret": {state.Config.DiscordAuth.ClientSecret},
-		"grant_type":    {"authorization_code"},
-		"code":          {req.Code},
-		"redirect_uri":  {req.RedirectURI},
-		"scope":         {"identify"},
-	})
+	accessToken, err := exchangeCodeForToken(d.Context, req.Code, req.RedirectURI)
 
 	if err != nil {
-		state.Logger.Error("Failed to send oauth2 token request to discord", zap.Error(err))
-		return uapi.HttpResponse{
-			Json: types.ApiError{
-				Message: "Failed to send token request to Discord",
-			},
-			Status:  http.StatusInternalServerError,
-			Headers: limit.Headers(),
-		}
+		return oauthFailure(err, headers)
 	}
 
-	defer httpResp.Body.Close()
-
-	body, err := io.ReadAll(httpResp.Body)
+	user, err := fetchOauthUser(d.Context, accessToken)
 
 	if err != nil {
-		state.Logger.Error("Failed to read oauth2 token response from discord", zap.Error(err))
-		return uapi.HttpResponse{
-			Json: types.ApiError{
-				Message: "Failed to read token response from Discord",
-			},
-			Status:  http.StatusInternalServerError,
-			Headers: limit.Headers(),
-		}
+		return oauthFailure(err, headers)
 	}
 
-	var token struct {
-		AccessToken string `json:"access_token"`
-	}
-
-	err = jsonimpl.Unmarshal(body, &token)
+	existed, err := ensureUser(d.Context, user.ID)
 
 	if err != nil {
-		state.Logger.Error("Failed to parse oauth2 token response from discord", zap.Error(err))
-		return uapi.HttpResponse{
-			Json: types.ApiError{
-				Message: "Failed to parse token response from Discord",
-			},
-			Status:  http.StatusBadRequest,
-			Headers: limit.Headers(),
+		return oauthFailure(err, headers)
+	}
+
+	go sendAuthLog(user, req, !existed)
+
+	// Only an existing user can carry a ban, so a first-time login skips the
+	// check entirely.
+	if existed {
+		if err := checkBanScope(d.Context, user.ID, req.Scope); err != nil {
+			return oauthFailure(err, headers)
 		}
 	}
 
-	if token.AccessToken == "" {
-		state.Logger.Error("No access token provided by discord")
-		return uapi.HttpResponse{
-			Json: types.ApiError{
-				Message: "No access token provided by Discord",
-			},
-			Status:  http.StatusBadRequest,
-			Headers: limit.Headers(),
-		}
-	}
-
-	cli := &http.Client{}
-
-	var httpReq *http.Request
-	httpReq, err = http.NewRequestWithContext(d.Context, "GET", "https://discord.com/api/v10/users/@me", nil)
+	token, sessionID, err := createSession(d.Context, user.ID, sessionName(r.UserAgent()))
 
 	if err != nil {
-		state.Logger.Error("Failed to create oauth2 request to discord", zap.Error(err))
-		return uapi.HttpResponse{
-			Json: types.ApiError{
-				Message: "Failed to create request to Discord to fetch user info",
-			},
-			Status:  http.StatusInternalServerError,
-			Headers: limit.Headers(),
-		}
+		return oauthFailure(err, headers)
 	}
 
-	httpReq.Header.Set("Authorization", "Bearer "+token.AccessToken)
-
-	httpResp, err = cli.Do(httpReq)
-
-	if err != nil {
-		state.Logger.Error("Failed to send oauth2 request to discord", zap.Error(err))
-		return uapi.HttpResponse{
-			Json: types.ApiError{
-				Message: "Failed to send oauth2 request to Discord",
-			},
-			Status:  http.StatusInternalServerError,
-			Headers: limit.Headers(),
-		}
-	}
-
-	defer httpResp.Body.Close()
-
-	body, err = io.ReadAll(httpResp.Body)
-
-	if err != nil {
-		state.Logger.Error("Failed to read oauth2 response from discord", zap.Error(err))
-		return uapi.HttpResponse{
-			Json: types.ApiError{
-				Message: "Failed to read oauth2 response from Discord",
-			},
-			Status:  http.StatusInternalServerError,
-			Headers: limit.Headers(),
-		}
-	}
-
-	var user oauthUser
-
-	err = jsonimpl.Unmarshal(body, &user)
-
-	if err != nil {
-		state.Logger.Error("Failed to parse oauth2 response from discord", zap.Error(err))
-		return uapi.HttpResponse{
-			Json: types.ApiError{
-				Message: "Failed to parse oauth2 response from Discord",
-			},
-			Status:  http.StatusInternalServerError,
-			Headers: limit.Headers(),
-		}
-	}
-
-	if user.ID == "" {
-		state.Logger.Error("No user ID provided by discord. Invalid code/access token?")
-		return uapi.HttpResponse{
-			Json: types.ApiError{
-				Message: "No user ID provided by Discord. Invalid code/access token?",
-			},
-			Status:  http.StatusBadRequest,
-			Headers: limit.Headers(),
-		}
-	}
-
-	// Check if user exists on database
-	var exists bool
-
-	err = state.Pool.QueryRow(d.Context, "SELECT EXISTS(SELECT 1 FROM users WHERE user_id = $1)", user.ID).Scan(&exists)
-
-	if err != nil {
-		state.Logger.Error("Failed to check if user exists on database", zap.Error(err), zap.String("userID", user.ID))
-		return uapi.HttpResponse{
-			Json: types.ApiError{
-				Message: "Failed to check if user exists on database",
-			},
-			Status:  http.StatusInternalServerError,
-			Headers: limit.Headers(),
-		}
-	}
-
-	if !exists {
-		// Create user
-		_, err = state.Pool.Exec(
-			d.Context,
-			"INSERT INTO users (user_id, extra_links, developer, certified) VALUES ($1, $2, false, false)",
-			user.ID,
-			[]types.Link{},
-		)
-
-		if err != nil {
-			state.Logger.Error("Failed to create user on database", zap.Error(err), zap.String("userID", user.ID))
-			return uapi.HttpResponse{
-				Json: types.ApiError{
-					Message: "Failed to create user on database",
-				},
-				Status:  http.StatusInternalServerError,
-				Headers: limit.Headers(),
-			}
-		}
-
-		go sendAuthLog(user, req, true)
-	} else {
-		// Get ban state
-		var banned bool
-
-		err = state.Pool.QueryRow(d.Context, "SELECT banned FROM users WHERE user_id = $1", user.ID).Scan(&banned)
-
-		if err != nil {
-			state.Logger.Error("Failed to get API token from database", zap.Error(err), zap.String("userID", user.ID))
-			return uapi.HttpResponse{
-				Json: types.ApiError{
-					Message: "Failed to get API token from database",
-				},
-				Status:  http.StatusInternalServerError,
-				Headers: limit.Headers(),
-			}
-		}
-
-		go sendAuthLog(user, req, false)
-
-		if banned && req.Scope != "ban_exempt" {
-			return uapi.HttpResponse{
-				Json: types.ApiError{
-					Message: "You are banned from the list. If you think this is a mistake, please contact support.",
-				},
-				Status:  http.StatusForbidden,
-				Headers: limit.Headers(),
-			}
-		}
-
-		if !banned && req.Scope == "ban_exempt" {
-			return uapi.HttpResponse{
-				Json: types.ApiError{
-					Message: "The selected scope is not allowed for unbanned users [ban_exempt].",
-				},
-				Status:  http.StatusForbidden,
-				Headers: limit.Headers(),
-			}
-		}
-	}
-
-	uaStr := r.UserAgent()
-
-	if uaStr == "" {
-		uaStr = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/80.0.3987.149 Safari/537.36"
-	}
-
-	uaD := ua.Parse(uaStr)
-
-	sessionName := fmt.Sprintf("%s (on %s %s) [mobile: %t]", uaD.Name, uaD.OS, uaD.Version, uaD.Mobile)
-
-	var sessionToken = crypto.RandString(128)
-	var sessionId string
-	// Session lifetime here must stay in sync with the frontend's client-side
-	// expires_at estimate (see auth.ts's callback()) since this endpoint does
-	// not return an expiry timestamp for the frontend to read.
-	err = state.Pool.QueryRow(d.Context, "INSERT INTO api_sessions (target_type, target_id, type, token, expiry, name) VALUES ('user', $1, 'login', $2, NOW() + INTERVAL '30 days', $3) RETURNING id", user.ID, sessionToken, sessionName).Scan(&sessionId)
-
-	if err != nil {
-		state.Logger.Error("Failed to create session token", zap.Error(err), zap.String("userID", user.ID))
-		return uapi.HttpResponse{
-			Json: types.ApiError{
-				Message: "Failed to create session token",
-			},
-			Status:  http.StatusInternalServerError,
-			Headers: limit.Headers(),
-		}
-	}
-
-	// Create authUser and send
-	var authUser = types.CreateSessionResponse{
+	return resp.WithHeaders(resp.OK(types.CreateSessionResponse{
 		TargetID:  user.ID,
-		Token:     sessionToken,
-		SessionID: sessionId,
-	}
-
-	go sendAuthLog(user, req, !exists)
-
-	return uapi.HttpResponse{
-		Json:    authUser,
-		Headers: limit.Headers(),
-	}
+		Token:     token,
+		SessionID: sessionID,
+	}), headers)
 }

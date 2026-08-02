@@ -1,3 +1,9 @@
+// Package utils recognises Discord webhook URLs.
+//
+// Popplio has to tell a Discord webhook from any other user-supplied URL
+// because the two are delivered differently, and a Discord-looking URL that
+// is not actually a webhook is a configuration mistake worth reporting
+// rather than attempting to POST to.
 package utils
 
 import (

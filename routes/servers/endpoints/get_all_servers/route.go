@@ -1,7 +1,12 @@
+// Package get_all_servers implements GET /servers/@all — "Get All Servers".
+//
+// Gets all servers on the list. Returns a set of paginated `IndexServer`
+// objects
 package get_all_servers
 
 import (
 	"net/http"
+	"popplio/api/resp"
 	"strconv"
 	"strings"
 
@@ -51,12 +56,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	pageNum, err := strconv.ParseUint(page, 10, 32)
 
 	if err != nil {
-		return uapi.HttpResponse{
-			Status: http.StatusBadRequest,
-			Json: types.ApiError{
-				Message: "Invalid page number",
-			},
-		}
+		return resp.BadRequest("Invalid page number")
 	}
 
 	limit := perPage
@@ -67,15 +67,13 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	rows, err = state.Pool.Query(d.Context, "SELECT "+indexServerCols+" FROM servers WHERE (type = 'approved' OR type = 'certified') AND state = 'public' ORDER BY created_at DESC LIMIT $1 OFFSET $2", limit, offset)
 
 	if err != nil {
-		state.Logger.Error("Failed to query servers [db query]", zap.Error(err), zap.Uint64("page", pageNum), zap.Int("limit", limit), zap.Uint64("offset", offset))
-		return uapi.DefaultResponse(http.StatusInternalServerError)
+		return resp.Err("Failed to query servers [db query]", err, zap.Uint64("page", pageNum), zap.Int("limit", limit), zap.Uint64("offset", offset))
 	}
 
 	servers, err := pgx.CollectRows(rows, pgx.RowToStructByName[types.IndexServer])
 
 	if err != nil {
-		state.Logger.Error("Failed to query servers [collect]", zap.Error(err), zap.Uint64("page", pageNum), zap.Int("limit", limit), zap.Uint64("offset", offset))
-		return uapi.DefaultResponse(http.StatusInternalServerError)
+		return resp.Err("Failed to query servers [collect]", err, zap.Uint64("page", pageNum), zap.Int("limit", limit), zap.Uint64("offset", offset))
 	}
 
 	// Resolve all servers
@@ -83,11 +81,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		err := assets.ResolveIndexServer(d.Context, &servers[i])
 
 		if err != nil {
-			state.Logger.Error("Error resolving indexserver", zap.Error(err), zap.String("serverID", servers[i].ServerID))
-			return uapi.HttpResponse{
-				Status: http.StatusInternalServerError,
-				Json:   types.ApiError{Message: "An error occurred while resolving index server." + " serverID: " + servers[i].ServerID},
-			}
+			return resp.ErrBody("Error resolving indexserver", "An error occurred while resolving index server."+" serverID: "+servers[i].ServerID, err, zap.String("serverID", servers[i].ServerID))
 		}
 	}
 
@@ -96,8 +90,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	err = state.Pool.QueryRow(d.Context, "SELECT COUNT(*) FROM servers").Scan(&count)
 
 	if err != nil {
-		state.Logger.Error("Failed to query servers [db count]", zap.Error(err), zap.Uint64("page", pageNum), zap.Int("limit", limit), zap.Uint64("offset", offset))
-		return uapi.DefaultResponse(http.StatusInternalServerError)
+		return resp.Err("Failed to query servers [db count]", err, zap.Uint64("page", pageNum), zap.Int("limit", limit), zap.Uint64("offset", offset))
 	}
 
 	data := types.PagedResult[[]types.IndexServer]{

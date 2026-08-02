@@ -1,3 +1,6 @@
+// Package servers mounts the "Servers" group of API routes.
+//
+// These API endpoints are related to servers on IBL
 package servers
 
 import (

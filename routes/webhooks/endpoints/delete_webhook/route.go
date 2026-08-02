@@ -1,7 +1,12 @@
+// Package delete_webhook implements DELETE
+// /{target_type}/{target_id}/webhooks/{webhook_id} — "Delete Webhook".
+//
+// Updates an existing webhook on an entity. Returns 204 on success.
 package delete_webhook
 
 import (
 	"net/http"
+	"popplio/api/resp"
 
 	"popplio/state"
 	"popplio/types"
@@ -53,10 +58,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	webhookId := chi.URLParam(r, "webhook_id")
 
 	if targetId == "" || targetType == "" || webhookId == "" {
-		return uapi.HttpResponse{
-			Status: http.StatusBadRequest,
-			Json:   types.ApiError{Message: "Both target_id and target_type must be specified"},
-		}
+		return resp.BadRequest("Both target_id and target_type must be specified")
 	}
 
 	switch targetType {
@@ -64,17 +66,13 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	case "server":
 	case "team":
 	default:
-		return uapi.HttpResponse{
-			Status: http.StatusNotImplemented,
-			Json:   types.ApiError{Message: "Creating webhooks for this target type is not yet supported"},
-		}
+		return resp.Status(http.StatusNotImplemented, "Creating webhooks for this target type is not yet supported")
 	}
 
 	tx, err := state.Pool.Begin(d.Context)
 
 	if err != nil {
-		state.Logger.Error("Error while starting transaction", zap.Error(err), zap.String("userID", d.Auth.ID))
-		return uapi.DefaultResponse(http.StatusInternalServerError)
+		return resp.Err("Error while starting transaction", err, zap.String("userID", d.Auth.ID))
 	}
 
 	var count int64
@@ -82,29 +80,23 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	err = tx.QueryRow(d.Context, "SELECT COUNT(*) FROM webhooks WHERE target_id = $1 AND target_type = $2 AND id = $3", targetId, targetType, webhookId).Scan(&count)
 
 	if err != nil {
-		state.Logger.Error("Error while checking webhook", zap.Error(err), zap.String("userID", d.Auth.ID))
-		return uapi.DefaultResponse(http.StatusInternalServerError)
+		return resp.Err("Error while checking webhook", err, zap.String("userID", d.Auth.ID))
 	}
 
 	if count == 0 {
-		return uapi.HttpResponse{
-			Status: http.StatusNotFound,
-			Json:   types.ApiError{Message: "Webhook not found"},
-		}
+		return resp.NotFound("Webhook not found")
 	}
 
 	_, err = tx.Exec(d.Context, "DELETE FROM webhooks WHERE target_id = $1 AND target_type = $2 AND id = $3", targetId, targetType, webhookId)
 
 	if err != nil {
-		state.Logger.Error("Error while inserting webhook", zap.Error(err), zap.String("userID", d.Auth.ID))
-		return uapi.DefaultResponse(http.StatusInternalServerError)
+		return resp.Err("Error while inserting webhook", err, zap.String("userID", d.Auth.ID))
 	}
 
 	err = tx.Commit(d.Context)
 
 	if err != nil {
-		state.Logger.Error("Error while committing transaction", zap.Error(err), zap.String("userID", d.Auth.ID))
-		return uapi.DefaultResponse(http.StatusInternalServerError)
+		return resp.Err("Error while committing transaction", err, zap.String("userID", d.Auth.ID))
 	}
 
 	return uapi.DefaultResponse(http.StatusNoContent)

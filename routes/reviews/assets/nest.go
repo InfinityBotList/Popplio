@@ -1,3 +1,8 @@
+// Package assets holds the review logic shared between endpoints.
+//
+// Reviews form a tree through their parent references, so this package
+// covers both nesting a flat result set into that tree and collecting the
+// orphans left behind when a parent is deleted.
 package assets
 
 import (

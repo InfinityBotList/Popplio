@@ -1,3 +1,6 @@
+// Package bots mounts the "Bots" group of API routes.
+//
+// These API endpoints are related to bots on IBL
 package bots
 
 import (

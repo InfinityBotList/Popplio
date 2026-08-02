@@ -1,3 +1,8 @@
+// Package fetchers resolves each entity type Popplio publishes for SEO.
+//
+// There is one fetcher per entity type (team, bot, server, user, pack); the
+// sitemap and RSS generators walk them rather than knowing about entity
+// types themselves, so a new listable entity only has to be added here.
 package fetchers
 
 import (

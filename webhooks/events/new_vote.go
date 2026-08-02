@@ -1,3 +1,8 @@
+// Package events contains Popplio's concrete webhook event payloads.
+//
+// Each type here implements the event interface from webhooks/core/events
+// and registers itself at init; the package is imported for that side effect
+// alone.
 package events
 
 import (

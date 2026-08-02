@@ -1,3 +1,11 @@
+// Package types defines the request and response bodies of the Popplio API.
+//
+// These types are the API's contract in both directions: the `json` tags
+// shape what callers send and receive, the `db` tags let popplio/db build
+// the queries that populate them (see db.GetCols), and the `description`
+// tags become the published API documentation. A field's tags are therefore
+// part of the public interface, and tygo generates the frontend's TypeScript
+// bindings from them.
 package types
 
 // A link is any extra link

@@ -1,8 +1,15 @@
+// Package edit_review implements PATCH
+// /{target_type}/{target_id}/reviews/{review_id} — "Edit Review".
+//
+// Edits a review by review ID. The user must be the author of this review.
+// This will automatically trigger a garbage collection task. Note that
+// non-users can only edit 'owner review's. Returns 204 on success
 package edit_review
 
 import (
 	"net/http"
 	"popplio/api"
+	"popplio/api/resp"
 	"popplio/routes/reviews/assets"
 	"popplio/state"
 	"popplio/teams"
@@ -99,43 +106,24 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		)
 
 		if err != nil {
-			return uapi.HttpResponse{
-				Status: http.StatusForbidden,
-				Json:   types.ApiError{Message: "Entity permission checks failed: " + err.Error()},
-			}
+			return resp.Forbidden("Entity permission checks failed: " + err.Error())
 		}
 	} else {
 		if d.Auth.TargetType != api.TargetTypeUser {
-			return uapi.HttpResponse{
-				Status: http.StatusForbidden,
-				Json: types.ApiError{
-					Message: "Only users may edit non-owner reviews",
-				},
-			}
+			return resp.Forbidden("Only users may edit non-owner reviews")
 		} else if d.Auth.TargetType == api.TargetTypeUser {
 			if author != d.Auth.ID {
-				return uapi.HttpResponse{
-					Status: http.StatusForbidden,
-					Json: types.ApiError{
-						Message: "You are not the author of this review",
-					},
-				}
+				return resp.Forbidden("You are not the author of this review")
 			}
 		} else {
-			return uapi.HttpResponse{
-				Status: http.StatusInternalServerError,
-				Json: types.ApiError{
-					Message: "Unreachable condition reached!",
-				},
-			}
+			return resp.ErrBody("Unreachable condition reached!", "Unreachable condition reached!", nil)
 		}
 	}
 
 	_, err = state.Pool.Exec(d.Context, "UPDATE reviews SET content = $1, stars = $2 WHERE id = $3", payload.Content, payload.Stars, rid)
 
 	if err != nil {
-		state.Logger.Error("Failed to update review", zap.Error(err), zap.String("rid", rid))
-		return uapi.DefaultResponse(http.StatusInternalServerError)
+		return resp.Err("Failed to update review", err, zap.String("rid", rid))
 	}
 
 	err = drivers.Send(drivers.With{

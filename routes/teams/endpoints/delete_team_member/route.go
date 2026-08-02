@@ -1,7 +1,13 @@
+// Package delete_team_member implements DELETE /teams/{tid}/members/{mid} —
+// "Delete Team Member".
+//
+// Deletes a member from the team. Users can always delete themselves.
+// Returns a 204 on success
 package delete_team_member
 
 import (
 	"net/http"
+	"popplio/api/resp"
 	"popplio/state"
 	"popplio/teams"
 	"popplio/types"
@@ -46,10 +52,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 
 	if err != nil {
 		state.Logger.Error("Error getting user perms", zap.Error(err), zap.String("uid", d.Auth.ID), zap.String("tid", teamId), zap.String("mid", userId))
-		return uapi.HttpResponse{
-			Status: http.StatusBadRequest,
-			Json:   types.ApiError{Message: "Error getting user perms: " + err.Error()},
-		}
+		return resp.BadRequest("Error getting user perms: " + err.Error())
 	}
 
 	if d.Auth.ID != userId {
@@ -58,26 +61,19 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 
 		if err != nil {
 			state.Logger.Error("Error getting user perms", zap.Error(err), zap.String("uid", d.Auth.ID), zap.String("tid", teamId), zap.String("mid", userId))
-			return uapi.HttpResponse{
-				Status: http.StatusBadRequest,
-				Json:   types.ApiError{Message: "Error getting user perms: " + err.Error()},
-			}
+			return resp.BadRequest("Error getting user perms: " + err.Error())
 		}
 
 		// Ensure manager has permissions to remove all user perms
 		if err := kittycat.CheckPatchChanges(managerPerms, userPerms, []kittycat.Permission{}); err != nil {
-			return uapi.HttpResponse{
-				Status: http.StatusForbidden,
-				Json:   types.ApiError{Message: "You do not have permission to delete this member:" + err.Error()},
-			}
+			return resp.Forbidden("You do not have permission to delete this member:" + err.Error())
 		}
 	}
 
 	tx, err := state.Pool.Begin(d.Context)
 
 	if err != nil {
-		state.Logger.Error("Error starting transaction", zap.Error(err), zap.String("uid", d.Auth.ID), zap.String("tid", teamId), zap.String("mid", userId))
-		return uapi.DefaultResponse(http.StatusInternalServerError)
+		return resp.Err("Error starting transaction", err, zap.String("uid", d.Auth.ID), zap.String("tid", teamId), zap.String("mid", userId))
 	}
 
 	defer tx.Rollback(d.Context)
@@ -89,30 +85,24 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		err = tx.QueryRow(d.Context, "SELECT COUNT(*) FROM team_members WHERE team_id = $1 AND flags && $2", teamId, []string{kittycat.Permission{Namespace: "global", Perm: teams.PermissionOwner}.String()}).Scan(&ownerCount)
 
 		if err != nil {
-			state.Logger.Error("Error getting owner count", zap.Error(err), zap.String("uid", d.Auth.ID), zap.String("tid", teamId), zap.String("mid", userId))
-			return uapi.DefaultResponse(http.StatusInternalServerError)
+			return resp.Err("Error getting owner count", err, zap.String("uid", d.Auth.ID), zap.String("tid", teamId), zap.String("mid", userId))
 		}
 
 		if ownerCount < 2 {
-			return uapi.HttpResponse{
-				Status: http.StatusBadRequest,
-				Json:   types.ApiError{Message: "There needs to be one other global owner before you can remove yourself from owner"},
-			}
+			return resp.BadRequest("There needs to be one other global owner before you can remove yourself from owner")
 		}
 	}
 
 	_, err = tx.Exec(d.Context, "DELETE FROM team_members WHERE team_id = $1 AND user_id = $2", teamId, userId)
 
 	if err != nil {
-		state.Logger.Error("Error deleting member", zap.Error(err), zap.String("uid", d.Auth.ID), zap.String("tid", teamId), zap.String("mid", userId))
-		return uapi.DefaultResponse(http.StatusInternalServerError)
+		return resp.Err("Error deleting member", err, zap.String("uid", d.Auth.ID), zap.String("tid", teamId), zap.String("mid", userId))
 	}
 
 	err = tx.Commit(d.Context)
 
 	if err != nil {
-		state.Logger.Error("Error committing transaction", zap.Error(err), zap.String("uid", d.Auth.ID), zap.String("tid", teamId), zap.String("mid", userId))
-		return uapi.DefaultResponse(http.StatusInternalServerError)
+		return resp.Err("Error committing transaction", err, zap.String("uid", d.Auth.ID), zap.String("tid", teamId), zap.String("mid", userId))
 	}
 
 	return uapi.DefaultResponse(http.StatusNoContent)

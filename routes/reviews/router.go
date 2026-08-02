@@ -1,3 +1,6 @@
+// Package reviews mounts the "Reviews" group of API routes.
+//
+// These API endpoints are related to reviews on IBL
 package reviews
 
 import (

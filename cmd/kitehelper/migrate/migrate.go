@@ -1,3 +1,8 @@
+// Package migrate runs kitehelper's schema migrations in order.
+//
+// It tracks which migrations have already been applied so a rerun is a
+// no-op, and stops at the first failure rather than continuing with a partly
+// migrated schema.
 package migrate
 
 import (

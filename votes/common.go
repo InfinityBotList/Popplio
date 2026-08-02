@@ -1,3 +1,9 @@
+// Package votes implements voting on entities and the credits votes earn.
+//
+// It covers both halves of the system: recording and counting votes against
+// any votable entity, and converting accumulated votes into redeemable
+// credits. Queries take a DbConn rather than the pool directly so callers
+// can run them inside a transaction they already opened.
 package votes
 
 import (

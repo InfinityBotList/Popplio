@@ -1,3 +1,8 @@
+// Package discord_dovewing adapts Popplio's disgo session to dovewing.
+//
+// Dovewing is what every user lookup in Popplio goes through, layering
+// in-memory, Redis and gateway caches over the Discord API; this package
+// supplies the platform implementation it calls when nothing is cached.
 package discord_dovewing
 
 import (

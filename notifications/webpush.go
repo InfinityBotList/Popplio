@@ -1,3 +1,8 @@
+// Package notifications delivers web push notifications to users.
+//
+// Alerts are validated before being sent, since a malformed payload would be
+// rejected by the push service rather than by us, and the failure would
+// surface far from its cause.
 package notifications
 
 import (

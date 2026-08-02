@@ -1,11 +1,18 @@
+// Package get_votes_user_list implements GET
+// /{target_type}/{target_id}/votes/user-list — "Get Votes User List".
+//
+// Gets the full list of all users who have voted for the entity on Discord
+// as a list of snowflakes. Note that for compatibility, a trailing 's' is
+// removed. This method does not require authentication as it is easily
+// publicly available through other means
 package get_votes_user_list
 
 import (
 	"net/http"
+	"popplio/api/resp"
 	"strconv"
 
 	"popplio/state"
-	"popplio/types"
 	"popplio/validators"
 
 	"github.com/go-chi/chi/v5"
@@ -54,10 +61,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	targetType := validators.NormalizeTargetType(chi.URLParam(r, "target_type"))
 
 	if targetId == "" || targetType == "" {
-		return uapi.HttpResponse{
-			Status: http.StatusBadRequest,
-			Json:   types.ApiError{Message: "Both target_id and target_type must be specified"},
-		}
+		return resp.BadRequest("Both target_id and target_type must be specified")
 	}
 
 	var rows pgx.Rows
@@ -82,8 +86,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	}
 
 	if err != nil {
-		state.Logger.Error("Failed to get user entity votes", zap.Error(err), zap.String("targetId", targetId), zap.String("targetType", targetType))
-		return uapi.DefaultResponse(http.StatusInternalServerError)
+		return resp.Err("Failed to get user entity votes", err, zap.String("targetId", targetId), zap.String("targetType", targetType))
 	}
 
 	var ev = []string{}
@@ -91,8 +94,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	for rows.Next() {
 		var author string
 		if err = rows.Scan(&author); err != nil {
-			state.Logger.Error("Failed to get user entity votes", zap.Error(err), zap.String("targetId", targetId), zap.String("targetType", targetType))
-			return uapi.DefaultResponse(http.StatusInternalServerError)
+			return resp.Err("Failed to get user entity votes", err, zap.String("targetId", targetId), zap.String("targetType", targetType))
 		}
 
 		ev = append(ev, author)

@@ -1,3 +1,9 @@
+// Package config defines Popplio's configuration schema.
+//
+// The active environment is fixed at build time from the embedded
+// current-env file, and Differs[T] carries every value that differs between
+// staging and production so both are declared together and neither can be
+// left unset.
 package config
 
 import (

@@ -1,7 +1,11 @@
+// Package add_pack implements PUT /users/{id}/packs — "Create Pack".
+//
+// Creates a pack. Returns 204 on success
 package add_pack
 
 import (
 	"net/http"
+	"popplio/api/resp"
 	"popplio/state"
 	"popplio/types"
 	"popplio/validators"
@@ -64,10 +68,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	}
 
 	if len(payload.Bots)+len(payload.Servers) == 0 {
-		return uapi.HttpResponse{
-			Status: http.StatusBadRequest,
-			Json:   types.ApiError{Message: "A pack must contain at least one bot or server"},
-		}
+		return resp.BadRequest("A pack must contain at least one bot or server")
 	}
 
 	// Both columns are NOT NULL — a nil Go slice encodes as SQL NULL, so
@@ -91,17 +92,11 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 
 	if err != nil {
 		state.Logger.Error("Error while getting word blacklist systems", zap.Error(err), zap.String("userID", d.Auth.ID))
-		return uapi.HttpResponse{
-			Status: http.StatusBadRequest,
-			Json:   types.ApiError{Message: "Error while getting word blacklist systems: " + err.Error()},
-		}
+		return resp.BadRequest("Error while getting word blacklist systems: " + err.Error())
 	}
 
 	if slices.Contains(systems, "pack.url") {
-		return uapi.HttpResponse{
-			Status: http.StatusBadRequest,
-			Json:   types.ApiError{Message: "The chosen pack url is blacklisted"},
-		}
+		return resp.BadRequest("The chosen pack url is blacklisted")
 	}
 
 	// Check that all bots exist
@@ -109,17 +104,11 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		botUser, err := dovewing.GetUser(d.Context, bot, state.DovewingPlatformDiscord)
 
 		if err != nil {
-			return uapi.HttpResponse{
-				Status: http.StatusBadRequest,
-				Json:   types.ApiError{Message: "One of the bot you wish to add does not exist [" + bot + "]: " + err.Error()},
-			}
+			return resp.BadRequest("One of the bot you wish to add does not exist [" + bot + "]: " + err.Error())
 		}
 
 		if !botUser.Bot {
-			return uapi.HttpResponse{
-				Status: http.StatusBadRequest,
-				Json:   types.ApiError{Message: "One of the bot you wish to add is not actually a bot [" + bot + "]"},
-			}
+			return resp.BadRequest("One of the bot you wish to add is not actually a bot [" + bot + "]")
 		}
 	}
 
@@ -132,17 +121,11 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		err = state.Pool.QueryRow(d.Context, "SELECT COUNT(*) FROM servers WHERE server_id = $1", server).Scan(&count)
 
 		if err != nil {
-			return uapi.HttpResponse{
-				Status: http.StatusInternalServerError,
-				Json:   types.ApiError{Message: "Error checking if server exists: " + err.Error()},
-			}
+			return resp.ErrBody("Error checking if server exists:", "Error checking if server exists: "+err.Error(), err)
 		}
 
 		if count == 0 {
-			return uapi.HttpResponse{
-				Status: http.StatusBadRequest,
-				Json:   types.ApiError{Message: "One of the servers you wish to add does not exist [" + server + "]"},
-			}
+			return resp.BadRequest("One of the servers you wish to add does not exist [" + server + "]")
 		}
 	}
 
@@ -151,17 +134,11 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	err = state.Pool.QueryRow(d.Context, "SELECT COUNT(*) FROM packs WHERE url = $1", payload.URL).Scan(&count)
 
 	if err != nil {
-		return uapi.HttpResponse{
-			Status: http.StatusBadRequest,
-			Json:   types.ApiError{Message: err.Error()},
-		}
+		return resp.BadRequest(err.Error())
 	}
 
 	if count > 0 {
-		return uapi.HttpResponse{
-			Status: http.StatusBadRequest,
-			Json:   types.ApiError{Message: "A pack with that URL already exists"},
-		}
+		return resp.BadRequest("A pack with that URL already exists")
 	}
 
 	// Create the pack
@@ -178,10 +155,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	)
 
 	if err != nil {
-		return uapi.HttpResponse{
-			Status: http.StatusBadRequest,
-			Json:   types.ApiError{Message: err.Error()},
-		}
+		return resp.BadRequest(err.Error())
 	}
 
 	return uapi.DefaultResponse(http.StatusNoContent)

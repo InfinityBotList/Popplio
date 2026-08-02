@@ -1,7 +1,12 @@
+// Package delete_team implements DELETE /teams/{tid} — "Delete Team".
+//
+// Deletes the team. Requires the 'Owner' permission. Returns a 204 on
+// success
 package delete_team
 
 import (
 	"net/http"
+	"popplio/api/resp"
 	"popplio/state"
 	"popplio/types"
 
@@ -34,8 +39,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	tx, err := state.Pool.Begin(d.Context)
 
 	if err != nil {
-		state.Logger.Error("Error beginning transaction", zap.Error(err), zap.String("tid", teamId))
-		return uapi.DefaultResponse(http.StatusInternalServerError)
+		return resp.Err("Error beginning transaction", err, zap.String("tid", teamId))
 	}
 
 	var botCount int
@@ -43,15 +47,11 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	err = tx.QueryRow(d.Context, "SELECT COUNT(*) FROM bots WHERE team_owner = $1", teamId).Scan(&botCount)
 
 	if err != nil {
-		state.Logger.Error("Error getting bot count [db count]", zap.Error(err), zap.String("tid", teamId))
-		return uapi.DefaultResponse(http.StatusInternalServerError)
+		return resp.Err("Error getting bot count [db count]", err, zap.String("tid", teamId))
 	}
 
 	if botCount > 0 {
-		return uapi.HttpResponse{
-			Status: http.StatusBadRequest,
-			Json:   types.ApiError{Message: "You cannot delete a team with bots in it"},
-		}
+		return resp.BadRequest("You cannot delete a team with bots in it")
 	}
 
 	var serverCount int
@@ -59,36 +59,29 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	err = tx.QueryRow(d.Context, "SELECT COUNT(*) FROM servers WHERE team_owner = $1", teamId).Scan(&serverCount)
 
 	if err != nil {
-		state.Logger.Error("Error getting server count [db count]", zap.Error(err), zap.String("tid", teamId))
-		return uapi.DefaultResponse(http.StatusInternalServerError)
+		return resp.Err("Error getting server count [db count]", err, zap.String("tid", teamId))
 	}
 
 	if serverCount > 0 {
-		return uapi.HttpResponse{
-			Status: http.StatusBadRequest,
-			Json:   types.ApiError{Message: "You cannot delete a team with servers in it"},
-		}
+		return resp.BadRequest("You cannot delete a team with servers in it")
 	}
 
 	_, err = tx.Exec(d.Context, "DELETE FROM team_members WHERE team_id = $1", teamId)
 
 	if err != nil {
-		state.Logger.Error("Error deleting team members", zap.Error(err), zap.String("tid", teamId))
-		return uapi.DefaultResponse(http.StatusInternalServerError)
+		return resp.Err("Error deleting team members", err, zap.String("tid", teamId))
 	}
 
 	_, err = tx.Exec(d.Context, "DELETE FROM teams WHERE id = $1", teamId)
 
 	if err != nil {
-		state.Logger.Error("Error deleting team", zap.Error(err), zap.String("tid", teamId))
-		return uapi.DefaultResponse(http.StatusInternalServerError)
+		return resp.Err("Error deleting team", err, zap.String("tid", teamId))
 	}
 
 	err = tx.Commit(d.Context)
 
 	if err != nil {
-		state.Logger.Error("Error committing transaction", zap.Error(err), zap.String("tid", teamId))
-		return uapi.DefaultResponse(http.StatusInternalServerError)
+		return resp.Err("Error committing transaction", err, zap.String("tid", teamId))
 	}
 
 	return uapi.DefaultResponse(http.StatusNoContent)
