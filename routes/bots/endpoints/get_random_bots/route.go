@@ -15,7 +15,6 @@ import (
 	docs "github.com/infinitybotlist/eureka/doclib"
 	"github.com/infinitybotlist/eureka/uapi"
 	"github.com/jackc/pgx/v5"
-	"go.uber.org/zap"
 )
 
 var (
@@ -46,13 +45,9 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		return resp.Err("Error while getting random bots [collect]", err)
 	}
 
-	// Set the user for each bot
-	for i := range bots {
-		err := assets.ResolveIndexBot(d.Context, &bots[i])
-
-		if err != nil {
-			return resp.ErrBody("Error resolving indexbot", "An error occurred while resolving index bot."+" botID: "+bots[i].BotID, err, zap.String("botID", bots[i].BotID))
-		}
+	// Resolve all bots concurrently, since each bot's resolution is independent
+	if err := assets.ResolveIndexBots(d.Context, bots); err != nil {
+		return resp.ErrBody("Error resolving indexbot", "An error occurred while resolving index bot.", err)
 	}
 
 	return uapi.HttpResponse{

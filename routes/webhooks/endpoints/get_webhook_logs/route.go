@@ -8,10 +8,10 @@ import (
 	"net/http"
 	"popplio/api/resp"
 	"popplio/db"
+	"popplio/pagination"
 	"popplio/state"
 	"popplio/types"
 	"popplio/validators"
-	"strconv"
 	"strings"
 
 	"github.com/go-chi/chi/v5"
@@ -65,13 +65,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	targetType := validators.NormalizeTargetType(chi.URLParam(r, "target_type"))
 	targetId := chi.URLParam(r, "target_id")
 
-	page := r.URL.Query().Get("page")
-
-	if page == "" {
-		page = "1"
-	}
-
-	pageNum, err := strconv.ParseUint(page, 10, 32)
+	pageNum, err := pagination.Parse(r)
 
 	if err != nil {
 		return resp.BadRequest("Invalid page number")

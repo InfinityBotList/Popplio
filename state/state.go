@@ -215,6 +215,10 @@ func Setup() {
 	stripe.Key = Config.Meta.StripeSecretKey.Parse()
 
 	go func() {
+		// A transient failure here (Stripe API hiccup, network blip) should
+		// disable Stripe webhook support, not take down the whole process —
+		// same graceful-degradation treatment as the Paypal setup above.
+
 		// Get all current webhooks
 		i := webhookendpoint.List(&stripe.WebhookEndpointListParams{})
 
@@ -223,7 +227,8 @@ func Setup() {
 			_, err := webhookendpoint.Del(i.WebhookEndpoint().ID, nil)
 
 			if err != nil {
-				panic(err)
+				Logger.Error("Stripe webhook setup failed [delete existing], disabling stripe webhook support", zap.Error(err))
+				return
 			}
 		}
 
@@ -240,7 +245,8 @@ func Setup() {
 		wh, err := webhookendpoint.New(params)
 
 		if err != nil {
-			panic(err)
+			Logger.Error("Stripe webhook setup failed [create], disabling stripe webhook support", zap.Error(err))
+			return
 		}
 
 		StripeWebhSecret = wh.Secret
@@ -249,7 +255,8 @@ func Setup() {
 		resp, err := http.Get("https://stripe.com/files/ips/ips_webhooks.txt")
 
 		if err != nil {
-			panic(err)
+			Logger.Error("Stripe webhook setup failed [fetch IP list], disabling stripe webhook support", zap.Error(err))
+			return
 		}
 
 		defer resp.Body.Close()
@@ -257,18 +264,22 @@ func Setup() {
 		body, err := io.ReadAll(resp.Body)
 
 		if err != nil {
-			panic(err)
+			Logger.Error("Stripe webhook setup failed [read IP list], disabling stripe webhook support", zap.Error(err))
+			return
 		}
 
-		// Split the body into lines
-		StripeWebhIPList = strings.Split(string(body), "\n")
-
-		// Remove empty lines
-		for i, v := range StripeWebhIPList {
-			if v == "" {
-				StripeWebhIPList = append(StripeWebhIPList[:i], StripeWebhIPList[i+1:]...)
+		// Split the body into lines, dropping empty ones. Built into a new
+		// slice rather than filtered in place — mutating StripeWebhIPList
+		// while ranging over its original indices would skip the element
+		// that shifts into each removed slot.
+		lines := strings.Split(string(body), "\n")
+		ipList := make([]string, 0, len(lines))
+		for _, v := range lines {
+			if v != "" {
+				ipList = append(ipList, v)
 			}
 		}
+		StripeWebhIPList = ipList
 
 		Logger.Info("Stripe webhook IP allowlist:", zap.Strings("ipList", StripeWebhIPList))
 	}()

@@ -16,6 +16,7 @@ import (
 	docs "github.com/infinitybotlist/eureka/doclib"
 	"github.com/infinitybotlist/eureka/jsonimpl"
 	"github.com/infinitybotlist/eureka/uapi"
+	"go.uber.org/zap"
 )
 
 func Docs() *docs.Doc {
@@ -56,22 +57,31 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		}
 	}
 
+	httpClient := http.Client{Timeout: 10 * time.Second}
+
 	switch src {
 	case "instatus":
-		res, err := http.Get(state.Config.Sites.Instatus + "/summary.json")
+		req, err := http.NewRequestWithContext(d.Context, http.MethodGet, state.Config.Sites.Instatus+"/summary.json", nil)
 
 		if err != nil {
-			return resp.ErrBody("Instatus returned an error", "Instatus returned an error.", err)
+			return resp.Err("Error while building Instatus request", err)
 		}
 
+		res, err := httpClient.Do(req)
+
+		if err != nil {
+			return resp.Err("Instatus returned an error", err)
+		}
+		defer res.Body.Close()
+
 		if res.StatusCode != 200 {
-			return resp.ErrBody("Instatus returned a non-200 status code:", "Instatus returned a non-200 status code: "+res.Status, nil)
+			return resp.Err("Instatus returned a non-200 status code", nil, zap.String("status", res.Status))
 		}
 
 		err = jsonimpl.UnmarshalReader(res.Body, &listStatus)
 
 		if err != nil {
-			return uapi.DefaultResponse(http.StatusInternalServerError)
+			return resp.Err("Error while unmarshalling Instatus response", err)
 		}
 	case "uptime-robot":
 		// create form
@@ -81,34 +91,31 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		form.Set("custom_uptime_ratios", "7-30")
 
 		// create request
-		client := http.Client{
-			Timeout: 10 * time.Second,
-		}
-
-		req, err := http.NewRequest("POST", "https://api.uptimerobot.com/v2/getMonitors", strings.NewReader(form.Encode()))
+		req, err := http.NewRequestWithContext(d.Context, http.MethodPost, "https://api.uptimerobot.com/v2/getMonitors", strings.NewReader(form.Encode()))
 
 		if err != nil {
-			return uapi.DefaultResponse(http.StatusInternalServerError)
+			return resp.Err("Error while building UptimeRobot request", err)
 		}
 
 		// set content type
 		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 
 		// make request
-		res, err := client.Do(req)
+		res, err := httpClient.Do(req)
 
 		if err != nil {
-			return uapi.DefaultResponse(http.StatusInternalServerError)
+			return resp.Err("UptimeRobot returned an error", err)
 		}
+		defer res.Body.Close()
 
 		if res.StatusCode != 200 {
-			return uapi.DefaultResponse(http.StatusInternalServerError)
+			return resp.Err("UptimeRobot returned a non-200 status code", nil, zap.String("status", res.Status))
 		}
 
 		err = jsonimpl.UnmarshalReader(res.Body, &listStatus)
 
 		if err != nil {
-			return uapi.DefaultResponse(http.StatusInternalServerError)
+			return resp.Err("Error while unmarshalling UptimeRobot response", err)
 		}
 	default:
 		return resp.BadRequest("Invalid source. Valid sources are instatus and uptime-robot")

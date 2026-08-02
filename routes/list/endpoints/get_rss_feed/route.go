@@ -6,6 +6,7 @@ package get_rss_feed
 import (
 	"net/http"
 	"popplio/api/resp"
+	"popplio/pagination"
 	"popplio/seo"
 	"popplio/seo/fetchers"
 	"popplio/state"
@@ -30,16 +31,10 @@ func Docs() *docs.Doc {
 const perPage = 10
 
 func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
-	page := r.URL.Query().Get("page")
-
-	if page == "" {
-		page = "1"
-	}
-
-	pageNum, err := strconv.ParseUint(page, 10, 32)
+	pageNum, err := pagination.Parse(r)
 
 	if err != nil {
-		return uapi.DefaultResponse(http.StatusBadRequest)
+		return resp.BadRequest("Invalid page number")
 	}
 
 	// Check cache, this is how we can avoid hefty ratelimits

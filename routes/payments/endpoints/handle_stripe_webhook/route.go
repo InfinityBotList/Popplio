@@ -130,9 +130,15 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	}
 
 	go func() {
+		defer func() {
+			if rec := recover(); rec != nil {
+				state.Logger.Error("Panic while giving perks", zap.Any("panic", rec), zap.Any("payload", payload))
+			}
+		}()
+
 		state.Logger.Info("Giving perks", zap.Any("payload", payload))
 
-		err = assets.GivePerks(d.Context, payload)
+		err := assets.GivePerks(d.Context, payload)
 
 		if err != nil {
 			// Warn user about it as refunding is costly

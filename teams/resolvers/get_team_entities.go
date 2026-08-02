@@ -73,13 +73,9 @@ func GetTeamEntities(ctx context.Context, teamId string, targets []string) (*typ
 				return nil, err
 			}
 
-			for i := range eto.Bots {
-				// Set the user for each bot
-				err = botAssets.ResolveIndexBot(ctx, &eto.Bots[i])
-
-				if err != nil {
-					return nil, fmt.Errorf("error occurred while resolving index bot: " + err.Error() + " botID: " + eto.Bots[i].BotID)
-				}
+			// Resolve all bots concurrently, since each bot's resolution is independent
+			if err := botAssets.ResolveIndexBots(ctx, eto.Bots); err != nil {
+				return nil, fmt.Errorf("error occurred while resolving index bot: %w", err)
 			}
 		case "server":
 			indexServerRows, err := state.Pool.Query(ctx, "SELECT "+indexServerCols+" FROM servers WHERE team_owner = $1", teamId)
@@ -94,12 +90,9 @@ func GetTeamEntities(ctx context.Context, teamId string, targets []string) (*typ
 				return nil, err
 			}
 
-			for i := range eto.Servers {
-				err := serverAssets.ResolveIndexServer(ctx, &eto.Servers[i])
-
-				if err != nil {
-					return nil, fmt.Errorf("error occurred while resolving index server: " + err.Error() + " serverID: " + eto.Servers[i].ServerID)
-				}
+			// Resolve all servers concurrently, since each server's resolution is independent
+			if err := serverAssets.ResolveIndexServers(ctx, eto.Servers); err != nil {
+				return nil, fmt.Errorf("error occurred while resolving index server: %w", err)
 			}
 		default:
 			isInvalid = true

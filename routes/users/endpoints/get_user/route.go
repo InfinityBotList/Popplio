@@ -101,13 +101,9 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		return resp.Err("Failed to get user bots [collect]", err, zap.String("userID", user.ID))
 	}
 
-	// Resolve the userbots
-	for i := range user.UserBots {
-		err := botAssets.ResolveIndexBot(d.Context, &user.UserBots[i])
-
-		if err != nil {
-			return resp.ErrBody("Error resolving indexbot", "An error occurred while resolving index bot."+" botID: "+user.UserBots[i].BotID, err, zap.String("botID", user.UserBots[i].BotID))
-		}
+	// Resolve the userbots concurrently, since each bot's resolution is independent
+	if err := botAssets.ResolveIndexBots(d.Context, user.UserBots); err != nil {
+		return resp.ErrBody("Error resolving indexbot", "An error occurred while resolving index bot.", err)
 	}
 
 	// Get user teams

@@ -7,10 +7,10 @@ package get_all_servers
 import (
 	"net/http"
 	"popplio/api/resp"
-	"strconv"
 	"strings"
 
 	"popplio/db"
+	"popplio/pagination"
 	"popplio/routes/servers/assets"
 	"popplio/state"
 	"popplio/types"
@@ -47,13 +47,7 @@ func Docs() *docs.Doc {
 }
 
 func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
-	page := r.URL.Query().Get("page")
-
-	if page == "" {
-		page = "1"
-	}
-
-	pageNum, err := strconv.ParseUint(page, 10, 32)
+	pageNum, err := pagination.Parse(r)
 
 	if err != nil {
 		return resp.BadRequest("Invalid page number")
@@ -76,13 +70,9 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		return resp.Err("Failed to query servers [collect]", err, zap.Uint64("page", pageNum), zap.Int("limit", limit), zap.Uint64("offset", offset))
 	}
 
-	// Resolve all servers
-	for i := range servers {
-		err := assets.ResolveIndexServer(d.Context, &servers[i])
-
-		if err != nil {
-			return resp.ErrBody("Error resolving indexserver", "An error occurred while resolving index server."+" serverID: "+servers[i].ServerID, err, zap.String("serverID", servers[i].ServerID))
-		}
+	// Resolve all servers concurrently, since each server's resolution is independent
+	if err := assets.ResolveIndexServers(d.Context, servers); err != nil {
+		return resp.ErrBody("Error resolving indexserver", "An error occurred while resolving index server.", err)
 	}
 
 	var count uint64

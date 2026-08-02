@@ -6,6 +6,7 @@
 package patch_pack
 
 import (
+	"errors"
 	"net/http"
 	"popplio/api/resp"
 	"popplio/state"
@@ -17,6 +18,8 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-playground/validator/v10"
+	"github.com/jackc/pgx/v5"
+	"go.uber.org/zap"
 )
 
 var compiledMessages = uapi.CompileValidationErrors(PatchPack{})
@@ -73,26 +76,17 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 
 	var id = chi.URLParam(r, "id")
 
-	// Check that the pack exists
-	var count int64
-
-	err = state.Pool.QueryRow(d.Context, "SELECT COUNT(*) FROM packs WHERE url = $1", id).Scan(&count)
-
-	if err != nil {
-		return uapi.DefaultResponse(http.StatusInternalServerError)
-	}
-
-	if count == 0 {
-		return uapi.DefaultResponse(http.StatusNotFound)
-	}
-
-	// Check that the user is the owner of the pack
+	// Check that the pack exists and get its owner in one query
 	var owner string
 
 	err = state.Pool.QueryRow(d.Context, "SELECT owner FROM packs WHERE url = $1", id).Scan(&owner)
 
+	if errors.Is(err, pgx.ErrNoRows) {
+		return uapi.DefaultResponse(http.StatusNotFound)
+	}
+
 	if err != nil {
-		return uapi.DefaultResponse(http.StatusInternalServerError)
+		return resp.Err("Error while checking pack owner [db fetch]", err, zap.String("id", id))
 	}
 
 	if owner != d.Auth.ID {
@@ -146,7 +140,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	_, err = state.Pool.Exec(d.Context, "UPDATE packs SET name = $1, short = $2, tags = $3, bots = $4, servers = $5 WHERE url = $6", payload.Name, payload.Short, payload.Tags, payload.Bots, payload.Servers, id)
 
 	if err != nil {
-		return uapi.DefaultResponse(http.StatusInternalServerError)
+		return resp.Err("Error while updating pack [db exec]", err, zap.String("id", id))
 	}
 
 	return uapi.DefaultResponse(http.StatusNoContent)

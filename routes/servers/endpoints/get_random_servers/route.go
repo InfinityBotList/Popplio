@@ -16,7 +16,6 @@ import (
 	docs "github.com/infinitybotlist/eureka/doclib"
 	"github.com/infinitybotlist/eureka/uapi"
 	"github.com/jackc/pgx/v5"
-	"go.uber.org/zap"
 )
 
 var (
@@ -47,12 +46,9 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		return resp.Err("Failed to query servers [db collect]", err)
 	}
 
-	for i := range servers {
-		err := assets.ResolveIndexServer(d.Context, &servers[i])
-
-		if err != nil {
-			return resp.ErrBody("Error resolving indexserver", "An error occurred while resolving index server."+" serverID: "+servers[i].ServerID, err, zap.String("serverID", servers[i].ServerID))
-		}
+	// Resolve all servers concurrently, since each server's resolution is independent
+	if err := assets.ResolveIndexServers(d.Context, servers); err != nil {
+		return resp.ErrBody("Error resolving indexserver", "An error occurred while resolving index server.", err)
 	}
 
 	return uapi.HttpResponse{

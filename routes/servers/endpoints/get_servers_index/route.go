@@ -104,12 +104,11 @@ func processRow(ctx context.Context, rows pgx.Rows) ([]types.IndexServer, error)
 		if (servers[i].Type != "approved" && servers[i].Type != "certified") || servers[i].State != "public" {
 			return nil, fmt.Errorf("internal error: servers %s has invalid type %s or state %s", servers[i].ServerID, servers[i].Type, servers[i].State)
 		}
+	}
 
-		err := assets.ResolveIndexServer(ctx, &servers[i])
-
-		if err != nil {
-			return nil, err
-		}
+	// Resolve all servers concurrently, since each server's resolution is independent
+	if err := assets.ResolveIndexServers(ctx, servers); err != nil {
+		return nil, err
 	}
 
 	return servers, nil

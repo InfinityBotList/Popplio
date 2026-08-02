@@ -17,6 +17,7 @@ import (
 
 	"github.com/disgoorg/disgo/discord"
 	"go.uber.org/zap"
+	"golang.org/x/sync/errgroup"
 )
 
 var inviteCodeRegex = regexp.MustCompile(`(?:discord(?:\.gg|\.com/invite|app\.com/invite)/)?([a-zA-Z0-9-]+)/?$`)
@@ -139,4 +140,22 @@ func ResolveIndexServer(ctx context.Context, server *types.IndexServer) error {
 	}
 
 	return nil
+}
+
+// ResolveIndexServers resolves every server in the slice concurrently, since
+// each server's resolution (vanity lookup, vote count) is independent of
+// every other server's. Returns the first error encountered, if any.
+func ResolveIndexServers(ctx context.Context, servers []types.IndexServer) error {
+	g, ctx := errgroup.WithContext(ctx)
+
+	for i := range servers {
+		g.Go(func() error {
+			if err := ResolveIndexServer(ctx, &servers[i]); err != nil {
+				return fmt.Errorf("serverID=%s: %w", servers[i].ServerID, err)
+			}
+			return nil
+		})
+	}
+
+	return g.Wait()
 }

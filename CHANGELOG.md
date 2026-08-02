@@ -46,8 +46,67 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Best-effort: any failure to reach Infernoplex is treated as "not present"
   rather than failing the request.
 
+### Changed
+
+- `EntityGetVoteCount` (used by nearly every bot/server/team/user/pack
+  detail and list endpoint) now counts up- and down-votes in a single query
+  with `FILTER`, instead of two separate `COUNT(*)` round trips.
+- Bot/server index resolution (`ResolveIndexBot`/`ResolveIndexServer`,
+  called by `GET /bots/@all`, `GET /servers/@all`, search, random, the bots
+  index, packs, team entities, and user profiles) now resolves every row in
+  a page concurrently via `errgroup` instead of one row at a time — each
+  row's dovewing/vanity/vote lookups are independent, so a page of results
+  no longer pays for them sequentially.
+- `GET /list/current-status` now issues both the Instatus and UptimeRobot
+  requests with the request's own context and a bounded client timeout,
+  instead of an unbounded `http.Get`/`http.NewRequest` that could hang the
+  handler indefinitely if the upstream stalled.
+- Deduplicated the `page` query-parameter parsing copy-pasted across nine
+  endpoints (each with a slightly different error response for the same
+  invalid-page case) into a shared `pagination.Parse` helper.
+- `DELETE /users/{uid}/packs/{id}` and `PATCH /users/{uid}/packs/{id}` each
+  folded two sequential "does the pack exist" / "who owns it" queries into
+  one.
+
 ### Fixed
 
+- Several route handlers (`delete_pack`, `patch_pack`, `current_status`)
+  returned a bare `uapi.DefaultResponse(http.StatusInternalServerError)` on
+  DB/upstream failures without logging anything, so some production 500s
+  were invisible in the logs. They now go through `resp.Err`, which is what
+  the shared `api/resp` package exists for.
+- A background goroutine filtering empty entries out of the Stripe webhook
+  IP allowlist mutated the slice while ranging over its original indices, a
+  classic Go bug that silently skips the element shifted into a just-removed
+  slot — consecutive empty lines in Stripe's IP list could leave stale
+  entries in a security-relevant allowlist. Now builds a filtered copy
+  instead of mutating in place.
+- Startup panicked the entire process on a transient Stripe API/network
+  failure (deleting existing webhooks, creating the new one, or fetching its
+  IP allowlist) instead of disabling Stripe webhook support and continuing,
+  unlike the equivalent Paypal setup a few lines above it, which already
+  degraded gracefully.
+- `webhooks/sender` used `panic()` as its input-validation strategy for a
+  handful of preconditions, including from inside an unrecovered goroutine
+  (the randomized "send a bad webhook to test auth" path) — a single
+  malformed webhook payload reaching that path could crash the whole
+  process rather than just fail one webhook delivery. Preconditions now
+  return errors instead.
+- Several fire-and-forget goroutines spawned from request handlers (bot/server
+  detail-page analytics, review garbage collection, Stripe perk delivery,
+  vote logging and webhook dispatch) had no `recover()`, so a panic in any of
+  them would take down the whole process instead of just that background
+  task. Two of them (`create_user_entity_vote`'s webhook-send goroutine and
+  the Stripe perk-delivery goroutine) also wrote to an `err` variable shared
+  with their enclosing handler, a data race; both now use a goroutine-local
+  variable.
+- `data/seed-ci.json`, the schema snapshot the `db_fields_check.py` CI test
+  checks Go struct `db` tags against, had fallen out of sync with several
+  recently added columns (`bots.self_status`, `packs.servers`,
+  `servers.show_emojis`/`emojis`/`stickers`/`emojis_synced_at`), breaking the
+  test build. Also found and excluded `bots.cache_server_uninvitable`, a
+  real DB column with no corresponding Go struct field anywhere in the
+  codebase, via the existing `ignore_fields` convention.
 - Team votes were never resolved when a team was embedded inside a user's
   profile response (`GET /users/{id}`) — every embedded team silently
   reported 0 votes regardless of its real count.

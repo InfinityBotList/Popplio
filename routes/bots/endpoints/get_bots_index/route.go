@@ -125,16 +125,15 @@ func processRow(ctx context.Context, rows pgx.Rows) ([]types.IndexBot, error) {
 		return nil, err
 	}
 
-	// Set the user for each bot
 	for i := range bots {
 		if bots[i].Type != "approved" && bots[i].Type != "certified" {
 			return nil, fmt.Errorf("internal error: bot %s has invalid type %s", bots[i].BotID, bots[i].Type)
 		}
-		err := botAssets.ResolveIndexBot(ctx, &bots[i])
+	}
 
-		if err != nil {
-			return nil, err
-		}
+	// Resolve all bots concurrently, since each bot's resolution is independent
+	if err := botAssets.ResolveIndexBots(ctx, bots); err != nil {
+		return nil, err
 	}
 
 	return bots, nil

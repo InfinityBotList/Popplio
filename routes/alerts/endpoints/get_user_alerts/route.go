@@ -8,9 +8,9 @@ import (
 	"net/http"
 	"popplio/api/resp"
 	"popplio/db"
+	"popplio/pagination"
 	"popplio/state"
 	"popplio/types"
-	"strconv"
 	"strings"
 
 	docs "github.com/infinitybotlist/eureka/doclib"
@@ -52,13 +52,7 @@ func Docs() *docs.Doc {
 const perPage = 20
 
 func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
-	page := r.URL.Query().Get("page")
-
-	if page == "" {
-		page = "1"
-	}
-
-	pageNum, err := strconv.ParseUint(page, 10, 32)
+	pageNum, err := pagination.Parse(r)
 
 	if err != nil {
 		return resp.BadRequest("Page must be an integer")

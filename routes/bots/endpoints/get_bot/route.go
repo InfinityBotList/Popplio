@@ -242,9 +242,13 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	}
 
 	go func() {
-		err = handleAnalytics(r, id, target)
+		defer func() {
+			if rec := recover(); rec != nil {
+				state.Logger.Error("Panic while handling analytics", zap.Any("panic", rec), zap.String("id", id), zap.String("target", target))
+			}
+		}()
 
-		if err != nil {
+		if err := handleAnalytics(r, id, target); err != nil {
 			state.Logger.Error("Error while handling analytics", zap.Error(err), zap.String("id", id), zap.String("target", target))
 		}
 	}()

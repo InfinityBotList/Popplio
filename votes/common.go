@@ -319,13 +319,11 @@ func EntityGetVoteCount(ctx context.Context, c DbConn, targetId, targetType stri
 	var upvotes int
 	var downvotes int
 
-	err := c.QueryRow(ctx, "SELECT COUNT(*) FROM entity_votes WHERE target_id = $1 AND target_type = $2 AND void = false AND upvote = true", targetId, targetType).Scan(&upvotes)
-
-	if err != nil {
-		return 0, err
-	}
-
-	err = c.QueryRow(ctx, "SELECT COUNT(*) FROM entity_votes WHERE target_id = $1 AND target_type = $2 AND void = false AND upvote = false", targetId, targetType).Scan(&downvotes)
+	err := c.QueryRow(
+		ctx,
+		"SELECT COUNT(*) FILTER (WHERE upvote), COUNT(*) FILTER (WHERE NOT upvote) FROM entity_votes WHERE target_id = $1 AND target_type = $2 AND void = false",
+		targetId, targetType,
+	).Scan(&upvotes, &downvotes)
 
 	if err != nil {
 		return 0, err

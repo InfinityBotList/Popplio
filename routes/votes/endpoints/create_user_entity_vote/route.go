@@ -186,6 +186,12 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 
 	// Fetch user info to log it to server
 	go func() {
+		defer func() {
+			if rec := recover(); rec != nil {
+				state.Logger.Error("Panic while sending vote log message", zap.Any("panic", rec), zap.String("userId", d.Auth.ID), zap.String("targetId", targetId), zap.String("targetType", targetType))
+			}
+		}()
+
 		userObj, err := dovewing.GetUser(d.Context, d.Auth.ID, state.DovewingPlatformDiscord)
 
 		if err != nil {
@@ -236,9 +242,13 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 
 	// Send webhook in a goroutine
 	go func() {
-		err = nil // Be sure error is empty before we start
+		defer func() {
+			if rec := recover(); rec != nil {
+				state.Logger.Error("Panic while sending vote webhook", zap.Any("panic", rec), zap.String("userId", d.Auth.ID), zap.String("targetId", targetId), zap.String("targetType", targetType))
+			}
+		}()
 
-		err = drivers.Send(drivers.With{
+		err := drivers.Send(drivers.With{
 			UserID:     d.Auth.ID,
 			TargetID:   targetId,
 			TargetType: targetType,

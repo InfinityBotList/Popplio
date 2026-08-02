@@ -171,12 +171,8 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 				return resp.ErrBody("Failed to collect rows [bots]", "Error collecting rows.", err, zap.String("sql", sqlString.String()))
 			}
 
-			for i := range bots {
-				err := botAssets.ResolveIndexBot(d.Context, &bots[i])
-
-				if err != nil {
-					return resp.ErrBody("Error resolving bot", "Error resolving bot.", err)
-				}
+			if err := botAssets.ResolveIndexBots(d.Context, bots); err != nil {
+				return resp.ErrBody("Error resolving bot", "Error resolving bot.", err)
 			}
 
 			sr.Bots = bots
@@ -226,12 +222,8 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 				return resp.Err("Failed to collect rows", err, zap.String("sql", sqlString.String()))
 			}
 
-			for i := range servers {
-				err := serverAssets.ResolveIndexServer(d.Context, &servers[i])
-
-				if err != nil {
-					return resp.ErrBody("Failed to resolve server", "Error resolving server.", err, zap.String("serverId", servers[i].ServerID))
-				}
+			if err := serverAssets.ResolveIndexServers(d.Context, servers); err != nil {
+				return resp.ErrBody("Failed to resolve server", "Error resolving server.", err)
 			}
 
 			sr.Servers = servers

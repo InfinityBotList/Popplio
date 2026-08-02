@@ -9,10 +9,10 @@ package get_all_user_votes
 import (
 	"net/http"
 	"popplio/api/resp"
-	"strconv"
 	"strings"
 
 	"popplio/db"
+	"popplio/pagination"
 	"popplio/state"
 	"popplio/types"
 	"popplio/validators"
@@ -75,20 +75,14 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	targetId := chi.URLParam(r, "target_id")
 	targetType := validators.NormalizeTargetType(chi.URLParam(r, "target_type"))
 
-	page := r.URL.Query().Get("page")
-
-	if page == "" {
-		page = "1"
-	}
-
 	if uid == "" || targetId == "" || targetType == "" {
 		return resp.BadRequest("Both target_id and target_type must be specified")
 	}
 
-	pageNum, err := strconv.ParseUint(page, 10, 32)
+	pageNum, err := pagination.Parse(r)
 
 	if err != nil {
-		return uapi.DefaultResponse(http.StatusBadRequest)
+		return resp.BadRequest("Invalid page number")
 	}
 
 	limit := perPage

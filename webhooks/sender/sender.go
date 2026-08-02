@@ -92,11 +92,11 @@ type WebhookSendResult struct {
 // Creates a webhook response fanning it out to multiple webhooks if needed, retrying if needed
 func Send(d *WebhookData) (*WebhookSendResult, error) {
 	if !d.Entity.Validate() {
-		panic("invalid webhook entity")
+		return nil, errors.New("invalid webhook entity")
 	}
 
 	if d.Event == nil {
-		panic("no event set in sendstate and this should never happen")
+		return nil, errors.New("no event set in webhook data")
 	}
 
 	rows, err := state.Pool.Query(state.Context, "SELECT "+wdCols+" FROM webhooks WHERE target_id = $1 AND target_type = $2", d.Entity.EntityID, d.Entity.EntityType)
@@ -202,11 +202,11 @@ func Send(d *WebhookData) (*WebhookSendResult, error) {
 // Internal definition for send
 func send(d *webhookSendState, webhook *webhookData, pBytes *[]byte) error {
 	if !d.Entity.Validate() {
-		panic("invalid webhook entity")
+		return errors.New("invalid webhook entity")
 	}
 
 	if pBytes == nil {
-		panic("pBytes is nil")
+		return errors.New("pBytes is nil")
 	}
 
 	data := *pBytes
@@ -246,6 +246,12 @@ func send(d *webhookSendState, webhook *webhookData, pBytes *[]byte) error {
 	if !d.BadIntent {
 		if rand2.Float64() < 0.4 {
 			go func() {
+				defer func() {
+					if r := recover(); r != nil {
+						state.Logger.Error("Panic in bad-intent webhook test-send", d.logFields(zap.Any("panic", r))...)
+					}
+				}()
+
 				var logID string
 				err := state.Pool.QueryRow(state.Context, "INSERT INTO webhook_logs (target_id, target_type, user_id, url, data, bad_intent, webhook_id) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id", d.Entity.EntityID, d.Entity.EntityType, d.UserID, webhook.Url, data, true, webhook.ID).Scan(&logID)
 

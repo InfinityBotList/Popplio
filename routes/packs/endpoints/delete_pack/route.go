@@ -6,6 +6,7 @@
 package delete_pack
 
 import (
+	"errors"
 	"net/http"
 	"popplio/api/resp"
 	"popplio/state"
@@ -15,6 +16,8 @@ import (
 	"github.com/infinitybotlist/eureka/uapi"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/jackc/pgx/v5"
+	"go.uber.org/zap"
 )
 
 func Docs() *docs.Doc {
@@ -44,26 +47,17 @@ func Docs() *docs.Doc {
 func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	var id = chi.URLParam(r, "id")
 
-	// Check that the pack exists
-	var count int64
+	// Check that the pack exists and get its owner in one query
+	var owner string
 
-	err := state.Pool.QueryRow(d.Context, "SELECT COUNT(*) FROM packs WHERE url = $1", id).Scan(&count)
+	err := state.Pool.QueryRow(d.Context, "SELECT owner FROM packs WHERE url = $1", id).Scan(&owner)
 
-	if err != nil {
-		return uapi.DefaultResponse(http.StatusInternalServerError)
-	}
-
-	if count == 0 {
+	if errors.Is(err, pgx.ErrNoRows) {
 		return uapi.DefaultResponse(http.StatusNotFound)
 	}
 
-	// Check that the user is the owner of the pack
-	var owner string
-
-	err = state.Pool.QueryRow(d.Context, "SELECT owner FROM packs WHERE url = $1", id).Scan(&owner)
-
 	if err != nil {
-		return uapi.DefaultResponse(http.StatusInternalServerError)
+		return resp.Err("Error while checking pack owner [db fetch]", err, zap.String("id", id))
 	}
 
 	if owner != d.Auth.ID {
@@ -74,7 +68,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	_, err = state.Pool.Exec(d.Context, "DELETE FROM packs WHERE url = $1", id)
 
 	if err != nil {
-		return uapi.DefaultResponse(http.StatusInternalServerError)
+		return resp.Err("Error while deleting pack [db exec]", err, zap.String("id", id))
 	}
 
 	return uapi.DefaultResponse(http.StatusNoContent)

@@ -16,6 +16,7 @@ import (
 	"github.com/infinitybotlist/eureka/dovewing"
 	"github.com/infinitybotlist/eureka/dovewing/dovetypes"
 	"github.com/jackc/pgx/v5/pgtype"
+	"golang.org/x/sync/errgroup"
 )
 
 const statsPostFreshness = 24 * time.Hour
@@ -62,4 +63,22 @@ func ResolveIndexBot(ctx context.Context, bot *types.IndexBot) error {
 	}
 
 	return nil
+}
+
+// ResolveIndexBots resolves every bot in the slice concurrently, since each
+// bot's resolution (user lookup, vanity lookup, vote count) is independent of
+// every other bot's. Returns the first error encountered, if any.
+func ResolveIndexBots(ctx context.Context, bots []types.IndexBot) error {
+	g, ctx := errgroup.WithContext(ctx)
+
+	for i := range bots {
+		g.Go(func() error {
+			if err := ResolveIndexBot(ctx, &bots[i]); err != nil {
+				return fmt.Errorf("botID=%s: %w", bots[i].BotID, err)
+			}
+			return nil
+		})
+	}
+
+	return g.Wait()
 }

@@ -229,9 +229,13 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 
 	// Trigger a garbage collection step to remove any orphaned reviews
 	go func() {
-		err = assets.GCTrigger(targetId, targetType)
+		defer func() {
+			if rec := recover(); rec != nil {
+				state.Logger.Error("Panic while triggering review GC", zap.Any("panic", rec), zap.String("target_id", targetId), zap.String("target_type", targetType))
+			}
+		}()
 
-		if err != nil {
+		if err := assets.GCTrigger(targetId, targetType); err != nil {
 			state.Logger.Error("Failed to trigger GC: ", zap.Error(err))
 		}
 	}()
