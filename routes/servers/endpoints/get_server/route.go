@@ -212,6 +212,22 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 
 	server.Vanity = code
 
+	// The owner may have synced emoji/sticker data sitting in the DB from
+	// when show_emojis was previously on — don't leak it once they've opted
+	// back out, rather than waiting for the next sync pass to clear it.
+	if !server.ShowEmojis {
+		server.Emojis = nil
+		server.Stickers = nil
+	}
+	// Nil Go slices serialize to JSON null, which crashes frontend consumers
+	// that call .length/.map on it without a null check.
+	if server.Emojis == nil {
+		server.Emojis = []types.Emoji{}
+	}
+	if server.Stickers == nil {
+		server.Stickers = []types.Sticker{}
+	}
+
 	server.Votes, err = votes.EntityGetVoteCount(d.Context, state.Pool, server.ServerID, "server")
 
 	if err != nil {

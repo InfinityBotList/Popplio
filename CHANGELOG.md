@@ -5,9 +5,6 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-Nothing has been tagged or released yet — everything below falls under the
-initial `1.0.0` version.
-
 ## [1.0.0] - Unreleased
 
 ### Added
@@ -31,6 +28,23 @@ initial `1.0.0` version.
   posting stats (a nonzero server count from a stats post within the last
   24 hours) are now shown as `online` rather than falling back to
   dovewing's almost-always-offline gateway-derived status.
+- `GET /servers/meta?invite=...` resolves a Discord invite to a preview of
+  the server it points to (name, icon, member counts, and whether it's
+  already listed) without adding anything — lets a client show what's about
+  to be submitted before Add Server is actually called. Shares its invite
+  resolution logic with `PUT /servers` via a new `ResolveInvite` helper.
+- Servers can opt in to showing their custom emojis and stickers on their
+  listing page via a new `show_emojis` setting (`PATCH /servers/{id}/settings`).
+  `GET /servers/{id}` now includes `emojis`/`stickers`/`emojis_synced_at`,
+  always empty unless the owner has opted in. The actual snapshot is synced
+  periodically by the tracking bot (Infernoplex), not fetched live per
+  request, and requires the bot to currently be a member of the server —
+  Popplio itself never talks to Discord for this.
+- `GET /servers/meta` now also reports `bot_present`/`bot_invite_url` by
+  asking Infernoplex's Sorbet API whether the tracking bot is currently a
+  member of the resolved guild, via a new `CheckBotGuildPresence` helper.
+  Best-effort: any failure to reach Infernoplex is treated as "not present"
+  rather than failing the request.
 
 ### Fixed
 
@@ -55,6 +69,13 @@ initial `1.0.0` version.
   directly (as opposed to the application-resolved slices above, which were
   already covered) — a team with no tags or links set crashed the frontend
   team page outright rather than just rendering emptily.
+- `webhooks/sender` failed to build at all: an in-progress refactor had
+  extracted `Secret`, `webhookSendState`, and several helper methods
+  (`resolveTarget`, `buildRequest`, `notify`, `markFailed`, `logFields`)
+  into new `request.go`/`sendstate.go` files, but `sender.go` still carried
+  the old duplicate declarations and its own inline copies of the same
+  logic. `sender.go` now uses the extracted helpers instead of duplicating
+  them.
 
 ### Security
 

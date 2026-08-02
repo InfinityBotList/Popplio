@@ -10,6 +10,7 @@ import (
 	"popplio/routes/servers/endpoints/get_all_servers"
 	"popplio/routes/servers/endpoints/get_random_servers"
 	"popplio/routes/servers/endpoints/get_server"
+	"popplio/routes/servers/endpoints/get_server_meta"
 	"popplio/routes/servers/endpoints/get_server_seo"
 	"popplio/routes/servers/endpoints/get_servers_index"
 	"popplio/routes/servers/endpoints/patch_server_settings"
@@ -54,6 +55,22 @@ func (b Router) Routes(r *chi.Mux) {
 	}.Route(r)
 
 	uapi.Route{
+		Pattern: "/servers/meta",
+		OpId:    "get_server_meta",
+		Method:  uapi.GET,
+		Docs:    get_server_meta.Docs,
+		Handler: get_server_meta.Route,
+		Auth: []uapi.AuthType{
+			{
+				Type: api.TargetTypeUser,
+			},
+			{
+				Type: api.TargetTypeTeam,
+			},
+		},
+	}.Route(r)
+
+	uapi.Route{
 		Pattern: "/servers",
 		OpId:    "add_server",
 		Method:  uapi.PUT,
@@ -69,7 +86,7 @@ func (b Router) Routes(r *chi.Mux) {
 		},
 		Setup: add_server.Setup,
 		ExtData: map[string]any{
-			api.PERMISSION_CHECK_KEY: nil, // The endpoint itself handles authorization
+			api.PERMISSION_CHECK_KEY: nil,
 		},
 	}.Route(r)
 

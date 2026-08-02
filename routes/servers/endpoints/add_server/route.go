@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"popplio/db"
+	"popplio/routes/servers/assets"
 	"popplio/state"
 	"popplio/teams"
 	"popplio/types"
@@ -32,8 +33,6 @@ import (
 
 	"github.com/go-playground/validator/v10"
 )
-
-var inviteCodeRegex = regexp.MustCompile(`(?:discord(?:\.gg|\.com/invite|app\.com/invite)/)?([a-zA-Z0-9-]+)/?$`)
 
 func createServerArgs(server types.CreateServer) []any {
 	return []any{
@@ -114,20 +113,10 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		return resp.BadRequest(err.Error())
 	}
 
-	match := inviteCodeRegex.FindStringSubmatch(strings.TrimSpace(payload.Invite))
-
-	if len(match) < 2 || match[1] == "" {
-		return resp.BadRequest("Could not find an invite code in that URL")
-	}
-
-	invite, err := state.Discord.Rest().GetInvite(match[1])
+	invite, err := assets.ResolveInvite(d.Context, payload.Invite)
 
 	if err != nil {
-		return resp.BadRequest("That invite is invalid, expired, or the server has revoked it: " + err.Error())
-	}
-
-	if invite.Guild == nil {
-		return resp.BadRequest("That invite is not for a server")
+		return resp.BadRequest(err.Error())
 	}
 
 	payload.ServerID = invite.Guild.ID.String()

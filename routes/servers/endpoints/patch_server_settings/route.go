@@ -35,6 +35,7 @@ func updateServerArgs(server types.ServerSettingsUpdate) []any {
 		server.NSFW,
 		server.CaptchaOptOut,
 		server.LoginRequiredForInvite,
+		server.ShowEmojis,
 	}
 }
 
