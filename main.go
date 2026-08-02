@@ -263,11 +263,10 @@ func main() {
 
 	// Bring up the staff panel API, the staff Discord bot and the staff
 	// background tasks. The panel listens on its own port with its own
-	// middleware chain; see arcadia/CONFORMANCE.md.
+	// middleware chain; see ./arcadia/CONFORMANCE.md
 	arc := arcadia.Start(state.Context)
 	defer arc.Stop(30 * time.Second)
 
-	// If GOOS is windows, do normal http server
 	if runtime.GOOS == "linux" || runtime.GOOS == "darwin" {
 		upg, _ := tableflip.New(tableflip.Options{})
 		defer upg.Stop()
@@ -281,7 +280,6 @@ func main() {
 			}
 		}()
 
-		// Listen must be called before Ready
 		ln, err := upg.Listen("tcp", state.Config.Meta.Port.Parse())
 
 		if err != nil {
