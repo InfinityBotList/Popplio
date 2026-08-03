@@ -14,6 +14,7 @@ import (
 	"strings"
 
 	"github.com/disgoorg/snowflake/v2"
+	"github.com/go-playground/validator/v10"
 )
 
 const (
@@ -35,9 +36,14 @@ func init() {
 
 // Common struct for values that differ between staging and production
 // environments, plus an optional per-developer override for local dev use.
+//
+// Staging/Prod are not tagged validate:"required" here: whether they're
+// actually required depends on CurrentEnv, which a static tag can't express.
+// See ValidateDiffers, registered against every instantiation of this type
+// used in Config, for the real requirement.
 type Differs[T any] struct {
-	Staging T `yaml:"staging" comment:"Staging value" validate:"required"`
-	Prod    T `yaml:"prod" comment:"Production value" validate:"required"`
+	Staging T `yaml:"staging" comment:"Staging value"`
+	Prod    T `yaml:"prod" comment:"Production value"`
 
 	// Dev is only consulted when running with current-env set to "dev", and
 	// even then only if it has been set to something other than T's zero
@@ -45,6 +51,41 @@ type Differs[T any] struct {
 	// predate this field, or that simply don't need a dev override for a
 	// given key, keep working unchanged.
 	Dev T `yaml:"dev" required:"false" comment:"Development value, used when current-env is \"dev\"; falls back to staging when unset"`
+}
+
+// ValidateDiffers is a struct-level validator for Differs[T]. Register it
+// against every instantiation of Differs[T] actually used in Config (each
+// is a distinct type, so RegisterStructValidation needs one call listing
+// all of them — see state.Setup).
+//
+// In "dev", only Dev or Staging needs to be set, Parse falls back to
+// Staging when Dev is unset — requiring a real Staging/Prod value for
+// every key just to run locally would defeat the point of "dev". Every
+// other environment keeps the original requirement: both Staging and Prod
+// must be set, regardless of which one is actually read at runtime, so a
+// config that's valid for one environment is valid to deploy as any of
+// them.
+func ValidateDiffers(sl validator.StructLevel) {
+	current := sl.Current()
+
+	staging := current.FieldByName("Staging")
+	prod := current.FieldByName("Prod")
+	dev := current.FieldByName("Dev")
+
+	if CurrentEnv == CurrentEnvDev {
+		if staging.IsZero() && dev.IsZero() {
+			sl.ReportError(dev.Interface(), "Dev", "Dev", "required_without", "Staging")
+		}
+		return
+	}
+
+	if staging.IsZero() {
+		sl.ReportError(staging.Interface(), "Staging", "Staging", "required", "")
+	}
+
+	if prod.IsZero() {
+		sl.ReportError(prod.Interface(), "Prod", "Prod", "required", "")
+	}
 }
 
 func (d *Differs[T]) Parse() T {
@@ -104,11 +145,14 @@ type Roles struct {
 	PremiumRoles  Differs[[]snowflake.ID] `yaml:"premium_roles" default:"759468236999491594" comment:"Premium Roles" validate:"required"`
 
 	// Arcadia (staff panel/bot) roles. Ported from Arcadia's config.roles.
-	BotDeveloper       snowflake.ID `yaml:"bot_developer" default:"758756147313246209" comment:"Bot Developer Role" validate:"required"`
-	CertifiedDeveloper snowflake.ID `yaml:"certified_developer" default:"759468303344992266" comment:"Certified Developer Role" validate:"required"`
-	BotRole            snowflake.ID `yaml:"bot_role" default:"758652296459976715" comment:"Role given to bots joining the main server" validate:"required"`
-	BugHunters         snowflake.ID `yaml:"bug_hunters" default:"1042546603795427398" comment:"Bug Hunters Role" validate:"required"`
-	TopReviewers       snowflake.ID `yaml:"top_reviewers" default:"1239696066350420038" comment:"Top Reviewers Role" validate:"required"`
+	// Not required in "dev" — these only matter once Arcadia's staff bot is
+	// actually pointed at a real staff Discord server, which a local
+	// checkout usually isn't. See requirednotdev in state.Setup.
+	BotDeveloper       snowflake.ID `yaml:"bot_developer" default:"758756147313246209" comment:"Bot Developer Role" validate:"requirednotdev"`
+	CertifiedDeveloper snowflake.ID `yaml:"certified_developer" default:"759468303344992266" comment:"Certified Developer Role" validate:"requirednotdev"`
+	BotRole            snowflake.ID `yaml:"bot_role" default:"758652296459976715" comment:"Role given to bots joining the main server" validate:"requirednotdev"`
+	BugHunters         snowflake.ID `yaml:"bug_hunters" default:"1042546603795427398" comment:"Bug Hunters Role" validate:"requirednotdev"`
+	TopReviewers       snowflake.ID `yaml:"top_reviewers" default:"1239696066350420038" comment:"Top Reviewers Role" validate:"requirednotdev"`
 }
 
 type Channels struct {
@@ -120,10 +164,11 @@ type Channels struct {
 	AuthLogs   snowflake.ID `yaml:"auth_logs" default:"1075091440117498007" comment:"Auth Logs Channel" validate:"required"`
 
 	// Arcadia (staff panel/bot) channels. Ported from Arcadia's config.channels.
-	TestingLounge snowflake.ID `yaml:"testing_lounge" default:"891611731699335209" comment:"Testing Lounge Channel, auto-unclaims are announced here" validate:"required"`
-	System        snowflake.ID `yaml:"system" default:"762958420277067786" comment:"System Channel" validate:"required"`
-	Uptime        snowflake.ID `yaml:"uptime" default:"1083108330442076292" comment:"Uptime Channel" validate:"required"`
-	StaffLogs     snowflake.ID `yaml:"staff_logs" default:"1186195848497999912" comment:"Staff Logs Channel" validate:"required"`
+	// Not required in "dev", see requirednotdev in state.Setup.
+	TestingLounge snowflake.ID `yaml:"testing_lounge" default:"891611731699335209" comment:"Testing Lounge Channel, auto-unclaims are announced here" validate:"requirednotdev"`
+	System        snowflake.ID `yaml:"system" default:"762958420277067786" comment:"System Channel" validate:"requirednotdev"`
+	Uptime        snowflake.ID `yaml:"uptime" default:"1083108330442076292" comment:"Uptime Channel" validate:"requirednotdev"`
+	StaffLogs     snowflake.ID `yaml:"staff_logs" default:"1186195848497999912" comment:"Staff Logs Channel" validate:"requirednotdev"`
 }
 
 type JAPI struct {
@@ -139,8 +184,9 @@ type Servers struct {
 	Main snowflake.ID `yaml:"main" default:"758641373074423808" comment:"Main Server ID" validate:"required"`
 
 	// Arcadia (staff panel/bot) servers. Ported from Arcadia's config.servers.
-	Staff   snowflake.ID `yaml:"staff" default:"870950609291972618" comment:"Staff Server ID" validate:"required"`
-	Testing snowflake.ID `yaml:"testing" default:"870952645811134475" comment:"Testing Server ID" validate:"required"`
+	// Not required in "dev", see requirednotdev in state.Setup.
+	Staff   snowflake.ID `yaml:"staff" default:"870950609291972618" comment:"Staff Server ID" validate:"requirednotdev"`
+	Testing snowflake.ID `yaml:"testing" default:"870952645811134475" comment:"Testing Server ID" validate:"requirednotdev"`
 }
 
 type Meta struct {

@@ -9,6 +9,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Webhooks gained a new `hmac_auth` mode (`hmac_auth` on
+  `POST`/`PATCH .../webhooks`): the payload is sent as plain JSON with an
+  `X-Webhook-Signature: sha256=<hex hmac>` header, the same shape GitHub and
+  Stripe webhooks already use. It's now the recommended mode for new
+  webhooks the previous default ("splashtail": AES-GCM encrypted body,
+  nonce-chained double HMAC across two headers) required implementing
+  decryption just to verify a delivery, not just a signature check.
+  Existing webhooks are unaffected: `hmac_auth` defaults to off and the
+  splashtail/`simple_auth` protocols are unchanged and fully supported 
+  this only adds a third option, it doesn't remove or alter the other two.
+  Requires the new `webhooks.hmac_auth` column
+  (`exp/webhookhmacauth.sql`, needs to be applied manually against the
+  database like other `exp/` scripts).
 - `current-env` now also accepts `dev`, a third environment alongside
   `staging`/`prod`. Every `Differs[T]` config key (`config/config.go`) gains
   an optional `dev` value, only consulted when `current-env` is `dev`, and
@@ -90,6 +103,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- `current-env: dev` still required a real `staging` and `prod` value for
+  every `Differs[T]` config key, and for every Arcadia staff-server
+  channel/role/server ID, defeating the point of `dev`: a local checkout
+  needed a fully populated staging/prod config, including Arcadia secrets,
+  just to start. `Differs[T]`'s requirement is now environment-aware (`dev`
+  only needs `dev` or a `staging` fallback to resolve; `staging`/`prod`
+  keep the original both-required behavior), and Arcadia's staff-server
+  fields use a new `requirednotdev` validator so they're only required
+  outside of `dev`.
+- `GET /servers/meta`'s route registration was missing the `ExtData` entry
+  `BaseSanityCheck` requires whenever a route declares `Auth`, so the
+  server panicked at startup ("Base sanity check failed: permissionCheck
+  not found in route.ExtData") before it could serve a single request.
+- `PATCH .../webhooks/{id}` silently ignored `simple_auth` in the request
+  body — the `UPDATE` statement never included that column, so a webhook's
+  auth mode could only ever be set at creation, never changed afterward.
 - `GET /list/current-status`'s Redis cache never actually worked: it passed
   a raw `map[string]any` to `Set`, which go-redis cannot serialize (returns
   `"redis: can't marshal map[string]interface{}"`) — an error that was

@@ -1,9 +1,19 @@
-// Package sender delivers webhook payloads to their destination.
-//
-// It handles what delivery involves beyond an HTTP POST: signing and
-// encrypting the payload for the endpoint's secret, retrying with backoff,
-// refusing to connect to private network addresses, and recording each
-// attempt so users can see why a webhook is failing.
+/**
+* Package sender implements the webhook sending logic for Popplio.
+* It provides functionality to send webhooks to various targets, including Discord webhooks,
+* and handles retries, logging, and error handling.
+*
+* The package defines the following key components:
+* - Secret: Represents a webhook's shared secret used for authenticating payloads.
+* - WebhookEntity: Represents an abstraction over an entity (bot/team/server) that can receive webhooks.
+* - WebhookData: Represents the data required to send a webhook, including the event, user ID, and entity information.
+* - WebhookSendResult: Represents the result of sending a webhook, including the send states for each webhook.
+*
+* The Send function is the main entry point for sending webhooks. It retrieves the webhooks associated with the specified entity,
+* validates the payload, and sends the webhook to each target. It handles retries, logging, and error handling for each webhook.
+*
+* The package also includes functionality to send Discord webhooks using the SendDiscord function.
+ */
 package sender
 
 import (
@@ -36,6 +46,7 @@ type webhookData struct {
 	Broken         bool     `db:"broken"`
 	FailedRequests int      `db:"failed_requests"`
 	SimpleAuth     bool     `db:"simple_auth"`
+	HmacAuth       bool     `db:"hmac_auth"`
 	EventWhitelist []string `db:"event_whitelist"`
 }
 
@@ -129,15 +140,12 @@ func Send(d *WebhookData) (*WebhookSendResult, error) {
 			continue
 		}
 
-		// Basic checks
 		if len(webhook.EventWhitelist) > 0 {
-			// Check if event is whitelisted
 			if !slices.Contains(webhook.EventWhitelist, d.Event.Type) {
 				continue
 			}
 		}
 
-		// Create a log entry
 		var logID string
 		if d.LogID == "" {
 			err := state.Pool.QueryRow(state.Context, "INSERT INTO webhook_logs (target_id, target_type, user_id, url, data, bad_intent, webhook_id) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id", d.Entity.EntityID, d.Entity.EntityType, d.UserID, webhook.Url, dataBytes, d.BadIntent, webhook.ID).Scan(&logID)
@@ -199,7 +207,6 @@ func Send(d *WebhookData) (*WebhookSendResult, error) {
 	return res, nil
 }
 
-// Internal definition for send
 func send(d *webhookSendState, webhook *webhookData, pBytes *[]byte) error {
 	if !d.Entity.Validate() {
 		return errors.New("invalid webhook entity")
@@ -211,7 +218,6 @@ func send(d *webhookSendState, webhook *webhookData, pBytes *[]byte) error {
 
 	data := *pBytes
 
-	// Unmarshal event data if no data is set
 	if !d.BadIntent {
 		prefix, err := utils.GetDiscordWebhookInfo(webhook.Url)
 
@@ -242,7 +248,6 @@ func send(d *webhookSendState, webhook *webhookData, pBytes *[]byte) error {
 		return err
 	}
 
-	// Randomly send a bad webhook with invalid auth
 	if !d.BadIntent {
 		if rand2.Float64() < 0.4 {
 			go func() {
@@ -270,7 +275,6 @@ func send(d *webhookSendState, webhook *webhookData, pBytes *[]byte) error {
 					ResolvedIps: d.ResolvedIps,
 				}
 
-				// Retry with bad intent
 				send(badD, webhook, pBytes)
 			}()
 		}

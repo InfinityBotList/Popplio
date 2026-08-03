@@ -1,9 +1,3 @@
-// Command popplio serves the Infinity Bot List API.
-//
-// It mounts every router under routes/, starts the Arcadia staff panel and
-// the webhook and notification background loops, and serves them behind a
-// single chi mux. Startup uses tableflip so a redeploy can hand the
-// listening socket to the new process without dropping connections.
 package main
 
 import (
@@ -68,10 +62,8 @@ var docsHTML string
 
 var openapi []byte
 
-// Simple middleware to handle CORS
 func corsMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// limit body to 10mb
 		r.Body = http.MaxBytesReader(w, r.Body, 50*1024*1024)
 
 		if r.Header.Get("User-Auth") != "" {
@@ -155,7 +147,6 @@ func main() {
 	)
 
 	routers := []uapi.APIRouter{
-		// Use same order as routes folder
 		alerts.Router{},
 		apps.Router{},
 		auth.Router{},
@@ -206,8 +197,6 @@ func main() {
 	r.Get("/docs/{srv}", func(w http.ResponseWriter, r *http.Request) {
 		var docMap map[string]string
 		if config.CurrentEnv != config.CurrentEnvProd {
-			// Dev has no docs of its own, so point it at staging's the same
-			// way it points everything else at staging-shaped defaults.
 			docMap = map[string]string{
 				"popplio":     "/openapi",
 				"arcadia":     "https://staging--panel-api.omniplex.gg/openapi",
@@ -244,7 +233,6 @@ func main() {
 		})
 	})
 
-	// Load openapi here to avoid large marshalling in every request
 	openapi, err = jsonimpl.Marshal(docs.GetSchema())
 
 	if err != nil {
@@ -263,9 +251,6 @@ func main() {
 
 	go votereminders.VrLoop()
 
-	// Bring up the staff panel API, the staff Discord bot and the staff
-	// background tasks. The panel listens on its own port with its own
-	// middleware chain; see ./arcadia/CONFORMANCE.md
 	arc := arcadia.Start(state.Context)
 	defer arc.Stop(30 * time.Second)
 
@@ -308,7 +293,6 @@ func main() {
 
 		<-upg.Exit()
 	} else {
-		// Tableflip not supported
 		state.Logger.Warn("Tableflip not supported on this platform, this is not a production-capable server.")
 		err = http.ListenAndServe(state.Config.Meta.Port.Parse(), r)
 

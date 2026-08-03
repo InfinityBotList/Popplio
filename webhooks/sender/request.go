@@ -97,10 +97,18 @@ func (st *webhookSendState) resolveTarget(webhookURL string) error {
 // Which secret is used depends on intent: a bad-intent probe signs with a
 // throwaway secret precisely so a correctly-implemented endpoint rejects it.
 //
-// Two wire protocols are supported. simple-auth sends the payload as-is with the
-// secret in the Authorization header, for endpoints that cannot implement more.
-// splashtail encrypts the payload and sends a nonce-chained HMAC, so neither the
-// body nor a captured signature can be replayed.
+// Three wire protocols are supported, in priority order:
+//
+//   - hmac-auth (webhook.HmacAuth): the recommended protocol. Plain JSON body,
+//     signed with HMAC-SHA256 in X-Webhook-Signature as "sha256=<hex>" — the
+//     same shape as GitHub/Stripe webhooks.
+//   - simple-auth (webhook.SimpleAuth): plain JSON body with the raw secret in
+//     the Authorization header, for endpoints that cannot implement a
+//     signature check at all.
+//   - splashtail (the default when neither is set): the legacy protocol.
+//     Encrypts the payload and signs it with a nonce-chained HMAC, so neither
+//     the body nor a captured signature can be replayed. Kept only for
+//     webhooks that predate hmac-auth; new webhooks should not use it.
 func (st *webhookSendState) buildRequest(webhook *webhookData, data []byte) (*http.Request, error) {
 	secret := webhook.Secret
 
@@ -108,36 +116,74 @@ func (st *webhookSendState) buildRequest(webhook *webhookData, data []byte) (*ht
 		secret = crypto.RandString(128)
 	}
 
-	var req *http.Request
-	var err error
+	switch {
+	case webhook.HmacAuth:
+		return buildHmacAuthRequest(webhook.Url, secret, data)
+	case webhook.SimpleAuth:
+		return buildSimpleAuthRequest(webhook.Url, secret, data)
+	default:
+		return buildSplashtailRequest(webhook.Url, secret, data)
+	}
+}
 
-	if webhook.SimpleAuth {
-		req, err = http.NewRequestWithContext(state.Context, "POST", webhook.Url, bytes.NewReader(data))
+// buildHmacAuthRequest builds the recommended, easy-to-verify protocol: a
+// plain JSON body with an HMAC-SHA256 signature over it in
+// X-Webhook-Signature, formatted "sha256=<hex>" to match the header shape
+// GitHub and Stripe webhooks already use.
+func buildHmacAuthRequest(url, secret string, data []byte) (*http.Request, error) {
+	req, err := http.NewRequestWithContext(state.Context, "POST", url, bytes.NewReader(data))
 
-		if err != nil {
-			return nil, err
-		}
-
-		req.Header.Set("Authorization", secret)
-		req.Header.Set("X-Webhook-Protocol", "simple-auth")
-	} else {
-		postData, nonce, token, err := sealPayload(secret, data)
-
-		if err != nil {
-			return nil, err
-		}
-
-		req, err = http.NewRequestWithContext(state.Context, "POST", webhook.Url, bytes.NewReader(postData))
-
-		if err != nil {
-			return nil, err
-		}
-
-		req.Header.Set("X-Webhook-Signature", token)
-		req.Header.Set("X-Webhook-Protocol", "splashtail")
-		req.Header.Set("X-Webhook-Nonce", nonce)
+	if err != nil {
+		return nil, err
 	}
 
+	h := hmac.New(sha256.New, []byte(secret))
+	h.Write(data)
+	sig := hex.EncodeToString(h.Sum(nil))
+
+	req.Header.Set("X-Webhook-Signature", "sha256="+sig)
+	req.Header.Set("X-Webhook-Protocol", "hmac-sha256")
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("User-Agent", userAgent)
+
+	return req, nil
+}
+
+// buildSimpleAuthRequest builds the legacy simple-auth protocol: a plain JSON
+// body with the raw secret sent as-is in the Authorization header.
+func buildSimpleAuthRequest(url, secret string, data []byte) (*http.Request, error) {
+	req, err := http.NewRequestWithContext(state.Context, "POST", url, bytes.NewReader(data))
+
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Set("Authorization", secret)
+	req.Header.Set("X-Webhook-Protocol", "simple-auth")
+	req.Header.Set("Content-Type", "text/plain")
+	req.Header.Set("User-Agent", userAgent)
+
+	return req, nil
+}
+
+// buildSplashtailRequest builds the legacy default protocol: an encrypted
+// body with a nonce-chained HMAC across two headers. See sealPayload.
+func buildSplashtailRequest(url, secret string, data []byte) (*http.Request, error) {
+	postData, nonce, token, err := sealPayload(secret, data)
+
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequestWithContext(state.Context, "POST", url, bytes.NewReader(postData))
+
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Set("X-Webhook-Signature", token)
+	req.Header.Set("X-Webhook-Protocol", "splashtail")
+	req.Header.Set("X-Webhook-Nonce", nonce)
 	req.Header.Set("Content-Type", "text/plain")
 	req.Header.Set("User-Agent", userAgent)
 
