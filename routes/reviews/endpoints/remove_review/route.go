@@ -121,8 +121,6 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		state.Logger.Error("Failed to send webhook", zap.Error(err), zap.String("target_id", targetId), zap.String("target_type", targetType), zap.String("user_id", d.Auth.ID), zap.String("review_id", rid))
 	}
 
-	state.Redis.Del(d.Context, "rv-"+targetId+"-"+targetType)
-
 	// Trigger a garbage collection step to remove any orphaned reviews
 	go func() {
 		defer func() {

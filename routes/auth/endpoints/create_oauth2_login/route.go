@@ -134,11 +134,19 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		return oauthFailure(err, headers)
 	}
 
-	if state.Redis.Exists(d.Context, "codecache:"+req.Code).Val() == 1 {
-		return resp.WithHeaders(resp.BadRequest("Code has been clearly used before and is as such invalid"), headers)
+	// SetNX marks the code used and checks whether it was already used in a
+	// single atomic round trip — a separate Exists+Set here would leave a
+	// window where two concurrent requests carrying the same code could both
+	// pass the check before either marked it used.
+	isNew, err := state.Redis.SetNX(d.Context, "codecache:"+req.Code, "0", codeReuseWindow).Result()
+
+	if err != nil {
+		return resp.Err("Error while checking code reuse", err)
 	}
 
-	state.Redis.Set(d.Context, "codecache:"+req.Code, "0", codeReuseWindow)
+	if !isNew {
+		return resp.WithHeaders(resp.BadRequest("Code has been clearly used before and is as such invalid"), headers)
+	}
 
 	accessToken, err := exchangeCodeForToken(d.Context, req.Code, req.RedirectURI)
 

@@ -46,14 +46,18 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	}
 
 	// Check if response is on redis
-	cachedResp := state.Redis.Get(d.Context, "current_status:"+src)
+	cachedResp, err := state.Redis.Get(d.Context, "current_status:"+src).Bytes()
 
-	if cachedResp.Val() != "" {
-		return uapi.HttpResponse{
-			Json: cachedResp.Val(),
-			Headers: map[string]string{
-				"X-Cache": "HIT",
-			},
+	if err == nil {
+		var cachedStatus map[string]any
+
+		if err := jsonimpl.Unmarshal(cachedResp, &cachedStatus); err == nil {
+			return uapi.HttpResponse{
+				Json: cachedStatus,
+				Headers: map[string]string{
+					"X-Cache": "HIT",
+				},
+			}
 		}
 	}
 
@@ -122,7 +126,13 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	}
 
 	// Cache response
-	state.Redis.Set(d.Context, "current_status:"+src, listStatus, 3*time.Minute)
+	statusBytes, err := jsonimpl.Marshal(listStatus)
+
+	if err != nil {
+		state.Logger.Error("Failed to marshal status for caching", zap.Error(err), zap.String("src", src))
+	} else if err := state.Redis.Set(d.Context, "current_status:"+src, statusBytes, 3*time.Minute).Err(); err != nil {
+		state.Logger.Error("Failed to cache status response", zap.Error(err), zap.String("src", src))
+	}
 
 	return uapi.HttpResponse{
 		Json: listStatus,

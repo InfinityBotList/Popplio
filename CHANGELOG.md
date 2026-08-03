@@ -85,6 +85,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- `GET /list/current-status`'s Redis cache never actually worked: it passed
+  a raw `map[string]any` to `Set`, which go-redis cannot serialize (returns
+  `"redis: can't marshal map[string]interface{}"`) — an error that was
+  never checked, so every request silently round-tripped to Instatus or
+  UptimeRobot instead of using the 3-minute cache the code's own comment
+  says exists. Now JSON-marshals before `Set` and unmarshals back into the
+  same shape on a hit, so the response is identical whether it came from
+  cache or not (previously a hit, had it ever occurred, would have returned
+  a raw string instead of the status object a miss returns).
+- `add_review`/`edit_review`/`remove_review` each called
+  `state.Redis.Del(ctx, "rv-"+targetId+"-"+targetType)` on every mutation,
+  invalidating a cache key that is never `Set` or `Get` anywhere in the
+  codebase — three no-op Redis round trips per review change. Removed.
+- The OAuth authorization-code replay check (`create_oauth2_login`) used a
+  separate `Exists` followed by `Set` to mark a code used, which is not
+  atomic: two concurrent requests carrying the same code could both pass
+  `Exists` before either called `Set`, letting the same code be redeemed
+  twice — exactly the race the code's own comment says it closes, but
+  didn't. Now uses `SetNX`, which checks and marks the code used in one
+  atomic round trip.
 - Several route handlers (`delete_pack`, `patch_pack`, `current_status`)
   returned a bare `uapi.DefaultResponse(http.StatusInternalServerError)` on
   DB/upstream failures without logging anything, so some production 500s
