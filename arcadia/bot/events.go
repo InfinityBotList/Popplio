@@ -48,9 +48,9 @@ func onGuildsReady(ctx context.Context, _ *events.GuildsReady) {
 
 // onGuildMemberJoin announces new members and bots in the main guild.
 //
-// The whole handler is a no-op on staging.
+// The whole handler is a no-op outside of production.
 func onGuildMemberJoin(e *events.GuildMemberJoin) {
-	if config.CurrentEnv == config.CurrentEnvStaging {
+	if config.CurrentEnv != config.CurrentEnvProd {
 		return
 	}
 

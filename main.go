@@ -205,7 +205,9 @@ func main() {
 
 	r.Get("/docs/{srv}", func(w http.ResponseWriter, r *http.Request) {
 		var docMap map[string]string
-		if config.CurrentEnv == "staging" {
+		if config.CurrentEnv != config.CurrentEnvProd {
+			// Dev has no docs of its own, so point it at staging's the same
+			// way it points everything else at staging-shaped defaults.
 			docMap = map[string]string{
 				"popplio":     "/openapi",
 				"arcadia":     "https://staging--panel-api.omniplex.gg/openapi",

@@ -9,6 +9,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- `current-env` now also accepts `dev`, a third environment alongside
+  `staging`/`prod`. Every `Differs[T]` config key (`config/config.go`) gains
+  an optional `dev` value, only consulted when `current-env` is `dev`, and
+  only used if actually set — an unset `dev` value falls back to `staging`,
+  so no existing `config.yaml` needs to change. Lets a local checkout run
+  against things like a personal Discord bot application
+  (`discord_auth.token`, `arcadia.token`) without touching the real staging
+  config. `discord_auth.token` (Popplio's own bot token) is now itself a
+  `Differs[string]` rather than a single flat value, so it can differ across
+  environments the same way Arcadia's staff bot token already could.
+  Anything gated to "real production" (Paypal live vs sandbox API base,
+  Arcadia's background tasks, the staff bot's guild-member-join
+  announcements, the staging-sensitive-permission gate) now treats `dev` the
+  same as `staging` rather than falling through to production behavior.
+
 - `PUT /servers` add a server to the list directly from a Discord invite
   link. Resolves the guild via the invite (the tracking bot does not need to
   already be in the server), rejects duplicates and blacklisted vanities,

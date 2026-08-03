@@ -57,10 +57,10 @@ func Start(parent context.Context) *Arcadia {
 		}
 	}()
 
-	if config.CurrentEnv != config.CurrentEnvStaging {
+	if config.CurrentEnv == config.CurrentEnvProd {
 		a.tasks = tasks.Start(ctx)
 	} else {
-		state.Logger.Info("Skipping arcadia background tasks on staging")
+		state.Logger.Info("Skipping arcadia background tasks outside of production", zap.String("env", config.CurrentEnv))
 	}
 
 	return a

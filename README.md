@@ -38,13 +38,24 @@ without a default in the sample (tokens, client secrets, API keys) are
 required and Popplio will refuse to start without them (`validator` tags
 enforce this at startup).
 
-### Environment (staging vs production)
+### Environment (staging, production, and dev)
 
 Many config keys are split into `staging`/`prod` pairs (see the `Differs[T]`
 wrapper in `config/config.go`). Which one is actually used is controlled by
 `config/current-env`, a plain text file embedded into the binary at build
-time (`staging` or `prod`), not an environment variable. Edit that file and
-rebuild to switch environments.
+time (`staging`, `prod`, or `dev`), not an environment variable. Edit that
+file and rebuild to switch environments.
+
+Every `Differs[T]` key also accepts an optional `dev` value alongside
+`staging`/`prod`, only consulted when `current-env` is `dev`, and only used
+if actually set — an unset `dev` value falls back to `staging`. This exists
+so a local checkout can run against things like a personal Discord bot
+application (`discord_auth.token`, `arcadia.token`) without touching the
+real staging config, and without needing to set every single `dev` key just
+to override the one or two that matter for a given local setup. Background
+tasks that talk to real guilds (Arcadia's staff bot tasks, member-join
+announcements) and anything gated to "real production" treat `dev` the same
+as `staging` — only `current-env: prod` runs them.
 
 ## Building and running
 

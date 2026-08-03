@@ -205,11 +205,14 @@ func maxBodyMiddleware(next http.Handler) http.Handler {
 
 // instanceDescription is the panel instance blurb in the Hello response.
 func instanceDescription() string {
-	if config.CurrentEnv == config.CurrentEnvStaging {
+	switch config.CurrentEnv {
+	case config.CurrentEnvStaging:
 		return "Arcadia Staging Panel Instance"
+	case config.CurrentEnvDev:
+		return "Arcadia Development Panel Instance"
+	default:
+		return "Arcadia Production Panel Instance"
 	}
-
-	return "Arcadia Production Panel Instance"
 }
 
 // serverIDs renders the configured guild ids as strings for CoreConstants.

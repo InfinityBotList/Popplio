@@ -3,11 +3,14 @@
 // The active environment is fixed at build time from the embedded
 // current-env file, and Differs[T] carries every value that differs between
 // staging and production so both are declared together and neither can be
-// left unset.
+// left unset. Differs[T] also carries an optional Dev override on top of
+// that, for running locally against things like a personal Discord
+// application without touching the real staging/prod values — see Parse.
 package config
 
 import (
 	_ "embed"
+	"reflect"
 	"strings"
 
 	"github.com/disgoorg/snowflake/v2"
@@ -16,6 +19,7 @@ import (
 const (
 	CurrentEnvProd    = "prod"
 	CurrentEnvStaging = "staging"
+	CurrentEnvDev     = "dev"
 )
 
 //go:embed current-env
@@ -24,23 +28,37 @@ var CurrentEnv string
 func init() {
 	CurrentEnv = strings.TrimSpace(CurrentEnv)
 
-	if CurrentEnv != CurrentEnvProd && CurrentEnv != CurrentEnvStaging {
+	if CurrentEnv != CurrentEnvProd && CurrentEnv != CurrentEnvStaging && CurrentEnv != CurrentEnvDev {
 		panic("invalid environment")
 	}
 }
 
-// Common struct for values that differ between staging and production environments
+// Common struct for values that differ between staging and production
+// environments, plus an optional per-developer override for local dev use.
 type Differs[T any] struct {
 	Staging T `yaml:"staging" comment:"Staging value" validate:"required"`
 	Prod    T `yaml:"prod" comment:"Production value" validate:"required"`
+
+	// Dev is only consulted when running with current-env set to "dev", and
+	// even then only if it has been set to something other than T's zero
+	// value — an unset Dev falls back to Staging, so config.yaml files that
+	// predate this field, or that simply don't need a dev override for a
+	// given key, keep working unchanged.
+	Dev T `yaml:"dev" required:"false" comment:"Development value, used when current-env is \"dev\"; falls back to staging when unset"`
 }
 
 func (d *Differs[T]) Parse() T {
-	if CurrentEnv == CurrentEnvProd {
+	switch CurrentEnv {
+	case CurrentEnvProd:
 		return d.Prod
-	} else if CurrentEnv == CurrentEnvStaging {
+	case CurrentEnvStaging:
 		return d.Staging
-	} else {
+	case CurrentEnvDev:
+		if !reflect.ValueOf(d.Dev).IsZero() {
+			return d.Dev
+		}
+		return d.Staging
+	default:
 		panic("invalid environment")
 	}
 }
@@ -62,10 +80,13 @@ type Config struct {
 }
 
 type DiscordAuth struct {
-	Token            string   `yaml:"token" comment:"Discord bot token" validate:"required"`
-	ClientID         string   `yaml:"client_id" default:"815553000470478850" comment:"Discord Client ID" validate:"required"`
-	ClientSecret     string   `yaml:"client_secret" comment:"Discord Client Secret" validate:"required"`
-	AllowedRedirects []string `yaml:"allowed_redirects" default:"http://localhost:3000/auth/sauron,http://localhost:8000/auth/sauron,https://reedwhisker.infinitybots.gg/auth/sauron,https://infinitybots.gg/auth/sauron,https://botlist.site/auth/sauron,https://infinitybots.xyz/auth/sauron" validate:"required"`
+	// Token is Popplio's own bot's Discord token. A dev override lets a
+	// local checkout run against a personal Discord application instead of
+	// the real staging/prod bot.
+	Token            Differs[string] `yaml:"token" comment:"Discord bot token" validate:"required"`
+	ClientID         string          `yaml:"client_id" default:"815553000470478850" comment:"Discord Client ID" validate:"required"`
+	ClientSecret     string          `yaml:"client_secret" comment:"Discord Client Secret" validate:"required"`
+	AllowedRedirects []string        `yaml:"allowed_redirects" default:"http://localhost:3000/auth/sauron,http://localhost:8000/auth/sauron,https://reedwhisker.infinitybots.gg/auth/sauron,https://infinitybots.gg/auth/sauron,https://botlist.site/auth/sauron,https://infinitybots.xyz/auth/sauron" validate:"required"`
 }
 
 type Sites struct {

@@ -1,5 +1,8 @@
 discord_auth:
-  token: # Discord bot token
+  token:
+    staging: # Staging value
+    prod: # Production value
+    dev: # Development value, used when current-env is "dev"; falls back to staging when unset (optional)
   client_id: 815553000470478850 # Discord Client ID
   client_secret: # Discord Client Secret
   allowed_redirects:
@@ -14,15 +17,19 @@ sites:
   frontend:
     staging: # Staging value
     prod: # Production value
+    dev: # Development value, used when current-env is "dev"; falls back to staging when unset (optional)
   api:
     staging: # Staging value
     prod: # Production value
+    dev: # Development value, used when current-env is "dev"; falls back to staging when unset (optional)
   panel:
     staging: # Staging value
     prod: # Production value
+    dev: # Development value, used when current-env is "dev"; falls back to staging when unset (optional)
   infernoplex:
     staging: # Staging value
     prod: # Production value
+    dev: # Development value, used when current-env is "dev"; falls back to staging when unset (optional)
   instatus: https://infinity-bots.instatus.com # Instatus Status Page URL
 
 channels:
@@ -46,6 +53,8 @@ roles:
       - 
     prod:
       - 
+    dev:
+      - 
   bot_developer: 758756147313246209 # Bot Developer Role
   certified_developer: 759468303344992266 # Certified Developer Role
   bot_role: 758652296459976715 # Role given to bots joining the main server
@@ -56,7 +65,7 @@ japi:
   key: # JAPI Key. Get it from https://japi.rest
 
 notifications:
-  vapid_public_key:  # Vapid Public Key (https://www.stephane-quantin.com/en/tools/generators/vapid-keys)
+  vapid_public_key: BIdUNSqYzqVjbdJhn8WK6SDYDVj85mKtctrEgj14KkjxIMerxQ9wywvvxECkuP8rL3s8zDgZSE9HSqW1wmhVPM8 # Vapid Public Key (https://www.stephane-quantin.com/en/tools/generators/vapid-keys)
   vapid_private_key: # Vapid Private Key (https://www.stephane-quantin.com/en/tools/generators/vapid-keys)
 
 servers:
@@ -69,9 +78,11 @@ meta:
   redis_url:
     staging: # Staging value
     prod: # Production value
+    dev: # Development value, used when current-env is "dev"; falls back to staging when unset (optional)
   port:
     staging: # Staging value
     prod: # Production value
+    dev: # Development value, used when current-env is "dev"; falls back to staging when unset (optional)
   vulgar_list:
     - fuck
     - suck
@@ -81,15 +92,19 @@ meta:
   paypal_client_id:
     staging: # Staging value
     prod: # Production value
+    dev: # Development value, used when current-env is "dev"; falls back to staging when unset (optional)
   paypal_secret:
     staging: # Staging value
     prod: # Production value
+    dev: # Development value, used when current-env is "dev"; falls back to staging when unset (optional)
   stripe_public_key:
     staging: # Staging value
     prod: # Production value
+    dev: # Development value, used when current-env is "dev"; falls back to staging when unset (optional)
   stripe_secret_key:
     staging: # Staging value
     prod: # Production value
+    dev: # Development value, used when current-env is "dev"; falls back to staging when unset (optional)
   uptime_robot_ro_api_key: # Uptime Robot Read-Only API Key
   popplio_proxy: http://127.0.0.1:3219 # Popplio Proxy URL
 
@@ -97,13 +112,16 @@ arcadia:
   token:
     staging: # Staging value
     prod: # Production value
+    dev: # Development value, used when current-env is "dev"; falls back to staging when unset (optional)
   server_port:
     staging: # Staging value
     prod: # Production value
+    dev: # Development value, used when current-env is "dev"; falls back to staging when unset (optional)
   prefix_commands: false # Enable legacy prefix commands. Requires the privileged Message Content intent to be granted
   prefix:
     staging: # Staging value
     prod: # Production value
+    dev: # Development value, used when current-env is "dev"; falls back to staging when unset (optional)
   owners:
     - 510065483693817867
   protected_bots:

@@ -120,7 +120,7 @@ func Setup() {
 
 	Redis = redis.NewClient(rOptions)
 
-	Discord, err = disgo.New(Config.DiscordAuth.Token, bot.WithShardManagerConfigOpts(
+	Discord, err = disgo.New(Config.DiscordAuth.Token.Parse(), bot.WithShardManagerConfigOpts(
 		sharding.WithShardIDs(0, 1),
 		sharding.WithShardCount(2),
 		sharding.WithAutoScaling(true),
@@ -193,11 +193,12 @@ func Setup() {
 	})
 
 	c, err := paypal.NewClient(Config.Meta.PaypalClientID.Parse(), Config.Meta.PaypalSecret.Parse(), func() string {
-		if config.CurrentEnv == config.CurrentEnvStaging {
-			return paypal.APIBaseSandBox
-		} else {
+		// Only real production talks to Paypal's live API — staging and dev
+		// both use the sandbox, since both use test keys.
+		if config.CurrentEnv == config.CurrentEnvProd {
 			return paypal.APIBaseLive
 		}
+		return paypal.APIBaseSandBox
 	}())
 
 	if err != nil {

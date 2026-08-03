@@ -8,12 +8,12 @@ import (
 	perms "github.com/infinitybotlist/kittycat/go"
 )
 
-// For staging, ensure user is in whitelist
+// For staging and dev, ensure user is in whitelist
 //
-// This is because staging uses test keys
+// This is because staging and dev use test keys
 func StagingCheckSensitive(ctx context.Context, userId string) error {
-	// This is because staging uses test keys
-	if config.CurrentEnv == config.CurrentEnvStaging {
+	// This is because staging and dev use test keys
+	if config.CurrentEnv != config.CurrentEnvProd {
 		sp, err := GetUserStaffPerms(ctx, userId)
 
 		if err != nil {
