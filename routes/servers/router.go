@@ -68,6 +68,9 @@ func (b Router) Routes(r *chi.Mux) {
 				Type: api.TargetTypeTeam,
 			},
 		},
+		ExtData: map[string]any{
+			api.PERMISSION_CHECK_KEY: nil,
+		},
 	}.Route(r)
 
 	uapi.Route{

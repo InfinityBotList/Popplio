@@ -26,6 +26,7 @@ import (
 	"github.com/disgoorg/disgo/events"
 	"github.com/disgoorg/disgo/gateway"
 	"github.com/disgoorg/disgo/sharding"
+	"github.com/disgoorg/snowflake/v2"
 	"github.com/infinitybotlist/eureka/dovewing/dovetypes"
 	hredis "github.com/infinitybotlist/eureka/hotcache/redis"
 	"github.com/infinitybotlist/eureka/ratelimit"
@@ -85,6 +86,27 @@ func Setup() {
 	Validator.RegisterValidation("nospaces", snippets.ValidatorNoSpaces)
 	Validator.RegisterValidation("https", snippets.ValidatorIsHttps)
 	Validator.RegisterValidation("httporhttps", snippets.ValidatorIsHttpOrHttps)
+
+	// Like "required", but not enforced in "dev" — for fields (Arcadia's
+	// staff server channels/roles/IDs) that only matter once Arcadia is
+	// actually pointed at a real staff Discord server, which a local
+	// checkout usually isn't.
+	Validator.RegisterValidation("requirednotdev", func(fl validator.FieldLevel) bool {
+		if config.CurrentEnv == config.CurrentEnvDev {
+			return true
+		}
+		return !fl.Field().IsZero()
+	})
+
+	// One call per instantiation of config.Differs[T] actually used in
+	// Config, generics make each a distinct type as far as the validator
+	// is concerned.
+	Validator.RegisterStructValidation(
+		config.ValidateDiffers,
+		config.Differs[string]{},
+		config.Differs[int]{},
+		config.Differs[[]snowflake.ID]{},
+	)
 
 	genconfig.GenConfig(config.Config{})
 

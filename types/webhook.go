@@ -16,6 +16,7 @@ CREATE TABLE webhooks (
     secret TEXT NOT NULL CHECK (secret <> ''),
     broken BOOLEAN NOT NULL DEFAULT FALSE, -- Whether or not the webhook is broken
     simple_auth BOOLEAN NOT NULL DEFAULT FALSE, -- Whether or not the webhook should use simple auth
+    hmac_auth BOOLEAN NOT NULL DEFAULT FALSE, -- Whether or not the webhook should use hmac auth
     created_at TIMESTAMP NOT NULL DEFAULT NOW(),
     UNIQUE (target_id, target_type)
 );
@@ -24,6 +25,25 @@ CREATE TABLE webhooks (
 // @ci table=webhooks unfilled=1
 //
 // Represents a webhook on IBL
+//
+// # Choosing an auth mode
+//
+// Three wire protocols exist, selected by SimpleAuth/HmacAuth (mutually
+// exclusive; HmacAuth wins if both are somehow set). Exactly one of these
+// applies to a given webhook; the other two fields are ignored:
+//
+//   - Neither set (the default): the legacy "splashtail" protocol. The
+//     payload is AES-GCM encrypted and signed with a nonce-chained HMAC
+//     across two headers. Kept for existing webhooks; not recommended for
+//     new ones, since verifying it requires implementing encryption, not
+//     just a signature check.
+//   - HmacAuth: the recommended protocol for new webhooks. The payload is
+//     sent as plain JSON with an `X-Webhook-Signature: sha256=<hex hmac>`
+//     header, the same shape as GitHub/Stripe webhooks.
+//   - SimpleAuth: the payload is sent as plain JSON with the raw secret in
+//     the `Authorization` header. Simplest to implement, but the secret
+//     itself is on the wire on every delivery rather than a per-payload
+//     signature — prefer HmacAuth for anything new.
 type Webhook struct {
 	ID             pgtype.UUID `db:"id" json:"id" description:"The bot's internal ID. An artifact of database migrations."`
 	Name           string      `db:"name" json:"name" description:"The name of the webhook."`
@@ -32,7 +52,8 @@ type Webhook struct {
 	Url            string      `db:"url" json:"url" description:"The URL of the webhook."`
 	Broken         bool        `db:"broken" json:"broken" description:"Whether the webhook is marked as broken or not."`
 	FailedRequests int         `db:"failed_requests" json:"failed_requests" description:"The number of failed requests to the webhook."`
-	SimpleAuth     bool        `db:"simple_auth" json:"simple_auth" description:"Whether the webhook should use simple auth (unencrypted, just authentication headers) or not."`
+	SimpleAuth     bool        `db:"simple_auth" json:"simple_auth" description:"Legacy simple auth: plain JSON body, raw secret in the Authorization header. Prefer hmac_auth for new webhooks. Ignored if hmac_auth is set."`
+	HmacAuth       bool        `db:"hmac_auth" json:"hmac_auth" description:"Recommended auth mode: plain JSON body, signed with HMAC-SHA256 in the X-Webhook-Signature header (same shape as GitHub/Stripe webhooks)."`
 	EventWhitelist []string    `db:"event_whitelist" json:"event_whitelist" description:"The events that are whitelisted for this webhook. Note that if unset, all events are whitelisted."`
 	CreatedAt      time.Time   `db:"created_at" json:"created_at" description:"The time when the webhook was created."`
 }
@@ -42,7 +63,8 @@ type CreateEditWebhook struct {
 	Name           string   `json:"name" description:"The name of the webhook." validate:"required"`
 	Url            string   `json:"url" description:"The URL of the webhook." validate:"required"`
 	Secret         string   `json:"secret" description:"The secret of the webhook, only needed for custom (non-discord) webhooks"`
-	SimpleAuth     bool     `json:"simple_auth" description:"Whether the webhook should use simple auth (unencrypted, just authentication headers) or not."`
+	SimpleAuth     bool     `json:"simple_auth" description:"Legacy simple auth: plain JSON body, raw secret in the Authorization header. Prefer hmac_auth for new webhooks. Ignored if hmac_auth is set."`
+	HmacAuth       bool     `json:"hmac_auth" description:"Recommended auth mode: plain JSON body, signed with HMAC-SHA256 in the X-Webhook-Signature header (same shape as GitHub/Stripe webhooks)."`
 	EventWhitelist []string `json:"event_whitelist" description:"The events that are whitelisted for this webhook. Note that if unset, all events are whitelisted."`
 }
 

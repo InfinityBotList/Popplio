@@ -89,6 +89,10 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		return resp.BadRequest("Webhook URL must start with https://. Insecure HTTP webhooks are no longer supported")
 	}
 
+	if payload.SimpleAuth && payload.HmacAuth {
+		return resp.BadRequest("simple_auth and hmac_auth cannot both be set. Use hmac_auth unless your endpoint cannot implement a signature check")
+	}
+
 	if len(payload.EventWhitelist) == 0 {
 		payload.EventWhitelist = []string{}
 	}
@@ -121,7 +125,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		return resp.BadRequest(fmt.Sprintf("An entity may only have a maximum of %d webhooks", MaximumWebhookCount))
 	}
 
-	_, err = tx.Exec(d.Context, "INSERT INTO webhooks (target_id, target_type, url, secret, simple_auth, name, event_whitelist) VALUES ($1, $2, $3, $4, $5, $6, $7)", targetId, targetType, payload.Url, payload.Secret, payload.SimpleAuth, payload.Name, payload.EventWhitelist)
+	_, err = tx.Exec(d.Context, "INSERT INTO webhooks (target_id, target_type, url, secret, simple_auth, hmac_auth, name, event_whitelist) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)", targetId, targetType, payload.Url, payload.Secret, payload.SimpleAuth, payload.HmacAuth, payload.Name, payload.EventWhitelist)
 
 	if err != nil {
 		return resp.Err("Error while inserting webhook", err, zap.String("userID", d.Auth.ID))

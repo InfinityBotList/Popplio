@@ -89,6 +89,10 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		return resp.BadRequest("Webhook URL must start with https://. Insecure HTTP webhooks are no longer supported")
 	}
 
+	if payload.SimpleAuth && payload.HmacAuth {
+		return resp.BadRequest("simple_auth and hmac_auth cannot both be set. Use hmac_auth unless your endpoint cannot implement a signature check")
+	}
+
 	if len(payload.EventWhitelist) == 0 {
 		payload.EventWhitelist = []string{}
 	}
@@ -121,7 +125,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		return resp.NotFound("Webhook not found")
 	}
 
-	_, err = tx.Exec(d.Context, "UPDATE webhooks SET name = $1, url = $2, secret = $3, event_whitelist = $4, broken = false, failed_requests = 0 WHERE target_id = $5 AND target_type = $6 AND id = $7", payload.Name, payload.Url, payload.Secret, payload.EventWhitelist, targetId, targetType, webhookId)
+	_, err = tx.Exec(d.Context, "UPDATE webhooks SET name = $1, url = $2, secret = $3, event_whitelist = $4, simple_auth = $5, hmac_auth = $6, broken = false, failed_requests = 0 WHERE target_id = $7 AND target_type = $8 AND id = $9", payload.Name, payload.Url, payload.Secret, payload.EventWhitelist, payload.SimpleAuth, payload.HmacAuth, targetId, targetType, webhookId)
 
 	if err != nil {
 		return resp.Err("Error while inserting webhook", err, zap.String("userID", d.Auth.ID))
