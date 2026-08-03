@@ -82,6 +82,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `DELETE /users/{uid}/packs/{id}` and `PATCH /users/{uid}/packs/{id}` each
   folded two sequential "does the pack exist" / "who owns it" queries into
   one.
+- The generic error bodies returned when a failure carries no specific
+  message of its own (`constants/constants.go` — 404s, 400s, 403s, 401s,
+  500s, 405s, and missing-body errors) were all a "Slow down, bucko!" joke
+  string. Replaced with plain, professional messages that actually describe
+  the failure.
 
 ### Fixed
 
