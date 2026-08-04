@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"popplio/api"
+	"popplio/perms"
 	"popplio/state"
 	"popplio/teams"
 	"popplio/types"
@@ -23,7 +24,6 @@ import (
 	"github.com/infinitybotlist/eureka/crypto"
 	docs "github.com/infinitybotlist/eureka/doclib"
 	"github.com/infinitybotlist/eureka/uapi"
-	perms "github.com/infinitybotlist/kittycat/go"
 )
 
 var (
@@ -101,7 +101,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	//
 	// This means that we only need to check entity perms for users, then the checks occur based on
 	// the outer perm limits
-	var outerPermLimit []perms.Permission
+	var outerPermLimit perms.Set
 	switch d.Auth.TargetType {
 	case api.TargetTypeUser:
 		// Get user entity perms
@@ -111,42 +111,31 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 			return resp.ErrDetail("Error while getting entity perms", err)
 		}
 
-		if len(managerPerms) == 0 {
+		if managerPerms.IsEmpty() {
 			return resp.Forbidden("User does not have any permissions on this eneity whatsoever!")
 		}
 
 		// Set outer perm limit to the manager perms, see safety note above
 		outerPermLimit = managerPerms
 	default:
-		pl := api.PermLimits(d.Auth)
-
-		if len(pl) > 0 {
-			outerPermLimit = perms.PFSS(pl)
-		}
+		outerPermLimit = perms.Entity.ResolveStrings(api.PermLimits(d.Auth))
 	}
 
-	if len(outerPermLimit) == 0 {
+	if outerPermLimit.IsEmpty() {
 		// Assume no permission limits if no outer perm limits are set
-		outerPermLimit = []perms.Permission{
-			{
-				Namespace: "global",
-				Perm:      teams.PermissionOwner,
-			},
-		}
+		outerPermLimit = perms.Entity.NewSet(perms.EntityOwner)
 	}
 
 	// All permission limits must be resolved before being added to db
-	permLimits := perms.StaffPermissions{
-		PermOverrides: perms.PFSS(createData.PermLimits),
-	}.Resolve()
+	permLimits := perms.Entity.ResolveStrings(createData.PermLimits)
 
-	if !perms.HasPerm(outerPermLimit, perms.Permission{Namespace: "global", Perm: teams.PermissionOwner}) {
+	if !outerPermLimit.Has(perms.EntityOwner) {
 		if len(createData.PermLimits) == 0 {
 			return resp.Forbidden("You must have Global Owner to create sessions without specifying a permission limit")
 		}
 
-		for _, perm := range permLimits {
-			if !perms.HasPerm(outerPermLimit, perm) {
+		for _, perm := range permLimits.All() {
+			if !outerPermLimit.Has(perm) {
 				return resp.Forbidden("User does not have permission to create sessions with the permission limit: " + perm.String())
 			}
 		}
@@ -167,7 +156,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		createData.Name,
 		createData.Type,
 		expiry,
-		permLimits,
+		permLimits.Strings(),
 	).Scan(&sessionId)
 
 	if err != nil {

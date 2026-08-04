@@ -6,6 +6,7 @@ package teams
 import (
 	"net/http"
 	"popplio/api"
+	"popplio/perms"
 	"popplio/routes/teams/endpoints/add_team_member"
 	"popplio/routes/teams/endpoints/create_team"
 	"popplio/routes/teams/endpoints/delete_team"
@@ -16,11 +17,9 @@ import (
 	"popplio/routes/teams/endpoints/get_team"
 	"popplio/routes/teams/endpoints/get_team_permissions"
 	"popplio/routes/teams/endpoints/get_team_seo"
-	"popplio/teams"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/infinitybotlist/eureka/uapi"
-	perms "github.com/infinitybotlist/kittycat/go"
 )
 
 const tagName = "Teams"
@@ -97,12 +96,7 @@ func (b Router) Routes(r *chi.Mux) {
 		},
 		ExtData: map[string]any{
 			api.PERMISSION_CHECK_KEY: api.PermissionCheck{
-				NeededPermission: func(d uapi.Route, r *http.Request, authData uapi.AuthData) (*perms.Permission, error) {
-					return &perms.Permission{
-						Namespace: api.TargetTypeTeam,
-						Perm:      teams.PermissionEdit,
-					}, nil
-				},
+				NeededPermission: api.Needs(perms.EntityEditTeam),
 				GetTarget: func(d uapi.Route, r *http.Request, authData uapi.AuthData) (string, string) {
 					return api.TargetTypeTeam, chi.URLParam(r, "tid")
 				},
@@ -126,13 +120,8 @@ func (b Router) Routes(r *chi.Mux) {
 		},
 		ExtData: map[string]any{
 			api.PERMISSION_CHECK_KEY: api.PermissionCheck{
-				NeededPermission: func(d uapi.Route, r *http.Request, authData uapi.AuthData) (*perms.Permission, error) {
-					// global.* is needed
-					return &perms.Permission{
-						Namespace: "global",
-						Perm:      teams.PermissionOwner,
-					}, nil
-				},
+				// Deleting a team is Owner-only
+				NeededPermission: api.Needs(perms.EntityOwner),
 				GetTarget: func(d uapi.Route, r *http.Request, authData uapi.AuthData) (string, string) {
 					return api.TargetTypeTeam, chi.URLParam(r, "tid")
 				},
@@ -156,12 +145,7 @@ func (b Router) Routes(r *chi.Mux) {
 		},
 		ExtData: map[string]any{
 			api.PERMISSION_CHECK_KEY: api.PermissionCheck{
-				NeededPermission: func(d uapi.Route, r *http.Request, authData uapi.AuthData) (*perms.Permission, error) {
-					return &perms.Permission{
-						Namespace: "team_member",
-						Perm:      teams.PermissionAdd,
-					}, nil
-				},
+				NeededPermission: api.Needs(perms.EntityAddMembers),
 				GetTarget: func(d uapi.Route, r *http.Request, authData uapi.AuthData) (string, string) {
 					return api.TargetTypeTeam, chi.URLParam(r, "tid")
 				},
@@ -185,12 +169,7 @@ func (b Router) Routes(r *chi.Mux) {
 		},
 		ExtData: map[string]any{
 			api.PERMISSION_CHECK_KEY: api.PermissionCheck{
-				NeededPermission: func(d uapi.Route, r *http.Request, authData uapi.AuthData) (*perms.Permission, error) {
-					return &perms.Permission{
-						Namespace: "team_member",
-						Perm:      teams.PermissionEdit,
-					}, nil
-				},
+				NeededPermission: api.Needs(perms.EntityEditMembers),
 				GetTarget: func(d uapi.Route, r *http.Request, authData uapi.AuthData) (string, string) {
 					return api.TargetTypeTeam, chi.URLParam(r, "tid")
 				},
@@ -214,12 +193,7 @@ func (b Router) Routes(r *chi.Mux) {
 		},
 		ExtData: map[string]any{
 			api.PERMISSION_CHECK_KEY: api.PermissionCheck{
-				NeededPermission: func(d uapi.Route, r *http.Request, authData uapi.AuthData) (*perms.Permission, error) {
-					return &perms.Permission{
-						Namespace: "team_member",
-						Perm:      teams.PermissionDelete,
-					}, nil
-				},
+				NeededPermission: api.Needs(perms.EntityRemoveMembers),
 				GetTarget: func(d uapi.Route, r *http.Request, authData uapi.AuthData) (string, string) {
 					return api.TargetTypeTeam, chi.URLParam(r, "tid")
 				},

@@ -11,11 +11,11 @@ import (
 	"popplio/arcadia/dclient"
 	"popplio/arcadia/impls"
 	"popplio/arcadia/types"
+	"popplio/perms"
 	"popplio/state"
 
 	"github.com/disgoorg/disgo/discord"
 	"github.com/disgoorg/snowflake/v2"
-	perms "github.com/infinitybotlist/kittycat/go"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 	"go.uber.org/zap"
@@ -141,14 +141,14 @@ func StaffResync(ctx context.Context) error {
 		return fmt.Errorf("Error while getting staff members: %v", err)
 	}
 
-	overridePerms := make(map[string][]perms.Permission, len(staff))
+	overridePerms := make(map[string][]perms.Perm, len(staff))
 	noAutosync := make(map[string]struct{})
 	knownUnaccounted := make(map[string]struct{})
 	unaccountedUserIDs := make(map[string]struct{})
 	memberPosCache := make(map[string][]string)
 
 	for _, member := range staff {
-		overridePerms[member.UserID] = perms.PFSS(member.PermOverrides)
+		overridePerms[member.UserID] = perms.ParseStrings(member.PermOverrides)
 
 		if member.NoAutosync {
 			noAutosync[member.UserID] = struct{}{}
@@ -261,7 +261,7 @@ func StaffResync(ctx context.Context) error {
 			}
 		}
 
-		err = impls.SendChannel(state.Config.Channels.StaffLogs, discord.MessageCreate{
+		announceResync(userID, discord.MessageCreate{
 			Embeds: []discord.Embed{{
 				Title:       "Staff Permissions Resync",
 				Description: fmt.Sprintf("Updated staff permissions for <@%s>", userID),
@@ -273,10 +273,6 @@ func StaffResync(ctx context.Context) error {
 				},
 			}},
 		})
-
-		if err != nil {
-			return fmt.Errorf("Error while sending staff logs message: %v", err)
-		}
 
 		if err := modifyCorrespondingRoles(posByID, user.UserID, oldPositionIDs, newPositionIDs); err != nil {
 			return err
@@ -330,7 +326,7 @@ func StaffResync(ctx context.Context) error {
 				"Removed unaccounted staff member <@%s> as they are no longer in the staff server.", userID)
 		}
 
-		err = impls.SendChannel(state.Config.Channels.StaffLogs, discord.MessageCreate{
+		announceResync(userID, discord.MessageCreate{
 			Embeds: []discord.Embed{{
 				Title:       "Staff Permissions Resync",
 				Description: description,
@@ -340,10 +336,6 @@ func StaffResync(ctx context.Context) error {
 				},
 			}},
 		})
-
-		if err != nil {
-			return fmt.Errorf("Error while sending staff logs message: %v", err)
-		}
 
 		userSnow, err := snowflake.Parse(userID)
 
@@ -364,14 +356,25 @@ func StaffResync(ctx context.Context) error {
 	return nil
 }
 
-func isOwner(userID snowflake.ID) bool {
-	for _, owner := range state.Config.Arcadia.Owners {
-		if owner == userID {
-			return true
-		}
+// announceResync posts a resync record to the staff log channel.
+//
+// A failure here is reported and stepped over rather than returned. The log is
+// an account of what the resync did; the resync itself is what keeps staff
+// permissions in step with Discord. Returning the error used to abandon the run
+// and roll back its transaction, so a staff log channel that had been deleted —
+// or, more often, never configured — silently stopped staff permissions syncing
+// altogether.
+func announceResync(userID string, msg discord.MessageCreate) {
+	if err := impls.SendChannel(state.Config.Channels.StaffLogs, msg); err != nil {
+		state.Logger.Warn("Could not write the staff log for a resync; the resync itself continued",
+			zap.String("userID", userID),
+			zap.Error(err),
+		)
 	}
+}
 
-	return false
+func isOwner(userID snowflake.ID) bool {
+	return perms.IsConfigOwner(userID.String())
 }
 
 // differs reports whether the two position sets have a non-empty symmetric
@@ -404,10 +407,10 @@ func sortedKeys(set map[string]struct{}) []string {
 	return out
 }
 
-func buildPermissions(posByID map[string]cachedPosition, positionIDs []string, overrides []perms.Permission) perms.StaffPermissions {
-	sp := perms.StaffPermissions{
-		UserPositions: make([]perms.PartialStaffPosition, 0, len(positionIDs)),
-		PermOverrides: overrides,
+func buildPermissions(posByID map[string]cachedPosition, positionIDs []string, extras []perms.Perm) perms.StaffGrants {
+	g := perms.StaffGrants{
+		Roles:  make([]perms.Role, 0, len(positionIDs)),
+		Extras: extras,
 	}
 
 	for _, id := range positionIDs {
@@ -417,14 +420,15 @@ func buildPermissions(posByID map[string]cachedPosition, positionIDs []string, o
 			continue
 		}
 
-		sp.UserPositions = append(sp.UserPositions, perms.PartialStaffPosition{
+		g.Roles = append(g.Roles, perms.Role{
 			ID:    pos.ID,
+			Name:  pos.Name,
 			Index: pos.Index,
-			Perms: perms.PFSS(pos.Perms),
+			Perms: perms.ParseStrings(pos.Perms),
 		})
 	}
 
-	return sp
+	return g
 }
 
 // renderPositions formats a position list for the staff-log embed, matching the
@@ -447,11 +451,11 @@ func renderPositions(posByID map[string]cachedPosition, positionIDs []string) st
 	return strings.Join(lines, "\n")
 }
 
-func renderPerms(resolved []perms.Permission) string {
-	lines := make([]string, 0, len(resolved))
+func renderPerms(resolved perms.Set) string {
+	lines := make([]string, 0, resolved.Len())
 
-	for _, perm := range resolved {
-		lines = append(lines, fmt.Sprintf("- ``%s``", perm.String()))
+	for _, perm := range resolved.All() {
+		lines = append(lines, fmt.Sprintf("- ``%s``", perm))
 	}
 
 	if len(lines) == 0 {

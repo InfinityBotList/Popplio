@@ -1,6 +1,8 @@
 package impls
 
 import (
+	"errors"
+
 	"popplio/arcadia/dclient"
 	"popplio/state"
 
@@ -45,8 +47,17 @@ func SendModLog(msg discord.MessageCreate) error {
 }
 
 // SendChannel posts a message to an arbitrary channel.
+//
+// A zero id means the channel was never configured. Discord answers that with
+// "10003: Unknown Channel", which sends whoever reads the error hunting for a
+// deleted channel instead of a missing config key, so it is caught here.
 func SendChannel(channelID snowflake.ID, msg discord.MessageCreate) error {
+	if channelID == 0 {
+		return errors.New("channel is not configured (check the `channels` section of config.yaml)")
+	}
+
 	_, err := dclient.Get().Rest().CreateMessage(channelID, msg)
+
 	return err
 }
 

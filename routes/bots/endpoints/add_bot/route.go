@@ -14,6 +14,7 @@ import (
 
 	"popplio/api"
 	"popplio/db"
+	"popplio/perms"
 	"popplio/routes/bots/assets"
 	"popplio/state"
 	"popplio/teams"
@@ -30,7 +31,6 @@ import (
 	docs "github.com/infinitybotlist/eureka/doclib"
 	"github.com/infinitybotlist/eureka/dovewing"
 	"github.com/infinitybotlist/eureka/uapi"
-	kittycat "github.com/infinitybotlist/kittycat/go"
 
 	"github.com/go-playground/validator/v10"
 )
@@ -215,14 +215,14 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 
 	// Check team owner here, to avoid a race condition
 	if payload.TeamOwner != "" {
-		perms, err := teams.GetEntityPerms(d.Context, d.Auth.ID, "team", payload.TeamOwner)
+		entityPerms, err := teams.GetEntityPerms(d.Context, d.Auth.ID, "team", payload.TeamOwner)
 
 		if err != nil {
 			state.Logger.Error("Error while getting team perms", zap.Error(err), zap.String("userID", d.Auth.ID), zap.String("teamID", payload.TeamOwner), zap.String("botID", payload.BotID), zap.String("vanity", vanity))
 			return resp.BadRequest("Error getting user perms: " + err.Error())
 		}
 
-		if !kittycat.HasPerm(perms, kittycat.Permission{Namespace: "bot", Perm: teams.PermissionAdd}) {
+		if !entityPerms.Has(perms.EntityAddBots) {
 			return resp.Forbidden("You do not have permission to add new bots to this team")
 		}
 	} else {

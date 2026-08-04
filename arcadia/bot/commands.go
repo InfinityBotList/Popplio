@@ -12,11 +12,11 @@ import (
 	"popplio/arcadia/rpc"
 	"popplio/arcadia/tasks"
 	"popplio/arcadia/types"
+	"popplio/perms"
 	"popplio/state"
 
 	"github.com/disgoorg/disgo/discord"
 	"github.com/disgoorg/snowflake/v2"
-	perms "github.com/infinitybotlist/kittycat/go"
 )
 
 func registerCommands() {
@@ -41,6 +41,8 @@ func registerCommands() {
 		cmdRPC(),
 		cmdRPCList(),
 	)
+
+	registerStaffRoleCommands()
 }
 
 // cmdRegister is poise's owner-only application-command registration helper.
@@ -240,7 +242,7 @@ func cmdStaff() *Command {
 					discord.ApplicationCommandOptionString{Name: "guild", Description: "The guild ID to leave", Required: true},
 				},
 				Run: func(c *Ctx) error {
-					if err := requirePerm(c, "arcadia.leave_guilds"); err != nil {
+					if err := requirePerm(c, perms.StaffAdministrator); err != nil {
 						return err
 					}
 
@@ -532,7 +534,7 @@ func cmdRefresh() *Command {
 		Description: "Force refresh the top reviewer roles",
 		Checks:      []Check{staffServer},
 		Run: func(c *Ctx) error {
-			if err := requirePerm(c, "arcadia.force_refresh_top"); err != nil {
+			if err := requirePerm(c, perms.StaffAdministrator); err != nil {
 				return err
 			}
 
@@ -674,15 +676,15 @@ func runRPCWithTarget(c *Ctx, method types.RPCMethod, targetType types.TargetTyp
 }
 
 // requirePerm resolves the caller's permissions and checks one of them.
-func requirePerm(c *Ctx, perm string) error {
+func requirePerm(c *Ctx, perm perms.Perm) error {
 	sp, err := impls.GetUserPerms(c.Context, c.Author.ID.String())
 
 	if err != nil {
 		return err
 	}
 
-	if !perms.HasPerm(sp.Resolve(), perms.PermissionFromString(perm)) {
-		return fmt.Errorf("You do not have permission to use this command")
+	if !sp.Has(perm) {
+		return fmt.Errorf("You need the %s permission to use this command", perms.Staff.Label(perm))
 	}
 
 	return nil

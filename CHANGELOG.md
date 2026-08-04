@@ -103,6 +103,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Startup logged `error while setting presence err="no gateway configured"`
+  on every run: `Discord.SetPresence` was called right after
+  `Discord.OpenShardManager` returned, but that only means the shards
+  started connecting, not that the gateway session is actually usable yet
+  (that's only confirmed later, asynchronously, via the `OnGuildsReady`
+  event). `SetPresence` now runs from inside the `OnGuildsReady` handler
+  instead, once shards are confirmed ready.
 - `current-env: dev` still required a real `staging` and `prod` value for
   every `Differs[T]` config key, and for every Arcadia staff-server
   channel/role/server ID, defeating the point of `dev`: a local checkout

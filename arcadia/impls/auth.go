@@ -14,9 +14,9 @@ import (
 	"time"
 
 	"popplio/arcadia/types"
+	"popplio/perms"
 	"popplio/state"
 
-	perms "github.com/infinitybotlist/kittycat/go"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 )
@@ -253,9 +253,10 @@ func GetStaffMember(ctx context.Context, userID string) (types.StaffMember, erro
 		return types.StaffMember{}, fmt.Errorf("Error while getting positions of user %s: %s", userID, err)
 	}
 
-	sp := perms.StaffPermissions{
-		UserPositions: make([]perms.PartialStaffPosition, 0, len(positionRows)),
-		PermOverrides: perms.PFSS(permOverrides),
+	grants := perms.StaffGrants{
+		Roles:       make([]perms.Role, 0, len(positionRows)),
+		Extras:      perms.ParseStrings(permOverrides),
+		ConfigOwner: perms.IsConfigOwner(userID),
 	}
 
 	positions := make([]types.StaffPosition, 0, len(positionRows))
@@ -263,10 +264,11 @@ func GetStaffMember(ctx context.Context, userID string) (types.StaffMember, erro
 	for _, p := range positionRows {
 		id := UUIDString(p.ID)
 
-		sp.UserPositions = append(sp.UserPositions, perms.PartialStaffPosition{
+		grants.Roles = append(grants.Roles, perms.Role{
 			ID:    id,
+			Name:  p.Name,
 			Index: p.Index,
-			Perms: perms.PFSS(p.Perms),
+			Perms: perms.ParseStrings(p.Perms),
 		})
 
 		positions = append(positions, types.StaffPosition{
@@ -287,7 +289,7 @@ func GetStaffMember(ctx context.Context, userID string) (types.StaffMember, erro
 		return types.StaffMember{}, err
 	}
 
-	resolved := resolveWithDisciplinaries(sp, disciplinaries)
+	resolved := resolveWithDisciplinaries(grants, disciplinaries)
 
 	user, err := GetPlatformUser(ctx, userID)
 
@@ -296,70 +298,52 @@ func GetStaffMember(ctx context.Context, userID string) (types.StaffMember, erro
 	}
 
 	return types.StaffMember{
-		UserID:          userID,
-		User:            user,
-		Positions:       positions,
-		Disciplinaries:  disciplinaries,
-		PermOverrides:   types.NonNilStrings(permOverrides),
-		ResolvedPerms:   PermStrings(resolved),
-		NoAutosync:      noAutosync,
-		Unaccounted:     unaccounted,
-		MfaVerified:     mfaVerified,
-		CreatedAt:       types.NewTimestamp(createdAt),
-		StaffPermission: sp,
+		UserID:         userID,
+		User:           user,
+		Positions:      positions,
+		Disciplinaries: disciplinaries,
+		PermOverrides:  types.NonNilStrings(permOverrides),
+		ResolvedPerms:  resolved.Strings(),
+		NoAutosync:     noAutosync,
+		Unaccounted:    unaccounted,
+		MfaVerified:    mfaVerified,
+		CreatedAt:      types.NewTimestamp(createdAt),
+		Grants:         grants,
 	}, nil
 }
 
 // resolveWithDisciplinaries applies disciplinary permission limits on top of a
-// member's positions.
+// member's own permissions.
 //
-// Each disciplinary is pushed as a synthetic position at index 0, which outranks
-// every real position. A NON-additory disciplinary additionally drops every
-// position that is not itself a synthetic one added so far, i.e. it replaces the
-// member's permissions rather than intersecting with them.
-func resolveWithDisciplinaries(sp perms.StaffPermissions, disciplinaries []types.StaffDisciplinary) []perms.Permission {
-	if len(disciplinaries) == 0 {
-		return sp.Resolve()
+// An additory disciplinary adds its permissions to what the member already has,
+// which is how a disciplinary can hand someone a restricted extra ability. A
+// non-additory one replaces their permissions instead: their roles and extras
+// are set aside, leaving only what this disciplinary and any earlier one allow.
+// That is what makes it a punishment — a suspended reviewer keeps nothing but
+// the limits their disciplinary spells out.
+func resolveWithDisciplinaries(grants perms.StaffGrants, disciplinaries []types.StaffDisciplinary) perms.Set {
+	// An instance owner cannot be disciplined out of their own instance.
+	if len(disciplinaries) == 0 || grants.ConfigOwner {
+		return grants.Resolve()
 	}
 
-	virtual := perms.StaffPermissions{
-		UserPositions: append([]perms.PartialStaffPosition(nil), sp.UserPositions...),
-		PermOverrides: sp.PermOverrides,
-	}
-
-	var addedIDs []string
+	var (
+		resolved = grants.Resolve()
+		// applied holds the disciplinary limits on their own, so that a
+		// non-additory disciplinary can fall back to them.
+		applied = perms.Staff.NewSet()
+	)
 
 	for _, disc := range disciplinaries {
-		virtual.UserPositions = append(virtual.UserPositions, perms.PartialStaffPosition{
-			ID:    disc.ID,
-			Index: 0,
-			Perms: perms.PFSS(disc.Type.PermLimits),
-		})
-
-		addedIDs = append(addedIDs, disc.ID)
+		limits := perms.ParseStrings(disc.Type.PermLimits)
 
 		if !disc.Type.Additory {
-			retained := virtual.UserPositions[:0]
-
-			for _, pos := range virtual.UserPositions {
-				if slicesContains(addedIDs, pos.ID) {
-					retained = append(retained, pos)
-				}
-			}
-
-			virtual.UserPositions = retained
+			resolved = applied
 		}
+
+		resolved = resolved.With(limits...)
+		applied = applied.With(limits...)
 	}
 
-	return virtual.Resolve()
-}
-
-func slicesContains(haystack []string, needle string) bool {
-	for _, v := range haystack {
-		if v == needle {
-			return true
-		}
-	}
-
-	return false
+	return resolved
 }

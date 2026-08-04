@@ -14,7 +14,6 @@ import (
 	"popplio/arcadia/types"
 	"popplio/state"
 
-	perms "github.com/infinitybotlist/kittycat/go"
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
@@ -63,11 +62,14 @@ func Execute(ctx context.Context, method types.RPCMethod, h Handle) (Success, er
 		return Success{}, err
 	}
 
-	resolved := userPerms.Resolve()
-	required := perms.PermissionFromString("rpc." + method.Name())
+	required, ok := method.Permission()
 
-	if !perms.HasPerm(resolved, required) {
-		return Success{}, fmt.Errorf("You need %s permission to use %s", required.String(), method.Name())
+	if !ok {
+		return Success{}, fmt.Errorf("Unknown method %s", method.Name())
+	}
+
+	if !userPerms.Has(required) {
+		return Success{}, fmt.Errorf("You need the %s permission to use %s", required, method.Name())
 	}
 
 	data, err := json.Marshal(method)

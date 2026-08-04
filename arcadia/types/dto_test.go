@@ -179,7 +179,7 @@ func TestStaffMemberSerialization(t *testing.T) {
 		UserID:        "1",
 		Positions:     []StaffPosition{},
 		PermOverrides: []string{},
-		ResolvedPerms: []string{"rpc.Claim"},
+		ResolvedPerms: []string{"review_bots"},
 	}
 
 	out, err := json.Marshal(member)

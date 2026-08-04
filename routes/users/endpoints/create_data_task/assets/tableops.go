@@ -7,11 +7,9 @@ package assets
 
 import (
 	"fmt"
+	"popplio/perms"
 	"popplio/state"
-	"popplio/teams"
 	"popplio/validators"
-
-	kittycat "github.com/infinitybotlist/kittycat/go"
 
 	"github.com/jackc/pgx/v5"
 	"go.uber.org/zap"
@@ -87,14 +85,10 @@ var tableLogic = map[string]TableLogic{
 				if dataHolder {
 					teamIds = append(teamIds, teamId)
 				} else {
-					resolvedPerms := kittycat.StaffPermissions{
-						PermOverrides: kittycat.PFSS(flags),
-					}.Resolve()
-
-					if kittycat.HasPerm(resolvedPerms, kittycat.Permission{Namespace: "global", Perm: teams.PermissionOwner}) {
+					if perms.Entity.ResolveStrings(flags).Has(perms.EntityOwner) {
 						teamIds = append(teamIds, teamId)
 					} else {
-						l.Warn("User does not have permission to dump team [!global.* and not data_holder]", zap.String("team_id", teamId), zap.String("user_id", id))
+						l.Warn("User does not have permission to dump team [not an owner and not data_holder]", zap.String("team_id", teamId), zap.String("user_id", id))
 					}
 				}
 			}
