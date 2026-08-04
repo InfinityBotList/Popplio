@@ -115,6 +115,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- `PUT /servers` wrote every field into the wrong column: `createServerArgs`'s
+  hand-written value order didn't match `types.CreateServer`'s field
+  declaration order, which is what `db.GetCols`/the generated column list
+  actually follow. Values were bound to columns purely by position, so e.g.
+  `server_id` was written into `invite`, `name` into `short`, and
+  `extra_links` (a `[]Link`) into `tags` (a `text[]`) — the last of which is
+  what surfaced as a `cannot find encode plan` error, since a `[]Link` can't
+  encode into a `text[]` column. `createServerArgs` now lists values in the
+  same order as the struct, with a comment on both explaining they must stay
+  in sync (the existing length check on `createServerColsArr`/`serverArgs`
+  only ever caught the two lists having different lengths, not entries being
+  out of order relative to each other).
+- `servers.extra_links` was still `text[]` in the deployed database while
+  the application code (and `data/seed-ci.json`'s own schema conformance
+  check) has expected `jsonb` for a while, matching `bots`/`teams`/`users`'
+  `extra_links` columns. Migrated via `exp/fix_servers_extra_links_type.sql`
+  (needs to be applied manually against the database like other `exp/`
+  scripts, same as `exp/rewrite/*.sql`). Independent of the column-ordering
+  bug above, but was masking it: the ordering bug meant `extra_links`
+  received whatever value happened to land at that position, which could
+  vary by field type in ways that made this fix look sufficient on its own.
 - Startup logged `error while setting presence err="no gateway configured"`
   on every run: `Discord.SetPresence` was called right after
   `Discord.OpenShardManager` returned, but that only means the shards
