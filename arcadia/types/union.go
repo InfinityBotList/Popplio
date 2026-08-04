@@ -8,6 +8,7 @@
 package types
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -56,20 +57,23 @@ func encodeVariant(name string, inner any) ([]byte, error) {
 		return nil, err
 	}
 
-	// Built by hand rather than through a map so the key is emitted verbatim and
-	// no HTML escaping is applied to the variant name.
-	out := make([]byte, 0, len(name)+len(payload)+6)
-	out = append(out, '{')
 	key, err := json.Marshal(name)
 	if err != nil {
 		return nil, err
 	}
-	out = append(out, key...)
-	out = append(out, ':')
-	out = append(out, payload...)
-	out = append(out, '}')
 
-	return out, nil
+	// Built by hand rather than through a map so the key is emitted verbatim and
+	// no HTML escaping is applied to the variant name. bytes.Buffer grows as
+	// needed rather than pre-computing a capacity, so there's no fixed-size
+	// arithmetic that could overflow on pathological input.
+	var out bytes.Buffer
+	out.WriteByte('{')
+	out.Write(key)
+	out.WriteByte(':')
+	out.Write(payload)
+	out.WriteByte('}')
+
+	return out.Bytes(), nil
 }
 
 // Unit is the payload of a variant that carries no fields. Its presence (a

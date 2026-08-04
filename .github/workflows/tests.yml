@@ -2,6 +2,11 @@ name: Kitescratch Tests
 
 on: [push]
 
+# git-auto-commit-action below pushes a commit back to the repo; nothing else
+# in this workflow needs write access to anything.
+permissions:
+  contents: write
+
 env:
   NO_INTERACTION: "true"
 
