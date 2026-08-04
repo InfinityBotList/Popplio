@@ -1,8 +1,13 @@
+// Package get_apps_list implements GET /users/{user_id}/apps — "Get
+// Application List".
+//
+// Gets all applications of the user returning a list of apps.
 package get_apps_list
 
 import (
 	"errors"
 	"net/http"
+	"popplio/api/resp"
 	"popplio/db"
 	"popplio/state"
 	"popplio/types"
@@ -41,8 +46,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	row, err := state.Pool.Query(d.Context, "SELECT "+appCols+" FROM apps WHERE user_id = $1", d.Auth.ID)
 
 	if err != nil {
-		state.Logger.Error("Failed to fetch application list [db fetch]", zap.String("userId", d.Auth.ID), zap.Error(err))
-		return uapi.DefaultResponse(http.StatusInternalServerError)
+		return resp.Err("Failed to fetch application list [db fetch]", err, zap.String("userId", d.Auth.ID))
 	}
 
 	app, err := pgx.CollectRows(row, pgx.RowToStructByName[types.AppResponse])

@@ -1,9 +1,15 @@
+// Package get_servers_index implements GET /servers/@index — "Get Servers
+// Index".
+//
+// Gets the index of the server-side of the list. Returns a `ListIndexServer`
+// object
 package get_servers_index
 
 import (
 	"context"
 	"fmt"
 	"net/http"
+	"popplio/api/resp"
 	"strings"
 
 	"popplio/db"
@@ -14,7 +20,6 @@ import (
 	docs "github.com/infinitybotlist/eureka/doclib"
 	"github.com/infinitybotlist/eureka/uapi"
 	"github.com/jackc/pgx/v5"
-	"go.uber.org/zap"
 )
 
 var (
@@ -36,61 +41,51 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	// Certified Servers
 	certRows, err := state.Pool.Query(d.Context, "SELECT "+indexServersCols+" FROM servers WHERE state = 'public' AND type = 'certified' ORDER BY approximate_votes DESC LIMIT 9")
 	if err != nil {
-		state.Logger.Error("Error while getting certified servers", zap.Error(err))
-		return uapi.DefaultResponse(http.StatusInternalServerError)
+		return resp.Err("Error while getting certified servers", err)
 	}
 	listIndex.Certified, err = processRow(d.Context, certRows)
 	if err != nil {
-		state.Logger.Error("Error while processing certified servers", zap.Error(err))
-		return uapi.DefaultResponse(http.StatusInternalServerError)
+		return resp.Err("Error while processing certified servers", err)
 	}
 
 	// Premium Servers
 	premRows, err := state.Pool.Query(d.Context, "SELECT "+indexServersCols+" FROM servers WHERE state = 'public' AND premium = true ORDER BY approximate_votes  DESC LIMIT 9")
 	if err != nil {
-		state.Logger.Error("Error while getting premium servers", zap.Error(err))
-		return uapi.DefaultResponse(http.StatusInternalServerError)
+		return resp.Err("Error while getting premium servers", err)
 	}
 	listIndex.Premium, err = processRow(d.Context, premRows)
 	if err != nil {
-		state.Logger.Error("Error while processing premium servers", zap.Error(err))
-		return uapi.DefaultResponse(http.StatusInternalServerError)
+		return resp.Err("Error while processing premium servers", err)
 	}
 
 	// Most Viewed Servers
 	mostViewedRows, err := state.Pool.Query(d.Context, "SELECT "+indexServersCols+" FROM servers WHERE state = 'public' AND (type = 'approved' OR type = 'certified') ORDER BY clicks DESC LIMIT 9")
 	if err != nil {
-		state.Logger.Error("Error while getting most viewed servers", zap.Error(err))
-		return uapi.DefaultResponse(http.StatusInternalServerError)
+		return resp.Err("Error while getting most viewed servers", err)
 	}
 	listIndex.MostViewed, err = processRow(d.Context, mostViewedRows)
 	if err != nil {
-		state.Logger.Error("Error while processing most viewed servers", zap.Error(err))
-		return uapi.DefaultResponse(http.StatusInternalServerError)
+		return resp.Err("Error while processing most viewed servers", err)
 	}
 
 	// Recently Added Servers
 	recentlyAddedRows, err := state.Pool.Query(d.Context, "SELECT "+indexServersCols+" FROM servers WHERE state = 'public' AND type = 'approved' ORDER BY created_at DESC LIMIT 9")
 	if err != nil {
-		state.Logger.Error("Error while getting recently added servers", zap.Error(err))
-		return uapi.DefaultResponse(http.StatusInternalServerError)
+		return resp.Err("Error while getting recently added servers", err)
 	}
 	listIndex.RecentlyAdded, err = processRow(d.Context, recentlyAddedRows)
 	if err != nil {
-		state.Logger.Error("Error while processing recently added servers", zap.Error(err))
-		return uapi.DefaultResponse(http.StatusInternalServerError)
+		return resp.Err("Error while processing recently added servers", err)
 	}
 
 	// Top Voted Servers
 	topVotedRows, err := state.Pool.Query(d.Context, "SELECT "+indexServersCols+" FROM servers WHERE state = 'public' AND (type = 'approved' OR type = 'certified') ORDER BY approximate_votes  DESC LIMIT 9")
 	if err != nil {
-		state.Logger.Error("Error while getting top voted servers", zap.Error(err))
-		return uapi.DefaultResponse(http.StatusInternalServerError)
+		return resp.Err("Error while getting top voted servers", err)
 	}
 	listIndex.TopVoted, err = processRow(d.Context, topVotedRows)
 	if err != nil {
-		state.Logger.Error("Error while processing top voted servers", zap.Error(err))
-		return uapi.DefaultResponse(http.StatusInternalServerError)
+		return resp.Err("Error while processing top voted servers", err)
 	}
 
 	return uapi.HttpResponse{
@@ -109,12 +104,11 @@ func processRow(ctx context.Context, rows pgx.Rows) ([]types.IndexServer, error)
 		if (servers[i].Type != "approved" && servers[i].Type != "certified") || servers[i].State != "public" {
 			return nil, fmt.Errorf("internal error: servers %s has invalid type %s or state %s", servers[i].ServerID, servers[i].Type, servers[i].State)
 		}
+	}
 
-		err := assets.ResolveIndexServer(ctx, &servers[i])
-
-		if err != nil {
-			return nil, err
-		}
+	// Resolve all servers concurrently, since each server's resolution is independent
+	if err := assets.ResolveIndexServers(ctx, servers); err != nil {
+		return nil, err
 	}
 
 	return servers, nil

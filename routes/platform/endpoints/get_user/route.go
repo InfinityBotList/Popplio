@@ -1,10 +1,15 @@
+// Package get_user implements GET /users/{id} — "Get Platform User".
+//
+// This endpoint will return a user object based on the user id for a given
+// platform. This is useful for getting a user's
+// avatar/username/discriminator etc.
 package get_user
 
 import (
 	"net/http"
+	"popplio/api/resp"
 
 	"popplio/state"
-	"popplio/types"
 
 	docs "github.com/infinitybotlist/eureka/doclib"
 	"github.com/infinitybotlist/eureka/dovewing"
@@ -49,12 +54,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	case "discord":
 		dovewingPlatform = state.DovewingPlatformDiscord
 	default:
-		return uapi.HttpResponse{
-			Status: http.StatusUnsupportedMediaType,
-			Json: types.ApiError{
-				Message: "Unsupported platform. Only `discord` is supported at this time as a platform.",
-			},
-		}
+		return resp.Status(http.StatusUnsupportedMediaType, "Unsupported platform. Only `discord` is supported at this time as a platform.")
 	}
 
 	user, err := dovewing.GetUser(d.Context, id, dovewingPlatform)

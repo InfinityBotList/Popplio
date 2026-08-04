@@ -1,3 +1,4 @@
+// Package assets resolves a bot pack into the bots it contains.
 package assets
 
 import (
@@ -63,7 +64,7 @@ func ResolveBotPack(ctx context.Context, pack *types.BotPack) error {
 		err = botassets.ResolveIndexBot(ctx, &bot)
 
 		if err != nil {
-			return fmt.Errorf("error occurred while resolving index bot: " + err.Error() + " botID: " + bot.BotID)
+			return fmt.Errorf("error occurred while resolving index bot %s: %w", bot.BotID, err)
 		}
 
 		pack.ResolvedBots = append(pack.ResolvedBots, bot)
@@ -91,7 +92,7 @@ func ResolveBotPack(ctx context.Context, pack *types.BotPack) error {
 		err = serverassets.ResolveIndexServer(ctx, &server)
 
 		if err != nil {
-			return fmt.Errorf("error occurred while resolving index server: " + err.Error() + " serverID: " + server.ServerID)
+			return fmt.Errorf("error occurred while resolving index server %s: %w", server.ServerID, err)
 		}
 
 		pack.ResolvedServers = append(pack.ResolvedServers, server)

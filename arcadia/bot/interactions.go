@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"popplio/arcadia/dclient"
 	"popplio/arcadia/types"
 	"popplio/state"
 
@@ -71,7 +72,7 @@ func handleQueueButton(c *Ctx, e *events.ComponentInteractionCreate, id, message
 		delete(queueSessions, messageID)
 		sessionsMu.Unlock()
 
-		if err := state.Discord.Rest().DeleteMessage(e.Channel().ID(), e.Message.ID); err != nil {
+		if err := dclient.Get().Rest().DeleteMessage(e.Channel().ID(), e.Message.ID); err != nil {
 			state.Logger.Error("Failed to delete queue message", zap.Error(err))
 		}
 
@@ -99,7 +100,7 @@ func handleQueueButton(c *Ctx, e *events.ComponentInteractionCreate, id, message
 		return
 	}
 
-	_, err = state.Discord.Rest().UpdateMessage(e.Channel().ID(), e.Message.ID, discord.MessageUpdate{
+	_, err = dclient.Get().Rest().UpdateMessage(e.Channel().ID(), e.Message.ID, discord.MessageUpdate{
 		Content:    &msg.Content,
 		Embeds:     &msg.Embeds,
 		Components: &msg.Components,
@@ -132,7 +133,7 @@ func handleClaimButton(c *Ctx, e *events.ComponentInteractionCreate, id, message
 	// Remove the buttons after a press.
 	empty := []discord.ContainerComponent{}
 
-	if _, err := state.Discord.Rest().UpdateMessage(e.Channel().ID(), e.Message.ID, discord.MessageUpdate{Components: &empty}); err != nil {
+	if _, err := dclient.Get().Rest().UpdateMessage(e.Channel().ID(), e.Message.ID, discord.MessageUpdate{Components: &empty}); err != nil {
 		state.Logger.Error("Failed to clear claim buttons", zap.Error(err))
 	}
 
@@ -230,6 +231,30 @@ func cmdRPC() *Command {
 			})
 		},
 	}
+}
+
+// rpcMethodChoices exposes the 18 RPC methods as slash-command choices. Upstream
+// autocompleted them; a choice list is a better fit here because the whole set
+// fits inside Discord's 25-choice limit and needs no round trip.
+func rpcMethodChoices() []discord.ApplicationCommandOptionChoiceString {
+	choices := make([]discord.ApplicationCommandOptionChoiceString, 0, len(types.RPCMethodVariants))
+
+	for _, name := range types.RPCMethodVariants {
+		method, err := types.EmptyRPCMethod(name)
+
+		if err != nil {
+			continue
+		}
+
+		// The label is what staff read; the value is the variant name the
+		// dispatcher needs.
+		choices = append(choices, discord.ApplicationCommandOptionChoiceString{
+			Name:  truncate(method.Label(), 100),
+			Value: name,
+		})
+	}
+
+	return choices
 }
 
 func targetTypeChoices() []discord.ApplicationCommandOptionChoiceString {

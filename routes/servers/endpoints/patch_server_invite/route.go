@@ -1,3 +1,8 @@
+// Package patch_server_invite implements the "Update Server invite"
+// endpoint.
+//
+// Updates a servers invite. You must have 'Edit Server Invite' in the team
+// if the bot is in a team. Returns 204 on success
 package patch_server_invite
 
 /*

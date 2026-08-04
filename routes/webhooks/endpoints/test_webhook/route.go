@@ -1,7 +1,12 @@
+// Package test_webhook implements POST
+// /{target_type}/{target_id}/webhooks/test — "Test Webhook".
+//
+// Sends a test webhook.
 package test_webhook
 
 import (
 	"net/http"
+	"popplio/api/resp"
 	"reflect"
 	"slices"
 	"time"
@@ -59,12 +64,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	eventType := r.URL.Query().Get("event")
 
 	if eventType == "" {
-		return uapi.HttpResponse{
-			Status: http.StatusBadRequest,
-			Json: types.ApiError{
-				Message: "event must be specified",
-			},
-		}
+		return resp.BadRequest("event must be specified")
 	}
 
 	limit, err := ratelimit.Ratelimit{
@@ -74,18 +74,11 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	}.Limit(d.Context, r)
 
 	if err != nil {
-		state.Logger.Error("Error while ratelimiting", zap.Error(err), zap.String("bucket", "test_webhook"))
-		return uapi.DefaultResponse(http.StatusInternalServerError)
+		return resp.Err("Error while ratelimiting", err, zap.String("bucket", "test_webhook"))
 	}
 
 	if limit.Exceeded {
-		return uapi.HttpResponse{
-			Json: types.ApiError{
-				Message: "You are being ratelimited. Please try again in " + limit.TimeToReset.String(),
-			},
-			Headers: limit.Headers(),
-			Status:  http.StatusTooManyRequests,
-		}
+		return resp.RateLimited(limit)
 	}
 
 	var w events.WebhookEvent
@@ -94,12 +87,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		if string(evt.Event.Event()) == eventType {
 			tgtTypes := evt.Event.TargetTypes()
 			if !slices.Contains(tgtTypes, targetType) {
-				return uapi.HttpResponse{
-					Status: http.StatusBadRequest,
-					Json: types.ApiError{
-						Message: "This event is not valid for this target type",
-					},
-				}
+				return resp.BadRequest("This event is not valid for this target type")
 			}
 
 			w = evt.Event
@@ -107,12 +95,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	}
 
 	if w == nil {
-		return uapi.HttpResponse{
-			Status: http.StatusBadRequest,
-			Json: types.ApiError{
-				Message: "This event does not exist",
-			},
-		}
+		return resp.BadRequest("This event does not exist")
 	}
 
 	event := reflect.New(reflect.TypeOf(w)).Interface().(events.WebhookEvent)
@@ -138,10 +121,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 
 	if err != nil {
 		state.Logger.Error("Error while sending webhook", zap.Error(err), zap.String("userID", d.Auth.ID), zap.String("targetId", targetId), zap.String("targetType", targetType), zap.String("eventType", eventType))
-		return uapi.HttpResponse{
-			Status: http.StatusBadRequest,
-			Json:   types.ApiError{Message: err.Error()},
-		}
+		return resp.BadRequest(err.Error())
 	}
 
 	return uapi.DefaultResponse(http.StatusNoContent)

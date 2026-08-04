@@ -1,10 +1,13 @@
+// Package resolve_vanity implements GET /vanity/{code} — "Resolve Vanity".
+//
+// Resolve a vanity by its code or (then) its target id
 package resolve_vanity
 
 import (
 	"net/http"
+	"popplio/api/resp"
 
 	"popplio/routes/vanity/assets"
-	"popplio/state"
 	"popplio/types"
 
 	"github.com/go-chi/chi/v5"
@@ -52,18 +55,11 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	}
 
 	if err != nil {
-		state.Logger.Error("Failed to resolve vanity", zap.Error(err), zap.String("code", code))
-		return uapi.HttpResponse{
-			Status: http.StatusInternalServerError,
-			Json:   types.ApiError{Message: "An internal error occurred"},
-		}
+		return resp.ErrBody("Failed to resolve vanity", "An internal error occurred", err, zap.String("code", code))
 	}
 
 	if v == nil {
-		return uapi.HttpResponse{
-			Status: http.StatusNotFound,
-			Json:   types.ApiError{Message: "This entity does not exist"},
-		}
+		return resp.NotFound("This entity does not exist")
 	}
 
 	return uapi.HttpResponse{

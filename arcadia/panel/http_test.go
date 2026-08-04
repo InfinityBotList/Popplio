@@ -33,10 +33,7 @@ func TestMain(m *testing.M) {
 func handler(t *testing.T) http.Handler {
 	t.Helper()
 
-	s := New()
-	t.Cleanup(s.chunks.Close)
-
-	return s.http.Handler
+	return New().http.Handler
 }
 
 // CORS is Any/Any/Any and preflights are answered with 204.
@@ -236,7 +233,6 @@ func TestMaxBodySize(t *testing.T) {
 // The server binds the configured port for the current environment.
 func TestListenAddress(t *testing.T) {
 	s := New()
-	defer s.chunks.Close()
 
 	want := "0.0.0.0:3011" // current-env is staging
 
@@ -246,43 +242,5 @@ func TestListenAddress(t *testing.T) {
 
 	if s.http.Addr != want {
 		t.Errorf("Addr = %q, want %q", s.http.Addr, want)
-	}
-}
-
-// The chunk cache must be safe for concurrent use and support atomic
-// remove-and-return, which is what AddFile relies on to consume each chunk once.
-func TestChunkCacheTakeIsAtomic(t *testing.T) {
-	cache := newChunkCache()
-	defer cache.Close()
-
-	cache.Put("abc", []byte("hello"))
-
-	if !cache.Has("abc") {
-		t.Fatal("Has() = false after Put")
-	}
-
-	taken := make(chan bool, 2)
-
-	for i := 0; i < 2; i++ {
-		go func() {
-			_, ok := cache.Take("abc")
-			taken <- ok
-		}()
-	}
-
-	successes := 0
-
-	for i := 0; i < 2; i++ {
-		if <-taken {
-			successes++
-		}
-	}
-
-	if successes != 1 {
-		t.Errorf("Take() succeeded %d times, want exactly 1", successes)
-	}
-
-	if cache.Has("abc") {
-		t.Error("chunk still present after Take")
 	}
 }

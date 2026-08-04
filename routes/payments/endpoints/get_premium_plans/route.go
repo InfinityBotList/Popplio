@@ -1,3 +1,7 @@
+// Package get_premium_plans implements GET /payments/premium/plans — "Get
+// Premium Plans".
+//
+// Gets the current set of premium plans available.
 package get_premium_plans
 
 import (

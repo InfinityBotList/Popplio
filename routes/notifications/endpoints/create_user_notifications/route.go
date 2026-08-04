@@ -1,7 +1,12 @@
+// Package create_user_notifications implements POST
+// /users/{id}/notifications — "Create User Notification".
+//
+// Creates a new subscription for a push notification. Returns 204 on success
 package create_user_notifications
 
 import (
 	"net/http"
+	"popplio/api/resp"
 
 	"popplio/notifications"
 	"popplio/state"
@@ -60,8 +65,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	tx, err := state.Pool.Begin(d.Context)
 
 	if err != nil {
-		state.Logger.Error("Error while starting transaction", zap.Error(err), zap.String("userID", d.Auth.ID))
-		return uapi.DefaultResponse(http.StatusInternalServerError)
+		return resp.Err("Error while starting transaction", err, zap.String("userID", d.Auth.ID))
 	}
 
 	defer tx.Rollback(d.Context)
@@ -82,8 +86,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	err = tx.Commit(d.Context)
 
 	if err != nil {
-		state.Logger.Error("Error while committing transaction", zap.Error(err), zap.String("userID", d.Auth.ID))
-		return uapi.DefaultResponse(http.StatusInternalServerError)
+		return resp.Err("Error while committing transaction", err, zap.String("userID", d.Auth.ID))
 	}
 
 	// Fan out notification

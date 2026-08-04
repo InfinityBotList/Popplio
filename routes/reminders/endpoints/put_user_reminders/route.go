@@ -1,7 +1,12 @@
+// Package put_user_reminders implements PUT
+// /users/{uid}/{target_type}/{target_id}/reminders — "Create User Reminder".
+//
+// Creates a new user reminders of an entity
 package put_user_reminders
 
 import (
 	"net/http"
+	"popplio/api/resp"
 
 	"popplio/notifications"
 	"popplio/state"
@@ -58,11 +63,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	entityInfo, err := votes.GetEntityInfo(d.Context, state.Pool, targetId, targetType)
 
 	if err != nil {
-		state.Logger.Error("Error getting entity info", zap.Error(err), zap.String("target_id", targetId), zap.String("target_type", targetType))
-		return uapi.HttpResponse{
-			Status: http.StatusInternalServerError,
-			Json:   types.ApiError{Message: "Error."},
-		}
+		return resp.ErrBody("Error getting entity info", "Error.", err, zap.String("target_id", targetId), zap.String("target_type", targetType))
 	}
 
 	// Get count of old
@@ -70,11 +71,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	err = state.Pool.QueryRow(d.Context, "SELECT COUNT(*) FROM user_reminders WHERE user_id = $1 AND target_id = $2 AND target_type = $3", d.Auth.ID, targetId, targetType).Scan(&count)
 
 	if err != nil {
-		state.Logger.Error("Error selecting count of user_reminders", zap.Error(err), zap.String("target_id", targetId), zap.String("target_type", targetType))
-		return uapi.HttpResponse{
-			Status: http.StatusInternalServerError,
-			Json:   types.ApiError{Message: "Error getting current user reminder count."},
-		}
+		return resp.ErrBody("Error selecting count of user_reminders", "Error getting current user reminder count.", err, zap.String("target_id", targetId), zap.String("target_type", targetType))
 	}
 
 	if count > 0 {
@@ -85,11 +82,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	_, err = state.Pool.Exec(d.Context, "INSERT INTO user_reminders (user_id, target_id, target_type) VALUES ($1, $2, $3)", d.Auth.ID, targetId, targetType)
 
 	if err != nil {
-		state.Logger.Error("Error inserting new reminder", zap.Error(err), zap.String("target_id", targetId), zap.String("target_type", targetType))
-		return uapi.HttpResponse{
-			Status: http.StatusInternalServerError,
-			Json:   types.ApiError{Message: "Error adding new reminder."},
-		}
+		return resp.ErrBody("Error inserting new reminder", "Error adding new reminder.", err, zap.String("target_id", targetId), zap.String("target_type", targetType))
 	}
 
 	// Fan out notification

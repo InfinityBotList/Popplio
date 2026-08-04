@@ -20,6 +20,7 @@ import (
 	"github.com/disgoorg/disgo/events"
 	"github.com/disgoorg/disgo/gateway"
 	"github.com/disgoorg/disgo/sharding"
+	"github.com/disgoorg/snowflake/v2"
 	"github.com/infinitybotlist/eureka/dovewing/dovetypes"
 	hredis "github.com/infinitybotlist/eureka/hotcache/redis"
 	"github.com/infinitybotlist/eureka/ratelimit"
@@ -80,6 +81,27 @@ func Setup() {
 	Validator.RegisterValidation("https", snippets.ValidatorIsHttps)
 	Validator.RegisterValidation("httporhttps", snippets.ValidatorIsHttpOrHttps)
 
+	// Like "required", but not enforced in "dev" — for fields (Arcadia's
+	// staff server channels/roles/IDs) that only matter once Arcadia is
+	// actually pointed at a real staff Discord server, which a local
+	// checkout usually isn't.
+	Validator.RegisterValidation("requirednotdev", func(fl validator.FieldLevel) bool {
+		if config.CurrentEnv == config.CurrentEnvDev {
+			return true
+		}
+		return !fl.Field().IsZero()
+	})
+
+	// One call per instantiation of config.Differs[T] actually used in
+	// Config, generics make each a distinct type as far as the validator
+	// is concerned.
+	Validator.RegisterStructValidation(
+		config.ValidateDiffers,
+		config.Differs[string]{},
+		config.Differs[int]{},
+		config.Differs[[]snowflake.ID]{},
+	)
+
 	genconfig.GenConfig(config.Config{})
 
 	cfg, err := os.ReadFile("config.yaml")
@@ -114,27 +136,17 @@ func Setup() {
 
 	Redis = redis.NewClient(rOptions)
 
-	Discord, err = disgo.New(Config.DiscordAuth.Token, bot.WithShardManagerConfigOpts(
+	Discord, err = disgo.New(Config.DiscordAuth.Token.Parse(), bot.WithShardManagerConfigOpts(
 		sharding.WithShardIDs(0, 1),
 		sharding.WithShardCount(2),
 		sharding.WithAutoScaling(true),
 		sharding.WithGatewayConfigOpts(
-			// IntentGuildMessages + IntentMessageContent are needed by the staff
-			// bot's prefix commands; IntentMessageContent is privileged and must be
-			// enabled on the application. Roles are cached because the staff panel
-			// validates position role ids against the cache.
-			gateway.WithIntents(
-				gateway.IntentGuilds,
-				gateway.IntentGuildPresences,
-				gateway.IntentGuildMembers,
-				gateway.IntentGuildMessages,
-				gateway.IntentMessageContent,
-			),
+			gateway.WithIntents(gateway.IntentGuilds, gateway.IntentGuildPresences, gateway.IntentGuildMembers),
 			gateway.WithCompress(true),
 		),
 	),
 		bot.WithCacheConfigOpts(
-			cache.WithCaches(cache.FlagGuilds|cache.FlagMembers|cache.FlagPresences|cache.FlagRoles),
+			cache.WithCaches(cache.FlagGuilds|cache.FlagMembers|cache.FlagPresences),
 		),
 		bot.WithEventListeners(&events.ListenerAdapter{
 			OnGuildReady: func(event *events.GuildReady) {
@@ -142,6 +154,16 @@ func Setup() {
 			},
 			OnGuildsReady: func(event *events.GuildsReady) {
 				Logger.Info("All guilds ready")
+
+				// Setting presence right after OpenShardManager returns
+				// races ahead of the shards actually finishing their
+				// handshake (it returns once shards start connecting, not
+				// once they're ready), reliably failing with "no gateway
+				// configured". OnGuildsReady only fires once shards are
+				// actually up, so set it here instead.
+				if presenceErr := Discord.SetPresence(Context, gateway.WithWatchingActivity(Config.Sites.Frontend.Parse())); presenceErr != nil {
+					Logger.Error("error while setting presence", zap.Error(presenceErr))
+				}
 			},
 		}),
 	)
@@ -154,14 +176,6 @@ func Setup() {
 		if err = Discord.OpenShardManager(Context); err != nil {
 			slog.Error("error while connecting to gateway", slog.Any("err", err))
 			return
-		}
-
-		// Previously gated to prod only, and the SetPresence error was never
-		// actually captured — the check below was reading the stale
-		// OpenShardManager `err`, which is guaranteed nil here, so a failed
-		// presence update was silently swallowed instead of logged.
-		if presenceErr := Discord.SetPresence(Context, gateway.WithWatchingActivity(Config.Sites.Frontend.Parse())); presenceErr != nil {
-			slog.Error("error while setting presence", slog.Any("err", presenceErr))
 		}
 	}()
 
@@ -197,11 +211,12 @@ func Setup() {
 	})
 
 	c, err := paypal.NewClient(Config.Meta.PaypalClientID.Parse(), Config.Meta.PaypalSecret.Parse(), func() string {
-		if config.CurrentEnv == config.CurrentEnvStaging {
-			return paypal.APIBaseSandBox
-		} else {
+		// Only real production talks to Paypal's live API — staging and dev
+		// both use the sandbox, since both use test keys.
+		if config.CurrentEnv == config.CurrentEnvProd {
 			return paypal.APIBaseLive
 		}
+		return paypal.APIBaseSandBox
 	}())
 
 	if err != nil {
@@ -219,6 +234,10 @@ func Setup() {
 	stripe.Key = Config.Meta.StripeSecretKey.Parse()
 
 	go func() {
+		// A transient failure here (Stripe API hiccup, network blip) should
+		// disable Stripe webhook support, not take down the whole process —
+		// same graceful-degradation treatment as the Paypal setup above.
+
 		// Get all current webhooks
 		i := webhookendpoint.List(&stripe.WebhookEndpointListParams{})
 
@@ -227,7 +246,8 @@ func Setup() {
 			_, err := webhookendpoint.Del(i.WebhookEndpoint().ID, nil)
 
 			if err != nil {
-				panic(err)
+				Logger.Error("Stripe webhook setup failed [delete existing], disabling stripe webhook support", zap.Error(err))
+				return
 			}
 		}
 
@@ -244,7 +264,8 @@ func Setup() {
 		wh, err := webhookendpoint.New(params)
 
 		if err != nil {
-			panic(err)
+			Logger.Error("Stripe webhook setup failed [create], disabling stripe webhook support", zap.Error(err))
+			return
 		}
 
 		StripeWebhSecret = wh.Secret
@@ -253,7 +274,8 @@ func Setup() {
 		resp, err := http.Get("https://stripe.com/files/ips/ips_webhooks.txt")
 
 		if err != nil {
-			panic(err)
+			Logger.Error("Stripe webhook setup failed [fetch IP list], disabling stripe webhook support", zap.Error(err))
+			return
 		}
 
 		defer resp.Body.Close()
@@ -261,18 +283,22 @@ func Setup() {
 		body, err := io.ReadAll(resp.Body)
 
 		if err != nil {
-			panic(err)
+			Logger.Error("Stripe webhook setup failed [read IP list], disabling stripe webhook support", zap.Error(err))
+			return
 		}
 
-		// Split the body into lines
-		StripeWebhIPList = strings.Split(string(body), "\n")
-
-		// Remove empty lines
-		for i, v := range StripeWebhIPList {
-			if v == "" {
-				StripeWebhIPList = append(StripeWebhIPList[:i], StripeWebhIPList[i+1:]...)
+		// Split the body into lines, dropping empty ones. Built into a new
+		// slice rather than filtered in place — mutating StripeWebhIPList
+		// while ranging over its original indices would skip the element
+		// that shifts into each removed slot.
+		lines := strings.Split(string(body), "\n")
+		ipList := make([]string, 0, len(lines))
+		for _, v := range lines {
+			if v != "" {
+				ipList = append(ipList, v)
 			}
 		}
+		StripeWebhIPList = ipList
 
 		Logger.Info("Stripe webhook IP allowlist:", zap.Strings("ipList", StripeWebhIPList))
 	}()

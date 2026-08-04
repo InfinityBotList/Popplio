@@ -1,3 +1,7 @@
+// Package get_notification_info implements GET /users/notifications/info —
+// "Get Notifications Info".
+//
+// Gets info needed to subscribe to push notifications (VAPID public key)
 package get_notification_info
 
 import (

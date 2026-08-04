@@ -7,15 +7,16 @@ import (
 	"strconv"
 	"strings"
 
+	"popplio/arcadia/dclient"
 	"popplio/arcadia/impls"
 	"popplio/arcadia/rpc"
 	"popplio/arcadia/tasks"
 	"popplio/arcadia/types"
+	"popplio/perms"
 	"popplio/state"
 
 	"github.com/disgoorg/disgo/discord"
 	"github.com/disgoorg/snowflake/v2"
-	perms "github.com/infinitybotlist/kittycat/go"
 )
 
 func registerCommands() {
@@ -40,6 +41,8 @@ func registerCommands() {
 		cmdRPC(),
 		cmdRPCList(),
 	)
+
+	registerStaffRoleCommands()
 }
 
 // cmdRegister is poise's owner-only application-command registration helper.
@@ -219,7 +222,7 @@ func cmdStaff() *Command {
 				Run: func(c *Ctx) error {
 					var sb strings.Builder
 
-					state.Discord.Caches().GuildsForEach(func(guild discord.Guild) {
+					dclient.Get().Caches().GuildsForEach(func(guild discord.Guild) {
 						fmt.Fprintf(&sb, "%s (%s)\n", guild.Name, guild.ID)
 					})
 
@@ -239,7 +242,7 @@ func cmdStaff() *Command {
 					discord.ApplicationCommandOptionString{Name: "guild", Description: "The guild ID to leave", Required: true},
 				},
 				Run: func(c *Ctx) error {
-					if err := requirePerm(c, "arcadia.leave_guilds"); err != nil {
+					if err := requirePerm(c, perms.StaffAdministrator); err != nil {
 						return err
 					}
 
@@ -249,7 +252,7 @@ func cmdStaff() *Command {
 						return err
 					}
 
-					if err := state.Discord.Rest().LeaveGuild(guildID); err != nil {
+					if err := dclient.Get().Rest().LeaveGuild(guildID); err != nil {
 						return err
 					}
 
@@ -262,7 +265,7 @@ func cmdStaff() *Command {
 				Description: "Get the stats of a staff member",
 				Checks:      []Check{staffServer},
 				Options: []discord.ApplicationCommandOption{
-					discord.ApplicationCommandOptionString{Name: "user", Description: "The staff member you are looking for?"},
+					discord.ApplicationCommandOptionUser{Name: "user", Description: "The staff member you are looking for?"},
 				},
 				Run: func(c *Ctx) error {
 					userID := c.Option("user", 0)
@@ -531,7 +534,7 @@ func cmdRefresh() *Command {
 		Description: "Force refresh the top reviewer roles",
 		Checks:      []Check{staffServer},
 		Run: func(c *Ctx) error {
-			if err := requirePerm(c, "arcadia.force_refresh_top"); err != nil {
+			if err := requirePerm(c, perms.StaffAdministrator); err != nil {
 				return err
 			}
 
@@ -543,7 +546,7 @@ func cmdRefresh() *Command {
 				return err
 			}
 
-			if _, ok := state.Discord.Caches().Guild(state.Config.Servers.Main); !ok {
+			if _, ok := dclient.Get().Caches().Guild(state.Config.Servers.Main); !ok {
 				return fmt.Errorf("Failed to get guild")
 			}
 
@@ -663,29 +666,6 @@ func cmdRPCList() *Command {
 	}
 }
 
-// requirePerm resolves the caller's permissions and checks one of them.
-func requirePerm(c *Ctx, perm string) error {
-	sp, err := impls.GetUserPerms(c.Context, c.Author.ID.String())
-
-	if err != nil {
-		return err
-	}
-
-	if !perms.HasPerm(sp.Resolve(), perms.PermissionFromString(perm)) {
-		return fmt.Errorf("You do not have permission to use this command")
-	}
-
-	return nil
-}
-
-// runRPC is the shared path from a Discord command into the RPC layer.
-func runRPC(c *Ctx, method types.RPCMethod) (rpc.Success, error) {
-	return rpc.Execute(c.Context, method, rpc.Handle{
-		UserID:     c.Author.ID.String(),
-		TargetType: types.TargetTypeBot,
-	})
-}
-
 // runRPCWithTarget executes an RPC against an explicit target type. The modal
 // driver is the only caller that needs a target type other than Bot.
 func runRPCWithTarget(c *Ctx, method types.RPCMethod, targetType types.TargetType) (rpc.Success, error) {
@@ -693,4 +673,25 @@ func runRPCWithTarget(c *Ctx, method types.RPCMethod, targetType types.TargetTyp
 		UserID:     c.Author.ID.String(),
 		TargetType: targetType,
 	})
+}
+
+// requirePerm resolves the caller's permissions and checks one of them.
+func requirePerm(c *Ctx, perm perms.Perm) error {
+	sp, err := impls.GetUserPerms(c.Context, c.Author.ID.String())
+
+	if err != nil {
+		return err
+	}
+
+	if !sp.Has(perm) {
+		return fmt.Errorf("You need the %s permission to use this command", perms.Staff.Label(perm))
+	}
+
+	return nil
+}
+
+// runRPC is the shared path from a Discord command into the RPC layer. Every
+// command except the modal driver targets a bot.
+func runRPC(c *Ctx, method types.RPCMethod) (rpc.Success, error) {
+	return runRPCWithTarget(c, method, types.TargetTypeBot)
 }

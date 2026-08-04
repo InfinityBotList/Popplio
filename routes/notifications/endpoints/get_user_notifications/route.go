@@ -1,7 +1,12 @@
+// Package get_user_notifications implements GET /users/{id}/notifications —
+// "Get User Notifications".
+//
+// Gets a users notifications
 package get_user_notifications
 
 import (
 	"net/http"
+	"popplio/api/resp"
 	"strings"
 
 	"popplio/db"
@@ -45,15 +50,13 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	rows, err := state.Pool.Query(d.Context, "SELECT "+notifGetColsStr+" FROM user_notifications WHERE user_id = $1", id)
 
 	if err != nil {
-		state.Logger.Error("Failed to get user notifications", zap.Error(err), zap.String("user_id", id))
-		return uapi.DefaultResponse(http.StatusInternalServerError)
+		return resp.Err("Failed to get user notifications", err, zap.String("user_id", id))
 	}
 
 	notifications, err := pgx.CollectRows(rows, pgx.RowToStructByName[types.NotifGet])
 
 	if err != nil {
-		state.Logger.Error("Failed to get user notifications", zap.Error(err), zap.String("user_id", id))
-		return uapi.DefaultResponse(http.StatusInternalServerError)
+		return resp.Err("Failed to get user notifications", err, zap.String("user_id", id))
 	}
 
 	if len(notifications) == 0 {

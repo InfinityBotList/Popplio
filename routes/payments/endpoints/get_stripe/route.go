@@ -1,3 +1,6 @@
+// Package get_stripe implements GET /payments/stripe — "Get Stripe".
+//
+// Gets the required info needed for stripe payments.
 package get_stripe
 
 import (

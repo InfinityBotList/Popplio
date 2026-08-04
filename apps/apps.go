@@ -73,8 +73,8 @@ We are a welcoming and laid back team who is always willing to give new people a
 		},
 	},
 	{
-		ID: "qaqc",
-		Info: `Join the Infinity Development's QAQC (Quality Assurance and Quality Control) Team! As being part of the QAQC team, you will help ensure that our services will always stay top-notch making everyone's experience with our services much better. We are a welcoming and laid back team who is always willing to give new people an opportunity!`,
+		ID:          "qaqc",
+		Info:        `Join the Infinity Development's QAQC (Quality Assurance and Quality Control) Team! As being part of the QAQC team, you will help ensure that our services will always stay top-notch making everyone's experience with our services much better. We are a welcoming and laid back team who is always willing to give new people an opportunity!`,
 		Name:        "QAQC Team",
 		Tags:        []string{"Staff", "QAQC"},
 		ReviewLogic: reviewLogicStaff,

@@ -1,8 +1,13 @@
+// Package get_pack_seo implements GET /packs/{id}/seo — "Get Pack SEO Info".
+//
+// Gets the minimal SEO information about a pack for embed/search purposes.
+// Used by v4 website for meta tags
 package get_pack_seo
 
 import (
 	"errors"
 	"net/http"
+	"popplio/api/resp"
 
 	"popplio/state"
 	"popplio/types"
@@ -44,8 +49,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	}
 
 	if err != nil {
-		state.Logger.Error("Failed to get pack seo", zap.Error(err), zap.String("url", id))
-		return uapi.DefaultResponse(http.StatusInternalServerError)
+		return resp.Err("Failed to get pack seo", err, zap.String("url", id))
 	}
 
 	seoData := types.SEO{

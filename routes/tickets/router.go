@@ -1,3 +1,6 @@
+// Package tickets mounts the "Tickets" group of API routes.
+//
+// These API endpoints are related to tickets on IBL
 package tickets
 
 import (

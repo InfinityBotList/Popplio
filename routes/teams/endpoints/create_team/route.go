@@ -1,9 +1,13 @@
+// Package create_team implements POST /teams — "Create Team".
+//
+// Creates a team. Returns a 201 with the team ID on success.
 package create_team
 
 import (
 	"net/http"
+	"popplio/api/resp"
+	"popplio/perms"
 	"popplio/state"
-	"popplio/teams"
 	"popplio/types"
 	"popplio/validators"
 	"strings"
@@ -57,10 +61,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		err = validators.ValidateExtraLinks(*payload.ExtraLinks)
 
 		if err != nil {
-			return uapi.HttpResponse{
-				Status: http.StatusBadRequest,
-				Json:   types.ApiError{Message: err.Error()},
-			}
+			return resp.BadRequest(err.Error())
 		}
 
 		el = *payload.ExtraLinks
@@ -86,8 +87,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	tx, err := state.Pool.Begin(d.Context)
 
 	if err != nil {
-		state.Logger.Error("Error starting transaction", zap.Error(err), zap.String("user_id", d.Auth.ID))
-		return uapi.DefaultResponse(http.StatusInternalServerError)
+		return resp.Err("Error starting transaction", err, zap.String("user_id", d.Auth.ID))
 	}
 
 	defer tx.Rollback(d.Context)
@@ -109,8 +109,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	err = tx.QueryRow(d.Context, "SELECT COUNT(*) FROM vanity WHERE code = $1", vanity).Scan(&count)
 
 	if err != nil {
-		state.Logger.Error("Error while checking vanity", zap.Error(err), zap.String("userID", d.Auth.ID), zap.String("vanity", vanity))
-		return uapi.DefaultResponse(http.StatusInternalServerError)
+		return resp.Err("Error while checking vanity", err, zap.String("userID", d.Auth.ID), zap.String("vanity", vanity))
 	}
 
 	for count > 0 {
@@ -120,8 +119,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		err = tx.QueryRow(d.Context, "SELECT COUNT(*) FROM vanity WHERE code = $1", newVanity).Scan(&nc)
 
 		if err != nil {
-			state.Logger.Error("Error while checking vanity", zap.Error(err), zap.String("userID", d.Auth.ID), zap.String("vanity", vanity))
-			return uapi.DefaultResponse(http.StatusInternalServerError)
+			return resp.Err("Error while checking vanity", err, zap.String("userID", d.Auth.ID), zap.String("vanity", vanity))
 		}
 
 		if nc == 0 {
@@ -133,38 +131,33 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	var teamId = uuid.New().String()
 
 	if teamId == "" {
-		state.Logger.Error("Error generating team ID", zap.Error(err), zap.String("user_id", d.Auth.ID))
-		return uapi.DefaultResponse(http.StatusInternalServerError)
+		return resp.Err("Error generating team ID", err, zap.String("user_id", d.Auth.ID))
 	}
 
 	var itag pgtype.UUID
 	err = tx.QueryRow(d.Context, "INSERT INTO vanity (code, target_id, target_type) VALUES ($1, $2, $3) RETURNING itag", vanity, teamId, "team").Scan(&itag)
 
 	if err != nil {
-		state.Logger.Error("Error while inserting vanity", zap.Error(err), zap.String("userID", d.Auth.ID), zap.String("teamId", teamId), zap.String("vanity", vanity))
-		return uapi.DefaultResponse(http.StatusInternalServerError)
+		return resp.Err("Error while inserting vanity", err, zap.String("userID", d.Auth.ID), zap.String("teamId", teamId), zap.String("vanity", vanity))
 	}
 
 	_, err = tx.Exec(d.Context, "INSERT INTO teams (id, name, short, tags, extra_links, nsfw, vanity_ref) VALUES ($1, $2, $3, $4, $5, $6, $7)", teamId, payload.Name, payload.Short, payload.Tags, el, isTeamNsfw, itag)
 
 	if err != nil {
-		state.Logger.Error("Error creating team", zap.Error(err), zap.String("user_id", d.Auth.ID))
-		return uapi.DefaultResponse(http.StatusInternalServerError)
+		return resp.Err("Error creating team", err, zap.String("user_id", d.Auth.ID))
 	}
 
 	// Add the user to the team
-	_, err = tx.Exec(d.Context, "INSERT INTO team_members (team_id, user_id, flags, data_holder) VALUES ($1, $2, $3, true)", teamId, d.Auth.ID, []string{"global." + teams.PermissionOwner})
+	_, err = tx.Exec(d.Context, "INSERT INTO team_members (team_id, user_id, flags, data_holder) VALUES ($1, $2, $3, true)", teamId, d.Auth.ID, []string{perms.EntityOwner.String()})
 
 	if err != nil {
-		state.Logger.Error("Error adding user to team", zap.Error(err), zap.String("user_id", d.Auth.ID))
-		return uapi.DefaultResponse(http.StatusInternalServerError)
+		return resp.Err("Error adding user to team", err, zap.String("user_id", d.Auth.ID))
 	}
 
 	err = tx.Commit(d.Context)
 
 	if err != nil {
-		state.Logger.Error("Error committing transaction", zap.Error(err), zap.String("user_id", d.Auth.ID))
-		return uapi.DefaultResponse(http.StatusInternalServerError)
+		return resp.Err("Error committing transaction", err, zap.String("user_id", d.Auth.ID))
 	}
 
 	return uapi.HttpResponse{

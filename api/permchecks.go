@@ -4,10 +4,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net/http"
+
+	"popplio/perms"
 	"popplio/teams"
 
 	"github.com/infinitybotlist/eureka/uapi"
-	perms "github.com/infinitybotlist/kittycat/go"
 )
 
 var (
@@ -22,7 +24,7 @@ func AuthzEntityPermissionCheck(
 	authData uapi.AuthData,
 	targetType string,
 	targetId string,
-	perm perms.Permission,
+	perm perms.Perm,
 ) error {
 	if _, ok := uapi.State.AuthTypeMap[targetType]; !ok {
 		return ErrInvalidTargetType
@@ -34,12 +36,8 @@ func AuthzEntityPermissionCheck(
 	permLimits := PermLimits(authData)
 
 	if len(permLimits) > 0 {
-		var resolvedPermLimits = perms.StaffPermissions{
-			PermOverrides: perms.PFSS(permLimits),
-		}.Resolve()
-
-		if !perms.HasPerm(resolvedPermLimits, perm) {
-			return fmt.Errorf("%w: %s", ErrMissingPermission, perm.String())
+		if !perms.Entity.ResolveStrings(permLimits).Has(perm) {
+			return fmt.Errorf("%w: %s", ErrMissingPermission, perm)
 		}
 	}
 
@@ -63,12 +61,21 @@ func AuthzEntityPermissionCheck(
 		}
 
 		// Check if the user has the required permission
-		if !perms.HasPerm(entityPerms, perm) {
-			return fmt.Errorf("%w: %s", ErrMissingPermission, perm.String())
+		if !entityPerms.Has(perm) {
+			return fmt.Errorf("%w: %s", ErrMissingPermission, perm)
 		}
 
 		return nil
 	default:
 		return ErrCrossEntityNotSupported
+	}
+}
+
+// Needs builds the NeededPermission function for a route that always requires
+// the same permission, which every route does now that permissions no longer
+// vary by the type of entity being acted on.
+func Needs(p perms.Perm) func(uapi.Route, *http.Request, uapi.AuthData) (*perms.Perm, error) {
+	return func(uapi.Route, *http.Request, uapi.AuthData) (*perms.Perm, error) {
+		return &p, nil
 	}
 }

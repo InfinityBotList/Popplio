@@ -1,7 +1,13 @@
+// Package get_vote_credit_tiers implements GET
+// /{target_type}/{target_id}/votes/credit-tiers — "Get Vote Credit Tiers".
+//
+// Returns a summary of the tiers and the slab based breakdown of votes for a
+// given entity
 package get_vote_credit_tiers
 
 import (
 	"net/http"
+	"popplio/api/resp"
 
 	"popplio/state"
 	"popplio/types"
@@ -42,19 +48,13 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	targetType := validators.NormalizeTargetType(chi.URLParam(r, "target_type"))
 
 	if targetId == "" || targetType == "" {
-		return uapi.HttpResponse{
-			Status: http.StatusBadRequest,
-			Json:   types.ApiError{Message: "target_id and target_type are required"},
-		}
+		return resp.BadRequest("target_id and target_type are required")
 	}
 
 	summary, err := votes.EntityGetVoteCreditsSummary(d.Context, state.Pool, targetId, targetType)
 
 	if err != nil {
-		return uapi.HttpResponse{
-			Status: http.StatusInternalServerError,
-			Json:   types.ApiError{Message: "An error occurred while summarizing vote credit tiers."},
-		}
+		return resp.ErrBody("An error occurred while summarizing vote credit tiers", "An error occurred while summarizing vote credit tiers.", err)
 	}
 
 	return uapi.HttpResponse{

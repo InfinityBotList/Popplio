@@ -1,3 +1,8 @@
+// Package votereminders notifies users when they are able to vote again.
+//
+// The reminder loop only runs in production: staging shares the same user
+// rows, so letting it run there would deliver duplicate reminders to real
+// users.
 package votereminders
 
 import (

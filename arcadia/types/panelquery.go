@@ -14,10 +14,6 @@ type PanelQuery struct {
 	GetRpcMethods               *QGetRpcMethods
 	GetRpcLogEntries            *QLoginTokenOnly
 	SearchEntitys               *QSearchEntitys
-	UploadCdnFileChunk          *QUploadCdnFileChunk
-	ListCdnScopes               *QLoginTokenOnly
-	GetMainCdnScope             *QLoginTokenOnly
-	UpdateCdnAsset              *QUpdateCdnAsset
 	UpdatePartners              *QUpdatePartners
 	UpdateChangelog             *QUpdateChangelog
 	UpdateBlog                  *QUpdateBlog
@@ -68,19 +64,6 @@ type QSearchEntitys struct {
 	LoginToken string     `json:"login_token"`
 	TargetType TargetType `json:"target_type"`
 	Query      string     `json:"query"`
-}
-
-type QUploadCdnFileChunk struct {
-	LoginToken string `json:"login_token"`
-	Chunk      Bytes  `json:"chunk"`
-}
-
-type QUpdateCdnAsset struct {
-	LoginToken string         `json:"login_token"`
-	CdnScope   string         `json:"cdn_scope"`
-	Name       string         `json:"name"`
-	Path       string         `json:"path"`
-	Action     CdnAssetAction `json:"action"`
 }
 
 type QUpdatePartners struct {
@@ -148,108 +131,84 @@ type QPopplioStaff struct {
 func (q *PanelQuery) UnmarshalJSON(data []byte) error {
 	*q = PanelQuery{}
 
-	return unmarshalUnion("PanelQuery", data, map[string]func() any{
-		"Authorize": func() any {
-			q.Authorize = &QAuthorize{}
-			return q.Authorize
-		},
-		"Hello": func() any {
-			q.Hello = &QHello{}
-			return q.Hello
-		},
-		"BaseAnalytics": func() any {
-			q.BaseAnalytics = &QLoginTokenOnly{}
-			return q.BaseAnalytics
-		},
-		"GetUser": func() any {
-			q.GetUser = &QGetUser{}
-			return q.GetUser
-		},
-		"BotQueue": func() any {
-			q.BotQueue = &QLoginTokenOnly{}
-			return q.BotQueue
-		},
-		"ExecuteRpc": func() any {
-			q.ExecuteRpc = &QExecuteRpc{}
-			return q.ExecuteRpc
-		},
-		"GetRpcMethods": func() any {
-			q.GetRpcMethods = &QGetRpcMethods{}
-			return q.GetRpcMethods
-		},
-		"GetRpcLogEntries": func() any {
-			q.GetRpcLogEntries = &QLoginTokenOnly{}
-			return q.GetRpcLogEntries
-		},
-		"SearchEntitys": func() any {
-			q.SearchEntitys = &QSearchEntitys{}
-			return q.SearchEntitys
-		},
-		"UploadCdnFileChunk": func() any {
-			q.UploadCdnFileChunk = &QUploadCdnFileChunk{}
-			return q.UploadCdnFileChunk
-		},
-		"ListCdnScopes": func() any {
-			q.ListCdnScopes = &QLoginTokenOnly{}
-			return q.ListCdnScopes
-		},
-		"GetMainCdnScope": func() any {
-			q.GetMainCdnScope = &QLoginTokenOnly{}
-			return q.GetMainCdnScope
-		},
-		"UpdateCdnAsset": func() any {
-			q.UpdateCdnAsset = &QUpdateCdnAsset{}
-			return q.UpdateCdnAsset
-		},
-		"UpdatePartners": func() any {
-			q.UpdatePartners = &QUpdatePartners{}
-			return q.UpdatePartners
-		},
-		"UpdateChangelog": func() any {
-			q.UpdateChangelog = &QUpdateChangelog{}
-			return q.UpdateChangelog
-		},
-		"UpdateBlog": func() any {
-			q.UpdateBlog = &QUpdateBlog{}
-			return q.UpdateBlog
-		},
-		"UpdateStaffPositions": func() any {
-			q.UpdateStaffPositions = &QUpdateStaffPositions{}
-			return q.UpdateStaffPositions
-		},
-		"UpdateStaffMembers": func() any {
-			q.UpdateStaffMembers = &QUpdateStaffMembers{}
-			return q.UpdateStaffMembers
-		},
-		"UpdateStaffDisciplinaryType": func() any {
-			q.UpdateStaffDisciplinaryType = &QUpdateStaffDisciplinaryType{}
-			return q.UpdateStaffDisciplinaryType
-		},
-		"UpdateVoteCreditTiers": func() any {
-			q.UpdateVoteCreditTiers = &QUpdateVoteCreditTiers{}
-			return q.UpdateVoteCreditTiers
-		},
-		"UpdateShopItems": func() any {
-			q.UpdateShopItems = &QUpdateShopItems{}
-			return q.UpdateShopItems
-		},
-		"UpdateShopItemBenefits": func() any {
-			q.UpdateShopItemBenefits = &QUpdateShopItemBenefits{}
-			return q.UpdateShopItemBenefits
-		},
-		"UpdateShopCoupons": func() any {
-			q.UpdateShopCoupons = &QUpdateShopCoupons{}
-			return q.UpdateShopCoupons
-		},
-		"UpdateBotWhitelist": func() any {
-			q.UpdateBotWhitelist = &QUpdateBotWhitelist{}
-			return q.UpdateBotWhitelist
-		},
-		"PopplioStaff": func() any {
-			q.PopplioStaff = &QPopplioStaff{}
-			return q.PopplioStaff
-		},
-	})
+	name, payload, err := decodeUnion(data)
+
+	if err != nil {
+		return fmt.Errorf("PanelQuery: %w", err)
+	}
+
+	// Every operation is a struct variant, so none accept the bare-string form.
+	var into any
+
+	switch name {
+	case "Authorize":
+		q.Authorize = &QAuthorize{}
+		into = q.Authorize
+	case "Hello":
+		q.Hello = &QHello{}
+		into = q.Hello
+	case "BaseAnalytics":
+		q.BaseAnalytics = &QLoginTokenOnly{}
+		into = q.BaseAnalytics
+	case "GetUser":
+		q.GetUser = &QGetUser{}
+		into = q.GetUser
+	case "BotQueue":
+		q.BotQueue = &QLoginTokenOnly{}
+		into = q.BotQueue
+	case "ExecuteRpc":
+		q.ExecuteRpc = &QExecuteRpc{}
+		into = q.ExecuteRpc
+	case "GetRpcMethods":
+		q.GetRpcMethods = &QGetRpcMethods{}
+		into = q.GetRpcMethods
+	case "GetRpcLogEntries":
+		q.GetRpcLogEntries = &QLoginTokenOnly{}
+		into = q.GetRpcLogEntries
+	case "SearchEntitys":
+		q.SearchEntitys = &QSearchEntitys{}
+		into = q.SearchEntitys
+	case "UpdatePartners":
+		q.UpdatePartners = &QUpdatePartners{}
+		into = q.UpdatePartners
+	case "UpdateChangelog":
+		q.UpdateChangelog = &QUpdateChangelog{}
+		into = q.UpdateChangelog
+	case "UpdateBlog":
+		q.UpdateBlog = &QUpdateBlog{}
+		into = q.UpdateBlog
+	case "UpdateStaffPositions":
+		q.UpdateStaffPositions = &QUpdateStaffPositions{}
+		into = q.UpdateStaffPositions
+	case "UpdateStaffMembers":
+		q.UpdateStaffMembers = &QUpdateStaffMembers{}
+		into = q.UpdateStaffMembers
+	case "UpdateStaffDisciplinaryType":
+		q.UpdateStaffDisciplinaryType = &QUpdateStaffDisciplinaryType{}
+		into = q.UpdateStaffDisciplinaryType
+	case "UpdateVoteCreditTiers":
+		q.UpdateVoteCreditTiers = &QUpdateVoteCreditTiers{}
+		into = q.UpdateVoteCreditTiers
+	case "UpdateShopItems":
+		q.UpdateShopItems = &QUpdateShopItems{}
+		into = q.UpdateShopItems
+	case "UpdateShopItemBenefits":
+		q.UpdateShopItemBenefits = &QUpdateShopItemBenefits{}
+		into = q.UpdateShopItemBenefits
+	case "UpdateShopCoupons":
+		q.UpdateShopCoupons = &QUpdateShopCoupons{}
+		into = q.UpdateShopCoupons
+	case "UpdateBotWhitelist":
+		q.UpdateBotWhitelist = &QUpdateBotWhitelist{}
+		into = q.UpdateBotWhitelist
+	case "PopplioStaff":
+		q.PopplioStaff = &QPopplioStaff{}
+		into = q.PopplioStaff
+	default:
+		return errUnknownVariant("PanelQuery", name)
+	}
+
+	return decodeVariant("PanelQuery", name, payload, into)
 }
 
 func (q PanelQuery) MarshalJSON() ([]byte, error) {
@@ -272,14 +231,6 @@ func (q PanelQuery) MarshalJSON() ([]byte, error) {
 		return encodeVariant("GetRpcLogEntries", q.GetRpcLogEntries)
 	case q.SearchEntitys != nil:
 		return encodeVariant("SearchEntitys", q.SearchEntitys)
-	case q.UploadCdnFileChunk != nil:
-		return encodeVariant("UploadCdnFileChunk", q.UploadCdnFileChunk)
-	case q.ListCdnScopes != nil:
-		return encodeVariant("ListCdnScopes", q.ListCdnScopes)
-	case q.GetMainCdnScope != nil:
-		return encodeVariant("GetMainCdnScope", q.GetMainCdnScope)
-	case q.UpdateCdnAsset != nil:
-		return encodeVariant("UpdateCdnAsset", q.UpdateCdnAsset)
 	case q.UpdatePartners != nil:
 		return encodeVariant("UpdatePartners", q.UpdatePartners)
 	case q.UpdateChangelog != nil:

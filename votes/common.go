@@ -1,14 +1,18 @@
+// Package votes implements voting on entities and the credits votes earn.
+//
+// It covers both halves of the system: recording and counting votes against
+// any votable entity, and converting accumulated votes into redeemable
+// credits. Queries take a DbConn rather than the pool directly so callers
+// can run them inside a transaction they already opened.
 package votes
 
 import (
 	"context"
 	"errors"
 	"fmt"
-	"popplio/assetmanager"
 	"popplio/db"
 	"popplio/state"
 	"popplio/types"
-	"strconv"
 	"strings"
 	"time"
 
@@ -100,7 +104,6 @@ func GetEntityInfo(ctx context.Context, c DbConn, targetId, targetType string) (
 			URL:     state.Config.Sites.Frontend.Parse() + "/pack/" + targetId,
 			VoteURL: state.Config.Sites.Frontend.Parse() + "/pack/" + targetId,
 			Name:    targetId,
-			Avatar:  state.Config.Sites.CDN + "/avatars/default.webp",
 		}, nil
 	case "team":
 		var name string
@@ -120,22 +123,11 @@ func GetEntityInfo(ctx context.Context, c DbConn, targetId, targetType string) (
 			return nil, errors.New("team is vote banned and cannot be voted for right now")
 		}
 
-		avatar := assetmanager.AvatarInfo(assetmanager.AssetTargetTypeTeam, targetId)
-
-		var avatarPath string
-
-		if avatar.Exists {
-			avatarPath = state.Config.Sites.CDN + "/" + avatar.Path + "?ts=" + strconv.FormatInt(avatar.LastModified.Unix(), 10)
-		} else {
-			avatarPath = state.Config.Sites.CDN + "/" + avatar.DefaultPath
-		}
-
 		// Set entityInfo for log
 		return &EntityInfo{
 			URL:     state.Config.Sites.Frontend.Parse() + "/team/" + targetId,
 			VoteURL: state.Config.Sites.Frontend.Parse() + "/team/" + targetId + "/vote",
 			Name:    name,
-			Avatar:  avatarPath,
 		}, nil
 	case "server":
 		var name string
@@ -160,14 +152,12 @@ func GetEntityInfo(ctx context.Context, c DbConn, targetId, targetType string) (
 			URL:     state.Config.Sites.Frontend.Parse() + "/server/" + targetId,
 			VoteURL: state.Config.Sites.Frontend.Parse() + "/server/" + targetId + "/vote",
 			Name:    name,
-			Avatar:  assetmanager.ResolveAssetMetadataToUrl(assetmanager.AvatarInfo(assetmanager.AssetTargetTypeServer, targetId)),
 		}, nil
 	case "blog":
 		return &EntityInfo{
 			URL:     state.Config.Sites.Frontend.Parse() + "/blog/" + targetId,
 			VoteURL: state.Config.Sites.Frontend.Parse() + "/blog/" + targetId,
 			Name:    targetId,
-			Avatar:  state.Config.Sites.CDN + "/avatars/default.webp",
 		}, nil
 	default:
 		return nil, errors.New("unimplemented target type:" + targetType)
@@ -329,13 +319,11 @@ func EntityGetVoteCount(ctx context.Context, c DbConn, targetId, targetType stri
 	var upvotes int
 	var downvotes int
 
-	err := c.QueryRow(ctx, "SELECT COUNT(*) FROM entity_votes WHERE target_id = $1 AND target_type = $2 AND void = false AND upvote = true", targetId, targetType).Scan(&upvotes)
-
-	if err != nil {
-		return 0, err
-	}
-
-	err = c.QueryRow(ctx, "SELECT COUNT(*) FROM entity_votes WHERE target_id = $1 AND target_type = $2 AND void = false AND upvote = false", targetId, targetType).Scan(&downvotes)
+	err := c.QueryRow(
+		ctx,
+		"SELECT COUNT(*) FILTER (WHERE upvote), COUNT(*) FILTER (WHERE NOT upvote) FROM entity_votes WHERE target_id = $1 AND target_type = $2 AND void = false",
+		targetId, targetType,
+	).Scan(&upvotes, &downvotes)
 
 	if err != nil {
 		return 0, err

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strings"
 
+	"popplio/arcadia/dclient"
 	"popplio/arcadia/impls"
 	"popplio/state"
 
@@ -124,7 +125,7 @@ func fetchAllBans(guildID snowflake.ID) ([]discord.Ban, error) {
 	)
 
 	for {
-		page, err := state.Discord.Rest().GetBans(guildID, 0, after, 1000)
+		page, err := dclient.Get().Rest().GetBans(guildID, 0, after, 1000)
 
 		if err != nil {
 			return nil, err
@@ -142,13 +143,13 @@ func fetchAllBans(guildID snowflake.ID) ([]discord.Ban, error) {
 
 // SpecRoleSync mirrors the bug hunter role into users.bug_hunters.
 func SpecRoleSync(ctx context.Context) error {
-	if _, ok := state.Discord.Caches().Guild(state.Config.Servers.Main); !ok {
+	if _, ok := dclient.Get().Caches().Guild(state.Config.Servers.Main); !ok {
 		return fmt.Errorf("Failed to get guild")
 	}
 
 	var bugHunters []string
 
-	state.Discord.Caches().MembersForEach(state.Config.Servers.Main, func(member discord.Member) {
+	dclient.Get().Caches().MembersForEach(state.Config.Servers.Main, func(member discord.Member) {
 		for _, roleID := range member.RoleIDs {
 			if roleID == state.Config.Roles.BugHunters {
 				bugHunters = append(bugHunters, member.User.ID.String())
@@ -271,7 +272,7 @@ func TopReviewerSync(ctx context.Context) error {
 		return err
 	}
 
-	if _, ok := state.Discord.Caches().Guild(state.Config.Servers.Main); !ok {
+	if _, ok := dclient.Get().Caches().Guild(state.Config.Servers.Main); !ok {
 		state.Logger.Error("Failed to get guild")
 		return nil
 	}
@@ -293,7 +294,7 @@ func SyncTopReviewerRoles(ctx context.Context, stats []TopReviewer) error {
 
 	var holders []snowflake.ID
 
-	state.Discord.Caches().MembersForEach(state.Config.Servers.Main, func(member discord.Member) {
+	dclient.Get().Caches().MembersForEach(state.Config.Servers.Main, func(member discord.Member) {
 		for _, roleID := range member.RoleIDs {
 			if roleID == state.Config.Roles.TopReviewers {
 				holders = append(holders, member.User.ID)

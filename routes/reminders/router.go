@@ -1,3 +1,6 @@
+// Package reminders mounts the "Reminders" group of API routes.
+//
+// These API endpoints are related to reminders on IBL
 package reminders
 
 import (

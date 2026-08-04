@@ -1,11 +1,15 @@
+// Package clear_user implements DELETE /platform/user/{id} — "Clear Platform
+// User Cache".
+//
+// This endpoint will clear the cache for a user id on a given platform. This
+// is useful if the user's data has changes
 package clear_user
 
 import (
 	"net/http"
+	"popplio/api/resp"
 
-	"popplio/assetmanager"
 	"popplio/state"
-	"popplio/types"
 
 	"github.com/go-chi/chi/v5"
 	docs "github.com/infinitybotlist/eureka/doclib"
@@ -48,12 +52,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	case "discord":
 		dovewingPlatform = state.DovewingPlatformDiscord
 	default:
-		return uapi.HttpResponse{
-			Status: http.StatusUnsupportedMediaType,
-			Json: types.ApiError{
-				Message: "Unsupported platform. Only `discord` is supported at this time as a platform.",
-			},
-		}
+		return resp.Status(http.StatusUnsupportedMediaType, "Unsupported platform. Only `discord` is supported at this time as a platform.")
 	}
 
 	res, err := dovewing.ClearUser(d.Context, id, dovewingPlatform, dovewing.ClearUserReq{})
@@ -61,32 +60,6 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	if err != nil {
 		state.Logger.Error("Error clearing user [dovewing]", zap.Error(err), zap.String("id", id), zap.String("platform", platform))
 		return uapi.DefaultResponse(http.StatusNotFound)
-	}
-
-	if res.IsBot {
-		err = assetmanager.DeleteAvatar(assetmanager.AssetTargetTypeBot, id)
-
-		if err != nil {
-			state.Logger.Error("Error deleting bot avatar", zap.Error(err), zap.String("id", id))
-			return uapi.HttpResponse{
-				Status: http.StatusInternalServerError,
-				Json: types.ApiError{
-					Message: "Error deleting bot avatar.",
-				},
-			}
-		}
-	} else {
-		err = assetmanager.DeleteAvatar(assetmanager.AssetTargetTypeUser, id)
-
-		if err != nil {
-			state.Logger.Error("Error deleting user avatar", zap.Error(err), zap.String("id", id))
-			return uapi.HttpResponse{
-				Status: http.StatusInternalServerError,
-				Json: types.ApiError{
-					Message: "Error deleting user avatar.",
-				},
-			}
-		}
 	}
 
 	return uapi.HttpResponse{

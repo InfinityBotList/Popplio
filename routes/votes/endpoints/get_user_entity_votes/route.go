@@ -1,7 +1,12 @@
+// Package get_user_entity_votes implements GET
+// /users/{uid}/{target_type}/{target_id}/votes — "Get User Entity Votes".
+//
+// Gets all valid (current) votes a user has made for an entity
 package get_user_entity_votes
 
 import (
 	"net/http"
+	"popplio/api/resp"
 
 	"popplio/state"
 	"popplio/types"
@@ -52,20 +57,14 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	targetType := validators.NormalizeTargetType(chi.URLParam(r, "target_type"))
 
 	if uid == "" || targetId == "" || targetType == "" {
-		return uapi.HttpResponse{
-			Status: http.StatusBadRequest,
-			Json:   types.ApiError{Message: "Both target_id and target_type must be specified"},
-		}
+		return resp.BadRequest("Both target_id and target_type must be specified")
 	}
 
 	uv, err := votes.EntityVoteCheck(d.Context, state.Pool, uid, targetId, targetType)
 
 	if err != nil {
 		state.Logger.Error("Failed to get user entity votes", zap.Error(err), zap.String("userId", uid), zap.String("targetId", targetId), zap.String("targetType", targetType))
-		return uapi.HttpResponse{
-			Status: http.StatusBadRequest,
-			Json:   types.ApiError{Message: err.Error()},
-		}
+		return resp.BadRequest(err.Error())
 	}
 
 	return uapi.HttpResponse{

@@ -1,3 +1,9 @@
+// Package events defines the webhook event types and their registry.
+//
+// An event declares which target types it applies to and how it renders as a
+// Discord embed, and registers itself at init. Both the API documentation
+// and the test-webhook endpoint are generated from that registry, so a new
+// event does not need either to be updated by hand.
 package events
 
 import (

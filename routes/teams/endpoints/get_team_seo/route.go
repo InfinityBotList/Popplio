@@ -1,9 +1,13 @@
+// Package get_team_seo implements GET /teams/{id}/seo — "Get Team SEO Info".
+//
+// Gets the minimal SEO information about a team for embed/search purposes.
+// Used by v4 website for meta tags
 package get_team_seo
 
 import (
 	"net/http"
+	"popplio/api/resp"
 
-	"popplio/assetmanager"
 	"popplio/state"
 	"popplio/types"
 
@@ -47,16 +51,12 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	err := state.Pool.QueryRow(d.Context, "SELECT id, name, short FROM teams WHERE id = $1", tid).Scan(&id, &name, &short)
 
 	if err != nil {
-		state.Logger.Error("Error getting team SEO info [db queryrow]", zap.Error(err), zap.String("id", tid))
-		return uapi.DefaultResponse(http.StatusInternalServerError)
+		return resp.Err("Error getting team SEO info [db queryrow]", err, zap.String("id", tid))
 	}
 
-	avatar := assetmanager.AvatarInfo(assetmanager.AssetTargetTypeTeam, id)
-
 	seoData := types.SEO{
-		ID:     id,
-		Name:   name,
-		Avatar: assetmanager.ResolveAssetMetadataToUrl(avatar),
+		ID:   id,
+		Name: name,
 		Short: func() string {
 			if !short.Valid || short.String == "" {
 				return "View the team " + name + " on Infinity List"

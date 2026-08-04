@@ -1,8 +1,13 @@
+// Package current_status implements GET /list/current-status — "Get Current
+// Status".
+//
+// Gets the current status of the list
 package current_status
 
 import (
 	"net/http"
 	"net/url"
+	"popplio/api/resp"
 	"popplio/state"
 	"popplio/types"
 	"strings"
@@ -11,6 +16,7 @@ import (
 	docs "github.com/infinitybotlist/eureka/doclib"
 	"github.com/infinitybotlist/eureka/jsonimpl"
 	"github.com/infinitybotlist/eureka/uapi"
+	"go.uber.org/zap"
 )
 
 func Docs() *docs.Doc {
@@ -40,43 +46,46 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	}
 
 	// Check if response is on redis
-	cachedResp := state.Redis.Get(d.Context, "current_status:"+src)
+	cachedResp, err := state.Redis.Get(d.Context, "current_status:"+src).Bytes()
 
-	if cachedResp.Val() != "" {
-		return uapi.HttpResponse{
-			Json: cachedResp.Val(),
-			Headers: map[string]string{
-				"X-Cache": "HIT",
-			},
+	if err == nil {
+		var cachedStatus map[string]any
+
+		if err := jsonimpl.Unmarshal(cachedResp, &cachedStatus); err == nil {
+			return uapi.HttpResponse{
+				Json: cachedStatus,
+				Headers: map[string]string{
+					"X-Cache": "HIT",
+				},
+			}
 		}
 	}
 
+	httpClient := http.Client{Timeout: 10 * time.Second}
+
 	switch src {
 	case "instatus":
-		res, err := http.Get(state.Config.Sites.Instatus + "/summary.json")
+		req, err := http.NewRequestWithContext(d.Context, http.MethodGet, state.Config.Sites.Instatus+"/summary.json", nil)
 
 		if err != nil {
-			return uapi.HttpResponse{
-				Status: http.StatusInternalServerError,
-				Json: types.ApiError{
-					Message: "Instatus returned an error.",
-				},
-			}
+			return resp.Err("Error while building Instatus request", err)
 		}
 
+		res, err := httpClient.Do(req)
+
+		if err != nil {
+			return resp.Err("Instatus returned an error", err)
+		}
+		defer res.Body.Close()
+
 		if res.StatusCode != 200 {
-			return uapi.HttpResponse{
-				Status: http.StatusInternalServerError,
-				Json: types.ApiError{
-					Message: "Instatus returned a non-200 status code: " + res.Status,
-				},
-			}
+			return resp.Err("Instatus returned a non-200 status code", nil, zap.String("status", res.Status))
 		}
 
 		err = jsonimpl.UnmarshalReader(res.Body, &listStatus)
 
 		if err != nil {
-			return uapi.DefaultResponse(http.StatusInternalServerError)
+			return resp.Err("Error while unmarshalling Instatus response", err)
 		}
 	case "uptime-robot":
 		// create form
@@ -86,46 +95,44 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		form.Set("custom_uptime_ratios", "7-30")
 
 		// create request
-		client := http.Client{
-			Timeout: 10 * time.Second,
-		}
-
-		req, err := http.NewRequest("POST", "https://api.uptimerobot.com/v2/getMonitors", strings.NewReader(form.Encode()))
+		req, err := http.NewRequestWithContext(d.Context, http.MethodPost, "https://api.uptimerobot.com/v2/getMonitors", strings.NewReader(form.Encode()))
 
 		if err != nil {
-			return uapi.DefaultResponse(http.StatusInternalServerError)
+			return resp.Err("Error while building UptimeRobot request", err)
 		}
 
 		// set content type
 		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 
 		// make request
-		res, err := client.Do(req)
+		res, err := httpClient.Do(req)
 
 		if err != nil {
-			return uapi.DefaultResponse(http.StatusInternalServerError)
+			return resp.Err("UptimeRobot returned an error", err)
 		}
+		defer res.Body.Close()
 
 		if res.StatusCode != 200 {
-			return uapi.DefaultResponse(http.StatusInternalServerError)
+			return resp.Err("UptimeRobot returned a non-200 status code", nil, zap.String("status", res.Status))
 		}
 
 		err = jsonimpl.UnmarshalReader(res.Body, &listStatus)
 
 		if err != nil {
-			return uapi.DefaultResponse(http.StatusInternalServerError)
+			return resp.Err("Error while unmarshalling UptimeRobot response", err)
 		}
 	default:
-		return uapi.HttpResponse{
-			Status: http.StatusBadRequest,
-			Json: types.ApiError{
-				Message: "Invalid source. Valid sources are instatus and uptime-robot",
-			},
-		}
+		return resp.BadRequest("Invalid source. Valid sources are instatus and uptime-robot")
 	}
 
 	// Cache response
-	state.Redis.Set(d.Context, "current_status:"+src, listStatus, 3*time.Minute)
+	statusBytes, err := jsonimpl.Marshal(listStatus)
+
+	if err != nil {
+		state.Logger.Error("Failed to marshal status for caching", zap.Error(err), zap.String("src", src))
+	} else if err := state.Redis.Set(d.Context, "current_status:"+src, statusBytes, 3*time.Minute).Err(); err != nil {
+		state.Logger.Error("Failed to cache status response", zap.Error(err), zap.String("src", src))
+	}
 
 	return uapi.HttpResponse{
 		Json: listStatus,

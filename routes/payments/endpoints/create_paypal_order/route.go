@@ -1,11 +1,16 @@
+// Package create_paypal_order implements POST /users/{id}/paypal — "Create
+// Paypal Order".
+//
+// Creates a paypal order returning the URL. Use this to initiate a new
+// paypal order in your client.
 package create_paypal_order
 
 import (
 	"fmt"
 	"net/http"
+	"popplio/api/resp"
 	"popplio/routes/payments/assets"
 	"popplio/state"
-	"popplio/types"
 	"time"
 
 	"github.com/infinitybotlist/eureka/jsonimpl"
@@ -42,12 +47,7 @@ func Docs() *docs.Doc {
 
 func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	if state.Paypal == nil {
-		return uapi.HttpResponse{
-			Status: http.StatusServiceUnavailable,
-			Json: types.ApiError{
-				Message: "Paypal is currently not available as a payment option. Please contact support!",
-			},
-		}
+		return resp.Status(http.StatusServiceUnavailable, "Paypal is currently not available as a payment option. Please contact support!")
 	}
 
 	limit, err := ratelimit.Ratelimit{
@@ -57,18 +57,11 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	}.Limit(d.Context, r)
 
 	if err != nil {
-		state.Logger.Error("Error while ratelimiting", zap.Error(err), zap.String("bucket", "payments"))
-		return uapi.DefaultResponse(http.StatusInternalServerError)
+		return resp.Err("Error while ratelimiting", err, zap.String("bucket", "payments"))
 	}
 
 	if limit.Exceeded {
-		return uapi.HttpResponse{
-			Json: types.ApiError{
-				Message: "You are being ratelimited. Please try again in " + limit.TimeToReset.String(),
-			},
-			Headers: limit.Headers(),
-			Status:  http.StatusTooManyRequests,
-		}
+		return resp.RateLimited(limit)
 	}
 
 	var create assets.CreatePerkData
@@ -93,12 +86,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 
 	if err != nil {
 		state.Logger.Error("Error while finding perk", zap.Error(err), zap.Any("payload", payload), zap.String("user_id", d.Auth.ID))
-		return uapi.HttpResponse{
-			Status: http.StatusBadRequest,
-			Json: types.ApiError{
-				Message: "Error: " + err.Error(),
-			},
-		}
+		return resp.BadRequest("Error: " + err.Error())
 	}
 
 	priceStr := fmt.Sprintf("%.2f", perk.Price)
@@ -106,8 +94,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	customId, err := jsonimpl.Marshal(payload)
 
 	if err != nil {
-		state.Logger.Error("Error while marshalling payload", zap.Error(err), zap.Any("payload", payload), zap.String("user_id", d.Auth.ID))
-		return uapi.DefaultResponse(http.StatusInternalServerError)
+		return resp.Err("Error while marshalling payload", err, zap.Any("payload", payload), zap.String("user_id", d.Auth.ID))
 	}
 
 	refId := crypto.RandString(32) // Paypal is stupid and requires a refId
@@ -145,8 +132,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	})
 
 	if err != nil {
-		state.Logger.Error("Error while creating paypal order", zap.Error(err), zap.Any("payload", payload), zap.String("user_id", d.Auth.ID))
-		return uapi.DefaultResponse(http.StatusInternalServerError)
+		return resp.Err("Error while creating paypal order", err, zap.Any("payload", payload), zap.String("user_id", d.Auth.ID))
 	}
 
 	var approvalLink string
@@ -158,20 +144,14 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	}
 
 	if approvalLink == "" {
-		return uapi.HttpResponse{
-			Status: http.StatusInternalServerError,
-			Json: types.ApiError{
-				Message: "Internal Error: Could not find approval link",
-			},
-		}
+		return resp.ErrBody("Internal Error: Could not find approval link", "Internal Error: Could not find approval link", nil)
 	}
 
 	// Save the refId to redis, associated with the order ID
 	err = state.Redis.Set(d.Context, "paypal:"+refId, order.ID, 8*time.Hour).Err()
 
 	if err != nil {
-		state.Logger.Error("Error while saving refId to redis", zap.Error(err), zap.Any("payload", payload), zap.String("user_id", d.Auth.ID))
-		return uapi.DefaultResponse(http.StatusInternalServerError)
+		return resp.Err("Error while saving refId to redis", err, zap.Any("payload", payload), zap.String("user_id", d.Auth.ID))
 	}
 
 	return uapi.HttpResponse{

@@ -1,11 +1,18 @@
+// Package remove_review implements DELETE
+// /{target_type}/{target_id}/reviews/{review_id} — "Delete Review".
+//
+// Deletes a review by review ID. The user must be the author of this review.
+// This will automatically trigger a garbage collection task and returns 204
+// on success
 package remove_review
 
 import (
 	"net/http"
 	"popplio/api"
+	"popplio/api/resp"
+	"popplio/perms"
 	"popplio/routes/reviews/assets"
 	"popplio/state"
-	"popplio/teams"
 	"popplio/types"
 	"popplio/validators"
 	"popplio/webhooks/core/drivers"
@@ -13,7 +20,6 @@ import (
 
 	docs "github.com/infinitybotlist/eureka/doclib"
 	"github.com/infinitybotlist/eureka/uapi"
-	perms "github.com/infinitybotlist/kittycat/go"
 	"go.uber.org/zap"
 
 	"github.com/go-chi/chi/v5"
@@ -74,47 +80,28 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 			d.Auth,
 			targetType,
 			targetId,
-			perms.Permission{Namespace: targetType, Perm: teams.PermissionDeleteOwnerReview},
+			perms.EntityManageOwnerReviews,
 		)
 
 		if err != nil {
-			return uapi.HttpResponse{
-				Status: http.StatusForbidden,
-				Json:   types.ApiError{Message: "Entity permission checks failed: " + err.Error()},
-			}
+			return resp.Forbidden("Entity permission checks failed: " + err.Error())
 		}
 	} else {
 		if d.Auth.TargetType != api.TargetTypeUser {
-			return uapi.HttpResponse{
-				Status: http.StatusForbidden,
-				Json: types.ApiError{
-					Message: "Only users may delete non-owner reviews",
-				},
-			}
+			return resp.Forbidden("Only users may delete non-owner reviews")
 		} else if d.Auth.TargetType == api.TargetTypeUser {
 			if author != d.Auth.ID {
-				return uapi.HttpResponse{
-					Status: http.StatusForbidden,
-					Json: types.ApiError{
-						Message: "You are not the author of this review",
-					},
-				}
+				return resp.Forbidden("You are not the author of this review")
 			}
 		} else {
-			return uapi.HttpResponse{
-				Status: http.StatusInternalServerError,
-				Json: types.ApiError{
-					Message: "Unreachable condition reached!",
-				},
-			}
+			return resp.ErrBody("Unreachable condition reached!", "Unreachable condition reached!", nil)
 		}
 	}
 
 	_, err = state.Pool.Exec(d.Context, "DELETE FROM reviews WHERE id = $1", rid)
 
 	if err != nil {
-		state.Logger.Error("Failed to delete review [db exec]", zap.Error(err), zap.String("rid", rid))
-		return uapi.DefaultResponse(http.StatusInternalServerError)
+		return resp.Err("Failed to delete review [db exec]", err, zap.String("rid", rid))
 	}
 
 	err = drivers.Send(drivers.With{
@@ -133,13 +120,15 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		state.Logger.Error("Failed to send webhook", zap.Error(err), zap.String("target_id", targetId), zap.String("target_type", targetType), zap.String("user_id", d.Auth.ID), zap.String("review_id", rid))
 	}
 
-	state.Redis.Del(d.Context, "rv-"+targetId+"-"+targetType)
-
 	// Trigger a garbage collection step to remove any orphaned reviews
 	go func() {
-		err = assets.GCTrigger(targetId, targetType)
+		defer func() {
+			if rec := recover(); rec != nil {
+				state.Logger.Error("Panic while triggering review GC", zap.Any("panic", rec), zap.String("target_id", targetId), zap.String("target_type", targetType))
+			}
+		}()
 
-		if err != nil {
+		if err := assets.GCTrigger(targetId, targetType); err != nil {
 			state.Logger.Error("Failed to trigger GC: ", zap.Error(err))
 		}
 	}()

@@ -1,16 +1,19 @@
+// Package get_app_list implements GET /staff/apps — "Staff: Get Application
+// List".
+//
+// Gets all applications returning a list of apps.
 package get_app_list
 
 import (
 	"errors"
 	"net/http"
+	"popplio/api/resp"
 	"popplio/db"
+	"popplio/perms"
 	"popplio/routes/staff/assets"
 	"popplio/state"
 	"popplio/types"
-	"popplio/validators"
 	"strings"
-
-	kittycat "github.com/infinitybotlist/kittycat/go"
 
 	docs "github.com/infinitybotlist/eureka/doclib"
 	"github.com/infinitybotlist/eureka/dovewing"
@@ -47,31 +50,18 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	d.Auth.ID, err = assets.EnsurePanelAuth(d.Context, r)
 
 	if err != nil {
-		return uapi.HttpResponse{
-			Status: http.StatusFailedDependency,
-			Json:   types.ApiError{Message: err.Error()},
-		}
+		return resp.Status(http.StatusFailedDependency, err.Error())
 	}
 
-	permList, err := validators.GetUserStaffPerms(d.Context, d.Auth.ID)
+	staffPerms, err := perms.StaffPerms(d.Context, d.Auth.ID)
 
 	if err != nil {
-		return uapi.HttpResponse{
-			Status: http.StatusFailedDependency,
-			Json:   types.ApiError{Message: err.Error()},
-		}
+		return resp.Status(http.StatusFailedDependency, err.Error())
 	}
 
-	resolvedPerms := permList.Resolve()
-
 	// Check if the user has the permission to view apps
-	if !kittycat.HasPerm(resolvedPerms, kittycat.Permission{Namespace: "apps", Perm: "view"}) {
-		return uapi.HttpResponse{
-			Status: http.StatusForbidden,
-			Json: types.ApiError{
-				Message: "You do not have permission to view apps.",
-			},
-		}
+	if !staffPerms.Has(perms.StaffViewApps) {
+		return resp.Forbidden("You do not have permission to view apps.")
 	}
 
 	userId := r.URL.Query().Get("user_id")
@@ -84,8 +74,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	}
 
 	if err != nil {
-		state.Logger.Error("Failed to fetch application list [db fetch]", zap.Error(err))
-		return uapi.DefaultResponse(http.StatusInternalServerError)
+		return resp.Err("Failed to fetch application list [db fetch]", err)
 	}
 
 	app, err := pgx.CollectRows(row, pgx.RowToStructByName[types.AppResponse])
@@ -99,16 +88,14 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	}
 
 	if err != nil {
-		state.Logger.Error("Failed to fetch application list [collection]", zap.Error(err))
-		return uapi.DefaultResponse(http.StatusInternalServerError)
+		return resp.Err("Failed to fetch application list [collection]", err)
 	}
 
 	for i := range app {
 		user, err := dovewing.GetUser(d.Context, app[i].UserID, state.DovewingPlatformDiscord)
 
 		if err != nil {
-			state.Logger.Error("Failed to fetch application list [user fetch]", zap.String("userId", app[i].UserID), zap.Error(err))
-			return uapi.DefaultResponse(http.StatusInternalServerError)
+			return resp.Err("Failed to fetch application list [user fetch]", err, zap.String("userId", app[i].UserID))
 		}
 
 		app[i].User = user

@@ -1,8 +1,12 @@
+// Package bots mounts the "Bots" group of API routes.
+//
+// These API endpoints are related to bots on IBL
 package bots
 
 import (
 	"net/http"
 	"popplio/api"
+	"popplio/perms"
 	"popplio/routes/bots/endpoints/add_bot"
 	"popplio/routes/bots/endpoints/delete_bot"
 	"popplio/routes/bots/endpoints/get_all_bots"
@@ -14,11 +18,9 @@ import (
 	"popplio/routes/bots/endpoints/patch_bot_settings"
 	"popplio/routes/bots/endpoints/patch_bot_team"
 	"popplio/routes/bots/endpoints/post_bot_stats"
-	"popplio/teams"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/infinitybotlist/eureka/uapi"
-	perms "github.com/infinitybotlist/kittycat/go"
 )
 
 const (
@@ -143,12 +145,7 @@ func (b Router) Routes(r *chi.Mux) {
 		},
 		ExtData: map[string]any{
 			api.PERMISSION_CHECK_KEY: api.PermissionCheck{
-				NeededPermission: func(d uapi.Route, r *http.Request, authData uapi.AuthData) (*perms.Permission, error) {
-					return &perms.Permission{
-						Namespace: api.TargetTypeBot,
-						Perm:      teams.PermissionDelete,
-					}, nil
-				},
+				NeededPermission: api.Needs(perms.EntityDeleteBots),
 				GetTarget: func(d uapi.Route, r *http.Request, authData uapi.AuthData) (string, string) {
 					return api.TargetTypeBot, chi.URLParam(r, "id")
 				},
@@ -176,12 +173,7 @@ func (b Router) Routes(r *chi.Mux) {
 		},
 		ExtData: map[string]any{
 			api.PERMISSION_CHECK_KEY: api.PermissionCheck{
-				NeededPermission: func(d uapi.Route, r *http.Request, authData uapi.AuthData) (*perms.Permission, error) {
-					return &perms.Permission{
-						Namespace: api.TargetTypeBot,
-						Perm:      teams.PermissionEdit,
-					}, nil
-				},
+				NeededPermission: api.Needs(perms.EntityEditBots),
 				GetTarget: func(d uapi.Route, r *http.Request, authData uapi.AuthData) (string, string) {
 					return api.TargetTypeBot, chi.URLParam(r, "id")
 				},

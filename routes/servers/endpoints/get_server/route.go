@@ -1,3 +1,6 @@
+// Package get_server implements GET /servers/{id} — "Get Server".
+//
+// The target page of the request if any.
 package get_server
 
 import (
@@ -5,9 +8,9 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"popplio/api/resp"
 	"strings"
 
-	"popplio/assetmanager"
 	"popplio/db"
 	"popplio/state"
 	"popplio/teams/resolvers"
@@ -145,8 +148,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	row, err := state.Pool.Query(d.Context, "SELECT "+serverCols+" FROM servers WHERE server_id = $1", id)
 
 	if err != nil {
-		state.Logger.Error("Error while getting server [db fetch]", zap.Error(err), zap.String("id", id), zap.String("target", target))
-		return uapi.DefaultResponse(http.StatusInternalServerError)
+		return resp.Err("Error while getting server [db fetch]", err, zap.String("id", id), zap.String("target", target))
 	}
 
 	server, err := pgx.CollectOneRow(row, pgx.RowToStructByName[types.Server])
@@ -156,46 +158,32 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	}
 
 	if err != nil {
-		state.Logger.Error("Error while getting server [db collect]", zap.Error(err), zap.String("id", id), zap.String("target", target))
-		return uapi.DefaultResponse(http.StatusInternalServerError)
+		return resp.Err("Error while getting server [db collect]", err, zap.String("id", id), zap.String("target", target))
 	}
 
 	row, err = state.Pool.Query(d.Context, "SELECT "+teamCols+" FROM teams WHERE id = $1", server.TeamOwnerID)
 
 	if err != nil {
-		state.Logger.Error("Error while getting team [db fetch]", zap.Error(err), zap.String("id", id), zap.String("target", target))
-		return uapi.DefaultResponse(http.StatusInternalServerError)
+		return resp.Err("Error while getting team [db fetch]", err, zap.String("id", id), zap.String("target", target))
 	}
 
 	eto, err := pgx.CollectOneRow(row, pgx.RowToStructByName[types.Team])
 
 	if err != nil {
-		state.Logger.Error("Error while getting team [db collect]", zap.Error(err), zap.String("id", id), zap.String("target", target))
-		return uapi.DefaultResponse(http.StatusInternalServerError)
+		return resp.Err("Error while getting team [db collect]", err, zap.String("id", id), zap.String("target", target))
 	}
 
 	if r.URL.Query().Get("team_includes") != "" {
 		includesSplit := strings.Split(r.URL.Query().Get("team_includes"), ",")
 
 		if len(includesSplit) > 16 {
-			return uapi.HttpResponse{
-				Status: http.StatusBadRequest,
-				Json: types.ApiError{
-					Message: "Too many `team_includes`. Maximum is 16",
-				},
-			}
+			return resp.BadRequest("Too many `team_includes`. Maximum is 16")
 		}
 
 		eto.Entities, err = resolvers.GetTeamEntities(d.Context, eto.ID, includesSplit)
 
 		if err != nil {
-			state.Logger.Error("Error while getting team entities", zap.Error(err), zap.String("id", id), zap.String("target", target), zap.String("teamOwner", validators.EncodeUUID(server.TeamOwnerID.Bytes)))
-			return uapi.HttpResponse{
-				Status: http.StatusInternalServerError,
-				Json: types.ApiError{
-					Message: "Error while getting team entities.",
-				},
-			}
+			return resp.ErrDetail("Error while getting team entities", err, zap.String("id", id), zap.String("target", target), zap.String("teamOwner", validators.EncodeUUID(server.TeamOwnerID.Bytes)))
 		}
 	} else {
 		eto.Entities = &types.TeamEntities{
@@ -203,17 +191,13 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		}
 	}
 
-	eto.Banner = assetmanager.BannerInfo(assetmanager.AssetTargetTypeTeam, eto.ID)
-	eto.Avatar = assetmanager.AvatarInfo(assetmanager.AssetTargetTypeTeam, eto.ID)
-
 	server.TeamOwner = &eto
 
 	var uniqueClicks int64
 	err = state.Pool.QueryRow(d.Context, "SELECT cardinality(unique_clicks) AS unique_clicks FROM servers WHERE server_id = $1", server.ServerID).Scan(&uniqueClicks)
 
 	if err != nil {
-		state.Logger.Error("Error while getting unique clicks", zap.Error(err), zap.String("id", id), zap.String("target", target))
-		return uapi.DefaultResponse(http.StatusInternalServerError)
+		return resp.Err("Error while getting unique clicks", err, zap.String("id", id), zap.String("target", target))
 	}
 
 	server.UniqueClicks = uniqueClicks
@@ -223,23 +207,31 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	err = state.Pool.QueryRow(d.Context, "SELECT code FROM vanity WHERE itag = $1", server.VanityRef).Scan(&code)
 
 	if err != nil {
-		state.Logger.Error("Error while getting bot vanity code [db collect]", zap.Error(err), zap.String("id", id), zap.String("target", target), zap.String("serverID", server.ServerID))
-		return uapi.DefaultResponse(http.StatusInternalServerError)
+		return resp.Err("Error while getting bot vanity code [db collect]", err, zap.String("id", id), zap.String("target", target), zap.String("serverID", server.ServerID))
 	}
 
 	server.Vanity = code
-	server.Avatar = assetmanager.AvatarInfo(assetmanager.AssetTargetTypeServer, server.ServerID)
-	server.Banner = assetmanager.BannerInfo(assetmanager.AssetTargetTypeServer, server.ServerID)
+
+	// The owner may have synced emoji/sticker data sitting in the DB from
+	// when show_emojis was previously on — don't leak it once they've opted
+	// back out, rather than waiting for the next sync pass to clear it.
+	if !server.ShowEmojis {
+		server.Emojis = nil
+		server.Stickers = nil
+	}
+	// Nil Go slices serialize to JSON null, which crashes frontend consumers
+	// that call .length/.map on it without a null check.
+	if server.Emojis == nil {
+		server.Emojis = []types.Emoji{}
+	}
+	if server.Stickers == nil {
+		server.Stickers = []types.Sticker{}
+	}
 
 	server.Votes, err = votes.EntityGetVoteCount(d.Context, state.Pool, server.ServerID, "server")
 
 	if err != nil {
-		return uapi.HttpResponse{
-			Status: http.StatusInternalServerError,
-			Json: types.ApiError{
-				Message: "Error while getting server vote count [db fetch].",
-			},
-		}
+		return resp.ErrBody("Error while getting server vote count [db fetch]", "Error while getting server vote count [db fetch].", err)
 	}
 
 	// Handle extra includes
@@ -254,8 +246,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 				err := state.Pool.QueryRow(d.Context, "SELECT long FROM servers WHERE server_id = $1", server.ServerID).Scan(&long)
 
 				if err != nil {
-					state.Logger.Error("Error while getting bot server description [db fetch]", zap.Error(err), zap.String("id", id), zap.String("target", target), zap.String("serverID", server.ServerID))
-					return uapi.DefaultResponse(http.StatusInternalServerError)
+					return resp.Err("Error while getting bot server description [db fetch]", err, zap.String("id", id), zap.String("target", target), zap.String("serverID", server.ServerID))
 				}
 
 				server.Long = long
@@ -264,9 +255,13 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	}
 
 	go func() {
-		err = handleAnalytics(r, id, target)
+		defer func() {
+			if rec := recover(); rec != nil {
+				state.Logger.Error("Panic while handling analytics", zap.Any("panic", rec), zap.String("id", id), zap.String("target", target))
+			}
+		}()
 
-		if err != nil {
+		if err := handleAnalytics(r, id, target); err != nil {
 			state.Logger.Error("Error while handling analytics", zap.Error(err), zap.String("id", id), zap.String("target", target))
 		}
 	}()

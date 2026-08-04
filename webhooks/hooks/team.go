@@ -3,7 +3,6 @@ package hooks
 import (
 	"errors"
 	"fmt"
-	"popplio/assetmanager"
 	"popplio/db"
 	"popplio/state"
 	"popplio/types"
@@ -49,9 +48,6 @@ func (td TeamDriver) Construct(userId, id string) (*events.Target, *sender.Webho
 	team.Entities = &types.TeamEntities{
 		Targets: []string{}, // We don't provide any entities right now, may change
 	}
-
-	team.Banner = assetmanager.BannerInfo(assetmanager.AssetTargetTypeTeam, team.ID)
-	team.Avatar = assetmanager.AvatarInfo(assetmanager.AssetTargetTypeTeam, team.ID)
 
 	var code string
 

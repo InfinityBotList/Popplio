@@ -1,11 +1,15 @@
+// Package get_all_packs implements GET /packs/@all — "Get All Packs".
+//
+// Gets all packs on the list. This endpoint is paginated.
 package get_all_packs
 
 import (
 	"net/http"
-	"strconv"
+	"popplio/api/resp"
 	"strings"
 
 	"popplio/db"
+	"popplio/pagination"
 	"popplio/state"
 	"popplio/types"
 
@@ -43,19 +47,10 @@ func Docs() *docs.Doc {
 }
 
 func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
-	page := r.URL.Query().Get("page")
-
-	if page == "" {
-		page = "1"
-	}
-
-	pageNum, err := strconv.ParseUint(page, 10, 32)
+	pageNum, err := pagination.Parse(r)
 
 	if err != nil {
-		return uapi.HttpResponse{
-			Status: http.StatusBadRequest,
-			Json:   types.ApiError{Message: "Invalid page number"},
-		}
+		return resp.BadRequest("Invalid page number")
 	}
 
 	limit := perPage
@@ -64,26 +59,20 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	rows, err := state.Pool.Query(d.Context, "SELECT "+packCols+" FROM packs ORDER BY created_at DESC LIMIT $1 OFFSET $2", limit, offset)
 
 	if err != nil {
-		state.Logger.Error("Error while querying packs [db fetch]", zap.Error(err))
-		return uapi.DefaultResponse(http.StatusInternalServerError)
+		return resp.Err("Error while querying packs [db fetch]", err)
 	}
 
 	packs, err := pgx.CollectRows(rows, pgx.RowToStructByName[types.BotPack])
 
 	if err != nil {
-		state.Logger.Error("Error while querying packs [collect]", zap.Error(err))
-		return uapi.DefaultResponse(http.StatusInternalServerError)
+		return resp.Err("Error while querying packs [collect]", err)
 	}
 
 	for i := range packs {
 		err = assets.ResolveBotPack(d.Context, &packs[i])
 
 		if err != nil {
-			state.Logger.Error("Error resolving bot pack", zap.Error(err), zap.String("url", packs[i].URL))
-			return uapi.HttpResponse{
-				Status: http.StatusInternalServerError,
-				Json:   types.ApiError{Message: "Error resolving bot pack."},
-			}
+			return resp.ErrDetail("Error resolving bot pack", err, zap.String("url", packs[i].URL))
 		}
 	}
 
@@ -92,8 +81,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	err = state.Pool.QueryRow(d.Context, "SELECT COUNT(*) FROM packs").Scan(&count)
 
 	if err != nil {
-		state.Logger.Error("Error while querying packs [db count]", zap.Error(err))
-		return uapi.DefaultResponse(http.StatusInternalServerError)
+		return resp.Err("Error while querying packs [db count]", err)
 	}
 
 	data := types.PagedResult[[]types.BotPack]{

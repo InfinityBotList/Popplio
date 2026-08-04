@@ -1,7 +1,12 @@
+// Package get_staff_templates implements GET /list/staff-templates — "Get
+// Staff Templates".
+//
+// Returns all of the staff templates used for reviewing bots
 package get_staff_templates
 
 import (
 	"net/http"
+	"popplio/api/resp"
 	"popplio/db"
 	"popplio/state"
 	"popplio/types"
@@ -10,7 +15,6 @@ import (
 	"github.com/infinitybotlist/eureka/doclib"
 	"github.com/infinitybotlist/eureka/uapi"
 	"github.com/jackc/pgx/v5"
-	"go.uber.org/zap"
 )
 
 var (
@@ -33,8 +37,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	rows, err := state.Pool.Query(d.Context, "SELECT "+templateCols+" FROM staff_templates ORDER BY created_at DESC")
 
 	if err != nil {
-		state.Logger.Error("Failed to fetch staff templates list [db fetch]", zap.Error(err))
-		return uapi.DefaultResponse(http.StatusInternalServerError)
+		return resp.Err("Failed to fetch staff templates list [db fetch]", err)
 	}
 
 	defer rows.Close()
@@ -42,15 +45,13 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	templates, err := pgx.CollectRows(rows, pgx.RowToStructByName[types.StaffTemplate])
 
 	if err != nil {
-		state.Logger.Error("Failed to fetch staff templates list [db fetch]", zap.Error(err))
-		return uapi.DefaultResponse(http.StatusInternalServerError)
+		return resp.Err("Failed to fetch staff templates list [db fetch]", err)
 	}
 
 	typeRows, err := state.Pool.Query(d.Context, "SELECT "+templateTypesCols+" FROM staff_template_types ORDER BY created_at DESC")
 
 	if err != nil {
-		state.Logger.Error("Failed to fetch staff templates types list [db fetch]", zap.Error(err))
-		return uapi.DefaultResponse(http.StatusInternalServerError)
+		return resp.Err("Failed to fetch staff templates types list [db fetch]", err)
 	}
 
 	defer rows.Close()
@@ -58,8 +59,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	templatesTypes, err := pgx.CollectRows(typeRows, pgx.RowToStructByName[types.StaffTemplateType])
 
 	if err != nil {
-		state.Logger.Error("Failed to fetch staff templates type list [db fetch]", zap.Error(err))
-		return uapi.DefaultResponse(http.StatusInternalServerError)
+		return resp.Err("Failed to fetch staff templates type list [db fetch]", err)
 	}
 
 	return uapi.HttpResponse{

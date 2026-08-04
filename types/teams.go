@@ -3,44 +3,42 @@ package types
 import (
 	"time"
 
+	"popplio/perms"
+
 	"github.com/infinitybotlist/eureka/dovewing/dovetypes"
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-type PermissionDataOverride struct {
-	Name string `json:"name"`
-	Desc string `json:"desc"`
-}
-
+// PermissionData describes one permission that can be granted. It is the public
+// shape of a [perms.Definition], and is used for both the team permissions a
+// member can hold and the staff permissions a staff role can carry.
 type PermissionData struct {
-	ID                string                             `json:"id"`
-	Name              string                             `json:"name"`
-	Desc              string                             `json:"desc"`
-	SupportedEntities []string                           `json:"supported_entities"`
-	DataOverride      map[string]*PermissionDataOverride `json:"data_override,omitempty"`
+	ID        string `json:"id" description:"The permission's name, as stored in a member's flags"`
+	Name      string `json:"name" description:"Human readable label"`
+	Desc      string `json:"desc" description:"What holding the permission lets a member do"`
+	Category  string `json:"category" description:"The group the permission belongs to, for display"`
+	Dangerous bool   `json:"dangerous" description:"Whether the permission hands over broad or irreversible power"`
 }
 
 // @ci table=teams
 //
 // Team represents a team on Infinity List.
 type Team struct {
-	ID               string         `db:"id" json:"id" description:"The ID of the team"`
-	Name             string         `db:"name" json:"name" description:"The name of the team"`
-	Avatar           *AssetMetadata `db:"-" json:"avatar" description:"The avatar of the team" ci:"internal"`      // This is an asset that must be validated/loaded from CDN
-	Banner           *AssetMetadata `db:"-" json:"banner" description:"Banner information/metadata" ci:"internal"` // This is an asset that must be validated/loaded from CDN
-	Short            pgtype.Text    `db:"short" json:"short" description:"The teams's short description if it has one, otherwise null"`
-	Tags             []string       `db:"tags" json:"tags" description:"The teams's tags if it has any, otherwise null"`
-	VoteBanned       bool           `db:"vote_banned" json:"vote_banned" description:"Whether the team is banned from voting"`
-	ApproximateVotes int            `db:"approximate_votes" json:"approximate_votes" description:"The team's approximate vote count."`
-	Votes            int            `db:"-" json:"votes" description:"The team's vote count" ci:"internal"` // Votes are retrieved from entity_votes
-	ExtraLinks       []Link         `db:"extra_links" json:"extra_links" description:"The teams's links that it wishes to advertise"`
-	Entities         *TeamEntities  `db:"-" json:"entities" description:"The entities of the team" ci:"internal"` // Must be handled internally
-	NSFW             bool           `db:"nsfw" json:"nsfw" description:"Whether the team is NSFW (primarily makes NSFW content)"`
-	VanityRef        pgtype.UUID    `db:"vanity_ref" json:"vanity_ref" description:"The corresponding vanities itag, this also works to ensure that all teams have an associated vanity"`
-	Vanity           string         `db:"-" json:"vanity" description:"The team's vanity URL" ci:"internal"` // Must be parsed internally
-	Service          string         `db:"service" json:"service" description:"The service which added the team (api/infernoplex) etc."`
-	CreatedAt        time.Time      `db:"created_at" json:"created_at" description:"The time the team was created"`
-	UpdatedAt        time.Time      `db:"updated_at" json:"updated_at" description:"The time the team was last updated"`
+	ID               string        `db:"id" json:"id" description:"The ID of the team"`
+	Name             string        `db:"name" json:"name" description:"The name of the team"`
+	Short            pgtype.Text   `db:"short" json:"short" description:"The teams's short description if it has one, otherwise null"`
+	Tags             []string      `db:"tags" json:"tags" description:"The teams's tags if it has any, otherwise null"`
+	VoteBanned       bool          `db:"vote_banned" json:"vote_banned" description:"Whether the team is banned from voting"`
+	ApproximateVotes int           `db:"approximate_votes" json:"approximate_votes" description:"The team's approximate vote count."`
+	Votes            int           `db:"-" json:"votes" description:"The team's vote count" ci:"internal"` // Votes are retrieved from entity_votes
+	ExtraLinks       []Link        `db:"extra_links" json:"extra_links" description:"The teams's links that it wishes to advertise"`
+	Entities         *TeamEntities `db:"-" json:"entities" description:"The entities of the team" ci:"internal"` // Must be handled internally
+	NSFW             bool          `db:"nsfw" json:"nsfw" description:"Whether the team is NSFW (primarily makes NSFW content)"`
+	VanityRef        pgtype.UUID   `db:"vanity_ref" json:"vanity_ref" description:"The corresponding vanities itag, this also works to ensure that all teams have an associated vanity"`
+	Vanity           string        `db:"-" json:"vanity" description:"The team's vanity URL" ci:"internal"` // Must be parsed internally
+	Service          string        `db:"service" json:"service" description:"The service which added the team (api/infernoplex) etc."`
+	CreatedAt        time.Time     `db:"created_at" json:"created_at" description:"The time the team was created"`
+	UpdatedAt        time.Time     `db:"updated_at" json:"updated_at" description:"The time the team was last updated"`
 }
 
 type TeamBulkFetch struct {
@@ -83,6 +81,24 @@ type CreateTeamResponse struct {
 
 type PermissionResponse struct {
 	Perms []PermissionData `json:"perms"`
+}
+
+// PermissionDataFrom renders a catalogue for the API, keeping the catalogue's
+// own order so that clients can present the permissions as declared.
+func PermissionDataFrom(defs []perms.Definition) []PermissionData {
+	out := make([]PermissionData, 0, len(defs))
+
+	for _, d := range defs {
+		out = append(out, PermissionData{
+			ID:        string(d.ID),
+			Name:      d.Name,
+			Desc:      d.Description,
+			Category:  d.Category,
+			Dangerous: d.Dangerous,
+		})
+	}
+
+	return out
 }
 
 type AddTeamMember struct {

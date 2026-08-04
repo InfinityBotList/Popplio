@@ -1,7 +1,13 @@
+// Package patch_user_alerts implements PATCH /users/{id}/alerts — "Patch
+// User Alerts".
+//
+// Updates a set of user alerts with a given 'patch' to apply to the alert.
+// Returns 204 on success
 package patch_user_alerts
 
 import (
 	"net/http"
+	"popplio/api/resp"
 	"popplio/state"
 	"popplio/types"
 
@@ -51,8 +57,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	tx, err := state.Pool.Begin(d.Context)
 
 	if err != nil {
-		state.Logger.Error("Error while starting transaction", zap.Error(err), zap.String("userID", d.Auth.ID))
-		return uapi.DefaultResponse(http.StatusInternalServerError)
+		return resp.Err("Error while starting transaction", err, zap.String("userID", d.Auth.ID))
 	}
 
 	defer tx.Rollback(d.Context)
@@ -68,16 +73,14 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		}
 
 		if err != nil {
-			state.Logger.Error("Error while patching user alerts", zap.Any("patch", patch), zap.String("userID", d.Auth.ID), zap.Error(err))
-			return uapi.DefaultResponse(http.StatusInternalServerError)
+			return resp.Err("Error while patching user alerts", err, zap.Any("patch", patch), zap.String("userID", d.Auth.ID))
 		}
 	}
 
 	err = tx.Commit(d.Context)
 
 	if err != nil {
-		state.Logger.Error("Error while committing transaction", zap.Error(err), zap.String("userID", d.Auth.ID))
-		return uapi.DefaultResponse(http.StatusInternalServerError)
+		return resp.Err("Error while committing transaction", err, zap.String("userID", d.Auth.ID))
 	}
 
 	return uapi.DefaultResponse(http.StatusNoContent)

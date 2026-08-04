@@ -1,8 +1,13 @@
+// Package add_webhook implements POST /{target_type}/{target_id}/webhooks —
+// "Create Webhook".
+//
+// Creates a new webhook for an entity. Returns 204 on success.
 package add_webhook
 
 import (
 	"fmt"
 	"net/http"
+	"popplio/api/resp"
 	"strings"
 
 	"popplio/state"
@@ -52,10 +57,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	targetType := validators.NormalizeTargetType(chi.URLParam(r, "target_type"))
 
 	if targetId == "" || targetType == "" {
-		return uapi.HttpResponse{
-			Status: http.StatusBadRequest,
-			Json:   types.ApiError{Message: "Both target_id and target_type must be specified"},
-		}
+		return resp.BadRequest("Both target_id and target_type must be specified")
 	}
 
 	switch targetType {
@@ -63,10 +65,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	case "server":
 	case "team":
 	default:
-		return uapi.HttpResponse{
-			Status: http.StatusNotImplemented,
-			Json:   types.ApiError{Message: "Creating webhooks for this target type is not yet supported"},
-		}
+		return resp.Status(http.StatusNotImplemented, "Creating webhooks for this target type is not yet supported")
 	}
 
 	// Read payload from body
@@ -87,10 +86,11 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	}
 
 	if !(strings.HasPrefix(payload.Url, "https://")) {
-		return uapi.HttpResponse{
-			Status: http.StatusBadRequest,
-			Json:   types.ApiError{Message: "Webhook URL must start with https://. Insecure HTTP webhooks are no longer supported"},
-		}
+		return resp.BadRequest("Webhook URL must start with https://. Insecure HTTP webhooks are no longer supported")
+	}
+
+	if payload.SimpleAuth && payload.HmacAuth {
+		return resp.BadRequest("simple_auth and hmac_auth cannot both be set. Use hmac_auth unless your endpoint cannot implement a signature check")
 	}
 
 	if len(payload.EventWhitelist) == 0 {
@@ -104,19 +104,13 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	}
 
 	if payload.Secret == "" {
-		return uapi.HttpResponse{
-			Status: http.StatusBadRequest,
-			Json: types.ApiError{
-				Message: fmt.Sprintf("A secret must be specified for new webhooks: %s", payload.Name),
-			},
-		}
+		return resp.BadRequest(fmt.Sprintf("A secret must be specified for new webhooks: %s", payload.Name))
 	}
 
 	tx, err := state.Pool.Begin(d.Context)
 
 	if err != nil {
-		state.Logger.Error("Error while starting transaction", zap.Error(err), zap.String("userID", d.Auth.ID))
-		return uapi.DefaultResponse(http.StatusInternalServerError)
+		return resp.Err("Error while starting transaction", err, zap.String("userID", d.Auth.ID))
 	}
 
 	var count int64
@@ -124,29 +118,23 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	err = tx.QueryRow(d.Context, "SELECT COUNT(*) FROM webhooks WHERE target_id = $1 AND target_type = $2", targetId, targetType).Scan(&count)
 
 	if err != nil {
-		state.Logger.Error("Error while checking webhook", zap.Error(err), zap.String("userID", d.Auth.ID))
-		return uapi.DefaultResponse(http.StatusInternalServerError)
+		return resp.Err("Error while checking webhook", err, zap.String("userID", d.Auth.ID))
 	}
 
 	if count >= MaximumWebhookCount {
-		return uapi.HttpResponse{
-			Status: http.StatusBadRequest,
-			Json:   types.ApiError{Message: fmt.Sprintf("An entity may only have a maximum of %d webhooks", MaximumWebhookCount)},
-		}
+		return resp.BadRequest(fmt.Sprintf("An entity may only have a maximum of %d webhooks", MaximumWebhookCount))
 	}
 
-	_, err = tx.Exec(d.Context, "INSERT INTO webhooks (target_id, target_type, url, secret, simple_auth, name, event_whitelist) VALUES ($1, $2, $3, $4, $5, $6, $7)", targetId, targetType, payload.Url, payload.Secret, payload.SimpleAuth, payload.Name, payload.EventWhitelist)
+	_, err = tx.Exec(d.Context, "INSERT INTO webhooks (target_id, target_type, url, secret, simple_auth, hmac_auth, name, event_whitelist) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)", targetId, targetType, payload.Url, payload.Secret, payload.SimpleAuth, payload.HmacAuth, payload.Name, payload.EventWhitelist)
 
 	if err != nil {
-		state.Logger.Error("Error while inserting webhook", zap.Error(err), zap.String("userID", d.Auth.ID))
-		return uapi.DefaultResponse(http.StatusInternalServerError)
+		return resp.Err("Error while inserting webhook", err, zap.String("userID", d.Auth.ID))
 	}
 
 	err = tx.Commit(d.Context)
 
 	if err != nil {
-		state.Logger.Error("Error while committing transaction", zap.Error(err), zap.String("userID", d.Auth.ID))
-		return uapi.DefaultResponse(http.StatusInternalServerError)
+		return resp.Err("Error while committing transaction", err, zap.String("userID", d.Auth.ID))
 	}
 
 	return uapi.DefaultResponse(http.StatusNoContent)

@@ -1,3 +1,9 @@
+// Package timex makes time.Duration round-trip through JSON and Postgres.
+//
+// Duration marshals as a human-readable string ("5m0s") rather than a
+// nanosecond count, which keeps durations legible in API responses and
+// configuration alike, and readable back in whichever form they were
+// written.
 package timex
 
 import (

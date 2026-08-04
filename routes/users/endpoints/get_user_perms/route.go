@@ -1,8 +1,13 @@
+// Package get_user_perms implements GET /users/{id}/perms — "Get User
+// Perms".
+//
+// Gets a users permissions by ID
 package get_user_perms
 
 import (
 	"errors"
 	"net/http"
+	"popplio/api/resp"
 	"strings"
 
 	"popplio/db"
@@ -57,15 +62,13 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	}
 
 	if err != nil {
-		state.Logger.Error("Failed to get user perms", zap.Error(err), zap.String("user_id", id))
-		return uapi.DefaultResponse(http.StatusInternalServerError)
+		return resp.Err("Failed to get user perms", err, zap.String("user_id", id))
 	}
 
 	user, err := dovewing.GetUser(d.Context, id, state.DovewingPlatformDiscord)
 
 	if err != nil {
-		state.Logger.Error("Failed to get user perms", zap.Error(err), zap.String("user_id", id))
-		return uapi.DefaultResponse(http.StatusInternalServerError)
+		return resp.Err("Failed to get user perms", err, zap.String("user_id", id))
 	}
 
 	up.User = user
@@ -76,8 +79,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	err = state.Pool.QueryRow(d.Context, "SELECT cardinality(positions) FROM staff_members WHERE user_id = $1", user.ID).Scan(&positions)
 
 	if !errors.Is(err, pgx.ErrNoRows) && err != nil {
-		state.Logger.Error("Error while getting staff status", zap.Error(err), zap.String("userID", user.ID))
-		return uapi.DefaultResponse(http.StatusInternalServerError)
+		return resp.Err("Error while getting staff status", err, zap.String("userID", user.ID))
 	}
 
 	up.Staff = positions > 0

@@ -1,9 +1,12 @@
+// Package get_paypal implements GET /payments/paypal — "Get Paypal".
+//
+// Gets the required info needed for paypal payments.
 package get_paypal
 
 import (
 	"net/http"
+	"popplio/api/resp"
 	"popplio/state"
-	"popplio/types"
 
 	docs "github.com/infinitybotlist/eureka/doclib"
 	"github.com/infinitybotlist/eureka/uapi"
@@ -23,12 +26,7 @@ func Docs() *docs.Doc {
 
 func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	if state.Paypal == nil {
-		return uapi.HttpResponse{
-			Status: http.StatusServiceUnavailable,
-			Json: types.ApiError{
-				Message: "Paypal is currently not available as a payment option. Please contact support!",
-			},
-		}
+		return resp.Status(http.StatusServiceUnavailable, "Paypal is currently not available as a payment option. Please contact support!")
 	}
 	return uapi.HttpResponse{
 		Json: PaypalMeta{

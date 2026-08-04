@@ -1,3 +1,10 @@
+// Package db derives SQL column lists from the struct tags on Popplio's
+// types.
+//
+// Every type in popplio/types tags its fields with the database column they
+// map to. GetCols turns those tags back into the column list a SELECT needs,
+// so a query and the struct it scans into cannot drift apart when a field is
+// added or renamed.
 package db
 
 import "reflect"

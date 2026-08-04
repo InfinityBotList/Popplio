@@ -1,18 +1,22 @@
+// Package patch_bot_team implements PATCH /users/{uid}/bots/{bid}/teams —
+// "Patch Bot Team".
+//
+// Transfers a bot to another team.
 package patch_bot_team
 
 import (
 	"fmt"
 	"net/http"
 	"popplio/api"
+	"popplio/api/resp"
+	"popplio/perms"
 	"popplio/state"
-	"popplio/teams"
 	"popplio/types"
 	"popplio/validators"
 
 	"github.com/disgoorg/disgo/discord"
 	docs "github.com/infinitybotlist/eureka/doclib"
 	"github.com/infinitybotlist/eureka/uapi"
-	kittycat "github.com/infinitybotlist/kittycat/go"
 	"github.com/jackc/pgx/v5/pgtype"
 	"go.uber.org/zap"
 
@@ -70,10 +74,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	}
 
 	if payload.TeamID == "" {
-		return uapi.HttpResponse{
-			Status: http.StatusBadRequest,
-			Json:   types.ApiError{Message: "Team ID must be provided"},
-		}
+		return resp.BadRequest("Team ID must be provided")
 	}
 
 	err := api.AuthzEntityPermissionCheck(
@@ -81,14 +82,11 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		d.Auth,
 		api.TargetTypeBot,
 		id,
-		kittycat.Permission{Namespace: api.TargetTypeBot, Perm: teams.PermissionDelete},
+		perms.EntityDeleteBots,
 	)
 
 	if err != nil {
-		return uapi.HttpResponse{
-			Status: http.StatusForbidden,
-			Json:   types.ApiError{Message: "You must be able to delete the bot in the old team to transfer it: " + err.Error()},
-		}
+		return resp.Forbidden("You must be able to delete the bot in the old team to transfer it: " + err.Error())
 	}
 
 	err = api.AuthzEntityPermissionCheck(
@@ -96,14 +94,11 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		d.Auth,
 		api.TargetTypeTeam,
 		payload.TeamID,
-		kittycat.Permission{Namespace: api.TargetTypeBot, Perm: teams.PermissionAdd},
+		perms.EntityAddBots,
 	)
 
 	if err != nil {
-		return uapi.HttpResponse{
-			Status: http.StatusForbidden,
-			Json:   types.ApiError{Message: "You must be able to add the bot in the new team to transfer it: " + err.Error()},
-		}
+		return resp.Forbidden("You must be able to add the bot in the new team to transfer it: " + err.Error())
 	}
 
 	// Get old team ID for audit log
@@ -112,16 +107,14 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	err = state.Pool.QueryRow(d.Context, "SELECT team_owner FROM bots WHERE bot_id = $1", id).Scan(&currentBotTeam)
 
 	if err != nil {
-		state.Logger.Error("Error getting current team for bot: ", zap.Error(err), zap.String("botID", id), zap.String("userID", d.Auth.ID))
-		return uapi.DefaultResponse(http.StatusInternalServerError)
+		return resp.Err("Error getting current team for bot: ", err, zap.String("botID", id), zap.String("userID", d.Auth.ID))
 	}
 
 	// Transfer bot
 	_, err = state.Pool.Exec(d.Context, "UPDATE bots SET team_owner = $1, owner = NULL WHERE bot_id = $2", payload.TeamID, id)
 
 	if err != nil {
-		state.Logger.Error("Error transferring bot to team", zap.String("botID", id), zap.String("userID", d.Auth.ID), zap.String("newTeamID", payload.TeamID))
-		return uapi.DefaultResponse(http.StatusInternalServerError)
+		return resp.Err("Error transferring bot to team", nil, zap.String("botID", id), zap.String("userID", d.Auth.ID), zap.String("newTeamID", payload.TeamID))
 	}
 
 	// Send message to mod logs

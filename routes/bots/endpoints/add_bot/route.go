@@ -1,8 +1,12 @@
+// Package add_bot implements PUT /bots — "Add Bot".
+//
+// Adds a bot to the database. Returns 204 on success
 package add_bot
 
 import (
 	"fmt"
 	"net/http"
+	"popplio/api/resp"
 	"regexp"
 	"slices"
 	"strings"
@@ -10,6 +14,7 @@ import (
 
 	"popplio/api"
 	"popplio/db"
+	"popplio/perms"
 	"popplio/routes/bots/assets"
 	"popplio/state"
 	"popplio/teams"
@@ -26,7 +31,6 @@ import (
 	docs "github.com/infinitybotlist/eureka/doclib"
 	"github.com/infinitybotlist/eureka/dovewing"
 	"github.com/infinitybotlist/eureka/uapi"
-	kittycat "github.com/infinitybotlist/kittycat/go"
 
 	"github.com/go-playground/validator/v10"
 )
@@ -87,18 +91,11 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	}.Limit(d.Context, r)
 
 	if err != nil {
-		state.Logger.Error("Error calculating ratelimits", zap.Error(err), zap.String("userID", d.Auth.ID))
-		return uapi.DefaultResponse(http.StatusInternalServerError)
+		return resp.Err("Error calculating ratelimits", err, zap.String("userID", d.Auth.ID))
 	}
 
 	if limit.Exceeded {
-		return uapi.HttpResponse{
-			Json: types.ApiError{
-				Message: "You are being ratelimited. Please try again in " + limit.TimeToReset.String(),
-			},
-			Headers: limit.Headers(),
-			Status:  http.StatusTooManyRequests,
-		}
+		return resp.RateLimited(limit)
 	}
 
 	var payload types.CreateBot
@@ -120,10 +117,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	err = validators.ValidateExtraLinks(payload.ExtraLinks)
 
 	if err != nil {
-		return uapi.HttpResponse{
-			Status: http.StatusBadRequest,
-			Json:   types.ApiError{Message: err.Error()},
-		}
+		return resp.BadRequest(err.Error())
 	}
 
 	// Check if the bot is already in the database
@@ -132,62 +126,40 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	err = state.Pool.QueryRow(d.Context, "SELECT COUNT(*) FROM bots WHERE bot_id = $1", payload.BotID).Scan(&count)
 
 	if err != nil {
-		state.Logger.Error("Error while checking if bot is already in database", zap.Error(err), zap.String("userID", d.Auth.ID), zap.String("botID", payload.BotID))
-		return uapi.DefaultResponse(http.StatusInternalServerError)
+		return resp.Err("Error while checking if bot is already in database", err, zap.String("userID", d.Auth.ID), zap.String("botID", payload.BotID))
 	}
 
 	if count > 0 {
-		return uapi.HttpResponse{
-			Status: http.StatusConflict,
-			Json:   types.ApiError{Message: "This bot is already in the database"},
-		}
+		return resp.Conflict("This bot is already in the database")
 	}
 
 	// Ensure the bot actually exists right now
 	bot, err := dovewing.GetUser(d.Context, payload.BotID, state.DovewingPlatformDiscord)
 
 	if err != nil {
-		return uapi.HttpResponse{
-			Status: http.StatusBadRequest,
-			Json:   types.ApiError{Message: "This bot does not exist: " + err.Error()},
-		}
+		return resp.BadRequest("This bot does not exist: " + err.Error())
 	}
 
 	if !bot.Bot {
-		return uapi.HttpResponse{
-			Status: http.StatusBadRequest,
-			Json:   types.ApiError{Message: "This user is not a bot"},
-		}
+		return resp.BadRequest("This user is not a bot")
 	}
 
 	metadata, err := assets.CheckBot(d.Context, payload.BotID, payload.ClientID)
 
 	if err != nil {
-		return uapi.HttpResponse{
-			Status: http.StatusBadRequest,
-			Json:   types.ApiError{Message: err.Error()},
-		}
+		return resp.BadRequest(err.Error())
 	}
 
 	if metadata.BotID != payload.BotID {
-		return uapi.HttpResponse{
-			Status: http.StatusBadRequest,
-			Json:   types.ApiError{Message: "The bot ID provided does not match the bot ID found"},
-		}
+		return resp.BadRequest("The bot ID provided does not match the bot ID found")
 	}
 
 	if metadata.ListType != "" {
-		return uapi.HttpResponse{
-			Status: http.StatusBadRequest,
-			Json:   types.ApiError{Message: "This bot is already in the database"},
-		}
+		return resp.BadRequest("This bot is already in the database")
 	}
 
 	if !metadata.BotPublic {
-		return uapi.HttpResponse{
-			Status: http.StatusBadRequest,
-			Json:   types.ApiError{Message: "Bot is not public"},
-		}
+		return resp.BadRequest("Bot is not public")
 	}
 
 	// Set guild count from metadata
@@ -209,8 +181,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	err = state.Pool.QueryRow(d.Context, "SELECT COUNT(*) FROM vanity WHERE code = $1", vanity).Scan(&vanityCount)
 
 	if err != nil {
-		state.Logger.Error("Error while checking if calculated vanity is already taken", zap.Error(err), zap.String("userID", d.Auth.ID), zap.String("botID", payload.BotID), zap.String("vanity", vanity))
-		return uapi.DefaultResponse(http.StatusInternalServerError)
+		return resp.Err("Error while checking if calculated vanity is already taken", err, zap.String("userID", d.Auth.ID), zap.String("botID", payload.BotID), zap.String("vanity", vanity))
 	}
 
 	if vanityCount > 0 {
@@ -221,25 +192,18 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 
 	if err != nil {
 		state.Logger.Error("Error while getting word blacklist systems", zap.Error(err), zap.String("userID", d.Auth.ID))
-		return uapi.HttpResponse{
-			Status: http.StatusBadRequest,
-			Json:   types.ApiError{Message: "Error while getting word blacklist systems: " + err.Error()},
-		}
+		return resp.BadRequest("Error while getting word blacklist systems: " + err.Error())
 	}
 
 	if slices.Contains(systems, "vanity.code") {
-		return uapi.HttpResponse{
-			Status: http.StatusBadRequest,
-			Json:   types.ApiError{Message: "The chosen vanity is blacklisted"},
-		}
+		return resp.BadRequest("The chosen vanity is blacklisted")
 	}
 
 	// Save the bot to the database
 	tx, err := state.Pool.Begin(d.Context)
 
 	if err != nil {
-		state.Logger.Error("Error while starting transaction", zap.Error(err), zap.String("userID", d.Auth.ID), zap.String("botID", payload.BotID))
-		return uapi.DefaultResponse(http.StatusInternalServerError)
+		return resp.Err("Error while starting transaction", err, zap.String("userID", d.Auth.ID), zap.String("botID", payload.BotID))
 	}
 
 	defer tx.Rollback(d.Context)
@@ -251,21 +215,15 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 
 	// Check team owner here, to avoid a race condition
 	if payload.TeamOwner != "" {
-		perms, err := teams.GetEntityPerms(d.Context, d.Auth.ID, "team", payload.TeamOwner)
+		entityPerms, err := teams.GetEntityPerms(d.Context, d.Auth.ID, "team", payload.TeamOwner)
 
 		if err != nil {
 			state.Logger.Error("Error while getting team perms", zap.Error(err), zap.String("userID", d.Auth.ID), zap.String("teamID", payload.TeamOwner), zap.String("botID", payload.BotID), zap.String("vanity", vanity))
-			return uapi.HttpResponse{
-				Status: http.StatusBadRequest,
-				Json:   types.ApiError{Message: "Error getting user perms: " + err.Error()},
-			}
+			return resp.BadRequest("Error getting user perms: " + err.Error())
 		}
 
-		if !kittycat.HasPerm(perms, kittycat.Permission{Namespace: "bot", Perm: teams.PermissionAdd}) {
-			return uapi.HttpResponse{
-				Status: http.StatusForbidden,
-				Json:   types.ApiError{Message: "You do not have permission to add new bots to this team"},
-			}
+		if !entityPerms.Has(perms.EntityAddBots) {
+			return resp.Forbidden("You do not have permission to add new bots to this team")
 		}
 	} else {
 		// Create new team
@@ -275,29 +233,20 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		err = tx.QueryRow(d.Context, "INSERT INTO vanity (target_id, target_type, code) VALUES ($1, 'team', $2) RETURNING itag", teamId, metadata.Name+crypto.RandString(16)).Scan(&vanityRef)
 
 		if err != nil {
-			return uapi.HttpResponse{
-				Status: http.StatusBadRequest,
-				Json:   types.ApiError{Message: "Error while creating vanity: " + err.Error()},
-			}
+			return resp.BadRequest("Error while creating vanity: " + err.Error())
 		}
 
 		_, err = tx.Exec(d.Context, "INSERT INTO teams (id, name, vanity_ref, service) VALUES ($1, $2, $3, 'api/add_bot')", teamId, metadata.Name, vanityRef)
 
 		if err != nil {
-			return uapi.HttpResponse{
-				Status: http.StatusBadRequest,
-				Json:   types.ApiError{Message: "Error while creating vanity: " + err.Error()},
-			}
+			return resp.BadRequest("Error while creating vanity: " + err.Error())
 		}
 
 		// Add the team member to the team as well
 		_, err = tx.Exec(d.Context, "INSERT INTO team_members (team_id, user_id, flags, service) VALUES ($1, $2, $3, 'api/add_bot')", teamId, d.Auth.ID, []string{"global.*"})
 
 		if err != nil {
-			return uapi.HttpResponse{
-				Status: http.StatusBadRequest,
-				Json:   types.ApiError{Message: "Error while adding team member: " + err.Error()},
-			}
+			return resp.BadRequest("Error while adding team member: " + err.Error())
 		}
 
 		payload.TeamOwner = teamId.String()
@@ -308,8 +257,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	err = tx.QueryRow(d.Context, "INSERT INTO vanity (code, target_id, target_type) VALUES ($1, $2, $3) RETURNING itag", vanity, payload.BotID, "bot").Scan(&itag)
 
 	if err != nil {
-		state.Logger.Error("Error while inserting vanity", zap.Error(err), zap.String("userID", d.Auth.ID), zap.String("botID", payload.BotID), zap.String("vanity", vanity))
-		return uapi.DefaultResponse(http.StatusInternalServerError)
+		return resp.Err("Error while inserting vanity", err, zap.String("userID", d.Auth.ID), zap.String("botID", payload.BotID), zap.String("vanity", vanity))
 	}
 
 	// Lastly, set the vanity ref correctly
@@ -319,25 +267,19 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	botArgs := createBotsArgs(payload)
 
 	if len(createBotsColsArr) != len(botArgs) {
-		state.Logger.Error("createBotsColsArr and botArgs do not match in length", zap.Any("createBotsColsArr", createBotsColsArr), zap.Any("botArgs", botArgs))
-		return uapi.HttpResponse{
-			Status: http.StatusInternalServerError,
-			Json:   types.ApiError{Message: "Internal Error: The number of columns and arguments do not match"},
-		}
+		return resp.ErrBody("createBotsColsArr and botArgs do not match in length", "Internal Error: The number of columns and arguments do not match", nil, zap.Any("createBotsColsArr", createBotsColsArr), zap.Any("botArgs", botArgs))
 	}
 
 	_, err = tx.Exec(d.Context, "INSERT INTO bots ("+createBotsCols+") VALUES ("+createBotsParams+")", botArgs...)
 
 	if err != nil {
-		state.Logger.Error("Error while inserting bot", zap.Error(err), zap.String("userID", d.Auth.ID), zap.String("botID", payload.BotID))
-		return uapi.DefaultResponse(http.StatusInternalServerError)
+		return resp.Err("Error while inserting bot", err, zap.String("userID", d.Auth.ID), zap.String("botID", payload.BotID))
 	}
 
 	err = tx.Commit(d.Context)
 
 	if err != nil {
-		state.Logger.Error("Error while committing transaction", zap.Error(err), zap.String("userID", d.Auth.ID), zap.String("botID", payload.BotID))
-		return uapi.DefaultResponse(http.StatusInternalServerError)
+		return resp.Err("Error while committing transaction", err, zap.String("userID", d.Auth.ID), zap.String("botID", payload.BotID))
 	}
 
 	_, err = state.Discord.Rest().CreateMessage(state.Config.Channels.BotLogs, discord.MessageCreate{

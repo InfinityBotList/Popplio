@@ -1,12 +1,17 @@
+// Package get_webhook_logs implements GET
+// /{target_type}/{target_id}/webhooks/logs — "Get Webhook Logs".
+//
+// Gets webhook logs of a specific entity. Paginated to 10 at a time.
 package get_webhook_logs
 
 import (
 	"net/http"
+	"popplio/api/resp"
 	"popplio/db"
+	"popplio/pagination"
 	"popplio/state"
 	"popplio/types"
 	"popplio/validators"
-	"strconv"
 	"strings"
 
 	"github.com/go-chi/chi/v5"
@@ -60,19 +65,10 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	targetType := validators.NormalizeTargetType(chi.URLParam(r, "target_type"))
 	targetId := chi.URLParam(r, "target_id")
 
-	page := r.URL.Query().Get("page")
-
-	if page == "" {
-		page = "1"
-	}
-
-	pageNum, err := strconv.ParseUint(page, 10, 32)
+	pageNum, err := pagination.Parse(r)
 
 	if err != nil {
-		return uapi.HttpResponse{
-			Status: http.StatusBadRequest,
-			Json:   types.ApiError{Message: "Invalid page number"},
-		}
+		return resp.BadRequest("Invalid page number")
 	}
 
 	limit := perPage
@@ -82,23 +78,20 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	rows, err := state.Pool.Query(d.Context, "SELECT "+webhookLogCols+" FROM webhook_logs WHERE target_id = $1 AND target_type = $2 ORDER BY created_at DESC LIMIT $3 OFFSET $4", targetId, targetType, limit, offset)
 
 	if err != nil {
-		state.Logger.Error("Error while querying webhook logs [db fetch]", zap.Error(err), zap.String("userID", d.Auth.ID))
-		return uapi.DefaultResponse(http.StatusInternalServerError)
+		return resp.Err("Error while querying webhook logs [db fetch]", err, zap.String("userID", d.Auth.ID))
 	}
 
 	webhooks, err := pgx.CollectRows(rows, pgx.RowToStructByName[types.WebhookLogEntry])
 
 	if err != nil {
-		state.Logger.Error("Error while querying webhook logs [collect]", zap.Error(err), zap.String("userID", d.Auth.ID))
-		return uapi.DefaultResponse(http.StatusInternalServerError)
+		return resp.Err("Error while querying webhook logs [collect]", err, zap.String("userID", d.Auth.ID))
 	}
 
 	for i, webhook := range webhooks {
 		webhooks[i].User, err = dovewing.GetUser(d.Context, webhook.UserID, state.DovewingPlatformDiscord)
 
 		if err != nil {
-			state.Logger.Error("Error while querying webhook logs [dovewing]", zap.Error(err), zap.String("userID", d.Auth.ID))
-			return uapi.DefaultResponse(http.StatusInternalServerError)
+			return resp.Err("Error while querying webhook logs [dovewing]", err, zap.String("userID", d.Auth.ID))
 		}
 	}
 
@@ -107,8 +100,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	err = state.Pool.QueryRow(d.Context, "SELECT COUNT(*) FROM webhook_logs WHERE target_id = $1 AND target_type = $2", targetId, targetType).Scan(&count)
 
 	if err != nil {
-		state.Logger.Error("Error while querying webhook logs [db count]", zap.Error(err), zap.String("userID", d.Auth.ID))
-		return uapi.DefaultResponse(http.StatusInternalServerError)
+		return resp.Err("Error while querying webhook logs [db count]", err, zap.String("userID", d.Auth.ID))
 	}
 
 	data := types.PagedResult[[]types.WebhookLogEntry]{

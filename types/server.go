@@ -10,24 +10,22 @@ import (
 //
 // Represents a 'index server' (a small subset of the server object for use in cards etc.)
 type IndexServer struct {
-	ServerID         string         `db:"server_id" json:"server_id" description:"The server's ID"`
-	Name             string         `db:"name" json:"name" description:"The server's name"`
-	Avatar           *AssetMetadata `db:"-" json:"avatar" description:"The server's avatar" ci:"internal"` // This is an asset that must be validated/loaded from CDN
-	TotalMembers     int            `db:"total_members" json:"total_members" description:"The server's total member count"`
-	OnlineMembers    int            `db:"online_members" json:"online_members" description:"The server's online member count"`
-	Short            string         `db:"short" json:"short" description:"The server's short description"`
-	Type             string         `db:"type" json:"type" description:"The server's type (e.g. pending/approved/certified/denied etc.)"`
-	State            string         `db:"state" json:"state" description:"The server's state (public, private, unlisted, defunct)"`
-	VanityRef        pgtype.UUID    `db:"vanity_ref" json:"vanity_ref" description:"The corresponding vanities itag, this also works to ensure that all servers have an associated vanity"`
-	Vanity           string         `db:"-" json:"vanity" description:"The server's vanity URL" ci:"internal"` // Must be parsed internally
-	Votes            int            `db:"-" json:"votes" description:"The server's vote count" ci:"internal"`  // Votes are retrieved from entity_votes
-	ApproximateVotes int            `db:"approximate_votes" json:"approximate_votes" description:"The server's approximate vote count, used for home page listing etc."`
-	InviteClicks     int            `db:"invite_clicks" json:"invite_clicks" description:"The server's invite click count (via users inviting the server from IBL)"`
-	Clicks           int            `db:"clicks" json:"clicks" description:"The server's view count"`
-	NSFW             bool           `db:"nsfw" json:"nsfw" description:"Whether the server is NSFW or not"`
-	Tags             []string       `db:"tags" json:"tags" description:"The server's tags (e.g. music, moderation, etc.)"`
-	Premium          bool           `db:"premium" json:"premium" description:"Whether the server is a premium server or not"`
-	Banner           *AssetMetadata `db:"-" json:"banner" description:"Banner information/metadata" ci:"internal"` // Must be parsed internally
+	ServerID         string      `db:"server_id" json:"server_id" description:"The server's ID"`
+	Name             string      `db:"name" json:"name" description:"The server's name"`
+	TotalMembers     int         `db:"total_members" json:"total_members" description:"The server's total member count"`
+	OnlineMembers    int         `db:"online_members" json:"online_members" description:"The server's online member count"`
+	Short            string      `db:"short" json:"short" description:"The server's short description"`
+	Type             string      `db:"type" json:"type" description:"The server's type (e.g. pending/approved/certified/denied etc.)"`
+	State            string      `db:"state" json:"state" description:"The server's state (public, private, unlisted, defunct)"`
+	VanityRef        pgtype.UUID `db:"vanity_ref" json:"vanity_ref" description:"The corresponding vanities itag, this also works to ensure that all servers have an associated vanity"`
+	Vanity           string      `db:"-" json:"vanity" description:"The server's vanity URL" ci:"internal"` // Must be parsed internally
+	Votes            int         `db:"-" json:"votes" description:"The server's vote count" ci:"internal"`  // Votes are retrieved from entity_votes
+	ApproximateVotes int         `db:"approximate_votes" json:"approximate_votes" description:"The server's approximate vote count, used for home page listing etc."`
+	InviteClicks     int         `db:"invite_clicks" json:"invite_clicks" description:"The server's invite click count (via users inviting the server from IBL)"`
+	Clicks           int         `db:"clicks" json:"clicks" description:"The server's view count"`
+	NSFW             bool        `db:"nsfw" json:"nsfw" description:"Whether the server is NSFW or not"`
+	Tags             []string    `db:"tags" json:"tags" description:"The server's tags (e.g. music, moderation, etc.)"`
+	Premium          bool        `db:"premium" json:"premium" description:"Whether the server is a premium server or not"`
 }
 
 // @ci table=servers, ignore_fields=invite+blacklisted_users+api_token+unique_clicks
@@ -36,7 +34,6 @@ type IndexServer struct {
 type Server struct {
 	ServerID               string             `db:"server_id" json:"server_id" description:"The server's ID"`
 	Name                   string             `db:"name" json:"name" description:"The server's name"`
-	Avatar                 *AssetMetadata     `db:"-" json:"avatar" description:"The server's avatar" ci:"internal"` // This is an asset that must be validated/loaded from CDN
 	TotalMembers           int                `db:"total_members" json:"total_members" description:"The server's total member count"`
 	OnlineMembers          int                `db:"online_members" json:"online_members" description:"The server's online member count"`
 	Short                  string             `db:"short" json:"short" description:"The server's short description"`
@@ -50,7 +47,6 @@ type Server struct {
 	TeamOwnerID            pgtype.UUID        `db:"team_owner" json:"-"`
 	TeamOwner              *Team              `db:"-" json:"team_owner" description:"If the server is in a team, who owns the server." ci:"internal"` // Must be parsed internally
 	InviteClicks           int                `db:"invite_clicks" json:"invite_clicks" description:"The server's invite click count (via users inviting the server from IBL)"`
-	Banner                 *AssetMetadata     `db:"-" json:"banner" description:"Banner information/metadata" ci:"internal"` // Must be parsed internally
 	Clicks                 int                `db:"clicks" json:"clicks" description:"The server's total click count"`
 	UniqueClicks           int64              `db:"-" json:"unique_clicks" description:"The server's unique click count based on SHA256 hashed IPs" ci:"internal"` // Must be parsed internally
 	NSFW                   bool               `db:"nsfw" json:"nsfw" description:"Whether the serber is NSFW or not"`
@@ -65,6 +61,10 @@ type Server struct {
 	ClaimedBy              pgtype.Text        `db:"claimed_by" json:"claimed_by" description:"The user who claimed the server"`
 	LastClaimed            pgtype.Timestamptz `db:"last_claimed" json:"last_claimed" description:"The server's last claimed date"`
 	LoginRequiredForInvite bool               `db:"login_required_for_invite" json:"login_required_for_invite" description:"Whether the server requires a login to be invited to it"`
+	ShowEmojis             bool               `db:"show_emojis" json:"show_emojis" description:"Whether the server owner has opted in to showing this server's emojis and stickers on its listing page"`
+	Emojis                 []Emoji            `db:"emojis" json:"emojis" description:"The server's custom emojis, synced periodically by the tracking bot while it's in the server. Always empty unless show_emojis is true"`
+	Stickers               []Sticker          `db:"stickers" json:"stickers" description:"The server's stickers, synced the same way as emojis. Always empty unless show_emojis is true"`
+	EmojisSyncedAt         pgtype.Timestamptz `db:"emojis_synced_at" json:"emojis_synced_at" description:"The last time emojis/stickers were synced. Null if never synced (e.g. the tracking bot has never been in this server)"`
 }
 
 type CreateServer struct {
@@ -91,10 +91,27 @@ type ServerSettingsUpdate struct {
 	NSFW                   bool     `db:"nsfw" json:"nsfw"`
 	CaptchaOptOut          bool     `db:"captcha_opt_out" json:"captcha_opt_out"`
 	LoginRequiredForInvite bool     `db:"login_required_for_invite" json:"login_required_for_invite" description:"Whether the server requires a login to be invited to it"`
+	ShowEmojis             bool     `db:"show_emojis" json:"show_emojis" description:"Whether to show this server's emojis and stickers on its listing page. Requires the tracking bot to be in the server to actually have anything to show"`
 }
 
 type ServerInviteUpdate struct {
 	Invite string `db:"invite" json:"invite" validate:"required" msg:"Invite must be non-empty"`
+}
+
+// DiscordServerMeta is a preview of a Discord guild resolved from an invite
+// link, returned by Get Server Meta ahead of Add Server so a client can show
+// the server's real name/icon before the user commits to submitting it.
+// Resolving the invite does not create anything server-side.
+type DiscordServerMeta struct {
+	ServerID      string `json:"server_id" description:"The server's ID, resolved from the invite"`
+	Name          string `json:"name" description:"The server's name"`
+	Avatar        string `json:"avatar" description:"The server's icon URL, empty if the server has no icon set"`
+	TotalMembers  int    `json:"total_members" description:"The server's approximate total member count"`
+	OnlineMembers int    `json:"online_members" description:"The server's approximate online member count"`
+	AlreadyListed bool   `json:"already_listed" description:"Whether this server is already in the database"`
+	ListType      string `json:"list_type" description:"If already_listed, the server's current list type (e.g. pending/approved/certified/denied)"`
+	BotPresent    bool   `json:"bot_present" description:"Whether the tracking bot (Infernoplex) is currently a member of this server. Several features (emoji/sticker sync, real invites, live member counts) don't work until it's invited"`
+	BotInviteURL  string `json:"bot_invite_url" description:"A ready-to-use invite link for the tracking bot, shown when bot_present is false. Empty if Infernoplex couldn't be reached"`
 }
 
 // List Index

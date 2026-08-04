@@ -1,7 +1,12 @@
+// Package patch_vanity implements PATCH /{target_type}/{target_id}/vanity —
+// "Update Entity Vanity".
+//
+// Updates an entities vanity. Returns 204 on success
 package patch_vanity
 
 import (
 	"net/http"
+	"popplio/api/resp"
 	"slices"
 	"strings"
 	"unicode"
@@ -52,10 +57,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	targetType := validators.NormalizeTargetType(chi.URLParam(r, "target_type"))
 
 	if targetId == "" || targetType == "" {
-		return uapi.HttpResponse{
-			Status: http.StatusBadRequest,
-			Json:   types.ApiError{Message: "Both target_id, target_type must be specified"},
-		}
+		return resp.BadRequest("Both target_id, target_type must be specified")
 	}
 
 	switch targetType {
@@ -63,10 +65,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	case "server":
 	case "team":
 	default:
-		return uapi.HttpResponse{
-			Status: http.StatusNotImplemented,
-			Json:   types.ApiError{Message: "Target type not implemented"},
-		}
+		return resp.Status(http.StatusNotImplemented, "Target type not implemented")
 	}
 
 	// Read payload from body
@@ -87,10 +86,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	}
 
 	if payload.Code == "" {
-		return uapi.HttpResponse{
-			Status: http.StatusBadRequest,
-			Json:   types.ApiError{Message: "Vanity cannot be empty"},
-		}
+		return resp.BadRequest("Vanity cannot be empty")
 	}
 
 	// Strip out unicode characters and validate vanity
@@ -105,24 +101,15 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 
 	if err != nil {
 		state.Logger.Error("Error while getting word blacklist systems", zap.Error(err), zap.String("userID", d.Auth.ID))
-		return uapi.HttpResponse{
-			Status: http.StatusBadRequest,
-			Json:   types.ApiError{Message: "Error while getting word blacklist systems: " + err.Error()},
-		}
+		return resp.BadRequest("Error while getting word blacklist systems: " + err.Error())
 	}
 
 	if slices.Contains(systems, "vanity.code") {
-		return uapi.HttpResponse{
-			Status: http.StatusBadRequest,
-			Json:   types.ApiError{Message: "The chosen vanity is blacklisted"},
-		}
+		return resp.BadRequest("The chosen vanity is blacklisted")
 	}
 
 	if strings.Contains(vanity, "@") {
-		return uapi.HttpResponse{
-			Status: http.StatusBadRequest,
-			Json:   types.ApiError{Message: "Vanity cannot contain @"},
-		}
+		return resp.BadRequest("Vanity cannot contain @")
 	}
 
 	vanity = strings.TrimSuffix(vanity, "-")
@@ -130,17 +117,13 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	vanity = strings.ReplaceAll(vanity, " ", "-")
 
 	if vanity == "" {
-		return uapi.HttpResponse{
-			Status: http.StatusBadRequest,
-			Json:   types.ApiError{Message: "Vanity cannot be empty"},
-		}
+		return resp.BadRequest("Vanity cannot be empty")
 	}
 
 	tx, err := state.Pool.Begin(d.Context)
 
 	if err != nil {
-		state.Logger.Error("Error while starting transaction", zap.Error(err), zap.String("userID", d.Auth.ID))
-		return uapi.DefaultResponse(http.StatusInternalServerError)
+		return resp.Err("Error while starting transaction", err, zap.String("userID", d.Auth.ID))
 	}
 
 	defer tx.Rollback(d.Context)
@@ -151,15 +134,11 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	err = tx.QueryRow(d.Context, "SELECT COUNT(*) FROM vanity WHERE code = $1", vanity).Scan(&count)
 
 	if err != nil {
-		state.Logger.Error("Error while querying vanity", zap.Error(err), zap.String("userID", d.Auth.ID))
-		return uapi.DefaultResponse(http.StatusInternalServerError)
+		return resp.Err("Error while querying vanity", err, zap.String("userID", d.Auth.ID))
 	}
 
 	if count > 0 {
-		return uapi.HttpResponse{
-			Status: http.StatusBadRequest,
-			Json:   types.ApiError{Message: "Vanity is already taken"},
-		}
+		return resp.BadRequest("Vanity is already taken")
 	}
 
 	// Check that a vanity row exists
@@ -167,32 +146,28 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	err = tx.QueryRow(d.Context, "SELECT COUNT(*) FROM vanity WHERE target_id = $1 AND target_type = $2", targetId, targetType).Scan(&rowCount)
 
 	if err != nil {
-		state.Logger.Error("Error while querying vanity", zap.Error(err), zap.String("userID", d.Auth.ID))
-		return uapi.DefaultResponse(http.StatusInternalServerError)
+		return resp.Err("Error while querying vanity", err, zap.String("userID", d.Auth.ID))
 	}
 
 	if rowCount == 0 {
 		_, err = tx.Exec(d.Context, "INSERT INTO vanity (target_id, target_type, code) VALUES ($1, $2, $3)", targetId, targetType, vanity)
 
 		if err != nil {
-			state.Logger.Error("Error while inserting vanity", zap.Error(err), zap.String("userID", d.Auth.ID))
-			return uapi.DefaultResponse(http.StatusInternalServerError)
+			return resp.Err("Error while inserting vanity", err, zap.String("userID", d.Auth.ID))
 		}
 	} else {
 		// Update vanity
 		_, err = tx.Exec(d.Context, "UPDATE vanity SET code = $1 WHERE target_id = $2 AND target_type = $3", vanity, targetId, targetType)
 
 		if err != nil {
-			state.Logger.Error("Error while updating vanity", zap.Error(err), zap.String("userID", d.Auth.ID))
-			return uapi.DefaultResponse(http.StatusInternalServerError)
+			return resp.Err("Error while updating vanity", err, zap.String("userID", d.Auth.ID))
 		}
 	}
 
 	err = tx.Commit(d.Context)
 
 	if err != nil {
-		state.Logger.Error("Error while committing transaction", zap.Error(err), zap.String("userID", d.Auth.ID))
-		return uapi.DefaultResponse(http.StatusInternalServerError)
+		return resp.Err("Error while committing transaction", err, zap.String("userID", d.Auth.ID))
 	}
 
 	return uapi.DefaultResponse(http.StatusNoContent)

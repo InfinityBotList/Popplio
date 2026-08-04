@@ -1,20 +1,25 @@
+// Package edit_team_member implements PATCH /teams/{tid}/members/{mid} —
+// "Edit Team Member Permissions".
+//
+// Edits a members permissions on a team. Returns a 204 on success
 package edit_team_member
 
 import (
 	"net/http"
+	"popplio/api/resp"
+	"popplio/perms"
 	"popplio/state"
 	"popplio/teams"
 	"popplio/types"
 
 	docs "github.com/infinitybotlist/eureka/doclib"
 	"github.com/infinitybotlist/eureka/uapi"
-	kittycat "github.com/infinitybotlist/kittycat/go"
 	"go.uber.org/zap"
 
 	"github.com/go-chi/chi/v5"
 )
 
-var globalOwner = kittycat.Permission{Namespace: "global", Perm: teams.PermissionOwner}
+var globalOwner = perms.EntityOwner
 
 func Docs() *docs.Doc {
 	return &docs.Doc{
@@ -51,26 +56,16 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	err := state.Pool.QueryRow(d.Context, "SELECT COUNT(*) FROM team_members WHERE team_id = $1 AND (user_id = $2 OR user_id = $3)", teamId, d.Auth.ID, userId).Scan(&count)
 
 	if err != nil {
-		state.Logger.Error("Error checking if user is on team", zap.Error(err), zap.String("uid", d.Auth.ID), zap.String("tid", teamId), zap.String("mid", userId))
-		return uapi.HttpResponse{
-			Status: http.StatusInternalServerError,
-			Json:   types.ApiError{Message: "Error checking if user is on team."},
-		}
+		return resp.ErrDetail("Error checking if user is on team", err, zap.String("uid", d.Auth.ID), zap.String("tid", teamId), zap.String("mid", userId))
 	}
 
 	if d.Auth.ID != userId {
 		if count != 2 {
-			return uapi.HttpResponse{
-				Status: http.StatusBadRequest,
-				Json:   types.ApiError{Message: "Either the manager or the user is not on this team"},
-			}
+			return resp.BadRequest("Either the manager or the user is not on this team")
 		}
 		// count == 1 if the user is the manager
 	} else if count != 1 {
-		return uapi.HttpResponse{
-			Status: http.StatusBadRequest,
-			Json:   types.ApiError{Message: "User is not on this team"},
-		}
+		return resp.BadRequest("User is not on this team")
 	}
 
 	var payload types.EditTeamMember
@@ -86,17 +81,13 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 
 	if err != nil {
 		state.Logger.Error("Error getting user perms", zap.Error(err), zap.String("uid", d.Auth.ID), zap.String("tid", teamId), zap.String("mid", userId))
-		return uapi.HttpResponse{
-			Status: http.StatusBadRequest,
-			Json:   types.ApiError{Message: "Error getting user perms."},
-		}
+		return resp.BadRequest("Error getting user perms.")
 	}
 
 	tx, err := state.Pool.Begin(d.Context)
 
 	if err != nil {
-		state.Logger.Error("Error starting transaction", zap.Error(err), zap.String("uid", d.Auth.ID), zap.String("tid", teamId), zap.String("mid", userId))
-		return uapi.DefaultResponse(http.StatusInternalServerError)
+		return resp.Err("Error starting transaction", err, zap.String("uid", d.Auth.ID), zap.String("tid", teamId), zap.String("mid", userId))
 	}
 
 	defer tx.Rollback(d.Context)
@@ -106,91 +97,67 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		currentUserPerms, err := teams.GetEntityPerms(d.Context, userId, "team", teamId)
 
 		if err != nil {
-			state.Logger.Error("Error getting old perms", zap.Error(err), zap.String("uid", d.Auth.ID), zap.String("tid", teamId), zap.String("mid", userId))
-			return uapi.HttpResponse{
-				Status: http.StatusInternalServerError,
-				Json:   types.ApiError{Message: "Error getting old perms."},
-			}
+			return resp.ErrDetail("Error getting old perms", err, zap.String("uid", d.Auth.ID), zap.String("tid", teamId), zap.String("mid", userId))
 		}
 
 		// Perform initial checks
 		for _, perm := range *payload.Perms {
 			if !teams.IsValidPerm(perm) {
-				return uapi.HttpResponse{
-					Status: http.StatusBadRequest,
-					Json:   types.ApiError{Message: "Invalid permission: " + perm},
-				}
+				return resp.BadRequest("Invalid permission: " + perm)
 			}
 		}
 
 		// Resolve the permissions
 		//
-		// Right now, we use perm overrides for this
-		// as we do not have a hierarchy system yet
-		newPermsResolved := kittycat.StaffPermissions{
-			PermOverrides: kittycat.PFSS(*payload.Perms),
-		}.Resolve()
+		// Teams have no position hierarchy, so a member's flags are a single
+		// flat source of permissions
+		newPermsResolved := perms.Entity.ResolveStrings(*payload.Perms)
 
 		// First ensure that the manager can set these permissions
-		if err = kittycat.CheckPatchChanges(managerPerms, currentUserPerms, newPermsResolved); err != nil {
-			return uapi.HttpResponse{
-				Status: http.StatusForbidden,
-				Json:   types.ApiError{Message: "You do not have permission to set these permissions."},
-			}
+		if err = perms.CheckPatch(managerPerms, currentUserPerms, newPermsResolved); err != nil {
+			return resp.Forbidden("You do not have permission to set these permissions.")
 		}
 
-		if !kittycat.HasPerm(newPermsResolved, globalOwner) && kittycat.HasPerm(currentUserPerms, globalOwner) {
+		if !newPermsResolved.Has(globalOwner) && currentUserPerms.Has(globalOwner) {
 			// Ensure that if perm is owner, then there is another owner
 			var ownerCount int
 
 			err = tx.QueryRow(d.Context, "SELECT COUNT(*) FROM team_members WHERE team_id = $1 AND flags && $2", teamId, []string{globalOwner.String()}).Scan(&ownerCount)
 
 			if err != nil {
-				state.Logger.Error("Error getting owner count", zap.Error(err), zap.String("uid", d.Auth.ID), zap.String("tid", teamId), zap.String("mid", userId))
-				return uapi.DefaultResponse(http.StatusInternalServerError)
+				return resp.Err("Error getting owner count", err, zap.String("uid", d.Auth.ID), zap.String("tid", teamId), zap.String("mid", userId))
 			}
 
 			if ownerCount < 2 {
-				return uapi.HttpResponse{
-					Status: http.StatusBadRequest,
-					Json:   types.ApiError{Message: "There needs to be one other global owner before you can remove yourself from owner"},
-				}
+				return resp.BadRequest("There needs to be one other global owner before you can remove yourself from owner")
 			}
 		}
 
 		_, err = tx.Exec(d.Context, "UPDATE team_members SET flags = $1 WHERE team_id = $2 AND user_id = $3", payload.Perms, teamId, userId)
 
 		if err != nil {
-			state.Logger.Error("Error updating perms", zap.Error(err), zap.String("uid", d.Auth.ID), zap.String("tid", teamId), zap.String("mid", userId))
-			return uapi.DefaultResponse(http.StatusInternalServerError)
+			return resp.Err("Error updating perms", err, zap.String("uid", d.Auth.ID), zap.String("tid", teamId), zap.String("mid", userId))
 		}
 	}
 
 	if payload.Mentionable != nil {
 		// All members can update their own mentionable status
 		if d.Auth.ID != userId {
-			if !kittycat.HasPerm(managerPerms, kittycat.Permission{Namespace: "team_member", Perm: teams.PermissionEdit}) {
-				return uapi.HttpResponse{
-					Status: http.StatusForbidden,
-					Json:   types.ApiError{Message: "You do not have permission to edit this member"},
-				}
+			if !managerPerms.Has(perms.EntityEditMembers) {
+				return resp.Forbidden("You do not have permission to edit this member")
 			}
 		}
 
 		_, err = tx.Exec(d.Context, "UPDATE team_members SET mentionable = $1 WHERE team_id = $2 AND user_id = $3", *payload.Mentionable, teamId, userId)
 
 		if err != nil {
-			state.Logger.Error("Error updating mentionable", zap.Error(err), zap.String("uid", d.Auth.ID), zap.String("tid", teamId), zap.String("mid", userId))
-			return uapi.DefaultResponse(http.StatusInternalServerError)
+			return resp.Err("Error updating mentionable", err, zap.String("uid", d.Auth.ID), zap.String("tid", teamId), zap.String("mid", userId))
 		}
 	}
 
 	if payload.DataHolder != nil {
-		if !kittycat.HasPerm(managerPerms, globalOwner) {
-			return uapi.HttpResponse{
-				Status: http.StatusForbidden,
-				Json:   types.ApiError{Message: "Only global owners can set a data holder"},
-			}
+		if !managerPerms.Has(globalOwner) {
+			return resp.Forbidden("Only global owners can set a data holder")
 		}
 
 		// Ensure that if dataholder is false, there is another dataholder
@@ -200,15 +167,11 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 			err = tx.QueryRow(d.Context, "SELECT COUNT(*) FROM team_members WHERE team_id = $1 AND data_holder = $2 AND user_id != $3", teamId, true, userId).Scan(&dataHolderCount)
 
 			if err != nil {
-				state.Logger.Error("Error getting data holder count", zap.Error(err), zap.String("uid", d.Auth.ID), zap.String("tid", teamId), zap.String("mid", userId))
-				return uapi.DefaultResponse(http.StatusInternalServerError)
+				return resp.Err("Error getting data holder count", err, zap.String("uid", d.Auth.ID), zap.String("tid", teamId), zap.String("mid", userId))
 			}
 
 			if dataHolderCount == 0 {
-				return uapi.HttpResponse{
-					Status: http.StatusBadRequest,
-					Json:   types.ApiError{Message: "There needs to be one other data holder before you can remove someone from data holder"},
-				}
+				return resp.BadRequest("There needs to be one other data holder before you can remove someone from data holder")
 			}
 		}
 
@@ -216,16 +179,14 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		_, err = tx.Exec(d.Context, "UPDATE team_members SET data_holder = $1 WHERE team_id = $2 AND user_id = $3", *payload.DataHolder, teamId, userId)
 
 		if err != nil {
-			state.Logger.Error("Error updating data holder", zap.Error(err), zap.String("uid", d.Auth.ID), zap.String("tid", teamId), zap.String("mid", userId))
-			return uapi.DefaultResponse(http.StatusInternalServerError)
+			return resp.Err("Error updating data holder", err, zap.String("uid", d.Auth.ID), zap.String("tid", teamId), zap.String("mid", userId))
 		}
 	}
 
 	err = tx.Commit(d.Context)
 
 	if err != nil {
-		state.Logger.Error("Error committing transaction", zap.Error(err), zap.String("uid", d.Auth.ID), zap.String("tid", teamId), zap.String("mid", userId))
-		return uapi.DefaultResponse(http.StatusInternalServerError)
+		return resp.Err("Error committing transaction", err, zap.String("uid", d.Auth.ID), zap.String("tid", teamId), zap.String("mid", userId))
 	}
 
 	return uapi.DefaultResponse(http.StatusNoContent)

@@ -14,13 +14,6 @@ func TestActionUnionsRoundTrip(t *testing.T) {
 		wire string
 		into func() json.Unmarshaler
 	}{
-		{"CdnAssetAction unit", `"ListPath"`, func() json.Unmarshaler { return &CdnAssetAction{} }},
-		{"CdnAssetAction unit ReadFile", `"ReadFile"`, func() json.Unmarshaler { return &CdnAssetAction{} }},
-		{"CdnAssetAction unit CreateFolder", `"CreateFolder"`, func() json.Unmarshaler { return &CdnAssetAction{} }},
-		{"CdnAssetAction unit Delete", `"Delete"`, func() json.Unmarshaler { return &CdnAssetAction{} }},
-		{"CdnAssetAction AddFile", `{"AddFile":{"overwrite":true,"chunks":["a"],"sha512":"x"}}`, func() json.Unmarshaler { return &CdnAssetAction{} }},
-		{"CdnAssetAction CopyFile", `{"CopyFile":{"overwrite":false,"delete_original":true,"copy_to":"a/b"}}`, func() json.Unmarshaler { return &CdnAssetAction{} }},
-		{"CdnAssetAction PersistGit", `{"PersistGit":{"message":"m","current_dir":false}}`, func() json.Unmarshaler { return &CdnAssetAction{} }},
 
 		{"PartnerAction unit", `"List"`, func() json.Unmarshaler { return &PartnerAction{} }},
 		{"PartnerAction Delete", `{"Delete":{"id":"x"}}`, func() json.Unmarshaler { return &PartnerAction{} }},
@@ -186,7 +179,7 @@ func TestStaffMemberSerialization(t *testing.T) {
 		UserID:        "1",
 		Positions:     []StaffPosition{},
 		PermOverrides: []string{},
-		ResolvedPerms: []string{"rpc.Claim"},
+		ResolvedPerms: []string{"review_bots"},
 	}
 
 	out, err := json.Marshal(member)

@@ -1,14 +1,22 @@
+// Package add_server implements PUT /servers — "Add Server".
+//
+// Adds a server to the database from an invite link. Resolves the guild via
+// the invite (the tracking bot does not need to already be in the server).
+// Returns 204 on success
 package add_server
 
 import (
 	"fmt"
 	"net/http"
+	"popplio/api/resp"
 	"regexp"
 	"slices"
 	"strings"
 	"time"
 
 	"popplio/db"
+	"popplio/perms"
+	"popplio/routes/servers/assets"
 	"popplio/state"
 	"popplio/teams"
 	"popplio/types"
@@ -20,14 +28,11 @@ import (
 	docs "github.com/infinitybotlist/eureka/doclib"
 	"github.com/infinitybotlist/eureka/ratelimit"
 	"github.com/infinitybotlist/eureka/uapi"
-	kittycat "github.com/infinitybotlist/kittycat/go"
 	"github.com/jackc/pgx/v5/pgtype"
 	"go.uber.org/zap"
 
 	"github.com/go-playground/validator/v10"
 )
-
-var inviteCodeRegex = regexp.MustCompile(`(?:discord(?:\.gg|\.com/invite|app\.com/invite)/)?([a-zA-Z0-9-]+)/?$`)
 
 func createServerArgs(server types.CreateServer) []any {
 	return []any{
@@ -80,18 +85,11 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	}.Limit(d.Context, r)
 
 	if err != nil {
-		state.Logger.Error("Error calculating ratelimits", zap.Error(err), zap.String("userID", d.Auth.ID))
-		return uapi.DefaultResponse(http.StatusInternalServerError)
+		return resp.Err("Error calculating ratelimits", err, zap.String("userID", d.Auth.ID))
 	}
 
 	if limit.Exceeded {
-		return uapi.HttpResponse{
-			Json: types.ApiError{
-				Message: "You are being ratelimited. Please try again in " + limit.TimeToReset.String(),
-			},
-			Headers: limit.Headers(),
-			Status:  http.StatusTooManyRequests,
-		}
+		return resp.RateLimited(limit)
 	}
 
 	var payload types.CreateServer
@@ -112,35 +110,13 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	err = validators.ValidateExtraLinks(payload.ExtraLinks)
 
 	if err != nil {
-		return uapi.HttpResponse{
-			Status: http.StatusBadRequest,
-			Json:   types.ApiError{Message: err.Error()},
-		}
+		return resp.BadRequest(err.Error())
 	}
 
-	match := inviteCodeRegex.FindStringSubmatch(strings.TrimSpace(payload.Invite))
-
-	if len(match) < 2 || match[1] == "" {
-		return uapi.HttpResponse{
-			Status: http.StatusBadRequest,
-			Json:   types.ApiError{Message: "Could not find an invite code in that URL"},
-		}
-	}
-
-	invite, err := state.Discord.Rest().GetInvite(match[1])
+	invite, err := assets.ResolveInvite(d.Context, payload.Invite)
 
 	if err != nil {
-		return uapi.HttpResponse{
-			Status: http.StatusBadRequest,
-			Json:   types.ApiError{Message: "That invite is invalid, expired, or the server has revoked it: " + err.Error()},
-		}
-	}
-
-	if invite.Guild == nil {
-		return uapi.HttpResponse{
-			Status: http.StatusBadRequest,
-			Json:   types.ApiError{Message: "That invite is not for a server"},
-		}
+		return resp.BadRequest(err.Error())
 	}
 
 	payload.ServerID = invite.Guild.ID.String()
@@ -153,15 +129,11 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	err = state.Pool.QueryRow(d.Context, "SELECT COUNT(*) FROM servers WHERE server_id = $1", payload.ServerID).Scan(&count)
 
 	if err != nil {
-		state.Logger.Error("Error while checking if server is already in database", zap.Error(err), zap.String("userID", d.Auth.ID), zap.String("serverID", payload.ServerID))
-		return uapi.DefaultResponse(http.StatusInternalServerError)
+		return resp.Err("Error while checking if server is already in database", err, zap.String("userID", d.Auth.ID), zap.String("serverID", payload.ServerID))
 	}
 
 	if count > 0 {
-		return uapi.HttpResponse{
-			Status: http.StatusConflict,
-			Json:   types.ApiError{Message: "This server is already in the database"},
-		}
+		return resp.Conflict("This server is already in the database")
 	}
 
 	vanity := strings.ReplaceAll(strings.ToLower(payload.Name), " ", "-")
@@ -173,8 +145,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	err = state.Pool.QueryRow(d.Context, "SELECT COUNT(*) FROM vanity WHERE code = $1", vanity).Scan(&vanityCount)
 
 	if err != nil {
-		state.Logger.Error("Error while checking if calculated vanity is already taken", zap.Error(err), zap.String("userID", d.Auth.ID), zap.String("serverID", payload.ServerID), zap.String("vanity", vanity))
-		return uapi.DefaultResponse(http.StatusInternalServerError)
+		return resp.Err("Error while checking if calculated vanity is already taken", err, zap.String("userID", d.Auth.ID), zap.String("serverID", payload.ServerID), zap.String("vanity", vanity))
 	}
 
 	if vanityCount > 0 {
@@ -185,45 +156,32 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 
 	if err != nil {
 		state.Logger.Error("Error while getting word blacklist systems", zap.Error(err), zap.String("userID", d.Auth.ID))
-		return uapi.HttpResponse{
-			Status: http.StatusBadRequest,
-			Json:   types.ApiError{Message: "Error while getting word blacklist systems: " + err.Error()},
-		}
+		return resp.BadRequest("Error while getting word blacklist systems: " + err.Error())
 	}
 
 	if slices.Contains(systems, "vanity.code") {
-		return uapi.HttpResponse{
-			Status: http.StatusBadRequest,
-			Json:   types.ApiError{Message: "The chosen vanity is blacklisted"},
-		}
+		return resp.BadRequest("The chosen vanity is blacklisted")
 	}
 
 	tx, err := state.Pool.Begin(d.Context)
 
 	if err != nil {
-		state.Logger.Error("Error while starting transaction", zap.Error(err), zap.String("userID", d.Auth.ID), zap.String("serverID", payload.ServerID))
-		return uapi.DefaultResponse(http.StatusInternalServerError)
+		return resp.Err("Error while starting transaction", err, zap.String("userID", d.Auth.ID), zap.String("serverID", payload.ServerID))
 	}
 
 	defer tx.Rollback(d.Context)
 
 	// Check team owner here, to avoid a race condition
 	if payload.TeamOwner != "" {
-		perms, err := teams.GetEntityPerms(d.Context, d.Auth.ID, "team", payload.TeamOwner)
+		entityPerms, err := teams.GetEntityPerms(d.Context, d.Auth.ID, "team", payload.TeamOwner)
 
 		if err != nil {
 			state.Logger.Error("Error while getting team perms", zap.Error(err), zap.String("userID", d.Auth.ID), zap.String("teamID", payload.TeamOwner), zap.String("serverID", payload.ServerID), zap.String("vanity", vanity))
-			return uapi.HttpResponse{
-				Status: http.StatusBadRequest,
-				Json:   types.ApiError{Message: "Error getting user perms: " + err.Error()},
-			}
+			return resp.BadRequest("Error getting user perms: " + err.Error())
 		}
 
-		if !kittycat.HasPerm(perms, kittycat.Permission{Namespace: "server", Perm: teams.PermissionAdd}) {
-			return uapi.HttpResponse{
-				Status: http.StatusForbidden,
-				Json:   types.ApiError{Message: "You do not have permission to add new servers to this team"},
-			}
+		if !entityPerms.Has(perms.EntityAddServers) {
+			return resp.Forbidden("You do not have permission to add new servers to this team")
 		}
 	} else {
 		var teamId = uuid.New()
@@ -232,28 +190,19 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		err = tx.QueryRow(d.Context, "INSERT INTO vanity (target_id, target_type, code) VALUES ($1, 'team', $2) RETURNING itag", teamId, payload.Name+crypto.RandString(16)).Scan(&vanityRef)
 
 		if err != nil {
-			return uapi.HttpResponse{
-				Status: http.StatusBadRequest,
-				Json:   types.ApiError{Message: "Error while creating vanity: " + err.Error()},
-			}
+			return resp.BadRequest("Error while creating vanity: " + err.Error())
 		}
 
 		_, err = tx.Exec(d.Context, "INSERT INTO teams (id, name, vanity_ref, service) VALUES ($1, $2, $3, 'api/add_server')", teamId, payload.Name, vanityRef)
 
 		if err != nil {
-			return uapi.HttpResponse{
-				Status: http.StatusBadRequest,
-				Json:   types.ApiError{Message: "Error while creating team: " + err.Error()},
-			}
+			return resp.BadRequest("Error while creating team: " + err.Error())
 		}
 
 		_, err = tx.Exec(d.Context, "INSERT INTO team_members (team_id, user_id, flags, service) VALUES ($1, $2, $3, 'api/add_server')", teamId, d.Auth.ID, []string{"global.*"})
 
 		if err != nil {
-			return uapi.HttpResponse{
-				Status: http.StatusBadRequest,
-				Json:   types.ApiError{Message: "Error while adding team member: " + err.Error()},
-			}
+			return resp.BadRequest("Error while adding team member: " + err.Error())
 		}
 
 		payload.TeamOwner = teamId.String()
@@ -263,8 +212,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	err = tx.QueryRow(d.Context, "INSERT INTO vanity (code, target_id, target_type) VALUES ($1, $2, $3) RETURNING itag", vanity, payload.ServerID, "server").Scan(&itag)
 
 	if err != nil {
-		state.Logger.Error("Error while inserting vanity", zap.Error(err), zap.String("userID", d.Auth.ID), zap.String("serverID", payload.ServerID), zap.String("vanity", vanity))
-		return uapi.DefaultResponse(http.StatusInternalServerError)
+		return resp.Err("Error while inserting vanity", err, zap.String("userID", d.Auth.ID), zap.String("serverID", payload.ServerID), zap.String("vanity", vanity))
 	}
 
 	payload.VanityRef = itag
@@ -272,25 +220,19 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	serverArgs := createServerArgs(payload)
 
 	if len(createServerColsArr) != len(serverArgs) {
-		state.Logger.Error("createServerColsArr and serverArgs do not match in length", zap.Any("createServerColsArr", createServerColsArr), zap.Any("serverArgs", serverArgs))
-		return uapi.HttpResponse{
-			Status: http.StatusInternalServerError,
-			Json:   types.ApiError{Message: "Internal Error: The number of columns and arguments do not match"},
-		}
+		return resp.ErrBody("createServerColsArr and serverArgs do not match in length", "Internal Error: The number of columns and arguments do not match", nil, zap.Any("createServerColsArr", createServerColsArr), zap.Any("serverArgs", serverArgs))
 	}
 
 	_, err = tx.Exec(d.Context, "INSERT INTO servers ("+createServerCols+") VALUES ("+createServerParams+")", serverArgs...)
 
 	if err != nil {
-		state.Logger.Error("Error while inserting server", zap.Error(err), zap.String("userID", d.Auth.ID), zap.String("serverID", payload.ServerID))
-		return uapi.DefaultResponse(http.StatusInternalServerError)
+		return resp.Err("Error while inserting server", err, zap.String("userID", d.Auth.ID), zap.String("serverID", payload.ServerID))
 	}
 
 	err = tx.Commit(d.Context)
 
 	if err != nil {
-		state.Logger.Error("Error while committing transaction", zap.Error(err), zap.String("userID", d.Auth.ID), zap.String("serverID", payload.ServerID))
-		return uapi.DefaultResponse(http.StatusInternalServerError)
+		return resp.Err("Error while committing transaction", err, zap.String("userID", d.Auth.ID), zap.String("serverID", payload.ServerID))
 	}
 
 	_, err = state.Discord.Rest().CreateMessage(state.Config.Channels.ModLogs, discord.MessageCreate{

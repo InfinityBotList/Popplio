@@ -1,11 +1,14 @@
+// Package get_user implements GET /users/{id} — "Get User".
+//
+// Gets a user by id
 package get_user
 
 import (
 	"errors"
 	"net/http"
+	"popplio/api/resp"
 	"strings"
 
-	"popplio/assetmanager"
 	"popplio/db"
 	botAssets "popplio/routes/bots/assets"
 	"popplio/routes/packs/assets"
@@ -75,15 +78,13 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	}
 
 	if err != nil {
-		state.Logger.Error("Error while getting user [db fetch]", zap.Error(err), zap.String("userID", userId))
-		return uapi.DefaultResponse(http.StatusInternalServerError)
+		return resp.Err("Error while getting user [db fetch]", err, zap.String("userID", userId))
 	}
 
 	userObj, err := dovewing.GetUser(d.Context, user.ID, state.DovewingPlatformDiscord)
 
 	if err != nil {
-		state.Logger.Error("Error while getting user [collect]", zap.Error(err), zap.String("userID", user.ID))
-		return uapi.DefaultResponse(http.StatusInternalServerError)
+		return resp.Err("Error while getting user [collect]", err, zap.String("userID", user.ID))
 	}
 
 	user.User = userObj
@@ -91,28 +92,18 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	indexBotRows, err := state.Pool.Query(d.Context, "SELECT "+indexBotCols+" FROM bots WHERE owner = $1", user.ID)
 
 	if err != nil {
-		state.Logger.Error("Failed to get user bots [db fetch]", zap.Error(err), zap.String("userID", user.ID))
-		return uapi.DefaultResponse(http.StatusInternalServerError)
+		return resp.Err("Failed to get user bots [db fetch]", err, zap.String("userID", user.ID))
 	}
 
 	user.UserBots, err = pgx.CollectRows(indexBotRows, pgx.RowToStructByName[types.IndexBot])
 
 	if err != nil {
-		state.Logger.Error("Failed to get user bots [collect]", zap.Error(err), zap.String("userID", user.ID))
-		return uapi.DefaultResponse(http.StatusInternalServerError)
+		return resp.Err("Failed to get user bots [collect]", err, zap.String("userID", user.ID))
 	}
 
-	// Resolve the userbots
-	for i := range user.UserBots {
-		err := botAssets.ResolveIndexBot(d.Context, &user.UserBots[i])
-
-		if err != nil {
-			state.Logger.Error("Error resolving indexbot", zap.Error(err), zap.String("botID", user.UserBots[i].BotID))
-			return uapi.HttpResponse{
-				Status: http.StatusInternalServerError,
-				Json:   types.ApiError{Message: "An error occurred while resolving index bot." + " botID: " + user.UserBots[i].BotID},
-			}
-		}
+	// Resolve the userbots concurrently, since each bot's resolution is independent
+	if err := botAssets.ResolveIndexBots(d.Context, user.UserBots); err != nil {
+		return resp.ErrBody("Error resolving indexbot", "An error occurred while resolving index bot.", err)
 	}
 
 	// Get user teams
@@ -120,8 +111,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	userTeamRows, err := state.Pool.Query(d.Context, "SELECT team_id FROM team_members WHERE user_id = $1", user.ID)
 
 	if err != nil {
-		state.Logger.Error("Error while getting user teams [db fetch]", zap.Error(err), zap.String("userID", user.ID))
-		return uapi.DefaultResponse(http.StatusInternalServerError)
+		return resp.Err("Error while getting user teams [db fetch]", err, zap.String("userID", user.ID))
 	}
 
 	tids, err := pgx.CollectRows[string](userTeamRows, func(row pgx.CollectableRow) (string, error) {
@@ -131,8 +121,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	})
 
 	if err != nil {
-		state.Logger.Error("Error while getting user teams [collect]", zap.Error(err), zap.String("userID", user.ID))
-		return uapi.DefaultResponse(http.StatusInternalServerError)
+		return resp.Err("Error while getting user teams [collect]", err, zap.String("userID", user.ID))
 	}
 
 	// Ensure this always marshals as `[]` rather than `null` when the user
@@ -145,15 +134,13 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		row, err := state.Pool.Query(d.Context, "SELECT "+teamCols+" FROM teams WHERE id = $1", tid)
 
 		if err != nil {
-			state.Logger.Error("Error while getting team [db fetch]", zap.Error(err), zap.String("teamID", tid), zap.String("userID", user.ID))
-			return uapi.DefaultResponse(http.StatusInternalServerError)
+			return resp.Err("Error while getting team [db fetch]", err, zap.String("teamID", tid), zap.String("userID", user.ID))
 		}
 
 		eto, err := pgx.CollectOneRow(row, pgx.RowToStructByName[types.Team])
 
 		if err != nil {
-			state.Logger.Error("Error while getting team [collect]", zap.Error(err), zap.String("teamID", tid), zap.String("userID", user.ID))
-			return uapi.DefaultResponse(http.StatusInternalServerError)
+			return resp.Err("Error while getting team [collect]", err, zap.String("teamID", tid), zap.String("userID", user.ID))
 		}
 
 		eto.Entities, err = resolvers.GetTeamEntities(d.Context, tid, []string{
@@ -163,12 +150,8 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		})
 
 		if err != nil {
-			state.Logger.Error("Error while getting team entities", zap.Error(err), zap.String("teamID", tid), zap.String("userID", user.ID))
-			return uapi.DefaultResponse(http.StatusInternalServerError)
+			return resp.Err("Error while getting team entities", err, zap.String("teamID", tid), zap.String("userID", user.ID))
 		}
-
-		eto.Banner = assetmanager.BannerInfo(assetmanager.AssetTargetTypeTeam, eto.ID)
-		eto.Avatar = assetmanager.AvatarInfo(assetmanager.AssetTargetTypeTeam, eto.ID)
 
 		// Votes is db:"-" (resolved in application code, not scanned from the
 		// row above) — without this, every team embedded here would silently
@@ -176,8 +159,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		eto.Votes, err = votes.EntityGetVoteCount(d.Context, state.Pool, tid, "team")
 
 		if err != nil {
-			state.Logger.Error("Error while getting team vote count", zap.Error(err), zap.String("teamID", tid), zap.String("userID", user.ID))
-			return uapi.DefaultResponse(http.StatusInternalServerError)
+			return resp.Err("Error while getting team vote count", err, zap.String("teamID", tid), zap.String("userID", user.ID))
 		}
 
 		user.UserTeams = append(user.UserTeams, eto)
@@ -187,26 +169,20 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	packsRows, err := state.Pool.Query(d.Context, "SELECT "+packCols+" FROM packs WHERE owner = $1 ORDER BY created_at DESC", user.ID)
 
 	if err != nil {
-		state.Logger.Error("Error while getting user packs [db fetch]", zap.Error(err), zap.String("userID", user.ID))
-		return uapi.DefaultResponse(http.StatusInternalServerError)
+		return resp.Err("Error while getting user packs [db fetch]", err, zap.String("userID", user.ID))
 	}
 
 	user.UserPacks, err = pgx.CollectRows(packsRows, pgx.RowToStructByName[types.BotPack])
 
 	if err != nil {
-		state.Logger.Error("Error while getting user packs [collect]", zap.Error(err), zap.String("userID", user.ID))
-		return uapi.DefaultResponse(http.StatusInternalServerError)
+		return resp.Err("Error while getting user packs [collect]", err, zap.String("userID", user.ID))
 	}
 
 	for i := range user.UserPacks {
 		err = assets.ResolveBotPack(d.Context, &user.UserPacks[i])
 
 		if err != nil {
-			state.Logger.Error("Error while resolving user pack", zap.Error(err), zap.String("userID", user.ID), zap.String("url", user.UserPacks[i].URL))
-			return uapi.HttpResponse{
-				Status: http.StatusInternalServerError,
-				Json:   types.ApiError{Message: "Error resolving user pack."},
-			}
+			return resp.ErrBody("Error while resolving user pack", "Error resolving user pack.", err, zap.String("userID", user.ID), zap.String("url", user.UserPacks[i].URL))
 		}
 	}
 
@@ -216,11 +192,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	err = state.Pool.QueryRow(d.Context, "SELECT cardinality(positions) FROM staff_members WHERE user_id = $1", user.ID).Scan(&positions)
 
 	if !errors.Is(err, pgx.ErrNoRows) && err != nil {
-		state.Logger.Error("Error while getting staff status", zap.Error(err), zap.String("userID", user.ID))
-		return uapi.HttpResponse{
-			Status: http.StatusInternalServerError,
-			Json:   types.ApiError{Message: "Error getting staff status."},
-		}
+		return resp.ErrBody("Error while getting staff status", "Error getting staff status.", err, zap.String("userID", user.ID))
 	}
 
 	user.Staff = positions > 0

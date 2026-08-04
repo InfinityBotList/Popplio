@@ -1,8 +1,13 @@
+// Package delete_bot implements DELETE /bots/{id} — "Delete Bot".
+//
+// Deletes a bot from the list. This is *irreversible*. You must have 'Delete
+// Bots' in the team if the bot is in a team. Returns 204 on success.
 package delete_bot
 
 import (
 	"fmt"
 	"net/http"
+	"popplio/api/resp"
 	"popplio/state"
 	"popplio/types"
 
@@ -37,8 +42,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	tx, err := state.Pool.Begin(d.Context)
 
 	if err != nil {
-		state.Logger.Error("Error while starting transaction", zap.Error(err), zap.String("userID", d.Auth.ID), zap.String("botID", id))
-		return uapi.DefaultResponse(http.StatusInternalServerError)
+		return resp.Err("Error while starting transaction", err, zap.String("userID", d.Auth.ID), zap.String("botID", id))
 	}
 
 	defer tx.Rollback(d.Context)
@@ -46,15 +50,13 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	_, err = tx.Exec(d.Context, "DELETE FROM bots WHERE bot_id = $1", id)
 
 	if err != nil {
-		state.Logger.Error("Error while deleting bot", zap.Error(err), zap.String("userID", d.Auth.ID), zap.String("botID", id))
-		return uapi.DefaultResponse(http.StatusInternalServerError)
+		return resp.Err("Error while deleting bot", err, zap.String("userID", d.Auth.ID), zap.String("botID", id))
 	}
 
 	err = tx.Commit(d.Context)
 
 	if err != nil {
-		state.Logger.Error("Error while committing transaction", zap.Error(err), zap.String("userID", d.Auth.ID), zap.String("botID", id))
-		return uapi.DefaultResponse(http.StatusInternalServerError)
+		return resp.Err("Error while committing transaction", err, zap.String("userID", d.Auth.ID), zap.String("botID", id))
 	}
 
 	// Send embed to bot log channel

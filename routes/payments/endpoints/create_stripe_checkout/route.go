@@ -1,10 +1,15 @@
+// Package create_stripe_checkout implements POST /users/{id}/stripe —
+// "Create Stripe Checkout".
+//
+// Creates a stripe checkout session returning the URL. Use this to initiate
+// a new stripe order in your client.
 package create_stripe_checkout
 
 import (
 	"net/http"
+	"popplio/api/resp"
 	"popplio/routes/payments/assets"
 	"popplio/state"
-	"popplio/types"
 	"strconv"
 	"time"
 
@@ -48,18 +53,11 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	}.Limit(d.Context, r)
 
 	if err != nil {
-		state.Logger.Error("Error while ratelimiting", zap.Error(err), zap.String("bucket", "payments"))
-		return uapi.DefaultResponse(http.StatusInternalServerError)
+		return resp.Err("Error while ratelimiting", err, zap.String("bucket", "payments"))
 	}
 
 	if limit.Exceeded {
-		return uapi.HttpResponse{
-			Json: types.ApiError{
-				Message: "You are being ratelimited. Please try again in " + limit.TimeToReset.String(),
-			},
-			Headers: limit.Headers(),
-			Status:  http.StatusTooManyRequests,
-		}
+		return resp.RateLimited(limit)
 	}
 
 	var create assets.CreatePerkData
@@ -84,19 +82,13 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 
 	if err != nil {
 		state.Logger.Error("Error while finding perk", zap.Error(err), zap.Any("payload", payload), zap.String("user_id", d.Auth.ID))
-		return uapi.HttpResponse{
-			Status: http.StatusBadRequest,
-			Json: types.ApiError{
-				Message: "Error: " + err.Error(),
-			},
-		}
+		return resp.BadRequest("Error: " + err.Error())
 	}
 
 	customId, err := jsonimpl.Marshal(payload)
 
 	if err != nil {
-		state.Logger.Error("Error while marshalling payload", zap.Error(err), zap.Any("payload", payload), zap.String("user_id", d.Auth.ID))
-		return uapi.DefaultResponse(http.StatusInternalServerError)
+		return resp.Err("Error while marshalling payload", err, zap.Any("payload", payload), zap.String("user_id", d.Auth.ID))
 	}
 
 	params := &stripe.CheckoutSessionParams{
@@ -124,8 +116,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	order, err := session.New(params)
 
 	if err != nil {
-		state.Logger.Error("Error while creating session", zap.Error(err), zap.Any("payload", payload), zap.String("user_id", d.Auth.ID))
-		return uapi.DefaultResponse(http.StatusInternalServerError)
+		return resp.Err("Error while creating session", err, zap.Any("payload", payload), zap.String("user_id", d.Auth.ID))
 	}
 
 	return uapi.HttpResponse{

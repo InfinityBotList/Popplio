@@ -30,13 +30,6 @@ type Task struct {
 func All() []Task {
 	return []Task{
 		{
-			Name:        "asset_cleaner",
-			Description: "Cleaning up orphaned assets",
-			Enabled:     true,
-			Interval:    450 * time.Second,
-			Run:         AssetCleaner,
-		},
-		{
 			Name:        "auto_unclaim",
 			Description: "Checking for claimed bots greater than 1 hour claim interval",
 			Enabled:     true,

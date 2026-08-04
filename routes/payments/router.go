@@ -1,3 +1,6 @@
+// Package payments mounts the "Payments" group of API routes.
+//
+// These API endpoints are related to payments on IBL
 package payments
 
 import (

@@ -1,6 +1,9 @@
 package impls
 
 import (
+	"errors"
+
+	"popplio/arcadia/dclient"
 	"popplio/state"
 
 	"github.com/disgoorg/disgo/discord"
@@ -33,35 +36,44 @@ func InlineFalse() *bool { return falsePtr }
 // MemberOnGuild reports whether a user is a cached member of a guild. A guild
 // that is not cached reads as "not a member", as upstream does.
 func MemberOnGuild(guildID snowflake.ID, userID snowflake.ID) bool {
-	_, ok := state.Discord.Caches().Member(guildID, userID)
+	_, ok := dclient.Get().Caches().Member(guildID, userID)
 	return ok
 }
 
 // SendModLog posts a message to the configured mod-logs channel.
 func SendModLog(msg discord.MessageCreate) error {
-	_, err := state.Discord.Rest().CreateMessage(state.Config.Channels.ModLogs, msg)
+	_, err := dclient.Get().Rest().CreateMessage(state.Config.Channels.ModLogs, msg)
 	return err
 }
 
 // SendChannel posts a message to an arbitrary channel.
+//
+// A zero id means the channel was never configured. Discord answers that with
+// "10003: Unknown Channel", which sends whoever reads the error hunting for a
+// deleted channel instead of a missing config key, so it is caught here.
 func SendChannel(channelID snowflake.ID, msg discord.MessageCreate) error {
-	_, err := state.Discord.Rest().CreateMessage(channelID, msg)
+	if channelID == 0 {
+		return errors.New("channel is not configured (check the `channels` section of config.yaml)")
+	}
+
+	_, err := dclient.Get().Rest().CreateMessage(channelID, msg)
+
 	return err
 }
 
 // AddRole grants a role, recording an audit-log reason.
 func AddRole(guildID, userID, roleID snowflake.ID, reason string) error {
-	return state.Discord.Rest().AddMemberRole(guildID, userID, roleID, rest.WithReason(reason))
+	return dclient.Get().Rest().AddMemberRole(guildID, userID, roleID, rest.WithReason(reason))
 }
 
 // RemoveRole revokes a role, recording an audit-log reason.
 func RemoveRole(guildID, userID, roleID snowflake.ID, reason string) error {
-	return state.Discord.Rest().RemoveMemberRole(guildID, userID, roleID, rest.WithReason(reason))
+	return dclient.Get().Rest().RemoveMemberRole(guildID, userID, roleID, rest.WithReason(reason))
 }
 
 // KickMember removes a member from a guild, recording an audit-log reason.
 func KickMember(guildID, userID snowflake.ID, reason string) error {
-	return state.Discord.Rest().RemoveMember(guildID, userID, rest.WithReason(reason))
+	return dclient.Get().Rest().RemoveMember(guildID, userID, rest.WithReason(reason))
 }
 
 // Footer builds an embed footer.

@@ -4,19 +4,16 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"fmt"
-	"io/fs"
 	"net/http"
-	"os"
 	"strings"
 	"time"
 
 	"popplio/arcadia/impls"
 	"popplio/arcadia/types"
+	"popplio/perms"
 	"popplio/state"
 
 	"github.com/google/uuid"
-	perms "github.com/infinitybotlist/kittycat/go"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 )
@@ -35,35 +32,9 @@ func parsePartner(ctx context.Context, partner types.CreatePartner) error {
 		return err
 	}
 
-	scope, ok := cdnScopes()[state.Config.Arcadia.Panel.MainScope]
-
-	if !ok {
-		return errors.New("Main scope not found")
-	}
-
-	// Note the directory: create/update validate ".../avatars/partners/<id>.webp"
-	// while Delete removes ".../partners/<id>.webp". Reproduced; see
+	// Upstream also required the partner avatar to already exist on the CDN and
+	// checked its size here. That validation went with the CDN; see
 	// CONFORMANCE.md.
-	path := fmt.Sprintf("%s/avatars/partners/%s.webp", scope.Path, partner.ID)
-
-	meta, err := os.Stat(path)
-
-	if err != nil {
-		return errors.New("Fetching image metadata failed: " + err.Error())
-	}
-
-	if !meta.Mode().IsRegular() {
-		return errors.New("Image does not exist")
-	}
-
-	if meta.Size() > 100_000_000 {
-		return errors.New("Image is too large")
-	}
-
-	if meta.Size() == 0 {
-		return errors.New("Image is empty")
-	}
-
 	if len(partner.Links) == 0 {
 		return errors.New("Links cannot be empty")
 	}
@@ -157,7 +128,7 @@ func (s *Server) updatePartners(ctx context.Context, q *types.QUpdatePartners) (
 				ID:        p.ID,
 				Name:      p.Name,
 				Short:     p.Short,
-				Links:     nonNilLinks(links),
+				Links:     types.NonNilLinks(links),
 				Type:      p.Type,
 				CreatedAt: types.NewTimestamp(p.CreatedAt),
 				UserID:    p.UserID,
@@ -191,8 +162,8 @@ func (s *Server) updatePartners(ctx context.Context, q *types.QUpdatePartners) (
 
 		return writeJSON(http.StatusOK, types.Partners{Partners: partners, PartnerTypes: partnerTypes}), nil
 	case q.Action.Create != nil:
-		if !perms.HasPerm(userPerms, perms.PermissionFromString("partners.create")) {
-			return writeText(http.StatusForbidden, "You do not have permission to create partners [partners.create]"), nil
+		if !userPerms.Has(perms.StaffManagePartners) {
+			return writeText(http.StatusForbidden, "You do not have permission to create partners [manage_partners]"), nil
 		}
 
 		partner := q.Action.Create.Partner
@@ -227,8 +198,8 @@ func (s *Server) updatePartners(ctx context.Context, q *types.QUpdatePartners) (
 
 		return writeNoContent(), nil
 	case q.Action.Update != nil:
-		if !perms.HasPerm(userPerms, perms.PermissionFromString("partners.update")) {
-			return writeText(http.StatusForbidden, "You do not have permission to update partners [partners.update]"), nil
+		if !userPerms.Has(perms.StaffManagePartners) {
+			return writeText(http.StatusForbidden, "You do not have permission to update partners [manage_partners]"), nil
 		}
 
 		partner := q.Action.Update.Partner
@@ -263,8 +234,8 @@ func (s *Server) updatePartners(ctx context.Context, q *types.QUpdatePartners) (
 
 		return writeNoContent(), nil
 	case q.Action.Delete != nil:
-		if !perms.HasPerm(userPerms, perms.PermissionFromString("partners.delete")) {
-			return writeText(http.StatusForbidden, "You do not have permission to delete partners [partners.delete]"), nil
+		if !userPerms.Has(perms.StaffManagePartners) {
+			return writeText(http.StatusForbidden, "You do not have permission to delete partners [manage_partners]"), nil
 		}
 
 		id := q.Action.Delete.ID
@@ -279,33 +250,8 @@ func (s *Server) updatePartners(ctx context.Context, q *types.QUpdatePartners) (
 			return writeText(http.StatusBadRequest, "Partner does not exist"), nil
 		}
 
-		scope, ok := cdnScopes()[state.Config.Arcadia.Panel.MainScope]
-
-		if !ok {
-			return writeText(http.StatusBadRequest, "Main scope not found"), nil
-		}
-
-		// Different directory from the one parsePartner validates. See
-		// CONFORMANCE.md.
-		path := fmt.Sprintf("%s/partners/%s.webp", scope.Path, id)
-
-		meta, err := os.Lstat(path)
-
-		switch {
-		case err == nil:
-			if meta.Mode()&fs.ModeSymlink != 0 || meta.Mode().IsRegular() {
-				if err := os.Remove(path); err != nil {
-					return response{}, newError(err)
-				}
-			} else if meta.IsDir() {
-				if err := os.RemoveAll(path); err != nil {
-					return response{}, newError(err)
-				}
-			}
-		case !errors.Is(err, fs.ErrNotExist):
-			return writeText(http.StatusBadRequest, "Fetching asset metadata failed due to unknown error: "+err.Error()), nil
-		}
-
+		// Upstream also deleted the partner's CDN image here. That went with the
+		// CDN; see CONFORMANCE.md.
 		if _, err := state.Pool.Exec(ctx, "DELETE FROM partners WHERE id = $1", id); err != nil {
 			return response{}, newError(err)
 		}
@@ -390,7 +336,7 @@ func (s *Server) updateBlog(ctx context.Context, q *types.QUpdateBlog) (response
 				Title:       row.Title,
 				Description: row.Description,
 				UserID:      row.UserID,
-				Tags:        nonNil(row.Tags),
+				Tags:        types.NonNilStrings(row.Tags),
 				Content:     row.Content,
 				CreatedAt:   types.NewTimestamp(row.CreatedAt),
 				Draft:       row.Draft,
@@ -399,8 +345,8 @@ func (s *Server) updateBlog(ctx context.Context, q *types.QUpdateBlog) (response
 
 		return writeJSON(http.StatusOK, entries), nil
 	case q.Action.CreateEntry != nil:
-		if !perms.HasPerm(userPerms, perms.PermissionFromString("blog.create_entry")) {
-			return writeText(http.StatusForbidden, "You do not have permission to create blog entries [blog.create_entry]"), nil
+		if !userPerms.Has(perms.StaffManageBlog) {
+			return writeText(http.StatusForbidden, "You do not have permission to create blog entries [manage_blog]"), nil
 		}
 
 		entry := q.Action.CreateEntry
@@ -415,8 +361,8 @@ func (s *Server) updateBlog(ctx context.Context, q *types.QUpdateBlog) (response
 
 		return writeNoContent(), nil
 	case q.Action.UpdateEntry != nil:
-		if !perms.HasPerm(userPerms, perms.PermissionFromString("blog.update_entry")) {
-			return writeText(http.StatusForbidden, "You do not have permission to update blog entries [blog.update_entry]"), nil
+		if !userPerms.Has(perms.StaffManageBlog) {
+			return writeText(http.StatusForbidden, "You do not have permission to update blog entries [manage_blog]"), nil
 		}
 
 		entry := q.Action.UpdateEntry
@@ -447,8 +393,8 @@ func (s *Server) updateBlog(ctx context.Context, q *types.QUpdateBlog) (response
 
 		return writeNoContent(), nil
 	case q.Action.DeleteEntry != nil:
-		if !perms.HasPerm(userPerms, perms.PermissionFromString("blog.delete_entry")) {
-			return writeText(http.StatusForbidden, "You do not have permission to delete blog entries [blog.delete_entry]"), nil
+		if !userPerms.Has(perms.StaffManageBlog) {
+			return writeText(http.StatusForbidden, "You do not have permission to delete blog entries [manage_blog]"), nil
 		}
 
 		itag, err := uuid.Parse(q.Action.DeleteEntry.Itag)
@@ -485,12 +431,4 @@ func blogExists(ctx context.Context, itag uuid.UUID) (bool, error) {
 	}
 
 	return count > 0, nil
-}
-
-func nonNilLinks(in []types.Link) []types.Link {
-	if in == nil {
-		return []types.Link{}
-	}
-
-	return in
 }

@@ -1,3 +1,10 @@
+// Package impls provides Arcadia's concrete implementations of the
+// interfaces the panel depends on.
+//
+// Keeping authentication, permissions, entity lookup and cryptography behind
+// interfaces is what lets the panel be exercised in tests without a live
+// database or Discord connection; this package holds the production side of
+// those seams.
 package impls
 
 import (
@@ -7,9 +14,9 @@ import (
 	"time"
 
 	"popplio/arcadia/types"
+	"popplio/perms"
 	"popplio/state"
 
-	perms "github.com/infinitybotlist/kittycat/go"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 )
@@ -101,6 +108,9 @@ func CheckAuth(ctx context.Context, token string) (types.AuthData, error) {
 	return data, nil
 }
 
+// disciplinaryRow is a disciplinary joined to its type. The type columns are
+// nullable only because the join is a LEFT JOIN; a missing type is an error, as
+// it is upstream.
 type disciplinaryRow struct {
 	ID          pgtype.UUID `db:"id"`
 	CreatedAt   time.Time   `db:"created_at"`
@@ -108,15 +118,30 @@ type disciplinaryRow struct {
 	Title       string      `db:"title"`
 	Description string      `db:"description"`
 	Type        string      `db:"type"`
+
+	TypeName           *string  `db:"type_name"`
+	TypeDescription    *string  `db:"type_description"`
+	TypeSelfAssignable *bool    `db:"self_assignable"`
+	TypePermLimits     []string `db:"perm_limits"`
+	TypeAdditory       *bool    `db:"additory"`
+	TypeNeedsApproval  *bool    `db:"needs_approval"`
+	TypeMaxExpiry      *float64 `db:"max_expiry"`
 }
 
-// GetStaffDisciplinaries loads a member's disciplinary actions, resolving each
-// one's type (memoized per call, as upstream does).
+// disciplinaryQuery joins each disciplinary to its type in one round trip.
+// Upstream issued a separate query per distinct type, memoized per call.
+const disciplinaryQuery = `SELECT d.id, d.created_at, EXTRACT(epoch FROM d.expiry) AS expiry, d.title, d.description, d.type,
+        t.name AS type_name, t.description AS type_description, t.self_assignable, t.perm_limits, t.additory, t.needs_approval,
+        EXTRACT(epoch FROM t.max_expiry) AS max_expiry
+        FROM staff_disciplinary d LEFT JOIN staff_disciplinary_types t ON t.id = d.type
+        WHERE d.user_id = $1`
+
+// GetStaffDisciplinaries loads a member's disciplinary actions with their types.
 func GetStaffDisciplinaries(ctx context.Context, userID string, active bool) ([]types.StaffDisciplinary, error) {
-	query := "SELECT id, created_at, EXTRACT(epoch FROM expiry) as expiry, title, description, type FROM staff_disciplinary WHERE user_id = $1"
+	query := disciplinaryQuery
 
 	if active {
-		query += " AND NOW() - created_at < expiry"
+		query += " AND NOW() - d.created_at < d.expiry"
 	}
 
 	rows, err := state.Pool.Query(ctx, query, userID)
@@ -131,47 +156,12 @@ func GetStaffDisciplinaries(ctx context.Context, userID string, active bool) ([]
 		return nil, err
 	}
 
-	typeCache := make(map[string]types.StaffDisciplinaryType)
 	disciplinaries := make([]types.StaffDisciplinary, 0, len(records))
 
 	for _, rec := range records {
-		discType, ok := typeCache[rec.Type]
-
-		if !ok {
-			var (
-				name           string
-				description    string
-				selfAssignable bool
-				permLimits     []string
-				additory       bool
-				needsApproval  bool
-				maxExpiry      *float64
-			)
-
-			err := state.Pool.QueryRow(ctx,
-				"SELECT name, description, self_assignable, perm_limits, additory, needs_approval,  EXTRACT(epoch FROM max_expiry) AS max_expiry FROM staff_disciplinary_types WHERE id = $1",
-				rec.Type,
-			).Scan(&name, &description, &selfAssignable, &permLimits, &additory, &needsApproval, &maxExpiry)
-
-			if err != nil {
-				return nil, err
-			}
-
-			discType = types.StaffDisciplinaryType{
-				ID:             rec.Type,
-				Name:           name,
-				Description:    description,
-				SelfAssignable: selfAssignable,
-				PermLimits:     nonNil(permLimits),
-				Additory:       additory,
-				NeedsApproval:  needsApproval,
-				MaxExpiry:      maxExpiry,
-				// QUIRK (reproduced): created_at is taken from the DISCIPLINARY, not
-				// from the type row. See CONFORMANCE.md.
-				CreatedAt: types.NewTimestamp(rec.CreatedAt),
-			}
-
-			typeCache[rec.Type] = discType
+		if rec.TypeName == nil {
+			// Upstream fetch_one's the type and propagates RowNotFound.
+			return nil, pgx.ErrNoRows
 		}
 
 		var expiresAt *int64
@@ -188,11 +178,32 @@ func GetStaffDisciplinaries(ctx context.Context, userID string, active bool) ([]
 			ExpiresAt:   expiresAt,
 			Title:       rec.Title,
 			Description: rec.Description,
-			Type:        discType,
+			Type: types.StaffDisciplinaryType{
+				ID:             rec.Type,
+				Name:           *rec.TypeName,
+				Description:    derefOr(rec.TypeDescription, ""),
+				SelfAssignable: derefOr(rec.TypeSelfAssignable, false),
+				PermLimits:     types.NonNilStrings(rec.TypePermLimits),
+				Additory:       derefOr(rec.TypeAdditory, false),
+				NeedsApproval:  derefOr(rec.TypeNeedsApproval, false),
+				MaxExpiry:      rec.TypeMaxExpiry,
+				// QUIRK (reproduced): created_at is taken from the DISCIPLINARY, not
+				// from the type row. See CONFORMANCE.md.
+				CreatedAt: types.NewTimestamp(rec.CreatedAt),
+			},
 		})
 	}
 
 	return disciplinaries, nil
+}
+
+// derefOr reads through a nullable column, falling back when it is NULL.
+func derefOr[T any](v *T, fallback T) T {
+	if v == nil {
+		return fallback
+	}
+
+	return *v
 }
 
 type staffPositionRow struct {
@@ -242,9 +253,10 @@ func GetStaffMember(ctx context.Context, userID string) (types.StaffMember, erro
 		return types.StaffMember{}, fmt.Errorf("Error while getting positions of user %s: %s", userID, err)
 	}
 
-	sp := perms.StaffPermissions{
-		UserPositions: make([]perms.PartialStaffPosition, 0, len(positionRows)),
-		PermOverrides: perms.PFSS(permOverrides),
+	grants := perms.StaffGrants{
+		Roles:       make([]perms.Role, 0, len(positionRows)),
+		Extras:      perms.ParseStrings(permOverrides),
+		ConfigOwner: perms.IsConfigOwner(userID),
 	}
 
 	positions := make([]types.StaffPosition, 0, len(positionRows))
@@ -252,18 +264,19 @@ func GetStaffMember(ctx context.Context, userID string) (types.StaffMember, erro
 	for _, p := range positionRows {
 		id := UUIDString(p.ID)
 
-		sp.UserPositions = append(sp.UserPositions, perms.PartialStaffPosition{
+		grants.Roles = append(grants.Roles, perms.Role{
 			ID:    id,
+			Name:  p.Name,
 			Index: p.Index,
-			Perms: perms.PFSS(p.Perms),
+			Perms: perms.ParseStrings(p.Perms),
 		})
 
 		positions = append(positions, types.StaffPosition{
 			ID:                 id,
 			Name:               p.Name,
 			RoleID:             p.RoleID,
-			Perms:              nonNil(p.Perms),
-			CorrespondingRoles: nonNilLinks(p.CorrespondingRoles),
+			Perms:              types.NonNilStrings(p.Perms),
+			CorrespondingRoles: types.NonNilLinks(p.CorrespondingRoles),
 			Icon:               p.Icon,
 			Index:              p.Index,
 			CreatedAt:          types.NewTimestamp(p.CreatedAt),
@@ -276,7 +289,7 @@ func GetStaffMember(ctx context.Context, userID string) (types.StaffMember, erro
 		return types.StaffMember{}, err
 	}
 
-	resolved := resolveWithDisciplinaries(sp, disciplinaries)
+	resolved := resolveWithDisciplinaries(grants, disciplinaries)
 
 	user, err := GetPlatformUser(ctx, userID)
 
@@ -285,88 +298,52 @@ func GetStaffMember(ctx context.Context, userID string) (types.StaffMember, erro
 	}
 
 	return types.StaffMember{
-		UserID:          userID,
-		User:            user,
-		Positions:       positions,
-		Disciplinaries:  disciplinaries,
-		PermOverrides:   nonNil(permOverrides),
-		ResolvedPerms:   PermStrings(resolved),
-		NoAutosync:      noAutosync,
-		Unaccounted:     unaccounted,
-		MfaVerified:     mfaVerified,
-		CreatedAt:       types.NewTimestamp(createdAt),
-		StaffPermission: sp,
+		UserID:         userID,
+		User:           user,
+		Positions:      positions,
+		Disciplinaries: disciplinaries,
+		PermOverrides:  types.NonNilStrings(permOverrides),
+		ResolvedPerms:  resolved.Strings(),
+		NoAutosync:     noAutosync,
+		Unaccounted:    unaccounted,
+		MfaVerified:    mfaVerified,
+		CreatedAt:      types.NewTimestamp(createdAt),
+		Grants:         grants,
 	}, nil
 }
 
 // resolveWithDisciplinaries applies disciplinary permission limits on top of a
-// member's positions.
+// member's own permissions.
 //
-// Each disciplinary is pushed as a synthetic position at index 0, which outranks
-// every real position. A NON-additory disciplinary additionally drops every
-// position that is not itself a synthetic one added so far, i.e. it replaces the
-// member's permissions rather than intersecting with them.
-func resolveWithDisciplinaries(sp perms.StaffPermissions, disciplinaries []types.StaffDisciplinary) []perms.Permission {
-	if len(disciplinaries) == 0 {
-		return sp.Resolve()
+// An additory disciplinary adds its permissions to what the member already has,
+// which is how a disciplinary can hand someone a restricted extra ability. A
+// non-additory one replaces their permissions instead: their roles and extras
+// are set aside, leaving only what this disciplinary and any earlier one allow.
+// That is what makes it a punishment — a suspended reviewer keeps nothing but
+// the limits their disciplinary spells out.
+func resolveWithDisciplinaries(grants perms.StaffGrants, disciplinaries []types.StaffDisciplinary) perms.Set {
+	// An instance owner cannot be disciplined out of their own instance.
+	if len(disciplinaries) == 0 || grants.ConfigOwner {
+		return grants.Resolve()
 	}
 
-	virtual := perms.StaffPermissions{
-		UserPositions: append([]perms.PartialStaffPosition(nil), sp.UserPositions...),
-		PermOverrides: sp.PermOverrides,
-	}
-
-	var addedIDs []string
+	var (
+		resolved = grants.Resolve()
+		// applied holds the disciplinary limits on their own, so that a
+		// non-additory disciplinary can fall back to them.
+		applied = perms.Staff.NewSet()
+	)
 
 	for _, disc := range disciplinaries {
-		virtual.UserPositions = append(virtual.UserPositions, perms.PartialStaffPosition{
-			ID:    disc.ID,
-			Index: 0,
-			Perms: perms.PFSS(disc.Type.PermLimits),
-		})
-
-		addedIDs = append(addedIDs, disc.ID)
+		limits := perms.ParseStrings(disc.Type.PermLimits)
 
 		if !disc.Type.Additory {
-			retained := virtual.UserPositions[:0]
-
-			for _, pos := range virtual.UserPositions {
-				if slicesContains(addedIDs, pos.ID) {
-					retained = append(retained, pos)
-				}
-			}
-
-			virtual.UserPositions = retained
+			resolved = applied
 		}
+
+		resolved = resolved.With(limits...)
+		applied = applied.With(limits...)
 	}
 
-	return virtual.Resolve()
-}
-
-func slicesContains(haystack []string, needle string) bool {
-	for _, v := range haystack {
-		if v == needle {
-			return true
-		}
-	}
-
-	return false
-}
-
-// nonNil keeps empty arrays encoding as [] rather than null, which is what serde
-// does for an empty Vec.
-func nonNil(in []string) []string {
-	if in == nil {
-		return []string{}
-	}
-
-	return in
-}
-
-func nonNilLinks(in []types.Link) []types.Link {
-	if in == nil {
-		return []types.Link{}
-	}
-
-	return in
+	return resolved
 }

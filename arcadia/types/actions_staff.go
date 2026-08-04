@@ -3,7 +3,7 @@ package types
 import (
 	"fmt"
 
-	perms "github.com/infinitybotlist/kittycat/go"
+	"popplio/perms"
 )
 
 // StaffPositionAction is the union of staff position operations.
@@ -51,32 +51,35 @@ type StaffDeletePosition struct {
 func (a *StaffPositionAction) UnmarshalJSON(data []byte) error {
 	*a = StaffPositionAction{}
 
-	return unmarshalUnion("StaffPositionAction", data, map[string]func() any{
-		"ListPositions": func() any {
-			a.ListPositions = unitSet()
-			return nil
-		},
-		"SwapIndex": func() any {
-			a.SwapIndex = &StaffSwapIndex{}
-			return a.SwapIndex
-		},
-		"SetIndex": func() any {
-			a.SetIndex = &StaffSetIndex{}
-			return a.SetIndex
-		},
-		"CreatePosition": func() any {
-			a.CreatePosition = &StaffCreatePosition{}
-			return a.CreatePosition
-		},
-		"EditPosition": func() any {
-			a.EditPosition = &StaffEditPosition{}
-			return a.EditPosition
-		},
-		"DeletePosition": func() any {
-			a.DeletePosition = &StaffDeletePosition{}
-			return a.DeletePosition
-		},
-	})
+	name, payload, err := decodeUnion(data)
+
+	if err != nil {
+		return fmt.Errorf("StaffPositionAction: %w", err)
+	}
+
+	switch name {
+	case "ListPositions":
+		a.ListPositions = unitSet()
+	case "SwapIndex":
+		a.SwapIndex = &StaffSwapIndex{}
+		return decodeVariant("StaffPositionAction", name, payload, a.SwapIndex)
+	case "SetIndex":
+		a.SetIndex = &StaffSetIndex{}
+		return decodeVariant("StaffPositionAction", name, payload, a.SetIndex)
+	case "CreatePosition":
+		a.CreatePosition = &StaffCreatePosition{}
+		return decodeVariant("StaffPositionAction", name, payload, a.CreatePosition)
+	case "EditPosition":
+		a.EditPosition = &StaffEditPosition{}
+		return decodeVariant("StaffPositionAction", name, payload, a.EditPosition)
+	case "DeletePosition":
+		a.DeletePosition = &StaffDeletePosition{}
+		return decodeVariant("StaffPositionAction", name, payload, a.DeletePosition)
+	default:
+		return errUnknownVariant("StaffPositionAction", name)
+	}
+
+	return expectUnit("StaffPositionAction", name, payload)
 }
 
 func (a StaffPositionAction) MarshalJSON() ([]byte, error) {
@@ -153,16 +156,23 @@ type StaffEditMember struct {
 func (a *StaffMemberAction) UnmarshalJSON(data []byte) error {
 	*a = StaffMemberAction{}
 
-	return unmarshalUnion("StaffMemberAction", data, map[string]func() any{
-		"ListMembers": func() any {
-			a.ListMembers = unitSet()
-			return nil
-		},
-		"EditMember": func() any {
-			a.EditMember = &StaffEditMember{}
-			return a.EditMember
-		},
-	})
+	name, payload, err := decodeUnion(data)
+
+	if err != nil {
+		return fmt.Errorf("StaffMemberAction: %w", err)
+	}
+
+	switch name {
+	case "ListMembers":
+		a.ListMembers = unitSet()
+	case "EditMember":
+		a.EditMember = &StaffEditMember{}
+		return decodeVariant("StaffMemberAction", name, payload, a.EditMember)
+	default:
+		return errUnknownVariant("StaffMemberAction", name)
+	}
+
+	return expectUnit("StaffMemberAction", name, payload)
 }
 
 func (a StaffMemberAction) MarshalJSON() ([]byte, error) {
@@ -194,9 +204,10 @@ type StaffMember struct {
 	MfaVerified    bool                `json:"mfa_verified"`
 	CreatedAt      Timestamp           `json:"created_at"`
 
-	// StaffPermission is the pre-disciplinary permission set. It is skipped by
+	// Grants is where the member's permissions come from: the roles they hold
+	// plus their extras, before disciplinaries are layered on. It is skipped by
 	// serde and must never appear on the wire, hence json:"-".
-	StaffPermission perms.StaffPermissions `json:"-"`
+	Grants perms.StaffGrants `json:"-"`
 }
 
 // StaffDisciplinaryTypeAction is the union of disciplinary type operations.
@@ -225,24 +236,29 @@ type StaffDisciplinaryTypeDelete struct {
 func (a *StaffDisciplinaryTypeAction) UnmarshalJSON(data []byte) error {
 	*a = StaffDisciplinaryTypeAction{}
 
-	return unmarshalUnion("StaffDisciplinaryTypeAction", data, map[string]func() any{
-		"ListDisciplinaryTypes": func() any {
-			a.ListDisciplinaryTypes = unitSet()
-			return nil
-		},
-		"CreateDisciplinaryType": func() any {
-			a.CreateDisciplinaryType = &StaffDisciplinaryTypeUpsert{}
-			return a.CreateDisciplinaryType
-		},
-		"EditDisciplinaryType": func() any {
-			a.EditDisciplinaryType = &StaffDisciplinaryTypeUpsert{}
-			return a.EditDisciplinaryType
-		},
-		"DeleteDisciplinaryType": func() any {
-			a.DeleteDisciplinaryType = &StaffDisciplinaryTypeDelete{}
-			return a.DeleteDisciplinaryType
-		},
-	})
+	name, payload, err := decodeUnion(data)
+
+	if err != nil {
+		return fmt.Errorf("StaffDisciplinaryTypeAction: %w", err)
+	}
+
+	switch name {
+	case "ListDisciplinaryTypes":
+		a.ListDisciplinaryTypes = unitSet()
+	case "CreateDisciplinaryType":
+		a.CreateDisciplinaryType = &StaffDisciplinaryTypeUpsert{}
+		return decodeVariant("StaffDisciplinaryTypeAction", name, payload, a.CreateDisciplinaryType)
+	case "EditDisciplinaryType":
+		a.EditDisciplinaryType = &StaffDisciplinaryTypeUpsert{}
+		return decodeVariant("StaffDisciplinaryTypeAction", name, payload, a.EditDisciplinaryType)
+	case "DeleteDisciplinaryType":
+		a.DeleteDisciplinaryType = &StaffDisciplinaryTypeDelete{}
+		return decodeVariant("StaffDisciplinaryTypeAction", name, payload, a.DeleteDisciplinaryType)
+	default:
+		return errUnknownVariant("StaffDisciplinaryTypeAction", name)
+	}
+
+	return expectUnit("StaffDisciplinaryTypeAction", name, payload)
 }
 
 func (a StaffDisciplinaryTypeAction) MarshalJSON() ([]byte, error) {

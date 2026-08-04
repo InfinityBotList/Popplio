@@ -1,8 +1,14 @@
+// Package get_general_vote_credit_tiers implements GET /votes/credit-tiers —
+// "Get General Vote Credit Tiers".
+//
+// Returns a list of all currently available vote credit tiers sorted in
+// ascending order
 package get_general_vote_credit_tiers
 
 import (
 	"errors"
 	"net/http"
+	"popplio/api/resp"
 	"strings"
 
 	"popplio/db"
@@ -49,10 +55,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	}
 
 	if err != nil {
-		return uapi.HttpResponse{
-			Status: http.StatusInternalServerError,
-			Json:   types.ApiError{Message: "An error occurred while fetching vote credit tiers."},
-		}
+		return resp.ErrBody("An error occurred while fetching vote credit tiers", "An error occurred while fetching vote credit tiers.", err)
 	}
 
 	vcts, err := pgx.CollectRows(rows, pgx.RowToAddrOfStructByName[types.VoteCreditTier])

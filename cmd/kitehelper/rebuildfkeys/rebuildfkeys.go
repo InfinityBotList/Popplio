@@ -1,3 +1,7 @@
+// Package rebuildfkeys recreates the database's foreign key constraints.
+//
+// Bulk imports and seeds are loaded with constraints dropped for speed; this
+// restores them afterwards and surfaces any rows that violate them.
 package rebuildfkeys
 
 import (

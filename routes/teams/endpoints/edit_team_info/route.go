@@ -1,7 +1,11 @@
+// Package edit_team_info implements PATCH /teams/{tid} — "Edit Team Info".
+//
+// Edits a team. Returns a 204 on success.
 package edit_team_info
 
 import (
 	"net/http"
+	"popplio/api/resp"
 	"popplio/state"
 	"popplio/types"
 	"popplio/validators"
@@ -64,8 +68,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	tx, err := state.Pool.Begin(d.Context)
 
 	if err != nil {
-		state.Logger.Error("Error beginning transaction", zap.Error(err), zap.String("uid", d.Auth.ID), zap.String("tid", teamId))
-		return uapi.DefaultResponse(http.StatusInternalServerError)
+		return resp.Err("Error beginning transaction", err, zap.String("uid", d.Auth.ID), zap.String("tid", teamId))
 	}
 
 	defer tx.Rollback(d.Context)
@@ -80,31 +83,27 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	err = tx.QueryRow(d.Context, "SELECT name, short, tags, extra_links, nsfw FROM teams WHERE id = $1", teamId).Scan(&oldName, &oldShort, &oldTags, &oldExtraLinks, &oldNsfw)
 
 	if err != nil {
-		state.Logger.Error("Error getting team info [db queryrow]", zap.Error(err), zap.String("uid", d.Auth.ID), zap.String("tid", teamId))
-		return uapi.DefaultResponse(http.StatusInternalServerError)
+		return resp.Err("Error getting team info [db queryrow]", err, zap.String("uid", d.Auth.ID), zap.String("tid", teamId))
 	}
 
 	// Update the team
 	_, err = tx.Exec(d.Context, "UPDATE teams SET updated_at = NOW() WHERE id = $1", teamId)
 
 	if err != nil {
-		state.Logger.Error("Error updating team updated_at", zap.Error(err), zap.String("uid", d.Auth.ID), zap.String("tid", teamId))
-		return uapi.DefaultResponse(http.StatusInternalServerError)
+		return resp.Err("Error updating team updated_at", err, zap.String("uid", d.Auth.ID), zap.String("tid", teamId))
 	}
 
 	_, err = tx.Exec(d.Context, "UPDATE teams SET name = $1 WHERE id = $2", payload.Name, teamId)
 
 	if err != nil {
-		state.Logger.Error("Error updating team info", zap.Error(err), zap.String("uid", d.Auth.ID), zap.String("tid", teamId))
-		return uapi.DefaultResponse(http.StatusInternalServerError)
+		return resp.Err("Error updating team info", err, zap.String("uid", d.Auth.ID), zap.String("tid", teamId))
 	}
 
 	if payload.Short != nil {
 		_, err = tx.Exec(d.Context, "UPDATE teams SET short = $1 WHERE id = $2", payload.Short, teamId)
 
 		if err != nil {
-			state.Logger.Error("Error updating team info", zap.Error(err), zap.String("uid", d.Auth.ID), zap.String("tid", teamId))
-			return uapi.DefaultResponse(http.StatusInternalServerError)
+			return resp.Err("Error updating team info", err, zap.String("uid", d.Auth.ID), zap.String("tid", teamId))
 		}
 	}
 
@@ -112,8 +111,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		_, err = tx.Exec(d.Context, "UPDATE teams SET tags = $1 WHERE id = $2", payload.Tags, teamId)
 
 		if err != nil {
-			state.Logger.Error("Error updating team info", zap.Error(err), zap.String("uid", d.Auth.ID), zap.String("tid", teamId))
-			return uapi.DefaultResponse(http.StatusInternalServerError)
+			return resp.Err("Error updating team info", err, zap.String("uid", d.Auth.ID), zap.String("tid", teamId))
 		}
 	}
 
@@ -121,17 +119,13 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		err = validators.ValidateExtraLinks(*payload.ExtraLinks)
 
 		if err != nil {
-			return uapi.HttpResponse{
-				Status: http.StatusBadRequest,
-				Json:   types.ApiError{Message: err.Error()},
-			}
+			return resp.BadRequest(err.Error())
 		}
 
 		_, err = tx.Exec(d.Context, "UPDATE teams SET extra_links = $1 WHERE id = $2", payload.ExtraLinks, teamId)
 
 		if err != nil {
-			state.Logger.Error("Error updating team info", zap.Error(err), zap.String("uid", d.Auth.ID), zap.String("tid", teamId))
-			return uapi.DefaultResponse(http.StatusInternalServerError)
+			return resp.Err("Error updating team info", err, zap.String("uid", d.Auth.ID), zap.String("tid", teamId))
 		}
 	}
 
@@ -154,16 +148,14 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		_, err = tx.Exec(d.Context, "UPDATE teams SET nsfw = $1 WHERE id = $2", isTeamNsfw, teamId)
 
 		if err != nil {
-			state.Logger.Error("Error updating team info", zap.Error(err), zap.String("uid", d.Auth.ID), zap.String("tid", teamId))
-			return uapi.DefaultResponse(http.StatusInternalServerError)
+			return resp.Err("Error updating team info", err, zap.String("uid", d.Auth.ID), zap.String("tid", teamId))
 		}
 	}
 
 	err = tx.Commit(d.Context)
 
 	if err != nil {
-		state.Logger.Error("Error committing transaction", zap.Error(err), zap.String("uid", d.Auth.ID), zap.String("tid", teamId))
-		return uapi.DefaultResponse(http.StatusInternalServerError)
+		return resp.Err("Error committing transaction", err, zap.String("uid", d.Auth.ID), zap.String("tid", teamId))
 	}
 
 	err = drivers.Send(drivers.With{

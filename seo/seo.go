@@ -1,3 +1,9 @@
+// Package seo models the entities Popplio exposes to crawlers.
+//
+// Entity is the shape a sitemap or feed entry needs, deliberately
+// independent of the API types so a change to an API response cannot
+// silently reshape the sitemap. Fetchers that populate it live in
+// popplio/seo/fetchers.
 package seo
 
 import (

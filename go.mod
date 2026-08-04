@@ -18,22 +18,22 @@ require (
 	github.com/cloudflare/tableflip v1.2.3
 	github.com/mitchellh/mapstructure v1.5.0
 	github.com/stripe/stripe-go/v75 v75.11.0
-	golang.org/x/image v0.19.0
 )
 
 require (
 	github.com/disgoorg/disgo v0.18.11
 	github.com/disgoorg/snowflake/v2 v2.0.3
-	github.com/infinitybotlist/kittycat/go v0.0.0-20240526051606-6574fb343539
+	github.com/pquerna/otp v1.5.0
+	github.com/skip2/go-qrcode v0.0.0-20200617195104-da1b6568686e
+	golang.org/x/sync v0.8.0
 )
 
 require (
-	github.com/bytedance/sonic v1.12.2 // indirect
-	github.com/bytedance/sonic/loader v0.2.0 // indirect
-	github.com/cloudwego/base64x v0.1.4 // indirect
-	github.com/cloudwego/iasm v0.2.0 // indirect
+	github.com/bytedance/sonic v1.15.2 // indirect
+	github.com/bytedance/sonic/loader v0.5.1 // indirect
+	github.com/cloudwego/base64x v0.1.6 // indirect
 	github.com/disgoorg/json v1.2.0 // indirect
-	github.com/klauspost/cpuid/v2 v2.2.8 // indirect
+	github.com/klauspost/cpuid/v2 v2.2.9 // indirect
 	github.com/sasha-s/go-csync v0.0.0-20240107134140-fcbab37b09ad // indirect
 	github.com/twitchyliquid64/golang-asm v0.15.1 // indirect
 	golang.org/x/arch v0.9.0 // indirect
@@ -42,17 +42,14 @@ require (
 require (
 	github.com/boombuler/barcode v1.0.1-0.20190219062509-6c824513bacc // indirect
 	github.com/buger/jsonparser v1.1.1 // indirect
-	github.com/deckarep/golang-set/v2 v2.6.0 // indirect
+	github.com/bytedance/gopkg v0.1.3 // indirect
 	github.com/gabriel-vasile/mimetype v1.4.5 // indirect
 	github.com/go-playground/locales v0.14.1 // indirect
 	github.com/go-playground/universal-translator v0.18.1 // indirect
 	github.com/leodido/go-urn v1.4.0 // indirect
 	github.com/mohae/deepcopy v0.0.0-20170929034955-c48cc78d4826 // indirect
 	github.com/perimeterx/marshmallow v1.1.5 // indirect
-	github.com/pquerna/otp v1.5.0 // indirect
-	github.com/skip2/go-qrcode v0.0.0-20200617195104-da1b6568686e // indirect
 	golang.org/x/net v0.28.0 // indirect
-	golang.org/x/sync v0.8.0 // indirect
 )
 
 require (

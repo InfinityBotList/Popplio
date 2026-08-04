@@ -1,7 +1,14 @@
+// Package patch_pack implements PATCH /users/{uid}/packs/{id} — "Patch
+// Pack".
+//
+// Edits a pack you are owner of based on the URL only. Returns 204 on
+// success
 package patch_pack
 
 import (
+	"errors"
 	"net/http"
+	"popplio/api/resp"
 	"popplio/state"
 	"popplio/types"
 
@@ -11,6 +18,8 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-playground/validator/v10"
+	"github.com/jackc/pgx/v5"
+	"go.uber.org/zap"
 )
 
 var compiledMessages = uapi.CompileValidationErrors(PatchPack{})
@@ -67,40 +76,25 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 
 	var id = chi.URLParam(r, "id")
 
-	// Check that the pack exists
-	var count int64
-
-	err = state.Pool.QueryRow(d.Context, "SELECT COUNT(*) FROM packs WHERE url = $1", id).Scan(&count)
-
-	if err != nil {
-		return uapi.DefaultResponse(http.StatusInternalServerError)
-	}
-
-	if count == 0 {
-		return uapi.DefaultResponse(http.StatusNotFound)
-	}
-
-	// Check that the user is the owner of the pack
+	// Check that the pack exists and get its owner in one query
 	var owner string
 
 	err = state.Pool.QueryRow(d.Context, "SELECT owner FROM packs WHERE url = $1", id).Scan(&owner)
 
+	if errors.Is(err, pgx.ErrNoRows) {
+		return uapi.DefaultResponse(http.StatusNotFound)
+	}
+
 	if err != nil {
-		return uapi.DefaultResponse(http.StatusInternalServerError)
+		return resp.Err("Error while checking pack owner [db fetch]", err, zap.String("id", id))
 	}
 
 	if owner != d.Auth.ID {
-		return uapi.HttpResponse{
-			Status: http.StatusForbidden,
-			Json:   types.ApiError{Message: "You are not the owner of this pack"},
-		}
+		return resp.Forbidden("You are not the owner of this pack")
 	}
 
 	if len(payload.Bots)+len(payload.Servers) == 0 {
-		return uapi.HttpResponse{
-			Status: http.StatusBadRequest,
-			Json:   types.ApiError{Message: "A pack must contain at least one bot or server"},
-		}
+		return resp.BadRequest("A pack must contain at least one bot or server")
 	}
 
 	// Check that all bots exist. Anyone may add any existing bot/server to a
@@ -110,17 +104,11 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		botUser, err := dovewing.GetUser(d.Context, bot, state.DovewingPlatformDiscord)
 
 		if err != nil {
-			return uapi.HttpResponse{
-				Status: http.StatusBadRequest,
-				Json:   types.ApiError{Message: "One of the bot you wish to add does not exist [" + bot + "]: " + err.Error()},
-			}
+			return resp.BadRequest("One of the bot you wish to add does not exist [" + bot + "]: " + err.Error())
 		}
 
 		if !botUser.Bot {
-			return uapi.HttpResponse{
-				Status: http.StatusBadRequest,
-				Json:   types.ApiError{Message: "One of the bot you wish to add is not actually a bot [" + bot + "]"},
-			}
+			return resp.BadRequest("One of the bot you wish to add is not actually a bot [" + bot + "]")
 		}
 	}
 
@@ -131,17 +119,11 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		err = state.Pool.QueryRow(d.Context, "SELECT COUNT(*) FROM servers WHERE server_id = $1", server).Scan(&serverCount)
 
 		if err != nil {
-			return uapi.HttpResponse{
-				Status: http.StatusInternalServerError,
-				Json:   types.ApiError{Message: "Error checking if server exists: " + err.Error()},
-			}
+			return resp.ErrBody("Error checking if server exists:", "Error checking if server exists: "+err.Error(), err)
 		}
 
 		if serverCount == 0 {
-			return uapi.HttpResponse{
-				Status: http.StatusBadRequest,
-				Json:   types.ApiError{Message: "One of the servers you wish to add does not exist [" + server + "]"},
-			}
+			return resp.BadRequest("One of the servers you wish to add does not exist [" + server + "]")
 		}
 	}
 
@@ -158,7 +140,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	_, err = state.Pool.Exec(d.Context, "UPDATE packs SET name = $1, short = $2, tags = $3, bots = $4, servers = $5 WHERE url = $6", payload.Name, payload.Short, payload.Tags, payload.Bots, payload.Servers, id)
 
 	if err != nil {
-		return uapi.DefaultResponse(http.StatusInternalServerError)
+		return resp.Err("Error while updating pack [db exec]", err, zap.String("id", id))
 	}
 
 	return uapi.DefaultResponse(http.StatusNoContent)

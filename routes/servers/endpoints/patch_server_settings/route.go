@@ -1,9 +1,14 @@
+// Package patch_server_settings implements PATCH /servers/{id}/settings —
+// "Update Server Settings".
+//
+// Updates a servers settings. You must have 'Edit Server Settings' in the
+// team if the bot is in a team. Returns 204 on success
 package patch_server_settings
 
 import (
 	"fmt"
 	"net/http"
-	"popplio/assetmanager"
+	"popplio/api/resp"
 	"popplio/state"
 	"popplio/types"
 	"popplio/validators"
@@ -30,6 +35,7 @@ func updateServerArgs(server types.ServerSettingsUpdate) []any {
 		server.NSFW,
 		server.CaptchaOptOut,
 		server.LoginRequiredForInvite,
+		server.ShowEmojis,
 	}
 }
 
@@ -91,10 +97,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	err = validators.ValidateExtraLinks(payload.ExtraLinks)
 
 	if err != nil {
-		return uapi.HttpResponse{
-			Status: http.StatusBadRequest,
-			Json:   types.ApiError{Message: err.Error()},
-		}
+		return resp.BadRequest(err.Error())
 	}
 
 	// Update the bot
@@ -102,10 +105,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	serverArgs := updateServerArgs(payload)
 
 	if len(updateSql) != len(serverArgs) {
-		return uapi.HttpResponse{
-			Status: http.StatusInternalServerError,
-			Json:   types.ApiError{Message: "Internal Error: The number of columns and arguments do not match"},
-		}
+		return resp.ErrBody("Internal Error: The number of columns and arguments do not match", "Internal Error: The number of columns and arguments do not match", nil)
 	}
 
 	// Add the bot id to the end of the args
@@ -115,8 +115,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	_, err = state.Pool.Exec(d.Context, "UPDATE servers SET "+updateSqlStr+" WHERE server_id=$"+strconv.Itoa(len(serverArgs)), serverArgs...)
 
 	if err != nil {
-		state.Logger.Error("Error while updating server", zap.Error(err), zap.String("serverID", id))
-		return uapi.DefaultResponse(http.StatusInternalServerError)
+		return resp.Err("Error while updating server", err, zap.String("serverID", id))
 	}
 
 	var name string
@@ -124,23 +123,18 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	err = state.Pool.QueryRow(d.Context, "SELECT name FROM servers WHERE server_id = $1", id).Scan(&name)
 
 	if err != nil {
-		state.Logger.Error("Error while getting server info", zap.Error(err), zap.String("serverID", id))
-		return uapi.DefaultResponse(http.StatusInternalServerError)
+		return resp.Err("Error while getting server info", err, zap.String("serverID", id))
 	}
 
 	// Resolve the avatar
-	avatar := assetmanager.AvatarInfo(assetmanager.AssetTargetTypeServer, id)
-
 	// Send a message to the bot logs channel
 	_, err = state.Discord.Rest().CreateMessage(state.Config.Channels.ModLogs, discord.MessageCreate{
 		Content: "",
 		Embeds: []discord.Embed{
 			{
-				URL:   state.Config.Sites.Frontend.Production() + "/servers/" + id,
-				Title: "Server Updated",
-				Thumbnail: &discord.EmbedResource{
-					URL: assetmanager.ResolveAssetMetadataToUrl(avatar),
-				},
+				URL:       state.Config.Sites.Frontend.Production() + "/servers/" + id,
+				Title:     "Server Updated",
+				Thumbnail: &discord.EmbedResource{},
 				Fields: []discord.EmbedField{
 					{
 						Name:   "Name",
@@ -163,11 +157,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	})
 
 	if err != nil {
-		state.Logger.Error("Error while sending embed to mod logs channel", zap.Error(err), zap.String("serverID", id))
-		return uapi.HttpResponse{
-			Status: http.StatusInternalServerError,
-			Json:   types.ApiError{Message: "Internal Error: While server update was successful, an error occurred while sending the update embed to the mod logs channel"},
-		}
+		return resp.ErrBody("Error while sending embed to mod logs channel", "Internal Error: While server update was successful, an error occurred while sending the update embed to the mod logs channel", err, zap.String("serverID", id))
 	}
 
 	return uapi.DefaultResponse(http.StatusNoContent)

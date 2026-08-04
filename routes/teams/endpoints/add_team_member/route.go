@@ -1,14 +1,19 @@
+// Package add_team_member implements PUT /teams/{tid}/members — "Add Team
+// Member".
+//
+// Adds a member to a team. Returns a 204 on success
 package add_team_member
 
 import (
 	"net/http"
+	"popplio/api/resp"
+	"popplio/perms"
 	"popplio/state"
 	"popplio/teams"
 	"popplio/types"
 
 	docs "github.com/infinitybotlist/eureka/doclib"
 	"github.com/infinitybotlist/eureka/uapi"
-	kittycat "github.com/infinitybotlist/kittycat/go"
 	"go.uber.org/zap"
 
 	"github.com/go-chi/chi/v5"
@@ -48,44 +53,32 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 
 	if err != nil {
 		state.Logger.Error("Error getting user perms", zap.Error(err), zap.String("uid", d.Auth.ID), zap.String("tid", teamId))
-		return uapi.HttpResponse{
-			Status: http.StatusBadRequest,
-			Json:   types.ApiError{Message: "Error getting user perms: " + err.Error()},
-		}
+		return resp.BadRequest("Error getting user perms: " + err.Error())
 	}
 
 	for _, perm := range payload.Perms {
 		if !teams.IsValidPerm(perm) {
-			return uapi.HttpResponse{
-				Status: http.StatusBadRequest,
-				Json:   types.ApiError{Message: "Invalid permission: " + perm},
-			}
+			return resp.BadRequest("Invalid permission: " + perm)
 		}
 	}
 
 	// Resolve the permissions
 	//
-	// Right now, we use perm overrides for this
-	// as we do not have a hierarchy system yet
-	newPermsResolved := kittycat.StaffPermissions{
-		PermOverrides: kittycat.PFSS(payload.Perms),
-	}.Resolve()
+	// Teams have no position hierarchy, so a member's flags are a single flat
+	// source of permissions
+	newPermsResolved := perms.Entity.ResolveStrings(payload.Perms)
 
 	// Check if the manager has perms to give all permissions in newPermsResolved
 	//
 	// This is equivalent to going from no perms to the selected permset
-	if err = kittycat.CheckPatchChanges(managerPerms, []kittycat.Permission{}, newPermsResolved); err != nil {
-		return uapi.HttpResponse{
-			Status: http.StatusForbidden,
-			Json:   types.ApiError{Message: "You do not have permission to give out permissions: " + err.Error()},
-		}
+	if err = perms.CheckPatch(managerPerms, perms.Entity.NewSet(), newPermsResolved); err != nil {
+		return resp.Forbidden("You do not have permission to give out permissions: " + err.Error())
 	}
 
 	tx, err := state.Pool.Begin(d.Context)
 
 	if err != nil {
-		state.Logger.Error("Error starting transaction", zap.Error(err), zap.String("uid", d.Auth.ID), zap.String("tid", teamId))
-		return uapi.DefaultResponse(http.StatusInternalServerError)
+		return resp.Err("Error starting transaction", err, zap.String("uid", d.Auth.ID), zap.String("tid", teamId))
 	}
 
 	defer tx.Rollback(d.Context)
@@ -96,15 +89,11 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	err = tx.QueryRow(d.Context, "SELECT EXISTS(SELECT 1 FROM users WHERE user_id = $1)", payload.UserID).Scan(&userExists)
 
 	if err != nil {
-		state.Logger.Error("Error checking if user exists", zap.Error(err), zap.String("uid", d.Auth.ID), zap.String("tid", teamId))
-		return uapi.DefaultResponse(http.StatusInternalServerError)
+		return resp.Err("Error checking if user exists", err, zap.String("uid", d.Auth.ID), zap.String("tid", teamId))
 	}
 
 	if !userExists {
-		return uapi.HttpResponse{
-			Status: http.StatusBadRequest,
-			Json:   types.ApiError{Message: "User must login here at least once before you can add them"},
-		}
+		return resp.BadRequest("User must login here at least once before you can add them")
 	}
 
 	// Check that they aren't already a member
@@ -113,29 +102,23 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	err = tx.QueryRow(d.Context, "SELECT EXISTS(SELECT 1 FROM team_members WHERE team_id = $1 AND user_id = $2)", teamId, payload.UserID).Scan(&memberExists)
 
 	if err != nil {
-		state.Logger.Error("Error checking if user is already a member", zap.Error(err), zap.String("uid", d.Auth.ID), zap.String("tid", teamId))
-		return uapi.DefaultResponse(http.StatusInternalServerError)
+		return resp.Err("Error checking if user is already a member", err, zap.String("uid", d.Auth.ID), zap.String("tid", teamId))
 	}
 
 	if memberExists {
-		return uapi.HttpResponse{
-			Status: http.StatusBadRequest,
-			Json:   types.ApiError{Message: "User is already a member of this team"},
-		}
+		return resp.BadRequest("User is already a member of this team")
 	}
 
 	_, err = tx.Exec(d.Context, "INSERT INTO team_members (team_id, user_id, flags) VALUES ($1, $2, $3)", teamId, payload.UserID, payload.Perms)
 
 	if err != nil {
-		state.Logger.Error("Error adding member", zap.Error(err), zap.String("uid", d.Auth.ID), zap.String("tid", teamId))
-		return uapi.DefaultResponse(http.StatusInternalServerError)
+		return resp.Err("Error adding member", err, zap.String("uid", d.Auth.ID), zap.String("tid", teamId))
 	}
 
 	err = tx.Commit(d.Context)
 
 	if err != nil {
-		state.Logger.Error("Error committing transaction", zap.Error(err), zap.String("uid", d.Auth.ID), zap.String("tid", teamId))
-		return uapi.DefaultResponse(http.StatusInternalServerError)
+		return resp.Err("Error committing transaction", err, zap.String("uid", d.Auth.ID), zap.String("tid", teamId))
 	}
 
 	return uapi.DefaultResponse(http.StatusNoContent)

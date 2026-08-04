@@ -6,8 +6,10 @@ import (
 	"fmt"
 	"time"
 
+	"popplio/arcadia/dclient"
 	"popplio/arcadia/impls"
 	"popplio/config"
+	"popplio/perms"
 	"popplio/state"
 
 	"github.com/disgoorg/disgo/discord"
@@ -25,7 +27,7 @@ import (
 // uncached guild as "not found" and degrade rather than fail, and dovewing falls
 // through to Postgres. See CONFORMANCE.md.
 func onGuildsReady(ctx context.Context, _ *events.GuildsReady) {
-	self, ok := state.Discord.Caches().SelfUser()
+	self, ok := dclient.Get().Caches().SelfUser()
 
 	name := "arcadia"
 	if ok {
@@ -47,9 +49,9 @@ func onGuildsReady(ctx context.Context, _ *events.GuildsReady) {
 
 // onGuildMemberJoin announces new members and bots in the main guild.
 //
-// The whole handler is a no-op on staging.
+// The whole handler is a no-op outside of production.
 func onGuildMemberJoin(e *events.GuildMemberJoin) {
-	if config.CurrentEnv == config.CurrentEnvStaging {
+	if config.CurrentEnv != config.CurrentEnvProd {
 		return
 	}
 
@@ -134,6 +136,12 @@ func testingServer(c *Ctx) error {
 // isStaff ERRORS rather than returning false, which is how the message reaches
 // the user.
 func isStaff(c *Ctx) error {
+	// An instance owner is staff before the resync has ever written a row for
+	// them, which is what makes a fresh instance usable.
+	if perms.IsConfigOwner(c.Author.ID.String()) {
+		return nil
+	}
+
 	var count int64
 
 	err := state.Pool.QueryRow(c.Context, "SELECT COUNT(*) FROM staff_members WHERE user_id = $1", c.Author.ID.String()).Scan(&count)

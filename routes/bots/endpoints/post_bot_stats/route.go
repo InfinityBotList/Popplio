@@ -1,8 +1,15 @@
+// Package post_bot_stats implements POST /bots/stats — "Post Bot Stats".
+//
+// This endpoint posts the stats of a bot. `status` is optional and
+// self-reports the bot's presence (online/idle/dnd/offline) — post it
+// periodically to keep it fresh, it will otherwise keep showing the last
+// value posted.
 package post_bot_stats
 
 import (
 	"net/http"
 
+	"popplio/api/resp"
 	"popplio/state"
 	"popplio/types"
 
@@ -24,13 +31,47 @@ func Docs() *docs.Doc {
 	}
 }
 
+// statUpdate is one optional column of the bots row that a stats post may carry.
+//
+// Every field of types.BotStats is optional, and a bot that omits one must keep
+// whatever value it last reported rather than have it reset to zero. present
+// records whether the payload actually carried the field, so omitted fields are
+// skipped instead of written.
+type statUpdate struct {
+	// column is the bots column to write. It is interpolated into the UPDATE
+	// statement, so it must only ever be a constant from statUpdates.
+	column string
+	// value is the new value, bound as a query parameter.
+	value any
+	// present is whether the payload carried this field at all.
+	present bool
+}
+
+// statUpdates lists the columns a stats post can touch, in the order they are
+// applied. Adding a stat means adding a line here rather than another
+// near-identical block of update-and-check.
+func statUpdates(payload types.BotStats) []statUpdate {
+	return []statUpdate{
+		{"servers", payload.Servers, payload.Servers > 0},
+		{"shards", payload.Shards, payload.Shards > 0},
+		{"users", payload.Users, payload.Users > 0},
+		{"shard_list", payload.ShardList, len(payload.ShardList) > 0},
+
+		// Self-reported presence. Supplements the JAPI-based metadata refresh,
+		// which doesn't cover presence, and the gateway-cache-derived status
+		// dovewing normally returns (only populated when the bot shares a
+		// guild with our own Discord client, which most listed bots don't).
+		{"self_status", payload.Status, payload.Status != ""},
+	}
+}
+
 func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	var payload types.BotStats
 
-	resp, ok := uapi.MarshalReq(r, &payload)
+	marshalResp, ok := uapi.MarshalReq(r, &payload)
 
 	if !ok {
-		return resp
+		return marshalResp
 	}
 
 	err := state.Validator.Struct(payload)
@@ -43,75 +84,36 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	tx, err := state.Pool.Begin(d.Context)
 
 	if err != nil {
-		state.Logger.Error("Error while starting transaction", zap.Error(err), zap.String("botID", d.Auth.ID))
-		return uapi.DefaultResponse(http.StatusInternalServerError)
+		return resp.Err("Error while starting transaction", err, zap.String("botID", d.Auth.ID))
 	}
 
 	defer tx.Rollback(d.Context)
 
+	// Always bumped, even when the payload carries no stats at all: the
+	// timestamp is what marks the bot as still reporting.
 	_, err = tx.Exec(d.Context, "UPDATE bots SET last_stats_post = NOW() WHERE bot_id = $1", d.Auth.ID)
 
 	if err != nil {
-		state.Logger.Error("Error while updating last_stats_post", zap.Error(err), zap.String("botID", d.Auth.ID))
-		return uapi.DefaultResponse(http.StatusInternalServerError)
+		return resp.Err("Error while updating last_stats_post", err, zap.String("botID", d.Auth.ID))
 	}
 
-	if payload.Servers > 0 {
-		_, err := tx.Exec(d.Context, "UPDATE bots SET servers = $1 WHERE bot_id = $2", payload.Servers, d.Auth.ID)
+	for _, update := range statUpdates(payload) {
+		if !update.present {
+			continue
+		}
+
+		_, err := tx.Exec(d.Context, "UPDATE bots SET "+update.column+" = $1 WHERE bot_id = $2", update.value, d.Auth.ID)
 
 		if err != nil {
-			state.Logger.Error("Error while updating servers", zap.Error(err), zap.String("botID", d.Auth.ID))
-			return uapi.DefaultResponse(http.StatusInternalServerError)
+			return resp.Err("Error while updating "+update.column, err, zap.String("botID", d.Auth.ID))
 		}
 	}
 
-	if payload.Shards > 0 {
-		_, err := tx.Exec(d.Context, "UPDATE bots SET shards = $1 WHERE bot_id = $2", payload.Shards, d.Auth.ID)
-
-		if err != nil {
-			state.Logger.Error("Error while updating shards", zap.Error(err), zap.String("botID", d.Auth.ID))
-			return uapi.DefaultResponse(http.StatusInternalServerError)
-		}
-	}
-
-	if payload.Users > 0 {
-		_, err := tx.Exec(d.Context, "UPDATE bots SET users = $1 WHERE bot_id = $2", payload.Users, d.Auth.ID)
-
-		if err != nil {
-			state.Logger.Error("Error while updating users", zap.Error(err), zap.String("botID", d.Auth.ID))
-			return uapi.DefaultResponse(http.StatusInternalServerError)
-		}
-	}
-
-	if len(payload.ShardList) > 0 {
-		_, err := tx.Exec(d.Context, "UPDATE bots SET shard_list = $1 WHERE bot_id = $2", payload.ShardList, d.Auth.ID)
-
-		if err != nil {
-			state.Logger.Error("Error while updating shard_list", zap.Error(err), zap.String("botID", d.Auth.ID))
-			return uapi.DefaultResponse(http.StatusInternalServerError)
-		}
-	}
-
-	if payload.Status != "" {
-		// Self-reported presence. Supplements the JAPI-based metadata refresh,
-		// which doesn't cover presence, and the gateway-cache-derived status
-		// dovewing normally returns (only populated when the bot shares a
-		// guild with our own Discord client, which most listed bots don't).
-		_, err := tx.Exec(d.Context, "UPDATE bots SET self_status = $1 WHERE bot_id = $2", payload.Status, d.Auth.ID)
-
-		if err != nil {
-			state.Logger.Error("Error while updating self_status", zap.Error(err), zap.String("botID", d.Auth.ID))
-			return uapi.DefaultResponse(http.StatusInternalServerError)
-		}
-	}
-
-	// Commit the transaction
 	err = tx.Commit(d.Context)
 
 	if err != nil {
-		state.Logger.Error("Error while committing transaction", zap.Error(err), zap.String("botID", d.Auth.ID), zap.Any("payload", payload))
-		return uapi.DefaultResponse(http.StatusInternalServerError)
+		return resp.Err("Error while committing transaction", err, zap.String("botID", d.Auth.ID), zap.Any("payload", payload))
 	}
 
-	return uapi.DefaultResponse(http.StatusNoContent)
+	return resp.NoContent()
 }

@@ -1,3 +1,4 @@
+// Package assets holds the staff-panel authorization checks.
 package assets
 
 import (

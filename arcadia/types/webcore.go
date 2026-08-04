@@ -8,13 +8,15 @@ type InstanceConfig struct {
 
 // CoreConstants are the URLs and guild ids the panel needs. Guild ids are
 // STRINGS here even though they are u64 in config.
+//
+// NOTE: upstream also carried htmlsanitize_url and cdn_url. Both were removed
+// along with the services behind them, so neither key appears in the Hello
+// response any more. See CONFORMANCE.md.
 type CoreConstants struct {
-	FrontendURL     string       `json:"frontend_url"`
-	InfernoplexURL  string       `json:"infernoplex_url"`
-	CdnURL          string       `json:"cdn_url"`
-	PopplioURL      string       `json:"popplio_url"`
-	HTMLSanitizeURL string       `json:"htmlsanitize_url"`
-	Servers         PanelServers `json:"servers"`
+	FrontendURL    string       `json:"frontend_url"`
+	InfernoplexURL string       `json:"infernoplex_url"`
+	PopplioURL     string       `json:"popplio_url"`
+	Servers        PanelServers `json:"servers"`
 }
 
 type PanelServers struct {

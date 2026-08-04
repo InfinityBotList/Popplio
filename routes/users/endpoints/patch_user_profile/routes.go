@@ -1,7 +1,12 @@
+// Package patch_user_profile implements PATCH /users/{id} — "Update User
+// Profile".
+//
+// Updates a users profile. Returns 204 on success
 package patch_user_profile
 
 import (
 	"net/http"
+	"popplio/api/resp"
 
 	"popplio/state"
 	"popplio/types"
@@ -47,49 +52,37 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	err := validators.ValidateExtraLinks(profile.ExtraLinks)
 
 	if err != nil {
-		return uapi.HttpResponse{
-			Status: http.StatusBadRequest,
-			Json: types.ApiError{
-				Message: "Failed to validate extra links: " + err.Error(),
-			},
-		}
+		return resp.BadRequest("Failed to validate extra links: " + err.Error())
 	}
 
 	if len(profile.About) > 1000 {
-		return uapi.HttpResponse{
-			Status: http.StatusBadRequest,
-			Json:   types.ApiError{Message: "About me is over 1000 characters!"},
-		}
+		return resp.BadRequest("About me is over 1000 characters!")
 	}
 
 	tx, err := state.Pool.Begin(d.Context)
 
 	if err != nil {
-		state.Logger.Error("Error while starting transaction", zap.Error(err), zap.String("userID", d.Auth.ID))
-		return uapi.DefaultResponse(http.StatusInternalServerError)
+		return resp.Err("Error while starting transaction", err, zap.String("userID", d.Auth.ID))
 	}
 
 	_, err = tx.Exec(d.Context, "UPDATE users SET updated_at = NOW() WHERE user_id = $1", id)
 
 	if err != nil {
-		state.Logger.Error("Error while updating updated_at", zap.Error(err), zap.String("userID", d.Auth.ID))
-		return uapi.DefaultResponse(http.StatusInternalServerError)
+		return resp.Err("Error while updating updated_at", err, zap.String("userID", d.Auth.ID))
 	}
 
 	// Update extra links
 	_, err = tx.Exec(d.Context, "UPDATE users SET extra_links = $1 WHERE user_id = $2", profile.ExtraLinks, id)
 
 	if err != nil {
-		state.Logger.Error("Error while updating extra links", zap.Error(err), zap.String("userID", d.Auth.ID))
-		return uapi.DefaultResponse(http.StatusInternalServerError)
+		return resp.Err("Error while updating extra links", err, zap.String("userID", d.Auth.ID))
 	}
 
 	if profile.About != "" {
 		_, err = tx.Exec(d.Context, "UPDATE users SET about = $1 WHERE user_id = $2", profile.About, id)
 
 		if err != nil {
-			state.Logger.Error("Error while updating about", zap.Error(err), zap.String("userID", d.Auth.ID))
-			return uapi.DefaultResponse(http.StatusInternalServerError)
+			return resp.Err("Error while updating about", err, zap.String("userID", d.Auth.ID))
 		}
 	}
 
@@ -97,16 +90,14 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		_, err = tx.Exec(d.Context, "UPDATE users SET captcha_sponsor_enabled = $1 WHERE user_id = $2", *profile.CaptchaSponsorEnabled, id)
 
 		if err != nil {
-			state.Logger.Error("Error while updating captcha sponsor enabled", zap.Error(err), zap.String("userID", d.Auth.ID))
-			return uapi.DefaultResponse(http.StatusInternalServerError)
+			return resp.Err("Error while updating captcha sponsor enabled", err, zap.String("userID", d.Auth.ID))
 		}
 	}
 
 	err = tx.Commit(d.Context)
 
 	if err != nil {
-		state.Logger.Error("Error while committing transaction", zap.Error(err), zap.String("userID", d.Auth.ID))
-		return uapi.DefaultResponse(http.StatusInternalServerError)
+		return resp.Err("Error while committing transaction", err, zap.String("userID", d.Auth.ID))
 	}
 
 	return uapi.DefaultResponse(http.StatusNoContent)

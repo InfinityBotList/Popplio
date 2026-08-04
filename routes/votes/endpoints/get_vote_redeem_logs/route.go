@@ -1,7 +1,12 @@
+// Package get_vote_redeem_logs implements GET
+// /{target_type}/{target_id}/votes/credits — "Get Vote Redeem Logs".
+//
+// Returns a summary of the vote credit redeem logs
 package get_vote_redeem_logs
 
 import (
 	"net/http"
+	"popplio/api/resp"
 
 	"popplio/state"
 	"popplio/types"
@@ -42,19 +47,13 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	targetType := validators.NormalizeTargetType(chi.URLParam(r, "target_type"))
 
 	if targetId == "" || targetType == "" {
-		return uapi.HttpResponse{
-			Status: http.StatusBadRequest,
-			Json:   types.ApiError{Message: "target_id and target_type are required"},
-		}
+		return resp.BadRequest("target_id and target_type are required")
 	}
 
 	summary, err := votes.EntityGetVoteRedeemLogsSummary(d.Context, state.Pool, targetId, targetType)
 
 	if err != nil {
-		return uapi.HttpResponse{
-			Status: http.StatusInternalServerError,
-			Json:   types.ApiError{Message: "An error occurred while summarizing vote credit tiers."},
-		}
+		return resp.ErrBody("An error occurred while summarizing vote credit tiers", "An error occurred while summarizing vote credit tiers.", err)
 	}
 
 	return uapi.HttpResponse{

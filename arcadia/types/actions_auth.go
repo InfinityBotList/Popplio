@@ -44,32 +44,39 @@ type AuthLogout struct {
 func (a *AuthorizeAction) UnmarshalJSON(data []byte) error {
 	*a = AuthorizeAction{}
 
-	return unmarshalUnion("AuthorizeAction", data, map[string]func() any{
-		"Begin": func() any {
-			a.Begin = &AuthBegin{}
-			return a.Begin
-		},
-		"CreateSession": func() any {
-			a.CreateSession = &AuthCreateSession{}
-			return a.CreateSession
-		},
-		"CheckMfaState": func() any {
-			a.CheckMfaState = &AuthCheckMfaState{}
-			return a.CheckMfaState
-		},
-		"ResetMfaTotp": func() any {
-			a.ResetMfaTotp = &AuthResetMfaTotp{}
-			return a.ResetMfaTotp
-		},
-		"ActivateSession": func() any {
-			a.ActivateSession = &AuthActivateSession{}
-			return a.ActivateSession
-		},
-		"Logout": func() any {
-			a.Logout = &AuthLogout{}
-			return a.Logout
-		},
-	})
+	name, payload, err := decodeUnion(data)
+
+	if err != nil {
+		return fmt.Errorf("AuthorizeAction: %w", err)
+	}
+
+	// Every variant is a struct variant, so none accept the bare-string form.
+	var into any
+
+	switch name {
+	case "Begin":
+		a.Begin = &AuthBegin{}
+		into = a.Begin
+	case "CreateSession":
+		a.CreateSession = &AuthCreateSession{}
+		into = a.CreateSession
+	case "CheckMfaState":
+		a.CheckMfaState = &AuthCheckMfaState{}
+		into = a.CheckMfaState
+	case "ResetMfaTotp":
+		a.ResetMfaTotp = &AuthResetMfaTotp{}
+		into = a.ResetMfaTotp
+	case "ActivateSession":
+		a.ActivateSession = &AuthActivateSession{}
+		into = a.ActivateSession
+	case "Logout":
+		a.Logout = &AuthLogout{}
+		into = a.Logout
+	default:
+		return errUnknownVariant("AuthorizeAction", name)
+	}
+
+	return decodeVariant("AuthorizeAction", name, payload, into)
 }
 
 func (a AuthorizeAction) MarshalJSON() ([]byte, error) {

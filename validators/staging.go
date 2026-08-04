@@ -5,23 +5,23 @@ import (
 	"fmt"
 	"popplio/config"
 
-	perms "github.com/infinitybotlist/kittycat/go"
+	"popplio/perms"
 )
 
-// For staging, ensure user is in whitelist
+// For staging and dev, ensure user is in whitelist
 //
-// This is because staging uses test keys
+// This is because staging and dev use test keys
 func StagingCheckSensitive(ctx context.Context, userId string) error {
-	// This is because staging uses test keys
-	if config.CurrentEnv == config.CurrentEnvStaging {
-		sp, err := GetUserStaffPerms(ctx, userId)
+	// This is because staging and dev use test keys
+	if config.CurrentEnv != config.CurrentEnvProd {
+		sp, err := perms.StaffPerms(ctx, userId)
 
 		if err != nil {
 			return fmt.Errorf("failed to get user staff perms: %w", err)
 		}
 
-		if !perms.HasPerm(sp.Resolve(), perms.Permission{Namespace: "popplio_staging", Perm: "sensitive"}) {
-			return fmt.Errorf("user does not have the popplio_staging.sensitive staff permission")
+		if !sp.Has(perms.StaffUseStagingKey) {
+			return fmt.Errorf("user does not have the %s staff permission", perms.StaffUseStagingKey)
 		}
 	}
 

@@ -1,3 +1,9 @@
+// Command kitehelper is the operational CLI for Popplio's database.
+//
+// It applies schema migrations, rebuilds foreign keys, validates that tables
+// match the types they are scanned into, and runs the seed/test tooling. It
+// is a separate module from Popplio itself so that operating on the database
+// does not require building the API.
 package main
 
 import (

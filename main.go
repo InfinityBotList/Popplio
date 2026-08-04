@@ -18,7 +18,6 @@ import (
 	"popplio/notifications/votereminders"
 	"popplio/routes/alerts"
 	"popplio/routes/apps"
-	"popplio/routes/assets"
 	"popplio/routes/auth"
 	"popplio/routes/blogs"
 	"popplio/routes/bots"
@@ -41,7 +40,6 @@ import (
 	"popplio/routes/votes"
 	"popplio/routes/webhooks"
 	"popplio/state"
-	"popplio/state/bp"
 	"popplio/types"
 	poplhooks "popplio/webhooks"
 
@@ -64,10 +62,8 @@ var docsHTML string
 
 var openapi []byte
 
-// Simple middleware to handle CORS
 func corsMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// limit body to 10mb
 		r.Body = http.MaxBytesReader(w, r.Body, 50*1024*1024)
 
 		if r.Header.Get("User-Auth") != "" {
@@ -110,8 +106,6 @@ func main() {
 
 	var err error
 
-	state.BaseDovewingState.Middlewares = append(state.BaseDovewingState.Middlewares, bp.DovewingMiddleware)
-
 	docs.DocsSetupData = &docs.SetupData{
 		URL:         state.Config.Sites.API.Parse(),
 		ErrorStruct: types.ApiError{},
@@ -153,10 +147,8 @@ func main() {
 	)
 
 	routers := []uapi.APIRouter{
-		// Use same order as routes folder
 		alerts.Router{},
 		apps.Router{},
-		assets.Router{},
 		auth.Router{},
 		blogs.Router{},
 		bots.Router{},
@@ -204,7 +196,7 @@ func main() {
 
 	r.Get("/docs/{srv}", func(w http.ResponseWriter, r *http.Request) {
 		var docMap map[string]string
-		if config.CurrentEnv == "staging" {
+		if config.CurrentEnv != config.CurrentEnvProd {
 			docMap = map[string]string{
 				"popplio":     "/openapi",
 				"arcadia":     "https://staging--panel-api.omniplex.gg/openapi",
@@ -241,7 +233,6 @@ func main() {
 		})
 	})
 
-	// Load openapi here to avoid large marshalling in every request
 	openapi, err = jsonimpl.Marshal(docs.GetSchema())
 
 	if err != nil {
@@ -260,13 +251,9 @@ func main() {
 
 	go votereminders.VrLoop()
 
-	// Bring up the staff panel API, the staff Discord bot and the staff
-	// background tasks. The panel listens on its own port with its own
-	// middleware chain; see arcadia/CONFORMANCE.md.
 	arc := arcadia.Start(state.Context)
 	defer arc.Stop(30 * time.Second)
 
-	// If GOOS is windows, do normal http server
 	if runtime.GOOS == "linux" || runtime.GOOS == "darwin" {
 		upg, _ := tableflip.New(tableflip.Options{})
 		defer upg.Stop()
@@ -280,7 +267,6 @@ func main() {
 			}
 		}()
 
-		// Listen must be called before Ready
 		ln, err := upg.Listen("tcp", state.Config.Meta.Port.Parse())
 
 		if err != nil {
@@ -307,7 +293,6 @@ func main() {
 
 		<-upg.Exit()
 	} else {
-		// Tableflip not supported
 		state.Logger.Warn("Tableflip not supported on this platform, this is not a production-capable server.")
 		err = http.ListenAndServe(state.Config.Meta.Port.Parse(), r)
 

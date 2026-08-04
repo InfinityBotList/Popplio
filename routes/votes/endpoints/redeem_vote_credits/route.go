@@ -1,7 +1,12 @@
+// Package redeem_vote_credits implements POST
+// /{target_type}/{target_id}/votes/credits — "Redeem Vote Credits".
+//
+// Redeems votes into credits towards the shop based on the vote credit tiers
 package redeem_vote_credits
 
 import (
 	"net/http"
+	"popplio/api/resp"
 	"strconv"
 
 	"popplio/state"
@@ -12,7 +17,6 @@ import (
 	"github.com/go-chi/chi/v5"
 	docs "github.com/infinitybotlist/eureka/doclib"
 	"github.com/infinitybotlist/eureka/uapi"
-	"go.uber.org/zap"
 )
 
 func Docs() *docs.Doc {
@@ -51,10 +55,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	targetType := validators.NormalizeTargetType(chi.URLParam(r, "target_type"))
 
 	if targetId == "" || targetType == "" {
-		return uapi.HttpResponse{
-			Status: http.StatusBadRequest,
-			Json:   types.ApiError{Message: "target_id and target_type are required"},
-		}
+		return resp.BadRequest("target_id and target_type are required")
 	}
 
 	votesParam := r.URL.Query().Get("votes")
@@ -62,20 +63,13 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	votesInt, err := strconv.Atoi(votesParam)
 
 	if err != nil {
-		return uapi.HttpResponse{
-			Status: http.StatusBadRequest,
-			Json:   types.ApiError{Message: "votes must be an integer"},
-		}
+		return resp.BadRequest("votes must be an integer")
 	}
 
 	tx, err := state.Pool.Begin(d.Context)
 
 	if err != nil {
-		state.Logger.Error("Error starting transaction", zap.Error(err))
-		return uapi.HttpResponse{
-			Status: http.StatusInternalServerError,
-			Json:   types.ApiError{Message: "An error occurred while starting transaction."},
-		}
+		return resp.ErrBody("Error starting transaction", "An error occurred while starting transaction.", err)
 	}
 
 	defer tx.Rollback(d.Context)
@@ -83,20 +77,13 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	err = votes.EntityRedeemVoteCredits(d.Context, tx, targetId, targetType, votesInt)
 
 	if err != nil {
-		return uapi.HttpResponse{
-			Status: http.StatusInternalServerError,
-			Json:   types.ApiError{Message: "An error occurred while redeeming vote credit tiers."},
-		}
+		return resp.ErrBody("An error occurred while redeeming vote credit tiers", "An error occurred while redeeming vote credit tiers.", err)
 	}
 
 	err = tx.Commit(d.Context)
 
 	if err != nil {
-		state.Logger.Error("Error committing transaction", zap.Error(err))
-		return uapi.HttpResponse{
-			Status: http.StatusInternalServerError,
-			Json:   types.ApiError{Message: "An error occurred while committing transaction."},
-		}
+		return resp.ErrBody("Error committing transaction", "An error occurred while committing transaction.", err)
 	}
 
 	return uapi.HttpResponse{

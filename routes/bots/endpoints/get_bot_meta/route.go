@@ -1,9 +1,14 @@
+// Package get_bot_meta implements GET /bots/{client_id}/meta — "Get Bot
+// Metadata".
+//
+// Gets the metadata of a bot such as whether it is already in the
+// database/bot id checks
 package get_bot_meta
 
 import (
 	"net/http"
+	"popplio/api/resp"
 	"popplio/routes/bots/assets"
-	"popplio/state"
 	"popplio/types"
 	"time"
 
@@ -47,18 +52,11 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	}.Limit(d.Context, r)
 
 	if err != nil {
-		state.Logger.Error("Error while ratelimiting", zap.Error(err), zap.String("bucket", "get_bot_meta"))
-		return uapi.DefaultResponse(http.StatusInternalServerError)
+		return resp.Err("Error while ratelimiting", err, zap.String("bucket", "get_bot_meta"))
 	}
 
 	if limit.Exceeded {
-		return uapi.HttpResponse{
-			Json: types.ApiError{
-				Message: "You are being ratelimited. Please try again in " + limit.TimeToReset.String(),
-			},
-			Headers: limit.Headers(),
-			Status:  http.StatusTooManyRequests,
-		}
+		return resp.RateLimited(limit)
 	}
 
 	fallbackId := r.URL.Query().Get("fallback_bot_id")
@@ -68,17 +66,11 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	meta, err := assets.CheckBot(d.Context, fallbackId, cid)
 
 	if err != nil {
-		return uapi.HttpResponse{
-			Status: http.StatusBadRequest,
-			Json:   types.ApiError{Message: err.Error()},
-		}
+		return resp.BadRequest(err.Error())
 	}
 
 	if meta == nil {
-		return uapi.HttpResponse{
-			Status: http.StatusInternalServerError,
-			Json:   types.ApiError{Message: "Internal error: meta returned nil"},
-		}
+		return resp.ErrBody("Internal error: meta returned nil", "Internal error: meta returned nil", nil)
 	}
 
 	return uapi.HttpResponse{

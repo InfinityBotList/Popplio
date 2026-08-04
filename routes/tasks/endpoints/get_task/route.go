@@ -1,8 +1,12 @@
+// Package get_task implements GET /users/{id}/tasks/{tid} — "Get Task".
+//
+// Gets a task. Returns the task data if this is successful
 package get_task
 
 import (
 	"errors"
 	"net/http"
+	"popplio/api/resp"
 	"popplio/db"
 	"popplio/state"
 	"popplio/types"
@@ -12,7 +16,6 @@ import (
 	docs "github.com/infinitybotlist/eureka/doclib"
 	"github.com/infinitybotlist/eureka/uapi"
 	"github.com/jackc/pgx/v5"
-	"go.uber.org/zap"
 )
 
 var (
@@ -57,65 +60,47 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	userId := chi.URLParam(r, "id")
 
 	if taskId == "" {
-		return uapi.HttpResponse{
-			Status: http.StatusBadRequest,
-			Json:   types.ApiError{Message: "task id is required"},
-		}
+		return resp.BadRequest("task id is required")
 	}
 
 	// Delete expired tasks first
 	_, err := state.Pool.Exec(d.Context, "DELETE FROM tasks WHERE created_at + expiry < NOW()")
 
 	if err != nil {
-		state.Logger.Error("Failed to delete expired tasks [db delete]", zap.Error(err))
-		return uapi.DefaultResponse(http.StatusInternalServerError)
+		return resp.Err("Failed to delete expired tasks [db delete]", err)
 	}
 
 	row, err := state.Pool.Query(d.Context, "SELECT "+taskColsStr+" FROM tasks WHERE task_id = $1", taskId)
 
 	if err != nil {
-		state.Logger.Error("Failed to fetch task [db fetch]", zap.Error(err))
-		return uapi.DefaultResponse(http.StatusInternalServerError)
+		return resp.Err("Failed to fetch task [db fetch]", err)
 	}
 
 	task, err := pgx.CollectOneRow(row, pgx.RowToStructByName[types.Task])
 
 	if errors.Is(err, pgx.ErrNoRows) {
-		return uapi.HttpResponse{
-			Status: http.StatusNotFound,
-			Json:   types.ApiError{Message: "Task not found"},
-		}
+		return resp.NotFound("Task not found")
 	}
 
 	if err != nil {
-		state.Logger.Error("Failed to fetch task [db fetch]", zap.Error(err))
-		return uapi.DefaultResponse(http.StatusInternalServerError)
+		return resp.Err("Failed to fetch task [db fetch]", err)
 	}
 
 	if task.TaskKey.Valid {
 		if task.TaskKey.String != r.URL.Query().Get("task_key") {
-			return uapi.HttpResponse{
-				Status: http.StatusUnauthorized,
-				Json:   types.ApiError{Message: "Invalid task key"},
-			}
+			return resp.Unauthorized("Invalid task key")
 		}
 	}
 
 	if task.AllowUnauthenticated {
 		d.Auth.ID = userId
 	} else if d.Auth.ID == "" {
-		return uapi.HttpResponse{
-			Status: http.StatusUnauthorized,
-			Json:   types.ApiError{Message: "You must be authenticated to access this task"},
-		}
+		return resp.Unauthorized("You must be authenticated to access this task")
 	}
 
 	if task.ForUser.Valid {
 		if task.ForUser.String != d.Auth.ID {
-			return uapi.HttpResponse{
-				Status: http.StatusForbidden,
-				Json:   types.ApiError{Message: "This task is not owned by your user account!"},
-			}
+			return resp.Forbidden("This task is not owned by your user account!")
 		}
 	}
 

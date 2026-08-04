@@ -1,3 +1,7 @@
+// Package diagnostics mounts the "Diagnostics" group of API routes.
+//
+// These API endpoints allow diagnosing potential issues within our API or
+// within any frontend application.
 package diagnostics
 
 import (

@@ -1,3 +1,7 @@
+// Package apps mounts the "Apps" group of API routes.
+//
+// These API endpoints are related to apps and interviews for positions on
+// our list.
 package apps
 
 import (

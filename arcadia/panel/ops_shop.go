@@ -7,9 +7,9 @@ import (
 	"time"
 
 	"popplio/arcadia/types"
+	"popplio/perms"
 	"popplio/state"
 
-	perms "github.com/infinitybotlist/kittycat/go"
 	"github.com/jackc/pgx/v5"
 )
 
@@ -128,8 +128,8 @@ func (s *Server) updateVoteCreditTiers(ctx context.Context, q *types.QUpdateVote
 	case q.Action.CreateTier != nil:
 		action := q.Action.CreateTier
 
-		if !perms.HasPerm(userPerms, perms.PermissionFromString("vote_credit_tiers.create")) {
-			return writeText(http.StatusForbidden, "You do not have permission to create vote credit tiers [vote_credit_tiers.create]"), nil
+		if !userPerms.Has(perms.StaffManageShop) {
+			return writeText(http.StatusForbidden, "You do not have permission to create vote credit tiers [manage_shop]"), nil
 		}
 
 		if resp := validateTier(action); resp != nil {
@@ -164,19 +164,15 @@ func (s *Server) updateVoteCreditTiers(ctx context.Context, q *types.QUpdateVote
 	case q.Action.EditTier != nil:
 		action := q.Action.EditTier
 
-		if !perms.HasPerm(userPerms, perms.PermissionFromString("vote_credit_tiers.update")) {
-			return writeText(http.StatusForbidden, "You do not have permission to update vote credit tiers [vote_credit_tiers.update]"), nil
+		if !userPerms.Has(perms.StaffManageShop) {
+			return writeText(http.StatusForbidden, "You do not have permission to update vote credit tiers [manage_shop]"), nil
 		}
 
 		// Existence is checked BEFORE the range validations here.
-		exists, err := countExists(ctx, "SELECT COUNT(*) FROM vote_credit_tiers WHERE id = $1", action.ID)
-
-		if err != nil {
-			return response{}, newError(err)
-		}
-
-		if !exists {
-			return writeText(http.StatusBadRequest, "Entry with same id does not already exist"), nil
+		if resp, err := requireRow(ctx, "SELECT COUNT(*) FROM vote_credit_tiers WHERE id = $1", action.ID); err != nil {
+			return response{}, err
+		} else if resp != nil {
+			return *resp, nil
 		}
 
 		if resp := validateTier(action); resp != nil {
@@ -209,20 +205,16 @@ func (s *Server) updateVoteCreditTiers(ctx context.Context, q *types.QUpdateVote
 
 		return writeNoContent(), nil
 	case q.Action.DeleteTier != nil:
-		if !perms.HasPerm(userPerms, perms.PermissionFromString("vote_credit_tiers.delete")) {
-			return writeText(http.StatusForbidden, "You do not have permission to delete vote credit tiers [vote_credit_tiers.delete]"), nil
+		if !userPerms.Has(perms.StaffManageShop) {
+			return writeText(http.StatusForbidden, "You do not have permission to delete vote credit tiers [manage_shop]"), nil
 		}
 
 		id := q.Action.DeleteTier.ID
 
-		exists, err := countExists(ctx, "SELECT COUNT(*) FROM vote_credit_tiers WHERE id = $1", id)
-
-		if err != nil {
-			return response{}, newError(err)
-		}
-
-		if !exists {
-			return writeText(http.StatusBadRequest, "Entry with same id does not already exist"), nil
+		if resp, err := requireRow(ctx, "SELECT COUNT(*) FROM vote_credit_tiers WHERE id = $1", id); err != nil {
+			return response{}, err
+		} else if resp != nil {
+			return *resp, nil
 		}
 
 		if _, err := state.Pool.Exec(ctx, "DELETE FROM vote_credit_tiers WHERE id = $1", id); err != nil {
@@ -314,8 +306,8 @@ func (s *Server) updateShopItems(ctx context.Context, q *types.QUpdateShopItems)
 				Name:        i.Name,
 				Description: i.Description,
 				Cents:       i.Cents,
-				TargetTypes: nonNil(i.TargetTypes),
-				Benefits:    nonNil(i.Benefits),
+				TargetTypes: types.NonNilStrings(i.TargetTypes),
+				Benefits:    types.NonNilStrings(i.Benefits),
 				Duration:    i.Duration,
 				CreatedAt:   types.NewTimestamp(i.CreatedAt),
 				LastUpdated: types.NewTimestamp(i.LastUpdated),
@@ -328,8 +320,8 @@ func (s *Server) updateShopItems(ctx context.Context, q *types.QUpdateShopItems)
 	case q.Action.Create != nil:
 		action := q.Action.Create
 
-		if !perms.HasPerm(userPerms, perms.PermissionFromString("shop_items.create")) {
-			return writeText(http.StatusForbidden, "You do not have permission to create shop items [shop_items.create]"), nil
+		if !userPerms.Has(perms.StaffManageShop) {
+			return writeText(http.StatusForbidden, "You do not have permission to create shop items [manage_shop]"), nil
 		}
 
 		resp, err := validateShopItem(ctx, action)
@@ -354,8 +346,8 @@ func (s *Server) updateShopItems(ctx context.Context, q *types.QUpdateShopItems)
 	case q.Action.Edit != nil:
 		action := q.Action.Edit
 
-		if !perms.HasPerm(userPerms, perms.PermissionFromString("shop_items.update")) {
-			return writeText(http.StatusForbidden, "You do not have permission to update shop items [shop_items.update]"), nil
+		if !userPerms.Has(perms.StaffManageShop) {
+			return writeText(http.StatusForbidden, "You do not have permission to update shop items [manage_shop]"), nil
 		}
 
 		resp, err := validateShopItem(ctx, action)
@@ -368,14 +360,10 @@ func (s *Server) updateShopItems(ctx context.Context, q *types.QUpdateShopItems)
 			return *resp, nil
 		}
 
-		exists, err := countExists(ctx, "SELECT COUNT(*) FROM shop_items WHERE id = $1", action.ID)
-
-		if err != nil {
-			return response{}, newError(err)
-		}
-
-		if !exists {
-			return writeText(http.StatusBadRequest, "Entry with same id does not already exist"), nil
+		if resp, err := requireRow(ctx, "SELECT COUNT(*) FROM shop_items WHERE id = $1", action.ID); err != nil {
+			return response{}, err
+		} else if resp != nil {
+			return *resp, nil
 		}
 
 		_, err = state.Pool.Exec(ctx,
@@ -388,20 +376,16 @@ func (s *Server) updateShopItems(ctx context.Context, q *types.QUpdateShopItems)
 
 		return writeNoContent(), nil
 	case q.Action.Delete != nil:
-		if !perms.HasPerm(userPerms, perms.PermissionFromString("shop_items.delete")) {
-			return writeText(http.StatusForbidden, "You do not have permission to delete shop items [shop_items.delete]"), nil
+		if !userPerms.Has(perms.StaffManageShop) {
+			return writeText(http.StatusForbidden, "You do not have permission to delete shop items [manage_shop]"), nil
 		}
 
 		id := q.Action.Delete.ID
 
-		exists, err := countExists(ctx, "SELECT COUNT(*) FROM shop_items WHERE id = $1", id)
-
-		if err != nil {
-			return response{}, newError(err)
-		}
-
-		if !exists {
-			return writeText(http.StatusBadRequest, "Entry with same id does not already exist"), nil
+		if resp, err := requireRow(ctx, "SELECT COUNT(*) FROM shop_items WHERE id = $1", id); err != nil {
+			return response{}, err
+		} else if resp != nil {
+			return *resp, nil
 		}
 
 		if _, err := state.Pool.Exec(ctx, "DELETE FROM shop_items WHERE id = $1", id); err != nil {
@@ -463,7 +447,7 @@ func (s *Server) updateShopItemBenefits(ctx context.Context, q *types.QUpdateSho
 				Description: b.Description,
 				CreatedAt:   types.NewTimestamp(b.CreatedAt),
 				LastUpdated: types.NewTimestamp(b.LastUpdated),
-				TargetTypes: nonNil(b.TargetTypes),
+				TargetTypes: types.NonNilStrings(b.TargetTypes),
 				CreatedBy:   b.CreatedBy,
 				UpdatedBy:   b.UpdatedBy,
 			})
@@ -473,8 +457,8 @@ func (s *Server) updateShopItemBenefits(ctx context.Context, q *types.QUpdateSho
 	case q.Action.Create != nil:
 		action := q.Action.Create
 
-		if !perms.HasPerm(userPerms, perms.PermissionFromString("shop_item_benefits.create")) {
-			return writeText(http.StatusForbidden, "You do not have permission to create shop item benefits [shop_item_benefits.create]"), nil
+		if !userPerms.Has(perms.StaffManageShop) {
+			return writeText(http.StatusForbidden, "You do not have permission to create shop item benefits [manage_shop]"), nil
 		}
 
 		_, err := state.Pool.Exec(ctx,
@@ -489,18 +473,14 @@ func (s *Server) updateShopItemBenefits(ctx context.Context, q *types.QUpdateSho
 	case q.Action.Edit != nil:
 		action := q.Action.Edit
 
-		if !perms.HasPerm(userPerms, perms.PermissionFromString("shop_item_benefits.update")) {
-			return writeText(http.StatusForbidden, "You do not have permission to update shop item benefits [shop_item_benefits.update]"), nil
+		if !userPerms.Has(perms.StaffManageShop) {
+			return writeText(http.StatusForbidden, "You do not have permission to update shop item benefits [manage_shop]"), nil
 		}
 
-		exists, err := countExists(ctx, "SELECT COUNT(*) FROM shop_item_benefits WHERE id = $1", action.ID)
-
-		if err != nil {
-			return response{}, newError(err)
-		}
-
-		if !exists {
-			return writeText(http.StatusBadRequest, "Entry with same id does not already exist"), nil
+		if resp, err := requireRow(ctx, "SELECT COUNT(*) FROM shop_item_benefits WHERE id = $1", action.ID); err != nil {
+			return response{}, err
+		} else if resp != nil {
+			return *resp, nil
 		}
 
 		_, err = state.Pool.Exec(ctx,
@@ -513,20 +493,16 @@ func (s *Server) updateShopItemBenefits(ctx context.Context, q *types.QUpdateSho
 
 		return writeNoContent(), nil
 	case q.Action.Delete != nil:
-		if !perms.HasPerm(userPerms, perms.PermissionFromString("shop_item_benefits.delete")) {
-			return writeText(http.StatusForbidden, "You do not have permission to delete shop item benefits [shop_item_benefits.delete]"), nil
+		if !userPerms.Has(perms.StaffManageShop) {
+			return writeText(http.StatusForbidden, "You do not have permission to delete shop item benefits [manage_shop]"), nil
 		}
 
 		id := q.Action.Delete.ID
 
-		exists, err := countExists(ctx, "SELECT COUNT(*) FROM shop_item_benefits WHERE id = $1", id)
-
-		if err != nil {
-			return response{}, newError(err)
-		}
-
-		if !exists {
-			return writeText(http.StatusBadRequest, "Entry with same id does not already exist"), nil
+		if resp, err := requireRow(ctx, "SELECT COUNT(*) FROM shop_item_benefits WHERE id = $1", id); err != nil {
+			return response{}, err
+		} else if resp != nil {
+			return *resp, nil
 		}
 
 		// Referential guard: a benefit still in use by a shop item cannot go.
@@ -592,7 +568,7 @@ func validateCoupon(action *types.ShopCouponUpsert) *response {
 		return &resp
 	}
 
-	if derefOrF(action.Cents, 0) < 0 {
+	if derefOr(action.Cents, 0.0) < 0 {
 		resp := writeText(http.StatusBadRequest, "Cents cannot be lower than 0")
 		return &resp
 	}
@@ -600,15 +576,9 @@ func validateCoupon(action *types.ShopCouponUpsert) *response {
 	return nil
 }
 
-func derefOr(v *int32, fallback int32) int32 {
-	if v == nil {
-		return fallback
-	}
-
-	return *v
-}
-
-func derefOrF(v *float64, fallback float64) float64 {
+// derefOr reads through a nullable field, falling back when it is null. The
+// coupon validations rely on the fallback being applied - see CONFORMANCE.md a/2.
+func derefOr[T any](v *T, fallback T) T {
 	if v == nil {
 		return fallback
 	}
@@ -650,8 +620,8 @@ func (s *Server) updateShopCoupons(ctx context.Context, q *types.QUpdateShopCoup
 	switch {
 	case q.Action.List != nil:
 		// Unlike the other List actions, this one REQUIRES a permission.
-		if !perms.HasPerm(userPerms, perms.PermissionFromString("shop_coupons.list")) {
-			return writeText(http.StatusForbidden, "You do not have permission to list shop coupons [shop_coupons.list]"), nil
+		if !userPerms.Has(perms.StaffViewShop) {
+			return writeText(http.StatusForbidden, "You do not have permission to list shop coupons [view_shop]"), nil
 		}
 
 		rows, err := state.Pool.Query(ctx,
@@ -681,12 +651,12 @@ func (s *Server) updateShopCoupons(ctx context.Context, q *types.QUpdateShopCoup
 				UpdatedBy:         c.UpdatedBy,
 				ReuseWaitDuration: c.ReuseWaitDuration,
 				Expiry:            c.Expiry,
-				ApplicableItems:   nonNil(c.ApplicableItems),
+				ApplicableItems:   types.NonNilStrings(c.ApplicableItems),
 				Cents:             c.Cents,
-				Requirements:      nonNil(c.Requirements),
-				AllowedUsers:      nonNil(c.AllowedUsers),
+				Requirements:      types.NonNilStrings(c.Requirements),
+				AllowedUsers:      types.NonNilStrings(c.AllowedUsers),
 				Usable:            c.Usable,
-				TargetTypes:       nonNil(c.TargetTypes),
+				TargetTypes:       types.NonNilStrings(c.TargetTypes),
 			})
 		}
 
@@ -694,8 +664,8 @@ func (s *Server) updateShopCoupons(ctx context.Context, q *types.QUpdateShopCoup
 	case q.Action.Create != nil:
 		action := q.Action.Create
 
-		if !perms.HasPerm(userPerms, perms.PermissionFromString("shop_coupons.create")) {
-			return writeText(http.StatusForbidden, "You do not have permission to create shop coupons [shop_coupons.create]"), nil
+		if !userPerms.Has(perms.StaffManageShop) {
+			return writeText(http.StatusForbidden, "You do not have permission to create shop coupons [manage_shop]"), nil
 		}
 
 		if resp := validateCoupon(action); resp != nil {
@@ -726,8 +696,8 @@ func (s *Server) updateShopCoupons(ctx context.Context, q *types.QUpdateShopCoup
 	case q.Action.Edit != nil:
 		action := q.Action.Edit
 
-		if !perms.HasPerm(userPerms, perms.PermissionFromString("shop_coupons.update")) {
-			return writeText(http.StatusForbidden, "You do not have permission to update shop coupons [shop_coupons.update]"), nil
+		if !userPerms.Has(perms.StaffManageShop) {
+			return writeText(http.StatusForbidden, "You do not have permission to update shop coupons [manage_shop]"), nil
 		}
 
 		if resp := validateCoupon(action); resp != nil {
@@ -744,14 +714,10 @@ func (s *Server) updateShopCoupons(ctx context.Context, q *types.QUpdateShopCoup
 			return *resp, nil
 		}
 
-		exists, err := countExists(ctx, "SELECT COUNT(*) FROM shop_coupons WHERE id = $1", action.ID)
-
-		if err != nil {
-			return response{}, newError(err)
-		}
-
-		if !exists {
-			return writeText(http.StatusBadRequest, "Entry with same id does not already exist"), nil
+		if resp, err := requireRow(ctx, "SELECT COUNT(*) FROM shop_coupons WHERE id = $1", action.ID); err != nil {
+			return response{}, err
+		} else if resp != nil {
+			return *resp, nil
 		}
 
 		_, err = state.Pool.Exec(ctx,
@@ -766,20 +732,16 @@ func (s *Server) updateShopCoupons(ctx context.Context, q *types.QUpdateShopCoup
 
 		return writeNoContent(), nil
 	case q.Action.Delete != nil:
-		if !perms.HasPerm(userPerms, perms.PermissionFromString("shop_coupons.delete")) {
-			return writeText(http.StatusForbidden, "You do not have permission to delete shop coupons [shop_coupons.delete]"), nil
+		if !userPerms.Has(perms.StaffManageShop) {
+			return writeText(http.StatusForbidden, "You do not have permission to delete shop coupons [manage_shop]"), nil
 		}
 
 		id := q.Action.Delete.ID
 
-		exists, err := countExists(ctx, "SELECT COUNT(*) FROM shop_coupons WHERE id = $1", id)
-
-		if err != nil {
-			return response{}, newError(err)
-		}
-
-		if !exists {
-			return writeText(http.StatusBadRequest, "Entry with same id does not already exist"), nil
+		if resp, err := requireRow(ctx, "SELECT COUNT(*) FROM shop_coupons WHERE id = $1", id); err != nil {
+			return response{}, err
+		} else if resp != nil {
+			return *resp, nil
 		}
 
 		if _, err := state.Pool.Exec(ctx, "DELETE FROM shop_coupons WHERE id = $1", id); err != nil {
@@ -844,7 +806,7 @@ func (s *Server) updateBotWhitelist(ctx context.Context, q *types.QUpdateBotWhit
 
 		// Note the PARENTHESES here rather than the square brackets the other
 		// messages use.
-		if !perms.HasPerm(userPerms, perms.PermissionFromString("bot_whitelist.create")) {
+		if !userPerms.Has(perms.StaffManageBotWhitelist) {
 			return writeText(http.StatusForbidden, "You do not have permission to add to the bot whitelist (bot_whitelist.create)"), nil
 		}
 
@@ -860,18 +822,14 @@ func (s *Server) updateBotWhitelist(ctx context.Context, q *types.QUpdateBotWhit
 	case q.Action.Edit != nil:
 		action := q.Action.Edit
 
-		if !perms.HasPerm(userPerms, perms.PermissionFromString("bot_whitelist.update")) {
+		if !userPerms.Has(perms.StaffManageBotWhitelist) {
 			return writeText(http.StatusForbidden, "You do not have permission to update bot whitelist (bot_whitelist.update)"), nil
 		}
 
-		exists, err := countExists(ctx, "SELECT COUNT(*) FROM bot_whitelist WHERE bot_id = $1", action.BotID)
-
-		if err != nil {
-			return response{}, newError(err)
-		}
-
-		if !exists {
-			return writeText(http.StatusBadRequest, "Entry with same id does not already exist"), nil
+		if resp, err := requireRow(ctx, "SELECT COUNT(*) FROM bot_whitelist WHERE bot_id = $1", action.BotID); err != nil {
+			return response{}, err
+		} else if resp != nil {
+			return *resp, nil
 		}
 
 		if _, err := state.Pool.Exec(ctx, "UPDATE bot_whitelist SET reason = $1 WHERE bot_id = $2", action.Reason, action.BotID); err != nil {
@@ -880,20 +838,16 @@ func (s *Server) updateBotWhitelist(ctx context.Context, q *types.QUpdateBotWhit
 
 		return writeNoContent(), nil
 	case q.Action.Delete != nil:
-		if !perms.HasPerm(userPerms, perms.PermissionFromString("bot_whitelist.delete")) {
+		if !userPerms.Has(perms.StaffManageBotWhitelist) {
 			return writeText(http.StatusForbidden, "You do not have permission to delete bot whitelist entries (bot_whitelist.delete)"), nil
 		}
 
 		botID := q.Action.Delete.BotID
 
-		exists, err := countExists(ctx, "SELECT COUNT(*) FROM bot_whitelist WHERE bot_id = $1", botID)
-
-		if err != nil {
-			return response{}, newError(err)
-		}
-
-		if !exists {
-			return writeText(http.StatusBadRequest, "Entry with same id does not already exist"), nil
+		if resp, err := requireRow(ctx, "SELECT COUNT(*) FROM bot_whitelist WHERE bot_id = $1", botID); err != nil {
+			return response{}, err
+		} else if resp != nil {
+			return *resp, nil
 		}
 
 		if _, err := state.Pool.Exec(ctx, "DELETE FROM bot_whitelist WHERE bot_id = $1", botID); err != nil {

@@ -1,3 +1,6 @@
+// Package alerts mounts the "Alerts" group of API routes.
+//
+// These API endpoints are related to user alerts on IBL
 package alerts
 
 import (

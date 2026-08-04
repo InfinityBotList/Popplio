@@ -6,19 +6,19 @@ import (
 	"fmt"
 	"net/http"
 	"popplio/constants"
+	"popplio/perms"
 	"popplio/state"
 	"popplio/types"
 	"strings"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/infinitybotlist/eureka/uapi"
-	perm "github.com/infinitybotlist/kittycat/go"
 	"github.com/jackc/pgx/v5"
 	"go.uber.org/zap"
 )
 
 type PermissionCheck struct {
-	NeededPermission func(d uapi.Route, r *http.Request, authData uapi.AuthData) (*perm.Permission, error)
+	NeededPermission func(d uapi.Route, r *http.Request, authData uapi.AuthData) (*perms.Perm, error)
 	GetTarget        func(d uapi.Route, r *http.Request, authData uapi.AuthData) (targetType string, targetId string)
 }
 
@@ -381,12 +381,29 @@ func Setup() {
 	uapi.SetupState(uapi.UAPIState{
 		Logger:    state.Logger,
 		Authorize: Authorize,
+		// The values here become the OpenAPI `security` requirement name for
+		// each documented auth type (see eureka's uapi.Route(), which builds
+		// docsObj.AuthType from this map). They must match the actual scheme
+		// names registered via docs.AddSecuritySchema in main.go ("User",
+		// "Bot") exactly, including case — previously this mapped each type
+		// to itself verbatim (lowercase "user"/"bot"), so every generated
+		// operation's security requirement referenced a scheme name that
+		// didn't exist in components.securitySchemes, silently breaking any
+		// tool that resolves the requirement against the registered schemes
+		// (e.g. fumadocs-openapi's playground, which crashes outright on the
+		// unresolved reference).
+		//
+		// "server" and "team" are left mapped to themselves: they're real,
+		// functioning auth types (Authorize() below fully supports them),
+		// but no matching security scheme has ever been registered for
+		// either, so there's nothing correct to map them to yet.
 		AuthTypeMap: func() map[string]string {
-			var m = make(map[string]string)
-			for _, auth := range GetAllAuthTypes() {
-				m[auth.Type] = auth.Type
+			return map[string]string{
+				TargetTypeUser:   "User",
+				TargetTypeBot:    "Bot",
+				TargetTypeServer: TargetTypeServer,
+				TargetTypeTeam:   TargetTypeTeam,
 			}
-			return m
 		}(),
 		Context: state.Context,
 		Constants: &uapi.UAPIConstants{

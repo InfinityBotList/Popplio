@@ -1,20 +1,22 @@
+// Package auth mounts the "API Tokens" group of API routes.
+//
+// These API endpoints are related to API Tokens on IBL
 package auth
 
 import (
 	"net/http"
 	"popplio/api"
+	"popplio/perms"
 	"popplio/routes/auth/endpoints/create_oauth2_login"
 	"popplio/routes/auth/endpoints/create_session"
 	"popplio/routes/auth/endpoints/get_oauth_url"
 	"popplio/routes/auth/endpoints/get_sessions"
 	"popplio/routes/auth/endpoints/revoke_session"
 	"popplio/routes/auth/endpoints/test_auth"
-	"popplio/teams"
 	"popplio/validators"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/infinitybotlist/eureka/uapi"
-	perms "github.com/infinitybotlist/kittycat/go"
 )
 
 const tagName = "API Tokens"
@@ -35,12 +37,7 @@ func (b Router) Routes(r *chi.Mux) {
 		Auth:    api.GetAllAuthTypes(),
 		ExtData: map[string]any{
 			api.PERMISSION_CHECK_KEY: api.PermissionCheck{
-				NeededPermission: func(d uapi.Route, r *http.Request, authData uapi.AuthData) (*perms.Permission, error) {
-					return &perms.Permission{
-						Namespace: validators.NormalizeTargetType(chi.URLParam(r, "target_type")),
-						Perm:      teams.PermissionViewSession,
-					}, nil
-				},
+				NeededPermission: api.Needs(perms.EntityViewSessions),
 				GetTarget: func(d uapi.Route, r *http.Request, authData uapi.AuthData) (string, string) {
 					return validators.NormalizeTargetType(chi.URLParam(r, "target_type")), chi.URLParam(r, "target_id")
 				},
@@ -57,12 +54,7 @@ func (b Router) Routes(r *chi.Mux) {
 		Auth:    api.GetAllAuthTypes(),
 		ExtData: map[string]any{
 			api.PERMISSION_CHECK_KEY: api.PermissionCheck{
-				NeededPermission: func(d uapi.Route, r *http.Request, authData uapi.AuthData) (*perms.Permission, error) {
-					return &perms.Permission{
-						Namespace: validators.NormalizeTargetType(chi.URLParam(r, "target_type")),
-						Perm:      teams.PermissionCreateSession,
-					}, nil
-				},
+				NeededPermission: api.Needs(perms.EntityManageSessions),
 				GetTarget: func(d uapi.Route, r *http.Request, authData uapi.AuthData) (string, string) {
 					return validators.NormalizeTargetType(chi.URLParam(r, "target_type")), chi.URLParam(r, "target_id")
 				},
@@ -79,12 +71,7 @@ func (b Router) Routes(r *chi.Mux) {
 		Auth:    api.GetAllAuthTypes(),
 		ExtData: map[string]any{
 			api.PERMISSION_CHECK_KEY: api.PermissionCheck{
-				NeededPermission: func(d uapi.Route, r *http.Request, authData uapi.AuthData) (*perms.Permission, error) {
-					return &perms.Permission{
-						Namespace: validators.NormalizeTargetType(chi.URLParam(r, "target_type")),
-						Perm:      teams.PermissionRevokeSession,
-					}, nil
-				},
+				NeededPermission: api.Needs(perms.EntityManageSessions),
 				GetTarget: func(d uapi.Route, r *http.Request, authData uapi.AuthData) (string, string) {
 					return validators.NormalizeTargetType(chi.URLParam(r, "target_type")), chi.URLParam(r, "target_id")
 				},

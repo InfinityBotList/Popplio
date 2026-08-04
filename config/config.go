@@ -1,15 +1,26 @@
+// Package config defines Popplio's configuration schema.
+//
+// The active environment is fixed at build time from the embedded
+// current-env file, and Differs[T] carries every value that differs between
+// staging and production so both are declared together and neither can be
+// left unset. Differs[T] also carries an optional Dev override on top of
+// that, for running locally against things like a personal Discord
+// application without touching the real staging/prod values — see Parse.
 package config
 
 import (
 	_ "embed"
+	"reflect"
 	"strings"
 
 	"github.com/disgoorg/snowflake/v2"
+	"github.com/go-playground/validator/v10"
 )
 
 const (
 	CurrentEnvProd    = "prod"
 	CurrentEnvStaging = "staging"
+	CurrentEnvDev     = "dev"
 )
 
 //go:embed current-env
@@ -18,23 +29,77 @@ var CurrentEnv string
 func init() {
 	CurrentEnv = strings.TrimSpace(CurrentEnv)
 
-	if CurrentEnv != CurrentEnvProd && CurrentEnv != CurrentEnvStaging {
+	if CurrentEnv != CurrentEnvProd && CurrentEnv != CurrentEnvStaging && CurrentEnv != CurrentEnvDev {
 		panic("invalid environment")
 	}
 }
 
-// Common struct for values that differ between staging and production environments
+// Common struct for values that differ between staging and production
+// environments, plus an optional per-developer override for local dev use.
+//
+// Staging/Prod are not tagged validate:"required" here: whether they're
+// actually required depends on CurrentEnv, which a static tag can't express.
+// See ValidateDiffers, registered against every instantiation of this type
+// used in Config, for the real requirement.
 type Differs[T any] struct {
-	Staging T `yaml:"staging" comment:"Staging value" validate:"required"`
-	Prod    T `yaml:"prod" comment:"Production value" validate:"required"`
+	Staging T `yaml:"staging" comment:"Staging value"`
+	Prod    T `yaml:"prod" comment:"Production value"`
+
+	// Dev is only consulted when running with current-env set to "dev", and
+	// even then only if it has been set to something other than T's zero
+	// value — an unset Dev falls back to Staging, so config.yaml files that
+	// predate this field, or that simply don't need a dev override for a
+	// given key, keep working unchanged.
+	Dev T `yaml:"dev" required:"false" comment:"Development value, used when current-env is \"dev\"; falls back to staging when unset"`
+}
+
+// ValidateDiffers is a struct-level validator for Differs[T]. Register it
+// against every instantiation of Differs[T] actually used in Config (each
+// is a distinct type, so RegisterStructValidation needs one call listing
+// all of them — see state.Setup).
+//
+// In "dev", only Dev or Staging needs to be set, Parse falls back to
+// Staging when Dev is unset — requiring a real Staging/Prod value for
+// every key just to run locally would defeat the point of "dev". Every
+// other environment keeps the original requirement: both Staging and Prod
+// must be set, regardless of which one is actually read at runtime, so a
+// config that's valid for one environment is valid to deploy as any of
+// them.
+func ValidateDiffers(sl validator.StructLevel) {
+	current := sl.Current()
+
+	staging := current.FieldByName("Staging")
+	prod := current.FieldByName("Prod")
+	dev := current.FieldByName("Dev")
+
+	if CurrentEnv == CurrentEnvDev {
+		if staging.IsZero() && dev.IsZero() {
+			sl.ReportError(dev.Interface(), "Dev", "Dev", "required_without", "Staging")
+		}
+		return
+	}
+
+	if staging.IsZero() {
+		sl.ReportError(staging.Interface(), "Staging", "Staging", "required", "")
+	}
+
+	if prod.IsZero() {
+		sl.ReportError(prod.Interface(), "Prod", "Prod", "required", "")
+	}
 }
 
 func (d *Differs[T]) Parse() T {
-	if CurrentEnv == CurrentEnvProd {
+	switch CurrentEnv {
+	case CurrentEnvProd:
 		return d.Prod
-	} else if CurrentEnv == CurrentEnvStaging {
+	case CurrentEnvStaging:
 		return d.Staging
-	} else {
+	case CurrentEnvDev:
+		if !reflect.ValueOf(d.Dev).IsZero() {
+			return d.Dev
+		}
+		return d.Staging
+	default:
 		panic("invalid environment")
 	}
 }
@@ -56,10 +121,13 @@ type Config struct {
 }
 
 type DiscordAuth struct {
-	Token            string   `yaml:"token" comment:"Discord bot token" validate:"required"`
-	ClientID         string   `yaml:"client_id" default:"815553000470478850" comment:"Discord Client ID" validate:"required"`
-	ClientSecret     string   `yaml:"client_secret" comment:"Discord Client Secret" validate:"required"`
-	AllowedRedirects []string `yaml:"allowed_redirects" default:"http://localhost:3000/auth/sauron,http://localhost:8000/auth/sauron,https://reedwhisker.infinitybots.gg/auth/sauron,https://infinitybots.gg/auth/sauron,https://botlist.site/auth/sauron,https://infinitybots.xyz/auth/sauron" validate:"required"`
+	// Token is Popplio's own bot's Discord token. A dev override lets a
+	// local checkout run against a personal Discord application instead of
+	// the real staging/prod bot.
+	Token            Differs[string] `yaml:"token" comment:"Discord bot token" validate:"required"`
+	ClientID         string          `yaml:"client_id" default:"815553000470478850" comment:"Discord Client ID" validate:"required"`
+	ClientSecret     string          `yaml:"client_secret" comment:"Discord Client Secret" validate:"required"`
+	AllowedRedirects []string        `yaml:"allowed_redirects" default:"http://localhost:3000/auth/sauron,http://localhost:8000/auth/sauron,https://reedwhisker.infinitybots.gg/auth/sauron,https://infinitybots.gg/auth/sauron,https://botlist.site/auth/sauron,https://infinitybots.xyz/auth/sauron" validate:"required"`
 }
 
 type Sites struct {
@@ -67,7 +135,6 @@ type Sites struct {
 	API         Differs[string] `yaml:"api" default:"https://spider.infinitybots.gg" comment:"API URL" validate:"required"`
 	Panel       Differs[string] `yaml:"panel" default:"https://panel.infinitybots.gg" comment:"Panel URL" validate:"required"`
 	Infernoplex Differs[string] `yaml:"infernoplex" default:"https://infernoplex.infinitybots.gg" comment:"Infernoplex URL" validate:"required"`
-	CDN         string          `yaml:"cdn" default:"https://cdn.infinitybots.gg" comment:"CDN URL" validate:"required"`
 	Instatus    string          `yaml:"instatus" default:"https://infinity-bots.instatus.com" comment:"Instatus Status Page URL" validate:"required"`
 }
 
@@ -78,11 +145,14 @@ type Roles struct {
 	PremiumRoles  Differs[[]snowflake.ID] `yaml:"premium_roles" default:"759468236999491594" comment:"Premium Roles" validate:"required"`
 
 	// Arcadia (staff panel/bot) roles. Ported from Arcadia's config.roles.
-	BotDeveloper       snowflake.ID `yaml:"bot_developer" default:"758756147313246209" comment:"Bot Developer Role" validate:"required"`
-	CertifiedDeveloper snowflake.ID `yaml:"certified_developer" default:"759468303344992266" comment:"Certified Developer Role" validate:"required"`
-	BotRole            snowflake.ID `yaml:"bot_role" default:"758652296459976715" comment:"Role given to bots joining the main server" validate:"required"`
-	BugHunters         snowflake.ID `yaml:"bug_hunters" default:"1042546603795427398" comment:"Bug Hunters Role" validate:"required"`
-	TopReviewers       snowflake.ID `yaml:"top_reviewers" default:"1239696066350420038" comment:"Top Reviewers Role" validate:"required"`
+	// Not required in "dev" — these only matter once Arcadia's staff bot is
+	// actually pointed at a real staff Discord server, which a local
+	// checkout usually isn't. See requirednotdev in state.Setup.
+	BotDeveloper       snowflake.ID `yaml:"bot_developer" default:"758756147313246209" comment:"Bot Developer Role" validate:"requirednotdev"`
+	CertifiedDeveloper snowflake.ID `yaml:"certified_developer" default:"759468303344992266" comment:"Certified Developer Role" validate:"requirednotdev"`
+	BotRole            snowflake.ID `yaml:"bot_role" default:"758652296459976715" comment:"Role given to bots joining the main server" validate:"requirednotdev"`
+	BugHunters         snowflake.ID `yaml:"bug_hunters" default:"1042546603795427398" comment:"Bug Hunters Role" validate:"requirednotdev"`
+	TopReviewers       snowflake.ID `yaml:"top_reviewers" default:"1239696066350420038" comment:"Top Reviewers Role" validate:"requirednotdev"`
 }
 
 type Channels struct {
@@ -94,10 +164,11 @@ type Channels struct {
 	AuthLogs   snowflake.ID `yaml:"auth_logs" default:"1075091440117498007" comment:"Auth Logs Channel" validate:"required"`
 
 	// Arcadia (staff panel/bot) channels. Ported from Arcadia's config.channels.
-	TestingLounge snowflake.ID `yaml:"testing_lounge" default:"891611731699335209" comment:"Testing Lounge Channel, auto-unclaims are announced here" validate:"required"`
-	System        snowflake.ID `yaml:"system" default:"762958420277067786" comment:"System Channel" validate:"required"`
-	Uptime        snowflake.ID `yaml:"uptime" default:"1083108330442076292" comment:"Uptime Channel" validate:"required"`
-	StaffLogs     snowflake.ID `yaml:"staff_logs" default:"1186195848497999912" comment:"Staff Logs Channel" validate:"required"`
+	// Not required in "dev", see requirednotdev in state.Setup.
+	TestingLounge snowflake.ID `yaml:"testing_lounge" default:"891611731699335209" comment:"Testing Lounge Channel, auto-unclaims are announced here" validate:"requirednotdev"`
+	System        snowflake.ID `yaml:"system" default:"762958420277067786" comment:"System Channel" validate:"requirednotdev"`
+	Uptime        snowflake.ID `yaml:"uptime" default:"1083108330442076292" comment:"Uptime Channel" validate:"requirednotdev"`
+	StaffLogs     snowflake.ID `yaml:"staff_logs" default:"1186195848497999912" comment:"Staff Logs Channel" validate:"requirednotdev"`
 }
 
 type JAPI struct {
@@ -113,15 +184,15 @@ type Servers struct {
 	Main snowflake.ID `yaml:"main" default:"758641373074423808" comment:"Main Server ID" validate:"required"`
 
 	// Arcadia (staff panel/bot) servers. Ported from Arcadia's config.servers.
-	Staff   snowflake.ID `yaml:"staff" default:"870950609291972618" comment:"Staff Server ID" validate:"required"`
-	Testing snowflake.ID `yaml:"testing" default:"870952645811134475" comment:"Testing Server ID" validate:"required"`
+	// Not required in "dev", see requirednotdev in state.Setup.
+	Staff   snowflake.ID `yaml:"staff" default:"870950609291972618" comment:"Staff Server ID" validate:"requirednotdev"`
+	Testing snowflake.ID `yaml:"testing" default:"870952645811134475" comment:"Testing Server ID" validate:"requirednotdev"`
 }
 
 type Meta struct {
 	PostgresURL         string          `yaml:"postgres_url" default:"postgresql:///infinity" comment:"Postgres URL" validate:"required"`
 	RedisURL            Differs[string] `yaml:"redis_url" default:"redis://localhost:6379" comment:"Redis URL" validate:"required"`
 	Port                Differs[string] `yaml:"port" default:":8081" comment:"Port to run the server on" validate:"required"`
-	CDNPath             string          `yaml:"cdn_path" default:"/silverpelt/cdn/ibl" comment:"CDN Path" validate:"required"`
 	VulgarList          []string        `yaml:"vulgar_list" default:"fuck,suck,shit,kill" validate:"required"`
 	UrgentMentions      string          `yaml:"urgent_mentions" default:"<@&1061643797315993701>" comment:"Urgent mentions" validate:"required"`
 	PaypalClientID      Differs[string] `yaml:"paypal_client_id" default:"" comment:"Paypal Client ID" validate:"required"`
@@ -139,7 +210,6 @@ type Meta struct {
 // are read from the existing Popplio config instead:
 //
 //	arcadia database_url    -> meta.postgres_url
-//	arcadia token           -> discord_auth.token
 //	arcadia frontend_url    -> sites.frontend
 //	arcadia infernoplex_url -> sites.infernoplex
 //	arcadia popplio_url     -> sites.api
@@ -150,27 +220,25 @@ type Meta struct {
 //	arcadia roles.*         -> roles.*
 //	arcadia channels.*      -> channels.*
 type Arcadia struct {
-	ServerPort      Differs[int]    `yaml:"server_port" default:"3010" comment:"Port the staff panel API listens on (staging 3011 / prod 3010)" validate:"required"`
-	Prefix          Differs[string] `yaml:"prefix" default:"ibs!" comment:"Staff bot prefix (staging ibb! / prod ibs!)" validate:"required"`
-	HTMLSanitizeURL string          `yaml:"htmlsanitize_url" default:"https://hs.infinitybots.gg/" comment:"HTML Sanitizer URL" validate:"required"`
-	BorealisURL     string          `yaml:"borealis_url" default:"http://localhost:2837" comment:"Borealis URL, used to add approved bots to a cache server" validate:"required"`
-	Owners          []snowflake.ID  `yaml:"owners" default:"510065483693817867" comment:"Bot owners, these users always hold the 'owner' staff position" validate:"required"`
-	ProtectedBots   []snowflake.ID  `yaml:"protected_bots" default:"1019662370278228028" comment:"Bots that cannot be force-removed with kick enabled" validate:"required"`
-	AssetCleanerDry bool            `yaml:"asset_cleaner_dry_run" default:"false" comment:"Log what the asset_cleaner task would delete without deleting it"`
-	Panel           Panel           `yaml:"panel" validate:"required"`
+	// Token is the staff bot's own Discord token. Arcadia runs its own gateway
+	// connection under its own bot identity, separate from Popplio's.
+	Token      Differs[string] `yaml:"token" comment:"Staff bot Discord token. This is a SEPARATE Discord application from Popplio's" validate:"required"`
+	ServerPort Differs[int]    `yaml:"server_port" default:"3010" comment:"Port the staff panel API listens on (staging 3011 / prod 3010)" validate:"required"`
+
+	// PrefixCommands enables the legacy message commands. Slash commands are the
+	// primary interface; leaving this off means the staff bot does not need the
+	// privileged Message Content intent.
+	PrefixCommands bool            `yaml:"prefix_commands" default:"false" comment:"Enable legacy prefix commands. Requires the privileged Message Content intent to be granted"`
+	Prefix         Differs[string] `yaml:"prefix" default:"ibs!" comment:"Staff bot prefix, only used when prefix_commands is on (staging ibb! / prod ibs!)" validate:"required"`
+	Owners         []snowflake.ID  `yaml:"owners" default:"510065483693817867" comment:"Bot owners, these users always hold the 'owner' staff position" validate:"required"`
+	ProtectedBots  []snowflake.ID  `yaml:"protected_bots" default:"1019662370278228028" comment:"Bots that cannot be force-removed with kick enabled" validate:"required"`
+	Panel          Panel           `yaml:"panel" validate:"required"`
 }
 
 type Panel struct {
-	ClientID           string                           `yaml:"client_id" comment:"Discord client ID of the panel login app" validate:"required"`
-	ClientSecret       string                           `yaml:"client_secret" comment:"Discord client secret of the panel login app" validate:"required"`
-	RedirectURL        []string                         `yaml:"redirect_url" comment:"Allow-list of panel login redirect URLs" validate:"required"`
-	CdnScopes          Differs[map[string]CdnScopeData] `yaml:"cdn_scopes" comment:"CDN scopes, keyed by scope name" validate:"required"`
-	MainScope          string                           `yaml:"main_scope" default:"ibl@main" comment:"The main CDN scope" validate:"required"`
-	PanelScope         string                           `yaml:"panel_scope" comment:"Static handshake value the frontend sends" validate:"required"`
-	PanelResponseScope string                           `yaml:"panel_response_scope" comment:"Static handshake value the frontend expects back" validate:"required"`
-}
-
-type CdnScopeData struct {
-	Path       string `yaml:"path" json:"path" comment:"Path on local disk"`
-	ExposedURL string `yaml:"exposed_url" json:"exposed_url" comment:"Publicly exposed URL for this scope"`
+	ClientID           string   `yaml:"client_id" comment:"Discord client ID of the panel login app" validate:"required"`
+	ClientSecret       string   `yaml:"client_secret" comment:"Discord client secret of the panel login app" validate:"required"`
+	RedirectURL        []string `yaml:"redirect_url" comment:"Allow-list of panel login redirect URLs" validate:"required"`
+	PanelScope         string   `yaml:"panel_scope" comment:"Static handshake value the frontend sends" validate:"required"`
+	PanelResponseScope string   `yaml:"panel_response_scope" comment:"Static handshake value the frontend expects back" validate:"required"`
 }

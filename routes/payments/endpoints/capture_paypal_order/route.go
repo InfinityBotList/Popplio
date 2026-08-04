@@ -1,7 +1,13 @@
+// Package capture_paypal_order implements GET
+// /payments/paypal/capture/{ref_id} — "Capture Paypal Order".
+//
+// Captures a paypal order, giving any needed perks. This is an internal
+// endpoint.
 package capture_paypal_order
 
 import (
 	"net/http"
+	"popplio/api/resp"
 	"popplio/routes/payments/assets"
 	"popplio/state"
 	"popplio/types"
@@ -33,35 +39,20 @@ func Docs() *docs.Doc {
 
 func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	if state.Paypal == nil {
-		return uapi.HttpResponse{
-			Status: http.StatusServiceUnavailable,
-			Json: types.ApiError{
-				Message: "Paypal is currently not available as a payment option. Please contact support!",
-			},
-		}
+		return resp.Status(http.StatusServiceUnavailable, "Paypal is currently not available as a payment option. Please contact support!")
 	}
 
 	refId := chi.URLParam(r, "ref_id")
 
 	if refId == "" {
-		return uapi.HttpResponse{
-			Status: http.StatusBadRequest,
-			Json: types.ApiError{
-				Message: "Missing ref_id",
-			},
-		}
+		return resp.BadRequest("Missing ref_id")
 	}
 
 	// Get order ID from redis
 	orderIdRedis := state.Redis.Get(d.Context, "paypal:"+refId)
 
 	if orderIdRedis.Err() != nil {
-		return uapi.HttpResponse{
-			Status: http.StatusBadRequest,
-			Json: types.ApiError{
-				Message: "Invalid ref_id. Please contact support if you believe this is an error.",
-			},
-		}
+		return resp.BadRequest("Invalid ref_id. Please contact support if you believe this is an error.")
 	}
 
 	orderId := orderIdRedis.Val()
@@ -69,22 +60,11 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	captured, err := state.Paypal.CaptureOrder(d.Context, orderId, paypal.CaptureOrderRequest{})
 
 	if err != nil {
-		state.Logger.Error("Failed to capture paypal order", zap.Error(err), zap.String("order_id", orderId))
-		return uapi.HttpResponse{
-			Status: http.StatusInternalServerError,
-			Json: types.ApiError{
-				Message: "Failed to capture paypal order.",
-			},
-		}
+		return resp.ErrDetail("Failed to capture paypal order", err, zap.String("order_id", orderId))
 	}
 
 	if captured.Status == "VOIDED" {
-		return uapi.HttpResponse{
-			Status: http.StatusBadRequest,
-			Json: types.ApiError{
-				Message: "Order is voided. Please contact support if you believe this is an error.",
-			},
-		}
+		return resp.BadRequest("Order is voided. Please contact support if you believe this is an error.")
 	}
 
 	if len(captured.PurchaseUnits) == 0 {
@@ -92,21 +72,10 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		_, err = state.Paypal.RefundCapture(d.Context, orderId, paypal.RefundCaptureRequest{})
 
 		if err != nil {
-			state.Logger.Error("Failed to refund order [len(captured.PurchaseUnits) == 0]", zap.Error(err), zap.String("order_id", orderId))
-			return uapi.HttpResponse{
-				Status: http.StatusInternalServerError,
-				Json: types.ApiError{
-					Message: "Failed to refund order.",
-				},
-			}
+			return resp.ErrBody("Failed to refund order [len(captured.PurchaseUnits) == 0]", "Failed to refund order.", err, zap.String("order_id", orderId))
 		}
 
-		return uapi.HttpResponse{
-			Status: http.StatusBadRequest,
-			Json: types.ApiError{
-				Message: "No purchase units found. Please contact support if you believe this is an error.",
-			},
-		}
+		return resp.BadRequest("No purchase units found. Please contact support if you believe this is an error.")
 	}
 
 	if len(captured.PurchaseUnits[0].Items) == 0 {
@@ -114,21 +83,10 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		_, err = state.Paypal.RefundCapture(d.Context, orderId, paypal.RefundCaptureRequest{})
 
 		if err != nil {
-			state.Logger.Error("Failed to refund order [captured.PurchaseUnits[0].Items == 0]", zap.Error(err), zap.String("order_id", orderId))
-			return uapi.HttpResponse{
-				Status: http.StatusInternalServerError,
-				Json: types.ApiError{
-					Message: "Failed to refund order.",
-				},
-			}
+			return resp.ErrBody("Failed to refund order [captured.PurchaseUnits[0].Items == 0]", "Failed to refund order.", err, zap.String("order_id", orderId))
 		}
 
-		return uapi.HttpResponse{
-			Status: http.StatusBadRequest,
-			Json: types.ApiError{
-				Message: "No purchase items found. Please contact support if you believe this is an error.",
-			},
-		}
+		return resp.BadRequest("No purchase items found. Please contact support if you believe this is an error.")
 	}
 
 	var productJson = captured.PurchaseUnits[0].Items[0].SKU
@@ -142,17 +100,10 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		_, err = state.Paypal.RefundCapture(d.Context, orderId, paypal.RefundCaptureRequest{})
 
 		if err != nil {
-			state.Logger.Error("Failed to refund order [jsonimpl.Unmarshal]", zap.Error(err), zap.String("order_id", orderId))
-			return uapi.HttpResponse{
-				Status: http.StatusInternalServerError,
-				Json: types.ApiError{
-					Message: "Failed to refund order.",
-				},
-			}
+			return resp.ErrBody("Failed to refund order [jsonimpl.Unmarshal]", "Failed to refund order.", err, zap.String("order_id", orderId))
 		}
 
-		state.Logger.Error("Failed to unmarshal product json", zap.Error(err), zap.String("json", productJson))
-		return uapi.DefaultResponse(http.StatusInternalServerError)
+		return resp.Err("Failed to unmarshal product json", err, zap.String("json", productJson))
 	}
 
 	err = assets.GivePerks(d.Context, product)
@@ -162,22 +113,11 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		_, err = state.Paypal.RefundCapture(d.Context, orderId, paypal.RefundCaptureRequest{})
 
 		if err != nil {
-			state.Logger.Error("Failed to refund order [GivePerks: err != nil]", zap.Error(err), zap.String("order_id", orderId))
-			return uapi.HttpResponse{
-				Status: http.StatusInternalServerError,
-				Json: types.ApiError{
-					Message: "Failed to refund order.",
-				},
-			}
+			return resp.ErrBody("Failed to refund order [GivePerks: err != nil]", "Failed to refund order.", err, zap.String("order_id", orderId))
 		}
 
 		state.Logger.Error("Failed to give perks", zap.Error(err), zap.String("json", productJson))
-		return uapi.HttpResponse{
-			Status: http.StatusBadRequest,
-			Json: types.ApiError{
-				Message: "Failed to give perks.",
-			},
-		}
+		return resp.BadRequest("Failed to give perks.")
 	}
 
 	state.Redis.Del(d.Context, "paypal:"+refId)

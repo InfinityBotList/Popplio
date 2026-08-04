@@ -152,7 +152,7 @@ func TestAuthValidators(t *testing.T) {
 	})
 
 	t.Run("pending session fails CheckAuth but passes insecure", func(t *testing.T) {
-		f := seedStaff(t, []string{"rpc.Claim"}, "pending")
+		f := seedStaff(t, []string{"review_bots"}, "pending")
 
 		data, err := impls.CheckAuthInsecure(ctx, f.Token)
 
@@ -170,7 +170,7 @@ func TestAuthValidators(t *testing.T) {
 	})
 
 	t.Run("active session passes both", func(t *testing.T) {
-		f := seedStaff(t, []string{"rpc.Claim"}, "active")
+		f := seedStaff(t, []string{"review_bots"}, "active")
 
 		if _, err := impls.CheckAuth(ctx, f.Token); err != nil {
 			t.Errorf("CheckAuth: %v", err)
@@ -299,43 +299,29 @@ func TestPermissionGates(t *testing.T) {
 	}{
 		{
 			name:       "GetRpcLogEntries",
-			perm:       "rpc_logs.view",
+			perm:       "view_audit_logs",
 			body:       func(tok string) string { return fmt.Sprintf(`{"GetRpcLogEntries":{"login_token":%q}}`, tok) },
-			wantDenied: "You do not have permission to view rpc logs [rpc_logs.view]",
-		},
-		{
-			name:       "ListCdnScopes",
-			perm:       "cdn.list_scopes",
-			body:       func(tok string) string { return fmt.Sprintf(`{"ListCdnScopes":{"login_token":%q}}`, tok) },
-			wantDenied: "You do not have permission to list the CDN's scopes right now [cdn.list_scopes]",
-		},
-		{
-			name: "UploadCdnFileChunk",
-			perm: "cdn.upload_chunk",
-			body: func(tok string) string {
-				return fmt.Sprintf(`{"UploadCdnFileChunk":{"login_token":%q,"chunk":[104,105]}}`, tok)
-			},
-			wantDenied: "You do not have permission to upload chunks to the CDN right now [cdn.upload_chunk]",
+			wantDenied: "You do not have permission to view rpc logs [view_audit_logs]",
 		},
 		{
 			name: "UpdateShopCoupons/List",
-			perm: "shop_coupons.list",
+			perm: "view_shop",
 			body: func(tok string) string {
 				return fmt.Sprintf(`{"UpdateShopCoupons":{"login_token":%q,"action":"List"}}`, tok)
 			},
-			wantDenied: "You do not have permission to list shop coupons [shop_coupons.list]",
+			wantDenied: "You do not have permission to list shop coupons [view_shop]",
 		},
 		{
 			name: "UpdateVoteCreditTiers/DeleteTier",
-			perm: "vote_credit_tiers.delete",
+			perm: "manage_shop",
 			body: func(tok string) string {
 				return fmt.Sprintf(`{"UpdateVoteCreditTiers":{"login_token":%q,"action":{"DeleteTier":{"id":"nope"}}}}`, tok)
 			},
-			wantDenied: "You do not have permission to delete vote credit tiers [vote_credit_tiers.delete]",
+			wantDenied: "You do not have permission to delete vote credit tiers [manage_shop]",
 		},
 		{
 			name: "UpdateBotWhitelist/Delete",
-			perm: "bot_whitelist.delete",
+			perm: "manage_bot_whitelist",
 			body: func(tok string) string {
 				return fmt.Sprintf(`{"UpdateBotWhitelist":{"login_token":%q,"action":{"Delete":{"bot_id":"nope"}}}}`, tok)
 			},
@@ -343,17 +329,17 @@ func TestPermissionGates(t *testing.T) {
 		},
 		{
 			name: "UpdateBlog/DeleteEntry",
-			perm: "blog.delete_entry",
+			perm: "manage_blog",
 			body: func(tok string) string {
 				return fmt.Sprintf(`{"UpdateBlog":{"login_token":%q,"action":{"DeleteEntry":{"itag":"00000000-0000-0000-0000-000000000000"}}}}`, tok)
 			},
-			wantDenied: "You do not have permission to delete blog entries [blog.delete_entry]",
+			wantDenied: "You do not have permission to delete blog entries [manage_blog]",
 		},
 	}
 
 	for _, tt := range cases {
 		t.Run(tt.name+"/denied", func(t *testing.T) {
-			f := seedStaff(t, []string{"some.unrelated"}, "active")
+			f := seedStaff(t, []string{"view_apps"}, "active")
 
 			rec := post(t, tt.body(f.Token))
 
@@ -379,12 +365,25 @@ func TestPermissionGates(t *testing.T) {
 	}
 }
 
-// The vote credit tier position dedup loop is load-bearing for ordering, so it
-// gets an end-to-end test through the handler.
+// The vote credit tier position dedup loop is load-bearing for ordering.
+//
+// vote_credit_tiers.position carries a UNIQUE constraint that is DEFERRABLE
+// INITIALLY DEFERRED, which is what lets the loop insert onto an occupied
+// position and tidy up before COMMIT.
+//
+// The loop handles ONE existing occupant correctly and is broken for two or
+// more. See CONFORMANCE.md a/16 - this test pins both halves so the fix is a
+// deliberate, visible change.
 func TestVoteCreditTierDedupLoop(t *testing.T) {
-	f := seedStaff(t, []string{"vote_credit_tiers.create", "vote_credit_tiers.delete"}, "active")
+	f := seedStaff(t, []string{"manage_shop"}, "active")
 
 	ctx := context.Background()
+
+	create := func(id string) *httptest.ResponseRecorder {
+		return post(t, fmt.Sprintf(
+			`{"UpdateVoteCreditTiers":{"login_token":%q,"action":{"CreateTier":{"id":%q,"target_type":"bot","position":1,"cents":0.5,"votes":100}}}}`,
+			f.Token, id))
+	}
 
 	ids := []string{"tier_a_" + impls.GenRandom(6), "tier_b_" + impls.GenRandom(6), "tier_c_" + impls.GenRandom(6)}
 
@@ -394,21 +393,40 @@ func TestVoteCreditTierDedupLoop(t *testing.T) {
 		}
 	})
 
-	// Three tiers all created at position 1: each new one should push the
-	// existing occupant down rather than colliding.
-	for _, id := range ids {
-		body := fmt.Sprintf(
-			`{"UpdateVoteCreditTiers":{"login_token":%q,"action":{"CreateTier":{"id":%q,"target_type":"bot","position":1,"cents":0.5,"votes":100}}}}`,
-			f.Token, id)
-
-		rec := post(t, body)
-
-		if rec.Code != http.StatusNoContent {
+	// One existing occupant: the loop shifts it down and both end up unique.
+	for _, id := range ids[:2] {
+		if rec := create(id); rec.Code != http.StatusNoContent {
 			t.Fatalf("create %s: status = %d, body = %s", id, rec.Code, rec.Body.String())
 		}
 	}
 
-	rows, err := state.Pool.Query(ctx, "SELECT position FROM vote_credit_tiers WHERE id = ANY($1) ORDER BY position", ids)
+	positions := tierPositions(t, ids[:2])
+
+	if positions[ids[0]] != 2 || positions[ids[1]] != 1 {
+		t.Errorf("after two creates positions = %v, want the first tier pushed to 2 and the second at 1", positions)
+	}
+
+	// Two existing occupants: the loop moves the row at position 1 to position 2,
+	// which is already taken, and then resumes checking at position 3 - never
+	// re-examining the collision it just created. The deferred constraint fires
+	// at COMMIT and the panel gets a raw Postgres error.
+	rec := create(ids[2])
+
+	if rec.Code != http.StatusInternalServerError {
+		t.Errorf("third create: status = %d, want 500 (reproduced upstream bug); body = %s", rec.Code, rec.Body.String())
+	}
+
+	if !strings.Contains(rec.Body.String(), "duplicate key value violates unique constraint") {
+		t.Errorf("third create body = %q, want the deferred unique violation", rec.Body.String())
+	}
+}
+
+// tierPositions reads back the positions of the given tiers.
+func tierPositions(t *testing.T, ids []string) map[string]int32 {
+	t.Helper()
+
+	rows, err := state.Pool.Query(context.Background(),
+		"SELECT id, position FROM vote_credit_tiers WHERE id = ANY($1)", ids)
 
 	if err != nil {
 		t.Fatalf("query positions: %v", err)
@@ -416,39 +434,29 @@ func TestVoteCreditTierDedupLoop(t *testing.T) {
 
 	defer rows.Close()
 
-	var positions []int32
+	out := map[string]int32{}
 
 	for rows.Next() {
-		var p int32
+		var (
+			id  string
+			pos int32
+		)
 
-		if err := rows.Scan(&p); err != nil {
+		if err := rows.Scan(&id, &pos); err != nil {
 			t.Fatalf("scan: %v", err)
 		}
 
-		positions = append(positions, p)
+		out[id] = pos
 	}
 
-	if len(positions) != 3 {
-		t.Fatalf("got %d tiers, want 3", len(positions))
-	}
-
-	// Every position must be distinct: that is the whole point of the loop.
-	seen := map[int32]bool{}
-
-	for _, p := range positions {
-		if seen[p] {
-			t.Errorf("duplicate position %d after dedup: %v", p, positions)
-		}
-
-		seen[p] = true
-	}
+	return out
 }
 
 // The shop coupon validations reject a null max_uses, which is the reproduced
 // upstream bug that makes "unlimited uses" unreachable (CONFORMANCE.md a/2).
 // This test pins the buggy behaviour so the fix is a deliberate, visible change.
 func TestShopCouponNullValidationIsReproduced(t *testing.T) {
-	f := seedStaff(t, []string{"shop_coupons.create"}, "active")
+	f := seedStaff(t, []string{"manage_shop"}, "active")
 
 	body := fmt.Sprintf(`{"UpdateShopCoupons":{"login_token":%q,"action":{"Create":{"id":"x","code":"c","public":true,"max_uses":null,"reuse_wait_duration":1,"expiry":1,"applicable_items":[],"cents":null,"requirements":[],"allowed_users":[],"usable":true,"target_types":[]}}}}`, f.Token)
 
@@ -543,27 +551,5 @@ func TestChangelogStubIgnoresAuth(t *testing.T) {
 
 	if got := rec.Body.String(); got != "You do not have permission to create changelog entries [not implemented]" {
 		t.Errorf("body = %q", got)
-	}
-}
-
-// A CDN chunk uploaded through the wire must survive as the exact bytes, which
-// is what the number-array codec is for.
-func TestChunkUploadRoundTrip(t *testing.T) {
-	f := seedStaff(t, []string{"cdn.upload_chunk"}, "active")
-
-	rec := post(t, fmt.Sprintf(`{"UploadCdnFileChunk":{"login_token":%q,"chunk":[104,101,108,108,111]}}`, f.Token))
-
-	if rec.Code != http.StatusOK {
-		t.Fatalf("status = %d, body = %s", rec.Code, rec.Body.String())
-	}
-
-	chunkID := rec.Body.String()
-
-	if len(chunkID) != 32 {
-		t.Errorf("chunk id length = %d, want 32", len(chunkID))
-	}
-
-	if got := rec.Header().Get("Content-Type"); got != "text/plain; charset=utf-8" {
-		t.Errorf("Content-Type = %q, want text/plain", got)
 	}
 }

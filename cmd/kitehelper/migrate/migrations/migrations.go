@@ -1,3 +1,9 @@
+// Package migrations contains Popplio's schema migrations.
+//
+// Each migration registers itself with an id, a description and a function
+// that performs the change. Order is significant and existing migrations are
+// never edited once applied — a correction is a new migration, since
+// deployed databases have already run the old one.
 package migrations
 
 import (

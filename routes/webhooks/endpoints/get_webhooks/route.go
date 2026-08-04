@@ -1,8 +1,14 @@
+// Package get_webhooks implements GET /{target_type}/{target_id}/webhooks —
+// "Get Webhooks".
+//
+// Gets a list of webhooks of a specific entity (excluding the secret due to
+// security concerns).
 package get_webhooks
 
 import (
 	"errors"
 	"net/http"
+	"popplio/api/resp"
 	"popplio/db"
 	"popplio/state"
 	"popplio/types"
@@ -52,8 +58,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	rows, err := state.Pool.Query(d.Context, "SELECT "+webhookCols+" FROM webhooks WHERE target_id = $1 AND target_type = $2", targetId, targetType)
 
 	if err != nil {
-		state.Logger.Error("Error while querying webhooks [db fetch]", zap.Error(err), zap.String("userID", d.Auth.ID))
-		return uapi.DefaultResponse(http.StatusInternalServerError)
+		return resp.Err("Error while querying webhooks [db fetch]", err, zap.String("userID", d.Auth.ID))
 	}
 
 	webhook, err := pgx.CollectRows(rows, pgx.RowToStructByName[types.Webhook])
@@ -65,8 +70,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	}
 
 	if err != nil {
-		state.Logger.Error("Error while querying webhooks [collect]", zap.Error(err), zap.String("userID", d.Auth.ID))
-		return uapi.DefaultResponse(http.StatusInternalServerError)
+		return resp.Err("Error while querying webhooks [collect]", err, zap.String("userID", d.Auth.ID))
 	}
 
 	return uapi.HttpResponse{

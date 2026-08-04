@@ -1,3 +1,7 @@
+// Package platform mounts the "Platform-Specific" group of API routes.
+//
+// These API endpoints are related to platform specific endpoints such as
+// fetching discord users etc
 package platform
 
 import (

@@ -1,3 +1,10 @@
+// Package validatetable checks that database tables match the Go types that
+// scan them.
+//
+// Popplio builds its queries from the `db` struct tags in popplio/types, so
+// a column that is renamed or dropped without the corresponding struct
+// change fails at runtime on the affected endpoint. This turns that into a
+// check that can be run ahead of deploying.
 package validatetable
 
 import (

@@ -1,8 +1,13 @@
+// Package create_app implements POST /users/{user_id}/apps — "Create App For
+// Position".
+//
+// Creates an application for a position. Returns a 204 on success.
 package create_app
 
 import (
 	"errors"
 	"net/http"
+	"popplio/api/resp"
 	"popplio/apps"
 	"popplio/state"
 	"popplio/types"
@@ -66,56 +71,30 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	position := apps.FindPosition(payload.Position)
 
 	if position == nil {
-		return uapi.HttpResponse{
-			Json: types.ApiError{
-				Message: "Invalid position",
-			},
-			Status: http.StatusBadRequest,
-		}
+		return resp.BadRequest("Invalid position")
 	}
 
 	if d.Auth.Banned && !position.AllowedForBanned {
-		return uapi.HttpResponse{
-			Json: types.ApiError{
-				Message: "Banned users are not allowed to apply for this position",
-			},
-			Status: http.StatusBadRequest,
-		}
+		return resp.BadRequest("Banned users are not allowed to apply for this position")
 	}
 
 	if !d.Auth.Banned && position.BannedOnly {
-		return uapi.HttpResponse{
-			Json: types.ApiError{
-				Message: "You are not banned? Why are you appealing?",
-			},
-			Status: http.StatusBadRequest,
-		}
+		return resp.BadRequest("You are not banned? Why are you appealing?")
 	}
 
 	if position.Closed {
-		return uapi.HttpResponse{
-			Json: types.ApiError{
-				Message: "This position is currently closed. Please check back later.",
-			},
-			Status: http.StatusBadRequest,
-		}
+		return resp.BadRequest("This position is currently closed. Please check back later.")
 	}
 
 	var appBanned bool
 	err = state.Pool.QueryRow(d.Context, "SELECT app_banned FROM users WHERE user_id = $1", d.Auth.ID).Scan(&appBanned)
 
 	if err != nil {
-		state.Logger.Error("Error gettingstate.Pop banned state", zap.Error(err), zap.String("user_id", d.Auth.ID))
-		return uapi.DefaultResponse(http.StatusInternalServerError)
+		return resp.Err("Error gettingstate.Pop banned state", err, zap.String("user_id", d.Auth.ID))
 	}
 
 	if appBanned {
-		return uapi.HttpResponse{
-			Json: types.ApiError{
-				Message: "You are currently banned from making applications on the site",
-			},
-			Status: http.StatusForbidden,
-		}
+		return resp.Forbidden("You are currently banned from making applications on the site")
 	}
 
 	var userApps int64
@@ -123,17 +102,11 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	err = state.Pool.QueryRow(d.Context, "SELECT COUNT(*) FROM apps WHERE user_id = $1 AND position = $2 AND state = 'pending'", d.Auth.ID, payload.Position).Scan(&userApps)
 
 	if err != nil {
-		state.Logger.Error("Error getting user apps", zap.Error(err), zap.String("user_id", d.Auth.ID), zap.String("position", payload.Position))
-		return uapi.DefaultResponse(http.StatusInternalServerError)
+		return resp.Err("Error getting user apps", err, zap.String("user_id", d.Auth.ID), zap.String("position", payload.Position))
 	}
 
 	if userApps > 0 {
-		return uapi.HttpResponse{
-			Json: types.ApiError{
-				Message: "You already have a pending application for this position",
-			},
-			Status: http.StatusBadRequest,
-		}
+		return resp.BadRequest("You already have a pending application for this position")
 	}
 
 	if position.Cooldown > 0 {
@@ -176,49 +149,24 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		ans, ok := payload.Answers[question.ID]
 
 		if !ok {
-			return uapi.HttpResponse{
-				Json: types.ApiError{
-					Message: "Missing answer for question " + question.ID,
-				},
-				Status: http.StatusBadRequest,
-			}
+			return resp.BadRequest("Missing answer for question " + question.ID)
 		}
 
 		if ans == "" {
-			return uapi.HttpResponse{
-				Json: types.ApiError{
-					Message: "Answer for question " + question.ID + " cannot be empty",
-				},
-				Status: http.StatusBadRequest,
-			}
+			return resp.BadRequest("Answer for question " + question.ID + " cannot be empty")
 		}
 
 		if question.Short {
 			if len(ans) > 4096 {
-				return uapi.HttpResponse{
-					Json: types.ApiError{
-						Message: "Answer for question " + question.ID + " is too long",
-					},
-					Status: http.StatusBadRequest,
-				}
+				return resp.BadRequest("Answer for question " + question.ID + " is too long")
 			}
 		} else {
 			if len(ans) < 50 {
-				return uapi.HttpResponse{
-					Json: types.ApiError{
-						Message: "Answer for question " + question.ID + " is too short",
-					},
-					Status: http.StatusBadRequest,
-				}
+				return resp.BadRequest("Answer for question " + question.ID + " is too short")
 			}
 
 			if len(ans) > 10000 {
-				return uapi.HttpResponse{
-					Json: types.ApiError{
-						Message: "Answer for question " + question.ID + " is too long",
-					},
-					Status: http.StatusBadRequest,
-				}
+				return resp.BadRequest("Answer for question " + question.ID + " is too long")
 			}
 		}
 
@@ -231,12 +179,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 
 		if err != nil {
 			state.Logger.Error("Error running extra logic", zap.Error(err), zap.String("user_id", d.Auth.ID), zap.String("position", payload.Position))
-			return uapi.HttpResponse{
-				Json: types.ApiError{
-					Message: "Error: " + err.Error(),
-				},
-				Status: http.StatusBadRequest,
-			}
+			return resp.BadRequest("Error: " + err.Error())
 		}
 
 		if errors.Is(err, apps.ErrNoPersist) {
@@ -259,8 +202,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		)
 
 		if err != nil {
-			state.Logger.Error("Error inserting app", zap.Error(err), zap.String("user_id", d.Auth.ID), zap.String("position", payload.Position))
-			return uapi.DefaultResponse(http.StatusInternalServerError)
+			return resp.Err("Error inserting app", err, zap.String("user_id", d.Auth.ID), zap.String("position", payload.Position))
 		}
 	} else {
 		appId = "Not Applicable (not persisted to database)"
@@ -308,8 +250,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	})
 
 	if err != nil {
-		state.Logger.Error("Error sending embed to apps channel", zap.Error(err), zap.String("user_id", d.Auth.ID), zap.String("position", payload.Position))
-		return uapi.DefaultResponse(http.StatusInternalServerError)
+		return resp.Err("Error sending embed to apps channel", err, zap.String("user_id", d.Auth.ID), zap.String("position", payload.Position))
 	}
 
 	return uapi.DefaultResponse(http.StatusNoContent)

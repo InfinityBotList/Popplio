@@ -1,7 +1,12 @@
+// Package get_shop_item_benefits implements GET /shop/item-benefits — "Get
+// Shop Items".
+//
+// Gets the publicly viewable shop items on the list
 package get_shop_item_benefits
 
 import (
 	"net/http"
+	"popplio/api/resp"
 	"popplio/db"
 	"popplio/state"
 	"popplio/types"
@@ -10,7 +15,6 @@ import (
 	docs "github.com/infinitybotlist/eureka/doclib"
 	"github.com/infinitybotlist/eureka/uapi"
 	"github.com/jackc/pgx/v5"
-	"go.uber.org/zap"
 )
 
 var (
@@ -31,8 +35,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	rows, err := state.Pool.Query(d.Context, "SELECT "+shopItemBenefitsCols+" FROM shop_item_benefits ORDER BY created_at DESC")
 
 	if err != nil {
-		state.Logger.Error("Failed to fetch shop item benefits list [db fetch]", zap.Error(err))
-		return uapi.DefaultResponse(http.StatusInternalServerError)
+		return resp.Err("Failed to fetch shop item benefits list [db fetch]", err)
 	}
 
 	defer rows.Close()
@@ -40,8 +43,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	items, err := pgx.CollectRows(rows, pgx.RowToStructByName[types.ShopItemBenefit])
 
 	if err != nil {
-		state.Logger.Error("Failed to fetch shop item benefits list [db fetch]", zap.Error(err))
-		return uapi.DefaultResponse(http.StatusInternalServerError)
+		return resp.Err("Failed to fetch shop item benefits list [db fetch]", err)
 	}
 
 	return uapi.HttpResponse{

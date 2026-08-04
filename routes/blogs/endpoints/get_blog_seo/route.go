@@ -1,3 +1,7 @@
+// Package get_blog_seo implements GET /blogs/{slug}/seo — "Get Blog Post".
+//
+// Gets the minimal SEO information about a blogpost for embed/search
+// purposes. Used by v4 website for meta tags
 package get_blog_seo
 
 import (

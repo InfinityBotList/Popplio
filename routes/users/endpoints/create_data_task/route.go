@@ -1,7 +1,13 @@
+// Package create_data_task implements POST /users/{id}/data — "Create Data
+// Task".
+//
+// Creates a data task for a user (delete or request). Returns the task id if
+// this is successful.
 package create_data_task
 
 import (
 	"net/http"
+	"popplio/api/resp"
 	"popplio/routes/users/endpoints/create_data_task/assets"
 	"popplio/state"
 	"popplio/types"
@@ -47,10 +53,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	reqType := r.URL.Query().Get("delete")
 
 	if reqType != "true" && reqType != "false" {
-		return uapi.HttpResponse{
-			Status: http.StatusBadRequest,
-			Json:   types.ApiError{Message: "delete must be ether 'true' or 'false'"},
-		}
+		return resp.BadRequest("delete must be ether 'true' or 'false'")
 	}
 
 	limit, err := ratelimit.Ratelimit{
@@ -60,18 +63,11 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	}.Limit(d.Context, r)
 
 	if err != nil {
-		state.Logger.Error("Error while ratelimiting", zap.Error(err), zap.String("bucket", "data_request"))
-		return uapi.DefaultResponse(http.StatusInternalServerError)
+		return resp.Err("Error while ratelimiting", err, zap.String("bucket", "data_request"))
 	}
 
 	if limit.Exceeded {
-		return uapi.HttpResponse{
-			Json: types.ApiError{
-				Message: "You are being ratelimited. Please try again in " + limit.TimeToReset.String(),
-			},
-			Headers: limit.Headers(),
-			Status:  http.StatusTooManyRequests,
-		}
+		return resp.RateLimited(limit)
 	}
 
 	taskName := "data_request"
@@ -101,12 +97,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	).Scan(&taskId)
 
 	if err != nil {
-		return uapi.HttpResponse{
-			Status: http.StatusInternalServerError,
-			Json: types.ApiError{
-				Message: "Error creating task.",
-			},
-		}
+		return resp.ErrBody("Error creating task", "Error creating task.", err)
 	}
 
 	go assets.DataTask(taskId, taskName, d.Auth.ID, remoteIp[0])

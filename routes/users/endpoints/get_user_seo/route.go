@@ -1,7 +1,11 @@
+// Package get_user_seo implements GET /users/{id}/seo — "Get User SEO Info".
+//
+// Gets a users SEO data by id
 package get_user_seo
 
 import (
 	"net/http"
+	"popplio/api/resp"
 
 	"popplio/state"
 	"popplio/types"
@@ -46,8 +50,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	user, err := dovewing.GetUser(d.Context, userId, state.DovewingPlatformDiscord)
 
 	if err != nil {
-		state.Logger.Error("Failed to get user seo", zap.Error(err), zap.String("user_id", name))
-		return uapi.DefaultResponse(http.StatusInternalServerError)
+		return resp.Err("Failed to get user seo", err, zap.String("user_id", name))
 	}
 
 	seo := types.SEO{

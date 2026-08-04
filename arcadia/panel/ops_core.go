@@ -2,7 +2,6 @@ package panel
 
 import (
 	"context"
-	"fmt"
 	"io"
 	"net/http"
 	"strings"
@@ -11,9 +10,9 @@ import (
 	"popplio/arcadia/impls"
 	"popplio/arcadia/rpc"
 	"popplio/arcadia/types"
+	"popplio/perms"
 	"popplio/state"
 
-	perms "github.com/infinitybotlist/kittycat/go"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 )
@@ -44,14 +43,14 @@ func checkAuthInsecure(ctx context.Context, token string) (types.AuthData, error
 }
 
 // resolvedPerms is the light permission path used by most operations.
-func resolvedPerms(ctx context.Context, userID string) ([]perms.Permission, error) {
+func resolvedPerms(ctx context.Context, userID string) (perms.Set, error) {
 	sp, err := impls.GetUserPerms(ctx, userID)
 
 	if err != nil {
-		return nil, newError(err)
+		return perms.Set{}, newError(err)
 	}
 
-	return sp.Resolve(), nil
+	return sp, nil
 }
 
 func (s *Server) hello(ctx context.Context, q *types.QHello) (response, error) {
@@ -83,12 +82,10 @@ func (s *Server) hello(ctx context.Context, q *types.QHello) (response, error) {
 		AuthData:    authData,
 		StaffMember: staffMember,
 		CoreConstants: types.CoreConstants{
-			FrontendURL:     state.Config.Sites.Frontend.Parse(),
-			InfernoplexURL:  state.Config.Sites.Infernoplex.Parse(),
-			PopplioURL:      state.Config.Sites.API.Parse(),
-			HTMLSanitizeURL: state.Config.Arcadia.HTMLSanitizeURL,
-			CdnURL:          state.Config.Sites.CDN,
-			Servers:         serverIDs(),
+			FrontendURL:    state.Config.Sites.Frontend.Parse(),
+			InfernoplexURL: state.Config.Sites.Infernoplex.Parse(),
+			PopplioURL:     state.Config.Sites.API.Parse(),
+			Servers:        serverIDs(),
 		},
 		TargetTypes: types.TargetTypeVariants,
 	}), nil
@@ -245,54 +242,58 @@ func (s *Server) botQueue(ctx context.Context, q *types.QLoginTokenOnly) (respon
 		return response{}, newError(err)
 	}
 
-	// PERF: this is N+1 by construction (two extra round trips per bot). The JSON
-	// must not change, so the shape is preserved.
+	return s.partialBots(ctx, queue)
+}
+
+// partialBots renders a bot list.
+//
+// Upstream resolved each bot's managers with two queries inside the loop, so an
+// N-bot response cost 2N round trips. The managers are batched here into three
+// queries total; the emitted JSON and the per-bot error messages are unchanged.
+func (s *Server) partialBots(ctx context.Context, queue []botQueueRow) (response, error) {
+	botIDs := make([]string, 0, len(queue))
+
+	for _, bot := range queue {
+		botIDs = append(botIDs, bot.BotID)
+	}
+
+	managers, err := impls.GetBotManagers(ctx, botIDs)
+
+	if err != nil {
+		return response{}, newError(err)
+	}
+
 	bots := make([]types.PartialEntity, 0, len(queue))
 
 	for _, bot := range queue {
-		entity, err := s.partialBot(ctx, bot)
+		// Dovewing is fronted by a Redis hot cache, so this stays per-bot.
+		user, err := impls.GetPlatformUser(ctx, bot.BotID)
 
 		if err != nil {
-			return response{}, err
+			return response{}, newError(err)
 		}
 
-		bots = append(bots, entity)
+		bots = append(bots, types.PartialEntity{Bot: &types.PartialBot{
+			BotID:        bot.BotID,
+			ClientID:     bot.ClientID,
+			User:         user,
+			ClaimedBy:    bot.ClaimedBy,
+			LastClaimed:  types.TimestampPtr(bot.LastClaimed),
+			ApprovalNote: bot.ApprovalNote,
+			Short:        bot.Short,
+			Type:         bot.Type,
+			Votes:        bot.ApproximateVotes,
+			Shards:       bot.Shards,
+			Library:      bot.Library,
+			InviteClicks: bot.InviteClicks,
+			Clicks:       bot.Clicks,
+			Servers:      bot.Servers,
+			Mentionable:  managers[bot.BotID].Mentionables(),
+			Invite:       bot.Invite,
+		}})
 	}
 
 	return writeJSON(http.StatusOK, bots), nil
-}
-
-func (s *Server) partialBot(ctx context.Context, bot botQueueRow) (types.PartialEntity, error) {
-	owners, err := impls.GetEntityManagers(ctx, types.TargetTypeBot, bot.BotID)
-
-	if err != nil {
-		return types.PartialEntity{}, newError(err)
-	}
-
-	user, err := impls.GetPlatformUser(ctx, bot.BotID)
-
-	if err != nil {
-		return types.PartialEntity{}, newError(err)
-	}
-
-	return types.PartialEntity{Bot: &types.PartialBot{
-		BotID:        bot.BotID,
-		ClientID:     bot.ClientID,
-		User:         user,
-		ClaimedBy:    bot.ClaimedBy,
-		LastClaimed:  types.TimestampPtr(bot.LastClaimed),
-		ApprovalNote: bot.ApprovalNote,
-		Short:        bot.Short,
-		Type:         bot.Type,
-		Votes:        bot.ApproximateVotes,
-		Shards:       bot.Shards,
-		Library:      bot.Library,
-		InviteClicks: bot.InviteClicks,
-		Clicks:       bot.Clicks,
-		Servers:      bot.Servers,
-		Mentionable:  owners.Mentionables(),
-		Invite:       bot.Invite,
-	}}, nil
 }
 
 func (s *Server) executeRpc(ctx context.Context, q *types.QExecuteRpc) (response, error) {
@@ -342,7 +343,9 @@ func (s *Server) getRpcMethods(ctx context.Context, q *types.QGetRpcMethods) (re
 			return response{}, newError(err)
 		}
 
-		if q.Filtered && !perms.HasPerm(userPerms, perms.PermissionFromString("rpc."+name)) {
+		required, known := types.RPCPermission(name)
+
+		if q.Filtered && (!known || !userPerms.Has(required)) {
 			continue
 		}
 
@@ -380,8 +383,8 @@ func (s *Server) getRpcLogEntries(ctx context.Context, q *types.QLoginTokenOnly)
 		return response{}, err
 	}
 
-	if !perms.HasPerm(userPerms, perms.PermissionFromString("rpc_logs.view")) {
-		return writeText(http.StatusForbidden, "You do not have permission to view rpc logs [rpc_logs.view]"), nil
+	if !userPerms.Has(perms.StaffViewAuditLogs) {
+		return writeText(http.StatusForbidden, "You do not have permission to view rpc logs [view_audit_logs]"), nil
 	}
 
 	rows, err := state.Pool.Query(ctx, "SELECT id, user_id, method, data, state, created_at FROM rpc_logs ORDER BY created_at DESC")
@@ -456,19 +459,7 @@ func (s *Server) searchEntitys(ctx context.Context, q *types.QSearchEntitys) (re
 			return response{}, newError(err)
 		}
 
-		bots := make([]types.PartialEntity, 0, len(queue))
-
-		for _, bot := range queue {
-			entity, err := s.partialBot(ctx, bot)
-
-			if err != nil {
-				return response{}, err
-			}
-
-			bots = append(bots, entity)
-		}
-
-		return writeJSON(http.StatusOK, bots), nil
+		return s.partialBots(ctx, queue)
 	case types.TargetTypeServer:
 		rows, err := state.Pool.Query(ctx,
 			`SELECT server_id, name, total_members, online_members, short, type, approximate_votes, invite_clicks,
@@ -486,20 +477,28 @@ func (s *Server) searchEntitys(ctx context.Context, q *types.QSearchEntitys) (re
 			return response{}, newError(err)
 		}
 
+		serverIDs := make([]string, 0, len(queue))
+
+		for _, server := range queue {
+			serverIDs = append(serverIDs, server.ServerID)
+		}
+
+		managers, err := impls.GetServerManagers(ctx, serverIDs)
+
+		if err != nil {
+			return response{}, newError(err)
+		}
+
 		servers := make([]types.PartialEntity, 0, len(queue))
 
 		for _, server := range queue {
-			owners, err := impls.GetEntityManagers(ctx, types.TargetTypeServer, server.ServerID)
-
-			if err != nil {
-				return response{}, newError(err)
-			}
-
 			servers = append(servers, types.PartialEntity{Server: &types.PartialServer{
 				ServerID: server.ServerID,
 				Name:     server.Name,
-				// Server avatars are synthesized, not stored.
-				Avatar:        fmt.Sprintf("%s/servers/avatars/%s.webp", state.Config.Sites.CDN, server.ServerID),
+				// Upstream synthesised this from the CDN URL. With the CDN gone there
+				// is no avatar to point at; the field stays on the wire as an empty
+				// string. See CONFORMANCE.md.
+				Avatar:        "",
 				TotalMembers:  server.TotalMembers,
 				OnlineMembers: server.OnlineMembers,
 				Short:         server.Short,
@@ -508,11 +507,11 @@ func (s *Server) searchEntitys(ctx context.Context, q *types.QSearchEntitys) (re
 				InviteClicks:  server.InviteClicks,
 				Clicks:        server.Clicks,
 				NSFW:          server.NSFW,
-				Tags:          nonNil(server.Tags),
+				Tags:          types.NonNilStrings(server.Tags),
 				Premium:       server.Premium,
 				ClaimedBy:     server.ClaimedBy,
 				LastClaimed:   types.TimestampPtr(server.LastClaimed),
-				Mentionable:   owners.Mentionables(),
+				Mentionable:   managers[server.ServerID].Mentionables(),
 			}})
 		}
 
@@ -597,12 +596,4 @@ func validHTTPMethod(method string) bool {
 	default:
 		return false
 	}
-}
-
-func nonNil(in []string) []string {
-	if in == nil {
-		return []string{}
-	}
-
-	return in
 }

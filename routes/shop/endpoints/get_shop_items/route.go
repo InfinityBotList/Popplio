@@ -1,7 +1,11 @@
+// Package get_shop_items implements GET /shop/items — "Get Shop Items".
+//
+// Gets the publicly viewable shop items on the list
 package get_shop_items
 
 import (
 	"net/http"
+	"popplio/api/resp"
 	"popplio/db"
 	"popplio/state"
 	"popplio/types"
@@ -10,7 +14,6 @@ import (
 	docs "github.com/infinitybotlist/eureka/doclib"
 	"github.com/infinitybotlist/eureka/uapi"
 	"github.com/jackc/pgx/v5"
-	"go.uber.org/zap"
 )
 
 var (
@@ -31,8 +34,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	rows, err := state.Pool.Query(d.Context, "SELECT "+shopItemsCols+" FROM shop_items ORDER BY created_at DESC")
 
 	if err != nil {
-		state.Logger.Error("Failed to fetch shop items list [db fetch]", zap.Error(err))
-		return uapi.DefaultResponse(http.StatusInternalServerError)
+		return resp.Err("Failed to fetch shop items list [db fetch]", err)
 	}
 
 	defer rows.Close()
@@ -40,8 +42,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	items, err := pgx.CollectRows(rows, pgx.RowToStructByName[types.ShopItem])
 
 	if err != nil {
-		state.Logger.Error("Failed to fetch shop items list [db fetch]", zap.Error(err))
-		return uapi.DefaultResponse(http.StatusInternalServerError)
+		return resp.Err("Failed to fetch shop items list [db fetch]", err)
 	}
 
 	return uapi.HttpResponse{

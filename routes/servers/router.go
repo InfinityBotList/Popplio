@@ -1,20 +1,23 @@
+// Package servers mounts the "Servers" group of API routes.
+//
+// These API endpoints are related to servers on IBL
 package servers
 
 import (
 	"net/http"
 	"popplio/api"
+	"popplio/perms"
 	"popplio/routes/servers/endpoints/add_server"
 	"popplio/routes/servers/endpoints/get_all_servers"
 	"popplio/routes/servers/endpoints/get_random_servers"
 	"popplio/routes/servers/endpoints/get_server"
+	"popplio/routes/servers/endpoints/get_server_meta"
 	"popplio/routes/servers/endpoints/get_server_seo"
 	"popplio/routes/servers/endpoints/get_servers_index"
 	"popplio/routes/servers/endpoints/patch_server_settings"
-	"popplio/teams"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/infinitybotlist/eureka/uapi"
-	perms "github.com/infinitybotlist/kittycat/go"
 )
 
 const tagName = "Servers"
@@ -51,6 +54,25 @@ func (b Router) Routes(r *chi.Mux) {
 	}.Route(r)
 
 	uapi.Route{
+		Pattern: "/servers/meta",
+		OpId:    "get_server_meta",
+		Method:  uapi.GET,
+		Docs:    get_server_meta.Docs,
+		Handler: get_server_meta.Route,
+		Auth: []uapi.AuthType{
+			{
+				Type: api.TargetTypeUser,
+			},
+			{
+				Type: api.TargetTypeTeam,
+			},
+		},
+		ExtData: map[string]any{
+			api.PERMISSION_CHECK_KEY: nil,
+		},
+	}.Route(r)
+
+	uapi.Route{
 		Pattern: "/servers",
 		OpId:    "add_server",
 		Method:  uapi.PUT,
@@ -66,7 +88,7 @@ func (b Router) Routes(r *chi.Mux) {
 		},
 		Setup: add_server.Setup,
 		ExtData: map[string]any{
-			api.PERMISSION_CHECK_KEY: nil, // The endpoint itself handles authorization
+			api.PERMISSION_CHECK_KEY: nil,
 		},
 	}.Route(r)
 
@@ -106,12 +128,7 @@ func (b Router) Routes(r *chi.Mux) {
 		},
 		ExtData: map[string]any{
 			api.PERMISSION_CHECK_KEY: api.PermissionCheck{
-				NeededPermission: func(d uapi.Route, r *http.Request, authData uapi.AuthData) (*perms.Permission, error) {
-					return &perms.Permission{
-						Namespace: api.TargetTypeServer,
-						Perm:      teams.PermissionEdit,
-					}, nil
-				},
+				NeededPermission: api.Needs(perms.EntityEditServers),
 				GetTarget: func(d uapi.Route, r *http.Request, authData uapi.AuthData) (string, string) {
 					return api.TargetTypeServer, chi.URLParam(r, "id")
 				},
