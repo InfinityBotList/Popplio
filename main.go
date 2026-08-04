@@ -13,6 +13,7 @@ import (
 	"popplio/api"
 	poplapps "popplio/apps"
 	"popplio/arcadia"
+	"popplio/bgtasks"
 	"popplio/config"
 	"popplio/constants"
 	"popplio/notifications/votereminders"
@@ -250,6 +251,8 @@ func main() {
 	})
 
 	go votereminders.VrLoop()
+
+	bgtasks.Start(state.Context)
 
 	arc := arcadia.Start(state.Context)
 	defer arc.Stop(30 * time.Second)

@@ -193,9 +193,13 @@ through for id 0.
 
 ### Not ported
 
-`src/tasks/__toberewritten/uptime.rs` — dead code that does not compile against
-the current serenity API. Note that `bots.uptime`, `bots.total_uptime` and
-`bots.uptime_last_checked` exist in the schema and are currently unmaintained.
+`src/tasks/__toberewritten/uptime.rs` — dead code that did not compile
+against the serenity API it was last touched against, and was never ported
+as-is. `bots.uptime`, `bots.total_uptime` and `bots.uptime_last_checked`
+are maintained again now, but not by porting this file: `popplio/bgtasks`'
+`bot_uptime_check` reads presence from Popplio's own gateway cache (which
+already requests the Presence intent) rather than reimplementing whatever
+this task used to do.
 
 `src/test.rs` (`modaltest`) — a dev-only command never registered in `main.rs`.
 
@@ -438,6 +442,15 @@ Bot and user avatars still resolve: those come from dovewing, which returns
 Discord's own URL. The `bp.DovewingMiddleware` that mirrored them onto the CDN
 was removed, so `PlatformUser.Avatar` is now Discord's URL rather than a
 self-hosted copy.
+
+**Update:** server avatars were later reintroduced, but not by restoring the
+CDN cache above. `servers.avatar` (a plain URL, `exp/add_servers_avatar.sql`)
+is populated once at Add Server time from the invite resolution, then kept
+fresh by Infernoplex's `serversync` task reading its own gateway cache for
+every server it's a member of. `IndexServer`, `Server` and `SearchEntitys`
+server results all serve it now — the `avatar` row in the table above and
+line 430 no longer hold. `Team`/`Partner` avatars remain removed; nothing
+analogous exists for them.
 
 `cmd/kitehelper` still contains CDN paths in its historical migration code. That
 is a separate module of one-shot migrations that are not run at startup, so it

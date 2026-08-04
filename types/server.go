@@ -12,6 +12,7 @@ import (
 type IndexServer struct {
 	ServerID         string      `db:"server_id" json:"server_id" description:"The server's ID"`
 	Name             string      `db:"name" json:"name" description:"The server's name"`
+	Avatar           string      `db:"avatar" json:"avatar" description:"The server's icon URL, empty if the server has no icon set or the tracking bot hasn't synced it yet"`
 	TotalMembers     int         `db:"total_members" json:"total_members" description:"The server's total member count"`
 	OnlineMembers    int         `db:"online_members" json:"online_members" description:"The server's online member count"`
 	Short            string      `db:"short" json:"short" description:"The server's short description"`
@@ -34,6 +35,7 @@ type IndexServer struct {
 type Server struct {
 	ServerID               string             `db:"server_id" json:"server_id" description:"The server's ID"`
 	Name                   string             `db:"name" json:"name" description:"The server's name"`
+	Avatar                 string             `db:"avatar" json:"avatar" description:"The server's icon URL, empty if the server has no icon set or the tracking bot hasn't synced it yet"`
 	TotalMembers           int                `db:"total_members" json:"total_members" description:"The server's total member count"`
 	OnlineMembers          int                `db:"online_members" json:"online_members" description:"The server's online member count"`
 	Short                  string             `db:"short" json:"short" description:"The server's short description"`
@@ -77,6 +79,7 @@ type CreateServer struct {
 	TeamOwner     string      `db:"team_owner" json:"team_owner"`
 	ServerID      string      `db:"server_id" json:"-"`
 	Name          string      `db:"name" json:"-"`
+	Avatar        string      `db:"avatar" json:"-"`
 	TotalMembers  int         `db:"total_members" json:"-"`
 	OnlineMembers int         `db:"online_members" json:"-"`
 	VanityRef     pgtype.UUID `db:"vanity_ref" json:"-"`
