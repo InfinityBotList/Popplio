@@ -118,46 +118,53 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		return resp.Err("Error while updating server", err, zap.String("serverID", id))
 	}
 
-	var name string
+	var name, avatar string
 
-	err = state.Pool.QueryRow(d.Context, "SELECT name FROM servers WHERE server_id = $1", id).Scan(&name)
+	err = state.Pool.QueryRow(d.Context, "SELECT name, avatar FROM servers WHERE server_id = $1", id).Scan(&name, &avatar)
 
 	if err != nil {
 		return resp.Err("Error while getting server info", err, zap.String("serverID", id))
 	}
 
-	// Resolve the avatar
-	// Send a message to the bot logs channel
-	_, err = state.Discord.Rest().CreateMessage(state.Config.Channels.ModLogs, discord.MessageCreate{
-		Content: "",
-		Embeds: []discord.Embed{
+	embed := discord.Embed{
+		URL:   state.Config.Sites.Frontend.Production() + "/servers/" + id,
+		Title: "Server Updated",
+		Fields: []discord.EmbedField{
 			{
-				URL:       state.Config.Sites.Frontend.Production() + "/servers/" + id,
-				Title:     "Server Updated",
-				Thumbnail: &discord.EmbedResource{},
-				Fields: []discord.EmbedField{
-					{
-						Name:   "Name",
-						Value:  name,
-						Inline: validators.TruePtr,
-					},
-					{
-						Name:   "Server ID",
-						Value:  id,
-						Inline: validators.TruePtr,
-					},
-					{
-						Name:   "User",
-						Value:  fmt.Sprintf("<@%s>", d.Auth.ID),
-						Inline: validators.TruePtr,
-					},
-				},
+				Name:   "Name",
+				Value:  name,
+				Inline: validators.TruePtr,
+			},
+			{
+				Name:   "Server ID",
+				Value:  id,
+				Inline: validators.TruePtr,
+			},
+			{
+				Name:   "User",
+				Value:  fmt.Sprintf("<@%s>", d.Auth.ID),
+				Inline: validators.TruePtr,
 			},
 		},
+	}
+
+	// An EmbedResource with an empty URL is itself invalid and gets the
+	// whole message rejected (50035) — Discord wants the field omitted
+	// entirely, not present-but-empty, when there's no avatar yet.
+	if avatar != "" {
+		embed.Thumbnail = &discord.EmbedResource{URL: avatar}
+	}
+
+	// Best-effort: the settings update above already succeeded and is the
+	// actual outcome the caller cares about, so a failure to post this
+	// notification shouldn't fail the whole request.
+	_, err = state.Discord.Rest().CreateMessage(state.Config.Channels.ModLogs, discord.MessageCreate{
+		Content: "",
+		Embeds:  []discord.Embed{embed},
 	})
 
 	if err != nil {
-		return resp.ErrBody("Error while sending embed to mod logs channel", "Internal Error: While server update was successful, an error occurred while sending the update embed to the mod logs channel", err, zap.String("serverID", id))
+		state.Logger.Error("Error while sending update embed to mod logs channel", zap.Error(err), zap.String("serverID", id))
 	}
 
 	return uapi.DefaultResponse(http.StatusNoContent)

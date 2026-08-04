@@ -139,6 +139,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- `PATCH /servers/{id}/settings` and `PATCH /bots/{id}/settings` returned a
+  500 whenever their mod-log notification embed failed to send — including
+  the guaranteed case for servers, which built its embed with
+  `Thumbnail: &discord.EmbedResource{}` (a present-but-empty resource,
+  which Discord's API rejects outright with `50035: Invalid Form Body`
+  rather than treating as "no thumbnail"). The underlying update had
+  already succeeded in both cases — the error message even said so — so a
+  caller retrying on this 500 risked double-submitting. The thumbnail is
+  now omitted when there's no avatar instead of sent empty, servers' embed
+  now uses the real `servers.avatar` value instead of nothing, and a
+  failure to post the notification is logged rather than failing the
+  request, matching the existing pattern in `PUT /servers`.
 - `PUT /servers` wrote every field into the wrong column: `createServerArgs`'s
   hand-written value order didn't match `types.CreateServer`'s field
   declaration order, which is what `db.GetCols`/the generated column list
