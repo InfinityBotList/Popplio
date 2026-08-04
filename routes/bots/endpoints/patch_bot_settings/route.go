@@ -126,39 +126,46 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		return resp.Err("Failed to update bot: ", err, zap.String("userID", d.Auth.ID), zap.String("botID", id))
 	}
 
-	// Send a message to the bot logs channel
-	_, err = state.Discord.Rest().CreateMessage(state.Config.Channels.BotLogs, discord.MessageCreate{
-		Content: "",
-		Embeds: []discord.Embed{
+	embed := discord.Embed{
+		URL:   state.Config.Sites.Frontend.Production() + "/bots/" + id,
+		Title: "Bot Updated",
+		Fields: []discord.EmbedField{
 			{
-				URL:   state.Config.Sites.Frontend.Production() + "/bots/" + id,
-				Title: "Bot Updated",
-				Thumbnail: &discord.EmbedResource{
-					URL: botUser.Avatar,
-				},
-				Fields: []discord.EmbedField{
-					{
-						Name:   "Name",
-						Value:  botUser.Username,
-						Inline: validators.TruePtr,
-					},
-					{
-						Name:   "Bot ID",
-						Value:  "<@" + id + ">",
-						Inline: validators.TruePtr,
-					},
-					{
-						Name:   "User",
-						Value:  fmt.Sprintf("<@%s>", d.Auth.ID),
-						Inline: validators.TruePtr,
-					},
-				},
+				Name:   "Name",
+				Value:  botUser.Username,
+				Inline: validators.TruePtr,
+			},
+			{
+				Name:   "Bot ID",
+				Value:  "<@" + id + ">",
+				Inline: validators.TruePtr,
+			},
+			{
+				Name:   "User",
+				Value:  fmt.Sprintf("<@%s>", d.Auth.ID),
+				Inline: validators.TruePtr,
 			},
 		},
+	}
+
+	// An EmbedResource with an empty URL is itself invalid and gets the
+	// whole message rejected (50035) — Discord wants the field omitted
+	// entirely, not present-but-empty, when dovewing has no avatar for
+	// this bot yet.
+	if botUser.Avatar != "" {
+		embed.Thumbnail = &discord.EmbedResource{URL: botUser.Avatar}
+	}
+
+	// Best-effort: the settings update above already succeeded and is the
+	// actual outcome the caller cares about, so a failure to post this
+	// notification shouldn't fail the whole request.
+	_, err = state.Discord.Rest().CreateMessage(state.Config.Channels.BotLogs, discord.MessageCreate{
+		Content: "",
+		Embeds:  []discord.Embed{embed},
 	})
 
 	if err != nil {
-		return resp.ErrBody("Error while sending embed to mod logs channel", "Internal Error: While bot update was successful, an error occurred while sending the update embed to the mod logs channel", err, zap.String("serverID", id))
+		state.Logger.Error("Error while sending update embed to mod logs channel", zap.Error(err), zap.String("botID", id))
 	}
 
 	return uapi.DefaultResponse(http.StatusNoContent)
