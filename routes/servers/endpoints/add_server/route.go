@@ -207,7 +207,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 			return resp.BadRequest("Error while creating team: " + err.Error())
 		}
 
-		_, err = tx.Exec(d.Context, "INSERT INTO team_members (team_id, user_id, flags, service) VALUES ($1, $2, $3, 'api/add_server')", teamId, d.Auth.ID, []string{"global.*"})
+		_, err = tx.Exec(d.Context, "INSERT INTO team_members (team_id, user_id, flags, service) VALUES ($1, $2, $3, 'api/add_server')", teamId, d.Auth.ID, []string{string(perms.EntityOwner)})
 
 		if err != nil {
 			return resp.BadRequest("Error while adding team member: " + err.Error())
