@@ -6,8 +6,8 @@ package create_team
 import (
 	"net/http"
 	"popplio/api/resp"
+	"popplio/perms"
 	"popplio/state"
-	"popplio/teams"
 	"popplio/types"
 	"popplio/validators"
 	"strings"
@@ -148,7 +148,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	}
 
 	// Add the user to the team
-	_, err = tx.Exec(d.Context, "INSERT INTO team_members (team_id, user_id, flags, data_holder) VALUES ($1, $2, $3, true)", teamId, d.Auth.ID, []string{"global." + teams.PermissionOwner})
+	_, err = tx.Exec(d.Context, "INSERT INTO team_members (team_id, user_id, flags, data_holder) VALUES ($1, $2, $3, true)", teamId, d.Auth.ID, []string{perms.EntityOwner.String()})
 
 	if err != nil {
 		return resp.Err("Error adding user to team", err, zap.String("user_id", d.Auth.ID))

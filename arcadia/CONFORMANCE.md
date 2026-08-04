@@ -176,6 +176,21 @@ The unaccounted-user branch `.unwrap()`s a `member_pos_cache` lookup that can mi
 for a user present in the DB but filtered out of the cache. Treated as "no
 positions" and logged.
 
+**F5. `staff_resync` abandoned the run when its log message failed** — `arcadia/tasks/staffresync.go`
+
+Upstream returned the error from posting to the staff log channel, which
+abandoned the resync and rolled back its transaction. A staff log channel that
+had been deleted — or, far more likely, a `channels.staff_logs` key missing from
+config.yaml, which loads as id 0 and is only validated outside dev — therefore
+stopped staff permissions syncing with Discord entirely, reported as Discord's
+`10003: Unknown Channel`.
+
+The send is now reported through the logger and stepped over. The log is an
+account of what the resync did; the resync is what keeps permissions correct, and
+one cannot be allowed to block the other. `impls.SendChannel` additionally names
+an unconfigured channel as such rather than passing Discord's "Unknown Channel"
+through for id 0.
+
 ### Not ported
 
 `src/tasks/__toberewritten/uptime.rs` — dead code that does not compile against
@@ -435,6 +450,34 @@ still referenced by nothing.
 **D12. `staff_resync` position ordering.** Position id sets are sorted before
 being written or logged, so SQL arrays and staff-log embeds are stable between
 runs. Rust's `HashSet` iteration order was arbitrary.
+
+**D14. The permission model was replaced.** Upstream used kittycat's
+`namespace.action` permissions with wildcards (`rpc.*`), negators
+(`~rpc.PremiumAdd`), an `@clear` marker and position-index precedence. Popplio
+now uses flat, declared permissions (`review_bots`, `manage_shop`) resolved as a
+plain union of a member's roles and their extras, in the `perms` package. The
+kittycat dependency is gone.
+
+Consequences for anything speaking to this service:
+
+- **Wire format.** `StaffMember.resolved_perms`, `staff_positions.perms` and
+  `StaffEditMember.perm_overrides` are still arrays of permission strings, but
+  the strings themselves are the new names. The panel's permission picker and any
+  external service that reads `staff_positions` must move with it.
+- **RPC methods no longer have one permission each.** `rpc.` + method name is
+  replaced by `types.RPCPermission`, which maps related methods onto one
+  permission — the whole claim/approve/deny loop is `review_bots`. Withholding a
+  single method within a group is no longer expressible; the groups were drawn
+  around what the live roles actually negated.
+- **Denial is gone.** Nothing subtracts a permission any more, so a role either
+  has one or does not. `exp/rewrite/flatperms.sql` reports every negator it drops, since
+  a negator that was holding something back leaves its holder with that
+  permission afterwards.
+- **Disciplinaries.** A non-additory disciplinary now replaces the member's
+  permissions outright rather than tying with their overrides at index 0 and
+  letting an unstable sort decide.
+- **Migration.** `exp/rewrite/flatperms.sql` converts every permission column in place and
+  is verified against the catalogue by tests in `perms/migration_test.go`.
 
 **D13. Two N+1 query patterns are batched.** The wire format is unchanged and
 §5.5 explicitly permits internal batching.

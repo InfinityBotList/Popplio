@@ -3,6 +3,7 @@ package apps
 import (
 	"errors"
 	"fmt"
+	"popplio/perms"
 	"popplio/state"
 	"popplio/teams"
 	"popplio/types"
@@ -14,12 +15,11 @@ import (
 	"github.com/disgoorg/snowflake/v2"
 	"github.com/infinitybotlist/eureka/dovewing"
 	"github.com/infinitybotlist/eureka/uapi"
-	kittycat "github.com/infinitybotlist/kittycat/go"
 	"go.uber.org/zap"
 )
 
-var permBotResubmit = kittycat.Permission{Namespace: "bot", Perm: teams.PermissionResubmit}
-var permBotCertify = kittycat.Permission{Namespace: "bot", Perm: teams.PermissionRequestCertification}
+var permBotResubmit = perms.EntityResubmitBots
+var permBotCertify = perms.EntityCertifyBots
 
 var ErrNoPersist = errors.New("no persist") // This error should be returned when the app should not be persisted to the database for review
 
@@ -39,14 +39,14 @@ func extraLogicResubmit(d uapi.RouteData, p types.Position, answers map[string]s
 		return fmt.Errorf("error getting bot type, does the bot exist?: %w", err)
 	}
 
-	perms, err := teams.GetEntityPerms(d.Context, d.Auth.ID, "bot", botID)
+	entityPerms, err := teams.GetEntityPerms(d.Context, d.Auth.ID, "bot", botID)
 
 	if err != nil {
 		return fmt.Errorf("error getting user bot perms: %w", err)
 	}
 
 	// Check if user has TeamPermissionResubmitBots
-	if !kittycat.HasPerm(perms, permBotResubmit) {
+	if !entityPerms.Has(permBotResubmit) {
 		return errors.New("you do not have permission to resubmit bots")
 	}
 
@@ -118,14 +118,14 @@ func extraLogicCert(d uapi.RouteData, p types.Position, answers map[string]strin
 		return fmt.Errorf("error getting bot type, does the bot exist?: %w", err)
 	}
 
-	perms, err := teams.GetEntityPerms(d.Context, d.Auth.ID, "bot", botID)
+	entityPerms, err := teams.GetEntityPerms(d.Context, d.Auth.ID, "bot", botID)
 
 	if err != nil {
 		return fmt.Errorf("error getting user bot perms: %w", err)
 	}
 
 	// Check if user has TeamPermissionCertifyBots
-	if !kittycat.HasPerm(perms, permBotCertify) {
+	if !entityPerms.Has(permBotCertify) {
 		return errors.New("you do not have permission to certify bots")
 	}
 

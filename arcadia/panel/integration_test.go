@@ -152,7 +152,7 @@ func TestAuthValidators(t *testing.T) {
 	})
 
 	t.Run("pending session fails CheckAuth but passes insecure", func(t *testing.T) {
-		f := seedStaff(t, []string{"rpc.Claim"}, "pending")
+		f := seedStaff(t, []string{"review_bots"}, "pending")
 
 		data, err := impls.CheckAuthInsecure(ctx, f.Token)
 
@@ -170,7 +170,7 @@ func TestAuthValidators(t *testing.T) {
 	})
 
 	t.Run("active session passes both", func(t *testing.T) {
-		f := seedStaff(t, []string{"rpc.Claim"}, "active")
+		f := seedStaff(t, []string{"review_bots"}, "active")
 
 		if _, err := impls.CheckAuth(ctx, f.Token); err != nil {
 			t.Errorf("CheckAuth: %v", err)
@@ -299,29 +299,29 @@ func TestPermissionGates(t *testing.T) {
 	}{
 		{
 			name:       "GetRpcLogEntries",
-			perm:       "rpc_logs.view",
+			perm:       "view_audit_logs",
 			body:       func(tok string) string { return fmt.Sprintf(`{"GetRpcLogEntries":{"login_token":%q}}`, tok) },
-			wantDenied: "You do not have permission to view rpc logs [rpc_logs.view]",
+			wantDenied: "You do not have permission to view rpc logs [view_audit_logs]",
 		},
 		{
 			name: "UpdateShopCoupons/List",
-			perm: "shop_coupons.list",
+			perm: "view_shop",
 			body: func(tok string) string {
 				return fmt.Sprintf(`{"UpdateShopCoupons":{"login_token":%q,"action":"List"}}`, tok)
 			},
-			wantDenied: "You do not have permission to list shop coupons [shop_coupons.list]",
+			wantDenied: "You do not have permission to list shop coupons [view_shop]",
 		},
 		{
 			name: "UpdateVoteCreditTiers/DeleteTier",
-			perm: "vote_credit_tiers.delete",
+			perm: "manage_shop",
 			body: func(tok string) string {
 				return fmt.Sprintf(`{"UpdateVoteCreditTiers":{"login_token":%q,"action":{"DeleteTier":{"id":"nope"}}}}`, tok)
 			},
-			wantDenied: "You do not have permission to delete vote credit tiers [vote_credit_tiers.delete]",
+			wantDenied: "You do not have permission to delete vote credit tiers [manage_shop]",
 		},
 		{
 			name: "UpdateBotWhitelist/Delete",
-			perm: "bot_whitelist.delete",
+			perm: "manage_bot_whitelist",
 			body: func(tok string) string {
 				return fmt.Sprintf(`{"UpdateBotWhitelist":{"login_token":%q,"action":{"Delete":{"bot_id":"nope"}}}}`, tok)
 			},
@@ -329,17 +329,17 @@ func TestPermissionGates(t *testing.T) {
 		},
 		{
 			name: "UpdateBlog/DeleteEntry",
-			perm: "blog.delete_entry",
+			perm: "manage_blog",
 			body: func(tok string) string {
 				return fmt.Sprintf(`{"UpdateBlog":{"login_token":%q,"action":{"DeleteEntry":{"itag":"00000000-0000-0000-0000-000000000000"}}}}`, tok)
 			},
-			wantDenied: "You do not have permission to delete blog entries [blog.delete_entry]",
+			wantDenied: "You do not have permission to delete blog entries [manage_blog]",
 		},
 	}
 
 	for _, tt := range cases {
 		t.Run(tt.name+"/denied", func(t *testing.T) {
-			f := seedStaff(t, []string{"some.unrelated"}, "active")
+			f := seedStaff(t, []string{"view_apps"}, "active")
 
 			rec := post(t, tt.body(f.Token))
 
@@ -375,7 +375,7 @@ func TestPermissionGates(t *testing.T) {
 // more. See CONFORMANCE.md a/16 - this test pins both halves so the fix is a
 // deliberate, visible change.
 func TestVoteCreditTierDedupLoop(t *testing.T) {
-	f := seedStaff(t, []string{"vote_credit_tiers.create"}, "active")
+	f := seedStaff(t, []string{"manage_shop"}, "active")
 
 	ctx := context.Background()
 
@@ -456,7 +456,7 @@ func tierPositions(t *testing.T, ids []string) map[string]int32 {
 // upstream bug that makes "unlimited uses" unreachable (CONFORMANCE.md a/2).
 // This test pins the buggy behaviour so the fix is a deliberate, visible change.
 func TestShopCouponNullValidationIsReproduced(t *testing.T) {
-	f := seedStaff(t, []string{"shop_coupons.create"}, "active")
+	f := seedStaff(t, []string{"manage_shop"}, "active")
 
 	body := fmt.Sprintf(`{"UpdateShopCoupons":{"login_token":%q,"action":{"Create":{"id":"x","code":"c","public":true,"max_uses":null,"reuse_wait_duration":1,"expiry":1,"applicable_items":[],"cents":null,"requirements":[],"allowed_users":[],"usable":true,"target_types":[]}}}}`, f.Token)
 

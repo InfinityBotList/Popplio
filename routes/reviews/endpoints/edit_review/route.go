@@ -10,9 +10,9 @@ import (
 	"net/http"
 	"popplio/api"
 	"popplio/api/resp"
+	"popplio/perms"
 	"popplio/routes/reviews/assets"
 	"popplio/state"
-	"popplio/teams"
 	"popplio/types"
 	"popplio/validators"
 	"popplio/webhooks/core/drivers"
@@ -21,7 +21,6 @@ import (
 
 	docs "github.com/infinitybotlist/eureka/doclib"
 	"github.com/infinitybotlist/eureka/uapi"
-	perms "github.com/infinitybotlist/kittycat/go"
 	"go.uber.org/zap"
 
 	"github.com/go-chi/chi/v5"
@@ -102,7 +101,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 			d.Auth,
 			targetType,
 			targetId,
-			perms.Permission{Namespace: targetType, Perm: teams.PermissionEditOwnerReview},
+			perms.EntityManageOwnerReviews,
 		)
 
 		if err != nil {

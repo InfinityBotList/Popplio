@@ -11,6 +11,7 @@ import (
 	"popplio/api/resp"
 	"popplio/apps"
 	"popplio/db"
+	"popplio/perms"
 	"popplio/routes/staff/assets"
 	"popplio/state"
 	"popplio/types"
@@ -18,7 +19,6 @@ import (
 	"strings"
 
 	"github.com/disgoorg/disgo/discord"
-	kittycat "github.com/infinitybotlist/kittycat/go"
 
 	docs "github.com/infinitybotlist/eureka/doclib"
 	"github.com/infinitybotlist/eureka/uapi"
@@ -66,16 +66,14 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		return resp.Status(http.StatusFailedDependency, err.Error())
 	}
 
-	permList, err := validators.GetUserStaffPerms(d.Context, d.Auth.ID)
+	staffPerms, err := perms.StaffPerms(d.Context, d.Auth.ID)
 
 	if err != nil {
 		return resp.Status(http.StatusFailedDependency, err.Error())
 	}
 
-	resolvedPerms := permList.Resolve()
-
 	// Check if the user has the permission to view apps
-	if !kittycat.HasPerm(resolvedPerms, kittycat.Permission{Namespace: "apps", Perm: "manage"}) {
+	if !staffPerms.Has(perms.StaffManageApps) {
 		return resp.Forbidden("You do not have permission to manage apps.")
 	}
 

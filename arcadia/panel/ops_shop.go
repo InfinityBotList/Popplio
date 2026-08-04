@@ -7,9 +7,9 @@ import (
 	"time"
 
 	"popplio/arcadia/types"
+	"popplio/perms"
 	"popplio/state"
 
-	perms "github.com/infinitybotlist/kittycat/go"
 	"github.com/jackc/pgx/v5"
 )
 
@@ -128,8 +128,8 @@ func (s *Server) updateVoteCreditTiers(ctx context.Context, q *types.QUpdateVote
 	case q.Action.CreateTier != nil:
 		action := q.Action.CreateTier
 
-		if !perms.HasPerm(userPerms, perms.PermissionFromString("vote_credit_tiers.create")) {
-			return writeText(http.StatusForbidden, "You do not have permission to create vote credit tiers [vote_credit_tiers.create]"), nil
+		if !userPerms.Has(perms.StaffManageShop) {
+			return writeText(http.StatusForbidden, "You do not have permission to create vote credit tiers [manage_shop]"), nil
 		}
 
 		if resp := validateTier(action); resp != nil {
@@ -164,8 +164,8 @@ func (s *Server) updateVoteCreditTiers(ctx context.Context, q *types.QUpdateVote
 	case q.Action.EditTier != nil:
 		action := q.Action.EditTier
 
-		if !perms.HasPerm(userPerms, perms.PermissionFromString("vote_credit_tiers.update")) {
-			return writeText(http.StatusForbidden, "You do not have permission to update vote credit tiers [vote_credit_tiers.update]"), nil
+		if !userPerms.Has(perms.StaffManageShop) {
+			return writeText(http.StatusForbidden, "You do not have permission to update vote credit tiers [manage_shop]"), nil
 		}
 
 		// Existence is checked BEFORE the range validations here.
@@ -205,8 +205,8 @@ func (s *Server) updateVoteCreditTiers(ctx context.Context, q *types.QUpdateVote
 
 		return writeNoContent(), nil
 	case q.Action.DeleteTier != nil:
-		if !perms.HasPerm(userPerms, perms.PermissionFromString("vote_credit_tiers.delete")) {
-			return writeText(http.StatusForbidden, "You do not have permission to delete vote credit tiers [vote_credit_tiers.delete]"), nil
+		if !userPerms.Has(perms.StaffManageShop) {
+			return writeText(http.StatusForbidden, "You do not have permission to delete vote credit tiers [manage_shop]"), nil
 		}
 
 		id := q.Action.DeleteTier.ID
@@ -320,8 +320,8 @@ func (s *Server) updateShopItems(ctx context.Context, q *types.QUpdateShopItems)
 	case q.Action.Create != nil:
 		action := q.Action.Create
 
-		if !perms.HasPerm(userPerms, perms.PermissionFromString("shop_items.create")) {
-			return writeText(http.StatusForbidden, "You do not have permission to create shop items [shop_items.create]"), nil
+		if !userPerms.Has(perms.StaffManageShop) {
+			return writeText(http.StatusForbidden, "You do not have permission to create shop items [manage_shop]"), nil
 		}
 
 		resp, err := validateShopItem(ctx, action)
@@ -346,8 +346,8 @@ func (s *Server) updateShopItems(ctx context.Context, q *types.QUpdateShopItems)
 	case q.Action.Edit != nil:
 		action := q.Action.Edit
 
-		if !perms.HasPerm(userPerms, perms.PermissionFromString("shop_items.update")) {
-			return writeText(http.StatusForbidden, "You do not have permission to update shop items [shop_items.update]"), nil
+		if !userPerms.Has(perms.StaffManageShop) {
+			return writeText(http.StatusForbidden, "You do not have permission to update shop items [manage_shop]"), nil
 		}
 
 		resp, err := validateShopItem(ctx, action)
@@ -376,8 +376,8 @@ func (s *Server) updateShopItems(ctx context.Context, q *types.QUpdateShopItems)
 
 		return writeNoContent(), nil
 	case q.Action.Delete != nil:
-		if !perms.HasPerm(userPerms, perms.PermissionFromString("shop_items.delete")) {
-			return writeText(http.StatusForbidden, "You do not have permission to delete shop items [shop_items.delete]"), nil
+		if !userPerms.Has(perms.StaffManageShop) {
+			return writeText(http.StatusForbidden, "You do not have permission to delete shop items [manage_shop]"), nil
 		}
 
 		id := q.Action.Delete.ID
@@ -457,8 +457,8 @@ func (s *Server) updateShopItemBenefits(ctx context.Context, q *types.QUpdateSho
 	case q.Action.Create != nil:
 		action := q.Action.Create
 
-		if !perms.HasPerm(userPerms, perms.PermissionFromString("shop_item_benefits.create")) {
-			return writeText(http.StatusForbidden, "You do not have permission to create shop item benefits [shop_item_benefits.create]"), nil
+		if !userPerms.Has(perms.StaffManageShop) {
+			return writeText(http.StatusForbidden, "You do not have permission to create shop item benefits [manage_shop]"), nil
 		}
 
 		_, err := state.Pool.Exec(ctx,
@@ -473,8 +473,8 @@ func (s *Server) updateShopItemBenefits(ctx context.Context, q *types.QUpdateSho
 	case q.Action.Edit != nil:
 		action := q.Action.Edit
 
-		if !perms.HasPerm(userPerms, perms.PermissionFromString("shop_item_benefits.update")) {
-			return writeText(http.StatusForbidden, "You do not have permission to update shop item benefits [shop_item_benefits.update]"), nil
+		if !userPerms.Has(perms.StaffManageShop) {
+			return writeText(http.StatusForbidden, "You do not have permission to update shop item benefits [manage_shop]"), nil
 		}
 
 		if resp, err := requireRow(ctx, "SELECT COUNT(*) FROM shop_item_benefits WHERE id = $1", action.ID); err != nil {
@@ -493,8 +493,8 @@ func (s *Server) updateShopItemBenefits(ctx context.Context, q *types.QUpdateSho
 
 		return writeNoContent(), nil
 	case q.Action.Delete != nil:
-		if !perms.HasPerm(userPerms, perms.PermissionFromString("shop_item_benefits.delete")) {
-			return writeText(http.StatusForbidden, "You do not have permission to delete shop item benefits [shop_item_benefits.delete]"), nil
+		if !userPerms.Has(perms.StaffManageShop) {
+			return writeText(http.StatusForbidden, "You do not have permission to delete shop item benefits [manage_shop]"), nil
 		}
 
 		id := q.Action.Delete.ID
@@ -620,8 +620,8 @@ func (s *Server) updateShopCoupons(ctx context.Context, q *types.QUpdateShopCoup
 	switch {
 	case q.Action.List != nil:
 		// Unlike the other List actions, this one REQUIRES a permission.
-		if !perms.HasPerm(userPerms, perms.PermissionFromString("shop_coupons.list")) {
-			return writeText(http.StatusForbidden, "You do not have permission to list shop coupons [shop_coupons.list]"), nil
+		if !userPerms.Has(perms.StaffViewShop) {
+			return writeText(http.StatusForbidden, "You do not have permission to list shop coupons [view_shop]"), nil
 		}
 
 		rows, err := state.Pool.Query(ctx,
@@ -664,8 +664,8 @@ func (s *Server) updateShopCoupons(ctx context.Context, q *types.QUpdateShopCoup
 	case q.Action.Create != nil:
 		action := q.Action.Create
 
-		if !perms.HasPerm(userPerms, perms.PermissionFromString("shop_coupons.create")) {
-			return writeText(http.StatusForbidden, "You do not have permission to create shop coupons [shop_coupons.create]"), nil
+		if !userPerms.Has(perms.StaffManageShop) {
+			return writeText(http.StatusForbidden, "You do not have permission to create shop coupons [manage_shop]"), nil
 		}
 
 		if resp := validateCoupon(action); resp != nil {
@@ -696,8 +696,8 @@ func (s *Server) updateShopCoupons(ctx context.Context, q *types.QUpdateShopCoup
 	case q.Action.Edit != nil:
 		action := q.Action.Edit
 
-		if !perms.HasPerm(userPerms, perms.PermissionFromString("shop_coupons.update")) {
-			return writeText(http.StatusForbidden, "You do not have permission to update shop coupons [shop_coupons.update]"), nil
+		if !userPerms.Has(perms.StaffManageShop) {
+			return writeText(http.StatusForbidden, "You do not have permission to update shop coupons [manage_shop]"), nil
 		}
 
 		if resp := validateCoupon(action); resp != nil {
@@ -732,8 +732,8 @@ func (s *Server) updateShopCoupons(ctx context.Context, q *types.QUpdateShopCoup
 
 		return writeNoContent(), nil
 	case q.Action.Delete != nil:
-		if !perms.HasPerm(userPerms, perms.PermissionFromString("shop_coupons.delete")) {
-			return writeText(http.StatusForbidden, "You do not have permission to delete shop coupons [shop_coupons.delete]"), nil
+		if !userPerms.Has(perms.StaffManageShop) {
+			return writeText(http.StatusForbidden, "You do not have permission to delete shop coupons [manage_shop]"), nil
 		}
 
 		id := q.Action.Delete.ID
@@ -806,7 +806,7 @@ func (s *Server) updateBotWhitelist(ctx context.Context, q *types.QUpdateBotWhit
 
 		// Note the PARENTHESES here rather than the square brackets the other
 		// messages use.
-		if !perms.HasPerm(userPerms, perms.PermissionFromString("bot_whitelist.create")) {
+		if !userPerms.Has(perms.StaffManageBotWhitelist) {
 			return writeText(http.StatusForbidden, "You do not have permission to add to the bot whitelist (bot_whitelist.create)"), nil
 		}
 
@@ -822,7 +822,7 @@ func (s *Server) updateBotWhitelist(ctx context.Context, q *types.QUpdateBotWhit
 	case q.Action.Edit != nil:
 		action := q.Action.Edit
 
-		if !perms.HasPerm(userPerms, perms.PermissionFromString("bot_whitelist.update")) {
+		if !userPerms.Has(perms.StaffManageBotWhitelist) {
 			return writeText(http.StatusForbidden, "You do not have permission to update bot whitelist (bot_whitelist.update)"), nil
 		}
 
@@ -838,7 +838,7 @@ func (s *Server) updateBotWhitelist(ctx context.Context, q *types.QUpdateBotWhit
 
 		return writeNoContent(), nil
 	case q.Action.Delete != nil:
-		if !perms.HasPerm(userPerms, perms.PermissionFromString("bot_whitelist.delete")) {
+		if !userPerms.Has(perms.StaffManageBotWhitelist) {
 			return writeText(http.StatusForbidden, "You do not have permission to delete bot whitelist entries (bot_whitelist.delete)"), nil
 		}
 

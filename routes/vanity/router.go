@@ -6,15 +6,14 @@ package vanity
 import (
 	"net/http"
 	"popplio/api"
+	"popplio/perms"
 	"popplio/routes/vanity/endpoints/patch_vanity"
 	"popplio/routes/vanity/endpoints/redirect_vanity"
 	"popplio/routes/vanity/endpoints/resolve_vanity"
-	"popplio/teams"
 	"popplio/validators"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/infinitybotlist/eureka/uapi"
-	perms "github.com/infinitybotlist/kittycat/go"
 )
 
 const tagName = "Vanity"
@@ -52,12 +51,7 @@ func (b Router) Routes(r *chi.Mux) {
 		Auth:    api.GetAllAuthTypes(),
 		ExtData: map[string]any{
 			api.PERMISSION_CHECK_KEY: api.PermissionCheck{
-				NeededPermission: func(d uapi.Route, r *http.Request, authData uapi.AuthData) (*perms.Permission, error) {
-					return &perms.Permission{
-						Namespace: validators.NormalizeTargetType(chi.URLParam(r, "target_type")),
-						Perm:      teams.PermissionSetVanity,
-					}, nil
-				},
+				NeededPermission: api.Needs(perms.EntitySetVanity),
 				GetTarget: func(d uapi.Route, r *http.Request, authData uapi.AuthData) (string, string) {
 					return validators.NormalizeTargetType(chi.URLParam(r, "target_type")), chi.URLParam(r, "target_id")
 				},

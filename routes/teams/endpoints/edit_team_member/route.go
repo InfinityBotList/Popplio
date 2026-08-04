@@ -7,19 +7,19 @@ package edit_team_member
 import (
 	"net/http"
 	"popplio/api/resp"
+	"popplio/perms"
 	"popplio/state"
 	"popplio/teams"
 	"popplio/types"
 
 	docs "github.com/infinitybotlist/eureka/doclib"
 	"github.com/infinitybotlist/eureka/uapi"
-	kittycat "github.com/infinitybotlist/kittycat/go"
 	"go.uber.org/zap"
 
 	"github.com/go-chi/chi/v5"
 )
 
-var globalOwner = kittycat.Permission{Namespace: "global", Perm: teams.PermissionOwner}
+var globalOwner = perms.EntityOwner
 
 func Docs() *docs.Doc {
 	return &docs.Doc{
@@ -109,18 +109,16 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 
 		// Resolve the permissions
 		//
-		// Right now, we use perm overrides for this
-		// as we do not have a hierarchy system yet
-		newPermsResolved := kittycat.StaffPermissions{
-			PermOverrides: kittycat.PFSS(*payload.Perms),
-		}.Resolve()
+		// Teams have no position hierarchy, so a member's flags are a single
+		// flat source of permissions
+		newPermsResolved := perms.Entity.ResolveStrings(*payload.Perms)
 
 		// First ensure that the manager can set these permissions
-		if err = kittycat.CheckPatchChanges(managerPerms, currentUserPerms, newPermsResolved); err != nil {
+		if err = perms.CheckPatch(managerPerms, currentUserPerms, newPermsResolved); err != nil {
 			return resp.Forbidden("You do not have permission to set these permissions.")
 		}
 
-		if !kittycat.HasPerm(newPermsResolved, globalOwner) && kittycat.HasPerm(currentUserPerms, globalOwner) {
+		if !newPermsResolved.Has(globalOwner) && currentUserPerms.Has(globalOwner) {
 			// Ensure that if perm is owner, then there is another owner
 			var ownerCount int
 
@@ -145,7 +143,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	if payload.Mentionable != nil {
 		// All members can update their own mentionable status
 		if d.Auth.ID != userId {
-			if !kittycat.HasPerm(managerPerms, kittycat.Permission{Namespace: "team_member", Perm: teams.PermissionEdit}) {
+			if !managerPerms.Has(perms.EntityEditMembers) {
 				return resp.Forbidden("You do not have permission to edit this member")
 			}
 		}
@@ -158,7 +156,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	}
 
 	if payload.DataHolder != nil {
-		if !kittycat.HasPerm(managerPerms, globalOwner) {
+		if !managerPerms.Has(globalOwner) {
 			return resp.Forbidden("Only global owners can set a data holder")
 		}
 

@@ -10,9 +10,9 @@ import (
 	"popplio/arcadia/impls"
 	"popplio/arcadia/rpc"
 	"popplio/arcadia/types"
+	"popplio/perms"
 	"popplio/state"
 
-	perms "github.com/infinitybotlist/kittycat/go"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 )
@@ -43,14 +43,14 @@ func checkAuthInsecure(ctx context.Context, token string) (types.AuthData, error
 }
 
 // resolvedPerms is the light permission path used by most operations.
-func resolvedPerms(ctx context.Context, userID string) ([]perms.Permission, error) {
+func resolvedPerms(ctx context.Context, userID string) (perms.Set, error) {
 	sp, err := impls.GetUserPerms(ctx, userID)
 
 	if err != nil {
-		return nil, newError(err)
+		return perms.Set{}, newError(err)
 	}
 
-	return sp.Resolve(), nil
+	return sp, nil
 }
 
 func (s *Server) hello(ctx context.Context, q *types.QHello) (response, error) {
@@ -343,7 +343,9 @@ func (s *Server) getRpcMethods(ctx context.Context, q *types.QGetRpcMethods) (re
 			return response{}, newError(err)
 		}
 
-		if q.Filtered && !perms.HasPerm(userPerms, perms.PermissionFromString("rpc."+name)) {
+		required, known := types.RPCPermission(name)
+
+		if q.Filtered && (!known || !userPerms.Has(required)) {
 			continue
 		}
 
@@ -381,8 +383,8 @@ func (s *Server) getRpcLogEntries(ctx context.Context, q *types.QLoginTokenOnly)
 		return response{}, err
 	}
 
-	if !perms.HasPerm(userPerms, perms.PermissionFromString("rpc_logs.view")) {
-		return writeText(http.StatusForbidden, "You do not have permission to view rpc logs [rpc_logs.view]"), nil
+	if !userPerms.Has(perms.StaffViewAuditLogs) {
+		return writeText(http.StatusForbidden, "You do not have permission to view rpc logs [view_audit_logs]"), nil
 	}
 
 	rows, err := state.Pool.Query(ctx, "SELECT id, user_id, method, data, state, created_at FROM rpc_logs ORDER BY created_at DESC")

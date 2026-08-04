@@ -11,12 +11,11 @@ import (
 	"strings"
 
 	"popplio/db"
+	"popplio/perms"
 	"popplio/state"
 	"popplio/types"
-	"popplio/validators"
 
 	"github.com/disgoorg/snowflake/v2"
-	perms "github.com/infinitybotlist/kittycat/go"
 
 	docs "github.com/infinitybotlist/eureka/doclib"
 	"github.com/infinitybotlist/eureka/dovewing"
@@ -67,14 +66,14 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 
 	if userId != d.Auth.ID {
 		// Check if they are staff with popplio.tickets permission
-		sp, err := validators.GetUserStaffPerms(d.Context, d.Auth.ID)
+		sp, err := perms.StaffPerms(d.Context, d.Auth.ID)
 
 		if err != nil {
 			return resp.ErrBody("Failed to get user staff perms", "Failed to get user staff perms.", err)
 		}
 
-		if !perms.HasPerm(sp.Resolve(), perms.Permission{Namespace: "popplio", Perm: "tickets"}) {
-			return resp.Forbidden("You do not have permission to view this ticket [popplio.tickets is required]")
+		if !sp.Has(perms.StaffViewTickets) {
+			return resp.Forbidden("You do not have permission to view this ticket [" + perms.StaffViewTickets.String() + " is required]")
 		}
 	}
 

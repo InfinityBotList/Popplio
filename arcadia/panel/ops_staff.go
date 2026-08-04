@@ -4,36 +4,20 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"math"
 	"net/http"
 	"time"
 
 	"popplio/arcadia/dclient"
 	"popplio/arcadia/impls"
 	"popplio/arcadia/types"
+	"popplio/perms"
 	"popplio/state"
 
 	"github.com/disgoorg/snowflake/v2"
 	"github.com/google/uuid"
-	perms "github.com/infinitybotlist/kittycat/go"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 )
-
-// lowestIndex is the caller's authority: the minimum index across their
-// positions. LOWER index means HIGHER authority, and every mutation refuses to
-// touch a position at or above the caller's own authority.
-func lowestIndex(positions []types.StaffPosition) int32 {
-	lowest := int32(math.MaxInt32)
-
-	for _, pos := range positions {
-		if pos.Index < lowest {
-			lowest = pos.Index
-		}
-	}
-
-	return lowest
-}
 
 // correspondingServerNamesDebug reproduces Rust's `{:#?}` rendering of
 // CorrespondingServer::VARIANTS, which is what the error message interpolates.
@@ -168,8 +152,10 @@ func (s *Server) updateStaffPositions(ctx context.Context, q *types.QUpdateStaff
 		return response{}, newError(err)
 	}
 
-	smPerms := perms.PFSS(sm.ResolvedPerms)
-	smLowest := lowestIndex(sm.Positions)
+	smPerms := perms.Staff.SetFromStrings(sm.ResolvedPerms)
+	// Rank comes from the member's grants rather than their positions, because
+	// an instance owner outranks every position without holding one.
+	smLowest := sm.Grants.Rank()
 
 	switch {
 	case q.Action.SwapIndex != nil:
@@ -198,9 +184,9 @@ type positionRow struct {
 	CreatedAt          time.Time   `db:"created_at"`
 }
 
-func (s *Server) swapIndex(ctx context.Context, action *types.StaffSwapIndex, smPerms []perms.Permission, smLowest int32) (response, error) {
-	if !perms.HasPerm(smPerms, perms.PermissionFromString("staff_positions.swap_index")) {
-		return writeText(http.StatusForbidden, "You do not have permission to swap indexes of staff positions [staff_positions.swap_index]"), nil
+func (s *Server) swapIndex(ctx context.Context, action *types.StaffSwapIndex, smPerms perms.Set, smLowest int32) (response, error) {
+	if !smPerms.Has(perms.StaffManageStaffRoles) {
+		return writeText(http.StatusForbidden, "You do not have permission to swap indexes of staff positions [manage_staff_roles]"), nil
 	}
 
 	tx, err := state.Pool.Begin(ctx)
@@ -247,15 +233,15 @@ func (s *Server) swapIndex(ctx context.Context, action *types.StaffSwapIndex, sm
 	return writeNoContent(), nil
 }
 
-func (s *Server) setIndex(ctx context.Context, action *types.StaffSetIndex, smPerms []perms.Permission, smLowest int32) (response, error) {
+func (s *Server) setIndex(ctx context.Context, action *types.StaffSetIndex, smPerms perms.Set, smLowest int32) (response, error) {
 	id, err := uuid.Parse(action.ID)
 
 	if err != nil {
 		return response{}, newError(err)
 	}
 
-	if !perms.HasPerm(smPerms, perms.PermissionFromString("staff_positions.set_index")) {
-		return writeText(http.StatusForbidden, "You do not have permission to set the indexes of staff positions [staff_positions.set_index]"), nil
+	if !smPerms.Has(perms.StaffManageStaffRoles) {
+		return writeText(http.StatusForbidden, "You do not have permission to set the indexes of staff positions [manage_staff_roles]"), nil
 	}
 
 	if action.Index < 0 {
@@ -299,9 +285,9 @@ func (s *Server) setIndex(ctx context.Context, action *types.StaffSetIndex, smPe
 	return writeNoContent(), nil
 }
 
-func (s *Server) createPosition(ctx context.Context, action *types.StaffCreatePosition, smPerms []perms.Permission, smLowest int32) (response, error) {
-	if !perms.HasPerm(smPerms, perms.PermissionFromString("staff_positions.create")) {
-		return writeText(http.StatusForbidden, "You do not have permission to create staff positions [staff_positions.create]"), nil
+func (s *Server) createPosition(ctx context.Context, action *types.StaffCreatePosition, smPerms perms.Set, smLowest int32) (response, error) {
+	if !smPerms.Has(perms.StaffManageStaffRoles) {
+		return writeText(http.StatusForbidden, "You do not have permission to create staff positions [manage_staff_roles]"), nil
 	}
 
 	if action.Index < 0 {
@@ -310,6 +296,10 @@ func (s *Server) createPosition(ctx context.Context, action *types.StaffCreatePo
 
 	if action.Index <= smLowest {
 		return writeText(http.StatusForbidden, "Index is lower than or equal to the lowest index of the staff member"), nil
+	}
+
+	if err := perms.Staff.ValidateStrings(action.Perms); err != nil {
+		return writeText(http.StatusBadRequest, err.Error()), nil
 	}
 
 	tx, err := state.Pool.Begin(ctx)
@@ -355,15 +345,15 @@ func (s *Server) createPosition(ctx context.Context, action *types.StaffCreatePo
 	return writeNoContent(), nil
 }
 
-func (s *Server) editPosition(ctx context.Context, action *types.StaffEditPosition, smPerms []perms.Permission, smLowest int32) (response, error) {
+func (s *Server) editPosition(ctx context.Context, action *types.StaffEditPosition, smPerms perms.Set, smLowest int32) (response, error) {
 	id, err := uuid.Parse(action.ID)
 
 	if err != nil {
 		return response{}, newError(err)
 	}
 
-	if !perms.HasPerm(smPerms, perms.PermissionFromString("staff_positions.edit")) {
-		return writeText(http.StatusForbidden, "You do not have permission to edit staff positions [staff_positions.edit]"), nil
+	if !smPerms.Has(perms.StaffManageStaffRoles) {
+		return writeText(http.StatusForbidden, "You do not have permission to edit staff positions [manage_staff_roles]"), nil
 	}
 
 	tx, err := state.Pool.Begin(ctx)
@@ -390,7 +380,11 @@ func (s *Server) editPosition(ctx context.Context, action *types.StaffEditPositi
 		return writeText(http.StatusForbidden, "Index is lower than the lowest index of the member"), nil
 	}
 
-	if err := perms.CheckPatchChanges(smPerms, perms.PFSS(oldPerms), perms.PFSS(action.Perms)); err != nil {
+	if err := perms.Staff.ValidateStrings(action.Perms); err != nil {
+		return writeText(http.StatusBadRequest, err.Error()), nil
+	}
+
+	if err := perms.CheckPatch(smPerms, perms.Staff.SetFromStrings(oldPerms), perms.Staff.SetFromStrings(action.Perms)); err != nil {
 		return writeText(http.StatusForbidden, fmt.Sprintf("You do not have permission to edit the following perms: %s", err)), nil
 	}
 
@@ -421,15 +415,15 @@ func (s *Server) editPosition(ctx context.Context, action *types.StaffEditPositi
 	return writeNoContent(), nil
 }
 
-func (s *Server) deletePosition(ctx context.Context, action *types.StaffDeletePosition, smPerms []perms.Permission, smLowest int32) (response, error) {
+func (s *Server) deletePosition(ctx context.Context, action *types.StaffDeletePosition, smPerms perms.Set, smLowest int32) (response, error) {
 	id, err := uuid.Parse(action.ID)
 
 	if err != nil {
 		return response{}, newError(err)
 	}
 
-	if !perms.HasPerm(smPerms, perms.PermissionFromString("staff_positions.delete")) {
-		return writeText(http.StatusForbidden, "You do not have permission to delete staff positions [staff_positions.delete]"), nil
+	if !smPerms.Has(perms.StaffManageStaffRoles) {
+		return writeText(http.StatusForbidden, "You do not have permission to delete staff positions [manage_staff_roles]"), nil
 	}
 
 	tx, err := state.Pool.Begin(ctx)
@@ -457,7 +451,7 @@ func (s *Server) deletePosition(ctx context.Context, action *types.StaffDeletePo
 	}
 
 	// "neeed" is misspelled upstream and the panel shows the message raw.
-	if err := perms.CheckPatchChanges(smPerms, perms.PFSS(oldPerms), []perms.Permission{}); err != nil {
+	if err := perms.CheckPatch(smPerms, perms.Staff.SetFromStrings(oldPerms), perms.Staff.NewSet()); err != nil {
 		return writeText(http.StatusForbidden, fmt.Sprintf("You do not have permission to edit the following perms [neeed to delete position]: %s", err)), nil
 	}
 
@@ -532,23 +526,27 @@ func (s *Server) editMember(ctx context.Context, callerID string, action *types.
 		return response{}, newError(err)
 	}
 
-	smPerms := perms.PFSS(sm.ResolvedPerms)
+	smPerms := perms.Staff.SetFromStrings(sm.ResolvedPerms)
 
-	if !perms.HasPerm(smPerms, perms.PermissionFromString("staff_members.edit")) {
-		return writeText(http.StatusForbidden, "You do not have permission to edit staff members [staff_members.edit]"), nil
+	if !smPerms.Has(perms.StaffManageStaffMembers) {
+		return writeText(http.StatusForbidden, "You do not have permission to edit staff members [manage_staff_members]"), nil
 	}
 
-	if lowestIndex(target.Positions) < lowestIndex(sm.Positions) {
+	if target.Grants.Rank() < sm.Grants.Rank() {
 		return writeText(http.StatusForbidden, "Target has a lower index than the member"), nil
 	}
 
-	// The target's positions are kept; only the overrides change.
-	newResolved := perms.StaffPermissions{
-		UserPositions: target.StaffPermission.UserPositions,
-		PermOverrides: perms.PFSS(action.PermOverrides),
+	if err := perms.Staff.ValidateStrings(action.PermOverrides); err != nil {
+		return writeText(http.StatusBadRequest, err.Error()), nil
+	}
+
+	// The target's roles are kept; only their extra permissions change.
+	newResolved := perms.StaffGrants{
+		Roles:  target.Grants.Roles,
+		Extras: perms.ParseStrings(action.PermOverrides),
 	}.Resolve()
 
-	if err := perms.CheckPatchChanges(smPerms, perms.PFSS(target.ResolvedPerms), newResolved); err != nil {
+	if err := perms.CheckPatch(smPerms, perms.Staff.SetFromStrings(target.ResolvedPerms), newResolved); err != nil {
 		return writeText(http.StatusForbidden, fmt.Sprintf("You do not have permission to edit the following perms: %s", err)), nil
 	}
 
@@ -649,11 +647,15 @@ func (s *Server) updateStaffDisciplinaryType(ctx context.Context, q *types.QUpda
 	case q.Action.CreateDisciplinaryType != nil:
 		action := q.Action.CreateDisciplinaryType
 
-		if !perms.HasPerm(userPerms, perms.PermissionFromString("staff_disciplinary_types.create")) {
-			return writeText(http.StatusForbidden, "You do not have permission to create staff disciplinary types [staff_disciplinary_types.create]"), nil
+		if !userPerms.Has(perms.StaffManageDisciplinaries) {
+			return writeText(http.StatusForbidden, "You do not have permission to create staff disciplinary types [manage_disciplinaries]"), nil
 		}
 
-		if err := perms.CheckPatchChanges(userPerms, []perms.Permission{}, perms.PFSS(action.PermLimits)); err != nil {
+		if err := perms.Staff.ValidateStrings(action.PermLimits); err != nil {
+			return writeText(http.StatusBadRequest, err.Error()), nil
+		}
+
+		if err := perms.CheckPatch(userPerms, perms.Staff.NewSet(), perms.Staff.SetFromStrings(action.PermLimits)); err != nil {
 			return writeText(http.StatusForbidden, fmt.Sprintf("You do not have permission to edit the following perms: %s", err)), nil
 		}
 
@@ -669,11 +671,15 @@ func (s *Server) updateStaffDisciplinaryType(ctx context.Context, q *types.QUpda
 	case q.Action.EditDisciplinaryType != nil:
 		action := q.Action.EditDisciplinaryType
 
-		if !perms.HasPerm(userPerms, perms.PermissionFromString("staff_disciplinary_types.update")) {
-			return writeText(http.StatusForbidden, "You do not have permission to update staff disciplinary types [staff_disciplinary_types.update]"), nil
+		if !userPerms.Has(perms.StaffManageDisciplinaries) {
+			return writeText(http.StatusForbidden, "You do not have permission to update staff disciplinary types [manage_disciplinaries]"), nil
 		}
 
-		if err := perms.CheckPatchChanges(userPerms, []perms.Permission{}, perms.PFSS(action.PermLimits)); err != nil {
+		if err := perms.Staff.ValidateStrings(action.PermLimits); err != nil {
+			return writeText(http.StatusBadRequest, err.Error()), nil
+		}
+
+		if err := perms.CheckPatch(userPerms, perms.Staff.NewSet(), perms.Staff.SetFromStrings(action.PermLimits)); err != nil {
 			return writeText(http.StatusForbidden, fmt.Sprintf("You do not have permission to edit the following perms: %s", err)), nil
 		}
 
@@ -693,8 +699,8 @@ func (s *Server) updateStaffDisciplinaryType(ctx context.Context, q *types.QUpda
 
 		return writeNoContent(), nil
 	case q.Action.DeleteDisciplinaryType != nil:
-		if !perms.HasPerm(userPerms, perms.PermissionFromString("staff_disciplinary_types.delete")) {
-			return writeText(http.StatusForbidden, "You do not have permission to delete staff disciplinary types [staff_disciplinary_types.delete]"), nil
+		if !userPerms.Has(perms.StaffManageDisciplinaries) {
+			return writeText(http.StatusForbidden, "You do not have permission to delete staff disciplinary types [manage_disciplinaries]"), nil
 		}
 
 		id := q.Action.DeleteDisciplinaryType.ID
