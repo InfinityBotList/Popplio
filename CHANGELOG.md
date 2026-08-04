@@ -76,6 +76,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- `meta.popplio_proxy` now defaults to `https://gateway.nodebyte.host/proxy/discord`
+  (the shared parent-company gateway), replacing the old local
+  `http://127.0.0.1:3219` twilight-http-proxy convention. Both Popplio's own
+  bot client (`state.Setup`) and Arcadia's separate staff bot
+  (`arcadia/dclient`) now route their REST traffic through it via
+  `rest.WithURL`/`rest.WithHTTPClient` (`state.ProxyRestOpts`). Since that
+  gateway authenticates every request with its own shared bot credential by
+  default, each client sends its own token via an `X-Upstream-Authorization`
+  header instead, which the gateway forwards as the real `Authorization`
+  header sent to Discord — so Popplio and Arcadia's staff bot each keep
+  their own distinct bot identity rather than both authenticating as
+  whichever bot the gateway holds.
 - `EntityGetVoteCount` (used by nearly every bot/server/team/user/pack
   detail and list endpoint) now counts up- and down-votes in a single query
   with `FILTER`, instead of two separate `COUNT(*)` round trips.

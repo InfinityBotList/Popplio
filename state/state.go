@@ -136,7 +136,9 @@ func Setup() {
 
 	Redis = redis.NewClient(rOptions)
 
-	Discord, err = disgo.New(Config.DiscordAuth.Token.Parse(), bot.WithShardManagerConfigOpts(
+	Discord, err = disgo.New(Config.DiscordAuth.Token.Parse(),
+		bot.WithRestClientConfigOpts(ProxyRestOpts(Config.DiscordAuth.Token.Parse())...),
+		bot.WithShardManagerConfigOpts(
 		sharding.WithShardIDs(0, 1),
 		sharding.WithShardCount(2),
 		sharding.WithAutoScaling(true),

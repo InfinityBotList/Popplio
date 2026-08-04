@@ -57,6 +57,7 @@ func Setup(ctx context.Context, listeners ...bot.EventListener) error {
 	}
 
 	opts := []bot.ConfigOpt{
+		bot.WithRestClientConfigOpts(state.ProxyRestOpts(token)...),
 		bot.WithGatewayConfigOpts(
 			gateway.WithIntents(intents()),
 			gateway.WithCompress(true),
