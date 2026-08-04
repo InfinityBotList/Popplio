@@ -282,39 +282,43 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		return resp.Err("Error while committing transaction", err, zap.String("userID", d.Auth.ID), zap.String("botID", payload.BotID))
 	}
 
-	_, err = state.Discord.Rest().CreateMessage(state.Config.Channels.BotLogs, discord.MessageCreate{
-		Content: state.Config.Meta.UrgentMentions,
-		Embeds: []discord.Embed{
+	botAddedEmbed := discord.Embed{
+		URL:   state.Config.Sites.Frontend.Parse() + "/bots/" + payload.BotID,
+		Title: "New Bot Added",
+		Fields: []discord.EmbedField{
 			{
-				URL:   state.Config.Sites.Frontend.Production() + "/bots/" + payload.BotID,
-				Title: "New Bot Added",
-				Thumbnail: &discord.EmbedResource{
-					URL: metadata.Avatar,
-				},
-				Fields: []discord.EmbedField{
-					{
-						Name:   "Name",
-						Value:  metadata.Name,
-						Inline: validators.TruePtr,
-					},
-					{
-						Name:   "Bot ID",
-						Value:  payload.BotID,
-						Inline: validators.TruePtr,
-					},
-					{
-						Name: "Owner",
-						Value: func() string {
-							if payload.TeamOwner != "" {
-								return fmt.Sprintf("[Team %s](%s/teams/%s)", payload.TeamOwner, state.Config.Sites.Frontend.Parse(), payload.TeamOwner)
-							}
-							return fmt.Sprintf("<@%s>", d.Auth.ID)
-						}(),
-						Inline: validators.TruePtr,
-					},
-				},
+				Name:   "Name",
+				Value:  metadata.Name,
+				Inline: validators.TruePtr,
+			},
+			{
+				Name:   "Bot ID",
+				Value:  payload.BotID,
+				Inline: validators.TruePtr,
+			},
+			{
+				Name: "Owner",
+				Value: func() string {
+					if payload.TeamOwner != "" {
+						return fmt.Sprintf("[Team %s](%s/teams/%s)", payload.TeamOwner, state.Config.Sites.Frontend.Parse(), payload.TeamOwner)
+					}
+					return fmt.Sprintf("<@%s>", d.Auth.ID)
+				}(),
+				Inline: validators.TruePtr,
 			},
 		},
+	}
+
+	// An EmbedResource with an empty URL is itself invalid and gets the
+	// whole message rejected (50035) — Discord wants the field omitted
+	// entirely, not present-but-empty, when there's no avatar.
+	if metadata.Avatar != "" {
+		botAddedEmbed.Thumbnail = &discord.EmbedResource{URL: metadata.Avatar}
+	}
+
+	_, err = state.Discord.Rest().CreateMessage(state.Config.Channels.BotLogs, discord.MessageCreate{
+		Content: state.Config.Meta.UrgentMentions,
+		Embeds:  []discord.Embed{botAddedEmbed},
 	})
 
 	if err != nil {
