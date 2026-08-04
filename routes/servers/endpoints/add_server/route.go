@@ -34,19 +34,25 @@ import (
 	"github.com/go-playground/validator/v10"
 )
 
+// createServerArgs must list values in the exact same order as
+// db.GetCols(types.CreateServer{}) (i.e. types.CreateServer's field
+// declaration order) — createServerCols/createServerParams build the SQL
+// column list from that reflection order, and args are bound to columns
+// positionally, so any drift between the two silently writes every field
+// into the wrong column instead of failing loudly.
 func createServerArgs(server types.CreateServer) []any {
 	return []any{
-		server.ServerID,
-		server.Name,
+		server.Invite,
 		server.Short,
 		server.Long,
 		server.ExtraLinks,
 		server.Tags,
 		server.NSFW,
-		server.Invite,
+		server.TeamOwner,
+		server.ServerID,
+		server.Name,
 		server.TotalMembers,
 		server.OnlineMembers,
-		server.TeamOwner,
 		server.VanityRef,
 	}
 }
