@@ -9,6 +9,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- `bgtasks` package: a new home for Popplio's own periodic background jobs,
+  separate from `arcadia/tasks` (the staff bot's jobs, which only run when
+  Arcadia is configured) so core platform features don't depend on staff
+  tooling being set up. First job: `bot_uptime_check`, which periodically
+  records whether every listed bot is currently online in the main server
+  into `bots.uptime`/`total_uptime`/`uptime_last_checked`. These columns
+  have existed since the Rust port but were never actually written to —
+  Arcadia's old uptime checker (`src/tasks/__toberewritten/uptime.rs`)
+  didn't even compile against the serenity version it was last touched
+  against, and was explicitly never ported (see `arcadia/CONFORMANCE.md`).
+  Reads presence straight from Popplio's own gateway cache (it already
+  requests the Presence intent) rather than Infernoplex, which deliberately
+  never requests it.
+- `servers.avatar`: servers previously had no icon anywhere (index listing,
+  detail page, or the staff panel's server search all showed a blank/
+  initials fallback) — the old cache-server subsystem used to synthesize
+  this from its own CDN cache, and nothing replaced it after that was
+  retired (`exp/remove_cache_servers.sql`). Populated once at Add Server
+  time from the invite resolution already done there, and kept fresh
+  afterward by Infernoplex's `serversync` task, which now also syncs every
+  listed server's icon (not just opted-in ones' emojis/stickers) from its
+  gateway cache. Requires the new `servers.avatar` column
+  (`exp/add_servers_avatar.sql`, needs to be applied manually against the
+  database like other `exp/` scripts).
 - Webhooks gained a new `hmac_auth` mode (`hmac_auth` on
   `POST`/`PATCH .../webhooks`): the payload is sent as plain JSON with an
   `X-Webhook-Signature: sha256=<hex hmac>` header, the same shape GitHub and

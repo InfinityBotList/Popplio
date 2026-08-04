@@ -51,6 +51,7 @@ func createServerArgs(server types.CreateServer) []any {
 		server.TeamOwner,
 		server.ServerID,
 		server.Name,
+		server.Avatar,
 		server.TotalMembers,
 		server.OnlineMembers,
 		server.VanityRef,
@@ -127,6 +128,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 
 	payload.ServerID = invite.Guild.ID.String()
 	payload.Name = invite.Guild.Name
+	payload.Avatar = assets.GuildIconURL(invite.Guild)
 	payload.TotalMembers = invite.ApproximateMemberCount
 	payload.OnlineMembers = invite.ApproximatePresenceCount
 

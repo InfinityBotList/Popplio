@@ -418,6 +418,7 @@ func (s *Server) getRpcLogEntries(ctx context.Context, q *types.QLoginTokenOnly)
 type searchServerRow struct {
 	ServerID         string     `db:"server_id"`
 	Name             string     `db:"name"`
+	Avatar           string     `db:"avatar"`
 	TotalMembers     int32      `db:"total_members"`
 	OnlineMembers    int32      `db:"online_members"`
 	Short            string     `db:"short"`
@@ -462,7 +463,7 @@ func (s *Server) searchEntitys(ctx context.Context, q *types.QSearchEntitys) (re
 		return s.partialBots(ctx, queue)
 	case types.TargetTypeServer:
 		rows, err := state.Pool.Query(ctx,
-			`SELECT server_id, name, total_members, online_members, short, type, approximate_votes, invite_clicks,
+			`SELECT server_id, name, avatar, total_members, online_members, short, type, approximate_votes, invite_clicks,
                         clicks, nsfw, tags, premium, claimed_by, last_claimed FROM servers
                         WHERE server_id = $1 OR name ILIKE $2 ORDER BY created_at`,
 			q.Query, pattern)
@@ -495,10 +496,10 @@ func (s *Server) searchEntitys(ctx context.Context, q *types.QSearchEntitys) (re
 			servers = append(servers, types.PartialEntity{Server: &types.PartialServer{
 				ServerID: server.ServerID,
 				Name:     server.Name,
-				// Upstream synthesised this from the CDN URL. With the CDN gone there
-				// is no avatar to point at; the field stays on the wire as an empty
-				// string. See CONFORMANCE.md.
-				Avatar:        "",
+				// Populated from servers.avatar, synced by Infernoplex's
+				// serversync task while it's a member of the guild. Empty
+				// until the first sync (or if the bot has never joined).
+				Avatar:        server.Avatar,
 				TotalMembers:  server.TotalMembers,
 				OnlineMembers: server.OnlineMembers,
 				Short:         server.Short,
