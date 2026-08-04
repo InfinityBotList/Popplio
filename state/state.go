@@ -1,9 +1,3 @@
-// Package state holds the process-wide handles Popplio is built on.
-//
-// The Postgres pool, Redis client, Discord session, validator, logger and
-// parsed configuration are package-level globals initialised once by Setup
-// and read from everywhere thereafter. It is the base of the dependency
-// graph, so nothing here may import the packages that consume it.
 package state
 
 import (
@@ -160,6 +154,16 @@ func Setup() {
 			},
 			OnGuildsReady: func(event *events.GuildsReady) {
 				Logger.Info("All guilds ready")
+
+				// Setting presence right after OpenShardManager returns
+				// races ahead of the shards actually finishing their
+				// handshake (it returns once shards start connecting, not
+				// once they're ready), reliably failing with "no gateway
+				// configured". OnGuildsReady only fires once shards are
+				// actually up, so set it here instead.
+				if presenceErr := Discord.SetPresence(Context, gateway.WithWatchingActivity(Config.Sites.Frontend.Parse())); presenceErr != nil {
+					Logger.Error("error while setting presence", zap.Error(presenceErr))
+				}
 			},
 		}),
 	)
@@ -172,14 +176,6 @@ func Setup() {
 		if err = Discord.OpenShardManager(Context); err != nil {
 			slog.Error("error while connecting to gateway", slog.Any("err", err))
 			return
-		}
-
-		// Previously gated to prod only, and the SetPresence error was never
-		// actually captured — the check below was reading the stale
-		// OpenShardManager `err`, which is guaranteed nil here, so a failed
-		// presence update was silently swallowed instead of logged.
-		if presenceErr := Discord.SetPresence(Context, gateway.WithWatchingActivity(Config.Sites.Frontend.Parse())); presenceErr != nil {
-			slog.Error("error while setting presence", slog.Any("err", presenceErr))
 		}
 	}()
 
