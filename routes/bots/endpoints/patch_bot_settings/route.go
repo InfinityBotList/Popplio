@@ -127,7 +127,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	}
 
 	embed := discord.Embed{
-		URL:   state.Config.Sites.Frontend.Production() + "/bots/" + id,
+		URL:   state.Config.Sites.Frontend.Parse() + "/bots/" + id,
 		Title: "Bot Updated",
 		Fields: []discord.EmbedField{
 			{

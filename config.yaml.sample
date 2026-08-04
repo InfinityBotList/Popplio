@@ -2,6 +2,7 @@ discord_auth:
   token:
     staging: # Staging value
     prod: # Production value
+    beta: # Beta value, used when current-env is "beta"; falls back to staging when unset (optional)
     dev: # Development value, used when current-env is "dev"; falls back to staging when unset (optional)
   client_id: 815553000470478850 # Discord Client ID
   client_secret: # Discord Client Secret
@@ -17,18 +18,22 @@ sites:
   frontend:
     staging: # Staging value
     prod: # Production value
+    beta: # Beta value, used when current-env is "beta"; falls back to staging when unset (optional)
     dev: # Development value, used when current-env is "dev"; falls back to staging when unset (optional)
   api:
     staging: # Staging value
     prod: # Production value
+    beta: # Beta value, used when current-env is "beta"; falls back to staging when unset (optional)
     dev: # Development value, used when current-env is "dev"; falls back to staging when unset (optional)
   panel:
     staging: # Staging value
     prod: # Production value
+    beta: # Beta value, used when current-env is "beta"; falls back to staging when unset (optional)
     dev: # Development value, used when current-env is "dev"; falls back to staging when unset (optional)
   infernoplex:
     staging: # Staging value
     prod: # Production value
+    beta: # Beta value, used when current-env is "beta"; falls back to staging when unset (optional)
     dev: # Development value, used when current-env is "dev"; falls back to staging when unset (optional)
   instatus: https://infinity-bots.instatus.com # Instatus Status Page URL
 
@@ -52,6 +57,8 @@ roles:
     staging:
       - 
     prod:
+      - 
+    beta:
       - 
     dev:
       - 
@@ -78,10 +85,12 @@ meta:
   redis_url:
     staging: # Staging value
     prod: # Production value
+    beta: # Beta value, used when current-env is "beta"; falls back to staging when unset (optional)
     dev: # Development value, used when current-env is "dev"; falls back to staging when unset (optional)
   port:
     staging: # Staging value
     prod: # Production value
+    beta: # Beta value, used when current-env is "beta"; falls back to staging when unset (optional)
     dev: # Development value, used when current-env is "dev"; falls back to staging when unset (optional)
   vulgar_list:
     - fuck
@@ -92,18 +101,22 @@ meta:
   paypal_client_id:
     staging: # Staging value
     prod: # Production value
+    beta: # Beta value, used when current-env is "beta"; falls back to staging when unset (optional)
     dev: # Development value, used when current-env is "dev"; falls back to staging when unset (optional)
   paypal_secret:
     staging: # Staging value
     prod: # Production value
+    beta: # Beta value, used when current-env is "beta"; falls back to staging when unset (optional)
     dev: # Development value, used when current-env is "dev"; falls back to staging when unset (optional)
   stripe_public_key:
     staging: # Staging value
     prod: # Production value
+    beta: # Beta value, used when current-env is "beta"; falls back to staging when unset (optional)
     dev: # Development value, used when current-env is "dev"; falls back to staging when unset (optional)
   stripe_secret_key:
     staging: # Staging value
     prod: # Production value
+    beta: # Beta value, used when current-env is "beta"; falls back to staging when unset (optional)
     dev: # Development value, used when current-env is "dev"; falls back to staging when unset (optional)
   uptime_robot_ro_api_key: # Uptime Robot Read-Only API Key
   popplio_proxy: https://gateway.nodebyte.host/proxy/discord # Popplio Proxy URL
@@ -112,15 +125,18 @@ arcadia:
   token:
     staging: # Staging value
     prod: # Production value
+    beta: # Beta value, used when current-env is "beta"; falls back to staging when unset (optional)
     dev: # Development value, used when current-env is "dev"; falls back to staging when unset (optional)
   server_port:
     staging: # Staging value
     prod: # Production value
+    beta: # Beta value, used when current-env is "beta"; falls back to staging when unset (optional)
     dev: # Development value, used when current-env is "dev"; falls back to staging when unset (optional)
   prefix_commands: false # Enable legacy prefix commands. Requires the privileged Message Content intent to be granted
   prefix:
     staging: # Staging value
     prod: # Production value
+    beta: # Beta value, used when current-env is "beta"; falls back to staging when unset (optional)
     dev: # Development value, used when current-env is "dev"; falls back to staging when unset (optional)
   owners:
     - 510065483693817867

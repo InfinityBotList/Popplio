@@ -20,6 +20,7 @@ import (
 const (
 	CurrentEnvProd    = "prod"
 	CurrentEnvStaging = "staging"
+	CurrentEnvBeta    = "beta"
 	CurrentEnvDev     = "dev"
 )
 
@@ -29,13 +30,14 @@ var CurrentEnv string
 func init() {
 	CurrentEnv = strings.TrimSpace(CurrentEnv)
 
-	if CurrentEnv != CurrentEnvProd && CurrentEnv != CurrentEnvStaging && CurrentEnv != CurrentEnvDev {
+	if CurrentEnv != CurrentEnvProd && CurrentEnv != CurrentEnvStaging && CurrentEnv != CurrentEnvBeta && CurrentEnv != CurrentEnvDev {
 		panic("invalid environment")
 	}
 }
 
 // Common struct for values that differ between staging and production
-// environments, plus an optional per-developer override for local dev use.
+// environments, plus optional overrides for a beta deployment and local dev
+// use.
 //
 // Staging/Prod are not tagged validate:"required" here: whether they're
 // actually required depends on CurrentEnv, which a static tag can't express.
@@ -44,6 +46,16 @@ func init() {
 type Differs[T any] struct {
 	Staging T `yaml:"staging" comment:"Staging value"`
 	Prod    T `yaml:"prod" comment:"Production value"`
+
+	// Beta is only consulted when running with current-env set to "beta",
+	// and even then only if it has been set to something other than T's
+	// zero value — an unset Beta falls back to Staging, same as Dev below.
+	// Unlike Dev, current-env: beta does not relax the Staging/Prod
+	// requirement: beta is a real running deployment, not a personal
+	// machine, so most config (DB, tokens, etc.) is expected to be shared
+	// with staging and only keys that genuinely differ (e.g. the frontend
+	// URL) need an explicit Beta value.
+	Beta T `yaml:"beta" required:"false" comment:"Beta value, used when current-env is \"beta\"; falls back to staging when unset"`
 
 	// Dev is only consulted when running with current-env set to "dev", and
 	// even then only if it has been set to something other than T's zero
@@ -61,10 +73,11 @@ type Differs[T any] struct {
 // In "dev", only Dev or Staging needs to be set, Parse falls back to
 // Staging when Dev is unset — requiring a real Staging/Prod value for
 // every key just to run locally would defeat the point of "dev". Every
-// other environment keeps the original requirement: both Staging and Prod
-// must be set, regardless of which one is actually read at runtime, so a
-// config that's valid for one environment is valid to deploy as any of
-// them.
+// other environment, including "beta", keeps the original requirement:
+// both Staging and Prod must be set, regardless of which one is actually
+// read at runtime, so a config that's valid for one environment is valid
+// to deploy as any of them. Beta itself is never required — like Dev, an
+// unset Beta just falls back to Staging in Parse.
 func ValidateDiffers(sl validator.StructLevel) {
 	current := sl.Current()
 
@@ -93,6 +106,11 @@ func (d *Differs[T]) Parse() T {
 	case CurrentEnvProd:
 		return d.Prod
 	case CurrentEnvStaging:
+		return d.Staging
+	case CurrentEnvBeta:
+		if !reflect.ValueOf(d.Beta).IsZero() {
+			return d.Beta
+		}
 		return d.Staging
 	case CurrentEnvDev:
 		if !reflect.ValueOf(d.Dev).IsZero() {

@@ -247,7 +247,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		Content: state.Config.Meta.UrgentMentions,
 		Embeds: []discord.Embed{
 			{
-				URL:   state.Config.Sites.Frontend.Production() + "/servers/" + payload.ServerID,
+				URL:   state.Config.Sites.Frontend.Parse() + "/servers/" + payload.ServerID,
 				Title: "New Server Added",
 				Fields: []discord.EmbedField{
 					{

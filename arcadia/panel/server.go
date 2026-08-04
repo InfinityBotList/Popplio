@@ -208,6 +208,8 @@ func instanceDescription() string {
 	switch config.CurrentEnv {
 	case config.CurrentEnvStaging:
 		return "Arcadia Staging Panel Instance"
+	case config.CurrentEnvBeta:
+		return "Arcadia Beta Panel Instance"
 	case config.CurrentEnvDev:
 		return "Arcadia Development Panel Instance"
 	default:

@@ -9,6 +9,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- `current-env` now also accepts `beta`, a fourth environment alongside
+  `staging`/`prod`/`dev`. Every `Differs[T]` config key gains an optional
+  `beta` value (`config.Differs[T].Beta`), consulted only when `current-env`
+  is `beta` and falling back to `staging` when unset — same mechanism as
+  `dev`'s override, but without `dev`'s relaxed Staging/Prod requirement:
+  `beta` is validated exactly like `staging`/`prod` (`ValidateDiffers`),
+  since it's a real running deployment rather than a personal machine. In
+  practice this means most config (DB, tokens, etc.) can stay shared with
+  staging, and only keys that genuinely differ per deployment — like
+  `sites.frontend` — need an explicit `beta:` value.
 - `bgtasks` package: a new home for Popplio's own periodic background jobs,
   separate from `arcadia/tasks` (the staff bot's jobs, which only run when
   Arcadia is configured) so core platform features don't depend on staff
@@ -139,6 +149,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Every mod-log notification embed (`PUT /servers`, `PUT /bots`,
+  `DELETE /bots/{id}`, and the two `PATCH .../settings` endpoints below)
+  built its link back to the site with `Sites.Frontend.Production()`,
+  forcing the production URL regardless of which environment the action
+  actually happened in. On staging/beta, this meant either a broken link
+  (if `sites.frontend.prod` wasn't configured on that box at all — its
+  `Production()` has no fallback, so an unset value silently becomes an
+  invalid relative-path embed URL and Discord rejects the whole message
+  with `50035`) or a link to an entity that only exists in a different
+  environment's database. Switched to `.Parse()`, which resolves against
+  whichever environment is actually running.
 - `PATCH /servers/{id}/settings` and `PATCH /bots/{id}/settings` returned a
   500 whenever their mod-log notification embed failed to send — including
   the guaranteed case for servers, which built its embed with
