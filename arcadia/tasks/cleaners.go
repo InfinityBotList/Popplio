@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	"github.com/google/uuid"
+	"popplio/perms"
 	"popplio/state"
 
 	"github.com/jackc/pgx/v5"
@@ -172,7 +173,7 @@ func TeamCleaner(ctx context.Context) error {
 			continue
 		}
 
-		globalOwnerRows, err := tx.Query(ctx, "SELECT user_id FROM team_members WHERE team_id = $1 AND flags @> ARRAY['global.*']", teamID)
+		globalOwnerRows, err := tx.Query(ctx, "SELECT user_id FROM team_members WHERE team_id = $1 AND flags @> ARRAY[$2]", teamID, string(perms.EntityOwner))
 
 		if err != nil {
 			return fmt.Errorf("Error while checking count of team_members with global owner: %s: %s", teamID, err)
@@ -193,7 +194,7 @@ func TeamCleaner(ctx context.Context) error {
 
 			_, err = tx.Exec(ctx,
 				"UPDATE team_members SET flags = $1, data_holder = $2 WHERE team_id = $3 AND user_id = $4",
-				[]string{"global.*"}, true, teamID, userID)
+				[]string{string(perms.EntityOwner)}, true, teamID, userID)
 
 			if err != nil {
 				return fmt.Errorf("Error while updating flags for team %s: %s", teamID, err)

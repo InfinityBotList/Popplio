@@ -149,6 +149,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- `PUT /servers` and `PUT /bots` still wrote the legacy wildcard string
+  `global.*` into a new team's `team_members.flags` when creating the
+  owner's membership, instead of the flat model's `owner` permission
+  (`perms.EntityOwner`). `exp/rewrite/flatperms.sql` converts this
+  correctly for existing rows, but every server/bot added *after* running
+  that migration created a team whose owner held a permission string the
+  flat permission checker doesn't recognize as anything — silently locking
+  them out of managing their own new listing (`edit_servers`/`edit_bots`
+  checks fail, since `global.*` isn't `owner` and isn't a declared
+  permission either). `arcadia/tasks/cleaners.go`'s `TeamCleaner` task had
+  the same bug in both directions: it looked for orphaned-of-owner teams by
+  querying `flags @> ARRAY['global.*']` (which will now never match
+  anything, since the migration already converted every existing row) and
+  wrote `global.*` back when promoting a replacement owner. All three now
+  use `perms.EntityOwner`.
 - Every mod-log notification embed (`PUT /servers`, `PUT /bots`,
   `DELETE /bots/{id}`, and the two `PATCH .../settings` endpoints below)
   built its link back to the site with `Sites.Frontend.Production()`,
