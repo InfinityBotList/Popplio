@@ -9,15 +9,14 @@ import (
 	"net/http"
 	"popplio/api"
 	"popplio/api/resp"
+	"popplio/perms"
 	"popplio/state"
-	"popplio/teams"
 	"popplio/types"
 	"popplio/validators"
 
 	"github.com/disgoorg/disgo/discord"
 	docs "github.com/infinitybotlist/eureka/doclib"
 	"github.com/infinitybotlist/eureka/uapi"
-	kittycat "github.com/infinitybotlist/kittycat/go"
 	"github.com/jackc/pgx/v5/pgtype"
 	"go.uber.org/zap"
 
@@ -83,7 +82,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		d.Auth,
 		api.TargetTypeBot,
 		id,
-		kittycat.Permission{Namespace: api.TargetTypeBot, Perm: teams.PermissionDelete},
+		perms.EntityDeleteBots,
 	)
 
 	if err != nil {
@@ -95,7 +94,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		d.Auth,
 		api.TargetTypeTeam,
 		payload.TeamID,
-		kittycat.Permission{Namespace: api.TargetTypeBot, Perm: teams.PermissionAdd},
+		perms.EntityAddBots,
 	)
 
 	if err != nil {

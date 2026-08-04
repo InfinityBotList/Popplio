@@ -9,6 +9,7 @@ import (
 	"popplio/arcadia/dclient"
 	"popplio/arcadia/impls"
 	"popplio/config"
+	"popplio/perms"
 	"popplio/state"
 
 	"github.com/disgoorg/disgo/discord"
@@ -135,6 +136,12 @@ func testingServer(c *Ctx) error {
 // isStaff ERRORS rather than returning false, which is how the message reaches
 // the user.
 func isStaff(c *Ctx) error {
+	// An instance owner is staff before the resync has ever written a row for
+	// them, which is what makes a fresh instance usable.
+	if perms.IsConfigOwner(c.Author.ID.String()) {
+		return nil
+	}
+
 	var count int64
 
 	err := state.Pool.QueryRow(c.Context, "SELECT COUNT(*) FROM staff_members WHERE user_id = $1", c.Author.ID.String()).Scan(&count)

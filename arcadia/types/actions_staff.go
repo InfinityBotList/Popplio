@@ -3,7 +3,7 @@ package types
 import (
 	"fmt"
 
-	perms "github.com/infinitybotlist/kittycat/go"
+	"popplio/perms"
 )
 
 // StaffPositionAction is the union of staff position operations.
@@ -204,9 +204,10 @@ type StaffMember struct {
 	MfaVerified    bool                `json:"mfa_verified"`
 	CreatedAt      Timestamp           `json:"created_at"`
 
-	// StaffPermission is the pre-disciplinary permission set. It is skipped by
+	// Grants is where the member's permissions come from: the roles they hold
+	// plus their extras, before disciplinaries are layered on. It is skipped by
 	// serde and must never appear on the wire, hence json:"-".
-	StaffPermission perms.StaffPermissions `json:"-"`
+	Grants perms.StaffGrants `json:"-"`
 }
 
 // StaffDisciplinaryTypeAction is the union of disciplinary type operations.

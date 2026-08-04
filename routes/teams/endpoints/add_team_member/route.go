@@ -7,13 +7,13 @@ package add_team_member
 import (
 	"net/http"
 	"popplio/api/resp"
+	"popplio/perms"
 	"popplio/state"
 	"popplio/teams"
 	"popplio/types"
 
 	docs "github.com/infinitybotlist/eureka/doclib"
 	"github.com/infinitybotlist/eureka/uapi"
-	kittycat "github.com/infinitybotlist/kittycat/go"
 	"go.uber.org/zap"
 
 	"github.com/go-chi/chi/v5"
@@ -64,16 +64,14 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 
 	// Resolve the permissions
 	//
-	// Right now, we use perm overrides for this
-	// as we do not have a hierarchy system yet
-	newPermsResolved := kittycat.StaffPermissions{
-		PermOverrides: kittycat.PFSS(payload.Perms),
-	}.Resolve()
+	// Teams have no position hierarchy, so a member's flags are a single flat
+	// source of permissions
+	newPermsResolved := perms.Entity.ResolveStrings(payload.Perms)
 
 	// Check if the manager has perms to give all permissions in newPermsResolved
 	//
 	// This is equivalent to going from no perms to the selected permset
-	if err = kittycat.CheckPatchChanges(managerPerms, []kittycat.Permission{}, newPermsResolved); err != nil {
+	if err = perms.CheckPatch(managerPerms, perms.Entity.NewSet(), newPermsResolved); err != nil {
 		return resp.Forbidden("You do not have permission to give out permissions: " + err.Error())
 	}
 

@@ -10,10 +10,10 @@ import (
 
 	"popplio/arcadia/impls"
 	"popplio/arcadia/types"
+	"popplio/perms"
 	"popplio/state"
 
 	"github.com/google/uuid"
-	perms "github.com/infinitybotlist/kittycat/go"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 )
@@ -162,8 +162,8 @@ func (s *Server) updatePartners(ctx context.Context, q *types.QUpdatePartners) (
 
 		return writeJSON(http.StatusOK, types.Partners{Partners: partners, PartnerTypes: partnerTypes}), nil
 	case q.Action.Create != nil:
-		if !perms.HasPerm(userPerms, perms.PermissionFromString("partners.create")) {
-			return writeText(http.StatusForbidden, "You do not have permission to create partners [partners.create]"), nil
+		if !userPerms.Has(perms.StaffManagePartners) {
+			return writeText(http.StatusForbidden, "You do not have permission to create partners [manage_partners]"), nil
 		}
 
 		partner := q.Action.Create.Partner
@@ -198,8 +198,8 @@ func (s *Server) updatePartners(ctx context.Context, q *types.QUpdatePartners) (
 
 		return writeNoContent(), nil
 	case q.Action.Update != nil:
-		if !perms.HasPerm(userPerms, perms.PermissionFromString("partners.update")) {
-			return writeText(http.StatusForbidden, "You do not have permission to update partners [partners.update]"), nil
+		if !userPerms.Has(perms.StaffManagePartners) {
+			return writeText(http.StatusForbidden, "You do not have permission to update partners [manage_partners]"), nil
 		}
 
 		partner := q.Action.Update.Partner
@@ -234,8 +234,8 @@ func (s *Server) updatePartners(ctx context.Context, q *types.QUpdatePartners) (
 
 		return writeNoContent(), nil
 	case q.Action.Delete != nil:
-		if !perms.HasPerm(userPerms, perms.PermissionFromString("partners.delete")) {
-			return writeText(http.StatusForbidden, "You do not have permission to delete partners [partners.delete]"), nil
+		if !userPerms.Has(perms.StaffManagePartners) {
+			return writeText(http.StatusForbidden, "You do not have permission to delete partners [manage_partners]"), nil
 		}
 
 		id := q.Action.Delete.ID
@@ -345,8 +345,8 @@ func (s *Server) updateBlog(ctx context.Context, q *types.QUpdateBlog) (response
 
 		return writeJSON(http.StatusOK, entries), nil
 	case q.Action.CreateEntry != nil:
-		if !perms.HasPerm(userPerms, perms.PermissionFromString("blog.create_entry")) {
-			return writeText(http.StatusForbidden, "You do not have permission to create blog entries [blog.create_entry]"), nil
+		if !userPerms.Has(perms.StaffManageBlog) {
+			return writeText(http.StatusForbidden, "You do not have permission to create blog entries [manage_blog]"), nil
 		}
 
 		entry := q.Action.CreateEntry
@@ -361,8 +361,8 @@ func (s *Server) updateBlog(ctx context.Context, q *types.QUpdateBlog) (response
 
 		return writeNoContent(), nil
 	case q.Action.UpdateEntry != nil:
-		if !perms.HasPerm(userPerms, perms.PermissionFromString("blog.update_entry")) {
-			return writeText(http.StatusForbidden, "You do not have permission to update blog entries [blog.update_entry]"), nil
+		if !userPerms.Has(perms.StaffManageBlog) {
+			return writeText(http.StatusForbidden, "You do not have permission to update blog entries [manage_blog]"), nil
 		}
 
 		entry := q.Action.UpdateEntry
@@ -393,8 +393,8 @@ func (s *Server) updateBlog(ctx context.Context, q *types.QUpdateBlog) (response
 
 		return writeNoContent(), nil
 	case q.Action.DeleteEntry != nil:
-		if !perms.HasPerm(userPerms, perms.PermissionFromString("blog.delete_entry")) {
-			return writeText(http.StatusForbidden, "You do not have permission to delete blog entries [blog.delete_entry]"), nil
+		if !userPerms.Has(perms.StaffManageBlog) {
+			return writeText(http.StatusForbidden, "You do not have permission to delete blog entries [manage_blog]"), nil
 		}
 
 		itag, err := uuid.Parse(q.Action.DeleteEntry.Itag)

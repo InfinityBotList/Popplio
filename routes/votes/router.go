@@ -6,6 +6,7 @@ package votes
 import (
 	"net/http"
 	"popplio/api"
+	"popplio/perms"
 	"popplio/routes/votes/endpoints/create_user_entity_vote"
 	"popplio/routes/votes/endpoints/get_all_user_votes"
 	"popplio/routes/votes/endpoints/get_general_vote_credit_tiers"
@@ -14,12 +15,10 @@ import (
 	"popplio/routes/votes/endpoints/get_vote_redeem_logs"
 	"popplio/routes/votes/endpoints/get_votes_user_list"
 	"popplio/routes/votes/endpoints/redeem_vote_credits"
-	"popplio/teams"
 	"popplio/validators"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/infinitybotlist/eureka/uapi"
-	perms "github.com/infinitybotlist/kittycat/go"
 )
 
 const tagName = "Votes"
@@ -64,12 +63,7 @@ func (b Router) Routes(r *chi.Mux) {
 		Auth:    api.GetAllAuthTypes(),
 		ExtData: map[string]any{
 			api.PERMISSION_CHECK_KEY: api.PermissionCheck{
-				NeededPermission: func(d uapi.Route, r *http.Request, authData uapi.AuthData) (*perms.Permission, error) {
-					return &perms.Permission{
-						Namespace: validators.NormalizeTargetType(chi.URLParam(r, "target_type")),
-						Perm:      teams.PermissionRedeemVoteCredits,
-					}, nil
-				},
+				NeededPermission: api.Needs(perms.EntityRedeemVoteCredits),
 				GetTarget: func(d uapi.Route, r *http.Request, authData uapi.AuthData) (string, string) {
 					return validators.NormalizeTargetType(chi.URLParam(r, "target_type")), chi.URLParam(r, "target_id")
 				},

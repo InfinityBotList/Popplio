@@ -12,7 +12,7 @@ const MaxReasonLength = 2000
 //
 // Its Display form (Name) is load-bearing in three places:
 //
-//	the permission string  "rpc." + Name  ->  "rpc.Claim"
+//	the permission lookup in RPCPermission  ->  "Claim" resolves to review_bots
 //	the `method` column in rpc_logs
 //	the leaderboard query, which filters method IN ('Approve','Deny')
 type RPCMethod struct {

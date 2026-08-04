@@ -6,7 +6,8 @@ package get_team_permissions
 
 import (
 	"net/http"
-	"popplio/teams"
+
+	"popplio/perms"
 	"popplio/types"
 
 	docs "github.com/infinitybotlist/eureka/doclib"
@@ -23,6 +24,8 @@ func Docs() *docs.Doc {
 
 func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	return uapi.HttpResponse{
-		Json: types.PermissionResponse{Perms: teams.PermDetails},
+		Json: types.PermissionResponse{
+			Perms: types.PermissionDataFrom(perms.Entity.Definitions()),
+		},
 	}
 }

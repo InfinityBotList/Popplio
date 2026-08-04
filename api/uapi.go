@@ -6,19 +6,19 @@ import (
 	"fmt"
 	"net/http"
 	"popplio/constants"
+	"popplio/perms"
 	"popplio/state"
 	"popplio/types"
 	"strings"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/infinitybotlist/eureka/uapi"
-	perm "github.com/infinitybotlist/kittycat/go"
 	"github.com/jackc/pgx/v5"
 	"go.uber.org/zap"
 )
 
 type PermissionCheck struct {
-	NeededPermission func(d uapi.Route, r *http.Request, authData uapi.AuthData) (*perm.Permission, error)
+	NeededPermission func(d uapi.Route, r *http.Request, authData uapi.AuthData) (*perms.Perm, error)
 	GetTarget        func(d uapi.Route, r *http.Request, authData uapi.AuthData) (targetType string, targetId string)
 }
 

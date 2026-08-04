@@ -60,7 +60,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		return resp.BadRequest("Both target_id and target_type must be specified")
 	}
 
-	perms, err := teams.GetEntityPerms(d.Context, uid, targetType, targetId)
+	entityPerms, err := teams.GetEntityPerms(d.Context, uid, targetType, targetId)
 
 	if err != nil {
 		state.Logger.Error("Error getting entity perms", zap.Error(err), zap.String("uid", uid), zap.String("target_id", targetId), zap.String("target_type", targetType))
@@ -69,13 +69,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 
 	return uapi.HttpResponse{
 		Json: types.UserEntityPerms{
-			Perms: func() []string {
-				var fperms = []string{}
-				for _, perm := range perms {
-					fperms = append(fperms, perm.String())
-				}
-				return fperms
-			}(),
+			Perms: entityPerms.Strings(),
 		},
 	}
 }

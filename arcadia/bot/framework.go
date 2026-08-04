@@ -13,6 +13,7 @@ import (
 	"strings"
 
 	"popplio/arcadia/dclient"
+	"popplio/perms"
 	"popplio/state"
 
 	"github.com/disgoorg/disgo/bot"
@@ -335,13 +336,7 @@ func invoke(cmd *Command, c *Ctx) {
 }
 
 func isOwner(userID snowflake.ID) bool {
-	for _, owner := range state.Config.Arcadia.Owners {
-		if owner == userID {
-			return true
-		}
-	}
-
-	return false
+	return perms.IsConfigOwner(userID.String())
 }
 
 // commandGuilds are the guilds the slash commands are published to.

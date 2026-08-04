@@ -3,21 +3,21 @@ package types
 import (
 	"time"
 
+	"popplio/perms"
+
 	"github.com/infinitybotlist/eureka/dovewing/dovetypes"
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-type PermissionDataOverride struct {
-	Name string `json:"name"`
-	Desc string `json:"desc"`
-}
-
+// PermissionData describes one permission that can be granted. It is the public
+// shape of a [perms.Definition], and is used for both the team permissions a
+// member can hold and the staff permissions a staff role can carry.
 type PermissionData struct {
-	ID                string                             `json:"id"`
-	Name              string                             `json:"name"`
-	Desc              string                             `json:"desc"`
-	SupportedEntities []string                           `json:"supported_entities"`
-	DataOverride      map[string]*PermissionDataOverride `json:"data_override,omitempty"`
+	ID        string `json:"id" description:"The permission's name, as stored in a member's flags"`
+	Name      string `json:"name" description:"Human readable label"`
+	Desc      string `json:"desc" description:"What holding the permission lets a member do"`
+	Category  string `json:"category" description:"The group the permission belongs to, for display"`
+	Dangerous bool   `json:"dangerous" description:"Whether the permission hands over broad or irreversible power"`
 }
 
 // @ci table=teams
@@ -81,6 +81,24 @@ type CreateTeamResponse struct {
 
 type PermissionResponse struct {
 	Perms []PermissionData `json:"perms"`
+}
+
+// PermissionDataFrom renders a catalogue for the API, keeping the catalogue's
+// own order so that clients can present the permissions as declared.
+func PermissionDataFrom(defs []perms.Definition) []PermissionData {
+	out := make([]PermissionData, 0, len(defs))
+
+	for _, d := range defs {
+		out = append(out, PermissionData{
+			ID:        string(d.ID),
+			Name:      d.Name,
+			Desc:      d.Description,
+			Category:  d.Category,
+			Dangerous: d.Dangerous,
+		})
+	}
+
+	return out
 }
 
 type AddTeamMember struct {

@@ -8,13 +8,13 @@ package delete_team_member
 import (
 	"net/http"
 	"popplio/api/resp"
+	"popplio/perms"
 	"popplio/state"
 	"popplio/teams"
 	"popplio/types"
 
 	docs "github.com/infinitybotlist/eureka/doclib"
 	"github.com/infinitybotlist/eureka/uapi"
-	kittycat "github.com/infinitybotlist/kittycat/go"
 	"go.uber.org/zap"
 
 	"github.com/go-chi/chi/v5"
@@ -65,7 +65,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		}
 
 		// Ensure manager has permissions to remove all user perms
-		if err := kittycat.CheckPatchChanges(managerPerms, userPerms, []kittycat.Permission{}); err != nil {
+		if err := perms.CheckPatch(managerPerms, userPerms, perms.Entity.NewSet()); err != nil {
 			return resp.Forbidden("You do not have permission to delete this member:" + err.Error())
 		}
 	}
@@ -79,10 +79,10 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	defer tx.Rollback(d.Context)
 
 	// Ensure that if perm is owner, then there is another owner
-	if !kittycat.HasPerm(userPerms, kittycat.Permission{Namespace: "global", Perm: teams.PermissionOwner}) {
+	if !userPerms.Has(perms.EntityOwner) {
 		var ownerCount int
 
-		err = tx.QueryRow(d.Context, "SELECT COUNT(*) FROM team_members WHERE team_id = $1 AND flags && $2", teamId, []string{kittycat.Permission{Namespace: "global", Perm: teams.PermissionOwner}.String()}).Scan(&ownerCount)
+		err = tx.QueryRow(d.Context, "SELECT COUNT(*) FROM team_members WHERE team_id = $1 AND flags && $2", teamId, []string{perms.EntityOwner.String()}).Scan(&ownerCount)
 
 		if err != nil {
 			return resp.Err("Error getting owner count", err, zap.String("uid", d.Auth.ID), zap.String("tid", teamId), zap.String("mid", userId))
