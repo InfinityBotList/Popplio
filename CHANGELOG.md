@@ -5,6 +5,45 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.1] - Unreleased
+
+### Changed
+
+- Every `Differs[T]` config key (DB tokens, site URLs, etc.) previously
+  required *both* a `staging` and a `prod` value to be set regardless of
+  which environment a given box actually runs — a `current-env: prod` box
+  was rejected at startup for a missing `staging` value it would never
+  read, and vice versa. `ValidateDiffers` now only requires whichever value
+  `Parse()` will actually resolve for `CurrentEnv` (`prod` needs `prod`,
+  `staging` needs `staging`; `beta`/`dev` still accept either their own
+  value or a `staging` fallback, unchanged), so a config file only needs to
+  fill in what the box it's deployed to actually uses.
+
+### Fixed
+
+- The `server`/`team` auth types were never registered as OpenAPI security
+  schemes (only `User`/`Bot` were, via `docs.AddSecuritySchema` in
+  `main.go`) even though `Authorize()` has always fully supported them —
+  every one of the 41 operations requiring `server` or `team` auth
+  (`PUT /bots`, `PUT /servers`, both `PATCH .../settings` endpoints,
+  reviews, sessions, etc.) referenced a security scheme name absent from
+  `components.securitySchemes`. Harmless to the API itself, but any tool
+  that resolves the requirement against registered schemes crashes outright
+  on the unresolved reference — including the docs site's OpenAPI reference
+  pages (`fumadocs-openapi`'s `APIPage`, which throws
+  `Cannot read properties of undefined (reading 'type')`). Registered both
+  (`docs.AddSecuritySchema("server", ...)` / `("team", ...)`, lowercase to
+  match `AuthTypeMap`'s self-mapping for these two types).
+- Presence still never actually got set even after 1.0.0's fix, now logging
+  `error while setting presence err="no gateway configured"` from inside
+  `OnGuildsReady` instead of right on startup — that fix only addressed the
+  timing, not the actual cause: Popplio runs sharded (`OpenShardManager`),
+  and `Discord.SetPresence` only ever checks disgo's single-gateway field
+  (populated by `OpenGateway`, not `OpenShardManager`), so it returns
+  `ErrNoGateway` unconditionally on a sharded bot regardless of readiness.
+  `OnGuildsReady` also fires once per shard, not once globally. Now uses
+  `Discord.SetPresenceForShard(ctx, event.ShardID(), ...)` instead.
+
 ## [1.0.0] - 2026-08-04
 
 ### Added
@@ -110,15 +149,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- Every `Differs[T]` config key (DB tokens, site URLs, etc.) previously
-  required *both* a `staging` and a `prod` value to be set regardless of
-  which environment a given box actually runs — a `current-env: prod` box
-  was rejected at startup for a missing `staging` value it would never
-  read, and vice versa. `ValidateDiffers` now only requires whichever value
-  `Parse()` will actually resolve for `CurrentEnv` (`prod` needs `prod`,
-  `staging` needs `staging`; `beta`/`dev` still accept either their own
-  value or a `staging` fallback, unchanged), so a config file only needs to
-  fill in what the box it's deployed to actually uses.
 - Bots now support downvotes, matching servers/teams/packs
   (`votes.EntityVoteInfo` no longer hardcodes `SupportsDownvotes = false` for
   the `bot` target type).
@@ -161,19 +191,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- The `server`/`team` auth types were never registered as OpenAPI security
-  schemes (only `User`/`Bot` were, via `docs.AddSecuritySchema` in
-  `main.go`) even though `Authorize()` has always fully supported them —
-  every one of the 41 operations requiring `server` or `team` auth
-  (`PUT /bots`, `PUT /servers`, both `PATCH .../settings` endpoints,
-  reviews, sessions, etc.) referenced a security scheme name absent from
-  `components.securitySchemes`. Harmless to the API itself, but any tool
-  that resolves the requirement against registered schemes crashes outright
-  on the unresolved reference — including the docs site's OpenAPI reference
-  pages (`fumadocs-openapi`'s `APIPage`, which throws
-  `Cannot read properties of undefined (reading 'type')`). Registered both
-  (`docs.AddSecuritySchema("server", ...)` / `("team", ...)`, lowercase to
-  match `AuthTypeMap`'s self-mapping for these two types).
 - `PUT /servers` and `PUT /bots` still wrote the legacy wildcard string
   `global.*` into a new team's `team_members.flags` when creating the
   owner's membership, instead of the flat model's `owner` permission
@@ -233,17 +250,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   bug above, but was masking it: the ordering bug meant `extra_links`
   received whatever value happened to land at that position, which could
   vary by field type in ways that made this fix look sufficient on its own.
-- Presence never actually got set, always logging
-  `error while setting presence err="no gateway configured"`. First traced to
-  `Discord.SetPresence` being called right after `Discord.OpenShardManager`
-  returned (before the shards finish their handshake) and moved into the
-  `OnGuildsReady` handler — which turned out to only fix the timing, not the
-  actual cause: Popplio runs sharded (`OpenShardManager`), and
-  `Discord.SetPresence` only ever checks disgo's single-gateway field
-  (populated by `OpenGateway`, not `OpenShardManager`), so it returns
-  `ErrNoGateway` unconditionally on a sharded bot regardless of readiness.
-  `OnGuildsReady` also fires once per shard, not once globally. Now uses
-  `Discord.SetPresenceForShard(ctx, event.ShardID(), ...)` instead.
+- Startup logged `error while setting presence err="no gateway configured"`
+  on every run: `Discord.SetPresence` was called right after
+  `Discord.OpenShardManager` returned, but that only means the shards
+  started connecting, not that the gateway session is actually usable yet
+  (that's only confirmed later, asynchronously, via the `OnGuildsReady`
+  event). `SetPresence` now runs from inside the `OnGuildsReady` handler
+  instead, once shards are confirmed ready.
 - `current-env: dev` still required a real `staging` and `prod` value for
   every `Differs[T]` config key, and for every Arcadia staff-server
   channel/role/server ID, defeating the point of `dev`: a local checkout
