@@ -79,7 +79,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	defer tx.Rollback(d.Context)
 
 	// Ensure that if perm is owner, then there is another owner
-	if !userPerms.Has(perms.EntityOwner) {
+	if userPerms.Has(perms.EntityOwner) {
 		var ownerCount int
 
 		err = tx.QueryRow(d.Context, "SELECT COUNT(*) FROM team_members WHERE team_id = $1 AND flags && $2", teamId, []string{perms.EntityOwner.String()}).Scan(&ownerCount)

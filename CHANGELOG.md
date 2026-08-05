@@ -41,6 +41,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- `DELETE /teams/{tid}/members/{mid}` had its last-owner safety check
+  inverted (introduced by the kittycat→internal `perms` package refactor):
+  it fired when the member being removed was *not* an owner instead of when
+  they were, so removing any regular member from a team with only one owner
+  (the common case) 400'd with "There needs to be one other global owner
+  before you can remove yourself from owner" — while actually removing the
+  team's last real owner sailed through with no check at all, the exact
+  case this was meant to prevent. Condition un-inverted.
 - Every staff bot slash command appeared twice in every server. The bot
   registers its commands per guild (`arcadia/bot.SyncCommands`), but the
   application still carried global registrations of the same commands from an
