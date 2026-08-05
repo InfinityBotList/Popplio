@@ -46,7 +46,6 @@ const (
 
 	StaffViewCDN   Perm = "view_cdn"
 	StaffManageCDN Perm = "manage_cdn"
-	StaffUseBoreal Perm = "use_borealis"
 
 	// The marker permissions carry no power inside Popplio. They label a staff
 	// member for other Infinity List services and for role display.
@@ -287,14 +286,6 @@ var Staff = NewCatalogue("staff", StaffAdministrator, []Definition{
 		Dangerous:   true,
 		Legacy:      []string{"cdn.add_file", "cdn.upload_chunk"},
 	},
-	{
-		ID:          StaffUseBoreal,
-		Name:        "Use Borealis",
-		Description: "Use the Borealis service.",
-		Category:    "External Services",
-		Legacy:      []string{"borealis.*"},
-	},
-
 	{
 		ID:          StaffMarkerDeveloper,
 		Name:        "Developer",

@@ -5,6 +5,8 @@ import (
 	"testing"
 
 	"popplio/perms"
+
+	"github.com/disgoorg/disgo/discord"
 )
 
 func TestResolvePermission(t *testing.T) {
@@ -174,6 +176,85 @@ func TestStaffCommandsRegisterCleanly(t *testing.T) {
 			if len(sub.Description) > 100 {
 				t.Errorf("%s %s has a %d character description", cmd.Name, sub.Name, len(sub.Description))
 			}
+		}
+	}
+}
+
+// Discord rejects a whole command whose options put a required one after an
+// optional one, and a rejected command is simply missing from the picker with
+// nothing to show for it but a line in the startup log. The registration payload
+// is checked here so that a bad option order fails the build instead.
+func TestCommandOptionsRegisterInAValidOrder(t *testing.T) {
+	registry = map[string]*Command{}
+	ordered = nil
+
+	registerCommands()
+
+	var check func(path string, options []discord.ApplicationCommandOption)
+
+	check = func(path string, options []discord.ApplicationCommandOption) {
+		optionalSeen := ""
+
+		for _, opt := range options {
+			if sub, ok := opt.(discord.ApplicationCommandOptionSubCommand); ok {
+				check(path+" "+sub.Name, sub.Options)
+				continue
+			}
+
+			required := false
+
+			switch o := opt.(type) {
+			case discord.ApplicationCommandOptionString:
+				required = o.Required
+			case discord.ApplicationCommandOptionUser:
+				required = o.Required
+			case discord.ApplicationCommandOptionRole:
+				required = o.Required
+			case discord.ApplicationCommandOptionInt:
+				required = o.Required
+			case discord.ApplicationCommandOptionBool:
+				required = o.Required
+			}
+
+			if required && optionalSeen != "" {
+				t.Errorf("%s: required option %q comes after optional %q, which Discord rejects",
+					path, opt.OptionName(), optionalSeen)
+			}
+
+			if !required {
+				optionalSeen = opt.OptionName()
+			}
+		}
+	}
+
+	for _, cmd := range buildCommands() {
+		slash, ok := cmd.(discord.SlashCommandCreate)
+
+		if !ok {
+			continue
+		}
+
+		check("/"+slash.Name, slash.Options)
+	}
+}
+
+// The interactive editor is what these commands are mostly for, and Discord
+// lists subcommands in the order they are registered.
+func TestEditIsTheFirstSubcommand(t *testing.T) {
+	registry = map[string]*Command{}
+	ordered = nil
+
+	registerCommands()
+
+	for _, name := range []string{"staffroles", "staffperms"} {
+		cmd, ok := registry[name]
+
+		if !ok {
+			t.Fatalf("%s is not registered", name)
+		}
+
+		if len(cmd.Subcommands) == 0 || cmd.Subcommands[0].Name != "edit" {
+			t.Errorf("/%s should offer edit first, got %q", name, cmd.Subcommands[0].Name)
 		}
 	}
 }

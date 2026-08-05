@@ -51,6 +51,7 @@ func StaffResync(ctx context.Context) error {
 	type guildMember struct {
 		UserID snowflake.ID
 		Roles  []string
+		IsBot  bool
 	}
 
 	var staffResync []guildMember
@@ -62,7 +63,9 @@ func StaffResync(ctx context.Context) error {
 			roles = append(roles, roleID.String())
 		}
 
-		staffResync = append(staffResync, guildMember{UserID: member.User.ID, Roles: roles})
+		// The gateway is the authority on what an account is, so bots are
+		// recognised here rather than looked up again later.
+		staffResync = append(staffResync, guildMember{UserID: member.User.ID, Roles: roles, IsBot: member.User.Bot})
 	})
 
 	tx, err := state.Pool.Begin(ctx)
@@ -163,9 +166,23 @@ func StaffResync(ctx context.Context) error {
 		memberPosCache[member.UserID] = impls.UUIDStrings(member.Positions)
 	}
 
+	// bots are the bot accounts sitting in the staff server. They are tracked so
+	// that step 5 can say why it is removing one, rather than reporting them as
+	// having left a server they are still in.
+	bots := make(map[string]struct{})
+
 	// Step 4: reconcile each Discord staff member.
 	for _, user := range staffResync {
 		userID := user.UserID.String()
+
+		// A bot never becomes a staff member, whatever roles it has been given
+		// in the staff server. Leaving it out of the reconcile is also what
+		// takes an existing bot's staff row away: step 5 handles everyone the
+		// reconcile did not account for.
+		if user.IsBot {
+			bots[userID] = struct{}{}
+			continue
+		}
 
 		if _, skip := noAutosync[userID]; skip {
 			continue
@@ -318,13 +335,21 @@ func StaffResync(ctx context.Context) error {
 
 		oldSP := buildPermissions(posByID, oldPositions, overridePerms[userID])
 
-		description := fmt.Sprintf(
-			"Updated unaccounted staff member <@%s> as they are no longer in the staff server but have permission overrides.", userID)
+		// A bot is still in the staff server; it is being removed for being a
+		// bot, and saying it left would be wrong as well as confusing.
+		_, isBot := bots[userID]
 
-		if remove {
-			description = fmt.Sprintf(
-				"Removed unaccounted staff member <@%s> as they are no longer in the staff server.", userID)
+		verb, reason := "Removed", "they are no longer in the staff server"
+
+		if isBot {
+			reason = "bot accounts cannot hold staff permissions"
 		}
+
+		if !remove {
+			verb, reason = "Updated", reason+", but they have permission overrides"
+		}
+
+		description := fmt.Sprintf("%s unaccounted staff member <@%s> as %s.", verb, userID, reason)
 
 		announceResync(userID, discord.MessageCreate{
 			Embeds: []discord.Embed{{

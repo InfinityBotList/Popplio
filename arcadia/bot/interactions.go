@@ -38,6 +38,8 @@ func onComponent(ctx context.Context, e *events.ComponentInteractionCreate) {
 		handleQueueButton(c, e, id, messageID)
 	case id == "fclaim" || id == "remind":
 		handleClaimButton(c, e, id, messageID)
+	case strings.HasPrefix(id, "perm:"):
+		handlePermEditor(c, e, id, messageID)
 	}
 }
 

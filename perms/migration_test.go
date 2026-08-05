@@ -34,6 +34,20 @@ func readMigration(t *testing.T) string {
 	return string(b)
 }
 
+// retired reports whether the migration drops a permission on purpose, i.e.
+// lists it in retired_perm as a ('domain', 'name') pair rather than mapping it.
+func retired(sql, domain, perm string) bool {
+	body := sql
+
+	if _, after, ok := strings.Cut(sql, "INSERT INTO retired_perm"); ok {
+		body, _, _ = strings.Cut(after, ";")
+	} else {
+		return false
+	}
+
+	return strings.Contains(body, "('"+domain+"', '"+perm+"')")
+}
+
 func catalogueFor(domain string) *Catalogue {
 	if domain == "staff" {
 		return Staff
@@ -123,6 +137,12 @@ func TestMigrationCoversTheOldVocabulary(t *testing.T) {
 			}
 		}
 
+		// Retiring a permission is handling it: the migration drops it on
+		// purpose rather than leaving it to the unmapped NOTICE.
+		if retired(sql, domain, perm) {
+			return true
+		}
+
 		// Wildcards listed together in one unnest, e.g. shop_items.* and
 		// friends, appear as quoted names in the wildcard section.
 		return strings.Contains(sql, "'"+perm+"'")
@@ -169,5 +189,32 @@ func TestMigrationCoversTheOldVocabulary(t *testing.T) {
 		if !handled("entity", perm) {
 			t.Errorf("entity permission %q was in use but the migration does not handle it", perm)
 		}
+	}
+}
+
+// Borealis was removed from the platform in the port, so its permission gated
+// nothing. It must be gone from the catalogue and dropped by the migration
+// rather than mapped onto something else.
+func TestBorealisIsRetired(t *testing.T) {
+	for _, d := range Staff.Definitions() {
+		if strings.Contains(strings.ToLower(string(d.ID)), "boreal") {
+			t.Errorf("the staff catalogue still declares %q", d.ID)
+		}
+
+		for _, old := range d.Legacy {
+			if strings.Contains(strings.ToLower(old), "boreal") {
+				t.Errorf("%q still claims to replace %q", d.ID, old)
+			}
+		}
+	}
+
+	sql := readMigration(t)
+
+	if !retired(sql, "staff", "borealis.*") {
+		t.Error("the migration should list borealis.* as retired")
+	}
+
+	if strings.Contains(sql, "use_borealis") {
+		t.Error("the migration still writes use_borealis into the database")
 	}
 }
