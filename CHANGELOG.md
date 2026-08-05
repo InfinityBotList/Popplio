@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [1.0.1] - Unreleased
+## [1.0.1] - 2026-08-05
 
 ### Changed
 
@@ -60,7 +60,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   commands whose names the bot does not register are left alone and only
   logged as a warning, since they belong to something else sharing the
   application.
-
 - The `server`/`team` auth types were never registered as OpenAPI security
   schemes (only `User`/`Bot` were, via `docs.AddSecuritySchema` in
   `main.go`) even though `Authorize()` has always fully supported them —
@@ -94,52 +93,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   response (401). Now sets a no-op `PermissionCheck` (`NeededPermission`
   always returns `nil`), since this endpoint has no permission model of its
   own to enforce — it's purely "is this token valid for this target."
-
-### Removed
-
-- The `use_borealis` staff permission. Borealis was removed from the platform
-  during the port (`arcadia/CONFORMANCE.md` D11a — the `arcadia.borealis_url`
-  config key, the client and the `Approve` call to it are all long gone), so
-  the permission has gated nothing since and only added a line to
-  `/permissions` and a row to every permission picker. `exp/rewrite/flatperms.sql`
-  now lists the old `borealis.*` in `retired_perm` (dropped on purpose)
-  instead of mapping it onto `use_borealis`, and
-  `exp/rewrite/remove_borealis_perm.sql` strips it from
-  `staff_positions.perms`, `staff_members.perm_overrides` and
-  `staff_disciplinary_types.perm_limits` for databases the old migration
-  already ran against. That cleanup is needed rather than cosmetic: the
-  permission model deliberately keeps names it does not declare, since they
-  may belong to another service, so `use_borealis` would otherwise sit in
-  those columns for good and show up under "Other services".
-
-### Security
-
-- Bot accounts can no longer hold staff permissions at all — not through a
-  staff role, not through a direct grant, and not through `arcadia.owners`
-  (`perms.ErrBotAccount`). Previously nothing stopped one: `StaffResync`
-  walks every member of the staff server and creates a `staff_members` row
-  for anyone holding a position's Discord role, and it never looked at
-  whether that member was a bot, so giving a bot a staff role in Discord
-  handed it that role's permissions — including through the panel session
-  and RPC paths, which only ever asked what the row said. A bot is a token
-  that can be handed to another program, which is exactly what the staff
-  model's accountability assumes cannot happen, and nothing needs it: the
-  staff bot and the panel both act under a staff member's identity, never
-  their own. Enforced on both sides:
-  - Reads: `perms.StaffGrants` carries a `BotAccount` flag, joined in from
-    dovewing's user cache by `LoadStaff` at no extra cost, and `Resolve()`
-    returns nothing and `Rank()` returns `NoRank` when it is set. The panel's
-    session check (`impls.CheckAuthInsecure`), its login
-    (`ops_authorize.go`) and its member view (`impls.GetStaffMember`, whose
-    additory disciplinaries could otherwise add permissions on top of an
-    empty set) all apply the same rule. These paths stay database-only, so
-    they keep working when Discord does not.
-  - Writes: `perms.RejectBotAccount` resolves through dovewing all the way
-    to Discord if the account has never been seen, and fails closed if it
-    cannot tell. `StaffResync` now skips bot members entirely, which also
-    means an existing bot's staff row is cleaned up by the same pass that
-    handles members who left; the panel's `editMember` and the staff bot's
-    `/staffperms grant`/`revoke`/`edit` refuse a bot target outright.
 
 ### Removed
 
