@@ -139,14 +139,14 @@ func Setup() {
 	Discord, err = disgo.New(Config.DiscordAuth.Token.Parse(),
 		bot.WithRestClientConfigOpts(ProxyRestOpts(Config.DiscordAuth.Token.Parse())...),
 		bot.WithShardManagerConfigOpts(
-		sharding.WithShardIDs(0, 1),
-		sharding.WithShardCount(2),
-		sharding.WithAutoScaling(true),
-		sharding.WithGatewayConfigOpts(
-			gateway.WithIntents(gateway.IntentGuilds, gateway.IntentGuildPresences, gateway.IntentGuildMembers),
-			gateway.WithCompress(true),
+			sharding.WithShardIDs(0, 1),
+			sharding.WithShardCount(2),
+			sharding.WithAutoScaling(true),
+			sharding.WithGatewayConfigOpts(
+				gateway.WithIntents(gateway.IntentGuilds, gateway.IntentGuildPresences, gateway.IntentGuildMembers),
+				gateway.WithCompress(true),
+			),
 		),
-	),
 		bot.WithCacheConfigOpts(
 			cache.WithCaches(cache.FlagGuilds|cache.FlagMembers|cache.FlagPresences),
 		),

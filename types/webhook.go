@@ -24,7 +24,7 @@ CREATE TABLE webhooks (
 
 // @ci table=webhooks unfilled=1
 //
-// Represents a webhook on IBL
+// # Represents a webhook on IBL
 //
 // # Choosing an auth mode
 //

@@ -259,3 +259,8 @@ type Panel struct {
 	PanelScope         string   `yaml:"panel_scope" comment:"Static handshake value the frontend sends" validate:"required"`
 	PanelResponseScope string   `yaml:"panel_response_scope" comment:"Static handshake value the frontend expects back" validate:"required"`
 }
+
+type Naevis struct {
+	ClientID string          `yaml:"client_id" comment:"Naevis bot Discord client ID" validate:"required"`
+	Token    Differs[string] `yaml:"token" comment:"Naevis bot Discord token" validate:"required"`
+}
