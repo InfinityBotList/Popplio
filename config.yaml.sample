@@ -149,3 +149,14 @@ arcadia:
       - 
     panel_scope: # Static handshake value the frontend sends
     panel_response_scope: # Static handshake value the frontend expects back
+infernoplex:
+  client_id:
+  client_secret:
+  prefix:
+  server_port:
+  token:
+
+naevis:
+  client_id: 
+  token: 
+  prefix:
