@@ -152,6 +152,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- The `server`/`team` auth types were never registered as OpenAPI security
+  schemes (only `User`/`Bot` were, via `docs.AddSecuritySchema` in
+  `main.go`) even though `Authorize()` has always fully supported them —
+  every one of the 41 operations requiring `server` or `team` auth
+  (`PUT /bots`, `PUT /servers`, both `PATCH .../settings` endpoints,
+  reviews, sessions, etc.) referenced a security scheme name absent from
+  `components.securitySchemes`. Harmless to the API itself, but any tool
+  that resolves the requirement against registered schemes crashes outright
+  on the unresolved reference — including the docs site's OpenAPI reference
+  pages (`fumadocs-openapi`'s `APIPage`, which throws
+  `Cannot read properties of undefined (reading 'type')`). Registered both
+  (`docs.AddSecuritySchema("server", ...)` / `("team", ...)`, lowercase to
+  match `AuthTypeMap`'s self-mapping for these two types).
 - `PUT /servers` and `PUT /bots` still wrote the legacy wildcard string
   `global.*` into a new team's `team_members.flags` when creating the
   owner's membership, instead of the flat model's `owner` permission
