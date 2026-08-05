@@ -16,6 +16,7 @@ import (
 	"popplio/bgtasks"
 	"popplio/config"
 	"popplio/constants"
+	"popplio/infernoplex"
 	"popplio/notifications/votereminders"
 	"popplio/routes/alerts"
 	"popplio/routes/apps"
@@ -265,6 +266,9 @@ func main() {
 
 	arc := arcadia.Start(state.Context)
 	defer arc.Stop(30 * time.Second)
+
+	inf := infernoplex.Start(state.Context)
+	defer inf.Stop(30 * time.Second)
 
 	if runtime.GOOS == "linux" || runtime.GOOS == "darwin" {
 		upg, _ := tableflip.New(tableflip.Options{})

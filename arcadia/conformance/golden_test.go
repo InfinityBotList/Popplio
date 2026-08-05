@@ -254,7 +254,7 @@ func TestGoldenBotStrings(t *testing.T) {
 		"You are the owner/additional owner of an approved bot! Giving you approved role",
 		"Autorole due to bots owned",
 		"You are not in the server",
-		"Infinity List Analytics",
+		"Omniplex Analytics",
 		"I hope it's good :eyes:",
 		"Oh, hello there! Let's see who's been fighting bots the most :eyes:\n\n",
 		"Staff Leaderboard",

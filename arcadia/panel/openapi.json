@@ -2,7 +2,7 @@
   "openapi": "3.0.3",
   "info": {
     "title": "Arcadia Panel API",
-    "description": "The Infinity List staff panel API. A single POST / endpoint dispatches a tagged-union request over ~25 operations.\n\nEvery request and response is serde's DEFAULT enum representation: a struct variant is a single-key object keyed by the variant name, a unit variant is a bare JSON string, and a newtype variant is a single-key object wrapping the inner value.\n\nResponses are not uniform. Depending on the operation the body is a JSON value, a bare text string, an empty 204, or a plain-text error.",
+    "description": "The Omniplex staff panel API. A single POST / endpoint dispatches a tagged-union request over ~25 operations.\n\nEvery request and response is serde's DEFAULT enum representation: a struct variant is a single-key object keyed by the variant name, a unit variant is a bare JSON string, and a newtype variant is a single-key object wrapping the inner value.\n\nResponses are not uniform. Depending on the operation the body is a JSON value, a bare text string, an empty 204, or a plain-text error.",
     "version": "1.0.0",
     "license": {
       "name": "AGPL-3.0",

@@ -22,7 +22,7 @@ type PermissionData struct {
 
 // @ci table=teams
 //
-// Team represents a team on Infinity List.
+// Team represents a team on Omniplex.
 type Team struct {
 	ID               string        `db:"id" json:"id" description:"The ID of the team"`
 	Name             string        `db:"name" json:"name" description:"The name of the team"`
@@ -54,7 +54,7 @@ type TeamEntities struct {
 
 // @ci table=team_members
 //
-// Team Member represents a member of a team on Infinity List.
+// Team Member represents a member of a team on Omniplex.
 type TeamMember struct {
 	ITag        pgtype.UUID             `db:"itag" json:"itag" description:"The ID of the team member"`
 	TeamID      string                  `db:"team_id" json:"team_id" description:"The ID of the team"`

@@ -19,7 +19,7 @@ const (
 
 	// otpLabel and otpIssuer are what shows up in the authenticator app.
 	otpLabel  = "staff@infinitybots.gg"
-	otpIssuer = "Infinity List"
+	otpIssuer = "Omniplex"
 
 	// qrSize is thotp's default QR dimension.
 	qrSize = 200

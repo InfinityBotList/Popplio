@@ -135,6 +135,7 @@ type Config struct {
 	Servers       Servers       `yaml:"servers" validate:"required"`
 	Meta          Meta          `yaml:"meta" validate:"required"`
 	Arcadia       Arcadia       `yaml:"arcadia" validate:"required"`
+	Infernoplex   Infernoplex   `yaml:"infernoplex" validate:"required"`
 }
 
 type DiscordAuth struct {

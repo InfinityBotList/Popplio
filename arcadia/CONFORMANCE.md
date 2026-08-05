@@ -1,7 +1,7 @@
 # Arcadia → Go port: conformance notes
 
 Arcadia (Rust: axum + sqlx + serenity/poise, ~12,800 LOC) ported into Popplio.
-The wire format is frozen — a live SvelteKit staff panel and other Infinity List
+The wire format is frozen — a live SvelteKit staff panel and other Omniplex
 services already speak it — so the default everywhere was to reproduce upstream
 behaviour byte-for-byte, including its bugs.
 

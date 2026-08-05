@@ -48,7 +48,7 @@ const (
 	StaffManageCDN Perm = "manage_cdn"
 
 	// The marker permissions carry no power inside Popplio. They label a staff
-	// member for other Infinity List services and for role display.
+	// member for other Omniplex services and for role display.
 	StaffMarkerDeveloper      Perm = "marker_developer"
 	StaffMarkerLeadDeveloper  Perm = "marker_lead_developer"
 	StaffMarkerHumanResources Perm = "marker_human_resources"

@@ -2,7 +2,7 @@
 // Arcadia, a Rust service).
 //
 // The wire format is frozen: a live SvelteKit staff panel and several other
-// Infinity List services already speak it. Everything in this package exists to
+// Omniplex services already speak it. Everything in this package exists to
 // reproduce serde's DEFAULT enum representation, which Go's encoding/json has no
 // equivalent of. Read arcadia/CONFORMANCE.md before changing anything here.
 package types

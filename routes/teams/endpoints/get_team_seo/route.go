@@ -59,7 +59,7 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 		Name: name,
 		Short: func() string {
 			if !short.Valid || short.String == "" {
-				return "View the team " + name + " on Infinity List"
+				return "View the team " + name + " on Omniplex"
 			}
 
 			return short.String

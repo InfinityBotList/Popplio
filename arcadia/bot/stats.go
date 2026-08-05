@@ -89,7 +89,7 @@ func cmdAnalytics() *Command {
 
 			return c.Send(discord.MessageCreate{
 				Embeds: []discord.Embed{{
-					Title:       "Infinity List Analytics",
+					Title:       "Omniplex Analytics",
 					Description: "I hope it's good :eyes:",
 					Color:       impls.ColourGreen,
 					Fields: []discord.EmbedField{
