@@ -73,71 +73,11 @@ We are a welcoming and laid back team who is always willing to give new people a
 		},
 	},
 	{
-		ID:          "qaqc",
-		Info:        `Join the Infinity Development's QAQC (Quality Assurance and Quality Control) Team! As being part of the QAQC team, you will help ensure that our services will always stay top-notch making everyone's experience with our services much better. We are a welcoming and laid back team who is always willing to give new people an opportunity!`,
-		Name:        "QAQC Team",
-		Tags:        []string{"Staff", "QAQC"},
-		ReviewLogic: reviewLogicStaff,
-		Cooldown:    120 * timex.Hour,
-		Questions: []types.Question{
-			{
-				ID:          "experience",
-				Question:    "Past server experience",
-				Paragraph:   "Tell us any experience you have working for other servers or bot lists.",
-				Placeholder: "I have worked at...",
-				Short:       false,
-			},
-			{
-				ID:          "strengths",
-				Question:    "List some of your strengths",
-				Paragraph:   "What are your strengths/abilities. How long can you be active?",
-				Placeholder: "I am always online and active...",
-				Short:       false,
-			},
-			{
-				ID:          "situations",
-				Question:    "Situation Examples",
-				Paragraph:   "How would you handle: Mass Pings, Nukes and Raids etc.",
-				Placeholder: "I would handle it by...",
-				Short:       false,
-			},
-			{
-				ID:          "reason",
-				Question:    "Why do you want to join the staff team?",
-				Paragraph:   "Why do you want to join the staff team? Be specific",
-				Placeholder: "I want to join the staff team because...",
-				Short:       false,
-			},
-			{
-				ID:          "team-player",
-				Question:    "What is a scenario in which you had to be a team player?",
-				Paragraph:   "What is a scenario in which you had to be a team player? We want to know that you can collaborate effectively with us.",
-				Placeholder: "I had to...",
-				Short:       false,
-			},
-			{
-				ID:          "about-you",
-				Question:    "Tell us a little about yourself",
-				Paragraph:   "Tell us a little about yourself. Its that simple!",
-				Placeholder: "I am...",
-				Short:       false,
-			},
-			{
-				ID:          "other",
-				Question:    "Anything else you want to add?",
-				Paragraph:   "Anything else you want to add?",
-				Placeholder: "Just state anything that doesn't hit anywhere else",
-				Short:       true,
-			},
-		},
-	},
-	{
 		ID: "dev",
 		Info: `Join our Dev Team and help us update, manage and maintain all of the Infinity Services!.
 
 Some experience in PostgreSQL and at least one of the below languages is required:
 
-- Rust
 - TypeScript (Javascript with type-safety)
 - Go/Golang`,
 		Name:     "Dev Team",
@@ -161,13 +101,13 @@ Some experience in PostgreSQL and at least one of the below languages is require
 			{
 				ID:          "foobar",
 				Question:    "Write a program that loops over all numbers from 1 to 7847 (inclusive). For every multiple of 7 and not 19, print 7 times the number and a uppercase A (on the same line), for every multiple of 19 and not 7, print a lowercase B and 5 more than the number divided by 4 and rounded (on the same line), for every multiple of both 7 and 19 print 'foobar'. Otherwise print 24 times the number",
-				Paragraph:   "Answer the question above with the least amount of code. Use either Go 1.18 or the latest nightly version of Rust for all solutions. Your solution must NOT link to an external resource or library and you MUST justify all code with comments",
+				Paragraph:   "Answer the question above with the least amount of code. Use either Go 1.18 for all solutions. Your solution must NOT link to an external resource or library and you MUST justify all code with comments",
 				Placeholder: "Code here...",
 				Short:       false,
 			},
 			{
 				ID:          "experience",
-				Question:    "Do you have experience in Typescript, Rust and/or Go. Give examples of projects/code you have written",
+				Question:    "Do you have experience in Typescript and/or Go. Give examples of projects/code you have written",
 				Paragraph:   "Do you have experience in Typescript, Rust and/or Go. Give examples of projects/code you have written.",
 				Placeholder: "I have worked on...",
 				Short:       false,
