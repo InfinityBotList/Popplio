@@ -260,6 +260,12 @@ type Panel struct {
 	PanelResponseScope string   `yaml:"panel_response_scope" comment:"Static handshake value the frontend expects back" validate:"required"`
 }
 
+type Infernoplex struct {
+	ClientID     string          `yaml:"client_id" comment:"Infernoplex bot Discord client ID" validate:"required"`
+	ClientSecret string          `yaml:"client_secret" comment:"Infernoplex bot Discord client secret" validate:"required"`
+	Token        Differs[string] `yaml:"token" comment:"Infernoplex bot Discord token" validate:"required"`
+}
+
 type Naevis struct {
 	ClientID string          `yaml:"client_id" comment:"Naevis bot Discord client ID" validate:"required"`
 	Token    Differs[string] `yaml:"token" comment:"Naevis bot Discord token" validate:"required"`

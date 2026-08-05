@@ -6,6 +6,8 @@ all:
 	systemctl reload popplio-staging
 dev:
 	go run .
+fmt:
+	go fmt ./...
 build-cdocs:
 	cd docs/cdocs && FRONTEND_URL=https://botlist.site npm run build && cd ..
 tests:
