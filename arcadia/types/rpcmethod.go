@@ -392,7 +392,7 @@ func (m RPCMethod) Fields() []RPCField {
 				Label:       "Force claim bot?",
 				FieldType:   FieldTypeBoolean,
 				Icon:        "fa-solid:sign-out-alt",
-				Placeholder: "Yes/No",
+				Placeholder: "True/False",
 			},
 		}
 	case "PremiumAdd":
