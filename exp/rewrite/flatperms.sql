@@ -129,7 +129,6 @@ INSERT INTO perm_map (dom, old, new) VALUES
     ('staff', 'cdn#ibl@main.read_file',                'view_cdn'),
     ('staff', 'cdn.add_file',                          'manage_cdn'),
     ('staff', 'cdn.upload_chunk',                      'manage_cdn'),
-    ('staff', 'borealis.*',                            'use_borealis'),
 
     ('staff', 'developer.marker',                      'marker_developer'),
     ('staff', 'lead_developer.marker',                 'marker_lead_developer'),
@@ -321,6 +320,11 @@ SELECT 'entity', 'team_member.*', p
 --
 -- `global.view_sensitive` only ever meant something for staff. The one team
 -- member holding it is a team owner, so dropping it costs them nothing.
+--
+-- `borealis.*` gated the Borealis service, which the port removed outright
+-- (arcadia/CONFORMANCE.md D11a). Nothing in the codebase calls Borealis any
+-- more, so the permission gated nothing and is not carried over. If Borealis
+-- ever comes back it needs a declared permission of its own, not this one.
 -- ---------------------------------------------------------------------------
 CREATE TEMP TABLE retired_perm (
     dom text NOT NULL,
@@ -329,7 +333,8 @@ CREATE TEMP TABLE retired_perm (
 ) ON COMMIT DROP;
 
 INSERT INTO retired_perm (dom, old) VALUES
-    ('entity', 'global.view_sensitive');
+    ('entity', 'global.view_sensitive'),
+    ('staff', 'borealis.*');
 
 -- ---------------------------------------------------------------------------
 -- The translation itself.
