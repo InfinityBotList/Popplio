@@ -79,6 +79,15 @@ func cmdLeaderboard() *Command {
 				return err
 			}
 
+			if len(leaderboard) == 0 {
+				return c.Send(discord.MessageCreate{
+					Embeds: []discord.Embed{{
+						Title:       "No Votes Yet",
+						Description: "Unfortuently, your server has no votes at this time.",
+					}},
+				})
+			}
+
 			var sb strings.Builder
 
 			page := 1
