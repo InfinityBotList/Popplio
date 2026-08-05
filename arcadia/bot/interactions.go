@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"popplio/arcadia/dclient"
+	"popplio/arcadia/impls"
 	"popplio/arcadia/types"
 	"popplio/state"
 
@@ -141,7 +142,7 @@ func handleClaimButton(c *Ctx, e *events.ComponentInteractionCreate, id, message
 
 	if id == "remind" {
 		if err := claimReminderLog(c, session.BotID, session.ClaimedBy); err != nil {
-			c.Say(fmt.Sprintf("There was an error running this command: %s", err))
+			c.Fail(fmt.Sprintf("There was an error running this command: %s", err))
 			return
 		}
 
@@ -155,11 +156,11 @@ func handleClaimButton(c *Ctx, e *events.ComponentInteractionCreate, id, message
 	_, err := runRPC(c, types.RPCMethod{Claim: &types.RPCClaim{TargetID: session.BotID, Force: true}})
 
 	if err != nil {
-		c.Say(fmt.Sprintf("There was an error running this command: %s", err))
+		c.Fail(fmt.Sprintf("There was an error running this command: %s", err))
 		return
 	}
 
-	c.Say("Claimed bot successfully, the bot owner has been informed")
+	c.Ok("Claimed bot successfully, the bot owner has been informed")
 }
 
 // cmdRPC is the modal driver: pick a target type and a method, then fill in a
@@ -298,7 +299,7 @@ func onModalSubmit(ctx context.Context, e *events.ModalSubmitInteractionCreate) 
 	variant, err := types.EmptyRPCMethod(methodName)
 
 	if err != nil {
-		e.CreateMessage(discord.MessageCreate{Content: fmt.Sprintf("There was an error running this command: %s", err)})
+		modalReply(e, fmt.Sprintf("There was an error running this command: %s", err), impls.ColourRed)
 		return
 	}
 
@@ -310,7 +311,7 @@ func onModalSubmit(ctx context.Context, e *events.ModalSubmitInteractionCreate) 
 		value, err := coerceField(field, raw)
 
 		if err != nil {
-			e.CreateMessage(discord.MessageCreate{Content: fmt.Sprintf("There was an error running this command: %s", err)})
+			modalReply(e, fmt.Sprintf("There was an error running this command: %s", err), impls.ColourRed)
 			return
 		}
 
@@ -323,14 +324,14 @@ func onModalSubmit(ctx context.Context, e *events.ModalSubmitInteractionCreate) 
 	payload, err := json.Marshal(map[string]any{methodName: fields})
 
 	if err != nil {
-		e.CreateMessage(discord.MessageCreate{Content: fmt.Sprintf("There was an error running this command: %s", err)})
+		modalReply(e, fmt.Sprintf("There was an error running this command: %s", err), impls.ColourRed)
 		return
 	}
 
 	var method types.RPCMethod
 
 	if err := json.Unmarshal(payload, &method); err != nil {
-		e.CreateMessage(discord.MessageCreate{Content: fmt.Sprintf("There was an error running this command: %s", err)})
+		modalReply(e, fmt.Sprintf("There was an error running this command: %s", err), impls.ColourRed)
 		return
 	}
 
@@ -345,7 +346,7 @@ func onModalSubmit(ctx context.Context, e *events.ModalSubmitInteractionCreate) 
 	res, err := runRPCWithTarget(c, method, session.TargetType)
 
 	if err != nil {
-		e.CreateMessage(discord.MessageCreate{Content: fmt.Sprintf("There was an error running this command: %s", err)})
+		modalReply(e, fmt.Sprintf("There was an error running this command: %s", err), impls.ColourRed)
 		return
 	}
 
@@ -355,7 +356,21 @@ func onModalSubmit(ctx context.Context, e *events.ModalSubmitInteractionCreate) 
 		content = "Successfully performed this action"
 	}
 
-	e.CreateMessage(discord.MessageCreate{Content: content})
+	modalReply(e, content, impls.ColourGreen)
+}
+
+// modalReply answers a modal submission. The modal driver cannot use Ctx.Say —
+// the interaction has to be answered through the event itself — so this is the
+// same embed shape by hand.
+func modalReply(e *events.ModalSubmitInteractionCreate, content string, colour int) {
+	err := e.CreateMessage(discord.MessageCreate{Embeds: []discord.Embed{{
+		Description: content,
+		Color:       colour,
+	}}})
+
+	if err != nil {
+		state.Logger.Error("Failed to answer an RPC modal", zap.Error(err))
+	}
 }
 
 // coerceField converts a modal's raw text into the type the RPC field expects.

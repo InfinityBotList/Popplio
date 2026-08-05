@@ -88,13 +88,7 @@ type partnerTypeRow struct {
 }
 
 func (s *Server) updatePartners(ctx context.Context, q *types.QUpdatePartners) (response, error) {
-	authData, err := checkAuth(ctx, q.LoginToken)
-
-	if err != nil {
-		return response{}, err
-	}
-
-	userPerms, err := resolvedPerms(ctx, authData.UserID)
+	_, userPerms, err := authorize(ctx, q.LoginToken)
 
 	if err != nil {
 		return response{}, err
@@ -299,13 +293,7 @@ type blogRow struct {
 func (s *Server) updateBlog(ctx context.Context, q *types.QUpdateBlog) (response, error) {
 	// Upstream calls check_auth twice here with a TODO admitting it is wasteful;
 	// once is enough.
-	authData, err := checkAuth(ctx, q.LoginToken)
-
-	if err != nil {
-		return response{}, err
-	}
-
-	userPerms, err := resolvedPerms(ctx, authData.UserID)
+	authData, userPerms, err := authorize(ctx, q.LoginToken)
 
 	if err != nil {
 		return response{}, err

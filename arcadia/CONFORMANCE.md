@@ -67,7 +67,7 @@ Not a typo we can safely "fix": Popplio may key on it. Reproduced, and flagged
 loudly here. Worth confirming with whoever owns the Popplio staff endpoints
 whether anything reads it; if not, it should be dropped or set to the caller's IP.
 
-**6. `Claim`'s `testbot` branch is dead (§7.2)** — `arcadia/rpc/methods.go`
+**6. `Claim`'s `testbot` branch is dead (§7.2)** — `arcadia/rpc/review.go`
 `type != "pending"` is rejected immediately above, so `type == "testbot"` can
 never be reached. Kept so the code still reads like the source. (`Unclaim` checks
 `testbot` *first*, so there the branch is live.)
@@ -84,19 +84,19 @@ warns-and-skips anything else. A position configured with a `testing`
 corresponding role validates cleanly and then silently never syncs. Reproduced;
 the fix is a one-line `case "testing":` in `collectCorrespondingRoles`.
 
-**9. `Unverify`'s mod-log embed has an empty field name** — `arcadia/rpc/methods.go`
+**9. `Unverify`'s mod-log embed has an empty field name** — `arcadia/rpc/review.go`
 **Newly found during the port.** The third embed field is built with an empty
 `name`, which the Discord API rejects (field names must be 1–256 characters). The
 embed post therefore fails, the error propagates, and `Unverify` reports failure
 *after* having already flipped the bot to `pending`. Reproduced faithfully; this
 one is worth fixing soon — the DB write is not rolled back.
 
-**10. `Approve` calls Borealis and posts to Discord inside the transaction (§7.2)** — `arcadia/rpc/methods.go`
+**10. `Approve` calls Borealis and posts to Discord inside the transaction (§7.2)** — `arcadia/rpc/review.go`
 An HTTP round trip and a Discord message both happen before `COMMIT`, holding the
 transaction open across two network calls. Preserved, since restructuring changes
 failure semantics (today a failed Borealis call rolls back the approval).
 
-**11. Several error strings begin with a bare space** — `arcadia/rpc/methods.go`
+**11. Several error strings begin with a bare space** — `arcadia/rpc/core.go`, `arcadia/rpc/review.go`, `arcadia/rpc/transfer.go`
 `" does not exist"`, `" is not pending review?"`, `" is in a team. …"` — the
 entity name was dropped in an earlier refactor. The panel shows them raw. Frozen
 and asserted by `arcadia/conformance`.

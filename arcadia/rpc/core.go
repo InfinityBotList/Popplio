@@ -2,6 +2,29 @@
 // staff Discord bot. A staff member approving a bot from the web panel and one
 // approving it with a slash command run the same handler, the same permission
 // check, the same rate limit, the same audit row and the same mod-log embed.
+//
+// # Layout
+//
+// core.go holds the pipeline every action goes through (Execute) and the guards
+// they share; dispatch.go maps a method to its handler; the handlers themselves
+// are grouped by what they act on and by the permission that gates them:
+//
+//	review.go       claim, unclaim, approve, deny, unverify   review_bots
+//	certify.go      certification                             certify_bots
+//	transfer.go     ownership changes                         transfer_bots
+//	forceremove.go  deleting a bot outright                   force_remove_bots
+//	premium.go      premium                                   manage_premium
+//	votes.go        vote bans and vote resets                 manage_votes, ban_voters
+//	apps.go         application bans                          ban_app_users
+//	audit.go        the staff_general_logs row
+//
+// # Embeds are reproduced verbatim
+//
+// Every mod-log embed in this package — titles (leading spaces included),
+// descriptions, field names, inline flags, footers and colours — is reproduced
+// exactly from the Rust original. The mod-log channel is read by humans and
+// several titles have odd leading spaces that are intentional by accident. See
+// arcadia/CONFORMANCE.md before tidying one up.
 package rpc
 
 import (
