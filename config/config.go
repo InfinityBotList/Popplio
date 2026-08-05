@@ -50,11 +50,6 @@ type Differs[T any] struct {
 	// Beta is only consulted when running with current-env set to "beta",
 	// and even then only if it has been set to something other than T's
 	// zero value — an unset Beta falls back to Staging, same as Dev below.
-	// Unlike Dev, current-env: beta does not relax the Staging/Prod
-	// requirement: beta is a real running deployment, not a personal
-	// machine, so most config (DB, tokens, etc.) is expected to be shared
-	// with staging and only keys that genuinely differ (e.g. the frontend
-	// URL) need an explicit Beta value.
 	Beta T `yaml:"beta" required:"false" comment:"Beta value, used when current-env is \"beta\"; falls back to staging when unset"`
 
 	// Dev is only consulted when running with current-env set to "dev", and
@@ -70,34 +65,38 @@ type Differs[T any] struct {
 // is a distinct type, so RegisterStructValidation needs one call listing
 // all of them — see state.Setup).
 //
-// In "dev", only Dev or Staging needs to be set, Parse falls back to
-// Staging when Dev is unset — requiring a real Staging/Prod value for
-// every key just to run locally would defeat the point of "dev". Every
-// other environment, including "beta", keeps the original requirement:
-// both Staging and Prod must be set, regardless of which one is actually
-// read at runtime, so a config that's valid for one environment is valid
-// to deploy as any of them. Beta itself is never required — like Dev, an
-// unset Beta just falls back to Staging in Parse.
+// Only requires whichever value Parse() will actually read for CurrentEnv —
+// a box only ever reads one branch of Differs[T], so requiring every other
+// branch too just to pass validation forced a single shared config.yaml
+// across every environment for no functional reason (a prod-only box was
+// rejected for a missing Staging value it would never read, and vice
+// versa). "beta" and "dev" both fall back to Staging when their own value
+// is unset (see Parse), so either being set satisfies them.
 func ValidateDiffers(sl validator.StructLevel) {
 	current := sl.Current()
 
 	staging := current.FieldByName("Staging")
 	prod := current.FieldByName("Prod")
+	beta := current.FieldByName("Beta")
 	dev := current.FieldByName("Dev")
 
-	if CurrentEnv == CurrentEnvDev {
+	switch CurrentEnv {
+	case CurrentEnvProd:
+		if prod.IsZero() {
+			sl.ReportError(prod.Interface(), "Prod", "Prod", "required", "")
+		}
+	case CurrentEnvStaging:
+		if staging.IsZero() {
+			sl.ReportError(staging.Interface(), "Staging", "Staging", "required", "")
+		}
+	case CurrentEnvBeta:
+		if staging.IsZero() && beta.IsZero() {
+			sl.ReportError(beta.Interface(), "Beta", "Beta", "required_without", "Staging")
+		}
+	case CurrentEnvDev:
 		if staging.IsZero() && dev.IsZero() {
 			sl.ReportError(dev.Interface(), "Dev", "Dev", "required_without", "Staging")
 		}
-		return
-	}
-
-	if staging.IsZero() {
-		sl.ReportError(staging.Interface(), "Staging", "Staging", "required", "")
-	}
-
-	if prod.IsZero() {
-		sl.ReportError(prod.Interface(), "Prod", "Prod", "required", "")
 	}
 }
 

@@ -110,6 +110,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Every `Differs[T]` config key (DB tokens, site URLs, etc.) previously
+  required *both* a `staging` and a `prod` value to be set regardless of
+  which environment a given box actually runs — a `current-env: prod` box
+  was rejected at startup for a missing `staging` value it would never
+  read, and vice versa. `ValidateDiffers` now only requires whichever value
+  `Parse()` will actually resolve for `CurrentEnv` (`prod` needs `prod`,
+  `staging` needs `staging`; `beta`/`dev` still accept either their own
+  value or a `staging` fallback, unchanged), so a config file only needs to
+  fill in what the box it's deployed to actually uses.
 - Bots now support downvotes, matching servers/teams/packs
   (`votes.EntityVoteInfo` no longer hardcodes `SupportsDownvotes = false` for
   the `bot` target type).
