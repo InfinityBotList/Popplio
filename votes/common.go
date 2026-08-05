@@ -182,8 +182,7 @@ func EntityVoteInfo(ctx context.Context, c DbConn, targetId, targetType string) 
 	// Add other special cases of entities not following the basic voting system rules
 	switch targetType {
 	case "bot":
-		voteEntity.VoteCredits = true        // Bots support vote credits
-		voteEntity.SupportsDownvotes = false // Bots cannot be downvoted
+		voteEntity.VoteCredits = true // Bots support vote credits
 
 		var premium bool
 		err := c.QueryRow(ctx, "SELECT premium FROM bots WHERE bot_id = $1", targetId).Scan(&premium)
