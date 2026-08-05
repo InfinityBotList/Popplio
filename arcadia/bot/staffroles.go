@@ -65,12 +65,28 @@ func cmdStaffRoles() *Command {
 		Required:    true,
 	}
 
+	// The editor can open on its own role picker, so naming a role is optional
+	// there and required everywhere else.
+	optionalRoleOption := roleOption
+	optionalRoleOption.Required = false
+
 	return &Command{
 		Name:        "staffroles",
 		Category:    "Staff Management",
 		Description: "See and manage staff roles and the permissions attached to them",
 		Checks:      []Check{staffServer, isStaff},
+		// Discord lists subcommands in registration order and never lets the
+		// parent command be run on its own, so the interactive one goes first:
+		// it is what most of this command is for.
 		Subcommands: []*Command{
+			{
+				Name:        "edit",
+				Category:    "Staff Management",
+				Description: "Grant and revoke a role's permissions with menus and buttons",
+				Checks:      []Check{staffServer, isStaff},
+				Options:     []discord.ApplicationCommandOption{optionalRoleOption},
+				Run:         runRolesEdit,
+			},
 			{
 				Name:        "list",
 				Category:    "Staff Management",
@@ -141,7 +157,7 @@ func cmdStaffRoles() *Command {
 			},
 		},
 		Run: func(c *Ctx) error {
-			return c.Say("Use one of: ``list``, ``show``, ``create``, ``grant``, ``revoke``, ``rename``, ``delete``, ``sync``.")
+			return c.Say("Use one of: ``list``, ``show``, ``edit``, ``create``, ``grant``, ``revoke``, ``rename``, ``delete``, ``sync``. ``edit`` is the interactive one.")
 		},
 	}
 }
@@ -498,7 +514,16 @@ func cmdStaffPerms() *Command {
 		Category:    "Staff Management",
 		Description: "See and manage what a staff member can do",
 		Checks:      []Check{staffServer, isStaff},
+		// The interactive one goes first here too; see cmdStaffRoles.
 		Subcommands: []*Command{
+			{
+				Name:        "edit",
+				Category:    "Staff Management",
+				Description: "Grant and revoke a member's own permissions with menus and buttons",
+				Checks:      []Check{staffServer, isStaff},
+				Options:     []discord.ApplicationCommandOption{userOption},
+				Run:         runPermsEdit,
+			},
 			{
 				Name:        "show",
 				Category:    "Staff Management",
@@ -535,7 +560,7 @@ func cmdStaffPerms() *Command {
 			},
 		},
 		Run: func(c *Ctx) error {
-			return c.Say("Use one of: ``show``, ``check``, ``grant``, ``revoke``.")
+			return c.Say("Use one of: ``show``, ``check``, ``edit``, ``grant``, ``revoke``. ``edit`` is the interactive one.")
 		},
 	}
 }
@@ -685,6 +710,10 @@ func editMemberExtras(c *Ctx, granting bool) error {
 		return fmt.Errorf("<@%s> outranks you", userID)
 	}
 
+	if err := refuseBotTarget(c.Context, userID, target); err != nil {
+		return err
+	}
+
 	perm, err := resolvePermission(c.Option("permission", 1))
 
 	if err != nil {
@@ -802,13 +831,37 @@ type managerContext struct {
 }
 
 func loadManager(c *Ctx) (managerContext, error) {
-	grants, err := perms.LoadStaff(c.Context, c.Author.ID.String())
+	return loadManagerFor(c.Context, c.Author.ID.String())
+}
+
+// loadManagerFor is loadManager for a caller that is not the one in hand, which
+// is what the permission editor has: its session outlives the invocation that
+// opened it and only remembers who owns it.
+func loadManagerFor(ctx context.Context, userID string) (managerContext, error) {
+	grants, err := perms.LoadStaff(ctx, userID)
 
 	if err != nil {
 		return managerContext{}, err
 	}
 
 	return managerContext{perms: grants.Resolve(), rank: grants.Rank()}, nil
+}
+
+// refuseBotTarget stops a permission being granted to a bot account.
+//
+// The cached flag on the grants answers it for free when dovewing has seen the
+// account before; otherwise the authoritative check runs, which is affordable
+// here because granting a permission is a rare, deliberate act.
+func refuseBotTarget(ctx context.Context, userID string, target perms.StaffGrants) error {
+	if target.BotAccount {
+		return fmt.Errorf("<@%s> is a bot: %w", userID, perms.ErrBotAccount)
+	}
+
+	if err := perms.RejectBotAccount(ctx, userID); err != nil {
+		return fmt.Errorf("<@%s>: %w", userID, err)
+	}
+
+	return nil
 }
 
 // requireRoleManager loads the caller and checks they may manage roles at all.

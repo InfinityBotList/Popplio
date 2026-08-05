@@ -74,10 +74,7 @@ func (s *Server) hello(ctx context.Context, q *types.QHello) (response, error) {
 	return writeJSON(http.StatusOK, types.Hello{
 		InstanceConfig: types.InstanceConfig{
 			Description: instanceDescription(),
-			Warnings: []string{
-				"Oh, hello there. This panel is currently being rewritten, and may have some issues. If you find any issues, please contact a Lead Developer in the `Staff Center` Discord Server!",
-				"[Warning]: `panel.infinitybots.gg` will soon be unaccessible as we move our panel into the main site.",
-			},
+			Warnings: []string{},
 		},
 		AuthData:    authData,
 		StaffMember: staffMember,

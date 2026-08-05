@@ -141,9 +141,16 @@ func (s *Server) authCreateSession(ctx context.Context, action *types.AuthCreate
 		return response{}, newError(err)
 	}
 
-	var positions []string
+	var (
+		positions []string
+		isBot     bool
+	)
 
-	err = state.Pool.QueryRow(ctx, "SELECT positions FROM staff_members WHERE user_id = $1", user.ID).Scan(&positions)
+	err = state.Pool.QueryRow(ctx, `
+		SELECT sm.positions, COALESCE(iuc.bot, false)
+		FROM staff_members sm
+		LEFT JOIN internal_user_cache__discord iuc ON iuc.id = sm.user_id
+		WHERE sm.user_id = $1`, user.ID).Scan(&positions, &isBot)
 
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -155,6 +162,11 @@ func (s *Server) authCreateSession(ctx context.Context, action *types.AuthCreate
 
 	if len(positions) == 0 {
 		return writeText(http.StatusForbidden, "You are not a staff member [no positions]"), nil
+	}
+
+	// A bot holds no staff permissions, so it has nothing to log in to.
+	if isBot {
+		return writeText(http.StatusForbidden, "You are not a staff member [bot account]"), nil
 	}
 
 	tx, err := state.Pool.Begin(ctx)
