@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [1.0.0] - Unreleased
+## [1.0.0] - 2026-08-04
 
 ### Added
 
@@ -110,6 +110,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Bots now support downvotes, matching servers/teams/packs
+  (`votes.EntityVoteInfo` no longer hardcodes `SupportsDownvotes = false` for
+  the `bot` target type).
 - `meta.popplio_proxy` now defaults to `https://gateway.nodebyte.host/proxy/discord`
   (the shared parent-company gateway), replacing the old local
   `http://127.0.0.1:3219` twilight-http-proxy convention. Both Popplio's own
