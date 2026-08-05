@@ -155,16 +155,17 @@ func Setup() {
 				Logger.Info("Guild ready", zap.String("guildID", event.Guild.ID.String()))
 			},
 			OnGuildsReady: func(event *events.GuildsReady) {
-				Logger.Info("All guilds ready")
+				Logger.Info("All guilds ready", zap.Int("shardID", event.ShardID()))
 
-				// Setting presence right after OpenShardManager returns
-				// races ahead of the shards actually finishing their
-				// handshake (it returns once shards start connecting, not
-				// once they're ready), reliably failing with "no gateway
-				// configured". OnGuildsReady only fires once shards are
-				// actually up, so set it here instead.
-				if presenceErr := Discord.SetPresence(Context, gateway.WithWatchingActivity(Config.Sites.Frontend.Parse())); presenceErr != nil {
-					Logger.Error("error while setting presence", zap.Error(presenceErr))
+				// Popplio runs sharded (OpenShardManager), not a single
+				// gateway (OpenGateway) — SetPresence only ever checks
+				// Discord's single-gateway field and unconditionally
+				// returns "no gateway configured" on a sharded bot, no
+				// matter how ready the shards are. GuildsReady also fires
+				// once per shard, not once globally, so set presence per
+				// shard via SetPresenceForShard using the event's shard ID.
+				if presenceErr := Discord.SetPresenceForShard(Context, event.ShardID(), gateway.WithWatchingActivity(Config.Sites.Frontend.Parse())); presenceErr != nil {
+					Logger.Error("error while setting presence", zap.Error(presenceErr), zap.Int("shardID", event.ShardID()))
 				}
 			},
 		}),
