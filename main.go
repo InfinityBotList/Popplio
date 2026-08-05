@@ -133,6 +133,15 @@ func main() {
 
 	docs.AddSecuritySchema("User", "User-Auth", "Requires a user token. Should be prefixed with `User ` in `Authorization` header.")
 	docs.AddSecuritySchema("Bot", "Bot-Auth", "Requires a bot token. Should be prefixed with `Bot ` in `Authorization` header.")
+	// "server"/"team" (lowercase, matching AuthTypeMap in api/uapi.go, since
+	// these two map to themselves rather than a capitalized scheme name like
+	// User/Bot) were never registered at all, even though Authorize() has
+	// always fully supported them — every operation requiring one referenced
+	// a security scheme name absent from components.securitySchemes, which
+	// tools resolving the requirement against registered schemes (e.g.
+	// fumadocs-openapi's APIPage) crash on outright.
+	docs.AddSecuritySchema("server", "Server-Auth", "Requires a server API session token. Should be prefixed with `Server ` in `Authorization` header.")
+	docs.AddSecuritySchema("team", "Team-Auth", "Requires a team API session token. Should be prefixed with `Team ` in `Authorization` header.")
 
 	api.Setup()
 
