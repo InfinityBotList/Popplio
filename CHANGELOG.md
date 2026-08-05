@@ -43,6 +43,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `ErrNoGateway` unconditionally on a sharded bot regardless of readiness.
   `OnGuildsReady` also fires once per shard, not once globally. Now uses
   `Discord.SetPresenceForShard(ctx, event.ShardID(), ...)` instead.
+- `POST /auth/test` ("Test Auth") 500ed on every call that reached an actual
+  authorization check — `api.Authorize` reads `PERMISSION_CHECK_KEY` out of
+  the route's `ExtData` unconditionally, but the synthetic `uapi.Route{}`
+  this endpoint builds to call it never set `ExtData` at all, so any request
+  with a syntactically valid token failed with a 500
+  (`permissionCheck not found in route.ExtData`) instead of returning
+  whether the token is actually valid. Only requests with a token that
+  failed even earlier (nonexistent in `api_sessions`) ever got a real
+  response (401). Now sets a no-op `PermissionCheck` (`NeededPermission`
+  always returns `nil`), since this endpoint has no permission model of its
+  own to enforce — it's purely "is this token valid for this target."
 
 ## [1.0.0] - 2026-08-04
 
