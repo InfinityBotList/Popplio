@@ -76,6 +76,74 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `OnGuildsReady` also fires once per shard, not once globally. Now uses
   `Discord.SetPresenceForShard(ctx, event.ShardID(), ...)` instead.
 
+- A second pass over the same files, this time pulling out the repetition
+  rather than only moving it. In `arcadia/rpc`: `modLogReason` builds the
+  mod-log embed nine handlers were each building by hand (title, description,
+  one Reason field, footer, colour), `reasonField` covers the four multi-field
+  embeds that keep their own shape, and `guardBot`/`guardUser` replace the
+  ten copies of "reject an over-long reason, then check the target exists".
+  `certifyAdd` went from 47 lines to 20 this way, and `review.go` split into
+  `claim.go` and `verdict.go` once it had. In `arcadia/panel`: `authorize`
+  replaces the ten copies of the twelve-line `checkAuth` + `resolvedPerms`
+  preamble, and `ops_core.go` (608) split into `ops_auth`, `ops_hello`,
+  `ops_queue`, `ops_rpc`, `ops_search` and `ops_proxy`.
+  `arcadia/tasks/staffresync.go` (579) split into the resync itself, its
+  reporting and its Discord role mirroring.
+  What was deliberately *not* factored out: the frozen embed and error strings
+  stay written out at their call sites, because `arcadia/conformance` finds
+  them by scanning the source for the literal — a helper that formatted them
+  would pass its own tests while quietly removing that check. For the same
+  reason the SQL stays literal at each call site, since `arcadia/dbconform`
+  PREPAREs every string literal it can find against a real database. And the
+  five steps of `StaffResync` are left inline: they share a transaction and a
+  working set that each step narrows, so splitting them would make an ordering
+  that is load-bearing look optional.
+- Every reply the staff bot makes is now an embed, including one-liners. A bare
+  content message is indistinguishable from a staff member talking, which
+  matters in the staff server where the bot's answers and the conversation
+  share a channel. `Ctx.Say` builds the embed itself, so this is a change of
+  container rather than of wording — every string frozen in
+  `arcadia/conformance` is untouched and still asserted. Two coloured variants
+  went in alongside it: `Ctx.Fail` (red) for the command guards, the panic
+  handler and the "there was an error" paths, and `Ctx.Ok` (green) for the 16
+  replies that report something having worked, so a refusal is visibly
+  different from an answer without either having to say so. The modal driver
+  and the permission editor's ephemeral refusals, which answer through the
+  interaction rather than through `Ctx`, build the same shape by hand.
+  `TestRepliesAreEmbeds` walks the package's AST for any `MessageCreate` that
+  sets `Content` and fails if one appears.
+- The five files that had grown past the point of being navigable are split by
+  what they do, with no behaviour change: `arcadia/bot/staffroles.go` (1137)
+  into `staffmgmt.go` (the role model, the authority rules, the lookups),
+  `staffroles.go`, `staffperms.go` and `staffrender.go`;
+  `arcadia/bot/commands.go` (697) into `commands.go` (the registry and the two
+  shared RPC helpers) plus `help.go`, `invites.go`, `stats.go` and
+  `staffops.go`; `arcadia/panel/ops_shop.go` (861) into one file per shop
+  concern (tiers, items, benefits, coupons, whitelist);
+  `arcadia/panel/ops_staff.go` (759) into positions, members and
+  disciplinaries, with its two shared existence checks moved to `ops_query.go`
+  where the shop operations that also use them can find them; and
+  `arcadia/bot/permeditor.go` (858) into session/apply/render/util. Each new
+  file opens with what it covers and what is non-obvious about that area. All
+  of it is code movement verified line-for-line against the original; nothing
+  in the repo's directory structure changed, and `routes/`'s one-package-per-
+  endpoint layout is left alone since `uapi` requires it.
+- `arcadia/rpc/methods.go` (878 lines, every RPC action in one file) is split
+  into one file per group of actions, grouped exactly the way
+  `types.rpcPermissions` groups them — so the file an action lives in is the
+  same question as which permission gates it: `review.go` (claim, unclaim,
+  approve, deny, unverify), `certify.go`, `transfer.go`, `forceremove.go`,
+  `premium.go`, `votes.go`, `apps.go`, plus `dispatch.go` for the
+  method-to-handler switch and `audit.go` for the `staff_general_logs` write.
+  `core.go` keeps the `Execute` pipeline and the shared guards, and its
+  package doc now carries the map of where things live and the note that every
+  mod-log embed is reproduced verbatim from the Rust original (that note used
+  to sit above the dispatcher and said "every embed below", which the split
+  would have made a lie). Pure code movement: every moved line is
+  byte-identical to what it replaced, and `arcadia/conformance` scans the
+  whole package rather than one file, so it pins the embed strings exactly as
+  before. `arcadia/CONFORMANCE.md`'s file references were updated to match.
+
 ### Removed
 
 - The `use_borealis` staff permission. Borealis was removed from the platform

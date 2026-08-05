@@ -13,6 +13,7 @@ import (
 	"strings"
 
 	"popplio/arcadia/dclient"
+	"popplio/arcadia/impls"
 	"popplio/perms"
 	"popplio/state"
 
@@ -78,9 +79,36 @@ func (c *Ctx) BoolOption(name string, fallback bool) bool {
 	}
 }
 
-// Say sends a plain text reply.
+// Say replies with a message in the bot's neutral colour.
+//
+// Every reply the bot makes is an embed, including one-liners: a bare content
+// message is indistinguishable from a staff member talking, which matters in
+// the staff server where the bot's answers and the conversation share a channel.
+// The text itself is unchanged — the embed is the container, not a rewrite — so
+// the strings frozen in arcadia/conformance still read exactly as they did.
 func (c *Ctx) Say(content string) error {
-	return c.Send(discord.MessageCreate{Content: content})
+	return c.SayColour(content, impls.ColourBlurple)
+}
+
+// Ok replies to something that worked.
+func (c *Ctx) Ok(content string) error {
+	return c.SayColour(content, impls.ColourGreen)
+}
+
+// Fail replies to something that did not.
+//
+// This is what the command guards and the panic handler use, so a refusal is
+// visibly different from an answer without either of them having to say so.
+func (c *Ctx) Fail(content string) error {
+	return c.SayColour(content, impls.ColourRed)
+}
+
+// SayColour replies with a message in an explicit colour.
+func (c *Ctx) SayColour(content string, colour int) error {
+	return c.Send(discord.MessageCreate{Embeds: []discord.Embed{{
+		Description: content,
+		Color:       colour,
+	}}})
 }
 
 // Send sends a full message reply.
@@ -306,29 +334,29 @@ func invoke(cmd *Command, c *Ctx) {
 	defer func() {
 		if rec := recover(); rec != nil {
 			state.Logger.Error("Command panicked", zap.String("command", cmd.Name), zap.Any("panic", rec))
-			c.Say("There was an error running this command: internal error")
+			c.Fail("There was an error running this command: internal error")
 		}
 	}()
 
 	if cmd.OwnerOnly && !isOwner(c.Author.ID) {
-		c.Say("Whoa there, do you have permission to do this?: You are not an owner")
+		c.Fail("Whoa there, do you have permission to do this?: You are not an owner")
 		return
 	}
 
 	for _, check := range cmd.Checks {
 		if err := check(c); err != nil {
-			c.Say(fmt.Sprintf("Whoa there, do you have permission to do this?: %s", err))
+			c.Fail(fmt.Sprintf("Whoa there, do you have permission to do this?: %s", err))
 			return
 		}
 	}
 
 	if cmd.Run == nil {
-		c.Say("This command is currently disabled")
+		c.Fail("This command is currently disabled")
 		return
 	}
 
 	if err := cmd.Run(c); err != nil {
-		c.Say(fmt.Sprintf("There was an error running this command: %s", err))
+		c.Fail(fmt.Sprintf("There was an error running this command: %s", err))
 		return
 	}
 

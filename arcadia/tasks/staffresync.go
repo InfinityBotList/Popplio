@@ -5,9 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"sort"
-	"strings"
-
 	"popplio/arcadia/dclient"
 	"popplio/arcadia/impls"
 	"popplio/arcadia/types"
@@ -20,6 +17,16 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 	"go.uber.org/zap"
 )
+
+// The staff resync itself, in the five steps it has always run in.
+//
+// The steps are deliberately left inline rather than broken into a function
+// each: they share a transaction, a working set that each one narrows, and an
+// ordering that is load-bearing — step 5 acts on exactly what step 4 did not
+// account for. Splitting them would mean passing that state around in a struct
+// and would make the order look optional when it is not. What could be lifted
+// out without touching that — the reporting, and the Discord role mirroring —
+// is in staffresync_report.go and staffresync_roles.go.
 
 // cachedPosition is a staff position with everything the resync needs.
 type cachedPosition struct {
@@ -379,201 +386,4 @@ func StaffResync(ctx context.Context) error {
 	}
 
 	return nil
-}
-
-// announceResync posts a resync record to the staff log channel.
-//
-// A failure here is reported and stepped over rather than returned. The log is
-// an account of what the resync did; the resync itself is what keeps staff
-// permissions in step with Discord. Returning the error used to abandon the run
-// and roll back its transaction, so a staff log channel that had been deleted —
-// or, more often, never configured — silently stopped staff permissions syncing
-// altogether.
-func announceResync(userID string, msg discord.MessageCreate) {
-	if err := impls.SendChannel(state.Config.Channels.StaffLogs, msg); err != nil {
-		state.Logger.Warn("Could not write the staff log for a resync; the resync itself continued",
-			zap.String("userID", userID),
-			zap.Error(err),
-		)
-	}
-}
-
-func isOwner(userID snowflake.ID) bool {
-	return perms.IsConfigOwner(userID.String())
-}
-
-// differs reports whether the two position sets have a non-empty symmetric
-// difference.
-func differs(a, b map[string]struct{}) bool {
-	if len(a) != len(b) {
-		return true
-	}
-
-	for k := range a {
-		if _, ok := b[k]; !ok {
-			return true
-		}
-	}
-
-	return false
-}
-
-// sortedKeys gives the set a stable order so log output and SQL arrays do not
-// churn between runs.
-func sortedKeys(set map[string]struct{}) []string {
-	out := make([]string, 0, len(set))
-
-	for k := range set {
-		out = append(out, k)
-	}
-
-	sort.Strings(out)
-
-	return out
-}
-
-func buildPermissions(posByID map[string]cachedPosition, positionIDs []string, extras []perms.Perm) perms.StaffGrants {
-	g := perms.StaffGrants{
-		Roles:  make([]perms.Role, 0, len(positionIDs)),
-		Extras: extras,
-	}
-
-	for _, id := range positionIDs {
-		pos, ok := posByID[id]
-
-		if !ok {
-			continue
-		}
-
-		g.Roles = append(g.Roles, perms.Role{
-			ID:    pos.ID,
-			Name:  pos.Name,
-			Index: pos.Index,
-			Perms: perms.ParseStrings(pos.Perms),
-		})
-	}
-
-	return g
-}
-
-// renderPositions formats a position list for the staff-log embed, matching the
-// "- “value“" lines upstream emits.
-func renderPositions(posByID map[string]cachedPosition, positionIDs []string) string {
-	lines := make([]string, 0, len(positionIDs))
-
-	for _, id := range positionIDs {
-		if pos, ok := posByID[id]; ok {
-			lines = append(lines, fmt.Sprintf("- ``%s``", pos))
-		} else {
-			lines = append(lines, fmt.Sprintf("- Unknown Position: %s", id))
-		}
-	}
-
-	if len(lines) == 0 {
-		return "None"
-	}
-
-	return strings.Join(lines, "\n")
-}
-
-func renderPerms(resolved perms.Set) string {
-	lines := make([]string, 0, resolved.Len())
-
-	for _, perm := range resolved.All() {
-		lines = append(lines, fmt.Sprintf("- ``%s``", perm))
-	}
-
-	if len(lines) == 0 {
-		return "None"
-	}
-
-	return strings.Join(lines, "\n")
-}
-
-// modifyCorrespondingRoles mirrors position changes into the other guilds.
-//
-// INCONSISTENCY (reproduced): only "main" and "staff" are handled here, while
-// the panel's position validator (§5.17) also accepts "testing". A position with
-// a "testing" corresponding role validates but is silently ignored by this sync.
-// See CONFORMANCE.md.
-func modifyCorrespondingRoles(posByID map[string]cachedPosition, user snowflake.ID, removeIDs, addIDs []string) error {
-	remove := collectCorrespondingRoles(posByID, removeIDs)
-	add := collectCorrespondingRoles(posByID, addIDs)
-
-	for guildID, roles := range remove {
-		if !guildMemberPresent(guildID, user) {
-			continue
-		}
-
-		for _, roleID := range roles {
-			if err := impls.RemoveRole(guildID, user, roleID, "Removing corresponding role"); err != nil {
-				return err
-			}
-		}
-	}
-
-	for guildID, roles := range add {
-		if !guildMemberPresent(guildID, user) {
-			continue
-		}
-
-		for _, roleID := range roles {
-			if err := impls.AddRole(guildID, user, roleID, "Adding corresponding role"); err != nil {
-				return err
-			}
-		}
-	}
-
-	return nil
-}
-
-func collectCorrespondingRoles(posByID map[string]cachedPosition, positionIDs []string) map[snowflake.ID][]snowflake.ID {
-	out := make(map[snowflake.ID][]snowflake.ID)
-
-	for _, id := range positionIDs {
-		pos, ok := posByID[id]
-
-		if !ok {
-			continue
-		}
-
-		for _, link := range pos.CorrespondingRoles {
-			var guildID snowflake.ID
-
-			switch link.Name {
-			case "main":
-				guildID = state.Config.Servers.Main
-			case "staff":
-				guildID = state.Config.Servers.Staff
-			default:
-				state.Logger.Warn("Unknown corresponding server", zap.String("name", link.Name))
-				continue
-			}
-
-			roleID, err := snowflake.Parse(link.Value)
-
-			if err != nil {
-				state.Logger.Warn("Unparseable corresponding role id", zap.String("value", link.Value))
-				continue
-			}
-
-			out[guildID] = append(out[guildID], roleID)
-		}
-	}
-
-	return out
-}
-
-func guildMemberPresent(guildID, user snowflake.ID) bool {
-	if _, ok := dclient.Get().Caches().Guild(guildID); !ok {
-		state.Logger.Warn("Failed to get guild", zap.String("guildID", guildID.String()))
-		return false
-	}
-
-	if !impls.MemberOnGuild(guildID, user) {
-		state.Logger.Warn("User not found in server", zap.String("userID", user.String()))
-		return false
-	}
-
-	return true
 }

@@ -246,7 +246,7 @@ func cmdClaim() *Command {
 				return err
 			}
 
-			return c.Say("Claimed bot successfully, the bot owner has been informed")
+			return c.Ok("Claimed bot successfully, the bot owner has been informed")
 		},
 	}
 }
@@ -275,7 +275,7 @@ func cmdUnclaim() *Command {
 				return err
 			}
 
-			return c.Say("Unclaimed bot successfully!")
+			return c.Ok("Unclaimed bot successfully!")
 		},
 	}
 }
@@ -310,7 +310,7 @@ func cmdApprove() *Command {
 				return fmt.Errorf("RPC did not return as expected???")
 			}
 
-			return c.Say(fmt.Sprintf("Approved bot!\n%s", content))
+			return c.Ok(fmt.Sprintf("Approved bot!\n%s", content))
 		},
 	}
 }
@@ -339,7 +339,7 @@ func cmdDeny() *Command {
 				return err
 			}
 
-			return c.Say("Okay! The bot has been denied.")
+			return c.Ok("Okay! The bot has been denied.")
 		},
 	}
 }
