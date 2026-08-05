@@ -536,6 +536,13 @@ func (s *Server) editMember(ctx context.Context, callerID string, action *types.
 		return writeText(http.StatusForbidden, "Target has a lower index than the member"), nil
 	}
 
+	// Bots hold no staff permissions, so there is nothing here to edit. Writing
+	// the overrides anyway would leave a row that reads as a grant and resolves
+	// to nothing.
+	if target.User.Bot {
+		return writeText(http.StatusForbidden, perms.ErrBotAccount.Error()), nil
+	}
+
 	if err := perms.Staff.ValidateStrings(action.PermOverrides); err != nil {
 		return writeText(http.StatusBadRequest, err.Error()), nil
 	}

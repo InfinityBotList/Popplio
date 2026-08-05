@@ -19,6 +19,10 @@
 // subtracts. That is the whole model, and it is why a permission check is a
 // single map lookup.
 //
+// The one exception is who may hold staff permissions at all: a Discord bot
+// account holds none, from any source, including the owners list. See
+// [ErrBotAccount].
+//
 // # Catalogues
 //
 // Every permission is declared in a [Catalogue]: [Staff] for what staff can do

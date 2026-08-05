@@ -380,7 +380,8 @@ func buildCommands() []discord.ApplicationCommandCreate {
 	return cmds
 }
 
-// SyncCommands publishes the slash commands to every staff guild.
+// SyncCommands publishes the slash commands to every staff guild and clears any
+// application-wide copy of them.
 func SyncCommands() error {
 	cmds := buildCommands()
 
@@ -396,6 +397,60 @@ func SyncCommands() error {
 		}
 
 		state.Logger.Info("Registered slash commands", zap.String("guildID", guildID.String()), zap.Int("count", len(cmds)))
+	}
+
+	return pruneGlobalCommands(cmds)
+}
+
+// pruneGlobalCommands deletes the global registration of any command that is
+// also registered per guild.
+//
+// Discord delivers a global command to every guild the application is in and
+// does not let a guild command of the same name stand in for it: both are listed
+// side by side, so a command registered both ways shows up twice in the picker
+// in every server. Everything here goes out per guild (see commandGuilds), which
+// makes a global copy a leftover — from a deployment that registered globally —
+// and the reason the commands were doubled.
+//
+// Global commands whose names this bot does not register are left alone and only
+// logged: they are not ours to delete, and they are not what doubles anything.
+func pruneGlobalCommands(registered []discord.ApplicationCommandCreate) error {
+	appID := dclient.Get().ApplicationID()
+
+	existing, err := dclient.Get().Rest().GetGlobalCommands(appID, false)
+
+	if err != nil {
+		return fmt.Errorf("failed to read the global commands: %w", err)
+	}
+
+	if len(existing) == 0 {
+		return nil
+	}
+
+	ours := make(map[string]struct{}, len(registered))
+
+	for _, cmd := range registered {
+		ours[cmd.CommandName()] = struct{}{}
+	}
+
+	var foreign []string
+
+	for _, cmd := range existing {
+		if _, mine := ours[cmd.Name()]; !mine {
+			foreign = append(foreign, cmd.Name())
+			continue
+		}
+
+		if err := dclient.Get().Rest().DeleteGlobalCommand(appID, cmd.ID()); err != nil {
+			return fmt.Errorf("failed to remove the global copy of /%s: %w", cmd.Name(), err)
+		}
+
+		state.Logger.Info("Removed a duplicate global slash command", zap.String("command", cmd.Name()))
+	}
+
+	if len(foreign) > 0 {
+		state.Logger.Warn("The application has global slash commands this bot does not register; they appear in every server it is in",
+			zap.Strings("commands", foreign))
 	}
 
 	return nil

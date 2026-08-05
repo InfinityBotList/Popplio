@@ -70,9 +70,18 @@ func CheckAuthInsecure(ctx context.Context, token string) (types.AuthData, error
 		return types.AuthData{}, err
 	}
 
-	var positions []pgtype.UUID
+	var (
+		positions []pgtype.UUID
+		isBot     bool
+	)
 
-	err = state.Pool.QueryRow(ctx, "SELECT positions FROM staff_members WHERE user_id = $1", userID).Scan(&positions)
+	// The bot flag rides along on this query rather than costing a round trip of
+	// its own, since it is read on every authenticated request.
+	err = state.Pool.QueryRow(ctx, `
+		SELECT sm.positions, COALESCE(iuc.bot, false)
+		FROM staff_members sm
+		LEFT JOIN internal_user_cache__discord iuc ON iuc.id = sm.user_id
+		WHERE sm.user_id = $1`, userID).Scan(&positions, &isBot)
 
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -83,6 +92,12 @@ func CheckAuthInsecure(ctx context.Context, token string) (types.AuthData, error
 	}
 
 	if len(positions) == 0 {
+		return types.AuthData{}, ErrIdentityExpired
+	}
+
+	// A bot holds no staff permissions, so a session on one is not a session at
+	// all — however it came to exist.
+	if isBot {
 		return types.AuthData{}, ErrIdentityExpired
 	}
 
@@ -253,10 +268,20 @@ func GetStaffMember(ctx context.Context, userID string) (types.StaffMember, erro
 		return types.StaffMember{}, fmt.Errorf("Error while getting positions of user %s: %s", userID, err)
 	}
 
+	// The dovewing user is fetched before the permissions are resolved rather
+	// than alongside the response, because whether this is a bot decides what
+	// resolving can produce at all.
+	user, err := GetPlatformUser(ctx, userID)
+
+	if err != nil {
+		return types.StaffMember{}, err
+	}
+
 	grants := perms.StaffGrants{
 		Roles:       make([]perms.Role, 0, len(positionRows)),
 		Extras:      perms.ParseStrings(permOverrides),
 		ConfigOwner: perms.IsConfigOwner(userID),
+		BotAccount:  user.Bot,
 	}
 
 	positions := make([]types.StaffPosition, 0, len(positionRows))
@@ -291,12 +316,6 @@ func GetStaffMember(ctx context.Context, userID string) (types.StaffMember, erro
 
 	resolved := resolveWithDisciplinaries(grants, disciplinaries)
 
-	user, err := GetPlatformUser(ctx, userID)
-
-	if err != nil {
-		return types.StaffMember{}, err
-	}
-
 	return types.StaffMember{
 		UserID:         userID,
 		User:           user,
@@ -322,6 +341,12 @@ func GetStaffMember(ctx context.Context, userID string) (types.StaffMember, erro
 // That is what makes it a punishment — a suspended reviewer keeps nothing but
 // the limits their disciplinary spells out.
 func resolveWithDisciplinaries(grants perms.StaffGrants, disciplinaries []types.StaffDisciplinary) perms.Set {
+	// A bot holds nothing, and an additory disciplinary adds permissions on top
+	// of what is resolved — so a bot is answered before one can be applied.
+	if grants.BotAccount {
+		return perms.Staff.NewSet()
+	}
+
 	// An instance owner cannot be disciplined out of their own instance.
 	if len(disciplinaries) == 0 || grants.ConfigOwner {
 		return grants.Resolve()
