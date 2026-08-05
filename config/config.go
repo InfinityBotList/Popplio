@@ -263,10 +263,13 @@ type Panel struct {
 type Infernoplex struct {
 	ClientID     string          `yaml:"client_id" comment:"Infernoplex bot Discord client ID" validate:"required"`
 	ClientSecret string          `yaml:"client_secret" comment:"Infernoplex bot Discord client secret" validate:"required"`
+	Prefix       Differs[string] `yaml:"prefix" default:"inf!" comment:"Infernoplex bot prefix" validate:"required"`
+	ServerPort   Differs[int]    `yaml:"server_port" default:"3012" comment:"Port the Infernoplex bot API listens on" validate:"required"`
 	Token        Differs[string] `yaml:"token" comment:"Infernoplex bot Discord token" validate:"required"`
 }
 
 type Naevis struct {
 	ClientID string          `yaml:"client_id" comment:"Naevis bot Discord client ID" validate:"required"`
 	Token    Differs[string] `yaml:"token" comment:"Naevis bot Discord token" validate:"required"`
+	Prefix   Differs[string] `yaml:"prefix" default:"nae!" comment:"Naevis bot prefix" validate:"required"`
 }
