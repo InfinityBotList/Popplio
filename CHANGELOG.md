@@ -211,13 +211,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   bug above, but was masking it: the ordering bug meant `extra_links`
   received whatever value happened to land at that position, which could
   vary by field type in ways that made this fix look sufficient on its own.
-- Startup logged `error while setting presence err="no gateway configured"`
-  on every run: `Discord.SetPresence` was called right after
-  `Discord.OpenShardManager` returned, but that only means the shards
-  started connecting, not that the gateway session is actually usable yet
-  (that's only confirmed later, asynchronously, via the `OnGuildsReady`
-  event). `SetPresence` now runs from inside the `OnGuildsReady` handler
-  instead, once shards are confirmed ready.
+- Presence never actually got set, always logging
+  `error while setting presence err="no gateway configured"`. First traced to
+  `Discord.SetPresence` being called right after `Discord.OpenShardManager`
+  returned (before the shards finish their handshake) and moved into the
+  `OnGuildsReady` handler — which turned out to only fix the timing, not the
+  actual cause: Popplio runs sharded (`OpenShardManager`), and
+  `Discord.SetPresence` only ever checks disgo's single-gateway field
+  (populated by `OpenGateway`, not `OpenShardManager`), so it returns
+  `ErrNoGateway` unconditionally on a sharded bot regardless of readiness.
+  `OnGuildsReady` also fires once per shard, not once globally. Now uses
+  `Discord.SetPresenceForShard(ctx, event.ShardID(), ...)` instead.
 - `current-env: dev` still required a real `staging` and `prod` value for
   every `Differs[T]` config key, and for every Arcadia staff-server
   channel/role/server ID, defeating the point of `dev`: a local checkout
