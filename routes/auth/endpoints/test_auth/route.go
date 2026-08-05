@@ -9,6 +9,7 @@ import (
 	"popplio/api/resp"
 
 	"popplio/api"
+	"popplio/perms"
 	"popplio/types"
 
 	docs "github.com/infinitybotlist/eureka/doclib"
@@ -56,8 +57,23 @@ func Route(d uapi.RouteData, r *http.Request) uapi.HttpResponse {
 	reqCtxd := r.WithContext(rctx)
 
 	// Check auth
+	//
+	// api.Authorize reads PERMISSION_CHECK_KEY out of the route's ExtData
+	// unconditionally (even when the auth type has no permission model, like
+	// "user") — an empty ExtData here previously made every call, valid
+	// token or not, fail with a 500 ("permissionCheck not found in
+	// route.ExtData") before ever reaching the actual auth check. This is a
+	// pure "is this token valid" test, so NeededPermission always returns
+	// nil, which short-circuits past the permission-check block entirely.
 	authData, hr, ok := api.Authorize(uapi.Route{
 		Auth: authType,
+		ExtData: map[string]any{
+			api.PERMISSION_CHECK_KEY: api.PermissionCheck{
+				NeededPermission: func(uapi.Route, *http.Request, uapi.AuthData) (*perms.Perm, error) {
+					return nil, nil
+				},
+			},
+		},
 	}, reqCtxd)
 
 	if !ok {

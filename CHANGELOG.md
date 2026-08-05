@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [1.0.1] - Unreleased
+## [1.0.1] - 2026-08-05
 
 ### Changed
 
@@ -41,6 +41,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- `DELETE /teams/{tid}/members/{mid}` had its last-owner safety check
+  inverted (introduced by the kittycat→internal `perms` package refactor):
+  it fired when the member being removed was *not* an owner instead of when
+  they were, so removing any regular member from a team with only one owner
+  (the common case) 400'd with "There needs to be one other global owner
+  before you can remove yourself from owner" — while actually removing the
+  team's last real owner sailed through with no check at all, the exact
+  case this was meant to prevent. Condition un-inverted.
 - Every staff bot slash command appeared twice in every server. The bot
   registers its commands per guild (`arcadia/bot.SyncCommands`), but the
   application still carried global registrations of the same commands from an
@@ -52,7 +60,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   commands whose names the bot does not register are left alone and only
   logged as a warning, since they belong to something else sharing the
   application.
-
 - The `server`/`team` auth types were never registered as OpenAPI security
   schemes (only `User`/`Bot` were, via `docs.AddSecuritySchema` in
   `main.go`) even though `Authorize()` has always fully supported them —
@@ -75,6 +82,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `ErrNoGateway` unconditionally on a sharded bot regardless of readiness.
   `OnGuildsReady` also fires once per shard, not once globally. Now uses
   `Discord.SetPresenceForShard(ctx, event.ShardID(), ...)` instead.
+- `POST /auth/test` ("Test Auth") 500ed on every call that reached an actual
+  authorization check — `api.Authorize` reads `PERMISSION_CHECK_KEY` out of
+  the route's `ExtData` unconditionally, but the synthetic `uapi.Route{}`
+  this endpoint builds to call it never set `ExtData` at all, so any request
+  with a syntactically valid token failed with a 500
+  (`permissionCheck not found in route.ExtData`) instead of returning
+  whether the token is actually valid. Only requests with a token that
+  failed even earlier (nonexistent in `api_sessions`) ever got a real
+  response (401). Now sets a no-op `PermissionCheck` (`NeededPermission`
+  always returns `nil`), since this endpoint has no permission model of its
+  own to enforce — it's purely "is this token valid for this target."
 
 - A second pass over the same files, this time pulling out the repetition
   rather than only moving it. In `arcadia/rpc`: `modLogReason` builds the
@@ -337,6 +355,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- The `server`/`team` auth types were never registered as OpenAPI security
+  schemes (only `User`/`Bot` were, via `docs.AddSecuritySchema` in
+  `main.go`) even though `Authorize()` has always fully supported them —
+  every one of the 41 operations requiring `server` or `team` auth
+  (`PUT /bots`, `PUT /servers`, both `PATCH .../settings` endpoints,
+  reviews, sessions, etc.) referenced a security scheme name absent from
+  `components.securitySchemes`. Harmless to the API itself, but any tool
+  that resolves the requirement against registered schemes crashes outright
+  on the unresolved reference — including the docs site's OpenAPI reference
+  pages (`fumadocs-openapi`'s `APIPage`, which throws
+  `Cannot read properties of undefined (reading 'type')`). Registered both
+  (`docs.AddSecuritySchema("server", ...)` / `("team", ...)`, lowercase to
+  match `AuthTypeMap`'s self-mapping for these two types).
 - `PUT /servers` and `PUT /bots` still wrote the legacy wildcard string
   `global.*` into a new team's `team_members.flags` when creating the
   owner's membership, instead of the flat model's `owner` permission
@@ -396,13 +427,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   bug above, but was masking it: the ordering bug meant `extra_links`
   received whatever value happened to land at that position, which could
   vary by field type in ways that made this fix look sufficient on its own.
-- Startup logged `error while setting presence err="no gateway configured"`
-  on every run: `Discord.SetPresence` was called right after
-  `Discord.OpenShardManager` returned, but that only means the shards
-  started connecting, not that the gateway session is actually usable yet
-  (that's only confirmed later, asynchronously, via the `OnGuildsReady`
-  event). `SetPresence` now runs from inside the `OnGuildsReady` handler
-  instead, once shards are confirmed ready.
+- Presence never actually got set, always logging
+  `error while setting presence err="no gateway configured"`. First traced to
+  `Discord.SetPresence` being called right after `Discord.OpenShardManager`
+  returned (before the shards finish their handshake) and moved into the
+  `OnGuildsReady` handler — which turned out to only fix the timing, not the
+  actual cause: Popplio runs sharded (`OpenShardManager`), and
+  `Discord.SetPresence` only ever checks disgo's single-gateway field
+  (populated by `OpenGateway`, not `OpenShardManager`), so it returns
+  `ErrNoGateway` unconditionally on a sharded bot regardless of readiness.
+  `OnGuildsReady` also fires once per shard, not once globally. Now uses
+  `Discord.SetPresenceForShard(ctx, event.ShardID(), ...)` instead.
 - `current-env: dev` still required a real `staging` and `prod` value for
   every `Differs[T]` config key, and for every Arcadia staff-server
   channel/role/server ID, defeating the point of `dev`: a local checkout
